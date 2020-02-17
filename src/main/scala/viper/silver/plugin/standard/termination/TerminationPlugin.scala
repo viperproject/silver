@@ -8,8 +8,8 @@ package viper.silver.plugin.standard.termination
 
 import fastparse.noApi
 import viper.silver.ast.utility.ViperStrategy
-import viper.silver.ast.utility.rewriter.StrategyBuilder
-import viper.silver.ast.{Assert, Exp, Function, Method, Program, While}
+import viper.silver.ast.utility.rewriter.{SimpleContext, Strategy, StrategyBuilder}
+import viper.silver.ast.{Applying, Assert, CondExp, CurrentPerm, Exp, Function, InhaleExhaleExp, MagicWand, Method, Node, Program, Unfolding, While}
 import viper.silver.parser.FastParser._
 import viper.silver.parser._
 import viper.silver.plugin.standard.predicateinstance.PPredicateInstance
@@ -68,7 +68,8 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
    */
   override def beforeResolve(input: PProgram): PProgram = {
 
-     // Transform predicate accesses which are not used in the unfolding to predicate instances.
+     // Transform predicate accesses to predicate instances
+     // (which are not used in the unfolding to predicate instances)
     val transformPredicateInstances = StrategyBuilder.Slim[PNode]({
       case pa@PPredicateAccess(args, idnuse) => PPredicateInstance(args, idnuse).setPos(pa)
       case pc@PCall(idnUse, args, None) if input.predicates.exists(_.idndef.name == idnUse.name) =>
@@ -76,14 +77,23 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
         PPredicateInstance(args, idnUse).setPos(pc)
       case d => d
     }).recurseFunc({
-          // ignore the predicate access when it is used for unfolding
-      case PUnfolding(_, exp) => Seq(exp)
+      case PUnfolding(_, exp) => // ignore predicate access when it is used for unfolding
+        Seq(exp)
+      case PApplying(_, exp) => // ignore predicate access when it is in a magic wand
+        Seq(exp)
+      case PCurPerm(_) => // ignore predicate access when it is in perm
+        // (However, anyways not supported in decreases clauses)
+        Nil
     })
 
     // Apply the predicate access to instance transformation only to decreases clauses.
     val newProgram: PProgram = StrategyBuilder.Slim[PNode]({
       case dt: PDecreasesTuple => transformPredicateInstances.execute(dt): PDecreasesTuple
       case d => d
+    }).recurseFunc({ // decreases clauses can only appear in functions/methods pres and methods bodies
+      case PProgram(_, _, _, _, functions, _, methods, _, _) => Seq(functions, methods)
+      case PFunction(_, _, _, pres, _, _) => Seq(pres)
+      case PMethod(_, _, _, pres, _ , body) => Seq(pres, body)
     }).execute(input)
 
     newProgram
@@ -95,7 +105,7 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
    */
   override def beforeVerify(input: Program): Program = {
     // extract all decreases clauses from the program
-    val newProgram = extractDecreasesClauses(input)
+    val newProgram: Program = extractDecreasesClauses.execute(input)
 
     if (deactivated) {
       // if decreases checks are deactivated, only remove the decreases clauses from the program
@@ -128,14 +138,12 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
   }
 
   /**
-   * Extracts all the decreases clauses from the program
+   * Extracts all the decreases clauses from the program (i.e. functions, methods and loops in methods body)
    * and appends them to the corresponding AST node as DecreasesSpecification (Info).
    */
-  private def extractDecreasesClauses(program: Program): Program = {
-
-    val result: Program = ViperStrategy.Slim({
+  private lazy val extractDecreasesClauses: Strategy[Node, SimpleContext[Node]] = ViperStrategy.Slim({
       case f: Function =>
-        val (pres, decreasesSpecification) = extractDecreasesClauses(f.pres)
+        val (pres, decreasesSpecification) = extractDecreasesClausesFromExps(f.pres)
 
         val newFunction =
           if (pres != f.pres) {
@@ -149,7 +157,7 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
           case None => newFunction
         }
       case m: Method =>
-        val (pres, decreasesSpecification) = extractDecreasesClauses(m.pres)
+        val (pres, decreasesSpecification) = extractDecreasesClausesFromExps(m.pres)
 
         val newMethod =
           if (pres != m.pres) {
@@ -162,7 +170,7 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
           case None => newMethod
         }
       case w: While =>
-        val (invs, decreasesSpecification) = extractDecreasesClauses(w.invs)
+        val (invs, decreasesSpecification) = extractDecreasesClausesFromExps(w.invs)
 
         val newWhile =
           if (invs != w.invs) {
@@ -175,9 +183,10 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
           case Some(dc) => dc.appendToWhile(newWhile)
           case None => newWhile
         }
-    }).execute(program)
-    result
-  }
+    }).recurseFunc({
+      case Program(_, _, functions, _, methods, _) => Seq(functions, methods)
+      case Method(_,_,_,_,_, body) => Seq(body)
+    })
 
   /**
    * Extracts decreases clauses from the sequence of expressions.
@@ -187,10 +196,12 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
    * @param exps : sequence of expression from which decreases clauses should be extracted.
    * @return exps without decreases clauses and a decreases specification containing decreases clauses from exps.
    */
-  private def extractDecreasesClauses(exps: Seq[Exp]): (Seq[Exp], Option[DecreasesSpecification]) = {
+  private def extractDecreasesClausesFromExps(exps: Seq[Exp]): (Seq[Exp], Option[DecreasesSpecification]) = {
     val (decreases, pres) = exps.partition(p => p.isInstanceOf[DecreasesClause])
 
     val tuples = decreases.collect { case p: DecreasesTuple => p }
+    // check if decreases tuple is legal
+    tuples.flatMap(_.tupleExpressions).foreach(checkDecreasesTuple.execute[Exp])
     if (tuples.size > 1) {
       reportError(ConsistencyError("Multiple decreases tuple.", tuples.head.pos))
     }
@@ -209,4 +220,23 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
       (exps, None)
     }
   }
+
+  /**
+   * Detects expressions which are not allowed as termination measure,
+   * i.e. which are part of the decreases tuple.
+   * And reports consistency errors for them.
+   * (Should only be applied to the tuple expression itself and not the decreases clause)
+   */
+  private lazy val checkDecreasesTuple = StrategyBuilder.SlimVisitor[Node]({
+    case w: MagicWand =>
+      reportError(ConsistencyError("Magic wand expressions are not allowed as termination measure.", w.pos))
+    case e: InhaleExhaleExp =>
+      reportError(ConsistencyError("Inhale Exhale expressions are not allowed as termination measure.", e.pos))
+    case _ =>
+  }).recurseFunc({
+    case CondExp(_, e1, e2) => Seq(e1, e2)
+    case Applying(_, exp) => Seq(exp)
+    case Unfolding(_, exp) => Seq(exp)
+    case CurrentPerm(_) => Nil
+  })
 }
