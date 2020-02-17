@@ -5,7 +5,7 @@ Silver
 Silver is the intermediate verification language of the
 `Viper project <http://www.pm.inf.ethz.ch/research/viper.html>`_ by
 `Chair of Programming Methodology <http://www.pm.inf.ethz.ch/>`_
-at ETH Zürich, Department of Computer Science.
+at ETH Zurich, Department of Computer Science.
 
 Quick Start
 ===========

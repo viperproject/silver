@@ -11,7 +11,6 @@ import viper.silver.ast._
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast.utility.Triggers.TriggerGeneration
 import viper.silver.utility.Sanitizer
-import viper.silver.parser.FastParser
 
 /** Utility methods for expressions. */
 object Expressions {
@@ -65,7 +64,7 @@ object Expressions {
         currentState => //if (depends) PartialFunction.empty // we're done
           //else
         {
-          case LabelledOld(ee, FastParser.LHS_OLD_LABEL) =>
+          case LabelledOld(ee, LabelledOld.LhsOldLabel) =>
             if (treatMagicWandStatesAsCurrentStates)
               go(ee,p,true)
             else

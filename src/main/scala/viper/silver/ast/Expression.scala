@@ -478,6 +478,10 @@ case class LabelledOld(exp: Exp, oldLabel: String)(val pos: Position = NoPositio
       Consistency.checkPure(exp)
 }
 
+case object LabelledOld {
+  val LhsOldLabel = "lhs"
+}
+
 // --- Other expressions
 
 case class Let(variable: LocalVarDecl, exp: Exp, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp with Scope {
