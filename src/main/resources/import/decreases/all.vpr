@@ -4,7 +4,6 @@
 import "bool.vpr"
 import "int.vpr"
 import "multiset.vpr"
-import "perm.vpr"
 import "predicate_instance.vpr"
 import "rational.vpr"
 import "ref.vpr"
