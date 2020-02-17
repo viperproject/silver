@@ -339,7 +339,7 @@ object Consistency {
 
         c.copy(insideWandStatus = InsideWandStatus.Yes)
 
-      case po@LabelledOld(_, FastParser.LHS_OLD_LABEL) if !c.insideWandStatus.isInside =>
+      case po@LabelledOld(_, LabelledOld.LhsOldLabel) if !c.insideWandStatus.isInside =>
         s :+= ConsistencyError("Labelled old expressions with \"lhs\" label may only occur inside wands and their proof scripts.", po.pos)
         c
 
@@ -374,7 +374,7 @@ object Consistency {
         s ++= checkWandRelatedOldExpressions(lhs, c.copy(insideWandStatus = InsideWandStatus.Left))
         s ++= checkWandRelatedOldExpressions(rhs, c.copy(insideWandStatus = InsideWandStatus.Right))
 
-      case po @ LabelledOld(_, FastParser.LHS_OLD_LABEL) if !c.insideWandStatus.isRight =>
+      case po @ LabelledOld(_, LabelledOld.LhsOldLabel) if !c.insideWandStatus.isRight =>
           s :+= ConsistencyError("Wands may use the old[lhs]-expression on the rhs and in their proof script only.", po.pos)
     })
     s
