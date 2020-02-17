@@ -66,8 +66,6 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with NestedPredicat
    * @return Strategy to be used to transform a methods body.
    */
   private def methodStrategy(context: MethodContext): Strategy[Node, StrategyContext] =
-  // BottomUp traversal does not work because the original While node is required
-  // to obtain the associated DecreasesSpecification
     ViperStrategy.Context(methodTransformer, context, Traverse.BottomUp).recurseFunc(avoidExpressions)
 
   private def avoidExpressions: PartialFunction[Node, Seq[AnyRef]] = {
