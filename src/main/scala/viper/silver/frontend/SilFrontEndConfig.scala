@@ -97,6 +97,14 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     hidden = false
   )
 
+  val terminationPlugin = opt[Boolean]("disableTerminationPlugin",
+    descr = "Disable the termination plugin, which adds termination checks to functions, " +
+      "methods and loops.",
+    default = Some(false),
+    noshort = true,
+    hidden = true
+  )
+
   validateOpt(file, ignoreFile) {
     case (_, Some(true)) => Right(Unit)
     case (Some(path), _) =>

@@ -13,7 +13,7 @@ import fastparse.all.{Parsed, ParserInput}
 import viper.silver.ast.utility.Consistency
 import viper.silver.ast.{SourcePosition, _}
 import viper.silver.parser._
-import viper.silver.plugin.{SilverPluginManager}
+import viper.silver.plugin.SilverPluginManager
 import viper.silver.plugin.SilverPluginManager.PluginException
 import viper.silver.reporter._
 import viper.silver.verifier._
@@ -76,7 +76,17 @@ trait SilFrontend extends DefaultFrontend {
   protected var _config: SilFrontendConfig = _
   def config: SilFrontendConfig = _config
 
-  protected var _plugins: SilverPluginManager = SilverPluginManager()
+  /**
+   * Default plugins are always activated and are run as last plugins.
+   * All default plugins can be excluded from the plugins by providing the --disableDefaultPlugins flag
+   */
+  private val defaultPlugins: Seq[String] = Seq(
+    "viper.silver.plugin.standard.termination.TerminationPlugin",
+    "viper.silver.plugin.standard.predicateinstance.PredicateInstancePlugin"
+  )
+
+
+  protected var _plugins: SilverPluginManager = SilverPluginManager(Some(defaultPlugins.mkString(":")))(reporter, logger, _config)
   def plugins: SilverPluginManager = _plugins
 
   protected var _startTime: Long = _
@@ -159,7 +169,13 @@ trait SilFrontend extends DefaultFrontend {
 
     if(_config != null) {
       // reset error messages of plugins
-      _plugins = SilverPluginManager(_config.plugin.toOption)(reporter, logger, _config)
+
+      // concat defined plugins and default plugins
+      val plugins: Option[String] = {
+        val list = _config.plugin.toOption ++ defaultPlugins
+        if (list.isEmpty) { None } else { Some(list.mkString(":")) }
+      }
+      _plugins = SilverPluginManager(plugins)(reporter, logger, _config)
     }
 
     FastPositions.reset()
