@@ -16,5 +16,7 @@ predicate Inv(r: Ref) { acc(r.f) }
 method test02(s: Seq[Ref], r: Ref) {
   inhale forall i: Int ::  {s[i]} 0 <= i && i < |s| ==> Inv(s[i])
   inhale Inv(r)
+  
+  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/158/)
   assert forall i: Int :: {s[i]} 0 <= i && i < |s| ==> (unfolding Inv(r) in unfolding Inv(s[i]) in s[i] != r)
 }
