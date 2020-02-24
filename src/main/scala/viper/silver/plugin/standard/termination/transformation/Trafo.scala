@@ -10,7 +10,7 @@ import viper.silver.ast._
 import viper.silver.verifier.AbstractError
 
 /**
- * Trafo combines the ProgramManager with
+ * Trafo combines the ProgramManager (which manages name conflicts) with
  * FunctionCheck (which generates termination checks for functions) and
  * MethodCheck (which generates termination checks for methods and whiles)
  * @param program: The program to be extended with termination checks.
@@ -28,13 +28,13 @@ final class Trafo(override val program: Program,
   def getTransformedProgram: Program = {
     transformedProgram.getOrElse({
 
-      // call the function/method termination check transformers
-      transformFunctions()
-      transformMethods()
+      val proofMethods: Seq[Method] = program.functions.flatMap(generateProofMethods)
+      val newMethods: Seq[Method] = program.methods.map(transformMethod)
 
-      // obtain the new program
-      val newProgram = getNewProgram
+      val newProgram: Program = program.copy(methods = newMethods ++ proofMethods)(program.pos,program.info,program.errT)
+
       transformedProgram = Some(newProgram)
+
       newProgram
     })
   }
