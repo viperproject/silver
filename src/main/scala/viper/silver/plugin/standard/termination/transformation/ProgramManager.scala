@@ -6,7 +6,7 @@
 
 package viper.silver.plugin.standard.termination.transformation
 
-import viper.silver.ast.{Domain, ExtensionMember, Field, Function, Method, Predicate, Program}
+import viper.silver.ast.Program
 import viper.silver.verifier.AbstractError
 
 import scala.collection.mutable
@@ -20,30 +20,7 @@ trait ProgramManager{
   // original program
   val program: Program
 
-  // maps of all program features including the ones newly created/added
-  protected val domains: mutable.Map[String, Domain] = collection.mutable.ListMap[String, Domain](program.domains.map(d => d.name -> d): _*)
-  protected val fields: mutable.Map[String, Field] = collection.mutable.ListMap[String, Field](program.fields.map(f => f.name -> f): _*)
-  protected val functions: mutable.Map[String, Function] = collection.mutable.ListMap[String, Function](program.functions.map(f => f.name -> f): _*)
-  protected val predicates: mutable.Map[String, Predicate] = collection.mutable.ListMap[String, Predicate](program.predicates.map(f => f.name -> f): _*)
-  protected val methods: mutable.Map[String, Method] = collection.mutable.ListMap[String, Method](program.methods.map(f => f.name -> f): _*)
-  protected val extensions: mutable.Map[String, ExtensionMember] = collection.mutable.ListMap[String, ExtensionMember](program.extensions.map(e => e.name -> e): _*)
-
-  /**
-   * Creates a new program containing all the transformed and newly added features.
-   * @return new program.
-   */
-  final def getNewProgram: Program = {
-    Program(domains.values.toSeq,
-      fields.values.toSeq,
-      functions.values.toSeq,
-      predicates.values.toSeq,
-      methods.values.toSeq,
-      extensions.values.toSeq)(program.pos, program.info, program.errT)
-  }
-
-
   // all names used in the program
-  // including arguments and local vars because they could also cause conflicts.
   private val usedNames: mutable.Set[String] = collection.mutable.Set(program.transitiveScopedDecls.map(_.name): _*)
 
 
