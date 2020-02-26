@@ -29,17 +29,7 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with NestedPredicat
     DecreasesSpecification.fromNode(w)
   }
 
-  /**
-   * Transforms all the methods in the (original) program to contain termination checks.
-   */
-  protected def transformMethods(): Unit = {
-    program.methods.foreach(m => {
-      val method = transformMethod(m)
-      methods.update(m.name, method)
-    })
-  }
-
-  private def transformMethod(m: Method): Method = {
+  protected def transformMethod(m: Method): Method = {
     m.body match {
       case Some(body) =>
         val context = MContext(m)
@@ -79,7 +69,7 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with NestedPredicat
 
       getMethodDecreasesSpecification(context.methodName).tuple match {
         case Some(callerTuple) => // check that called method decreases tuple under the methods tuple condition
-          val calledMethod = methods(mc.methodName)
+          val calledMethod = program.findMethod(mc.methodName)
           val mapFormalArgsToCalledArgs = Map(calledMethod.formalArgs.map(_.localVar).zip(mc.args): _*)
           val calleeDec = getMethodDecreasesSpecification(mc.methodName)
 
@@ -116,9 +106,10 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with NestedPredicat
     case (mc: MethodCall, ctxt) if ctxt.c.mutuallyRecursiveMeths.contains(program.findMethod(mc.methodName)) =>
       val context = ctxt.c
 
+
       getMethodDecreasesSpecification(context.methodName).tuple match {
         case Some(methodTuple) => // check that called method terminates under the methods tuple condition
-          val calledMethod = methods(mc.methodName)
+          val calledMethod = program.findMethod(mc.methodName)
           val mapFormalArgsToCalledArgs = Map(calledMethod.formalArgs.map(_.localVar).zip(mc.args): _*)
           val decDest = getMethodDecreasesSpecification(mc.methodName)
 
@@ -268,7 +259,7 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with NestedPredicat
 
     def process(m: Method, n: Node) {
       n visit {
-        case mc@MethodCall(m2name, _, _) =>
+        case MethodCall(m2name, _, _) =>
           graph.addEdge(m, program.findMethod(m2name))
       }
     }
