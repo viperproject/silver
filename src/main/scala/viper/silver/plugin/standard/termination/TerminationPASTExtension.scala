@@ -19,11 +19,13 @@ sealed trait PDecreasesClause extends PExtender with PExp {
 
   // TODO: Don't know if this is necessary...
   val _typeSubstitutions: Seq[PTypeSubstitution] = Seq(PTypeSubstitution.id)
+
   override def typeSubstitutions: Seq[PTypeSubstitution] = _typeSubstitutions
+
   override def forceSubstitution(ts: PTypeSubstitution): Unit = {}
 }
 
-case class PDecreasesTuple(tuple: Seq[PExp], condition: Option[PExp] = None) extends PDecreasesClause{
+case class PDecreasesTuple(tuple: Seq[PExp], condition: Option[PExp] = None) extends PDecreasesClause {
 
   override val getSubnodes: Seq[PNode] = tuple ++ condition
 
@@ -39,7 +41,7 @@ case class PDecreasesTuple(tuple: Seq[PExp], condition: Option[PExp] = None) ext
   }
 }
 
-case class PDecreasesWildcard(condition: Option[PExp] = None) extends  PDecreasesClause {
+case class PDecreasesWildcard(condition: Option[PExp] = None) extends PDecreasesClause {
 
   override val getSubnodes: Seq[PNode] = condition.toSeq
 

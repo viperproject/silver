@@ -68,8 +68,8 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
    */
   override def beforeResolve(input: PProgram): PProgram = {
 
-     // Transform predicate accesses to predicate instances
-     // (which are not used in the unfolding to predicate instances)
+    // Transform predicate accesses to predicate instances
+    // (which are not used in the unfolding to predicate instances)
     val transformPredicateInstances = StrategyBuilder.Slim[PNode]({
       case pa@PPredicateAccess(args, idnuse) => PPredicateInstance(args, idnuse).setPos(pa)
       case pc@PCall(idnUse, args, None) if input.predicates.exists(_.idndef.name == idnUse.name) =>
@@ -93,7 +93,7 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
     }).recurseFunc({ // decreases clauses can only appear in functions/methods pres and methods bodies
       case PProgram(_, _, _, _, functions, _, methods, _, _) => Seq(functions, methods)
       case PFunction(_, _, _, pres, _, _) => Seq(pres)
-      case PMethod(_, _, _, pres, _ , body) => Seq(pres, body)
+      case PMethod(_, _, _, pres, _, body) => Seq(pres, body)
     }).execute(input)
 
     newProgram
@@ -142,58 +142,58 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
    * and appends them to the corresponding AST node as DecreasesSpecification (Info).
    */
   private lazy val extractDecreasesClauses: Strategy[Node, SimpleContext[Node]] = ViperStrategy.Slim({
-      case f: Function =>
-        val (pres, decreasesSpecification) = extractDecreasesClausesFromExps(f.pres)
+    case f: Function =>
+      val (pres, decreasesSpecification) = extractDecreasesClausesFromExps(f.pres)
 
-        val newFunction =
-          if (pres != f.pres) {
-            f.copy(pres = pres)(f.pos, f.info, f.errT)
-          } else {
-            f
-          }
-
-        decreasesSpecification match {
-          case Some(dc) => dc.appendToFunction(newFunction)
-          case None => newFunction
+      val newFunction =
+        if (pres != f.pres) {
+          f.copy(pres = pres)(f.pos, f.info, f.errT)
+        } else {
+          f
         }
-      case m: Method =>
-        val (pres, decreasesSpecification) = extractDecreasesClausesFromExps(m.pres)
 
-        val newMethod =
-          if (pres != m.pres) {
-            m.copy(pres = pres)(m.pos, m.info, m.errT)
-          } else {
-            m
-          }
-        decreasesSpecification match {
-          case Some(dc) => dc.appendToMethod(newMethod)
-          case None => newMethod
+      decreasesSpecification match {
+        case Some(dc) => dc.appendToFunction(newFunction)
+        case None => newFunction
+      }
+    case m: Method =>
+      val (pres, decreasesSpecification) = extractDecreasesClausesFromExps(m.pres)
+
+      val newMethod =
+        if (pres != m.pres) {
+          m.copy(pres = pres)(m.pos, m.info, m.errT)
+        } else {
+          m
         }
-      case w: While =>
-        val (invs, decreasesSpecification) = extractDecreasesClausesFromExps(w.invs)
+      decreasesSpecification match {
+        case Some(dc) => dc.appendToMethod(newMethod)
+        case None => newMethod
+      }
+    case w: While =>
+      val (invs, decreasesSpecification) = extractDecreasesClausesFromExps(w.invs)
 
-        val newWhile =
-          if (invs != w.invs) {
-            w.copy(invs = invs)(w.pos, w.info, w.errT)
-          } else {
-            w
-          }
-
-        decreasesSpecification match {
-          case Some(dc) => dc.appendToWhile(newWhile)
-          case None => newWhile
+      val newWhile =
+        if (invs != w.invs) {
+          w.copy(invs = invs)(w.pos, w.info, w.errT)
+        } else {
+          w
         }
-    }).recurseFunc({
-      case Program(_, _, functions, _, methods, _) => Seq(functions, methods)
-      case Method(_,_,_,_,_, body) => Seq(body)
-    })
+
+      decreasesSpecification match {
+        case Some(dc) => dc.appendToWhile(newWhile)
+        case None => newWhile
+      }
+  }).recurseFunc({
+    case Program(_, _, functions, _, methods, _) => Seq(functions, methods)
+    case Method(_, _, _, _, _, body) => Seq(body)
+  })
 
   /**
    * Extracts decreases clauses from the sequence of expressions.
    * Only one of each decreases clause type are extracted.
    * If more exist, then a consistency error is issued.
    *
-   * @param exps : sequence of expression from which decreases clauses should be extracted.
+   * @param exps sequence of expression from which decreases clauses should be extracted.
    * @return exps without decreases clauses and a decreases specification containing decreases clauses from exps.
    */
   private def extractDecreasesClausesFromExps(exps: Seq[Exp]): (Seq[Exp], Option[DecreasesSpecification]) = {

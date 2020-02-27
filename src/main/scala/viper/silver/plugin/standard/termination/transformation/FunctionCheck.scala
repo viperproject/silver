@@ -46,67 +46,66 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
     val requireNestedInfo = containsPredicateInstances(DecreasesSpecification.fromNode(f))
     DecreasesSpecification.fromNode(f).productIterator
 
-    val proofMethods: Seq[Method] =
-      {
-        if (f.body.nonEmpty) {
-          // method proving termination of the functions body.
-          val proofMethodName = uniqueName(f.name + "_termination_proof")
+    val proofMethods: Seq[Method] = {
+      if (f.body.nonEmpty) {
+        // method proving termination of the functions body.
+        val proofMethodName = uniqueName(f.name + "_termination_proof")
 
-          val context = FContext(f)
+        val context = FContext(f)
 
-          val proofMethodBody: Stmt = {
-            val stmt: Stmt = simplifyStmts.execute(transformExp(f.body.get, context))
-            if (requireNestedInfo) {
-              addNestedPredicateInformation.execute(stmt)
-            } else {
-              stmt
-            }
-          }
-
-          if (proofMethodBody != EmptyStmt) {
-
-            val proofMethod = Method(proofMethodName, f.formalArgs, Nil, f.pres, Nil,
-              Option(Seqn(Seq(proofMethodBody), Nil)()))()
-
-            Seq(proofMethod)
+        val proofMethodBody: Stmt = {
+          val stmt: Stmt = simplifyStmts.execute(transformExp(f.body.get, context))
+          if (requireNestedInfo) {
+            addNestedPredicateInformation.execute(stmt)
           } else {
-            Nil
+            stmt
           }
-        } else Nil
-      } ++ {
+        }
+
+        if (proofMethodBody != EmptyStmt) {
+
+          val proofMethod = Method(proofMethodName, f.formalArgs, Nil, f.pres, Nil,
+            Option(Seqn(Seq(proofMethodBody), Nil)()))()
+
+          Seq(proofMethod)
+        } else {
+          Nil
+        }
+      } else Nil
+    } ++ {
       if (f.posts.nonEmpty) {
-          // method proving termination of postconditions.
-          val proofMethodName = uniqueName(f.name + "_posts_termination_proof")
-          val context = FContext(f)
+        // method proving termination of postconditions.
+        val proofMethodName = uniqueName(f.name + "_posts_termination_proof")
+        val context = FContext(f)
 
-          val resultVariable = LocalVarDecl(resultVariableName, f.typ)(f.result.pos, f.result.info, NodeTrafo(f.result))
+        val resultVariable = LocalVarDecl(resultVariableName, f.typ)(f.result.pos, f.result.info, NodeTrafo(f.result))
 
-          // replace all Result nodes with the result variable.
-          // and concatenate all posts
-          val posts: Exp = f.posts
-            .map(p => ViperStrategy.Slim({
-              case Result(_) => resultVariable.localVar
-            }, Traverse.BottomUp).execute[Exp](p))
-            .reduce((e, p) => And(e, p)())
+        // replace all Result nodes with the result variable.
+        // and concatenate all posts
+        val posts: Exp = f.posts
+          .map(p => ViperStrategy.Slim({
+            case Result(_) => resultVariable.localVar
+          }, Traverse.BottomUp).execute[Exp](p))
+          .reduce((e, p) => And(e, p)())
 
-          val proofMethodBody: Stmt = {
-            val stmt: Stmt = simplifyStmts.execute(transformExp(posts, context))
-            if (requireNestedInfo) {
-              addNestedPredicateInformation.execute(stmt)
-            } else {
-              stmt
-            }
-          }
-
-          if (proofMethodBody != EmptyStmt) {
-            val proofMethod = Method(proofMethodName, f.formalArgs, Nil, f.pres, Nil,
-              Option(Seqn(Seq(proofMethodBody), Seq(resultVariable))()))()
-
-            Seq(proofMethod)
+        val proofMethodBody: Stmt = {
+          val stmt: Stmt = simplifyStmts.execute(transformExp(posts, context))
+          if (requireNestedInfo) {
+            addNestedPredicateInformation.execute(stmt)
           } else {
-            Nil
+            stmt
           }
-        } else Nil
+        }
+
+        if (proofMethodBody != EmptyStmt) {
+          val proofMethod = Method(proofMethodName, f.formalArgs, Nil, f.pres, Nil,
+            Option(Seqn(Seq(proofMethodBody), Seq(resultVariable))()))()
+
+          Seq(proofMethod)
+        } else {
+          Nil
+        }
+      } else Nil
     } ++ {
       if (f.pres.nonEmpty) {
         val proofMethodName = uniqueName(f.name + "_pres_termination_proof")
@@ -208,8 +207,8 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
           }
 
         case None =>
-          // no tuple is defined, hence, nothing must be checked
-          // should not happen
+        // no tuple is defined, hence, nothing must be checked
+        // should not happen
       }
       Seqn(stmts, Nil)()
     case default => super.transformExp(default)

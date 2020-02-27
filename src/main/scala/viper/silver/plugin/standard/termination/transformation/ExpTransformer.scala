@@ -19,6 +19,7 @@ trait ExpTransformer extends ErrorReporter {
 
   /**
    * Transforms an expression into a statement.
+   *
    * @return a statement representing the expression.
    */
   def transformExp: PartialFunction[(Exp, ExpressionContext), Stmt] = {

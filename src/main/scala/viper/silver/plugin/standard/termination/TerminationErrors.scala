@@ -15,8 +15,8 @@ import viper.silver.verifier._
  */
 
 /**
-  * Error for all termination related failed assertions.
-  */
+ * Error for all termination related failed assertions.
+ */
 abstract class AbstractTerminationError() extends AbstractVerificationError {
   override val id = "termination.failed"
 }
@@ -28,6 +28,7 @@ case class FunctionTerminationError(override val offendingNode: ErrorNode,
 
   override def withNode(offendingNode: errors.ErrorNode = this.offendingNode): FunctionTerminationError =
     FunctionTerminationError(this.offendingNode, this.reason)
+
   override def withReason(r: ErrorReason): FunctionTerminationError = FunctionTerminationError(offendingNode, r)
 }
 
@@ -38,6 +39,7 @@ case class MethodTerminationError(override val offendingNode: ErrorNode,
 
   override def withNode(offendingNode: errors.ErrorNode = this.offendingNode): MethodTerminationError =
     MethodTerminationError(this.offendingNode, this.reason)
+
   override def withReason(r: ErrorReason): MethodTerminationError = MethodTerminationError(offendingNode, r)
 }
 
@@ -48,6 +50,7 @@ case class LoopTerminationError(override val offendingNode: ErrorNode,
 
   override def withNode(offendingNode: errors.ErrorNode = this.offendingNode): LoopTerminationError =
     LoopTerminationError(this.offendingNode, this.reason)
+
   override def withReason(r: ErrorReason): LoopTerminationError = LoopTerminationError(offendingNode, r)
 }
 
