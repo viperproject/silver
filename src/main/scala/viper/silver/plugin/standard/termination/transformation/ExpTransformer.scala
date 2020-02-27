@@ -51,7 +51,7 @@ trait ExpTransformer extends ErrorReporter {
       val expressionStmt = transformExp(letExp.exp, c)
       val localVarDecl = letExp.variable
 
-      val inhaleEq = Inhale(EqCmp(localVarDecl.localVar, letExp)())()
+      val inhaleEq = Inhale(EqCmp(localVarDecl.localVar, letExp.exp)())()
 
       val bodyStmt = transformExp(letExp.body, c)
 
