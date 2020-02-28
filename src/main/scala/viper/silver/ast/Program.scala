@@ -10,7 +10,6 @@ import viper.silver.ast.pretty.{Fixity, Infix, LeftAssociative, NonAssociative, 
 import utility.{Consistency, DomainInstances, Nodes, Types, Visitor}
 import viper.silver.ast.MagicWandStructure.MagicWandStructure
 import viper.silver.cfg.silver.CfgGenerator
-import viper.silver.parser.FastParser
 import viper.silver.verifier.ConsistencyError
 import viper.silver.utility.{CacheHelper, DependencyAware}
 
@@ -174,7 +173,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       }
     }
     def checkNameUseLabel(name: String, n: Positioned, expected: String, declarationMap: immutable.HashMap[String, Declaration]) : Option[ConsistencyError] = {
-      if (name == FastParser.LHS_OLD_LABEL) None
+      if (name == LabelledOld.LhsOldLabel) None
       else declarationMap.get(name) match {
         case Some(d) => d match {
           case _: Label => None
