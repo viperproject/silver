@@ -1066,14 +1066,14 @@ case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PTyp
 }
 
 case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean)(val domainName:PIdnUse) extends PAnyFunction
-case class PAxiom(idndef: PIdnDef, exp: PExp)(val domainName:PIdnUse) extends PScope with PGlobalDeclaration  //urij: this was not a declaration before - but the constructor of Program would complain on name clashes
+case class PAxiom(idndef: Option[PIdnDef], exp: PExp)(val domainName:PIdnUse) extends PScope
 case class PField(idndef: PIdnDef, typ: PType) extends PMember with PTypedDeclaration with PGlobalDeclaration
 case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: Option[PExp]) extends PMember with PTypedDeclaration with PGlobalDeclaration{
   val typ = PPredicateType()
 }
 
 case class PDomainFunction1(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends FastPositioned
-case class PAxiom1(idndef: PIdnDef, exp: PExp) extends FastPositioned
+case class PAxiom1(idndef: Option[PIdnDef], exp: PExp) extends FastPositioned
 
 /**
  * A entity represented by names for whom we have seen more than one
@@ -1200,7 +1200,7 @@ object Nodes {
         Seq(name) ++ args ++ Seq(typ)
       case PPredicate(name, args, body) =>
         Seq(name) ++ args ++ body
-      case PAxiom(idndef, exp) => Seq(idndef, exp)
+      case PAxiom(idndef, exp) => (if (idndef.isDefined) Seq(idndef.get) else Nil) ++ Seq(exp)
       case PTypeVarDecl(name) => Seq(name)
       case PDefine(idndef, optArgs, body) => Seq(idndef) ++ optArgs.getOrElse(Nil) ++ Seq(body)
       case t : PExtender => t.getSubnodes()
