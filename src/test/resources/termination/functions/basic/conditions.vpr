@@ -1,0 +1,52 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <decreases/int.vpr>
+
+function f1(i: Int): Int
+requires i >= 0
+decreases i
+{
+    i < 10 ? 1 : (f1(i-1) < 4 || (f1(i-3) < 6) ? 1 : f1(i-1))
+}
+
+//Short circuit evaluation
+function f3(i: Int): Int
+decreases i
+{
+    (true || f3(i) != 1) ? 1 : f3(i)
+}
+
+function f4(i: Int): Int
+decreases i
+{
+    (false && f4(i) != 1) ? f4(i) : 1
+}
+
+function f5(i: Int): Int
+decreases i
+{
+    (false ==> f5(i)>6) ? 7 : f5(i)
+}
+
+
+/*
+ not pure condition
+*/
+field next: Ref
+predicate list(xs:Ref)
+{
+    acc(xs.next) && (xs.next != null ==> list(xs.next))
+}
+
+function f6(xs: Ref, x: Int): Int
+    requires (list(xs) && x >= 0) && f7(x)
+    decreases x
+{
+    x != 0 ? f6(xs, x-1) : x
+}
+
+
+function f7(y: Int): Bool
+    decreases if y >= 0
+    ensures result == true
