@@ -124,7 +124,7 @@ case class DecreasesSpecification(tuple: Option[DecreasesTuple],
    * Condition for which termination is proven or assumed.
    * I.e. the disjunction of the tuple's and wildcard's condition.
    */
-  lazy val terminationCondition: Exp =
+  lazy val getTerminationCondition: Exp =
     (tuple, wildcard) match {
       case (Some(tuple), Some(wildcard)) =>
         Or(tuple.condition.getOrElse(TrueLit()()), wildcard.condition.getOrElse(TrueLit()()))()
@@ -141,7 +141,7 @@ case class DecreasesSpecification(tuple: Option[DecreasesTuple],
    * The default for a tuple (without condition) is true.
    * If no tuple is given false.
    */
-  lazy val tupleCondition: Exp = {
+  lazy val getTupleCondition: Exp = {
     tuple match {
       case Some(DecreasesTuple(_, Some(condition))) => condition
       case Some(DecreasesTuple(_, None)) => TrueLit()()
