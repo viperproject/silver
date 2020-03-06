@@ -33,7 +33,6 @@ final class Trafo(override val program: Program,
       val newMethods: Seq[Method] = program.methods.map(transformMethod)
 
       val newProgram: Program = program.copy(methods = newMethods ++ proofMethods)(program.pos, program.info, program.errT)
-
       transformedProgram = Some(newProgram)
 
       newProgram
