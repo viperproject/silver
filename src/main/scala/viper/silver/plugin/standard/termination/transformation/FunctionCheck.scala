@@ -11,7 +11,7 @@ import viper.silver.ast.utility.Statements.EmptyStmt
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.{And, Bool, ErrTrafo, Exp, FalseLit, FuncApp, Function, LocalVarDecl, Method, Node, NodeTrafo, Old, Result, Seqn, Stmt}
-import viper.silver.plugin.standard.termination.{DecreasesSpecification, DecreasesTuple, FunctionTerminationError}
+import viper.silver.plugin.standard.termination.{DecreasesSpecification, FunctionTerminationError}
 import viper.silver.verifier.ConsistencyError
 import viper.silver.verifier.errors.AssertFailed
 
@@ -167,22 +167,28 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
 
             // old expressions are needed to access predicates which were unfolded but now have to be accessed
             // e.g. in the tuple or the condition
-            val oldTupleCondition = Old(callerTuple.getCondition)()
+            val oldTupleCondition = callerTuple.condition map(Old(_)())
+
             val oldTupleExpressions = callerTuple.tupleExpressions.map(Old(_)())
-            val oldDecreasesTuple = DecreasesTuple(oldTupleExpressions, Some(oldTupleCondition))()
 
             val checks = calleeDec.tuple match {
               case Some(calleeTuple) =>
                 // reason would be the callee's defined tuple
                 val reTrafo = reasonTrafoFactory.generateTupleConditionFalse(calleeTuple)
 
-                val conditionAssertion = createConditionCheck(oldTupleCondition, calleeTuple.getCondition, mapFormalArgsToCalledArgs, errTrafo, reTrafo)
-                val tupleAssertion = createTupleCheck(oldDecreasesTuple, calleeTuple, mapFormalArgsToCalledArgs, errTrafo, reasonTrafoFactory)
+                val conditionAssertion = createConditionCheck(oldTupleCondition,
+                  calleeTuple.condition.map(_.replace(mapFormalArgsToCalledArgs)), errTrafo, reTrafo)
+
+                val tupleAssertion =
+                  createTupleCheck(oldTupleCondition, oldTupleExpressions,
+                    calleeTuple.tupleExpressions.map(_.replace(mapFormalArgsToCalledArgs)),
+                    errTrafo, reasonTrafoFactory)
+
                 Seq(conditionAssertion, tupleAssertion)
               case None =>
                 // reason would be the callee's definition
                 val reTrafo = reasonTrafoFactory.generateTupleConditionFalse(callee)
-                Seq(createConditionCheck(oldTupleCondition, FalseLit()(), Map(), errTrafo, reTrafo))
+                Seq(createConditionCheck(oldTupleCondition, Some(FalseLit()()), errTrafo, reTrafo))
             }
 
             stmts.appendAll(checks)
@@ -200,8 +206,10 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
             // reason would be the callee's definition
             val reTrafo = reasonTrafoFactory.generateTerminationConditionFalse(callee)
 
-            val oldCondition = Old(callerTuple.getCondition)()
-            val assertion = createConditionCheck(oldCondition, calleeDec.terminationCondition, mapFormalArgsToCalledArgs, errTrafo, reTrafo)
+            val oldTupleCondition = callerTuple.condition map(Old(_)())
+            val assertion = createConditionCheck(oldTupleCondition,
+              Some(calleeDec.getTerminationCondition.replace(mapFormalArgsToCalledArgs)),
+              errTrafo, reTrafo)
 
             stmts.append(assertion)
           }

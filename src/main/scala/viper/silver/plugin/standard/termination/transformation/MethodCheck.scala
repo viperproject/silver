@@ -10,7 +10,7 @@ import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 import viper.silver.ast._
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.{ContextC, Strategy, Traverse}
-import viper.silver.plugin.standard.termination.{DecreasesSpecification, DecreasesTuple, LoopTerminationError, MethodTerminationError}
+import viper.silver.plugin.standard.termination.{DecreasesSpecification, LoopTerminationError, MethodTerminationError}
 import viper.silver.verifier.errors.AssertFailed
 
 /**
@@ -80,22 +80,27 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with NestedPredicat
 
           val reasonTrafoFactory = ReasonTrafoFactory(callerTuple)
 
-          val oldCondition = Old(callerTuple.getCondition)()
+          val oldTupleCondition = callerTuple.condition map(Old(_)())
           val oldTupleExp = callerTuple.tupleExpressions.map(Old(_)())
-          val oldTuple = DecreasesTuple(oldTupleExp, Some(oldCondition))(callerTuple.pos, callerTuple.info, callerTuple.errT)
 
           val checks = calleeDec.tuple match {
             case Some(calleeTuple) =>
               // reason would be the callee's defined tuple
               val reTrafo = reasonTrafoFactory.generateTupleConditionFalse(calleeTuple)
 
-              val conditionAssertion = createConditionCheck(oldCondition, calleeTuple.getCondition, mapFormalArgsToCalledArgs, errTrafo, reTrafo)
-              val tupleAssertion = createTupleCheck(oldTuple, calleeTuple, mapFormalArgsToCalledArgs, errTrafo, reasonTrafoFactory)
+              val conditionAssertion = createConditionCheck(oldTupleCondition,
+                calleeTuple.condition.map(_.replace(mapFormalArgsToCalledArgs)),
+                errTrafo, reTrafo)
+
+              val tupleAssertion = createTupleCheck(oldTupleCondition, oldTupleExp,
+                calleeTuple.tupleExpressions.map(_.replace(mapFormalArgsToCalledArgs)),
+                errTrafo, reasonTrafoFactory)
+
               Seq(conditionAssertion, tupleAssertion)
             case None =>
               // reason would be the callee's definition
               val reTrafo = reasonTrafoFactory.generateTupleConditionFalse(calledMethod)
-              Seq(createConditionCheck(oldCondition, FalseLit()(), Map(), errTrafo, reTrafo))
+              Seq(createConditionCheck(oldTupleCondition, Some(FalseLit()()), errTrafo, reTrafo))
           }
 
           (Seqn(checks :+ mc, Nil)(mc.pos, NoInfo, NodeTrafo(mc)), ctxt)
@@ -122,8 +127,11 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with NestedPredicat
           // reason would be the callee's definition
           val reTrafo = reasonTrafoFactory.generateTerminationConditionFalse(calledMethod)
 
-          val oldCondition = Old(methodTuple.getCondition)()
-          val assertion = createConditionCheck(oldCondition, decDest.terminationCondition, mapFormalArgsToCalledArgs, errTrafo, reTrafo)
+          val oldTupleCondition = methodTuple.condition map(Old(_)())
+
+          val assertion = createConditionCheck(oldTupleCondition,
+            Some(decDest.getTerminationCondition.replace(mapFormalArgsToCalledArgs)),
+            errTrafo, reTrafo)
 
           (Seqn(Seq(assertion, mc), Nil)(mc.pos, NoInfo, NodeTrafo(mc)), ctxt)
 
@@ -161,7 +169,9 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with NestedPredicat
                 val oldCondition = Old(methodTuple.getCondition)()
                 val requiredTerminationCondition = And(oldCondition, w.cond)()
 
-                val assertion = createConditionCheck(requiredTerminationCondition, decWhile.terminationCondition, Map(), errTrafo, reTrafo)
+                val assertion = createConditionCheck(Some(requiredTerminationCondition),
+                  Some(decWhile.getTerminationCondition),
+                  errTrafo, reTrafo)
 
                 Some(assertion)
               case None => None
@@ -169,10 +179,10 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with NestedPredicat
 
           val newBody = decWhile.tuple match {
             case Some(whileTuple) =>
+
               // copy all expression in the decreases tuple to be used later
               // equivalent to labeled old but including variables
-
-              val (oldCondition, conditionAssign): (Exp, Option[LocalVarAssign]) = whileTuple.condition match {
+              val (oldTupleCondition, conditionAssign): (Exp, Option[LocalVarAssign]) = whileTuple.condition match {
                 case Some(condition) =>
                   val conditionCopy =
                     LocalVar(uniqueName(s"old_W${whileNumber}_C"), Bool)(condition.pos, condition.info, condition.errT)
@@ -189,7 +199,6 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with NestedPredicat
                 (expCopy, assign)
               }).unzip
 
-              val oldDecreasesTuple = DecreasesTuple(oldTupleExps, Some(oldCondition))()
               val assignments = tupleAssigns ++ conditionAssign
               val scopedDeclarations = assignments.map(a => LocalVarDecl(a.lhs.name, a.rhs.typ)())
 
@@ -203,11 +212,17 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with NestedPredicat
               // reason would be the loops's defined tuple
               val reTrafo = reasonTrafoFactory.generateTupleConditionFalse(whileTuple)
 
+              // old tuple condition and
+              val requiredTerminationCondition = And(oldTupleCondition, w.cond)()
+
               // check that tuple condition still holds for the following iteration
-              val requiredTerminationCondition = And(oldCondition, w.cond)()
-              val conditionAssertion = createConditionCheck(requiredTerminationCondition, whileTuple.getCondition, Map(), errTrafo, reTrafo)
+              val conditionAssertion = createConditionCheck(Some(requiredTerminationCondition),
+                whileTuple.condition,
+                errTrafo, reTrafo)
               // check that the tuple decreased
-              val tupleCheck = createTupleCheck(oldDecreasesTuple, whileTuple, Map(), errTrafo, reasonTrafoFactory)
+              val tupleCheck = createTupleCheck(Some(requiredTerminationCondition), oldTupleExps,
+                whileTuple.tupleExpressions,
+                errTrafo, reasonTrafoFactory)
 
               Seqn(assignments :+ w.body :+ conditionAssertion :+ tupleCheck, scopedDeclarations)()
             case None =>

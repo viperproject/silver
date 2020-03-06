@@ -8,7 +8,6 @@ package viper.silver.plugin.standard.termination.transformation
 
 import viper.silver.ast._
 import viper.silver.ast.utility.Statements.EmptyStmt
-import viper.silver.plugin.standard.termination.DecreasesTuple
 import viper.silver.verifier.ConsistencyError
 
 import scala.collection.immutable.ListMap
@@ -30,23 +29,22 @@ trait DecreasesCheck extends ProgramManager with ErrorReporter {
   /**
    * Creates a check to determine if requiredCondition implies givenCondition.
    *
-   * @param argMap   Maps variables used in givenCondition to correct
-   * @param errTrafo to be used for the Assertion
-   * @param reTrafo  to be used in the Assertion
+   * @param errTrafo to be used for the Assertion (default: true)
+   * @param reTrafo  to be used in the Assertion (default: true)
    * @return a Stmt containing the check
    */
-  protected def createConditionCheck(requiredCondition: Exp, givenCondition: Exp, argMap: Map[LocalVar, Node],
+  protected def createConditionCheck(requiredCondition: Option[Exp], givenCondition: Option[Exp],
                                      errTrafo: ErrTrafo, reTrafo: ReTrafo): Stmt = {
 
-    val mappedGivenCondition = givenCondition.replace(argMap)
-
-    // val implies = Implies(requiredCondition, mappedGivenCondition)(errT = reTrafo)
-    // Assert(implies)(errT = errTrafo)
     // When Implies is used, error reason would point to right side of implication (i.e. givenCondition),
     // for which no reason transformation can be defined. (this happens in carbon)
     // To avoid this and equivalent expression using Or is used.
 
-    val or = Or(Not(requiredCondition)(pos = requiredCondition.pos, errT = reTrafo), mappedGivenCondition)(errT = reTrafo)
+    val rCondition = requiredCondition.getOrElse(TrueLit()(errT = reTrafo))
+    val gCondition = givenCondition.getOrElse(TrueLit()(errT = reTrafo))
+
+    val or = Or(Not(rCondition)(errT = reTrafo), gCondition)(errT = reTrafo)
+
     Assert(or)(errT = errTrafo)
   }
 
@@ -56,12 +54,12 @@ trait DecreasesCheck extends ProgramManager with ErrorReporter {
    * under the tuple condition of the bigger tuple.
    * If decreasing and bounded functions are not defined a consistency error is reported.
    *
-   * @param argMap             Substitutions for smallerDec
+   * @param tupleCondition     for which tuple decreasing should be checked (default: true)
    * @param errTrafo           for termination related assertions
    * @param reasonTrafoFactory for termination related assertion reasons
    * @return termination check as a Assert Stmt (if decreasing and bounded are defined, otherwise EmptyStmt)
    */
-  protected def createTupleCheck(biggerTuple: DecreasesTuple, smallerTuple: DecreasesTuple, argMap: Map[LocalVar, Node],
+  protected def createTupleCheck(tupleCondition: Option[Exp], biggerTuple: Seq[Exp], smallerTuple: Seq[Exp],
                                  errTrafo: ErrTrafo, reasonTrafoFactory: ReasonTrafoFactory): Stmt = {
 
     if (decreasingFunc.isEmpty || boundedFunc.isEmpty) {
@@ -74,16 +72,17 @@ trait DecreasesCheck extends ProgramManager with ErrorReporter {
       return EmptyStmt
     }
 
-    // only check decreasing of tuple if the condition is true.
-    val callerTupleCondition = biggerTuple.getCondition
+    //val dtSmall = smallerTuple.tupleExpressions.map(_.replace(argMap))
 
-    val dtSmall = smallerTuple.tupleExpressions.map(_.replace(argMap))
-
-    val lexCheck = createLexDecreaseCheck(biggerTuple.tupleExpressions, dtSmall, reasonTrafoFactory)
+    val lexCheck = createLexDecreaseCheck(biggerTuple, smallerTuple, reasonTrafoFactory)
 
     val decreasesSimpleReasonTrafo = reasonTrafoFactory.generateTupleSimpleFalse()
 
-    val tupleImplies = Implies(callerTupleCondition, lexCheck)(errT = decreasesSimpleReasonTrafo)
+    val tupleImplies = tupleCondition match {
+      case Some(c) => Implies(c, lexCheck)(errT = decreasesSimpleReasonTrafo)
+      case None => lexCheck
+    }
+
     val tupleAssert = Assert(tupleImplies)(errT = errTrafo)
 
     tupleAssert
