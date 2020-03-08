@@ -7,7 +7,7 @@
 package viper.silver.frontend
 
 import collection._
-import org.rogach.scallop.ScallopConf
+import org.rogach.scallop.{ScallopConf, ScallopOption}
 import org.rogach.scallop.exceptions.{Help, ScallopException, Version}
 
 /**
@@ -107,15 +107,31 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
 
   validateOpt(file, ignoreFile) {
     case (_, Some(true)) => Right(Unit)
-    case (Some(path), _) =>
-      if (new java.io.File(path).canRead) Right(Unit)
-      else Left(s"Cannot read $path")
+    case (Some(filepath), _) => validateFileOpt(file.name, filepath)
     case (optFile, optIgnoreFile) =>
       /* Since the file is a trailing argument and thus mandatory, this case
        * (in which optFile == None) should never occur.
        */
-      sys.error(s"Unexpected combination of $optFile and $optIgnoreFile")
+      sys.error(s"Unexpected combination of options ${file.name} ($optFile) and ${ignoreFile.name} ($optIgnoreFile)")
   }
+
+  /* Validation helpers */
+
+  protected def validateFileOpt(optionName: String, filepath: String): Either[String, Unit] = {
+    val file = new java.io.File(filepath)
+    if (!file.isFile) Left(s"Cannot find file '$filepath' from '$optionName' argument")
+    else if (!file.canRead) Left(s"Cannot read from file '$filepath' from '$optionName' argument'")
+    else Right(Unit)
+  }
+
+  protected def validateFileOpt(option: ScallopOption[String]): Unit = {
+    validateOpt(option) {
+      case None => Right(Unit)
+      case Some(filepath) => validateFileOpt(option.name, filepath)
+    }
+  }
+
+  /* Error handling */
 
   override def onError(e: Throwable): Unit = {
     _exit = true
