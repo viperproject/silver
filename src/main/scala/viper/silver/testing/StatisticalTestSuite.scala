@@ -2,19 +2,18 @@ package viper.silver.testing
 
 import java.io.{BufferedWriter, File, FileWriter}
 import java.nio.file.{Path, Paths => JPaths}
-
+import scala.collection.immutable
 import org.scalatest.ConfigMap
 import viper.silver
 import viper.silver.utility.{Paths, TimingUtils}
 import viper.silver.verifier.{AbstractError, AbstractVerificationError, Failure, Success, Verifier}
-
-import scala.collection.immutable
 
 trait StatisticalTestSuite extends SilSuite {
   protected def repetitionsPropertyName: String = "STATS_REPETITIONS"
   protected def warmupLocationPropertyName: String = "STATS_WARMUP"
   protected def targetLocationPropertyName: String = "STATS_TARGET"
   protected def csvFilePropertyName: String = "STATS_CSV"
+  protected def inclusionFilePropertyName: String = "STATS_INCL_FILE"
 
   protected def repetitions: Int =
     Option(System.getProperty(repetitionsPropertyName)) match {
@@ -46,12 +45,15 @@ trait StatisticalTestSuite extends SilSuite {
       case None => fail(s"Property '$targetLocationPropertyName' not set")
     }
 
-  protected def csvFileName: Option[String] = Option(System.getProperty(csvFilePropertyName))
+  protected def csvFileName: Option[String] = getNonEmptyOptionalSystemProperty(csvFilePropertyName)
+  protected def inclusionFileName: Option[String] = getNonEmptyOptionalSystemProperty(inclusionFilePropertyName)
 
   protected def verifier: Verifier
   override def verifiers = Vector(verifier)
 
   private var csvFile: BufferedWriter = _
+
+  private var testsToInclude: Option[Set[String]] = None
 
   override def testDirectories: Seq[String] = warmupDirName match {
     case Some(w) =>
@@ -79,6 +81,18 @@ trait StatisticalTestSuite extends SilSuite {
       csvFile.newLine()
       csvFile.flush()
     })
+
+    inclusionFileName foreach (filename => {
+      // TODO: Replace try-catch with scala.util.Using once Viper switched to Scala 2.13
+
+      val source = scala.io.Source.fromFile(filename)
+
+      try {
+        testsToInclude = Some(source.getLines().toSet)
+      } finally {
+        source.close()
+      }
+    })
   }
 
   override def afterAll(configMap: ConfigMap): Unit = {
@@ -100,6 +114,14 @@ trait StatisticalTestSuite extends SilSuite {
     lazy val projectInfo: ProjectInfo = StatisticalTestSuite.this.projectInfo.update(name)
 
     override def run(input: AnnotatedTestInput): Seq[AbstractOutput] = {
+      testsToInclude foreach (tests => {
+        if (!tests.contains(input.name)) {
+          alert(s"Skipping ${input.name} (not included)")
+
+          return Seq.empty // Don't execute the current test
+        }
+      })
+
       val phaseNames: Seq[String] = frontend(verifier, input.files).phases.map(_.name) :+ "Overall"
 
       val isWarmup = warmupDirName.isDefined && Paths.isInSubDirectory(Paths.canonize(warmupDirName.get), input.file.toFile)
@@ -222,5 +244,12 @@ trait StatisticalTestSuite extends SilSuite {
 
   private def failIf(message: => String, condition: Boolean): Unit =
     if (condition) fail(message)
+
+  private def getNonEmptyOptionalSystemProperty(key: String): Option[String] = {
+    val value = System.getProperty(key, "").trim
+
+    if (value.isEmpty) None
+    else Some(value)
+  }
 }
 
