@@ -239,6 +239,7 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
 
   override def verification() = {
     if (state == DefaultStates.ConsistencyCheck && _errors.isEmpty) {
+
       _verificationResult = Some(mapVerificationResult(_verifier.get.verify(_program.get)))
       assert(_verificationResult.isDefined)
       _state = DefaultStates.Verification
@@ -246,6 +247,7 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
   }
 
   override def result: VerificationResult = {
+
     if (_errors.isEmpty) {
       require(state >= DefaultStates.Verification)
       _verificationResult.get
@@ -257,5 +259,6 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
 }
 
 object DefaultStates extends Enumeration {
+  type DefaultStates = Value
   val Initial, Initialized, InputSet, Parsing, SemanticAnalysis, Translation, ConsistencyCheck, Verification = Value
 }

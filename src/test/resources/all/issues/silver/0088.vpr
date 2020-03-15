@@ -16,20 +16,6 @@ method test01(x: Ref) {
   assert false
 }
 
-method test02(x: Ref) {
-  var i: Int
-
-  i := 0
-
-  while (i < 1) {
-    constraining() {}
-    i := i + 1
-  }
-
-  //:: ExpectedOutput(assert.failed:assertion.false)
-  assert false
-}
-
 method test04(x: Ref) {
   var i: Int
   var j: Int
@@ -45,3 +31,4 @@ method test04(x: Ref) {
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert false
 }
+

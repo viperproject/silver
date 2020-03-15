@@ -294,8 +294,17 @@ trait ErrorTrafo {
 
   def rTransformations: List[PartialFunction[ErrorReason, ErrorReason]]
 
-  def nTransformations: Option[ErrorNode] // TODO: Why is this an option and not a list? Why is it OK to drop the second such value in the + definition below (if both are defined)?
+  // The node stored bellow points to the previous node in the transformation chain. Each node in the chain has its own
+  // list of error transformations and list of reason transformations. When this chain is traversed from the last
+  // node back to the original node (head of the chain), all error and reason transformations lists are combined accordingly
+  // (check TransformableErrors trait). The head of the chain (original node) has no ErrorNode, hence the Option bellow.
+  // Notice that the nodeTrafoStrat strategy (in TransformableErrors trait) has a repetition, which allows for the full
+  // traversal of the transformation chain.
+  def nTransformations: Option[ErrorNode]
 
+  // Notice that only the RHS node transformation is considered in this combination of ErrorTrafos. This is related with
+  // the order in which a chain of node transformations is traversed and the order in which nodes are combined. Please
+  // check the comments on method 'nTransformations' for further details.
   def +(t: ErrorTrafo): Trafos = {
     Trafos(eTransformations ++ t.eTransformations, rTransformations ++ t.rTransformations, if (t.nTransformations.isDefined) t.nTransformations else nTransformations)
   }

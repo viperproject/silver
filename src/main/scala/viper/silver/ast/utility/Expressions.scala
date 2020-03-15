@@ -11,7 +11,6 @@ import viper.silver.ast._
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast.utility.Triggers.TriggerGeneration
 import viper.silver.utility.Sanitizer
-import viper.silver.parser.FastParser
 
 /** Utility methods for expressions. */
 object Expressions {
@@ -65,7 +64,7 @@ object Expressions {
         currentState => //if (depends) PartialFunction.empty // we're done
           //else
         {
-          case LabelledOld(ee, FastParser.LHS_OLD_LABEL) =>
+          case LabelledOld(ee, LabelledOld.LhsOldLabel) =>
             if (treatMagicWandStatesAsCurrentStates)
               go(ee,p,true)
             else
@@ -159,19 +158,9 @@ object Expressions {
   def instantiateVariables[E <: Exp]
                           (exp: E, variables: Seq[AbstractLocalVar], values: Seq[Exp])
                           : E = {
+    assert(variables.size == values.size, "The amount of values must match the amount of variables they are replacing")
 
-    val argNames = (variables map (_.name)).zipWithIndex
-
-    def actualArg(formalArg: String): Option[Exp] = {
-      argNames.find(x => x._1 == formalArg) map {
-        case (_, idx) => values(idx)
-      }
-    }
-
-    val res = exp.transform {
-      case AbstractLocalVar(name) if actualArg(name).isDefined => actualArg(name).get
-    }
-    res
+    Sanitizer.replaceFreeVariablesInExpression(exp, variables.map(_.name).zip(values).toMap, Set())
   }
 
   /* See http://stackoverflow.com/a/4982668 for why the implicit is here. */
@@ -179,7 +168,7 @@ object Expressions {
                                     (implicit di: DummyImplicit): E = {
     assert(variables.size == values.size, "The amount of values must match the amount of variables they are replacing")
 
-    Sanitizer.replaceFreeVariablesInExpression(exp, variables.map(_.localVar).zip(values).toMap, scope)
+    Sanitizer.replaceFreeVariablesInExpression(exp, variables.map(_.localVar.name).zip(values).toMap, scope)
   }
 
   def subExps(e: Exp) = e.subnodes collect {

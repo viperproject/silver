@@ -129,6 +129,7 @@ class TestPluginAddPredicate extends SilverPlugin {
       input.functions,
       input.predicates :+ PPredicate(PIdnDef("testPredicate"), Seq(), None),
       input.methods,
+      input.extensions,
       input.errors
     )
   }
@@ -223,6 +224,9 @@ class PluginTests extends FunSuite {
     "TestPluginMapVsFinish"
   )
 
+  // number of plugins running by default
+  val defaultPlugins = 2
+
   var result: VerificationResult = Success
 
   def testOne(plugin: String): Unit ={
@@ -237,7 +241,7 @@ class PluginTests extends FunSuite {
       case _ => Success
     }
     frontend.execute(Seq("--plugin", plugin, file.toString))
-    assert(frontend.plugins.plugins.size == 1)
+    assert(frontend.plugins.plugins.size == 1 + defaultPlugins)
     frontend.plugins.plugins.foreach {
       case p: TestPlugin => assert(p.test(), p.getClass.getName)
       case _ =>

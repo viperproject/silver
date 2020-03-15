@@ -1,0 +1,16 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import "declaration.vpr"
+
+domain SeqWellFoundedOrder[S]{
+    //Sequences
+    axiom seq_ax_dec{
+        forall seq1: Seq[S], seq2: Seq[S] :: {decreasing(seq1,seq2)}
+            (|seq1| < |seq2|) ==> decreasing(seq1, seq2)
+    }
+    axiom seq_ax_bound{
+        forall seq1: Seq[S] :: {bounded(seq1)}
+            (|seq1| >= 0) ==> bounded(seq1)
+    }
+}

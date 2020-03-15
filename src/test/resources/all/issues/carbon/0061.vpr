@@ -25,29 +25,6 @@ predicate Consumervalid$(this: Ref) {
   true
 }
 
-method Programmain$(this: Ref, k$: Perm)
-  requires this != null
-{
-  var producer: Ref
-  var newK$_1: Perm
-  var tkP: Ref
-  var consumer: Ref
-  producer := new(joinable$)
-  Producerinit$(producer)
-  fresh newK$_1
-  constraining(newK$_1) {
-    tkP := new(joinable$, par$Producerrun$k$_2)
-    tkP.joinable$ := true
-    tkP.par$Producerrun$k$_2 := newK$_1
-    exhale acc(Producervalid$(producer), write)
-  }
-  //assert tkP.joinable$ – Uncommenting this line, makes the code to verify.
-  consumer := new(joinable$, Consumerbuffer$)
-  Consumerinit$(consumer)
-  exhale acc(Consumervalid$(consumer), write)
-  assert tkP.joinable$
-}
-
 method Producerinit$(this: Ref)
   requires this != null
   ensures acc(Producervalid$(this), write)

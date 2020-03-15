@@ -4,11 +4,20 @@
 method test09(B: Multiset[Int], x: Int, xc: Int, y: Int, yc: Int)
   requires (x in B) == xc
   requires (y in B) == yc
-  // requires xc > 0 && yc > 0
 {
   var B1: Multiset[Int] := B union Multiset(x, y, x)
 
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silver/issue/91/)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert (y in B1) == yc + 1 && (x in B1) == xc + 2
+}
+
+method test09_fixed(B: Multiset[Int], x: Int, xc: Int, y: Int, yc: Int)
+  requires x != y
+  requires (x in B) == xc
+  requires (y in B) == yc
+{
+  var B1: Multiset[Int] := B union Multiset(x, y, x)
+
   assert (y in B1) == yc + 1 && (x in B1) == xc + 2
 }
 
@@ -19,6 +28,17 @@ method test10(B: Multiset[Int], x: Int, xc: Int, y: Int, yc: Int)
 {
   var B1: Multiset[Int] := B setminus Multiset(x, y, y)
 
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silver/issue/91/)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert (y in B1) == yc - 2 && (x in B1) == xc - 1
+}
+
+method test10_fixed(B: Multiset[Int], x: Int, xc: Int, y: Int, yc: Int)
+  requires x != y
+  requires (x in B) == xc
+  requires (y in B) == yc
+  requires xc > 10 && yc > 10
+{
+  var B1: Multiset[Int] := B setminus Multiset(x, y, y)
+
   assert (y in B1) == yc - 2 && (x in B1) == xc - 1
 }

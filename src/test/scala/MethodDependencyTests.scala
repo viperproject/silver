@@ -120,7 +120,7 @@ class MethodDependencyTests extends FunSuite with Matchers {
       ), Seq())())()
     ), Seq())()))()
 
-  val p: Program = Program(Seq(D0), Seq(f0, f1, f2, f3, f4), Seq(fun0, fun1, fun2, fun3, fun4), Seq(p0, p1, p2, p3, p4), Seq(m0, m1, test))()
+  val p: Program = Program(Seq(D0), Seq(f0, f1, f2, f3, f4), Seq(fun0, fun1, fun2, fun3, fun4), Seq(p0, p1, p2, p3, p4), Seq(m0, m1, test), Seq())()
 
 //  println(p)
 
@@ -225,7 +225,7 @@ class MethodDependencyTests extends FunSuite with Matchers {
       MethodCall("mrec_a",   Seq(), Seq())(NoPosition, NoInfo, NoTrafos),
       MethodCall("test_rec", Seq(), Seq())(NoPosition, NoInfo, NoTrafos)), Seq() )() ))()
 
-  val rec_p: Program = Program(Seq(), Seq(), Seq(frec_a, frec_b), Seq(prec_a, prec_b), Seq(mrec_a, mrec_b, test_rec))()
+  val rec_p: Program = Program(Seq(), Seq(), Seq(frec_a, frec_b), Seq(prec_a, prec_b), Seq(mrec_a, mrec_b, test_rec), Seq())()
 
   val expected_rec_deps = List(test_rec,  frec_a, frec_b, mrec_a.posts.last, prec_a, prec_b)
   val unexpected_rec_deps = List(mrec_a, mrec_b)
