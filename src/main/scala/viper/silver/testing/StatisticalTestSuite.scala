@@ -100,7 +100,6 @@ trait StatisticalTestSuite extends SilSuite {
     lazy val projectInfo: ProjectInfo = StatisticalTestSuite.this.projectInfo.update(name)
 
     override def run(input: AnnotatedTestInput): Seq[AbstractOutput] = {
-
       val phaseNames: Seq[String] = frontend(verifier, input.files).phases.map(_.name) :+ "Overall"
 
       val isWarmup = warmupDirName.isDefined && Paths.isInSubDirectory(Paths.canonize(warmupDirName.get), input.file.toFile)
@@ -206,7 +205,6 @@ trait StatisticalTestSuite extends SilSuite {
           csvFile.flush()
         }
       }
-
       verResults.flatten.map(SilOutput)
     }
 
