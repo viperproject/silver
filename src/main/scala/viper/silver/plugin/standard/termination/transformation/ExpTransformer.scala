@@ -19,6 +19,7 @@ trait ExpTransformer extends ErrorReporter {
 
   /**
    * Transforms an expression into a statement.
+   *
    * @return a statement representing the expression.
    */
   def transformExp: PartialFunction[(Exp, ExpressionContext), Stmt] = {
@@ -51,7 +52,7 @@ trait ExpTransformer extends ErrorReporter {
       val expressionStmt = transformExp(letExp.exp, c)
       val localVarDecl = letExp.variable
 
-      val inhaleEq = Inhale(EqCmp(localVarDecl.localVar, letExp)())()
+      val inhaleEq = Inhale(EqCmp(localVarDecl.localVar, letExp.exp)())()
 
       val bodyStmt = transformExp(letExp.body, c)
 

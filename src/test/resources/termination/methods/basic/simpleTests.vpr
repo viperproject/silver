@@ -1,0 +1,36 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <decreases/int.vpr>
+
+method m1(x: Int) returns (res: Int)
+decreases x+10
+{
+    if (x > -10) {
+        res := m1(x-1)
+    } else {
+        res := 6
+    }
+}
+
+
+method m2(x:Int, y:Int) returns (res: Int)
+requires x>0 && y>0
+decreases x
+{
+  if (y >= x) {
+    res := 8
+  } else {
+    res := m2(y, y)
+  }
+}
+
+method m3(x:Int, y:Int) returns (res: Int)
+decreases x,y
+{
+  if (x < 5 || y < 8) {
+    res := 10
+  } else {
+    res := m3(x-2, y-3)
+  }
+}

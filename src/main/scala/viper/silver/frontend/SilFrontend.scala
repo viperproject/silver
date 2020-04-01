@@ -86,7 +86,11 @@ trait SilFrontend extends DefaultFrontend {
   )
 
 
-  protected var _plugins: SilverPluginManager = SilverPluginManager(Some(defaultPlugins.mkString(":")))(reporter, logger, _config)
+  protected var _plugins: SilverPluginManager = SilverPluginManager(defaultPlugins match {
+    case Seq() => None
+    case s => Some(s.mkString(":"))
+  })(reporter, logger, _config)
+
   def plugins: SilverPluginManager = _plugins
 
   protected var _startTime: Long = _

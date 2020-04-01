@@ -11,7 +11,7 @@ import viper.silver.ast.utility.Statements.EmptyStmt
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.{And, Bool, ErrTrafo, Exp, FalseLit, FuncApp, Function, LocalVarDecl, Method, Node, NodeTrafo, Old, Result, Seqn, Stmt}
-import viper.silver.plugin.standard.termination.{DecreasesSpecification, DecreasesTuple, FunctionTerminationError}
+import viper.silver.plugin.standard.termination.{DecreasesSpecification, FunctionTerminationError}
 import viper.silver.verifier.ConsistencyError
 import viper.silver.verifier.errors.AssertFailed
 
@@ -46,67 +46,66 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
     val requireNestedInfo = containsPredicateInstances(DecreasesSpecification.fromNode(f))
     DecreasesSpecification.fromNode(f).productIterator
 
-    val proofMethods: Seq[Method] =
-      {
-        if (f.body.nonEmpty) {
-          // method proving termination of the functions body.
-          val proofMethodName = uniqueName(f.name + "_termination_proof")
+    val proofMethods: Seq[Method] = {
+      if (f.body.nonEmpty) {
+        // method proving termination of the functions body.
+        val proofMethodName = uniqueName(f.name + "_termination_proof")
 
-          val context = FContext(f)
+        val context = FContext(f)
 
-          val proofMethodBody: Stmt = {
-            val stmt: Stmt = simplifyStmts.execute(transformExp(f.body.get, context))
-            if (requireNestedInfo) {
-              addNestedPredicateInformation.execute(stmt)
-            } else {
-              stmt
-            }
-          }
-
-          if (proofMethodBody != EmptyStmt) {
-
-            val proofMethod = Method(proofMethodName, f.formalArgs, Nil, f.pres, Nil,
-              Option(Seqn(Seq(proofMethodBody), Nil)()))()
-
-            Seq(proofMethod)
+        val proofMethodBody: Stmt = {
+          val stmt: Stmt = simplifyStmts.execute(transformExp(f.body.get, context))
+          if (requireNestedInfo) {
+            addNestedPredicateInformation.execute(stmt)
           } else {
-            Nil
+            stmt
           }
-        } else Nil
-      } ++ {
+        }
+
+        if (proofMethodBody != EmptyStmt) {
+
+          val proofMethod = Method(proofMethodName, f.formalArgs, Nil, f.pres, Nil,
+            Option(Seqn(Seq(proofMethodBody), Nil)()))()
+
+          Seq(proofMethod)
+        } else {
+          Nil
+        }
+      } else Nil
+    } ++ {
       if (f.posts.nonEmpty) {
-          // method proving termination of postconditions.
-          val proofMethodName = uniqueName(f.name + "_posts_termination_proof")
-          val context = FContext(f)
+        // method proving termination of postconditions.
+        val proofMethodName = uniqueName(f.name + "_posts_termination_proof")
+        val context = FContext(f)
 
-          val resultVariable = LocalVarDecl(resultVariableName, f.typ)(f.result.pos, f.result.info, NodeTrafo(f.result))
+        val resultVariable = LocalVarDecl(resultVariableName, f.typ)(f.result.pos, f.result.info, NodeTrafo(f.result))
 
-          // replace all Result nodes with the result variable.
-          // and concatenate all posts
-          val posts: Exp = f.posts
-            .map(p => ViperStrategy.Slim({
-              case Result(_) => resultVariable.localVar
-            }, Traverse.BottomUp).execute[Exp](p))
-            .reduce((e, p) => And(e, p)())
+        // replace all Result nodes with the result variable.
+        // and concatenate all posts
+        val posts: Exp = f.posts
+          .map(p => ViperStrategy.Slim({
+            case Result(_) => resultVariable.localVar
+          }, Traverse.BottomUp).execute[Exp](p))
+          .reduce((e, p) => And(e, p)())
 
-          val proofMethodBody: Stmt = {
-            val stmt: Stmt = simplifyStmts.execute(transformExp(posts, context))
-            if (requireNestedInfo) {
-              addNestedPredicateInformation.execute(stmt)
-            } else {
-              stmt
-            }
-          }
-
-          if (proofMethodBody != EmptyStmt) {
-            val proofMethod = Method(proofMethodName, f.formalArgs, Nil, f.pres, Nil,
-              Option(Seqn(Seq(proofMethodBody), Seq(resultVariable))()))()
-
-            Seq(proofMethod)
+        val proofMethodBody: Stmt = {
+          val stmt: Stmt = simplifyStmts.execute(transformExp(posts, context))
+          if (requireNestedInfo) {
+            addNestedPredicateInformation.execute(stmt)
           } else {
-            Nil
+            stmt
           }
-        } else Nil
+        }
+
+        if (proofMethodBody != EmptyStmt) {
+          val proofMethod = Method(proofMethodName, f.formalArgs, Nil, f.pres, Nil,
+            Option(Seqn(Seq(proofMethodBody), Seq(resultVariable))()))()
+
+          Seq(proofMethod)
+        } else {
+          Nil
+        }
+      } else Nil
     } ++ {
       if (f.pres.nonEmpty) {
         val proofMethodName = uniqueName(f.name + "_pres_termination_proof")
@@ -168,22 +167,28 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
 
             // old expressions are needed to access predicates which were unfolded but now have to be accessed
             // e.g. in the tuple or the condition
-            val oldTupleCondition = Old(callerTuple.getCondition)()
+            val oldTupleCondition = callerTuple.condition map(Old(_)())
+
             val oldTupleExpressions = callerTuple.tupleExpressions.map(Old(_)())
-            val oldDecreasesTuple = DecreasesTuple(oldTupleExpressions, Some(oldTupleCondition))()
 
             val checks = calleeDec.tuple match {
               case Some(calleeTuple) =>
                 // reason would be the callee's defined tuple
                 val reTrafo = reasonTrafoFactory.generateTupleConditionFalse(calleeTuple)
 
-                val conditionAssertion = createConditionCheck(oldTupleCondition, calleeTuple.getCondition, mapFormalArgsToCalledArgs, errTrafo, reTrafo)
-                val tupleAssertion = createTupleCheck(oldDecreasesTuple, calleeTuple, mapFormalArgsToCalledArgs, errTrafo, reasonTrafoFactory)
+                val conditionAssertion = createConditionCheck(oldTupleCondition,
+                  calleeTuple.condition.map(_.replace(mapFormalArgsToCalledArgs)), errTrafo, reTrafo)
+
+                val tupleAssertion =
+                  createTupleCheck(oldTupleCondition, oldTupleExpressions,
+                    calleeTuple.tupleExpressions.map(_.replace(mapFormalArgsToCalledArgs)),
+                    errTrafo, reasonTrafoFactory)
+
                 Seq(conditionAssertion, tupleAssertion)
               case None =>
                 // reason would be the callee's definition
                 val reTrafo = reasonTrafoFactory.generateTupleConditionFalse(callee)
-                Seq(createConditionCheck(oldTupleCondition, FalseLit()(), Map(), errTrafo, reTrafo))
+                Seq(createConditionCheck(oldTupleCondition, Some(FalseLit()()), errTrafo, reTrafo))
             }
 
             stmts.appendAll(checks)
@@ -201,15 +206,17 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
             // reason would be the callee's definition
             val reTrafo = reasonTrafoFactory.generateTerminationConditionFalse(callee)
 
-            val oldCondition = Old(callerTuple.getCondition)()
-            val assertion = createConditionCheck(oldCondition, calleeDec.terminationCondition, mapFormalArgsToCalledArgs, errTrafo, reTrafo)
+            val oldTupleCondition = callerTuple.condition map(Old(_)())
+            val assertion = createConditionCheck(oldTupleCondition,
+              Some(calleeDec.getTerminationCondition.replace(mapFormalArgsToCalledArgs)),
+              errTrafo, reTrafo)
 
             stmts.append(assertion)
           }
 
         case None =>
-          // no tuple is defined, hence, nothing must be checked
-          // should not happen
+        // no tuple is defined, hence, nothing must be checked
+        // should not happen
       }
       Seqn(stmts, Nil)()
     case default => super.transformExp(default)

@@ -1,0 +1,47 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Termination measure must only decrease if a next iteration is possible!
+
+import <decreases/int.vpr>
+
+method sum(n: Int) returns (res: Int)
+  requires 0 <= n
+{
+  res := 0
+  var i: Int := 0;
+
+  var break: Bool := false
+
+  while(!break)
+    invariant i <= n
+    decreases n-i
+  {
+    res := res + i
+    if (i+1 <= n){
+      i := i + 1
+    } else {
+      break := true
+    }
+  }
+}
+
+method sum_e(n: Int) returns (res: Int)
+  requires 0 <= n
+{
+  res := 0
+  var i: Int := 0;
+
+  var break: Bool := false
+
+  while(!break)
+    invariant i <= n
+    //:: ExpectedOutput(termination.failed:tuple.false)
+    decreases n-i
+  {
+    res := res + i
+    if (i+1 <= n){
+      i := i + 1
+    }
+  }
+}

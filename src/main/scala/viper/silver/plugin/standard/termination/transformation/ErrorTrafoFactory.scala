@@ -13,33 +13,37 @@ import viper.silver.verifier.reasons.{AssertionFalse, ErrorNode}
 /**
  * Interface for factories creating error/reason trafos.
  */
-trait AbstractReasonTrafoFactory{
+trait AbstractReasonTrafoFactory {
   def generateTerminationConditionFalse(offendingNode: ErrorNode): ReTrafo
+
   def generateTupleConditionFalse(offendingNode: ErrorNode): ReTrafo
+
   def generateTupleSimpleFalse(offendingNode: ErrorNode): ReTrafo
+
   def generateTupleDecreasesFalse(offendingNode: ErrorNode): ReTrafo
+
   def generateTupleBoundedFalse(offendingNode: ErrorNode): ReTrafo
 }
 
 case class ReasonTrafoFactory(offendingNode: ErrorNode) extends AbstractReasonTrafoFactory {
 
   override def generateTerminationConditionFalse(offendingNode: ErrorNode = offendingNode): ReTrafo = {
-    ReTrafo({ case AssertionFalse(_) => TerminationConditionFalse(offendingNode)})
+    ReTrafo({ case AssertionFalse(_) => TerminationConditionFalse(offendingNode) })
   }
 
   override def generateTupleConditionFalse(offendingNode: ErrorNode = offendingNode): ReTrafo = {
-    ReTrafo({ case AssertionFalse(_) => TupleConditionFalse(offendingNode)})
+    ReTrafo({ case AssertionFalse(_) => TupleConditionFalse(offendingNode) })
   }
 
   override def generateTupleSimpleFalse(offendingNode: ErrorNode = offendingNode): ReTrafo = {
-    ReTrafo({ case AssertionFalse(_) => TupleSimpleFalse(offendingNode)})
+    ReTrafo({ case AssertionFalse(_) => TupleSimpleFalse(offendingNode) })
   }
 
   override def generateTupleDecreasesFalse(offendingNode: ErrorNode = offendingNode): ReTrafo = {
-    ReTrafo({ case AssertionFalse(_) => TupleDecreasesFalse(offendingNode)})
+    ReTrafo({ case AssertionFalse(_) => TupleDecreasesFalse(offendingNode) })
   }
 
   override def generateTupleBoundedFalse(offendingNode: ErrorNode = offendingNode): ReTrafo = {
-    ReTrafo({ case AssertionFalse(_) => TupleBoundedFalse(offendingNode)})
+    ReTrafo({ case AssertionFalse(_) => TupleBoundedFalse(offendingNode) })
   }
 }

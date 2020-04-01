@@ -1,0 +1,33 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <decreases/int.vpr>
+
+function f(x: Int): Int
+decreases x
+{
+  x > 2 ? f(f(x-x)+2) : 0
+}
+
+function f_e(x: Int): Int
+decreases x
+{
+  //:: ExpectedOutput(termination.failed:tuple.false)
+  x > 2 ? f_e(f_e(x-x)+3) : 0
+}
+
+function g(x: Int): Int
+decreases x
+//ensures result == 1
+{
+  x > 1 ? h(g(x-1)-1) : 1
+}
+
+function h(x: Int): Int
+decreases x
+//:: UnexpectedOutput(postcondition.violated:assertion.false, /silicon/issue/247/)
+//:: UnexpectedOutput(postcondition.violated:assertion.false, /carbon/issue/155/)
+ensures result == 1
+{
+  x > 1 ? g(h(x-1)-1) : 1
+}

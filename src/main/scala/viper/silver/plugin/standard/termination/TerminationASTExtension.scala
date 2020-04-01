@@ -25,9 +25,9 @@ sealed trait DecreasesClause extends ExtensionExp with Node {
 
 
   /**
-    * Condition when the decreases clause should be considered.
-    * None means true and is the default.
-    */
+   * Condition when the decreases clause should be considered.
+   * None means true and is the default.
+   */
   val condition: Option[Exp] = None
 
   /**
@@ -37,10 +37,11 @@ sealed trait DecreasesClause extends ExtensionExp with Node {
 }
 
 /**
-  * Decreases clause defining a tuple as termination measure, potentially with a condition.
-  * @param tupleExpressions: expressions defining the termination measure
-  * @param condition of the decreases clause
-  */
+ * Decreases clause defining a tuple as termination measure, potentially with a condition.
+ *
+ * @param tupleExpressions expressions defining the termination measure
+ * @param condition        of the decreases clause
+ */
 case class DecreasesTuple(tupleExpressions: Seq[Exp] = Nil, override val condition: Option[Exp] = None)
                          (override val pos: Position = NoPosition,
                           override val info: Info = NoInfo,
@@ -61,9 +62,10 @@ case class DecreasesTuple(tupleExpressions: Seq[Exp] = Nil, override val conditi
 }
 
 /**
-  * Decreases clause defining assumed termination
-  * @param condition of the decreases wildcard
-  */
+ * Decreases clause defining assumed termination
+ *
+ * @param condition of the decreases wildcard
+ */
 case class DecreasesWildcard(override val condition: Option[Exp] = None)
                             (override val pos: Position = NoPosition,
                              override val info: Info = NoInfo,
@@ -83,8 +85,8 @@ case class DecreasesWildcard(override val condition: Option[Exp] = None)
 }
 
 /**
-  * Expression representing the decreases star option (possibly non terminating).
-  */
+ * Expression representing the decreases star option (possibly non terminating).
+ */
 case class DecreasesStar()
                         (override val pos: Position = NoPosition,
                          override val info: Info = NoInfo,
@@ -105,9 +107,10 @@ case class DecreasesStar()
 /**
  * A decreases specification can contain at most one of each possible decreases clause.
  * Can be appended to an AST node as info (metadata).
- * @param tuple: optional decreases tuple
- * @param wildcard: optional decreases wildcard
- * @param star: optional decreases star
+ *
+ * @param tuple    optional decreases tuple
+ * @param wildcard optional decreases wildcard
+ * @param star     optional decreases star
  */
 case class DecreasesSpecification(tuple: Option[DecreasesTuple],
                                   wildcard: Option[DecreasesWildcard],
@@ -121,7 +124,7 @@ case class DecreasesSpecification(tuple: Option[DecreasesTuple],
    * Condition for which termination is proven or assumed.
    * I.e. the disjunction of the tuple's and wildcard's condition.
    */
-  lazy val terminationCondition: Exp =
+  lazy val getTerminationCondition: Exp =
     (tuple, wildcard) match {
       case (Some(tuple), Some(wildcard)) =>
         Or(tuple.condition.getOrElse(TrueLit()()), wildcard.condition.getOrElse(TrueLit()()))()
@@ -138,7 +141,7 @@ case class DecreasesSpecification(tuple: Option[DecreasesTuple],
    * The default for a tuple (without condition) is true.
    * If no tuple is given false.
    */
-  lazy val tupleCondition: Exp = {
+  lazy val getTupleCondition: Exp = {
     tuple match {
       case Some(DecreasesTuple(_, Some(condition))) => condition
       case Some(DecreasesTuple(_, None)) => TrueLit()()
@@ -147,7 +150,7 @@ case class DecreasesSpecification(tuple: Option[DecreasesTuple],
   }
 
   /**
-   * @param f: The function, this (Info) should be appended to.
+   * @param f the function, this (Info) should be appended to.
    * @return copy of f with this (Info) appended to,
    */
   def appendToFunction(f: Function): Function = {
@@ -156,7 +159,7 @@ case class DecreasesSpecification(tuple: Option[DecreasesTuple],
   }
 
   /**
-   * @param m: The method, this (Info) should be appended to.
+   * @param m the method, this (Info) should be appended to.
    * @return copy of m with this (Info) appended to,
    */
   def appendToMethod(m: Method): Method = {
@@ -165,7 +168,7 @@ case class DecreasesSpecification(tuple: Option[DecreasesTuple],
   }
 
   /**
-   * @param w: The while, this (Info) should be appended to.
+   * @param w the while, this (Info) should be appended to.
    * @return copy of w with this (Info) appended to,
    */
   def appendToWhile(w: While): While = {
@@ -181,7 +184,7 @@ object DecreasesSpecification {
   def apply(): DecreasesSpecification = DecreasesSpecification(None, None, None)
 
   /**
-   * @param n: Node possibly containing a DecreasesSpecification in its metadata (Info).
+   * @param n : Node possibly containing a DecreasesSpecification in its metadata (Info).
    * @return DecreasesSpecification attached to n (if exists), otherwise, an empty DecreasesSpecification.
    */
   def fromNode(n: Node): DecreasesSpecification = {

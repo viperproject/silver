@@ -39,7 +39,7 @@ protected object CallGraph {
               (b, e) =>
                 val from = graph.getEdgeSource(e)
                 graph.removeEdge(e)
-                if (graph.outDegreeOf(from) == 0){
+                if (graph.outDegreeOf(from) == 0) {
                   // from vertex can be added to border vertices
                   b :+ from
                 } else {

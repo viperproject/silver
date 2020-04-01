@@ -1,0 +1,30 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <decreases/int.vpr>
+
+// cycle through decreases clause
+//:: ExpectedOutput(consistency.error)
+function fun1(x: Int): Int
+decreases fun2(x-1)
+requires x >= 0
+{
+  x == 0 ? 0 : fun2(x-1) + 1
+}
+
+function fun2(x: Int): Int
+decreases x
+requires x >= 0
+{
+  x == 0 ? 0 : fun1(x-1) + 1
+}
+
+// cycle through decreases clause
+//:: ExpectedOutput(consistency.error)
+function g1(x: Int): Int
+decreases x if g2(x) == x
+
+// cycle through decreases clause
+//:: ExpectedOutput(consistency.error)
+function g2(x: Int): Int
+decreases g1(x) if x > 0
