@@ -117,7 +117,7 @@ object Transformer {
         case PFunction(idndef, formalArgs, typ, pres, posts, body) => PFunction(go(idndef), formalArgs map go, go(typ), pres map go, posts map go, body map go)
         case pdf@PDomainFunction(idndef, formalArgs, typ, unique) => PDomainFunction(go(idndef), formalArgs map go, go(typ), unique)(domainName = pdf.domainName)
         case PPredicate(idndef, formalArgs, body) => PPredicate(go(idndef), formalArgs map go, body map go)
-        case pda@PAxiom(idndef, exp) => PAxiom(go(idndef), go(exp))(domainName = pda.domainName)
+        case pda@PAxiom(idndef, exp) => PAxiom(idndef map go, go(exp))(domainName = pda.domainName)
         case pe:PExtender => pe.transformExtension(this)
       }
 

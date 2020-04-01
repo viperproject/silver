@@ -10,7 +10,6 @@ import viper.silver.ast.pretty.{Fixity, Infix, LeftAssociative, NonAssociative, 
 import utility.{Consistency, DomainInstances, Nodes, Types, Visitor}
 import viper.silver.ast.MagicWandStructure.MagicWandStructure
 import viper.silver.cfg.silver.CfgGenerator
-import viper.silver.parser.FastParser
 import viper.silver.verifier.ConsistencyError
 import viper.silver.utility.{CacheHelper, DependencyAware}
 
@@ -23,7 +22,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
   val scopedDecls: Seq[Declaration] =
     domains ++ fields ++ functions ++ predicates ++ methods ++ extensions ++
-    domains.flatMap(d => {d.axioms ++ d.functions})
+    domains.flatMap(d => {(d.axioms.filter(_.isInstanceOf[NamedDomainAxiom])).asInstanceOf[Seq[NamedDomainAxiom]] ++ d.functions})
 
   lazy val magicWandStructures: Seq[MagicWandStructure] =
     this.deepCollect({
@@ -174,7 +173,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       }
     }
     def checkNameUseLabel(name: String, n: Positioned, expected: String, declarationMap: immutable.HashMap[String, Declaration]) : Option[ConsistencyError] = {
-      if (name == FastParser.LHS_OLD_LABEL) None
+      if (name == LabelledOld.LhsOldLabel) None
       else declarationMap.get(name) match {
         case Some(d) => d match {
           case _: Label => None
@@ -490,9 +489,8 @@ case class Domain(name: String, functions: Seq[DomainFunc], axioms: Seq[DomainAx
 }
 
 /** A domain axiom. */
-case class DomainAxiom(name: String, exp: Exp)
-                      (val pos: Position = NoPosition, val info: Info = NoInfo,val domainName : String, val errT: ErrorTrafo = NoTrafos)
-  extends DomainMember {
+sealed trait DomainAxiom extends DomainMember {
+  def exp: Exp
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.noResult(exp)) Seq(ConsistencyError("Axioms can never contain result variables.", exp.pos)) else Seq()) ++
     (if(!Consistency.noOld(exp)) Seq(ConsistencyError("Axioms can never contain old expressions.", exp.pos)) else Seq()) ++
@@ -506,6 +504,12 @@ case class DomainAxiom(name: String, exp: Exp)
   val scopedDecls = Seq()
 }
 
+case class NamedDomainAxiom(name: String, exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo,val domainName : String, val errT: ErrorTrafo = NoTrafos)
+  extends DomainAxiom with Declaration
+
+case class AnonymousDomainAxiom(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val domainName : String, val errT: ErrorTrafo = NoTrafos)
+  extends DomainAxiom
+
 object Substitution{
   type Substitution = Map[TypeVar,Type]
   def toString(s : Substitution) : String = s.mkString(",")
@@ -513,7 +517,7 @@ object Substitution{
 /** Domain function which is not a binary or unary operator. */
 case class DomainFunc(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, unique: Boolean = false)
                      (val pos: Position = NoPosition, val info: Info = NoInfo,val domainName : String, val errT: ErrorTrafo = NoTrafos)
-                      extends AbstractDomainFunc with DomainMember {
+                      extends AbstractDomainFunc with DomainMember with Declaration {
   override lazy val check : Seq[ConsistencyError] =
     if (unique && formalArgs.nonEmpty) Seq(ConsistencyError("Only constants, i.e. nullary domain functions can be unique.", pos)) else Seq()
 
@@ -531,8 +535,7 @@ sealed trait Member extends Hashable with Positioned with Infoed with Scope with
 }
 
 /** Common ancestor for domain members. */
-sealed trait DomainMember extends Hashable with Positioned with Infoed with Scope with Declaration with TransformableErrors {
-  def name: String
+sealed trait DomainMember extends Hashable with Positioned with Infoed with Scope with TransformableErrors {
   def domainName : String //TODO:make names qualified
 
   /** See [[viper.silver.ast.utility.Types.freeTypeVariables]]. */

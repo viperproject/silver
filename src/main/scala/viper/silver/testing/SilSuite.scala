@@ -53,8 +53,8 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAllC
   }
 
   /** Invoked by ScalaTest after all tests of the current suite have been run.
-    * Stops all verifiers specified by `verifiers`.
-    */
+   * Stops all verifiers specified by `verifiers`.
+   */
   override def afterAll(configMap: ConfigMap) {
     verifiers foreach (_.stop())
   }

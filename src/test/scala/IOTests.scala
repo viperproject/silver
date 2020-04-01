@@ -29,8 +29,8 @@ class IOTests extends FunSuite with Matchers {
     runOneCombo(verifiableFile, pass = true, Seq("--bla"), Seq("Unknown option"))
   }
 
-  test(s"$test_prefix: handle unreadable file") {
-    runOneCombo(nonExistingFile, pass = true, Seq(), Seq("Cannot read"))
+  test(s"$test_prefix: handle non-existing file") {
+    runOneCombo(nonExistingFile, pass = true, Seq(), Seq("Cannot find"))
   }
 
   test(s"$test_prefix: handling parseOnly mode and copyright") {

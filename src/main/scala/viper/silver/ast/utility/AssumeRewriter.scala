@@ -249,7 +249,7 @@ object AssumeRewriter {
     }
     val fun = DomainFunc(name, formalArgs, Perm)(domainName = domainName)
     val ax = Forall(formalArgs, Seq(Trigger(Seq(DomainFuncApp(fun, formalArgs map (_.localVar), Map[TypeVar, Type]())()))()), EqCmp(DomainFuncApp(fun, formalArgs map (_.localVar), Map[TypeVar, Type]())(), body)())()
-    val dax = DomainAxiom(name + "_axiom", ax)(domainName = domainName)
+    val dax = NamedDomainAxiom(name + "_axiom", ax)(domainName = domainName)
     (fun, dax)
   }
 

@@ -1,0 +1,14 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+domain MyDomain {
+  function foo(): Int
+  function bar(x: Bool): Bool
+
+  axiom  { foo() > 0 }
+  axiom  { foo() > 2 }
+  axiom axBar { bar(true) }
+  axiom  { foo() > 3 }
+  axiom axFoobar { bar(false) ==> foo() == 3 }
+  axiom  { foo() > 4 }
+}

@@ -12,7 +12,7 @@ import java.nio.file.{Files, Path, Paths}
 import scala.util.parsing.input.{NoPosition, Position}
 import fastparse.core.Parsed
 import fastparse.all
-import viper.silver.ast.{LineCol, SourcePosition}
+import viper.silver.ast.{LabelledOld, LineCol, SourcePosition}
 import viper.silver.FastPositions
 import viper.silver.ast.utility.rewriter.{ContextA, PartialContextC, StrategyBuilder}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
@@ -690,9 +690,6 @@ object FastParser extends PosParser[Char, String] {
   /** The file we are currently parsing (for creating positions later). */
   def file: Path = _file
 
-
-  val LHS_OLD_LABEL = "lhs"
-
   lazy val keywords = Set("result",
     // types
     "Int", "Perm", "Bool", "Ref", "Rational",
@@ -717,7 +714,7 @@ object FastParser extends PosParser[Char, String] {
     // prover hint expressions
     "unfolding", "in", "applying",
     // old expression
-    "old", LHS_OLD_LABEL,
+    "old", "lhs",
     // other expressions
     "let",
     // quantification
@@ -755,8 +752,8 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val idnuse: P[PIdnUse] = P(ident).map(PIdnUse)
 
-  lazy val oldLabel: P[PIdnUse] = P(idnuse | LHS_OLD_LABEL.!).map { case idnuse: PIdnUse => idnuse
-  case LHS_OLD_LABEL => PIdnUse(LHS_OLD_LABEL)}
+  lazy val oldLabel: P[PIdnUse] = P(idnuse | LabelledOld.LhsOldLabel.!).map { case idnuse: PIdnUse => idnuse
+  case LabelledOld.LhsOldLabel => PIdnUse(LabelledOld.LhsOldLabel)}
 
   lazy val old: P[PExp] = P(StringIn("old") ~ (parens(exp).map(POld) | ("[" ~ oldLabel ~ "]" ~ parens(exp)).map { case (a, b) => PLabelledOld(a, b) }))
 
@@ -1081,7 +1078,7 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val formalArgList: P[Seq[PFormalArgDecl]] = P(formalArg.rep(sep = ","))
 
-  lazy val axiomDecl: P[PAxiom1] = P(keyword("axiom") ~ idndef ~ "{" ~ exp ~ "}" ~ ";".?).map { case (a, b) => PAxiom1(a, b) }
+  lazy val axiomDecl: P[PAxiom1] = P(keyword("axiom") ~ idndef.? ~ "{" ~ exp ~ "}" ~ ";".?).map { case (a, b) => PAxiom1(a, b) }
 
   lazy val fieldDecl: P[PField] = P("field" ~/ idndef ~ ":" ~ typ ~ ";".?).map { case (a, b) => PField(a, b) }
 

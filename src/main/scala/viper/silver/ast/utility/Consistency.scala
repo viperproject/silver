@@ -79,7 +79,7 @@ object Consistency {
   def noOld(n: Node) = !n.existsDefined { case _: Old => }
 
   /** Returns true if the given node contains no labelled-old expression. */
-  def noLabelledOld(n: Node) = !n.existsDefined { case LabelledOld(_, label) if label != FastParser.LHS_OLD_LABEL => }
+  def noLabelledOld(n: Node) = !n.existsDefined { case LabelledOld(_, label) if label != LabelledOld.LhsOldLabel => }
 
   /** Returns true if the given node contains no result. */
   def noResult(n: Node) = !n.existsDefined { case _: Result => }

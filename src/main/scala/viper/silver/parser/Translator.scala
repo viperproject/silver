@@ -88,8 +88,10 @@ case class Translator(program: PProgram) {
   }
 
   private def translate(a: PAxiom): DomainAxiom = a match {
-    case pa@PAxiom(name, e) =>
-      DomainAxiom(name.name, exp(e))(a,domainName = pa.domainName.name)
+    case pa@PAxiom(Some(name), e) =>
+      NamedDomainAxiom(name.name, exp(e))(a, domainName = pa.domainName.name)
+    case pa@PAxiom(None, e) =>
+      AnonymousDomainAxiom(exp(e))(a, domainName = pa.domainName.name)
   }
 
   private def translate(f: PFunction): Function = f match {

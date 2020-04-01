@@ -500,8 +500,13 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
     val memberDoc = m match {
       case f @ DomainFunc(_, _, _, unique) =>
         if (unique) text("unique") <+> showDomainFunc(f) else showDomainFunc(f)
-      case DomainAxiom(name, exp) =>
+      case NamedDomainAxiom(name, exp) =>
         text("axiom") <+> name <+>
+          braces(nest(defaultIndent,
+            line <> show(exp)
+          ) <> line)
+      case AnonymousDomainAxiom(exp) =>
+        text("axiom") <+>
           braces(nest(defaultIndent,
             line <> show(exp)
           ) <> line)

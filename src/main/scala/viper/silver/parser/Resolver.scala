@@ -8,7 +8,7 @@ package viper.silver.parser
 
 import scala.collection.mutable
 import scala.reflect._
-import viper.silver.ast.MagicWandOp
+import viper.silver.ast.{LabelledOld, MagicWandOp}
 import viper.silver.ast.utility.Visitor
 import viper.silver.FastMessaging
 
@@ -932,7 +932,7 @@ case class NameAnalyser() {
               val parent = i.parent.get
               if (!parent.isInstanceOf[PDomainType] && !parent.isInstanceOf[PGoto] &&
               !(parent.isInstanceOf[PLabelledOld] && i==parent.asInstanceOf[PLabelledOld].label) &&
-              !(name == FastParser.LHS_OLD_LABEL && parent.isInstanceOf[PLabelledOld])) {
+              !(name == LabelledOld.LhsOldLabel && parent.isInstanceOf[PLabelledOld])) {
                 messages ++= FastMessaging.message(i, s"identifier $name not defined.")
               }
             }
