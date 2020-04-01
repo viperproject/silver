@@ -11,6 +11,7 @@ method test01() {
 
   label pre_havoc
 
+  //:: UnexpectedOutput(exhale.failed:negative.permission, /Carbon/issue/353/)
   exhale forall r: Ref, x: Int :: {P(r, x)} acc(P(r, x), old[pre_havoc](perm(P(r, x))))
   inhale forall r: Ref, x: Int :: {P(r, x)} acc(P(r, x), old[pre_havoc](perm(P(r, x))))
 
