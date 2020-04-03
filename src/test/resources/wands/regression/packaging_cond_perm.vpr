@@ -17,12 +17,8 @@ method t02(x: Ref)
 {
   inhale acc(x.f,2/4)
   package acc(x.f,2/4) && x.f > 0 --* (acc(x.f, 1/4) && acc(x.f, (x.f > 0 ? 2/4: 1/4)) )
-
-  //:: UnexpectedOutput(exhale.failed:insufficient.permission, /silicon/issue/199/)
   exhale acc(x.f,1/4)
-
   //:: ExpectedOutput(exhale.failed:insufficient.permission)
-  //:: MissingOutput(exhale.failed:insufficient.permission, /silicon/issue/34/)
   exhale acc(x.f,1/4)
 }
 
