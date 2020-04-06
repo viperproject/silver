@@ -108,9 +108,9 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with NestedPredicat
         case None => // no tuple is defined, hence no checks are done.
           (mc, ctxt)
       }
-    case (mc: MethodCall, ctxt) if ctxt.c.mutuallyRecursiveMeths.contains(program.findMethod(mc.methodName)) =>
+    case (mc: MethodCall, ctxt) =>
+      // non-recursive call
       val context = ctxt.c
-
 
       getMethodDecreasesSpecification(context.methodName).tuple match {
         case Some(methodTuple) => // check that called method terminates under the methods tuple condition
