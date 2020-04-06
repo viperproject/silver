@@ -1,0 +1,47 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <decreases/int.vpr>
+
+method m(x: Int)
+  decreases x if x >= 0
+  decreases _ if x < 0
+{
+  if (x >= 0){
+    if (x != 0){
+      m(x-1)
+    }
+  }else{
+    var y: Int
+    m(y)
+  }
+}
+
+method n(y: Int)
+    decreases
+{
+    m(y)
+}
+
+
+method m_e(x: Int)
+  decreases x if x >= 0
+  // decreases _ if x < 0
+{
+  if (x >= 0){
+    if (x != 0){
+      //:: ExpectedOutput(termination.failed:tuple.condition.false)
+      m_e(x-2) // m(x-1)
+    }
+  }else{
+    var y: Int
+    m_e(y)
+  }
+}
+
+method n_e(y: Int)
+    decreases
+{
+    //:: ExpectedOutput(termination.failed:termination.condition.false)
+    m_e(y)
+}
