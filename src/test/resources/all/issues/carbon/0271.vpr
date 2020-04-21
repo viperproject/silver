@@ -43,11 +43,12 @@ predicate list2(this: Ref) {
 
 // recursive function with multiple predicate unfoldings surrounding recursive
 // call + at least one predicate access involving bound variables
+
+//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
 function listLength(l1:Ref, l2: Ref, k: Int) : Int
   requires list(l1) && list2(l2)
   ensures  result > 0
 { 
-//:: ExpectedOutput(not.wellformed:insufficient.permission)
   (unfolding list(l1) in l1.next == null ? 1 : 1 +listLength(l1.next, l2, k)) +
   (let i == (k) in unfolding someList(l1, i) in listLength(l1, l2, k-1)) +
   (unfolding list2(l2) in l2.next2 == null ? 1 : 1 +listLength(l1, l2.next2, k)) 
