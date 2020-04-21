@@ -169,7 +169,7 @@ trait StatisticalTestSuite extends SilSuite {
       //      println(s">>> sortedTimings = ${sortedTimings}")
       //      println(s">>> sortedTimings.slice(1,reps-1) = ${sortedTimings.slice(1,reps-1)}")
 
-      val (trimmedTimings, isTrimmed) = if (reps >= 3) {
+      val (trimmedTimings, isTrimmed) = if (reps >= 4) {
         (sortedTimings.slice(1,reps-1), true)
       } else {
         (sortedTimings, false)
