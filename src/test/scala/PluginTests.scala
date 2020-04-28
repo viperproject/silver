@@ -122,6 +122,7 @@ class TestPluginAddPredicate extends SilverPlugin {
       input.functions,
       input.predicates :+ PPredicate(PIdnDef("testPredicate"), Seq(), None),
       input.methods,
+      input.extensions,
       input.errors
     )
   }
@@ -140,8 +141,8 @@ class TestPluginAddPredicate extends SilverPlugin {
 // ATG: After introducing `PluginAwareReporter` this test became rather trivial.
 class TestPluginMapErrors extends SilverPlugin with TestPlugin with FakeResult {
 
-  var error1: Internal = Internal(FeatureUnsupported(LocalVar("test1")(Perm), "Test1"))
-  var error2: Internal = Internal(FeatureUnsupported(LocalVar("test2")(Perm), "Test2"))
+  var error1: Internal = Internal(FeatureUnsupported(LocalVar("test1", Perm)(), "Test1"))
+  var error2: Internal = Internal(FeatureUnsupported(LocalVar("test2", Perm)(), "Test2"))
   var finish = false
 
   override def mapVerificationResult(input: VerificationResult): VerificationResult = {
@@ -183,7 +184,7 @@ class TestPluginMapVsFinish extends SilverPlugin with TestPlugin {
   var finish = false
 
   override def beforeResolve(input: PProgram): PProgram = {
-    error = Internal(FeatureUnsupported(LocalVar("test")(Perm), "Test"))
+    error = Internal(FeatureUnsupported(LocalVar("test", Perm)(), "Test"))
     reportError(error)
     input
   }
@@ -212,7 +213,7 @@ class TestPluginMapVsFinish extends SilverPlugin with TestPlugin {
 }
 
 class PluginTests extends FunSuite {
-  val inputfile = "plugintests/plugininput.sil"
+  val inputfile = "plugintests/plugininput.vpr"
   val plugins = Seq(
     "TestPluginImport",
     "TestPluginReportError",
@@ -221,6 +222,9 @@ class PluginTests extends FunSuite {
     "TestPluginMapErrors",
     "TestPluginMapVsFinish"
   )
+
+  // number of plugins running by default
+  val defaultPlugins = 2
 
   var result: VerificationResult = Success
 
@@ -236,7 +240,7 @@ class PluginTests extends FunSuite {
       case _ => Success
     }
     frontend.execute(Seq("--plugin", plugin, file.toString))
-    assert(frontend.plugins.plugins.size == 1)
+    assert(frontend.plugins.plugins.size == 1 + defaultPlugins)
     frontend.plugins.plugins.foreach {
       case p: TestPlugin => assert(p.test(), p.getClass.getName)
       case _ =>

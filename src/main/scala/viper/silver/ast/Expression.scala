@@ -11,13 +11,13 @@ import viper.silver.ast.pretty._
 import viper.silver.ast.utility._
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.ast.utility.rewriter.{StrategyBuilder, Traverse}
-import viper.silver.parser.FastParser
-import viper.silver.verifier.ConsistencyError
+import viper.silver.verifier.{ConsistencyError, VerificationResult}
 
 /** Expressions. */
 sealed trait Exp extends Hashable with Typed with Positioned with Infoed with TransformableErrors with PrettyExpression {
   lazy val isPure = Expressions.isPure(this)
   def isHeapDependent(p: Program) = Expressions.isHeapDependent(this, p)
+  def isTopLevelHeapDependent(p: Program) = Expressions.isTopLevelHeapDependent(this, p)
 
   /**
    * Returns a representation of this expression as it looks when it is used as a proof obligation, i.e. all
@@ -117,7 +117,7 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 
   override val typ: Wand.type = Wand
 
-  // maybe rename this sometime
+  //maybe rename this sometime
   def subexpressionsToEvaluate(p: Program): Seq[Exp] = {
     /* The code collects expressions that can/are to be evaluated in a fixed state, i.e.
      * a state that is known when this method is called.
@@ -133,20 +133,19 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 
     def go(root: Exp, boundVariables: Set[LocalVar]): Unit = {
       root.visitWithContextManually(boundVariables)(boundVariables => {
-        case LabelledOld(_, FastParser.LHS_OLD_LABEL) => /* Don't descend further */
-
-        case Let(v, e, body) => go(body.replace(v.localVar, e), boundVariables)
-
-        case old: OldExp if !boundVariables.exists(old.contains)=>
-          collectedExpressions :+= old
+        case Let(v, e, body) =>
+          {
+            go(e,boundVariables);
+            go(body, boundVariables ++ Set(v.localVar))
+            //go(body.replace(v.localVar, e), boundVariables) //AS: I don't think this would do the right think w.r.t. let around old
+          }
 
         case quant: QuantifiedExp =>
           val newContext = boundVariables ++ quant.variables.map(_.localVar)
 
-          quant.getChildren.collect { case e: Exp => e }
-                           .foreach(go(_, newContext))
+          quant.children.collect { case e: Exp => e } .foreach(go(_, newContext))
 
-        case e: Exp if !e.isHeapDependent(p) && !boundVariables.exists(e.contains) =>
+        case e: Exp if !Expressions.dependsOnCurrentHeap(e,p,true) && !boundVariables.exists(e.contains) =>
           collectedExpressions :+= e
       })
     }
@@ -176,7 +175,6 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
      * semantic comparison of their arguments (the values that go into the wands' holes) then
      * ensures that the wands are actually (i.e. semantically) equivalent.
      */
-
     val subexpressionsToEvaluate = this.subexpressionsToEvaluate(p)
 
     type Bindings = Map[String, Int]
@@ -202,10 +200,10 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
         decl.copy(name(decl.typ, bindings(decl.name)))(decl.pos, decl.info, decl.errT))
     }
 
-    StrategyBuilder.Context[Node, Bindings](
+    val structure = StrategyBuilder.Context[Node, Bindings](
       {
-        case (exp: Exp, _) if subexpressionsToEvaluate.contains(exp) =>
-          LocalVar(exp.typ.toString())(exp.typ)
+        case (exp: Exp, c) if subexpressionsToEvaluate.contains(exp) =>
+          (LocalVar(exp.typ.toString(),exp.typ)(), c)
 
         case (quant: QuantifiedExp, context) =>
           /* NOTE: This case, i.e. the transformation case, is reached before the
@@ -216,18 +214,18 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
           val bindings = extendBindings(context.c, quant.variables)
           val variables = renameDecls(quant.variables, bindings)
 
-          quant.withVariables(variables)
+          (quant.withVariables(variables), context.updateContext(extendBindings(context.c, quant.variables)))
 
         case (lv: LocalVar, context) =>
           context.c.get(lv.name) match {
-            case None => lv
-            case Some(index) => lv.copy(name(lv.typ, index))(lv.typ, lv.pos, lv.info, lv.errT)
+            case None => (lv, context)
+            case Some(index) => (lv.copy(name(lv.typ, index), lv.typ)(lv.pos, lv.info, lv.errT), context)
           }
       },
       Bindings.empty,
-      { case (quant: QuantifiedExp, bindings) => extendBindings(bindings, quant.variables) },
       Traverse.TopDown
     ).execute[this.type](this)
+    structure
   }
 
   override def isValid : Boolean = this match {
@@ -351,51 +349,40 @@ case class PermGeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 // --- Function application (domain and normal)
 
 /** Function application. */
-case class FuncApp(funcname: String, args: Seq[Exp])(val pos: Position, val info: Info, override val typ : Type, override val formalArgs: Seq[LocalVarDecl], val errT: ErrorTrafo) extends FuncLikeApp with PossibleTrigger {
-  override lazy val check : Seq[ConsistencyError] =
-    args.flatMap(Consistency.checkPure) ++
-    (if(!Consistency.areAssignable(args, formalArgs))
-      Seq(ConsistencyError(s"Function $funcname with formal arguments $formalArgs cannot be applied to provided arguments $args.", args.head.pos)) else Seq())
+case class FuncApp(funcname: String, args: Seq[Exp])(val pos: Position, val info: Info, override val typ : Type, val errT: ErrorTrafo) extends FuncLikeApp with PossibleTrigger {
+  override lazy val check : Seq[ConsistencyError] = args.flatMap(Consistency.checkPure)
 
   def func : (Program => Function) = (p) => p.findFunction(funcname)
   def getArgs = args
-  def withArgs(newArgs: Seq[Exp]) = FuncApp(funcname, newArgs)(pos, info, typ, formalArgs, errT)
+  def withArgs(newArgs: Seq[Exp]) = FuncApp(funcname, newArgs)(pos, info, typ, errT)
   def asManifestation = this
 }
 // allows a FuncApp to be created directly from a Function node (but only stores its name)
 object FuncApp {
-  def apply(func: Function, args: Seq[Exp])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos) : FuncApp = FuncApp(func.name, args)(pos,info,func.typ,func.formalArgs, errT)
+  def apply(func: Function, args: Seq[Exp])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos) : FuncApp = FuncApp(func.name, args)(pos, info, func.typ, errT)
 }
 
 /** User-defined domain function application. */
 case class DomainFuncApp(funcname: String, args: Seq[Exp], typVarMap: Map[TypeVar, Type])
-                        (val pos: Position, val info: Info, typPassed: => Type, formalArgsPassed: => Seq[LocalVarDecl],val domainName:String, val errT: ErrorTrafo)
+                        (val pos: Position, val info: Info, typPassed: => Type, val domainName:String, val errT: ErrorTrafo)
   extends AbstractDomainFuncApp with PossibleTrigger {
-  override lazy val check : Seq[ConsistencyError] =
-    args.flatMap(Consistency.checkPure) ++
-    (if(!Consistency.areAssignable(args, formalArgs))
-      Seq(ConsistencyError(s"Function $funcname with formal arguments $formalArgs cannot be applied to provided arguments $args.", args.head.pos)) else Seq())
+  override lazy val check : Seq[ConsistencyError] = args.flatMap(Consistency.checkPure)
 
   def typ = typPassed
-  def formalArgs = formalArgsPassed
   def func = (p:Program) => p.findDomainFunction(funcname)
   def getArgs = args
-  def withArgs(newArgs: Seq[Exp]) = DomainFuncApp(funcname,newArgs,typVarMap)(pos,info,typ,formalArgs,domainName, errT)
+  def withArgs(newArgs: Seq[Exp]) = DomainFuncApp(funcname,newArgs,typVarMap)(pos,info,typ,domainName, errT)
   def asManifestation = this
 
   //Strangely, the copy method is not a member of the DomainFuncApp case class,
   //therefore, We need this method that does the copying manually
-  def copy(funcname: String = this.funcname, args: Seq[Exp] = this.args, typVarMap: Map[TypeVar, Type] = this.typVarMap): (Position, Info, => Type, => Seq[LocalVarDecl], String, ErrorTrafo) => DomainFuncApp ={
+  def copy(funcname: String = this.funcname, args: Seq[Exp] = this.args, typVarMap: Map[TypeVar, Type] = this.typVarMap): (Position, Info, => Type, String, ErrorTrafo) => DomainFuncApp ={
     DomainFuncApp(this.funcname,args,typVarMap)
   }
 }
 object DomainFuncApp {
   def apply(func : DomainFunc, args: Seq[Exp], typVarMap: Map[TypeVar, Type])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos) : DomainFuncApp =
-    DomainFuncApp(func.name,args,typVarMap)(pos, info, func.typ.substitute(typVarMap), func.formalArgs map {
-    fa =>
-      // substitute parameter types
-      LocalVarDecl(fa.name, fa.typ.substitute(typVarMap))(fa.pos)
-  },func.domainName, errT)
+    DomainFuncApp(func.name,args,typVarMap)(pos, info, func.typ.substitute(typVarMap), func.domainName, errT)
 }
 
 // --- Field and predicate accesses
@@ -437,9 +424,9 @@ case class PredicateAccess(args: Seq[Exp], predicateName: String)
   lazy val typ = Bool
 
   /** The body of the predicate with the arguments instantiated correctly. */
-  def predicateBody(program : Program) = {
+  def predicateBody(program : Program, scope: Set[String]) = {
     val predicate = program.findPredicate(predicateName)
-    predicate.body map (Expressions.instantiateVariables(_, predicate.formalArgs, args))
+    predicate.body map (Expressions.instantiateVariables(_, predicate.formalArgs, args, scope))
   }
 }
 
@@ -489,6 +476,10 @@ case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo
 case class LabelledOld(exp: Exp, oldLabel: String)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends OldExp {
   override lazy val check : Seq[ConsistencyError] =
       Consistency.checkPure(exp)
+}
+
+case object LabelledOld {
+  val LhsOldLabel = "lhs"
 }
 
 // --- Other expressions
@@ -569,9 +560,27 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
 }
 
 /** Existential quantification. */
-case class Exists(variables: Seq[LocalVarDecl], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends QuantifiedExp {
+case class Exists(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends QuantifiedExp {
   override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(exp) ++
     (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Body of existential quantifier must be of Bool type, but found ${exp.typ}", exp.pos)) else Seq())
+
+  /** Returns an identical forall quantification that has some automatically generated triggers
+    * if necessary and possible.
+    */
+  lazy val autoTrigger: Exists = {
+    if (triggers.isEmpty) {
+      Expressions.generateTriggerSet(this) match {
+        case Some((vars, triggerSets)) =>
+          Exists(vars, triggerSets.map(set => Trigger(set.exps)()), exp)(pos, MakeInfoPair(AutoTriggered,info))
+        case None =>
+          /* Couldn't generate triggers */
+          this
+      }
+    } else {
+      // triggers already present
+      this
+    }
+  }
 
   def withVariables(variables: Seq[LocalVarDecl]): Exists =
     copy(variables)(this.pos, this.info, this.errT)
@@ -619,13 +628,13 @@ object AbstractLocalVar {
 }
 
 /** A normal local variable. */
-case class LocalVar(name: String)(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractLocalVar with Lhs {
+case class LocalVar(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractLocalVar with Lhs {
   override lazy val check : Seq[ConsistencyError] =
     if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Local var name must be valid identifier.", pos)) else Seq()
 }
 
 /** A special local variable for the result of a function. */
-case class Result()(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractLocalVar {
+case class Result(typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractLocalVar {
   lazy val name = "result"
 }
 
@@ -926,9 +935,10 @@ sealed trait PossibleTrigger extends Exp {
 sealed trait ForbiddenInTrigger extends Exp
 
 /** Common ancestor of Domain Function applications and Function applications. */
-sealed trait FuncLikeApp extends Exp with Call {
+sealed trait FuncLikeApp extends Exp {
   def func: Program => FuncLike
   def callee = funcname
+  def args: Seq[Exp]
   def funcname: String
 }
 object FuncLikeApp {
@@ -1018,6 +1028,7 @@ trait ExtensionExp extends Exp {
   def extensionIsPure: Boolean
   def extensionSubnodes: Seq[Node]
   def typ: Type
+  def verifyExtExp(): VerificationResult
   /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
     * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression.*/
   def prettyPrint: PrettyPrintPrimitives#Cont

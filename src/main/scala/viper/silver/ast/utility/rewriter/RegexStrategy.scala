@@ -6,6 +6,8 @@
 
 package viper.silver.ast.utility.rewriter
 
+import scala.reflect.runtime.{universe => reflection}
+
 /**
   * Extension of the Strategy context. Encapsulates all the required information for the rewriting
  *
@@ -71,10 +73,10 @@ class PartialContextR[N <: Rewritable, COLL](val c: COLL, val upContext: (COLL, 
   * @param p Partial function that describes the rewriting
   * @tparam N Common supertype of every node in the tree
   */
-case class SimpleRegexContext[N <: Rewritable](p: PartialFunction[N, N]) extends PartialFunction[(N, RegexContext[N, Any]), N] {
+case class SimpleRegexContext[N <: Rewritable](p: PartialFunction[N, N]) extends PartialFunction[(N, RegexContext[N, Any]), (N, RegexContext[N, Any])] {
   override def isDefinedAt(x: (N, RegexContext[N, Any])): Boolean = p.isDefinedAt(x._1)
 
-  override def apply(x: (N, RegexContext[N, Any])): N = p.apply(x._1)
+  override def apply(x: (N, RegexContext[N, Any])) = (p.apply(x._1), x._2)
 }
 
 /**
@@ -83,7 +85,7 @@ case class SimpleRegexContext[N <: Rewritable](p: PartialFunction[N, N]) extends
   * @param p Partial function used for rewriting
   * @tparam N Common supertype of every node in the tree
   */
-class SlimRegexStrategy[N <: Rewritable](a: TRegexAutomaton, p: PartialFunction[N, N]) extends RegexStrategy[N, Any](a, SimpleRegexContext(p), new PartialContextR(null, (x, y) => x, (x, y) => true))
+class SlimRegexStrategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag](a: TRegexAutomaton, p: PartialFunction[N, N]) extends RegexStrategy[N, Any](a, SimpleRegexContext(p), new PartialContextR(null, (x, y) => x, (x, y) => true))
 
 /**
   * A strategy that performs rewriting according to the Regex and Rewriting function specified
@@ -93,7 +95,7 @@ class SlimRegexStrategy[N <: Rewritable](a: TRegexAutomaton, p: PartialFunction[
   * @tparam N Common supertype of every node in the tree
   * @tparam COLL Type of custom context
   */
-class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunction[(N, RegexContext[N, COLL]), N], default: PartialContextR[N, COLL]) extends Strategy[N, RegexContext[N, COLL]](p) {
+class RegexStrategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, COLL](a: TRegexAutomaton, p: PartialFunction[(N, RegexContext[N, COLL]), (N, RegexContext[N, COLL])], default: PartialContextR[N, COLL]) extends Strategy[N, RegexContext[N, COLL]](p) {
 
   type CTXT = RegexContext[N, COLL]
 
@@ -165,7 +167,7 @@ class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunctio
       val (states, action) = s.performTransition(n)
 
       // Get all the children to recurse further
-      val children: Seq[Rewritable] = n.getChildren.foldLeft(Seq.empty[Rewritable])({
+      val children: Seq[Rewritable] = n.children.foldLeft(Seq.empty[Rewritable])({
         case (seq, o: Option[Rewritable @unchecked]) => o match {
           case None => seq
           case Some(x: Rewritable) => seq ++ Seq(x)
@@ -214,47 +216,58 @@ class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunctio
         if (s.isValidInput(n))
           recurse(n, s, default.get(c.ancestorList.dropRight(1), this), Seq.empty[(N, CTXT)])
       })
-      n
+      (n, c)
     })
 
     visitor.execute(node)
 
     val result = replaceTopDown(node, matches, Seq())
-    result match {
-      case Some(tree) =>
-        changed = true
-        tree.asInstanceOf[T]
-      case None => node.asInstanceOf[T]
-    }
-
+    changed = result != node
+    result.asInstanceOf[T]
   }
 
   // Replace the marked nodes with the transformed nodes
-  def replaceTopDown(n: N, matches: MatchSet, ancList:Seq[N]): Option[N] = {
-    val newAncList = ancList ++ Seq(n)
+  def replaceTopDown[A](node: A, matches: MatchSet, ancList: Seq[A]): A = {
+    if (noRecursion.contains(node))
+      node
+    else {
+      node match {
+        case map: Map[_, _] => map.map(replaceTopDown(_, matches, ancList)).asInstanceOf[A]
 
-    // Find out if this node is going to be replaced
-    val replaceInfo = matches.get(n, newAncList)
+        case collection: Iterable[_] => collection.map(replaceTopDown(_, matches, ancList)).asInstanceOf[A]
 
-    // get resulting node from rewriting
-    val resultNodeO = replaceInfo match {
-      case None => None
-      case Some(elem) =>
-        if (p.isDefinedAt(n, elem))
-          Some(p(n, elem))
-        else
-          None
+        case Some(value) => Some(replaceTopDown(value, matches, ancList)).asInstanceOf[A]
+
+        case n: N => {
+          val newAncList = ancList ++ Seq(n)
+
+          // Find out if this node is going to be replaced
+          val replaceInfo = matches.get(n, newAncList.asInstanceOf[Seq[N]])
+
+          // get resulting node from rewriting
+          val resultNodeO = replaceInfo match {
+            case None => None
+            case Some(elem) =>
+              if (p.isDefinedAt(n, elem))
+                Some(p(n, elem)._1)
+              else
+                None
+          }
+
+          val newNode = resultNodeO.getOrElse(n)
+
+          if (noRecursion.contains(newNode))
+            newNode.asInstanceOf[A]
+          else {
+            val allowedToRecurse = recursionFunc.applyOrElse(newNode, (_: N) => newNode.children).toSet
+            val children = newNode.children.map(child => if (allowedToRecurse(child)) replaceTopDown(child, matches, newAncList) else child)
+
+            (newNode.children = children).asInstanceOf[A]
+          }
+        }
+
+        case value => value
+      }
     }
-    val resultNode = resultNodeO.getOrElse(n)
-
-    // Recurse into children
-    recurseChildren(resultNode, replaceTopDown(_, matches, newAncList)) match {
-      case Some(children) =>
-        val res = resultNode.duplicate(children).asInstanceOf[N]
-        Some(preserveMetaData(n, res, resultNodeO.nonEmpty))
-
-      case None => resultNodeO
-    }
-
   }
 }

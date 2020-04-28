@@ -1,0 +1,11 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f:Int
+
+method m(xs: Seq[Ref], a: Int, b: Int)
+  //:: ExpectedOutput(not.wellformed:seq.index.negative)
+  //:: ExpectedOutput(not.wellformed:seq.index.length) 
+  //:: MissingOutput(not.wellformed:seq.index.length, /silicon/issue/34/)  
+  requires forall x: Int :: x in [0..|xs|) ==> true && acc(xs[a*x+b].f, write)
+{}

@@ -1,0 +1,12 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+//:: IgnoreFile(/silicon/issue/409/)
+
+predicate p()
+
+method m1()
+  requires forall i: Int :: i == 0 ==> acc(p())
+
+method m2()
+  requires forall i: Int :: p()

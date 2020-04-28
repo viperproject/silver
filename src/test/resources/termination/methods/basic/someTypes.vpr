@@ -1,0 +1,36 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <decreases/predicate_instance.vpr>
+
+field next: Ref
+
+predicate list(xs:Ref)
+{
+    acc(xs.next) && (xs.next != null ==> list(xs.next))
+}
+
+method predicateTest1(xs: Ref)
+    requires list(xs)
+    decreases list(xs)
+    ensures list(xs)
+{
+    unfold list(xs)
+    if (xs.next != null) {
+        predicateTest1(xs.next)
+    }
+    fold list(xs)
+}
+
+method predicateTest2(xs: Ref)
+    requires list(xs)
+    decreases list(xs)
+    ensures list(xs)
+{
+    unfold list(xs)
+    if (xs.next != null) {
+    }
+    fold list(xs)
+    //:: ExpectedOutput(termination.failed:tuple.false)
+    predicateTest2(xs)
+}

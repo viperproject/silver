@@ -1,0 +1,29 @@
+field visited: Bool
+
+predicate read_fields(node: Ref) {
+  acc(node.visited)
+  && true
+}
+
+predicate acc_graph(all_nodes: Set[Ref]) {
+  forall node:Ref :: {node in all_nodes} node in all_nodes ==>
+    read_fields(node)
+    && unfolding read_fields(node) in true
+}
+
+method test(n: Ref, diff: Ref, graph: Set[Ref])
+  requires graph == Set(n, diff)
+  requires acc(n.visited)
+  requires acc(diff.visited)
+  //:: ExpectedOutput(postcondition.violated:assertion.false)
+  ensures false
+{
+  diff.visited := true
+  n.visited := false
+
+  fold read_fields(diff)
+  fold read_fields(n)
+
+  // Line C
+  fold acc_graph(graph)
+}

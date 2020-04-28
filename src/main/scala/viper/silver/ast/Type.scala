@@ -11,7 +11,7 @@ import utility.Types
 import viper.silver.verifier.ConsistencyError
 
 /** Silver types. */
-sealed trait Type extends Hashable {
+trait Type extends Hashable {
   /**
    * Takes a mapping of type variables to types and substitutes all
    * occurrences of those type variables with the corresponding type.
@@ -182,4 +182,8 @@ case class TypeVar(name: String) extends Type {
   }
 
   //def !=(other: TypeVar) = name != other
+}
+
+trait ExtensionType extends Type{
+  def getAstType: Type = ???
 }

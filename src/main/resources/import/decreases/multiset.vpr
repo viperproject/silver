@@ -1,0 +1,16 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import "declaration.vpr"
+
+domain MuliSetWellFoundedOrder[S]{
+    //MultiSet
+    axiom multiset_ax_dec{
+        forall mSet1: Multiset[S], mSet2: Multiset[S] :: {decreasing(mSet1, mSet2)}
+            (|mSet1| < |mSet2|) ==> decreasing(mSet1, mSet2)
+    }
+    axiom multiset_ax_bound{
+        forall mSet1: Multiset[S] :: {bounded(mSet1)}
+            bounded(mSet1)
+    }
+}

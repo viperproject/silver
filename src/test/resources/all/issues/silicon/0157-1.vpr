@@ -1,0 +1,68 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// chaliceSuite/regressions/internal-bug-11.chalice
+field old$methodPermission: Perm
+
+field joinable$: Bool
+
+field Testx$: Int
+
+field Testtk$: Ref
+
+field par$Testfoo$this$_2: Ref
+
+field par$Testfoo$k$: Perm
+
+field par$TestjoinTk$this$_3: Ref
+
+field par$TestjoinTk$k$_1: Perm
+
+field par$Testtest$this$_4: Ref
+
+field par$Testtest$k$_2: Perm
+
+predicate TestV$(this$_1: Ref) {
+  acc(this$_1.Testx$, write)
+}
+
+method Testfoo$(this: Ref, k$: Perm)
+  requires this != null
+  requires k$ > none
+  requires write > k$
+  requires acc(TestV$(this), write)
+  ensures acc(TestV$(this), write)
+{
+  unfold acc(TestV$(this), write)
+  this.Testx$ := this.Testx$ + 1
+  fold acc(TestV$(this), write)
+}
+
+method TestBug(this: Ref, k$_1: Perm)
+  requires acc(this.Testtk$, write) && (this.Testtk$ != null) && acc(this.Testtk$.joinable$, write) && this.Testtk$.joinable$
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method TestBug1(this: Ref, k$_1: Perm)
+  requires acc(this.Testtk$, write) && (this.Testtk$ != null)
+  requires acc(this.Testtk$.joinable$, write) && this.Testtk$.joinable$
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method TestjoinTk$(this: Ref, k$_1: Perm)
+  requires this != null
+  requires k$_1 > none
+  requires write > k$_1
+  requires acc(this.Testtk$, write) && (this.Testtk$ != null) && acc(this.Testtk$.joinable$, write) && this.Testtk$.joinable$
+  ensures acc(TestV$(this), write)
+{
+  assert this.Testtk$.joinable$
+  //:: ExpectedOutput(inhale.failed:insufficient.permission)
+  inhale true && acc(TestV$(this.Testtk$.par$Testfoo$this$_2), write)
+  this.Testtk$.joinable$ := false
+  assert acc(TestV$(this), write)
+}
