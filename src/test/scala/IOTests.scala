@@ -10,8 +10,6 @@ import java.nio.file.Paths
 import org.scalatest.{FunSuite, Matchers}
 import viper.silver.ast.{NoPosition, Position, Program}
 import viper.silver.frontend.{SilFrontend, SilFrontendConfig}
-import viper.silver.plugin.PluginAwareReporter
-import viper.silver.reporter.StdIOReporter
 import viper.silver.verifier.errors.ErrorNode
 import viper.silver.verifier._
 
@@ -127,8 +125,6 @@ class IOTests extends FunSuite with Matchers {
       instance.parseCommandLine(args)
       instance.config
     }
-
-    override val reporter = PluginAwareReporter(StdIOReporter("MockStdIOReporter"))
   }
 
   class MockIOVerifier(val pass: Boolean) extends Verifier {
