@@ -89,7 +89,7 @@ trait SilFrontend extends DefaultFrontend {
   protected var _plugins: SilverPluginManager = SilverPluginManager(defaultPlugins match {
     case Seq() => None
     case s => Some(s.mkString(":"))
-  })(reporter, logger, _config)
+  })(reporter.reporter, logger, _config)
 
   def plugins: SilverPluginManager = _plugins
 
@@ -132,6 +132,12 @@ trait SilFrontend extends DefaultFrontend {
     if (_config.dependencies()) {
       reporter report ExternalDependenciesReport(_ver.dependencies)
     }
+
+    // FIXME The error transformer function may not be immutable with current design:
+    // FIXME  `reporter` is a field of trait Frontend, whereas the plugin manager
+    // FIXME  stored in `_plugins` is only initialized here, in SilFrontend.
+    // FIXME  Consider refactoring this part. --- ATG 2019
+    reporter.transform = _plugins.mapVerificationResult
     true
   }
 
@@ -172,14 +178,13 @@ trait SilFrontend extends DefaultFrontend {
     super.reset(input)
 
     if(_config != null) {
-      // reset error messages of plugins
 
       // concat defined plugins and default plugins
       val plugins: Option[String] = {
         val list = _config.plugin.toOption ++ defaultPlugins
         if (list.isEmpty) { None } else { Some(list.mkString(":")) }
       }
-      _plugins = SilverPluginManager(plugins)(reporter, logger, _config)
+      _plugins = SilverPluginManager(plugins)(reporter.reporter, logger, _config)
     }
 
     FastPositions.reset()
@@ -315,6 +320,4 @@ trait SilFrontend extends DefaultFrontend {
     else
       Fail(errors)
   }
-
-  override def mapVerificationResult(in: VerificationResult): VerificationResult = _plugins.mapVerificationResult(in)
 }
