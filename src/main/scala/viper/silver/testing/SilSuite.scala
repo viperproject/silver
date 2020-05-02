@@ -22,6 +22,8 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAllC
     */
   def verifiers: Seq[Verifier]
 
+  def verifiers(configMap : Map[String, Any]) : Seq[Verifier] = verifiers
+
   /** The frontend to be used. */
   def frontend(verifier: Verifier, files: Seq[Path]): Frontend
 
@@ -39,7 +41,9 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAllC
     * pairs. If not prefix (colon) is given, `defaultKeyPrefix` is used as the
     * prefix. Each key in `configMap` may have at least one colon.
     */
-  lazy val prefixSpecificConfigMap: Map[String, Map[String, Any]] =
+  lazy val prefixSpecificConfigMap :  Map[String, Map[String, Any]] = prefixSpecificConfigMap(this.configMap)
+
+  def prefixSpecificConfigMap(configMap: Map[String, Any]): Map[String, Map[String, Any]] =
     splitConfigMap(configMap)
 
   /** Invoked by ScalaTest before any test of the current suite is run.
@@ -49,7 +53,7 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAllC
     */
   override def beforeAll(configMap: ConfigMap) {
     this.configMap = configMap
-    verifiers foreach (_.start())
+    (verifiers ++ verifiers(configMap)) foreach (_.start())
   }
 
   /** Invoked by ScalaTest after all tests of the current suite have been run.
