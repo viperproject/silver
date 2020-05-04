@@ -22,7 +22,7 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAllC
     */
   def verifiers: Seq[Verifier]
 
-  def verifiers(configMap : Map[String, Any]) : Seq[Verifier] = verifiers
+  def verifiers(configMap : Map[String, Any]): Seq[Verifier] = verifiers
 
   /** The frontend to be used. */
   def frontend(verifier: Verifier, files: Seq[Path]): Frontend
@@ -41,7 +41,7 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAllC
     * pairs. If not prefix (colon) is given, `defaultKeyPrefix` is used as the
     * prefix. Each key in `configMap` may have at least one colon.
     */
-  lazy val prefixSpecificConfigMap :  Map[String, Map[String, Any]] = prefixSpecificConfigMap(this.configMap)
+  lazy val prefixSpecificConfigMap: Map[String, Map[String, Any]] = prefixSpecificConfigMap(this.configMap)
 
   def prefixSpecificConfigMap(configMap: Map[String, Any]): Map[String, Map[String, Any]] =
     splitConfigMap(configMap)
@@ -137,4 +137,3 @@ case class SilOutput(error: AbstractError) extends AbstractOutput {
 
   override def toString: String = error.toString
 }
-
