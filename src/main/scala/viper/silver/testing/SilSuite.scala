@@ -17,12 +17,15 @@ import viper.silver.utility.TimingUtils
 /** A test suite for verification toolchains that use Viper. */
 abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAllConfigMap {
 
-  /** The list of verifiers to be used. Should be overridden by a lazy val
-    * if the verifiers need to access the config map provided by ScalaTest.
-    */
-
+  /**
+   * Should return the verifier instances used in this test suite
+   */
   def verifiers: Seq[Verifier]
 
+  /**
+   * Can be used to configure verifiers according to arguments from ScalaTest's configMap.
+   * Is called just before verifiers are started.
+   */
   def configureVerifiersFromConfigMap(configMap: Map[String, Any]) : Unit = {}
 
   /** The frontend to be used. */
