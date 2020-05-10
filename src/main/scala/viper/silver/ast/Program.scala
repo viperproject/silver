@@ -10,7 +10,6 @@ import viper.silver.ast.pretty.{Fixity, Infix, LeftAssociative, NonAssociative, 
 import utility.{Consistency, DomainInstances, Nodes, Types, Visitor}
 import viper.silver.ast.MagicWandStructure.MagicWandStructure
 import viper.silver.cfg.silver.CfgGenerator
-import viper.silver.parser.FastParser
 import viper.silver.verifier.ConsistencyError
 import viper.silver.utility.{CacheHelper, DependencyAware}
 
@@ -18,13 +17,12 @@ import scala.collection.immutable
 import scala.reflect.ClassTag
 
 /** A Silver program. */
-case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])
-                  (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
+case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method], extensions: Seq[ExtensionMember])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
   extends Node with DependencyAware with Positioned with Infoed with Scope with TransformableErrors {
 
   val scopedDecls: Seq[Declaration] =
-    domains ++ fields ++ functions ++ predicates ++ methods ++
-    domains.flatMap(d => {d.axioms ++ d.functions})
+    domains ++ fields ++ functions ++ predicates ++ methods ++ extensions ++
+    domains.flatMap(d => {(d.axioms.filter(_.isInstanceOf[NamedDomainAxiom])).asInstanceOf[Seq[NamedDomainAxiom]] ++ d.functions})
 
   lazy val magicWandStructures: Seq[MagicWandStructure] =
     this.deepCollect({
@@ -37,6 +35,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     checkMethodCallsAreValid ++
     checkFunctionApplicationsAreValid ++
     checkDomainFunctionApplicationsAreValid ++
+    checkAbstractPredicatesUsage ++
     checkIdentifiers
 
   /** checks that formalReturns of method calls are assignable to targets, and arguments are assignable to formalArgs */
@@ -60,6 +59,30 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
     s
   })
+
+  lazy val checkAbstractPredicatesUsage: Seq[ConsistencyError] =
+    (predicates ++ functions ++ methods) flatMap checkAbstractPredicatesUsageIn
+
+  private def checkAbstractPredicatesUsageIn(node: Node): Seq[ConsistencyError] = {
+    var errors = Seq.empty[ConsistencyError]
+
+    def check(loc: PredicateAccess, pos: Position): Unit = {
+      predicates
+        .find(_.name == loc.predicateName)
+        .foreach(predicate => {
+          if (predicate.body.isEmpty)
+            errors :+= ConsistencyError(s"Cannot unfold $loc because ${loc.predicateName}  is abstract.", pos)
+        })
+    }
+
+    node.visit {
+      case fold: Fold => check(fold.acc.loc, fold.pos)
+      case unfold: Unfold => check(unfold.acc.loc, unfold.pos)
+      case unfolding: Unfolding => check(unfolding.acc.loc, unfolding.pos)
+    }
+
+    errors
+  }
 
   /** Checks that the applied functions exists, that the arguments of function applications are assignable to
     * formalArgs, and that the type of function applications matches with the type of the function definition.
@@ -93,7 +116,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
   /** Checks that the applied domain functions exists, that the arguments of function applications are assignable to
     * formalArgs, that the type of function applications matches with the type of the function definition and that also
     * the name of the domain matches.
-    **/
+    */
   lazy val checkDomainFunctionApplicationsAreValid: Seq[ConsistencyError] = {
     var s = Seq.empty[ConsistencyError]
 
@@ -150,7 +173,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       }
     }
     def checkNameUseLabel(name: String, n: Positioned, expected: String, declarationMap: immutable.HashMap[String, Declaration]) : Option[ConsistencyError] = {
-      if (name == FastParser.LHS_OLD_LABEL) None
+      if (name == LabelledOld.LhsOldLabel) None
       else declarationMap.get(name) match {
         case Some(d) => d match {
           case _: Label => None
@@ -466,9 +489,8 @@ case class Domain(name: String, functions: Seq[DomainFunc], axioms: Seq[DomainAx
 }
 
 /** A domain axiom. */
-case class DomainAxiom(name: String, exp: Exp)
-                      (val pos: Position = NoPosition, val info: Info = NoInfo,val domainName : String, val errT: ErrorTrafo = NoTrafos)
-  extends DomainMember {
+sealed trait DomainAxiom extends DomainMember {
+  def exp: Exp
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.noResult(exp)) Seq(ConsistencyError("Axioms can never contain result variables.", exp.pos)) else Seq()) ++
     (if(!Consistency.noOld(exp)) Seq(ConsistencyError("Axioms can never contain old expressions.", exp.pos)) else Seq()) ++
@@ -482,6 +504,12 @@ case class DomainAxiom(name: String, exp: Exp)
   val scopedDecls = Seq()
 }
 
+case class NamedDomainAxiom(name: String, exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo,val domainName : String, val errT: ErrorTrafo = NoTrafos)
+  extends DomainAxiom with Declaration
+
+case class AnonymousDomainAxiom(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val domainName : String, val errT: ErrorTrafo = NoTrafos)
+  extends DomainAxiom
+
 object Substitution{
   type Substitution = Map[TypeVar,Type]
   def toString(s : Substitution) : String = s.mkString(",")
@@ -489,7 +517,7 @@ object Substitution{
 /** Domain function which is not a binary or unary operator. */
 case class DomainFunc(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, unique: Boolean = false)
                      (val pos: Position = NoPosition, val info: Info = NoInfo,val domainName : String, val errT: ErrorTrafo = NoTrafos)
-                      extends AbstractDomainFunc with DomainMember {
+                      extends AbstractDomainFunc with DomainMember with Declaration {
   override lazy val check : Seq[ConsistencyError] =
     if (unique && formalArgs.nonEmpty) Seq(ConsistencyError("Only constants, i.e. nullary domain functions can be unique.", pos)) else Seq()
 
@@ -507,8 +535,7 @@ sealed trait Member extends Hashable with Positioned with Infoed with Scope with
 }
 
 /** Common ancestor for domain members. */
-sealed trait DomainMember extends Hashable with Positioned with Infoed with Scope with Declaration with TransformableErrors {
-  def name: String
+sealed trait DomainMember extends Hashable with Positioned with Infoed with Scope with TransformableErrors {
   def domainName : String //TODO:make names qualified
 
   /** See [[viper.silver.ast.utility.Types.freeTypeVariables]]. */
@@ -704,4 +731,11 @@ case object NotOp extends UnOp with BoolDomainFunc {
   lazy val op = "!"
   lazy val priority = 10
   lazy val fixity = Prefix
+}
+
+/**
+  * The Extension Member trait provides the way to expand the Ast to include new Top Level declarations
+  */
+trait ExtensionMember extends Member{
+  def extensionSubnodes: Seq[Node]
 }

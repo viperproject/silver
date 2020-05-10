@@ -7,7 +7,7 @@
 package viper.silver.frontend
 
 import collection._
-import org.rogach.scallop.ScallopConf
+import org.rogach.scallop.{ScallopConf, ScallopOption}
 import org.rogach.scallop.exceptions.{Help, ScallopException, Version}
 
 /**
@@ -23,11 +23,9 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
 
   /** True if (after command-line parsing) we should exit. */
   private var _exit: Boolean = false
+  private var _printHelp = false
 
-  def exit: Boolean = parseOnly.toOption match {
-    case Some(need_exit) => need_exit
-    case None => _exit
-  }
+  def exit: Boolean = _printHelp || parseOnly.toOption.getOrElse(_exit)
 
   val parseOnly = opt[Boolean]("parseOnly",
     descr = "Exit right after parsing the program",
@@ -84,13 +82,6 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     hidden = true
   )
 
-  val writeTraceFile = opt[Boolean]("writeTraceFile",
-    descr = "Write symbolic execution log into .vscode/executionTreeData.js file.",
-    default = Some(false),
-    noshort = true,
-    hidden = true
-  )
-
   val plugin = opt[String]("plugin",
     descr = "Load plugin(s) with given class name(s). Several plugins can be separated by ':'. " +
       "The fully qualified class name of the plugin should be specified.",
@@ -99,32 +90,57 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     hidden = false
   )
 
-  val model = opt[String]("model",
-    descr="Return model for errors. Pass 'native' for returning the native model from the backend, " +"" +
-      "'variables' for returning a model of (arbitrary states of) all local Viper variables, " +
-      "or a comma-separated list of local Viper variable names to return to get a model only for these variables.",
-    default= None,
+  val model = opt[String]("counterexample",
+    descr="Return counterexample for errors. Pass 'native' for returning the native model from the backend " +
+      "or 'variables' for returning a model of all local Viper variables.",
+    default = None,
     noshort = true
+  )
+
+  val terminationPlugin = opt[Boolean]("disableTerminationPlugin",
+    descr = "Disable the termination plugin, which adds termination checks to functions, " +
+      "methods and loops.",
+    default = Some(false),
+    noshort = true,
+    hidden = true
   )
 
   validateOpt(file, ignoreFile) {
     case (_, Some(true)) => Right(Unit)
-    case (Some(path), _) =>
-      if (new java.io.File(path).canRead) Right(Unit)
-      else Left(s"Cannot read $path")
+    case (Some(filepath), _) => validateFileOpt(file.name, filepath)
     case (optFile, optIgnoreFile) =>
       /* Since the file is a trailing argument and thus mandatory, this case
        * (in which optFile == None) should never occur.
        */
-      sys.error(s"Unexpected combination of $optFile and $optIgnoreFile")
+      sys.error(s"Unexpected combination of options ${file.name} ($optFile) and ${ignoreFile.name} ($optIgnoreFile)")
   }
+
+  /* Validation helpers */
+
+  protected def validateFileOpt(optionName: String, filepath: String): Either[String, Unit] = {
+    val file = new java.io.File(filepath)
+    if (!file.isFile) Left(s"Cannot find file '$filepath' from '$optionName' argument")
+    else if (!file.canRead) Left(s"Cannot read from file '$filepath' from '$optionName' argument'")
+    else Right(Unit)
+  }
+
+  protected def validateFileOpt(option: ScallopOption[String]): Unit = {
+    validateOpt(option) {
+      case None => Right(Unit)
+      case Some(filepath) => validateFileOpt(option.name, filepath)
+    }
+  }
+
+  /* Error handling */
 
   override def onError(e: Throwable): Unit = {
     _exit = true
 
     e match {
       case Version => println(builder.vers.get)
-      case Help(_) => printHelp()
+      case Help(_) =>
+        _printHelp = true
+        printHelp()
       case ScallopException(message) => error = Some(message)
       case unhandled => throw unhandled
     }

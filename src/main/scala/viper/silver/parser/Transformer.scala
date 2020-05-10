@@ -99,8 +99,6 @@ object Transformer {
         case PFieldAssign(fieldAcc, rhs) => PFieldAssign(go(fieldAcc), go(rhs))
         case PIf(cond, thn, els) => PIf(go(cond), go(thn), go(els))
         case PWhile(cond, invs, body) => PWhile(go(cond), invs map go, go(body))
-        case PFresh(vars) => PFresh(vars map go)
-        case PConstraining(vars, stmt) => PConstraining(vars map go, go(stmt))
         case PLocalVarDecl(idndef, typ, init) => PLocalVarDecl(go(idndef), go(typ), init map go)
         case PMethodCall(targets, method, args) => PMethodCall(targets map go, go(method), args map go)
         case PLabel(idndef, invs) => PLabel(go(idndef), invs map go)
@@ -110,7 +108,7 @@ object Transformer {
         case PLetNestedScope(idndef, body) => PLetNestedScope(go(idndef), go(body))
         case _: PSkip => parent
 
-        case PProgram(files, macros, domains, fields, functions, predicates, methods, errors) => PProgram(files, macros map go, domains map go, fields map go, functions map go, predicates map go, methods map go, errors)
+        case PProgram(files, macros, domains, fields, functions, predicates, methods, extensions, errors) => PProgram(files, macros map go, domains map go, fields map go, functions map go, predicates map go, methods map go, extensions map go, errors)
         case PLocalImport(file) => PLocalImport(file)
         case PStandardImport(file) => PStandardImport(file)
         case PMethod(idndef, formalArgs, formalReturns, pres, posts, body) => PMethod(go(idndef), formalArgs map go, formalReturns map go, pres map go, posts map go, body map go)
@@ -119,7 +117,8 @@ object Transformer {
         case PFunction(idndef, formalArgs, typ, pres, posts, body) => PFunction(go(idndef), formalArgs map go, go(typ), pres map go, posts map go, body map go)
         case pdf@PDomainFunction(idndef, formalArgs, typ, unique) => PDomainFunction(go(idndef), formalArgs map go, go(typ), unique)(domainName = pdf.domainName)
         case PPredicate(idndef, formalArgs, body) => PPredicate(go(idndef), formalArgs map go, body map go)
-        case pda@PAxiom(idndef, exp) => PAxiom(go(idndef), go(exp))(domainName = pda.domainName)
+        case pda@PAxiom(idndef, exp) => PAxiom(idndef map go, go(exp))(domainName = pda.domainName)
+        case pe:PExtender => pe.transformExtension(this)
       }
 
       if (!allowChangingNodeType)

@@ -40,7 +40,7 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAllC
     * prefix. Each key in `configMap` may have at least one colon.
     */
   lazy val prefixSpecificConfigMap: Map[String, Map[String, Any]] =
-  splitConfigMap(configMap)
+    splitConfigMap(configMap)
 
   /** Invoked by ScalaTest before any test of the current suite is run.
     * Starts all verifiers specified by `verifiers`.
@@ -53,8 +53,8 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAllC
   }
 
   /** Invoked by ScalaTest after all tests of the current suite have been run.
-    * Stops all verifiers specified by `verifiers`.
-    */
+   * Stops all verifiers specified by `verifiers`.
+   */
   override def afterAll(configMap: ConfigMap) {
     verifiers foreach (_.stop())
   }

@@ -490,7 +490,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
 
   /** Show a program. */
   def showProgram(p: Program): Cont = {
-    val Program(domains, fields, functions, predicates, methods) = p
+    val Program(domains, fields, functions, predicates, methods, extensions) = p
     showComment(p) <@>
       ssep((domains ++ fields ++ functions ++ predicates ++ methods) map show, line <> line)
   }
@@ -500,8 +500,13 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
     val memberDoc = m match {
       case f @ DomainFunc(_, _, _, unique) =>
         if (unique) text("unique") <+> showDomainFunc(f) else showDomainFunc(f)
-      case DomainAxiom(name, exp) =>
+      case NamedDomainAxiom(name, exp) =>
         text("axiom") <+> name <+>
+          braces(nest(defaultIndent,
+            line <> show(exp)
+          ) <> line)
+      case AnonymousDomainAxiom(exp) =>
+        text("axiom") <+>
           braces(nest(defaultIndent,
             line <> show(exp)
           ) <> line)
@@ -559,6 +564,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
           })
       case d: Domain =>
         showDomain(d)
+      case t:ExtensionMember => nil
     }
     showComment(m) <@> memberDoc
   }
@@ -644,10 +650,6 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       case Assume(e) => text("assume") <+> show(e)
       case Exhale(e) => text("exhale") <+> show(e)
       case Assert(e) => text("assert") <+> show(e)
-      case Fresh(vars) =>
-        text("fresh") <+> ssep(vars map show, char(',') <> space)
-      case Constraining(vars, body) =>
-        text("constraining") <> parens(ssep(vars map show, char(',') <> space)) <+> showBlock(body)
       case MethodCall(mname, args, targets) =>
         val call = text(mname) <> parens(ssep(args map show, char(',') <> space))
         targets match {

@@ -1,7 +1,6 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-//:: IgnoreFile(/silver/issue/234/)
 /*****************************************************************
  * List Nodes
  *****************************************************************/
@@ -193,7 +192,7 @@ field held: Int
 field changed: Bool
 
 method test(lock: Ref)
-  ensures [true, forperm[held] r :: false]
+  ensures [true, forperm r: Ref [r.held] :: false]
 {
   /* Acquire lock (without deadlock checking) */
   inhale acc(List(lock)) && acc(lock.held) && acc(lock.changed)
@@ -212,3 +211,4 @@ label acq
   exhale    acc(List(lock)) && acc(lock.held) && acc(lock.changed)
          && (old[acq](content(lock)) == content(lock) || lock.changed)
 }
+

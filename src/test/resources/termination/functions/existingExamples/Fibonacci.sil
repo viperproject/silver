@@ -1,0 +1,14 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <decreases/int.vpr>
+
+function fib(n:Int):Int
+ decreases n
+ requires n >= 0
+ {
+   n==0 ? 0 :
+     n==1 ?
+       1 :
+       (fib(n-1) + fib(n-2))
+ }

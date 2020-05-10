@@ -54,7 +54,7 @@ object AssumeRewriter {
         val eqs = (pred.loc.args zip dummyVars) map (a => EqCmp(a._1, a._2)())
         val cond = eqs.tail.foldLeft[Exp](eqs.head)((a, e) => And(a,e)())
         val ctx = c.updateContext(c.c + (pred.loc.loc(program) -> (c.c.getOrElse(pred.loc.loc(program), Seq()) :+ ((cond, dummyVars), pred.perm))))
-        if (!insideWand && c.parentOption.isDefined && !c.parent.isInstanceOf[Unfolding]) {
+        if (!insideWand && (if (c.parentOption.isDefined) !c.parent.isInstanceOf[Unfolding] else true)) {
           val cp = CurrentPerm(pred.loc)(pred.pos, pred.info, pred.errT)
           val p = generatePermUsingFunc(c.c.getOrElse(pred.loc.loc(program), Seq()), pred.loc.args, pred.perm, cp, None)
           (p, ctx)
@@ -249,7 +249,7 @@ object AssumeRewriter {
     }
     val fun = DomainFunc(name, formalArgs, Perm)(domainName = domainName)
     val ax = Forall(formalArgs, Seq(Trigger(Seq(DomainFuncApp(fun, formalArgs map (_.localVar), Map[TypeVar, Type]())()))()), EqCmp(DomainFuncApp(fun, formalArgs map (_.localVar), Map[TypeVar, Type]())(), body)())()
-    val dax = DomainAxiom(name + "_axiom", ax)(domainName = domainName)
+    val dax = NamedDomainAxiom(name + "_axiom", ax)(domainName = domainName)
     (fun, dax)
   }
 
@@ -290,11 +290,15 @@ object AssumeRewriter {
       case a: Assume => rewriteInhale(Inhale(rewrite(a.exp, pInvs))(a.pos))
     }).execute(pInvs)
 
-    ViperStrategy.Slim({
-      case p: Program =>
-        val assumeDomain = Domain(domainName, funcs, axioms)(info = Synthesized)
+    if (funcs.isEmpty && domains.isEmpty) {
+      pAssume
+    } else {
+      ViperStrategy.Slim({
+        case p: Program if funcs.nonEmpty =>
+          val assumeDomain = Domain(domainName, funcs, axioms)(info = Synthesized)
 
-        Program(p.domains ++ domains :+ assumeDomain, p.fields, p.functions, p.predicates, p.methods)(p.pos, p.info, p.errT)
-    }).execute(pAssume)
+          Program(p.domains ++ domains :+ assumeDomain, p.fields, p.functions, p.predicates, p.methods, p.extensions)(p.pos, p.info, p.errT)
+      }).execute(pAssume)
+    }
   }
 }

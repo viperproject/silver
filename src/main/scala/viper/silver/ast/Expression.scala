@@ -11,7 +11,7 @@ import viper.silver.ast.pretty._
 import viper.silver.ast.utility._
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.ast.utility.rewriter.{StrategyBuilder, Traverse}
-import viper.silver.verifier.ConsistencyError
+import viper.silver.verifier.{ConsistencyError, VerificationResult}
 
 /** Expressions. */
 sealed trait Exp extends Hashable with Typed with Positioned with Infoed with TransformableErrors with PrettyExpression {
@@ -478,6 +478,10 @@ case class LabelledOld(exp: Exp, oldLabel: String)(val pos: Position = NoPositio
       Consistency.checkPure(exp)
 }
 
+case object LabelledOld {
+  val LhsOldLabel = "lhs"
+}
+
 // --- Other expressions
 
 case class Let(variable: LocalVarDecl, exp: Exp, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp with Scope {
@@ -931,9 +935,10 @@ sealed trait PossibleTrigger extends Exp {
 sealed trait ForbiddenInTrigger extends Exp
 
 /** Common ancestor of Domain Function applications and Function applications. */
-sealed trait FuncLikeApp extends Exp with Call {
+sealed trait FuncLikeApp extends Exp {
   def func: Program => FuncLike
   def callee = funcname
+  def args: Seq[Exp]
   def funcname: String
 }
 object FuncLikeApp {
@@ -1023,6 +1028,7 @@ trait ExtensionExp extends Exp {
   def extensionIsPure: Boolean
   def extensionSubnodes: Seq[Node]
   def typ: Type
+  def verifyExtExp(): VerificationResult
   /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
     * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression.*/
   def prettyPrint: PrettyPrintPrimitives#Cont

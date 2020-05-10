@@ -79,9 +79,9 @@ object Sanitizer {
     * @tparam E           The expression subtype.
     * @return             An expression with all expected replacements, properly sanitized.
     */
-  def replaceFreeVariablesInExpression[E <: Exp](expression: E, replacements: Map[LocalVar, Exp], scope: Set[String]): E = {
+  def replaceFreeVariablesInExpression[E <: Exp](expression: E, replacements: Map[String, Exp], scope: Set[String]): E = {
 
-    case class Context(scope: Set[String], replacements: Map[LocalVar, Exp], renaming: Map[String, String] = Map())
+    case class Context(scope: Set[String], replacements: Map[String, Exp], renaming: Map[String, String] = Map())
 
     def calculateContext(expression: Exp, context: Context): Context = {
       expression match {
@@ -103,7 +103,7 @@ object Sanitizer {
           }
 
           // Enforce that a variable is never both replaced and renamed
-          assert((context.replacements.keys.map(_.name).toSet & renaming.keys.toSet).isEmpty)
+          assert((context.replacements.keys.toSet & renaming.keys.toSet).isEmpty)
 
           context.copy(scope = scope, renaming = renaming)
 
@@ -124,8 +124,8 @@ object Sanitizer {
         (lv.copy(name = c.renaming(lv.name))(lv.pos, lv.info, lv.errT), c)
 
       // Replace free variable by expression
-      case (lv: LocalVar, c) if c.replacements.contains(lv) =>
-        val n = c.replacements(lv)
+      case (lv: LocalVar, c) if c.replacements.contains(lv.name) =>
+        val n = c.replacements(lv.name)
         (n, calculateContext(n, c.copy(replacements = Map(), renaming = Map())))
 
     }, Context(scope, replacements)).execute(expression)

@@ -1,0 +1,36 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <decreases/int.vpr>
+
+function f(x: Int): Int
+    decreases _
+    ensures result == x
+{
+    f(x)
+}
+
+function f1(x: Int): Int
+    decreases _ if x >= 0
+    ensures result == x
+{
+    f1(x)
+}
+
+function h(x: Int): Int
+    decreases x
+    requires f(x) == 0
+    requires f1(x) == 0
+    ensures result == x
+    ensures result > 0 ==> result == h(result-1) + 1
+{
+    x == 0 ? 0 : 1 + h(x-1)
+}
+
+function h_e(x: Int): Int
+    decreases x
+    //:: ExpectedOutput(termination.failed:termination.condition.false)
+    requires f1(x) == x
+{
+    x <= 0 ? 0 : 1 + h_e(x-1)
+}

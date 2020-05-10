@@ -1,0 +1,16 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import "declaration.vpr"
+
+domain RefWellFoundedOrder{
+    //References
+	axiom ref_ax_dec{
+        forall ref1: Ref :: {decreasing(null,ref1)}
+            ref1 != null ==> decreasing(null, ref1)
+    }
+    axiom ref_ax_bound{
+        forall ref1: Ref :: {bounded(ref1)}
+            bounded(ref1)
+    }
+}

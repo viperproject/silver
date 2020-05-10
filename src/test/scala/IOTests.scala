@@ -10,7 +10,6 @@ import java.nio.file.Paths
 import org.scalatest.{FunSuite, Matchers}
 import viper.silver.ast.{NoPosition, Position, Program}
 import viper.silver.frontend.{SilFrontend, SilFrontendConfig}
-import viper.silver.reporter.StdIOReporter
 import viper.silver.verifier.errors.ErrorNode
 import viper.silver.verifier._
 
@@ -29,8 +28,8 @@ class IOTests extends FunSuite with Matchers {
     runOneCombo(verifiableFile, pass = true, Seq("--bla"), Seq("Unknown option"))
   }
 
-  test(s"$test_prefix: handle unreadable file") {
-    runOneCombo(nonExistingFile, pass = true, Seq(), Seq("Cannot read"))
+  test(s"$test_prefix: handle non-existing file") {
+    runOneCombo(nonExistingFile, pass = true, Seq(), Seq("Cannot find"))
   }
 
   test(s"$test_prefix: handling parseOnly mode and copyright") {
@@ -126,8 +125,6 @@ class IOTests extends FunSuite with Matchers {
       instance.parseCommandLine(args)
       instance.config
     }
-
-    override val reporter = StdIOReporter("MockStdIOReporter")
   }
 
   class MockIOVerifier(val pass: Boolean) extends Verifier {

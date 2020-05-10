@@ -1,0 +1,16 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <decreases/int.vpr>
+
+function ack(m:Int, n:Int):Int
+decreases m,n
+requires m >= 0
+requires n >= 0
+ensures result >= 0
+{
+  m==0 ? n+1 :
+    n==0 ?
+      ack(m-1,1) :
+      ack(m-1, ack(m, n-1))
+}
