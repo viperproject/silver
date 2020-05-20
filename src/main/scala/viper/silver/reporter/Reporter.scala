@@ -41,6 +41,10 @@ case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv
         warnings.foreach(report => {
           csv_file.write(s"WarningsDuringParsing,${report}\n")
         })
+      case WarningsDuringTypechecking(warnings) =>
+        warnings.foreach(report => {
+          csv_file.write(s"WarningsDuringTypechecking,${report}\n")
+        })
       case InvalidArgumentsReport(tool_sig, errors) =>
         errors.foreach(error => {
           csv_file.write(s"WarningsDuringParsing,${error}\n")

@@ -250,11 +250,22 @@ trait SilFrontend extends DefaultFrontend {
     _plugins.beforeResolve(input) match {
       case Some(inputPlugin) =>
         val r = Resolver(inputPlugin)
-        r.run match {
+        val analysisResult = r.run
+        val warnings = for (m <- FastMessaging.sortmessages(r.messages) if !m.error) yield {
+          TypecheckerWarning(m.label, m.pos match {
+            case fp: FilePosition =>
+              SourcePosition(fp.file, m.pos.line, m.pos.column)
+            case _ =>
+              SourcePosition(_inputFile.get, m.pos.line, m.pos.column)
+          })
+        }
+        if (warnings.nonEmpty)
+          reporter report WarningsDuringTypechecking(warnings)
+        analysisResult match {
           case Some(modifiedInput) =>
             Succ(modifiedInput)
           case None =>
-            val errors = for (m <- FastMessaging.sortmessages(r.messages)) yield {
+            val errors = for (m <- FastMessaging.sortmessages(r.messages) if m.error) yield {
               TypecheckerError(m.label, m.pos match {
                 case fp: FilePosition =>
                   SourcePosition(fp.file, m.pos.line, m.pos.column)

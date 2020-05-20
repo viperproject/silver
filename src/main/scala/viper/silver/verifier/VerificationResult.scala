@@ -72,6 +72,13 @@ case class ParseWarning(message: String, override val pos: Position)
   def readableMessage = s"Parse warning: $message ($pos)"
 }
 
+/** A case class used for treating certain type checker reports as non-critical. */
+case class TypecheckerWarning(message: String, override val pos: Position)
+  extends AbstractError {
+  def fullId = "typechecker.warning"
+  def readableMessage = s"Type checker warning: $message ($pos)"
+}
+
 /** An error during consistency-checking an AST node */
 case class ConsistencyError(message: String, pos:Position) extends AbstractError {
   def fullId = "consistency.error"

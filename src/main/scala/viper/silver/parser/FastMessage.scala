@@ -8,7 +8,7 @@ package viper.silver
 
 import scala.util.parsing.input.{NoPosition, Position}
 
-case class FastMessage (label : String, pos : Position = NoPosition) {
+case class FastMessage (label : String, pos : Position = NoPosition, error : Boolean = true) {
 
   def line : Int = pos.line
 
@@ -34,9 +34,9 @@ object FastMessaging {
    /**
     * Makes a message list if cond is true. Stored with the position of the value
     */
-  def message (value : Any, msg : String, cond : Boolean = true) : Messages =
+  def message (value : Any, msg : String, cond : Boolean = true, error : Boolean = true) : Messages =
     if (cond)
-      aMessage (FastMessage (msg, FastPositions.getStart (value)))
+      aMessage (FastMessage (msg, FastPositions.getStart (value), error))
     else
       noMessages
 

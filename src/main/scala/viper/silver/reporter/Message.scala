@@ -153,6 +153,11 @@ case class WarningsDuringParsing(warnings: Seq[ParseReport]) extends Message {
   override val name: String = s"warnings_during_parsing"
 }
 
+case class WarningsDuringTypechecking(warnings: Seq[TypecheckerWarning]) extends Message {
+  override def toString: String = s"warnings_during_typechecking(warnings=${warnings.toString})"
+  override val name: String = s"warnings_during_typechecking"
+}
+
 /**
   * Simple messages contain just one text field.
   */
