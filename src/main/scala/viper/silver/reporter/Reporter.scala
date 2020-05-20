@@ -111,6 +111,9 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
       case WarningsDuringParsing(warnings) =>
         warnings.foreach(println)
 
+      case WarningsDuringTypechecking(warnings) =>
+        warnings.foreach(println)
+
       case InvalidArgumentsReport(tool_sig, errors) =>
         errors.foreach(e => println(s"  ${e.readableMessage}"))
         println( s"Run with just --help for usage and options" )

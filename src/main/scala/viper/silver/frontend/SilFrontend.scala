@@ -252,12 +252,7 @@ trait SilFrontend extends DefaultFrontend {
         val r = Resolver(inputPlugin)
         val analysisResult = r.run
         val warnings = for (m <- FastMessaging.sortmessages(r.messages) if !m.error) yield {
-          TypecheckerWarning(m.label, m.pos match {
-            case fp: FilePosition =>
-              SourcePosition(fp.file, m.pos.line, m.pos.column)
-            case _ =>
-              SourcePosition(_inputFile.get, m.pos.line, m.pos.column)
-          })
+          TypecheckerWarning(m.label, m.pos)
         }
         if (warnings.nonEmpty)
           reporter report WarningsDuringTypechecking(warnings)
@@ -266,12 +261,7 @@ trait SilFrontend extends DefaultFrontend {
             Succ(modifiedInput)
           case None =>
             val errors = for (m <- FastMessaging.sortmessages(r.messages) if m.error) yield {
-              TypecheckerError(m.label, m.pos match {
-                case fp: FilePosition =>
-                  SourcePosition(fp.file, m.pos.line, m.pos.column)
-                case _ =>
-                  SourcePosition(_inputFile.get, m.pos.line, m.pos.column)
-              })
+              TypecheckerError(m.label, m.pos)
             }
             Fail(errors)
         }
@@ -290,13 +280,7 @@ trait SilFrontend extends DefaultFrontend {
 
           case None => // then there are translation messages
             Fail(FastMessaging.sortmessages(Consistency.messages) map (m => {
-              TypecheckerError(
-                m.label, m.pos match {
-                  case fp: FilePosition =>
-                    SourcePosition(fp.file, m.pos.line, m.pos.column)
-                  case _ =>
-                    SourcePosition(_inputFile.get, m.pos.line, m.pos.column)
-                })
+              TypecheckerError(m.label, m.pos)
             }))
         }
 

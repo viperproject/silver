@@ -446,7 +446,7 @@ case class TypeChecker(names: NameAnalyser) {
   def ground(exp: PExp, pts: PTypeSubstitution) : PTypeSubstitution =
     pts.m.flatMap(kv=>kv._2.freeTypeVariables &~ pts.m.keySet).foldLeft(pts)((ts,fv)=>
       {
-        messages ++ FastMessaging.message(exp, s"Unconstrained type parameter ${fv}, substituting default type ${PTypeSubstitution.defaultType}.")
+        messages ++= FastMessaging.message(exp, s"Unconstrained type parameter, substituting default type ${PTypeSubstitution.defaultType}.", error=false)
         ts.add(PTypeVar(fv),PTypeSubstitution.defaultType).get
       }
     )
