@@ -30,6 +30,7 @@ object FastMessage {
   def apply(label: String, pos: ViperPosition): FastMessage = {
     pos match {
       case spos: SourcePosition => FastMessage(label, spos, true)
+      case _ => sys.error("Unexpected position type.")
     }
   }
 }
