@@ -6,7 +6,6 @@
 
 package viper.silver.ast.utility
 
-import scala.util.parsing.input.{NoPosition, Position}
 import viper.silver.ast._
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.parser.FastParser
@@ -18,21 +17,7 @@ object Consistency {
   var messages: FastMessaging.Messages = Nil
   def recordIfNot(suspect: Positioned, property: Boolean, message: String) {
     if (!property) {
-      val pos = suspect.pos match {
-        case rp: AbstractSourcePosition =>
-          new Position {
-            val line = rp.line
-            val column = rp.column
-            val lineContents = "<none>"
-          }
-        case rp: HasLineColumn =>
-          new Position {
-            val line = rp.line
-            val column = rp.column
-            val lineContents = "<none>"
-          }
-        case rp@viper.silver.ast.NoPosition => NoPosition
-      }
+      val pos = suspect.pos
 
       this.messages ++= FastMessaging.aMessage(FastMessage(message,pos))  // this is the way to construct a message directly with a position (only).
     }

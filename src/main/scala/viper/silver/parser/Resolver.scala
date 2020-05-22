@@ -46,7 +46,7 @@ case class TypeChecker(names: NameAnalyser) {
 
   def run(p: PProgram): Boolean = {
     check(p)
-    messages.isEmpty
+    messages.isEmpty || messages.forall(m => !m.error)
   }
 
   def check(p: PProgram) {
@@ -443,12 +443,17 @@ case class TypeChecker(names: NameAnalyser) {
     //(a:Set[PTypeSubstitution], e:Option[PTypeSubstitution])=>{
   }
 
-  def ground(pts: PTypeSubstitution) : PTypeSubstitution =
-    pts.m.flatMap(kv=>kv._2.freeTypeVariables &~ pts.m.keySet).foldLeft(pts)((ts,fv)=>ts.add(PTypeVar(fv),PTypeSubstitution.defaultType).get)
+  def ground(exp: PExp, pts: PTypeSubstitution) : PTypeSubstitution =
+    pts.m.flatMap(kv=>kv._2.freeTypeVariables &~ pts.m.keySet).foldLeft(pts)((ts,fv)=>
+      {
+        messages ++= FastMessaging.message(exp, s"Unconstrained type parameter, substituting default type ${PTypeSubstitution.defaultType}.", error=false)
+        ts.add(PTypeVar(fv),PTypeSubstitution.defaultType).get
+      }
+    )
 
-  def selectAndGroundTypeSubstitution(etss: collection.Seq[PTypeSubstitution]) : PTypeSubstitution = {
+  def selectAndGroundTypeSubstitution(exp: PExp, etss: collection.Seq[PTypeSubstitution]) : PTypeSubstitution = {
     require(etss.nonEmpty)
-    ground(etss.head)
+    ground(exp, etss.head)
   }
 
   def typeError(exp:PExp) = {
@@ -470,7 +475,7 @@ case class TypeChecker(names: NameAnalyser) {
         case _ => exp.typeSubstitutions
       }
       if (etss.nonEmpty) {
-        val ts = selectAndGroundTypeSubstitution(etss)
+        val ts = selectAndGroundTypeSubstitution(exp, etss)
         exp.forceSubstitution(ts)
       } else {
         oexpected match {
@@ -957,7 +962,7 @@ case class NameAnalyser() {
 
   def run(p: PProgram): Boolean = {
     check(p, None)
-    messages.isEmpty
+    messages.isEmpty || messages.forall(m => !m.error)
   }
 
   def namesInScope(n: PNode, target: Option[PNode] = None): Set[String] = {
