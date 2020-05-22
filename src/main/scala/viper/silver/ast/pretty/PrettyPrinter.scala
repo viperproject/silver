@@ -768,8 +768,12 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       text("acc") <> parens(show(loc) <> "," <+> show(perm))
     case FuncApp(funcname, args) =>
       text(funcname) <> parens(ssep(args map show, char (',') <> space))
-    case DomainFuncApp(funcname, args, _) =>
-      text(funcname) <> parens(ssep(args map show, char (',') <> space))
+    case dfa@DomainFuncApp(funcname, args, tvMap) =>
+      if (tvMap.nonEmpty)
+        // Type may be underconstrained, so to be safe we explicitly print out the type.
+        parens(text(funcname) <> parens(ssep(args map show, char (',') <> space)) <> char(':') <+> show(dfa.typ))
+      else
+        text(funcname) <> parens(ssep(args map show, char (',') <> space))
 
     case EmptySeq(elemTyp) =>
       text("Seq[") <> showType(elemTyp) <> "]()"
