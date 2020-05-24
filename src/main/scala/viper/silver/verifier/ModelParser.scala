@@ -4,6 +4,7 @@ import java.util.regex.{Matcher, Pattern}
 
 import viper.silver.parser.FastParser.PWrapper
 
+import scala.collection.mutable
 import scala.util.matching.Regex
 
 
@@ -18,9 +19,9 @@ object ModelParser {
 
   import White._
 
-  lazy val identifier: P[Unit] = P(CharIn('0' to '9', 'A' to 'Z', 'a' to 'z', ":=!$_@<>.%") ~~ CharIn('0' to '9', 'A' to 'Z', 'a' to 'z', ":=!$_@<>.%").repX)
+  lazy val identifier: P[Unit] = P(CharIn('0' to '9', 'A' to 'Z', 'a' to 'z', "+-*/:=!$_@<>.%") ~~ CharIn('0' to '9', 'A' to 'Z', 'a' to 'z', "+-*/:=!$_@<>.%").repX)
 
-  lazy val idnuse: P[String] = P(identifier).!.filter(a => a != "else" && a != "let")
+  lazy val idnuse: P[String] = P(identifier).!.filter(a => a != "else" && a != "let" && a != "->")
 
   lazy val numeral = P(CharIn('0' to '9') ~~ CharIn('0' to '9').repX)
 
@@ -62,7 +63,24 @@ object ModelParser {
 
   lazy val partsOfApplication: P[Seq[String]] = P("(" ~ value.rep(min=1) ~")")
 
-  lazy val model : P[Model] = P(Start ~ modelEntry.rep ~ End).map(entries => Model(entries.toMap))
+  lazy val model : P[Model] = P(Start ~ modelEntry.rep ~ End).map(entries => {
+    val res: mutable.Map[String, ModelEntry] = mutable.Map()
+    for ((name, entry) <- entries) {
+      if (res.contains(name)){
+        val currentEntry = res.get(name).get
+        // presumably, these are both MapEntries; otherwise how can they be differentiated
+        if (entry.isInstanceOf[MapEntry] && currentEntry.isInstanceOf[MapEntry]){
+          val currentMap = currentEntry.asInstanceOf[MapEntry]
+          val newMap = entry.asInstanceOf[MapEntry]
+          res.update(name, MapEntry(currentMap.options ++ newMap.options, currentMap.els))
+
+        }
+      }else{
+        res.update(name, entry)
+      }
+    }
+    Model(res.toMap)
+  })
 
   lazy val boolFuncDef: P[MapEntry] = P(Start ~ "(or" ~ boolOption.rep(min=1) ~")" ~ End).map{
     case options => MapEntry(options.map(lhs => lhs -> "true").toMap, "false")

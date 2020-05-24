@@ -10,8 +10,6 @@ import fastparse.core.Parsed
 import viper.silver.ast._
 import viper.silver.ast.utility.rewriter.Rewritable
 
-import scala.collection.mutable
-
 abstract class ModelEntry()
 case class SingleEntry(value: String) extends ModelEntry {
   override def toString: String = value
