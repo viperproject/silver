@@ -53,7 +53,7 @@ trait AbstractError {
 
   val cached: Boolean = false
 
-  val scope: Option[Node] = None
+  var scope: Option[Node] = None
 }
 
 abstract class ParseReport(message: String, pos: Position) extends AbstractError

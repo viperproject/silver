@@ -6,6 +6,7 @@
 
 package viper.silver.verifier
 
+import fastparse.core.Parsed
 import viper.silver.ast._
 import viper.silver.ast.utility.rewriter.Rewritable
 
@@ -26,39 +27,17 @@ case class MapEntry(options: Map[Seq[String], String], els: String) extends Mode
 case class Model(entries: Map[String,ModelEntry]) {
   override def toString: String = entries.map(e => e._1 + " -> " + e._2).mkString("\n")
 }
+
+abstract class BackendSpecificCounterexample
+
+
 object Model {
 
   def apply(modelString: String) : Model = {
-    val SinglePattern = "^([^\\s{}]+) -> ([^{}]+)".r
-    val MapPatternStart = "^([^\\s{}]+) -> \\{".r
-    val MapPatternEntry = "^[\\s]+(([^\\s{}]+ )+)-> ([^{}]+)".r
-    val MapPatternSingleEntry = "^[\\s]+([^{}]+)".r
-    val resMap = new mutable.HashMap[String, ModelEntry]()
-    var currentKey : Option[String] = None
-    var currentMap : mutable.HashMap[Seq[String], String] = null
-    var elseVal : Option[String] = None
-    for (l <- modelString.linesIterator) {
-      l match {
-        case SinglePattern(lhs, rhs) => resMap.update(lhs.trim, SingleEntry(rhs.trim))
-        case MapPatternStart(lhs) if currentKey.isEmpty =>
-          currentKey = Some(lhs.trim)
-          currentMap = new mutable.HashMap[Seq[String], String]()
-          elseVal = None
-        case MapPatternEntry(keys, _, value) if currentKey.isDefined =>
-          if (keys.trim == "else") {
-            elseVal = Some(value.trim)
-          } else {
-            currentMap.update(keys.split(" "), value.trim)
-          }
-        case MapPatternSingleEntry(value) if currentKey.isDefined => elseVal = Some(value.trim)
-        case "}" =>
-          resMap.update(currentKey.get, MapEntry(currentMap.toMap, elseVal.get))
-          currentKey = None
-        case _ => sys.error("Invalid line '" + l + "' in model\n" + modelString)
-      }
-
+    ModelParser.model.parse(modelString) match{
+      case Parsed.Success(m, index) => return m
+      case f@Parsed.Failure(last, index, extra) => throw new Exception(f.toString)
     }
-    new Model(resMap.toMap)
   }
 }
 
@@ -86,6 +65,7 @@ trait VerificationError extends AbstractError with ErrorMessage {
   def loggableMessage = s"$fullId-$pos"
   def fullId = s"$id:${reason.id}"
   var parsedModel : Option[Model] = None
+  var counterExample: Option[BackendSpecificCounterexample] = None
 }
 
 /// used when an error/reason has no sensible node to use
