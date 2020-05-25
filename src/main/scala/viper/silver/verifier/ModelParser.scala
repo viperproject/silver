@@ -5,7 +5,6 @@ import java.util.regex.{Matcher, Pattern}
 import viper.silver.parser.FastParser.PWrapper
 
 import scala.collection.mutable
-import scala.util.matching.Regex
 
 
 object ModelParser {
@@ -93,6 +92,7 @@ object ModelParser {
   def getApplication(s: String) = {
     partsOfApplication.parse(s) match {
       case Parsed.Success(parts, _) => parts
+      case _ => sys.error("This case should be impossible")
     }
   }
 

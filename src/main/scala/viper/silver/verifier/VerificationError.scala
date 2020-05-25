@@ -26,8 +26,11 @@ case class Model(entries: Map[String,ModelEntry]) {
   override def toString: String = entries.map(e => e._1 + " -> " + e._2).mkString("\n")
 }
 
-abstract class BackendSpecificCounterexample
+trait Counterexample {
+  val model: Model
 
+  override def toString: String = model.toString
+}
 
 object Model {
 
@@ -54,16 +57,15 @@ trait VerificationError extends AbstractError with ErrorMessage {
   def readableMessage(withId: Boolean = false, withPosition: Boolean = false): String
   override def readableMessage : String = {
     val rm : String = readableMessage(false, true)
-    if (parsedModel.isDefined && parsedModel.get.entries.nonEmpty){
-      rm + "\n" + parsedModel.get.toString
+    if (counterexample.isDefined){
+      rm + "\n" + counterexample.get.toString
     }else{
       rm
     }
   }
   def loggableMessage = s"$fullId-$pos"
   def fullId = s"$id:${reason.id}"
-  var parsedModel : Option[Model] = None
-  var counterExample: Option[BackendSpecificCounterexample] = None
+  var counterexample : Option[Counterexample] = None
 }
 
 /// used when an error/reason has no sensible node to use
@@ -129,7 +131,7 @@ abstract class AbstractVerificationError extends VerificationError {
     val reasonT = errorT.reason.offendingNode.transformReason(errorT.reason)
 
     val res = errorT.withReason(reasonT)
-    res.parsedModel = parsedModel
+    res.counterexample = counterexample
     res
   }
 
