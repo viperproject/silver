@@ -32,6 +32,18 @@ trait Counterexample {
   override def toString: String = model.toString
 }
 
+trait CounterexampleTransformer {
+  def f: Counterexample => Counterexample
+}
+
+object CounterexampleTransformer {
+  def apply(ff: Counterexample => Counterexample) = {
+    new CounterexampleTransformer {
+      def f: (Counterexample) => Counterexample = ff
+    }
+  }
+}
+
 object Model {
 
   def apply(modelString: String) : Model = {
@@ -212,8 +224,21 @@ object errors {
     def withReason(r: ErrorReason) = PreconditionInAppFalse(offendingNode, r)
   }
 
+  case class ErrorWrapperWithExampleTransformer(wrappedError: AbstractVerificationError, transformer: CounterexampleTransformer) extends AbstractVerificationError {
+    val id = wrappedError.id
+    val text = "Wrapped error, should be unwrapped"
+    val offendingNode = wrappedError.offendingNode
+    val reason = wrappedError.reason
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) =
+      ErrorWrapperWithExampleTransformer(wrappedError.withNode(offendingNode).asInstanceOf[AbstractVerificationError], transformer)
+    def withReason(r: ErrorReason) = ErrorWrapperWithExampleTransformer(wrappedError.withReason(r), transformer)
+  }
+
   def PreconditionInAppFalse(offendingNode: FuncApp): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => PreconditionInAppFalse(offendingNode, reason))
+
+  def ErrorWrapperWithExampleTransformer(pve: PartialVerificationError, transformer: CounterexampleTransformer) : PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => ErrorWrapperWithExampleTransformer(pve.f(reason).asInstanceOf[AbstractVerificationError], transformer))
 
   case class ExhaleFailed(offendingNode: Exhale, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "exhale.failed"

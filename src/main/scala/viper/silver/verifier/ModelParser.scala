@@ -81,9 +81,15 @@ object ModelParser {
     Model(res.toMap)
   })
 
-  lazy val boolFuncDef: P[MapEntry] = P(Start ~ "(or" ~ boolOption.rep(min=1) ~")" ~ End).map{
+  lazy val boolFuncDef: P[MapEntry] = P(Start ~ alternatives ~ End).map{
     case options => MapEntry(options.map(lhs => lhs -> "true").toMap, "false")
   }
+
+  lazy val alternatives: P[Seq[Seq[String]]] = P(singleAlternative | multipleAlternatives)
+
+  lazy val multipleAlternatives = P("(or" ~ boolOption.rep(min=1) ~")")
+
+  lazy val singleAlternative: P[Seq[Seq[String]]] = P(boolOption).map(Seq(_))
 
   lazy val boolOption: P[Seq[String]] = P("(and"~ equality.rep(min=1) ~")")
 
