@@ -1,0 +1,8 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+domain WellFoundedOrder[T]{
+    // arg1 is smaller then arg2
+    function decreasing(arg1:T, arg2:T):Bool
+    function bounded(arg1:T):Bool
+}

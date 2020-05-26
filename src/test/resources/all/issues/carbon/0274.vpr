@@ -1,0 +1,19 @@
+field neighbour: Set[Ref]
+field visited: Bool
+
+
+predicate access_fields(node: Ref) {
+    acc(node.neighbour, 1/2) && acc(node.visited)
+}
+
+method test1(curr_node: Ref, all_nodes: Set[Ref])
+    requires forall n:Ref :: {n in all_nodes} n in all_nodes ==> (access_fields(n) && unfolding access_fields(n) in n.neighbour subset all_nodes)
+    requires curr_node in all_nodes
+    requires exists nn:Ref :: (nn in all_nodes && nn != curr_node && unfolding access_fields(nn) in !nn.visited)
+
+
+method test2()
+{
+    //:: ExpectedOutput(inhale.failed:insufficient.permission)
+    inhale exists nn:Ref :: (nn != null) && unfolding access_fields(nn) in true
+}

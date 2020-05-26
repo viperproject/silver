@@ -16,14 +16,14 @@ class DomainInstanceTest extends FunSuite with Matchers {
     val r = LocalVarDecl("r", Int)(NoPosition, NoInfo)
     val x = LocalVarDecl("x", DomainType(d, Map(t -> Int)))(NoPosition, NoInfo)
     val m = Method("m", Seq(x), Seq(r), Seq(), Seq(), Some(Seqn(Seq(Assert(TrueLit()(NoPosition, NoInfo))(NoPosition, NoInfo)), Seq())(NoPosition, NoInfo)))(NoPosition, NoInfo)
-    val p = Program(Seq(d), Seq(), Seq(), Seq(), Seq(m))(NoPosition, NoInfo)
+    val p = Program(Seq(d), Seq(), Seq(), Seq(), Seq(m), Seq())(NoPosition, NoInfo)
 
     p.groundTypeInstances.size should be(3)
   }
 
   test("Basic domain instances 2") {
     val frontend = new MockSilFrontend
-    val fileN = "all/domains/domains2.sil"
+    val fileN = "all/domains/domains2.vpr"
     val fileR = getClass.getResource(fileN)
     assert(fileR != null, s"File $fileN not found")
     val fileU = fileR.toURI
@@ -58,7 +58,7 @@ class DomainInstanceTest extends FunSuite with Matchers {
 
   test("Domain instances recursion threshold") {
     val frontend = new MockSilFrontend
-    val fileN = "all/domains/domains_threshold.sil"
+    val fileN = "all/domains/domains_threshold.vpr"
     val fileR = getClass.getResource(fileN)
     assert(fileR != null, s"File $fileN not found")
     val fileU = fileR.toURI
@@ -72,7 +72,7 @@ class DomainInstanceTest extends FunSuite with Matchers {
         /* 2017-04-28 Malte:
          *   Deactivated all remaining assertions since they don't make any sense to me
          *   (and because they fail). In particular, the assertions expect D1 to not be
-         *   instantiated and D10 to be, but D1 is the only domain in domains_threshold.sil.
+         *   instantiated and D10 to be, but D1 is the only domain in domains_threshold.vpr.
          */
 
 //        for (gi <- p.groundTypeInstances)

@@ -1,0 +1,16 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import "declaration.vpr"
+
+domain SetWellFoundedOrder[S]{
+    //Sets
+    axiom set_ax_dec{
+        forall set1: Set[S], set2: Set[S] :: {decreasing(set1, set2)}
+            (|set1| < |set2|) ==> decreasing(set1, set2)
+    }
+    axiom set_ax_bound{
+        forall set1: Set[S] ::  {bounded(set1)}
+            bounded(set1)
+    }
+}

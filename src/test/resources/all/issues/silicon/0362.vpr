@@ -1,0 +1,37 @@
+predicate P(r: Ref, x: Int)
+
+function P_state(r: Ref, x: Int): Int
+  requires P(r, x)
+
+method test01() {
+  var rs: Seq[Ref]
+  var xs: Seq[Int]
+
+  inhale forall r: Ref, x: Int :: {P(r, x)} r in rs && x in xs ==> acc(P(r, x))
+
+  label pre_havoc
+
+  //:: UnexpectedOutput(exhale.failed:negative.permission, /Carbon/issue/353/)
+  exhale forall r: Ref, x: Int :: {P(r, x)} acc(P(r, x), old[pre_havoc](perm(P(r, x))))
+  inhale forall r: Ref, x: Int :: {P(r, x)} acc(P(r, x), old[pre_havoc](perm(P(r, x))))
+
+  var nondet: Int
+
+  if (nondet == 0) {
+    inhale forall r: Ref, x: Int ::
+      none < old[pre_havoc](perm(P(r, x))) ==>
+        P_state(r, x) != 0
+  } elseif (nondet == 1) {
+    assert forall r: Ref, x: Int ::
+      none < old[pre_havoc](perm(P(r, x))) ==>
+        acc(P(r, x))
+  } elseif (nondet == 2) {
+    assert forall r: Ref, x: Int ::
+      none < perm(P(r, x)) ==>
+        acc(P(r, x))
+  } else {
+    assert forall r: Ref, x: Int ::
+      r in rs && x in xs ==>
+        acc(P(r, x))
+  }
+}

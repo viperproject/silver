@@ -1,0 +1,14 @@
+//:: IgnoreFile(/carbon/issue/294/)
+
+predicate P()
+
+method test01()
+  requires forall i: Int :: i == 0 ==> P()
+
+predicate Q(n: Int)
+
+method test02()
+  requires forall i: Int :: i == 0 ==> Q(0)
+
+method test03()
+  requires forall i: Int :: i == 0 ==> P() --* Q(0)

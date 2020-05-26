@@ -17,7 +17,7 @@ class ParseTreeTests extends FunSuite {
     val frontend = new MockSilFrontend
 
     files foreach(fileName =>
-      parseAndCompare(filePrefix + fileName + ".sil", filePrefix + fileName + "Ref" + ".sil", frontend))
+      parseAndCompare(filePrefix + fileName + ".vpr", filePrefix + fileName + "Ref" + ".vpr", frontend))
   }
 
   test("HygienicMacros") {
@@ -27,14 +27,14 @@ class ParseTreeTests extends FunSuite {
     val frontend = new MockSilFrontend
 
     files foreach (fileName =>
-      parseAndCompare(filePrefix + fileName + ".sil", filePrefix + fileName + "Ref" + ".sil", frontend))
+      parseAndCompare(filePrefix + fileName + ".vpr", filePrefix + fileName + "Ref" + ".vpr", frontend))
   }
 
   test("Positions and Paths") {
     val filePrefix = "transformations/Imports/"
     val files = Seq("simpleRef", "simple_other")
 
-    val paths: Seq[String] = files.map { f => filePrefix + f + ".sil" }
+    val paths: Seq[String] = files.map { f => filePrefix + f + ".vpr" }
 
     val fileResA = getClass.getResource(paths.head)
     assert(fileResA != null, s"File ${paths.head} not found")
@@ -88,7 +88,7 @@ class ParseTreeTests extends FunSuite {
     val frontend = new MockSilFrontend
 
     files foreach (fileName =>
-      parseAndCompare(filePrefix + fileName + ".sil", filePrefix + fileName + "Ref" + ".sil", frontend))
+      parseAndCompare(filePrefix + fileName + ".vpr", filePrefix + fileName + "Ref" + ".vpr", frontend))
   }
 
   private def parseAndCompare(testFile: String, refFile: String, frontend: MockSilFrontend): Unit = {

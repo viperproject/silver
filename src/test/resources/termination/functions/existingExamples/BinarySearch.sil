@@ -1,0 +1,13 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <decreases/seq.vpr>
+
+function binSearch(seq: Seq[Int], x:Int):Int
+decreases seq
+requires |seq| == 8 || |seq| == 4 || |seq| == 2
+{
+  x == seq[|seq|/2] ? |seq|/2 :
+    (|seq| == 2 ? |seq| :
+    (x > seq[|seq|/2] ? binSearch(seq[|seq|/2..],x) : binSearch(seq[..|seq|/2] ,x)))
+}

@@ -25,18 +25,29 @@ object InverseFunctions {
         val errT = forall.errT
         acc match {
           case fap: FieldAccessPredicate => {
-            val qvar = forall.variables.head
+            val qvars = forall.variables
             val r = LocalVarDecl("r", Ref)()
-            val inv = DomainFunc("inv_" + counter, Seq(r), qvar.typ)(pos, info, domainName = domName, errT)
-            counter += 1
-            val invOfR = DomainFuncApp(inv, Seq(r.localVar), Map[TypeVar, Type]())(pos, info, errT)
-            val axiom1 = Forall(Seq(qvar), forall.triggers, Implies(cond, EqCmp(DomainFuncApp(inv, Seq(fap.loc.rcv), Map[TypeVar, Type]())(pos, info, errT), qvar.localVar)(pos, info, errT))(pos, info, errT))(pos, info, errT)
-            val axiom2 = Forall(Seq(r), Seq(Trigger(Seq(invOfR))(pos, info, errT)), Implies(cond.replace(qvar.localVar, invOfR), EqCmp(fap.loc.rcv.replace(qvar.localVar, invOfR), r.localVar)(pos, info, errT))(pos, info, errT))(pos, info, errT)
-            val cond1 = cond.replace(qvar.localVar, invOfR)
-            val acc1 = FieldAccessPredicate(FieldAccess(r.localVar, fap.loc.field)(), fap.perm.replace(qvar.localVar, invOfR))()
-            val forall1 = Forall(Seq(r), Seq(Trigger(Seq(invOfR))()), Implies(cond1, acc1)(pos, info, errT))(pos, info, errT)
-            val domain = Domain(domName, Seq(inv), Seq())(pos, info, errT)
-            (Some((Seq(inv), domain)), Some(Seq(axiom1, axiom2)), forall1)
+            val invs = qvars.map(qvar => {
+              val inv = DomainFunc("inv_" + counter, Seq(r), qvar.typ)(pos, info, domainName = domName, errT)
+              counter += 1
+              inv
+            })
+            val invsOfR = invs.map(inv => DomainFuncApp(inv, Seq(r.localVar), Map[TypeVar, Type]())(pos, info, errT))
+            val equalities = (0 until invs.length).foldLeft(TrueLit()(): Exp)((soFar, i) => And(soFar, EqCmp(DomainFuncApp(invs(i), Seq(fap.loc.rcv), Map[TypeVar, Type]())(pos, info, errT), qvars(i).localVar)(pos, info, errT))(pos, info, errT))
+            val axiom1 = Forall(qvars, forall.triggers, Implies(cond, equalities)(pos, info, errT))(pos, info, errT)
+            var condReplaced = cond
+            var rcvReplaced = fap.loc.rcv
+            var permReplaced = fap.perm
+            for (i <- 0 until qvars.length){
+              condReplaced = condReplaced.replace(qvars(i).localVar, invsOfR(i))
+              rcvReplaced = rcvReplaced.replace(qvars(i).localVar, invsOfR(i))
+              permReplaced = permReplaced.replace(qvars(i).localVar, invsOfR(i))
+            }
+            val axiom2 = Forall(Seq(r), Seq(Trigger(invsOfR)(pos, info, errT)), Implies(condReplaced, EqCmp(rcvReplaced, r.localVar)(pos, info, errT))(pos, info, errT))(pos, info, errT)
+            val acc1 = FieldAccessPredicate(FieldAccess(r.localVar, fap.loc.field)(), permReplaced)()
+            val forall1 = Forall(Seq(r), Seq(Trigger(invsOfR)()), Implies(condReplaced, acc1)(pos, info, errT))(pos, info, errT)
+            val domain = Domain(domName, invs, Seq())(pos, info, errT)
+            (Some((invs, domain)), Some(Seq(axiom1, axiom2)), forall1)
           }
           case pap: PredicateAccessPredicate => {
             val qvars = forall.variables

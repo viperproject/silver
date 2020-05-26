@@ -1,0 +1,41 @@
+field f: Int
+
+predicate pred(x: Ref) {
+  acc(x.f, 1/2) && acc(x.f, 1/2)
+}
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+function fun(v: Int, i: Int): Bool
+
+method test01(x: Ref) {
+  inhale acc(pred(x))
+  inhale forall i: Int :: 0 <= i && i < 10 ==> fun(unfolding acc(pred(x)) in x.f, i)
+  assert forall i: Int :: 0 <= i && i < 10 ==> fun(unfolding acc(pred(x)) in x.f, i)
+}
+
+/* Potential work-arounds: all of the following assertions succeed */
+
+function get(x: Ref): Int
+  requires acc(pred(x))
+{ unfolding acc(pred(x)) in x.f }
+
+method test02(x: Ref) {
+  inhale acc(pred(x))
+  inhale forall i: Int :: 0 <= i && i < 10 ==> fun(get(x), i)
+  assert forall i: Int :: 0 <= i && i < 10 ==> fun(get(x), i)
+}
+
+method test03(x: Ref) {
+  inhale acc(pred(x))
+  var v: Int := unfolding acc(pred(x)) in x.f
+  inhale forall i: Int :: 0 <= i && i < 10 ==> fun(v, i)
+  assert forall i: Int :: 0 <= i && i < 10 ==> fun(v, i)
+}
+
+method test04(x: Ref) {
+  inhale acc(pred(x))
+  unfold acc(pred(x))
+  inhale forall i: Int :: 0 <= i && i < 10 ==> fun(x.f, i)
+  assert forall i: Int :: 0 <= i && i < 10 ==> fun(x.f, i)
+}

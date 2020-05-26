@@ -6,20 +6,18 @@
 
 package viper.silver.frontend
 
-import viper.silver.ast.SourcePosition
+import java.nio.file.{Path, Paths}
+
+import fastparse.all
+import fastparse.all.{Parsed, ParserInput}
 import viper.silver.ast.utility.Consistency
-import viper.silver.FastMessaging
-import viper.silver.ast._
+import viper.silver.ast.{SourcePosition, _}
 import viper.silver.parser._
 import viper.silver.plugin.SilverPluginManager
 import viper.silver.plugin.SilverPluginManager.PluginException
 import viper.silver.reporter._
 import viper.silver.verifier._
-import fastparse.all.{Parsed, ParserInput}
-import fastparse.all
-import java.nio.file.{Path, Paths}
-import viper.silver.FastPositions
-
+import viper.silver.{FastMessaging, FastPositions}
 
 /**
  * Common functionality to implement a command-line verifier for Viper.  This trait
@@ -78,7 +76,21 @@ trait SilFrontend extends DefaultFrontend {
   protected var _config: SilFrontendConfig = _
   def config: SilFrontendConfig = _config
 
-  protected var _plugins: SilverPluginManager = SilverPluginManager()
+  /**
+   * Default plugins are always activated and are run as last plugins.
+   * All default plugins can be excluded from the plugins by providing the --disableDefaultPlugins flag
+   */
+  private val defaultPlugins: Seq[String] = Seq(
+    "viper.silver.plugin.standard.termination.TerminationPlugin",
+    "viper.silver.plugin.standard.predicateinstance.PredicateInstancePlugin"
+  )
+
+
+  protected var _plugins: SilverPluginManager = SilverPluginManager(defaultPlugins match {
+    case Seq() => None
+    case s => Some(s.mkString(":"))
+  })(reporter.reporter, logger, _config)
+
   def plugins: SilverPluginManager = _plugins
 
   protected var _startTime: Long = _
@@ -120,6 +132,12 @@ trait SilFrontend extends DefaultFrontend {
     if (_config.dependencies()) {
       reporter report ExternalDependenciesReport(_ver.dependencies)
     }
+
+    // FIXME The error transformer function may not be immutable with current design:
+    // FIXME  `reporter` is a field of trait Frontend, whereas the plugin manager
+    // FIXME  stored in `_plugins` is only initialized here, in SilFrontend.
+    // FIXME  Consider refactoring this part. --- ATG 2019
+    reporter.transform = _plugins.mapVerificationResult
     true
   }
 
@@ -160,8 +178,13 @@ trait SilFrontend extends DefaultFrontend {
     super.reset(input)
 
     if(_config != null) {
-      // reset error messages of plugins
-      _plugins = SilverPluginManager(_config.plugin.toOption)(reporter, logger, _config)
+
+      // concat defined plugins and default plugins
+      val plugins: Option[String] = {
+        val list = _config.plugin.toOption ++ defaultPlugins
+        if (list.isEmpty) { None } else { Some(list.mkString(":")) }
+      }
+      _plugins = SilverPluginManager(plugins)(reporter.reporter, logger, _config)
     }
 
     FastPositions.reset()
@@ -206,7 +229,7 @@ trait SilFrontend extends DefaultFrontend {
       case Some(inputPlugin) =>
         val result = FastParser.parse(inputPlugin, file, Some(_plugins))
           result match {
-            case Parsed.Success(e@ PProgram(_, _, _, _, _, _, _, err_list), _) =>
+            case Parsed.Success(e@ PProgram(_, _, _, _, _, _, _, _, err_list), _) =>
               if (err_list.isEmpty || err_list.forall(p => p.isInstanceOf[ParseWarning])) {
                 reporter report WarningsDuringParsing(err_list)
                 Succ({e.initProperties(); e})
@@ -227,17 +250,18 @@ trait SilFrontend extends DefaultFrontend {
     _plugins.beforeResolve(input) match {
       case Some(inputPlugin) =>
         val r = Resolver(inputPlugin)
-        r.run match {
+        val analysisResult = r.run
+        val warnings = for (m <- FastMessaging.sortmessages(r.messages) if !m.error) yield {
+          TypecheckerWarning(m.label, m.pos)
+        }
+        if (warnings.nonEmpty)
+          reporter report WarningsDuringTypechecking(warnings)
+        analysisResult match {
           case Some(modifiedInput) =>
             Succ(modifiedInput)
           case None =>
-            val errors = for (m <- FastMessaging.sortmessages(r.messages)) yield {
-              TypecheckerError(m.label, m.pos match {
-                case fp: FilePosition =>
-                  SourcePosition(fp.file, m.pos.line, m.pos.column)
-                case _ =>
-                  SourcePosition(_inputFile.get, m.pos.line, m.pos.column)
-              })
+            val errors = for (m <- FastMessaging.sortmessages(r.messages) if m.error) yield {
+              TypecheckerError(m.label, m.pos)
             }
             Fail(errors)
         }
@@ -256,13 +280,7 @@ trait SilFrontend extends DefaultFrontend {
 
           case None => // then there are translation messages
             Fail(FastMessaging.sortmessages(Consistency.messages) map (m => {
-              TypecheckerError(
-                m.label, m.pos match {
-                  case fp: FilePosition =>
-                    SourcePosition(fp.file, m.pos.line, m.pos.column)
-                  case _ =>
-                    SourcePosition(_inputFile.get, m.pos.line, m.pos.column)
-                })
+              TypecheckerError(m.label, m.pos)
             }))
         }
 
@@ -280,7 +298,7 @@ trait SilFrontend extends DefaultFrontend {
             else inputPlugin.methods map (_.name)
 
           val methods = inputPlugin.methods filter (m => verifyMethods.contains(m.name))
-          val program = Program(inputPlugin.domains, inputPlugin.fields, inputPlugin.functions, inputPlugin.predicates, methods)(inputPlugin.pos, inputPlugin.info)
+          val program = Program(inputPlugin.domains, inputPlugin.fields, inputPlugin.functions, inputPlugin.predicates, methods, inputPlugin.extensions)(inputPlugin.pos, inputPlugin.info)
 
           _plugins.beforeVerify(program) match {
             case Some(programPlugin) => Succ(programPlugin)
@@ -297,6 +315,4 @@ trait SilFrontend extends DefaultFrontend {
     else
       Fail(errors)
   }
-
-  override def mapVerificationResult(in: VerificationResult): VerificationResult = _plugins.mapVerificationResult(in)
 }

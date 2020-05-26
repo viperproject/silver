@@ -1,0 +1,15 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field next:Ref
+
+predicate P(r:Ref) {
+  acc(r.next)
+}
+
+method test(r:Ref)
+  requires P(r)
+  {
+      assert perm(r.next) == none
+      assert (unfolding P(r) in perm(r.next) == write)
+  }

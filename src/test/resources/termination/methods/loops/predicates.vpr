@@ -1,0 +1,39 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <decreases/predicate_instance.vpr>
+
+field val: Int
+
+field next: Ref
+
+predicate list(xs:Ref)
+{
+    acc(xs.next) && (xs.next != null ==> list(xs.next) )
+}
+
+
+method alwaysAppendLoop(xs: Ref)
+    requires list(xs)
+{
+    var ys: Ref := xs
+    unfold list(ys)
+    if (ys.next != null){
+        while (ys.next != null)
+            invariant acc(ys.next)
+            invariant list(ys.next)
+            //:: ExpectedOutput(termination.failed:tuple.false)
+            decreases list(ys.next)
+        {
+            ys := ys.next
+            unfold list(ys)
+            if (ys.next == null){
+                var n: Ref
+                n := new(next)
+                n.next := null
+                ys.next := n
+                fold list(n)
+            }
+        }
+    }
+}
