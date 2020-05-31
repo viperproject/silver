@@ -28,9 +28,10 @@ case class Model(entries: Map[String,ModelEntry]) {
 
 trait Counterexample {
   val model: Model
-
   override def toString: String = model.toString
 }
+
+case class SimpleCounterexample(model: Model) extends Counterexample
 
 trait CounterexampleTransformer {
   def f: Counterexample => Counterexample
