@@ -9,6 +9,59 @@ package viper.silver.verifier
 import viper.silver.ast._
 import viper.silver.ast.utility.rewriter.Rewritable
 
+import scala.collection.mutable
+
+abstract class ModelEntry()
+case class SingleEntry(value: String) extends ModelEntry {
+  override def toString: String = value
+}
+case class MapEntry(options: Map[Seq[String], String], els: String) extends ModelEntry {
+  override def toString: String = {
+    if (options.nonEmpty)
+      "{\n" + options.map(o => "    " + o._1.mkString(" ") + " -> " + o._2).mkString("\n") + "\n    else -> " + els +"\n}"
+    else
+      "{\n    " + els +"\n}"
+  }
+}
+case class Model(entries: Map[String,ModelEntry]) {
+  override def toString: String = entries.map(e => e._1 + " -> " + e._2).mkString("\n")
+}
+object Model {
+
+  def apply(modelString: String) : Model = {
+    val SinglePattern = "^([^\\s{}]+) -> ([^{}]+)".r
+    val MapPatternStart = "^([^\\s{}]+) -> \\{".r
+    val MapPatternEntry = "^[\\s]+(([^\\s{}]+ )+)-> ([^{}]+)".r
+    val MapPatternSingleEntry = "^[\\s]+([^{}]+)".r
+    val resMap = new mutable.HashMap[String, ModelEntry]()
+    var currentKey : Option[String] = None
+    var currentMap : mutable.HashMap[Seq[String], String] = null
+    var elseVal : Option[String] = None
+    for (l <- modelString.linesIterator) {
+      l match {
+        case SinglePattern(lhs, rhs) => resMap.update(lhs.trim, SingleEntry(rhs.trim))
+        case MapPatternStart(lhs) if currentKey.isEmpty =>
+          currentKey = Some(lhs.trim)
+          currentMap = new mutable.HashMap[Seq[String], String]()
+          elseVal = None
+        case MapPatternEntry(keys, _, value) if currentKey.isDefined =>
+          if (keys.trim == "else") {
+            elseVal = Some(value.trim)
+          } else {
+            currentMap.update(keys.split(" "), value.trim)
+          }
+        case MapPatternSingleEntry(value) if currentKey.isDefined => elseVal = Some(value.trim)
+        case "}" =>
+          resMap.update(currentKey.get, MapEntry(currentMap.toMap, elseVal.get))
+          currentKey = None
+        case _ => sys.error("Invalid line '" + l + "' in model\n" + modelString)
+      }
+
+    }
+    new Model(resMap.toMap)
+  }
+}
+
 trait ErrorMessage {
   def id: String
   def offendingNode: errors.ErrorNode
@@ -22,9 +75,17 @@ trait ErrorMessage {
 trait VerificationError extends AbstractError with ErrorMessage {
   def reason: ErrorReason
   def readableMessage(withId: Boolean = false, withPosition: Boolean = false): String
-  override def readableMessage = readableMessage(false, true)
+  override def readableMessage : String = {
+    val rm : String = readableMessage(false, true)
+    if (parsedModel.isDefined && parsedModel.get.entries.nonEmpty){
+      rm + "\n" + parsedModel.get.toString
+    }else{
+      rm
+    }
+  }
   def loggableMessage = s"$fullId-$pos"
   def fullId = s"$id:${reason.id}"
+  var parsedModel : Option[Model] = None
 }
 
 /// used when an error/reason has no sensible node to use
@@ -89,7 +150,9 @@ abstract class AbstractVerificationError extends VerificationError {
     val errorT = offendingNode.transformError(this)
     val reasonT = errorT.reason.offendingNode.transformReason(errorT.reason)
 
-    errorT.withReason(reasonT)
+    val res = errorT.withReason(reasonT)
+    res.parsedModel = parsedModel
+    res
   }
 
   def withReason(reason: ErrorReason): AbstractVerificationError
