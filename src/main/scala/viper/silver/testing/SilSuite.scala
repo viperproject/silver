@@ -17,10 +17,16 @@ import viper.silver.utility.TimingUtils
 /** A test suite for verification toolchains that use Viper. */
 abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAllConfigMap {
 
-  /** The list of verifiers to be used. Should be overridden by a lazy val
-    * if the verifiers need to access the config map provided by ScalaTest.
-    */
+  /**
+   * Should return the verifier instances used in this test suite
+   */
   def verifiers: Seq[Verifier]
+
+  /**
+   * Can be used to configure verifiers according to arguments from ScalaTest's configMap.
+   * Is called just before verifiers are started.
+   */
+  def configureVerifiersFromConfigMap(configMap: Map[String, Any]) : Unit = {}
 
   /** The frontend to be used. */
   def frontend(verifier: Verifier, files: Seq[Path]): Frontend
@@ -39,7 +45,9 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAllC
     * pairs. If not prefix (colon) is given, `defaultKeyPrefix` is used as the
     * prefix. Each key in `configMap` may have at least one colon.
     */
-  lazy val prefixSpecificConfigMap: Map[String, Map[String, Any]] =
+  lazy val prefixSpecificConfigMap: Map[String, Map[String, Any]] = prefixSpecificConfigMap(this.configMap)
+
+  def prefixSpecificConfigMap(configMap: Map[String, Any]): Map[String, Map[String, Any]] =
     splitConfigMap(configMap)
 
   /** Invoked by ScalaTest before any test of the current suite is run.
@@ -48,7 +56,7 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAllC
     * @param configMap The config map provided by ScalaTest.
     */
   override def beforeAll(configMap: ConfigMap) {
-    this.configMap = configMap
+    configureVerifiersFromConfigMap(configMap)
     verifiers foreach (_.start())
   }
 
@@ -133,4 +141,3 @@ case class SilOutput(error: AbstractError) extends AbstractOutput {
 
   override def toString: String = error.toString
 }
-

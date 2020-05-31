@@ -1,0 +1,5 @@
+method wow(s: Seq[Int])
+  requires forall i: Int :: {i in s} i in s == i > 5
+{
+    assert 7 in s
+}
