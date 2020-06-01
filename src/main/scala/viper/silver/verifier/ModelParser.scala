@@ -18,7 +18,7 @@ object ModelParser {
 
   import White._
 
-  lazy val identifier: P[Unit] = P(CharIn('0' to '9', 'A' to 'Z', 'a' to 'z', "+-*/:=!$_@<>.%") ~~ CharIn('0' to '9', 'A' to 'Z', 'a' to 'z', "+-*/:=!$_@<>.%").repX)
+  lazy val identifier: P[Unit] = P(CharIn('0' to '9', 'A' to 'Z', 'a' to 'z', "+-*/:=!$_@<>.%~") ~~ CharIn('0' to '9', 'A' to 'Z', 'a' to 'z', "+-*/:=!$_@<>.%~").repX)
 
   lazy val idnuse: P[String] = P(identifier).!.filter(a => a != "else" && a != "let" && a != "->")
 
