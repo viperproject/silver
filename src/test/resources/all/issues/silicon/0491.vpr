@@ -1,0 +1,14 @@
+field elem: Int
+field next: Ref
+
+predicate list2(this: Ref, i: Int) {
+  acc(this.elem) && acc(this.next) &&
+  (this.next != null ==> list2(this.next, i))
+}
+
+function foo(l:Ref, i: Int) : Bool
+  requires list2(l, i)
+{
+  forall j: Int :: {list2(l,j)} {foo(l.next, j)}
+        i == j ==> unfolding list2(l,j) in l.next == null ? true : foo(l.next, j)
+}
