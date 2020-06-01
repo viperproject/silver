@@ -1,0 +1,268 @@
+field elem: Int
+field next: Ref
+
+//:: IgnoreFile(/carbon/issue/356/)
+//:: IgnoreFile(/silicon/issue/494/)
+
+predicate list2(this: Ref, i: Int) {
+  acc(this.elem) && acc(this.next) &&
+  (this.next != null ==> list2(this.next, i))
+}
+
+function foo(l:Ref, i: Int) : Bool
+  requires list2(l, i)
+{
+  forall j: Int :: {list2(l,j)} {foo(l.next, j)}
+        i == j ==> unfolding list2(l,j) in l.next == null ? true : foo(l.next, j)
+}
+
+method test_foo1() {
+ var x1: Ref; x1 := new(*)
+ x1.next := null
+ fold list2(x1, 77)
+
+ assert foo(x1, 77)
+}
+
+method test_foo2() {
+ var x1: Ref; x1 := new(*)
+ x1.next := null
+ fold list2(x1, 77)
+
+ var x2: Ref; x2 := new(*)
+ x2.next := x1
+ fold list2(x2, 77)
+
+ assert foo(x2, 77)
+}
+
+method test_foo4() {
+ var x1: Ref; x1 := new(*)
+ x1.next := null
+ fold list2(x1, 77)
+
+ var x2: Ref; x2 := new(*)
+ x2.next := x1
+ fold list2(x2, 77)
+
+ var x3: Ref; x3 := new(*)
+ x3.next := x2
+ fold list2(x3, 77)
+
+ var x4: Ref; x4 := new(*)
+ x4.next := x3
+ fold list2(x4, 77)
+
+ assert foo(x4, 77)
+}
+
+
+
+
+predicate list(x: Ref) {
+  acc(x.next) && (x.next != null ==> list(x.next))
+}
+
+// function length(xs: Set[Ref], y: Ref, res: Int): Bool
+  // requires list(y)
+// { length_impl(xs, y, 1, res) }
+
+define length(xs, y, res) length_impl(xs, y, 1, res)
+
+function length_impl(xs: Set[Ref], y: Ref, akk: Int, res: Int): Bool
+  requires list(y)
+{
+  forall x: Ref :: {x in xs} {list(x)} {x.next}
+    x in xs && x == y ==>
+      unfolding list(x) in
+        x.next == null
+          ? res == akk
+          : length_impl(xs, x.next, akk + 1, res)
+}
+
+method test_length1() {
+  var x1: Ref; x1 := new(next)
+  x1.next := null
+  fold list(x1)
+  var xs: Set[Ref] := Set(x1)
+
+  var res: Int
+  assume length(xs, x1, res)
+  assert res == 1
+}
+
+method test_length2() {
+  var x1: Ref; x1 := new(next)
+  x1.next := null
+  fold list(x1)
+
+  var x2: Ref; x2 := new(next)
+  x2.next := x1
+  fold list(x2)
+
+  var xs: Set[Ref] := Set(x1, x2)
+  assert x1 in xs && x2 in xs // Doesn't seem to help
+
+  var res: Int
+  assume length(xs, x2, res)
+  assert res == 2
+}
+
+method test_length4() {
+  var x1: Ref; x1 := new(next)
+  x1.next := null
+  fold list(x1)
+
+  var x2: Ref; x2 := new(next)
+  x2.next := x1
+  fold list(x2)
+
+  var x3: Ref; x3 := new(next)
+  x3.next := x2
+  fold list(x3)
+
+  var x4: Ref; x4 := new(next)
+  x4.next := x3
+  fold list(x4)
+
+  var xs: Set[Ref] := Set(x1, x2, x4, x3)
+
+  var res: Int
+  assume length(xs, x4, res)
+  assert res == 4
+}
+
+
+
+
+define length2(xs, y, res) length2_impl(xs, y, 1, res)
+
+function length2_impl(xs: Set[Ref], y: Ref, akk: Int, res: Int): Bool
+  requires forall x: Ref :: x in xs ==> acc(list(x), wildcard)
+{
+  forall x: Ref :: {x in xs} {list(x)} {x.next}
+    x in xs && x == y ==>
+      unfolding acc(list(x), wildcard) in
+        x.next == null
+          ? res == akk
+          : length2_impl(xs, x.next, akk + 1, res)
+}
+
+method test2_length1() {
+  var x1: Ref; x1 := new(next)
+  x1.next := null
+  fold list(x1)
+  var xs: Set[Ref] := Set(x1)
+
+  var res: Int
+  assume length2(xs, x1, res)
+  assert res == 1
+}
+
+method test2_length2() {
+  var x1: Ref; x1 := new(next)
+  x1.next := null
+  fold acc(list(x1), wildcard)
+
+  var x2: Ref; x2 := new(next)
+  x2.next := x1
+  fold acc(list(x2), wildcard)
+
+  var xs: Set[Ref] := Set(x1, x2)
+  assert x1 in xs && x2 in xs // Doesn't seem to help
+
+  var res: Int
+  assume length2(xs, x2, res)
+  assert res == 2
+}
+
+method test2_length4() {
+  var x1: Ref; x1 := new(next)
+  x1.next := null
+  fold acc(list(x1), wildcard)
+
+  var x2: Ref; x2 := new(next)
+  x2.next := x1
+  fold acc(list(x2), wildcard)
+
+  var x3: Ref; x3 := new(next)
+  x3.next := x2
+  fold acc(list(x3), wildcard)
+
+  var x4: Ref; x4 := new(next)
+  x4.next := x3
+  fold acc(list(x4), wildcard)
+
+  var xs: Set[Ref] := Set(x1, x2, x4, x3)
+
+  var res: Int
+  assume length2(xs, x4, res)
+  assert res == 4
+}
+
+
+
+define length3(xs, y, res) length3_impl(xs, y, 1, res)
+
+function length3_impl(xs: Set[Ref], y: Ref, akk: Int, res: Int): Bool
+  requires forall x: Ref :: {x in xs}{list(x)} x in xs ==> acc(list(x), wildcard)
+{
+  forall x: Ref :: {x in xs} {list(x)} {x.next}
+    x in xs && x == y ==>
+      unfolding acc(list(x), wildcard) in
+        x.next == null
+          ? res == akk
+          : length3_impl(xs, x.next, akk + 1, res)
+}
+
+method test3_length1() {
+  var x1: Ref; x1 := new(next)
+  x1.next := null
+  fold list(x1)
+  var xs: Set[Ref] := Set(x1)
+
+  var res: Int
+  assume length3(xs, x1, res)
+  assert res == 1
+}
+
+method test3_length2() {
+  var x1: Ref; x1 := new(next)
+  x1.next := null
+  fold acc(list(x1), wildcard)
+
+  var x2: Ref; x2 := new(next)
+  x2.next := x1
+  fold acc(list(x2), wildcard)
+
+  var xs: Set[Ref] := Set(x1, x2)
+  assert x1 in xs && x2 in xs // Doesn't seem to help
+
+  var res: Int
+  assume length3(xs, x2, res)
+  assert res == 2
+}
+
+method test3_length4() {
+  var x1: Ref; x1 := new(next)
+  x1.next := null
+  fold acc(list(x1), wildcard)
+
+  var x2: Ref; x2 := new(next)
+  x2.next := x1
+  fold acc(list(x2), wildcard)
+
+  var x3: Ref; x3 := new(next)
+  x3.next := x2
+  fold acc(list(x3), wildcard)
+
+  var x4: Ref; x4 := new(next)
+  x4.next := x3
+  fold acc(list(x4), wildcard)
+
+  var xs: Set[Ref] := Set(x1, x2, x4, x3)
+
+  var res: Int
+  assume length3(xs, x4, res)
+  assert res == 4
+}
