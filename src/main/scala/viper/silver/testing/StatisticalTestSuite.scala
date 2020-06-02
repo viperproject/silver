@@ -136,7 +136,7 @@ trait StatisticalTestSuite extends SilSuite {
 
         // collect timings
         val perPhaseTimings = fe.phases.map { p =>
-          time(p.action)._2
+          time(p.f)._2
         }
 
         val actualErrors: Seq[AbstractError] =
