@@ -13,7 +13,8 @@ import ch.qos.logback.classic.Logger
 
 import scala.io.Source
 import viper.silver.ast._
-import viper.silver.reporter.{Reporter, StdIOReporter}
+import viper.silver.plugin.PluginAwareReporter
+import viper.silver.reporter.StdIOReporter
 import viper.silver.verifier._
 
 
@@ -46,7 +47,7 @@ trait Frontend {
     *
     * @see <a href="https://bitbucket.org/viperproject/viperserver/src">ViperServer</a> for more details.
     */
-  val reporter: Reporter = StdIOReporter()
+  val reporter: PluginAwareReporter = PluginAwareReporter(StdIOReporter())
 
   /** Represents a phase of the frontend */
   case class Phase(name: String, f: () => Unit)
@@ -349,8 +350,6 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
     resetMessages()
   }
 
-  protected def mapVerificationResult(in: VerificationResult): VerificationResult
-
   protected def doParsing(input: String): Result[ParsingResult]
 
   protected def doSemanticAnalysis(input: ParsingResult): Result[SemanticAnalysisResult]
@@ -403,13 +402,14 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
 
   override def verification() = {
     if (state == DefaultStates.ConsistencyCheck && _errors.isEmpty) {
-      _verificationResult = Some(mapVerificationResult(_verifier.get.verify(_program.get)))
+      _verificationResult = Some(_verifier.get.verify(_program.get))
       assert(_verificationResult.isDefined)
       _state = DefaultStates.Verification
     }
   }
 
   override def result: VerificationResult = {
+
     if (_errors.isEmpty) {
       require(state >= DefaultStates.Verification)
       _verificationResult.get
@@ -421,5 +421,6 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
 }
 
 object DefaultStates extends Enumeration {
+  type DefaultStates = Value
   val Initial, Initialized, InputSet, Parsing, SemanticAnalysis, Translation, ConsistencyCheck, Verification = Value
 }

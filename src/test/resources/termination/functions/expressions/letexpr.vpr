@@ -1,0 +1,17 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+import <decreases/int.vpr>
+
+function f(x:Int): Int
+  decreases x if x >= 0
+  ensures result == x
+{
+    x > 0 ? (let y == (f(x-1)) in f(y) + 1) : x
+}
+
+function g(y: Int): Int
+    decreases y if y >= 0
+{
+    //:: ExpectedOutput(termination.failed:tuple.false)
+    let i == (g(y)) in y != 0 ? g(y-1) : i
+}

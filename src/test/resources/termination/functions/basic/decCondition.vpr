@@ -1,0 +1,44 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <decreases/int.vpr>
+
+// f1 decreases x if x >= 0
+// ==> f1 requires termination if x >= 0
+function f1(x:Int): Int
+decreases x if x >= 0
+{
+    x==0 ? g(x) : f1(x-1) + f2(-(x-1))+ g(x)
+}
+
+// f2 decreases -x if x <= 0
+// ==> f2 requires termination if x <= 0
+function f2(x:Int): Int
+decreases -x if x <= 0
+{
+    x==0 ? g(x) : f2(x+1) + f1(-(x+1)) + g(-x)
+}
+
+// g terminates if y >= 0
+function g(y: Int): Int
+    decreases y if y >= 5
+    decreases _ if 0 <= y && y < 5
+
+
+// f1_e decreases x if x >= 0
+// ==> f1_e requires termination if x >= 0
+function f1_e(x:Int): Int
+decreases x if x >= 0
+{
+    //:: ExpectedOutput(termination.failed:tuple.condition.false)
+    x==0 ? g(x) : f1_e(x-1) + f2_e((x-1)) + g(x)
+}
+
+// f2_e decreases -x if x <= 0
+// ==> f2_e requires termination if x <= 0
+function f2_e(x:Int): Int
+decreases -x if x <= 0
+{
+    //:: ExpectedOutput(termination.failed:termination.condition.false)
+    x==0 ? g(x) : f2_e(x+1) + f1_e(-(x+1)) + g(x)
+}

@@ -1,0 +1,18 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import "declaration.vpr"
+import "predicate_instance_nested.vpr"
+import <predicateinstance/pi.vpr>
+
+domain PredicateInstancesWellFoundedOrder {
+    axiom predicate_instances_ax_dec{
+        forall l1: PredicateInstance, l2: PredicateInstance :: {nestedPredicates(l1,l2)}
+            decreasing(l1, l2) <==> nestedPredicates(l1,l2)
+    }
+
+    axiom predicate_instances_ax_bound{
+        forall l1: PredicateInstance :: {bounded(l1)}
+            bounded(l1)
+    }
+}

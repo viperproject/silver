@@ -1,0 +1,25 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field id: Int
+field neighbors: Seq[Int]
+field value: Bool
+
+define valid_index(seq, i) 0 <= i && i < |seq|
+
+define distinct(seq)
+    forall i: Int, j: Int :: { seq[i], seq[j] }
+            valid_index(seq, i) && valid_index(seq, j) && i != j ==>
+                seq[i] != seq[j]
+
+predicate Node(self: Ref) {
+    acc(self.id) && acc(self.neighbors)
+    && distinct(self.neighbors)
+}
+
+function peek_neighbors(graph: Seq[Ref], i: Int): Bool
+    requires 0 <= i && i < |graph|
+    requires acc(Node(graph[i]), wildcard)
+{
+    unfolding acc(Node(graph[i]), wildcard) in true
+}

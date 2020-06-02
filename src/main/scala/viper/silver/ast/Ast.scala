@@ -120,12 +120,11 @@ trait Node extends Traversable[Node] with Rewritable {
     * Allows a transformation with a custom context threaded through
     *
     * @see [[viper.silver.ast.utility.ViperStrategy]] */
-  def transformWithContext[C](transformation: PartialFunction[(Node,C), Node] = PartialFunction.empty,
+  def transformWithContext[C](transformation: PartialFunction[(Node,C), (Node, C)] = PartialFunction.empty,
                              initialContext: C,
-                              updateFunc: PartialFunction[(Node, C), C] = PartialFunction.empty, // use this to update the context passed recursively down
                 recurse: Traverse = Traverse.Innermost)
   : this.type =
-    ViperStrategy.CustomContext[C](transformation, initialContext, updateFunc, recurse) execute[this.type] (this)
+    ViperStrategy.CustomContext[C](transformation, initialContext, recurse) execute[this.type] (this)
 
   def transformNodeAndContext[C](transformation: PartialFunction[(Node,C), (Node, C)],
                                  initialContext: C,
@@ -160,17 +159,6 @@ trait Node extends Traversable[Node] with Rewritable {
 
   /* To be overridden in subclasses of Node. */
   def isValid: Boolean = true
-
-  // Duplicate this node with new children
-  def duplicate(children: Seq[AnyRef]): Node = {
-    ViperStrategy.viperDuplicator(this, children, getPrettyMetadata)
-  }
-
-  // Duplicate this node with new metadata
-  def duplicateMeta(newMeta: (Position, Info, ErrorTrafo)): Node = {
-    val ch = getChildren
-    ViperStrategy.viperDuplicator(this, ch, newMeta)
-  }
 
   // Get metadata with correct types
   def getPrettyMetadata: (Position, Info, ErrorTrafo) = {
@@ -306,8 +294,17 @@ trait ErrorTrafo {
 
   def rTransformations: List[PartialFunction[ErrorReason, ErrorReason]]
 
-  def nTransformations: Option[ErrorNode] // TODO: Why is this an option and not a list? Why is it OK to drop the second such value in the + definition below (if both are defined)?
+  // The node stored bellow points to the previous node in the transformation chain. Each node in the chain has its own
+  // list of error transformations and list of reason transformations. When this chain is traversed from the last
+  // node back to the original node (head of the chain), all error and reason transformations lists are combined accordingly
+  // (check TransformableErrors trait). The head of the chain (original node) has no ErrorNode, hence the Option bellow.
+  // Notice that the nodeTrafoStrat strategy (in TransformableErrors trait) has a repetition, which allows for the full
+  // traversal of the transformation chain.
+  def nTransformations: Option[ErrorNode]
 
+  // Notice that only the RHS node transformation is considered in this combination of ErrorTrafos. This is related with
+  // the order in which a chain of node transformations is traversed and the order in which nodes are combined. Please
+  // check the comments on method 'nTransformations' for further details.
   def +(t: ErrorTrafo): Trafos = {
     Trafos(eTransformations ++ t.eTransformations, rTransformations ++ t.rTransformations, if (t.nTransformations.isDefined) t.nTransformations else nTransformations)
   }

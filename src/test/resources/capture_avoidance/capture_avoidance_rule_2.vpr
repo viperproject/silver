@@ -1,0 +1,105 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Rules for capture-avoiding substitution with bound variables:
+//
+// 1) (forall x : e)[x -> e’] = (forall x : e), where:
+//
+//   x is a bound variable in e, therefore there isn’t any free variable in e named ‘x’.
+//   So the substitution x -> e’ does not change e.
+//
+// 2a) (forall x : e)[y -> e’] = (forall z : e[x -> z][y -> e’]), where:
+//   x != y
+//   x belongs to FV(e’), where FV(e) is the set of free variables in an expression e.
+//   z does not belong to vars(e’) U vars(e) U {x, y} U scope, effectively z is said to be “fresh”.
+//
+// 2b) (forall x : e)[y -> e’] = (forall x : e[y -> e’[z/x]]), where:
+//   x != y
+//   x does not belong to FV(e') but does belong to BV(e’), where BV(e) is the set of bound variables in an expression e.
+//   z does not belong to vars(e’) U vars(e) U {x, y} U scope, effectively z is said to be “fresh”.
+//   e[z/x] denotes the replacement *even of bound* occurrences of x in e with z; a different operation to capture-avoiding substition.
+//
+// 3) (forall x : e)[y -> e’] = (forall x : e[y -> e’]), where:
+//   x != y
+//   x does not belong to vars(e’)
+
+// Tests to enforce rule 2: (forall y : e)[x -> e’] = (forall z : e[y -> z][x -> e’])
+
+function function0(): Bool
+  requires forall x: Int :: x == x
+        // forall x$0: Int :: x$0 == x$0
+
+function function1(z: Int): Bool
+  requires forall x: Int :: x == x && z == 0
+        // forall x$0: Int :: x$0 == x$0 && x == 0
+
+function function2(y: Int, z: Int): Bool
+  requires forall x: Int :: x == x && y == z
+        // forall x$0: Int :: x$0 == x$0 && x == y)
+
+function function3(b: Bool): Bool
+  requires forall z: Int :: b
+        // forall z: Int :: (forall z$0: Int :: z$0 == z$0)
+
+function function4(b: Bool, c: Bool): Bool
+  requires forall z: Int :: b && c
+        // forall z: Int :: (forall z$0: Int :: z$0 == z$0) && (forall z$0: Int :: z$0 == z$0)
+        // forall z: Int :: x == 0 && (forall z$0: Int :: z$0 == z$0) && (y == 0 && (forall z$0: Int :: z$0 == z$0))
+
+function function5(x: Int, y: Int): Bool
+ requires x == 0 || y == 0
+       // y == 0 || x == 0
+
+function function6(z: Int, w: Int): Bool
+  requires forall x: Int :: x == x && forall y: Int :: y == y && z == w
+        // forall x$0: Int :: x$0 == x$0 && (forall y$0: Int :: y$0 == y$0 && x == y)
+
+function function7(b: Bool, z: Int): Bool
+  requires b && z == 5
+        // (forall z: Int :: z == z) && (5 == 5)
+
+function function8(b: Bool, z: Int): Bool
+  requires forall x: Int :: b
+        // forall x$0: Int :: (forall z: Int :: z == z)
+
+function function9(): Bool
+  requires exists x: Int :: x == x
+        // exists x$0: Int :: x$0 == x$0
+
+function function10(z: Int): Bool
+  requires exists x: Int :: x == z ==> x == 0
+        // exists x$0: Int :: x$0 == x ==> x$0 == 0
+
+method client1(x: Int, y: Int)
+  requires x == 0 && y == 0
+{
+  var res: Bool
+
+  res := function0()
+  res := function1(x)
+  res := function2(x, y)
+  res := function3(forall z: Int :: z == z)
+  res := function4(forall z: Int :: z == z, forall z: Int :: z == z)
+  res := function4(x == 0 && forall z: Int :: z == z, y == 0 && forall z: Int :: z == z)
+  res := function5(y, x)
+  res := function6(x, y)
+  res := function7(forall z: Int :: z == z, 5)
+  res := function8(forall z: Int :: z == z, 5)
+  res := function9()
+  res := function10(x)
+}
+
+field f: Int
+
+function function11(s: Set[Ref]): Bool
+  requires forall e: Ref :: e in s ==> acc(e.f)
+        // (forall e$0: Ref :: { (e$0 in Set(e$0)) } (e$0 in Set(e$0)) ==> acc(e$0.f, write))
+{
+  true
+}
+
+method client2(e: Ref)
+  requires acc(e.f)
+{
+  assert function11(Set(e))
+}

@@ -1,0 +1,330 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field root : Ref
+
+	predicate headvalid(this:Ref){
+		   acc(this.root,write)
+		&& (this.root!=null ==> acc(valid(this.root),write))
+		&& (this.root!=null ==> acc(this.root.height       ,1/2))
+		&& (this.root!=null ==> acc(this.root.balanceFactor,1/2))
+	}
+
+	method headinit(this:Ref)
+		requires acc(this.root,write);
+		ensures acc(headvalid(this),write);
+	{
+		this.root := null;
+		fold acc(headvalid(this),write);
+	}
+
+
+	method headhas(this:Ref, k : Int) returns (b : Bool)
+		requires acc(headvalid(this),write);
+		ensures acc(headvalid(this),write);
+	{
+	 var bb : Bool;
+		unfold acc(headvalid(this),write);
+		if (this.root==null){
+			b := false;
+		}else{
+			bb:= has(this.root,k);
+			b := bb;
+		}
+		fold acc(headvalid(this),write);
+	}
+
+
+// new class
+
+	field key    : Int
+	field height : Int
+	field left  : Ref
+	field right : Ref
+        field balanceFactor : Int
+
+	predicate valid(this:Ref){
+		   acc(this.key   ,write)
+		&& acc(this.height,1/2)
+		&& acc(this.left  ,write)
+		&& acc(this.right ,write)
+		&& acc(this.balanceFactor,1/2)
+		&& (this.left!=null ==> acc(valid(this.left),write))
+		&& (this.left!=null ==> acc(this.left.height       ,1/2))
+		&& (this.left!=null ==> acc(this.left.balanceFactor,1/2))
+		&& (this.left!=null ==> this.left.height > 0)
+		&& (this.right!=null ==> acc(valid(this.right),write))
+		&& (this.right!=null ==> acc(this.right.height       ,1/2))
+		&& (this.right!=null ==> acc(this.right.balanceFactor,1/2))
+		&& (this.right!=null ==> this.right.height > 0)
+		&& this.height == ( (this.left==null?0:(this.left.height))>(this.right==null?0:(this.right.height)) ? (this.left==null?0:(this.left.height))+1 : (this.right==null?0:(this.right.height))+1 )
+		&& this.balanceFactor == ((this.left==null?0:(this.left.height)) - (this.right==null?0:(this.right.height)))
+		&& this.balanceFactor<= 1
+		&& this.balanceFactor>=-1
+		&& this.height > 0
+	}
+
+	method init(this:Ref, k : Int)
+		requires acc(this.key   ,write);
+		requires acc(this.height,write);
+		requires acc(this.left  ,write);
+		requires acc(this.right ,write);
+		requires acc(this.balanceFactor,write)
+		ensures acc(valid(this),write);
+		ensures acc(this.height,1/2);
+		ensures acc(this.balanceFactor,1/2);
+		ensures this.height == 1;
+		ensures this.balanceFactor == 0;
+	{
+		this.left   := null;
+		this.right  := null;
+		this.key    := k;
+		close(this);
+	}
+
+
+
+
+
+
+
+
+	method has(this:Ref, k : Int) returns (b : Bool)
+		requires acc(valid(this),write);
+		ensures acc(valid(this),write);
+	{
+		unfold acc(valid(this),write);
+		if (k==(this.key)){
+			b := true;
+		}else{ //k!=this.key
+			if (k < (this.key)){
+				if (this.left!=null){
+					b := has(this.left,k);
+				}else{
+					b := false;
+				}
+			}else{ //k > this.key;
+				if (this.right!=null){
+					b := has(this.right,k);
+				}else{
+					b := false;
+				}
+			}
+		}
+		fold acc(valid(this),write);
+	}
+
+	method getBalanceFactor(this:Ref, rd:Perm) returns ( bf : Int )
+	  requires rd > none
+		requires acc(valid(this),write);
+		requires acc(this.balanceFactor,rd);
+
+		ensures acc(valid(this),write);
+		ensures acc(this.balanceFactor,rd);
+		ensures bf == (this.balanceFactor);
+
+		ensures unfolding acc(valid(this),write) in bf>0 ==> this.left !=null;
+		ensures unfolding acc(valid(this),write) in bf<0 ==> this.right!=null;
+	{
+		unfold acc(valid(this),write);
+		var lh : Int := (this.left ==null ? 0 : this.left .height );
+		var rh : Int := (this.right==null ? 0 : this.right.height );
+		bf := lh-rh;
+
+		fold acc(valid(this),write);
+	}
+
+	//////////////////////////////////////////////////////////
+	method getBalanceFactorI(this:Ref, rd:Perm) returns ( bf : Int )
+	  requires rd > none
+		requires acc(this.left,rd);
+		requires this.left!=null ==> acc(valid(this.left),write);
+		requires this.left!=null ==> acc(this.left.height,rd);
+		requires acc(this.right,rd);
+		requires this.right!=null ==> acc(valid(this.right),write);
+		requires this.right!=null ==> acc(this.right.height,rd);
+		ensures acc(this.left,rd);
+		ensures this.left!=null ==> acc(valid(this.left),write);
+		ensures this.left!=null ==> acc(this.left.height,rd);
+		ensures acc(this.right,rd);
+		ensures this.right!=null ==> acc(valid(this.right),write);
+		ensures this.right!=null ==> acc(this.right.height,rd);
+		ensures bf == ((this.left==null?0:this.left.height)-(this.right==null?0:this.right.height));
+		ensures bf>0 ==> this.left !=null; /* POST1 */
+	{
+		var lh : Int := (this.left ==null ? 0 : this.left .height );
+		var rh : Int := (this.right==null ? 0 : this.right.height );
+		bf := lh-rh;
+
+    /* The following assertions enables proving POST1: from the unfolded
+     * body, the verifier learns that this.right.height > 0.
+     */
+		assert this.right != null ==> unfolding acc(valid(this.right), write) in true;
+	}
+
+	method close(this:Ref)
+		requires acc(this.key   ,write);
+		requires acc(this.height,write);
+		requires acc(this.left  ,write);
+		requires acc(this.right ,write);
+		requires acc(this.balanceFactor,write);
+		requires this.left!=null ==> acc(valid(this.left),write);
+		requires this.left!=null ==> acc(this.left.height       ,1/2);
+		requires this.left!=null ==> acc(this.left.balanceFactor,1/2);
+		requires this.right!=null ==> acc(valid(this.right),write);
+		requires this.right!=null ==> acc(this.right.height       ,1/2);
+		requires this.right!=null ==> acc(this.right.balanceFactor,1/2);
+		requires ( this.left==null ? 0 : this.left.height )-( this.right==null ? 0 : this.right.height ) <= 1;
+		requires ( this.left==null ? 0 : this.left.height )-( this.right==null ? 0 : this.right.height ) >=-1;
+		ensures acc(valid(this),write);
+		ensures acc(this.height       ,1/2);
+		ensures acc(this.balanceFactor,1/2);
+		ensures this.height ==
+			( ( old(this.left)==null ? 0 : old(this.left.height) )>( old(this.right)==null ? 0 : old(this.right.height) )
+				?
+					( old(this.left)==null ? 0 : old(this.left.height) )+1
+				:
+					( old(this.right)==null ? 0 : old(this.right.height))+1
+			);
+		ensures this.balanceFactor ==
+			(( old(this.left)==null ? 0 : old(this.left.height) )-( old(this.right)==null ? 0 : old(this.right.height) ));
+	{
+		var lh : Int := (this.left ==null ? 0 : this.left .height );
+		var rh : Int := (this.right==null ? 0 : this.right.height );
+
+		this.height := ( (( this.left==null ? 0 : this.left.height )>( this.right==null ? 0 : this.right.height )) ? ( this.left==null ? 0 : this.left.height )+1 : ( this.right==null ? 0 : this.right.height )+1);
+		this.balanceFactor := ( this.left==null ? 0 : this.left.height )-( this.right==null ? 0 : this.right.height );
+
+    /* The following two asserts enable subsequently folding valid(this): from the unfolded
+     * bodies the verifier learns that this.left.height > 0 (and analogous for this.right).
+     */
+		assert this.left != null ==> unfolding acc(valid(this.left), write)  in true;
+		assert this.right!= null ==> unfolding acc(valid(this.right), write) in true;
+
+		fold acc(valid(this),write);
+	}
+
+
+	method rebalanceRL(this:Ref) returns ( r : Ref )
+		requires acc(this.key   ,write);
+		requires acc(this.height,write);
+		requires acc(this.left  ,write);
+		requires acc(this.right ,write);
+		requires acc(this.balanceFactor,write);
+		requires this.left!=null;
+		requires acc(valid(this.left),write);
+		requires acc(this.left.height       ,1/2);
+		requires acc(this.left.balanceFactor,1/2);
+		requires this.right!=null ==> acc(valid(this.right),write);
+		requires this.right!=null ==> acc(this.right.height       ,1/2)
+		requires this.right!=null ==> acc(this.right.balanceFactor,1/2)
+		requires this.left.height-(this.right==null?0:this.right.height)==2;
+		requires this.left.balanceFactor==-1;
+		ensures r != null && acc(valid(r),write);
+		ensures acc(r.height       ,1/2);
+		ensures acc(r.balanceFactor,1/2);
+		ensures r.height == old(this.left.height);
+	{
+		unfold acc(valid(this.left),write);
+		r := this.left.right;
+		unfold acc(valid(r),write);
+
+		this.left.right := r.left;
+		close(this.left);
+		r.left     := this.left;
+		this.left       := r.right;
+
+		close(this);
+		r.right    := this;
+		close(r);
+	}
+
+	method rebalanceRR(this:Ref) returns ( r : Ref )
+		requires acc(this.key   ,write);
+		requires acc(this.height,write);
+		requires acc(this.left  ,write);
+		requires acc(this.right ,write);
+		requires acc(this.balanceFactor,write);
+		requires this.left!=null;
+		requires acc(valid(this.left),write);
+		requires acc(this.left.height       ,1/2);
+		requires acc(this.left.balanceFactor,1/2);
+		requires this.right!=null ==> acc(valid(this.right),write);
+		requires this.right!=null ==> acc(this.right.height       ,1/2)
+		requires this.right!=null ==> acc(this.right.balanceFactor,1/2)
+		requires this.left.height - (this.right==null?0:this.right.height)==2;
+		requires this.left.balanceFactor>=0;
+		ensures r != null && acc(valid(r),write);
+		ensures acc(r.height       ,1/2);
+		ensures acc(r.balanceFactor,1/2);
+		ensures r.height == old(this.left.height) || r.height == (old(this.left.height)+1);
+	{
+		unfold acc(valid(this.left),write);
+		r       := this.left;
+		this.left    := r.right;
+		close(this);
+		r.right := this;
+		close(r);
+	}
+
+
+	method rebalanceLR(this:Ref) returns ( r : Ref )
+		requires acc(this.key   ,write);
+		requires acc(this.height,write);
+		requires acc(this.left  ,write);
+		requires acc(this.right ,write);
+		requires acc(this.balanceFactor,write);
+		requires this.left!=null==>acc(valid(this.left),write);
+		requires this.left!=null==>acc(this.left.height       ,1/2);
+		requires this.left!=null==>acc(this.left.balanceFactor,1/2);
+		requires this.right!=null;
+		requires acc(valid(this.right),write);
+		requires acc(this.right.height       ,1/2);
+		requires acc(this.right.balanceFactor,1/2);
+		requires (this.left==null?0:this.left.height)-(this.right.height)==-2;
+		requires this.right.balanceFactor==1;
+		ensures r != null && acc(valid(r),write);
+		ensures acc(r.height       ,1/2);
+		ensures acc(r.balanceFactor,1/2);
+		ensures r.height == old(this.right.height);
+	{
+		unfold acc(valid(this.right),write);
+		r := this.right.left;
+		unfold acc(valid(r),write);
+		this.right.left := r.right;
+		close(this.right);
+		r.right    := this.right;
+		this.right      := r.left;
+		close(this);
+		r.left     := this;
+		close(r);
+	}
+
+	method rebalanceLL(this:Ref) returns ( r : Ref )
+		requires acc(this.key   ,write);
+		requires acc(this.height,write);
+		requires acc(this.left  ,write);
+		requires acc(this.right ,write);
+		requires acc(this.balanceFactor,write);
+		requires this.left!=null==>acc(valid(this.left),write);
+		requires this.left!=null==>acc(this.left.height       ,1/2);
+		requires this.left!=null==>acc(this.left.balanceFactor,1/2);
+		requires this.right!=null;
+		requires acc(valid(this.right),write);
+		requires acc(this.right.height       ,1/2);
+		requires acc(this.right.balanceFactor,1/2);
+		requires (this.left==null?0:this.left.height)-(this.right.height)==-2;
+		requires this.right.balanceFactor<=0;
+		ensures r != null && acc(valid(r),write);
+		ensures acc(r.height       ,1/2);
+		ensures acc(r.balanceFactor,1/2);
+		ensures r.height == old(this.right.height) || r.height == (old(this.right.height)+1);
+	{
+		unfold acc(valid(this.right),write);
+		r       := this.right;
+		this.right    := r.left;
+		close(this);
+		r.left := this;
+		close(r);
+	}
+

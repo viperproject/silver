@@ -85,7 +85,7 @@ object Simplifier {
 
       case root @ Forall(_, _, BoolLit(literal)) =>
         BoolLit(literal)(root.pos, root.info)
-      case root @ Exists(_, BoolLit(literal)) =>
+      case root @ Exists(_, _, BoolLit(literal)) =>
         BoolLit(literal)(root.pos, root.info)
 
       case root @ Minus(IntLit(literal)) => IntLit(-literal)(root.pos, root.info)

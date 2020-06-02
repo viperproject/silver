@@ -1,0 +1,152 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+domain GlobalKPermission {
+
+  unique function globalK$(): Perm
+
+  axiom globalKReadOnly {
+    (globalK$() > none) && (write > globalK$())
+  }
+}
+
+field old$methodPermission: Perm
+
+field joinable$: Bool
+
+field Wand_readonly_for_writeonlylemma$: Int
+
+field Wand_readonly_for_writeonlyin_1$: Ref
+
+field Wand_readonly_for_writeonlyout_1$: Ref
+
+field Wand_readonly_for_writeonlythis_1$: Ref
+
+field WandDemox$: Int
+
+field old$Wand_readonly_for_writeonlyapply$0: Ref
+
+field par$Wand_readonly_for_writeonlyapply$this$_3: Ref
+
+field par$Wand_readonly_for_writeonlyapply$k$: Perm
+
+field par$Wand_readonly_for_writeonlyWand_readonly_for_writeonly_init$this$_5: Ref
+
+field par$Wand_readonly_for_writeonlyWand_readonly_for_writeonly_init$k$_1: Perm
+
+field par$WandDemoWandDemo_init$this$_10: Ref
+
+field par$WandDemoWandDemo_init$k$_2: Perm
+
+field par$WandDemoWand_readonly_for_writeonly_lemma_1$this$_11: Ref
+
+field par$WandDemoWand_readonly_for_writeonly_lemma_1$k$_3: Perm
+
+field par$WandDemoWand_readonly_for_writeonly_lemma_1$__this_1: Ref
+
+field par$WandDemoWand_readonly_for_writeonly_lemma_1$__in_1: Ref
+
+field par$WandDemoWand_readonly_for_writeonly_lemma_1$__out_1: Ref
+
+field par$WandDemoset_val$this$_12: Ref
+
+field par$WandDemoset_val$k$_4: Perm
+
+field par$WandDemoset_val$__v: Int
+
+field par$WandDemodemo$this$_13: Ref
+
+field par$WandDemodemo$k$_5: Perm
+
+function Wand_readonly_for_writeonlyget_in_1$(this$_1: Ref): Ref
+  requires this$_1 != null
+  requires acc(Wand_readonly_for_writeonlyvalid_wand$(this$_1), wildcard)
+{
+  (unfolding acc(Wand_readonly_for_writeonlyvalid_wand$(this$_1), wildcard) in this$_1.Wand_readonly_for_writeonlyin_1$)
+
+}
+
+function Wand_readonly_for_writeonlyget_out_1$(this$_2: Ref): Ref
+  requires this$_2 != null
+  requires acc(Wand_readonly_for_writeonlyvalid_wand$(this$_2), wildcard)
+{
+  (unfolding acc(Wand_readonly_for_writeonlyvalid_wand$(this$_2), wildcard) in this$_2.Wand_readonly_for_writeonlyout_1$
+)
+}
+
+function WandDemoget$(this$_9: Ref): Int
+  requires this$_9 != null
+  requires acc(WandDemoreadonly$(this$_9), wildcard)
+{
+  (unfolding acc(WandDemoreadonly$(this$_9), wildcard) in this$_9.WandDemox$)
+}
+
+predicate Wand_readonly_for_writeonly$MonitorInvariant(this$: Ref) {
+  true
+}
+
+predicate Wand_readonly_for_writeonlyvalid_wand$(this$_4: Ref) {
+  acc(this$_4.Wand_readonly_for_writeonlylemma$, wildcard) && (1 <= this$_4.Wand_readonly_for_writeonlylemma$) && acc(this$_4.Wand_readonly_for_writeonlyin_1$, wildcard) && acc(this$_4.Wand_readonly_for_writeonlyout_1$, wildcard) && acc(this$_4.Wand_readonly_for_writeonlythis_1$, wildcard) && ((this$_4.Wand_readonly_for_writeonlylemma$ == 1) ==> (this$_4.Wand_readonly_for_writeonlythis_1$ != null) && acc(this$_4.Wand_readonly_for_writeonlythis_1$.WandDemox$, 75 / 100) && (this$_4.Wand_readonly_for_writeonlyin_1$ == this$_4.Wand_readonly_for_writeonlythis_1$) && (this$_4.Wand_readonly_for_writeonlyout_1$ == this$_4.Wand_readonly_for_writeonlythis_1$)) && (this$_4.Wand_readonly_for_writeonlylemma$ <= 1)
+}
+
+predicate WandDemo$MonitorInvariant(this$_6: Ref) {
+  true
+}
+
+predicate WandDemoreadonly$(this$_7: Ref) {
+  acc(this$_7.WandDemox$, 25 / 100)
+}
+
+predicate WandDemowriteonly$(this$_8: Ref) {
+  acc(this$_8.WandDemox$, 100 / 100)
+}
+
+method Wand_readonly_for_writeonlyapply$(this$_3: Ref, k$: Perm)
+  requires this$_3 != null
+  requires k$ > none
+  requires write > k$
+  requires acc(Wand_readonly_for_writeonlyvalid_wand$(this$_3), write)
+  requires Wand_readonly_for_writeonlyget_in_1$(this$_3) != null
+  requires acc(WandDemoreadonly$(Wand_readonly_for_writeonlyget_in_1$(this$_3)), write)
+  requires Wand_readonly_for_writeonlyget_out_1$(this$_3) != null
+  ensures acc(WandDemowriteonly$(old(Wand_readonly_for_writeonlyget_out_1$(this$_3))), write)
+{
+  var n$: Ref
+  unfold acc(Wand_readonly_for_writeonlyvalid_wand$(this$_3), write)
+  if (this$_3.Wand_readonly_for_writeonlylemma$ == 1) {
+    unfold acc(WandDemoreadonly$(this$_3.Wand_readonly_for_writeonlythis_1$), write)
+    fold acc(WandDemowriteonly$(this$_3.Wand_readonly_for_writeonlythis_1$), write)
+  }
+}
+
+method Wand_readonly_for_writeonlyWand_readonly_for_writeonly_init$(this$_5: Ref, k$_1: Perm)
+  requires this$_5 != null
+  requires k$_1 > none
+  requires write > k$_1
+  requires acc(this$_5.Wand_readonly_for_writeonlylemma$, 100 / 100)
+  requires acc(this$_5.Wand_readonly_for_writeonlyin_1$, 100 / 100)
+  requires acc(this$_5.Wand_readonly_for_writeonlyout_1$, 100 / 100)
+  requires acc(this$_5.Wand_readonly_for_writeonlythis_1$, 100 / 100)
+  ensures acc(this$_5.Wand_readonly_for_writeonlylemma$, 100 / 100) && (this$_5.Wand_readonly_for_writeonlylemma$ == 0)
+  ensures acc(this$_5.Wand_readonly_for_writeonlyin_1$, 100 / 100) && (this$_5.Wand_readonly_for_writeonlyin_1$ == null)
+
+  ensures acc(this$_5.Wand_readonly_for_writeonlyout_1$, 100 / 100) && (this$_5.Wand_readonly_for_writeonlyout_1$ == null)
+  ensures acc(this$_5.Wand_readonly_for_writeonlythis_1$, 100 / 100) && (this$_5.Wand_readonly_for_writeonlythis_1$ == null)
+{
+  var n$_1: Ref
+  this$_5.Wand_readonly_for_writeonlylemma$ := 0
+  this$_5.Wand_readonly_for_writeonlyin_1$ := null
+  this$_5.Wand_readonly_for_writeonlyout_1$ := null
+  this$_5.Wand_readonly_for_writeonlythis_1$ := null
+}
+
+method WandDemoWandDemo_init$(this$_10: Ref, k$_2: Perm)
+  requires this$_10 != null
+  requires k$_2 > none
+  requires write > k$_2
+  requires acc(this$_10.WandDemox$, 100 / 100)
+  ensures acc(WandDemowriteonly$(this$_10), write)
+{
+  var n$_2: Ref
+  fold acc(WandDemowriteonly$(this$_10), write)
+}

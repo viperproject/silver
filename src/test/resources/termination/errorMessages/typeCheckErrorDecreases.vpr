@@ -1,0 +1,28 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <decreases/int.vpr>
+
+function f(x: Int): Int
+//:: ExpectedOutput(typechecker.error)
+decreases m(x)
+{
+  x == 0 ? 0 : f(x-1)
+}
+
+method m(x: Int) returns (res: Int)
+ requires x >= 0
+ ensures res == x
+{
+    res := x
+}
+
+field val: Int
+
+method t(r: Ref)
+    requires acc(r.val)
+    //:: ExpectedOutput(typechecker.error)
+    decreases f(r.val) if m(r.val) == 1
+{
+    t(r)
+}

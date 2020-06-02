@@ -1,0 +1,13 @@
+field f: Int
+
+method test2() {
+    var x: Ref
+    inhale acc(x.f) && x.f == 1
+    var p: Perm
+    assume none <= p && p <= write
+    exhale acc(x.f, p)
+    assume p == write
+    inhale acc(x.f, p)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert x.f == 1
+}

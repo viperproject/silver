@@ -10,7 +10,6 @@ import java.nio.file.Paths
 import org.scalatest.{FunSuite, Matchers}
 import viper.silver.ast.{NoPosition, Position, Program}
 import viper.silver.frontend.{SilFrontend, SilFrontendConfig}
-import viper.silver.reporter.StdIOReporter
 import viper.silver.verifier.errors.ErrorNode
 import viper.silver.verifier._
 
@@ -18,8 +17,8 @@ class IOTests extends FunSuite with Matchers {
 
   val test_prefix = s"Test standard IO of SilFrontend"
 
-  val verifiableFile = "all/basic/let.sil"
-  val nonExistingFile = "bla/bla/bla.sil"
+  val verifiableFile = "all/basic/let.vpr"
+  val nonExistingFile = "bla/bla/bla.vpr"
 
   test(s"$test_prefix: some output is produces") {
     runOneCombo(verifiableFile, pass = true, Seq(), Seq())
@@ -29,8 +28,8 @@ class IOTests extends FunSuite with Matchers {
     runOneCombo(verifiableFile, pass = true, Seq("--bla"), Seq("Unknown option"))
   }
 
-  test(s"$test_prefix: handle unreadable file") {
-    runOneCombo(nonExistingFile, pass = true, Seq(), Seq("Cannot read"))
+  test(s"$test_prefix: handle non-existing file") {
+    runOneCombo(nonExistingFile, pass = true, Seq(), Seq("Cannot find"))
   }
 
   test(s"$test_prefix: handling parseOnly mode and copyright") {
@@ -82,7 +81,7 @@ class IOTests extends FunSuite with Matchers {
       file.toString
     } else {
       // simulate absent file
-      val temp_file = File.createTempFile("io_testing", ".sil")
+      val temp_file = File.createTempFile("io_testing", ".vpr")
       val absent_fname = temp_file.getPath
       temp_file.delete()
       absent_fname
@@ -126,8 +125,6 @@ class IOTests extends FunSuite with Matchers {
       instance.parseCommandLine(args)
       instance.config
     }
-
-    override val reporter = StdIOReporter("MockStdIOReporter")
   }
 
   class MockIOVerifier(val pass: Boolean) extends Verifier {

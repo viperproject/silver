@@ -188,11 +188,6 @@ object CfgGenerator {
         addStatement(JumpStmt(headTarget))
         // set label after loop
         addLabel(afterTarget)
-      case Constraining(vars, body) =>
-        val after = TmpLabel.generate("after")
-        val cfg = statementToCfg(body)
-        addStatement(ConstrainingStmt(vars, cfg, after))
-        addLabel(after)
       case Seqn(ss, scopedDecls) =>
         val locals = scopedDecls.collect {case l: LocalVarDecl => l}
         for (local <- locals) {
@@ -216,7 +211,6 @@ object CfgGenerator {
            _: Package |
            _: Apply |
            _: MethodCall |
-           _: Fresh |
            _: NewStmt |
            _: Assert |
            _: LocalVarDeclStmt |

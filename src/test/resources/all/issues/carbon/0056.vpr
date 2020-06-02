@@ -1,0 +1,118 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// chaliceSuite/examples/dining-philosophers.chalice
+domain GlobalKPermission {
+
+  unique function globalK$(): Perm
+
+  axiom globalKReadOnly {
+    (globalK$() > none) && (write > globalK$())
+  }
+}
+
+field old$methodPermission: Perm
+
+field joinable$: Bool
+
+field Philosopherleft$: Ref
+
+field Philosopherright$: Ref
+
+field par$Philosopherinit$this$_1: Ref
+
+field par$Philosopherinit$k$: Perm
+
+field par$Philosopherinit$f1: Ref
+
+field par$Philosopherinit$f2: Ref
+
+field par$Philosopherrun$this$_2: Ref
+
+field par$Philosopherrun$k$_1: Perm
+
+field par$Programmain$this$_8: Ref
+
+field par$Programmain$k$_2: Perm
+
+function PhilosophergetLeft$(this$_3: Ref): Ref
+  requires this$_3 != null
+  requires acc(Philosophervalid$(this$_3), wildcard)
+  ensures result != null
+{
+  (unfolding acc(Philosophervalid$(this$_3), wildcard) in this$_3.Philosopherleft$)
+}
+
+function PhilosophergetRight$(this$_4: Ref): Ref
+  requires this$_4 != null
+  requires acc(Philosophervalid$(this$_4), wildcard)
+  ensures result != null
+{
+  (unfolding acc(Philosophervalid$(this$_4), wildcard) in this$_4.Philosopherright$)
+}
+
+predicate Philosopher$MonitorInvariant(this$: Ref) {
+  true
+}
+
+predicate Philosophervalid$(this$_5: Ref) {
+  acc(this$_5.Philosopherleft$, write) && acc(this$_5.Philosopherright$, write) && (this$_5.Philosopherleft$ != null) && (this$_5.Philosopherright$ != null)
+}
+
+predicate Fork$MonitorInvariant(this$_6: Ref) {
+  true && true
+}
+
+predicate Program$MonitorInvariant(this$_7: Ref) {
+  true
+}
+
+method Philosopherinit$(this$_1: Ref, k$: Perm, f1: Ref, f2: Ref)
+  requires this$_1 != null
+  requires k$ > none
+  requires write > k$
+  requires (f1 != null) && (f2 != null)
+  requires acc(this$_1.Philosopherright$, write) && (acc(this$_1.Philosopherleft$, write) && true)
+  ensures acc(Philosophervalid$(this$_1), write)
+  ensures (PhilosophergetLeft$(this$_1) == f1) && (PhilosophergetRight$(this$_1) == f2)
+{
+  var n$: Ref
+  var a$: Ref
+  var b$: Ref
+  var c$: Ref
+  this$_1.Philosopherleft$ := f1
+  this$_1.Philosopherright$ := f2
+  fold acc(Philosophervalid$(this$_1), write)
+}
+
+method Philosopherrun$(this$_2: Ref, k$_1: Perm)
+  requires this$_2 != null
+  requires k$_1 > none
+  requires write > k$_1
+  requires acc(Philosophervalid$(this$_2), write)
+  requires true
+  requires true
+  requires true
+  requires true
+  requires true
+{
+  var n$_1: Ref
+  var a$_1: Ref
+  var b$_1: Ref
+  var c$_1: Ref
+  while (true)
+    invariant acc(Philosophervalid$(this$_2), write) && true && true && true && true && true
+  {
+    unfold acc(Philosophervalid$(this$_2), write)
+    inhale acc(Fork$MonitorInvariant(this$_2.Philosopherleft$), write)
+    unfold acc(Fork$MonitorInvariant(this$_2.Philosopherleft$), write)
+    inhale acc(Fork$MonitorInvariant(this$_2.Philosopherright$), write)
+    unfold acc(Fork$MonitorInvariant(this$_2.Philosopherright$), write)
+    fold acc(Fork$MonitorInvariant(this$_2.Philosopherleft$), write)
+    exhale acc(Fork$MonitorInvariant(this$_2.Philosopherleft$), write)
+    fold acc(Fork$MonitorInvariant(this$_2.Philosopherright$), write)
+    exhale acc(Fork$MonitorInvariant(this$_2.Philosopherright$), write)
+    fold acc(Philosophervalid$(this$_2), write)
+  }
+}
+

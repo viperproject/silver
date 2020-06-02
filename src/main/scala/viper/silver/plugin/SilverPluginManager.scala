@@ -22,22 +22,21 @@ import viper.silver.verifier.{AbstractError, VerificationResult}
 class SilverPluginManager(val plugins: Seq[SilverPlugin]) {
 
   protected var _errors: Seq[AbstractError] = Seq()
-  def errors = _errors
+  def errors: Seq[AbstractError] = _errors
 
   def foldWithError[T](start: T)(f: (T, SilverPlugin) => T): Option[T] = {
-    var v: Option[T] = Some(start)
-    if (v.isDefined) {
-      plugins.foreach(plugin => {
-        val vprime = f(v.get, plugin)
-        v = if (plugin.errors.isEmpty){
+    plugins.foldLeft[Option[T]](Some(start)) {
+      case (Some(nv), plugin) => {
+        val vprime = f(nv, plugin)
+        if (plugin.errors.isEmpty) {
           Some(vprime)
         } else {
           _errors ++= plugin.errors
           None
         }
-      })
+      }
+      case (None, _) => None
     }
-    v
   }
 
   def beforeParse(input: String, isImported: Boolean): Option[String] =
@@ -133,14 +132,14 @@ object SilverPluginManager {
         classOf[viper.silver.frontend.SilFrontendConfig])
       Some(constructor.newInstance(reporter, logger, cmdArgs))
     } catch {
-      case nsm1: NoSuchMethodException =>
+      case _: NoSuchMethodException =>
         try {
-          Some(Class.forName(clazzName).newInstance())
+          Some(Class.forName(clazzName).getConstructor().newInstance())
         } catch {
-          case nsm2: NoSuchMethodException =>
+          case _: NoSuchMethodException =>
             throw PluginWrongArgsException(clazzName)
         }
-      case cnf: ClassNotFoundException =>
+      case _: ClassNotFoundException =>
         None
     }
     clazz match {
@@ -175,11 +174,11 @@ object SilverPluginManager {
     */
   def resolve(clazzName: String): Some[SilverPlugin] = {
     val clazz = try {
-      Some(Class.forName(clazzName).newInstance())
+      Some(Class.forName(clazzName).getConstructor().newInstance())
     } catch {
-      case nsm1: NoSuchMethodException =>
+      case _: NoSuchMethodException =>
         throw PluginWrongArgsException(clazzName)
-      case cnf: ClassNotFoundException =>
+      case _: ClassNotFoundException =>
         None
     }
     clazz match {
