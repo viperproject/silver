@@ -1,0 +1,15 @@
+field val: Int
+
+predicate p(a: Ref) {
+  acc(a.val)
+}
+
+function foo(set: Set[Ref]): Int
+  requires forall a: Ref :: { p(a) } a in set ==> p(a)
+
+method meth(set: Set[Ref])
+requires (forall a: Ref :: { p(a) } a in set ==> p(a)) &&
+         foo(set) == 0
+{
+  assert foo(set) == 0
+}

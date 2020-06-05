@@ -13,7 +13,6 @@ method t1(r: Ref) returns ()
     requires forall x:Ref :: {pred(x)} true ==> acc(pred(x), wildcard)
 {
     t1(r)
-    //:: UnexpectedOutput(call.precondition:negative.permission, /silicon/issue/409/)
     t1(r)
 }
 
@@ -21,7 +20,6 @@ method t2(r: Ref) returns ()
     requires forall x:Ref :: {x.f} true ==> acc(x.f, wildcard)
 {
     t2(r)
-    //:: UnexpectedOutput(call.precondition:negative.permission, /silicon/issue/409/)
     t2(r)
 }
 
