@@ -259,9 +259,6 @@ trait SilFrontend extends DefaultFrontend {
   }
 
   override def doParsing(input: String): Result[PProgram] = {
-    val o = new ReflectOfMe
-    o.runMN()
-
     val file = _inputFile.get
     _plugins.beforeParse(input, isImported = false) match {
       case Some(inputPlugin) =>
