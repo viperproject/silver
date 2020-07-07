@@ -6,8 +6,54 @@
 
 package viper.silver.verifier
 
+import fastparse.core.Parsed
 import viper.silver.ast._
 import viper.silver.ast.utility.rewriter.Rewritable
+
+abstract class ModelEntry()
+case class SingleEntry(value: String) extends ModelEntry {
+  override def toString: String = value
+}
+case class MapEntry(options: Map[Seq[String], String], els: String) extends ModelEntry {
+  override def toString: String = {
+    if (options.nonEmpty)
+      "{\n" + options.map(o => "    " + o._1.mkString(" ") + " -> " + o._2).mkString("\n") + "\n    else -> " + els +"\n}"
+    else
+      "{\n    " + els +"\n}"
+  }
+}
+case class Model(entries: Map[String,ModelEntry]) {
+  override def toString: String = entries.map(e => e._1 + " -> " + e._2).mkString("\n")
+}
+
+trait Counterexample {
+  val model: Model
+  override def toString: String = model.toString
+}
+
+case class SimpleCounterexample(model: Model) extends Counterexample
+
+trait CounterexampleTransformer {
+  def f: Counterexample => Counterexample
+}
+
+object CounterexampleTransformer {
+  def apply(ff: Counterexample => Counterexample) = {
+    new CounterexampleTransformer {
+      def f: (Counterexample) => Counterexample = ff
+    }
+  }
+}
+
+object Model {
+
+  def apply(modelString: String) : Model = {
+    ModelParser.model.parse(modelString) match{
+      case Parsed.Success(m, index) => return m
+      case f@Parsed.Failure(last, index, extra) => throw new Exception(f.toString)
+    }
+  }
+}
 
 trait ErrorMessage {
   def id: String
@@ -22,9 +68,17 @@ trait ErrorMessage {
 trait VerificationError extends AbstractError with ErrorMessage {
   def reason: ErrorReason
   def readableMessage(withId: Boolean = false, withPosition: Boolean = false): String
-  override def readableMessage = readableMessage(false, true)
+  override def readableMessage : String = {
+    val rm : String = readableMessage(false, true)
+    if (counterexample.isDefined){
+      rm + "\n" + counterexample.get.toString
+    }else{
+      rm
+    }
+  }
   def loggableMessage = s"$fullId-$pos"
   def fullId = s"$id:${reason.id}"
+  var counterexample : Option[Counterexample] = None
 }
 
 /// used when an error/reason has no sensible node to use
@@ -89,7 +143,9 @@ abstract class AbstractVerificationError extends VerificationError {
     val errorT = offendingNode.transformError(this)
     val reasonT = errorT.reason.offendingNode.transformReason(errorT.reason)
 
-    errorT.withReason(reasonT)
+    val res = errorT.withReason(reasonT)
+    res.counterexample = counterexample
+    res
   }
 
   def withReason(reason: ErrorReason): AbstractVerificationError
@@ -169,8 +225,21 @@ object errors {
     def withReason(r: ErrorReason) = PreconditionInAppFalse(offendingNode, r)
   }
 
+  case class ErrorWrapperWithExampleTransformer(wrappedError: AbstractVerificationError, transformer: CounterexampleTransformer) extends AbstractVerificationError {
+    val id = wrappedError.id
+    val text = "Wrapped error, should be unwrapped"
+    val offendingNode = wrappedError.offendingNode
+    val reason = wrappedError.reason
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) =
+      ErrorWrapperWithExampleTransformer(wrappedError.withNode(offendingNode).asInstanceOf[AbstractVerificationError], transformer)
+    def withReason(r: ErrorReason) = ErrorWrapperWithExampleTransformer(wrappedError.withReason(r), transformer)
+  }
+
   def PreconditionInAppFalse(offendingNode: FuncApp): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => PreconditionInAppFalse(offendingNode, reason))
+
+  def ErrorWrapperWithExampleTransformer(pve: PartialVerificationError, transformer: CounterexampleTransformer) : PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => ErrorWrapperWithExampleTransformer(pve.f(reason).asInstanceOf[AbstractVerificationError], transformer))
 
   case class ExhaleFailed(offendingNode: Exhale, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "exhale.failed"

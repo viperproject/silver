@@ -53,6 +53,8 @@ import viper.silver.{FastMessaging, FastPositions}
  * provides code to invoke the parser, parse common command-line options and print
  * error messages in a user-friendly fashion.
  */
+case class MissingDependencyException(msg: String) extends Exception
+
 trait SilFrontend extends DefaultFrontend {
 
   /**
@@ -197,9 +199,14 @@ trait SilFrontend extends DefaultFrontend {
     }
 
     // Parse, type check, translate and verify
-    runAllPhases()
-
-    finish()
+    try {
+      runAllPhases()
+      finish()
+    }
+    catch {
+        case MissingDependencyException(msg) =>
+          println("Missing dependency exception: " + msg)
+    }
   }
 
   override def reset(input: Path): Unit = {

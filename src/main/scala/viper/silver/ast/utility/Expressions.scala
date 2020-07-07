@@ -113,23 +113,21 @@ object Expressions {
   }
 
   // collects the free variables in an expression
-  def freeVariables(e: Exp) : Set[AbstractLocalVar] = freeVariablesExcluding(e, Set())
+  def freeVariables(e: Exp): Set[AbstractLocalVar] = freeVariablesExcluding(e, Set[AbstractLocalVar]())
+
+  // collects the free variables in an expression, *excluding* a given sequence of variables to ignore
+  def freeVariablesExcluding(e: Exp, toIgnore: Seq[AbstractLocalVar]): Set[AbstractLocalVar] =
+    freeVariablesExcluding(e, toIgnore.toSet)
 
   // collects the free variables in an expression, *excluding* a given set of variables to ignore
-  def freeVariablesExcluding(e:Exp, toIgnore:Set[AbstractLocalVar]) : Set[AbstractLocalVar] =
-  {
+  def freeVariablesExcluding(e: Exp, toIgnore: Set[AbstractLocalVar]): Set[AbstractLocalVar] = {
     e.shallowCollect{
-      case Let(binding,exp,body) =>
+      case Let(binding, exp, body) =>
         freeVariablesExcluding(exp, toIgnore) union freeVariablesExcluding(body, toIgnore + binding.localVar)
-      case Forall(boundVars,triggers,body) => {
-        val ignoring = toIgnore union (boundVars map (_.localVar)).toSet
-        triggers.flatMap(t => t.exps.flatMap(freeVariablesExcluding(_, ignoring))).toSet union freeVariablesExcluding(body, ignoring)
-      }
-      case Exists(boundVars,triggers,body) => {
-        val ignoring = toIgnore union (boundVars map (_.localVar)).toSet
-        triggers.flatMap(t => t.exps.flatMap(freeVariablesExcluding(_, ignoring))).toSet union freeVariablesExcluding(body, ignoring)
-      }
-      case v@AbstractLocalVar(name) if !toIgnore.contains(v) =>
+      case q: QuantifiedExp =>
+        val ignoring = toIgnore union (q.variables map (_.localVar)).toSet
+        q.subExps.flatMap(freeVariablesExcluding(_, ignoring))
+      case v@AbstractLocalVar(_) if !toIgnore.contains(v) =>
         Seq(v)
     }.flatten.toSet
   }

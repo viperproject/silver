@@ -1,0 +1,41 @@
+field elem: Int
+field next: Ref
+
+predicate list2(this: Ref, i: Int) {
+  acc(this.elem) && acc(this.next) &&
+  (this.next != null ==> list2(this.next, i))
+}
+
+function foo(l:Ref, i: Int) : Bool
+  requires list2(l, i)
+{
+  forall j: Int :: {list2(l,j)} {foo(l.next, j)}
+        i == j ==> unfolding list2(l,j) in l.next == null ? true : foo(l.next, j)
+}
+
+method needsPredicateTrigger() {
+  var k : Int
+  var l1 : Ref
+  l1 := new(elem, next)
+  l1.next := null
+
+  fold list2(l1, k)
+
+  /**
+   This yields a proof which does not need the predicate based trigger of foo()'s axiom,
+   because the axiom can be unfolded one level per function application.
+   This just shows that the trigger really is what's missing in the assertion below.
+   **/
+  // assert foo(l1, k)
+
+  var l2 : Ref
+  l2 := new(elem, next)
+  l2.next := l1
+
+  fold list2(l2, k)
+
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/491/)
+  assert foo(l2, k)
+
+}
+
