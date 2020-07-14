@@ -2,6 +2,10 @@
 #### Date 17/07/20     [Download](http://www.pm.inf.ethz.ch/research/viper/downloads.html)
 
 ### Changes in Viper Language
+* Axiom names are now optional.
+* Experimental support for **termination checks** via dedicated plugin [Link to section in the tutorial](). **TBD**
+* Experimental support for **counter examples**:
+  * Added the command line option `--counterexample` to return, for each verification error, either a backend-independent counter example for only the values of local variables, or a native backend-specific counter example (in both Silicon and Carbon).
 
 ### Bug fixes
 
