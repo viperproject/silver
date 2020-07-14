@@ -1,3 +1,16 @@
+## Release 2020.7
+#### Date 17/07/20     [Download](http://www.pm.inf.ethz.ch/research/viper/downloads.html)
+
+### Changes in Viper Language
+
+### Bug fixes
+
+### Viper Language API changes: 
+
+### Backend-specific upgrades/changes
+
+---
+
 ## Release 2020.1
 #### Date 31/01/20     [Download](http://www.pm.inf.ethz.ch/research/viper/downloads.html)
 
