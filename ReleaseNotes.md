@@ -39,7 +39,6 @@
 * [Symbolic Execution Verifier](https://bitbucket.org/viperproject/silicon/)
   * Non-aliasing incompleteness when using QPs [(Silicon, 502)](https://github.com/viperproject/silicon/issues/502)
   * Z3 4.8.6 nightly exhausts memory on issues/carbon/0210.sil — matching loop? [(Silicon, 397)](https://github.com/viperproject/silicon/issues/397)
-  * Non-aliasing incompleteness when using QPs [(Silicon, 502)](https://github.com/viperproject/silicon/issues/502)
   * Failing assert after magic wand application [(Silicon, 498)](https://github.com/viperproject/silicon/issues/498)
   * Verification aborted exceptionally: pure quantifier and unfolding expression in function body [(Silicon, 491)](https://github.com/viperproject/silicon/issues/491)
 
