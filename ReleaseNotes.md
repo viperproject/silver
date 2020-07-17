@@ -12,6 +12,9 @@
     }
 	```
 * Experimental support for **termination checks** [tutorial section about termination](http://viper.ethz.ch/tutorial/#termination).
+  * This extension provides support for specifying termination measures for heap-dependent functions and using them to prove termination.
+  * There is also support for proving termination of methods and loops, but those are still experimental and the semantics of the specifications might change.
+  * Details are explained in the Viper tutorial.
 * Experimental support for **counter examples**:
   * Added the command line option `--counterexample` to return, for each verification error, either a backend-independent counter example for only the values of local variables, or a native backend-specific counter example (in both Silicon and Carbon).
 
