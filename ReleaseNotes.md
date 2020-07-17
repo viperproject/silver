@@ -2,7 +2,8 @@
 #### Date 17/07/20     [Download](http://www.pm.inf.ethz.ch/research/viper/downloads.html)
 
 ### Changes in Viper Language
-* Axiom names are now optional. For example, we can have:
+* Axiom names are now optional [(Silver, 193)](https://github.com/viperproject/silver/issues/193).
+For example, we now allow domains such as:
 	```
     domain MyDomain {
       function foo(): Int
@@ -13,24 +14,18 @@
 	```
 * Experimental support for **termination checks** [tutorial section about termination](http://viper.ethz.ch/tutorial/#termination).
   * This extension provides support for specifying termination measures for heap-dependent functions and using them to prove termination.
-  * There is also support for proving termination of methods and loops, but those are still experimental and the semantics of the specifications might change.
+  * There is also support for proving termination of methods and loops, but those are still experimental and support for these features as well as the semantics of the specifications might change.
   * Details are explained in the Viper tutorial.
 * Experimental support for **counter examples**:
   * Added the command line option `--counterexample` to return, for each verification error, either a backend-independent counter example for only the values of local variables, or a native backend-specific counter example (in both Silicon and Carbon).
 
 ### Bug fixes
-* Z3 "out of memory"s on example quantifiedpredicates/basic/partial_permissions.sil [(Silicon, 375)](https://github.com/viperproject/silicon/issues/375)
-* Potential matching loop in all/sequences/sequences.vpr [(Silicon, 406)](https://github.com/viperproject/silicon/issues/406)
-* The consistency check and fast parse have duplicated code which is differing, factoring is needed [(Silver, 301)](https://github.com/viperproject/silver/issues/301)
-* QP example third_party/fmse-2015-04-16.sil takes too long to verify [(Silicon, 289)](https://github.com/viperproject/silicon/issues/289)
-* Check type-soundness of Expressions.instantiateVariables and Expressions.renameVariables [(Silver, 112)](https://github.com/viperproject/silver/issues/112)
-* Refactor LHS old label and remove FastParse references [(Silver, 441)](https://github.com/viperproject/silver/issues/441)
-* Test case linked-list-predicates doesn't reliably terminate [(Silver, 234)](https://github.com/viperproject/silver/issues/234)
-* Make axiom names optional [(Silver, 193)](https://github.com/viperproject/silver/issues/193)
-* Examples repo: cav2017/FollyRWSpinlock_err_mod.sil doesn't parse [(Silver, 446)](https://github.com/viperproject/silver/issues/446)
-* Intermittent Internal Failures on Viper Online [(Silver, 264)](https://github.com/viperproject/silver/issues/264)
-* Error parsing programs in examples [(Silver, 457)](https://github.com/viperproject/silver/issues/457)
-* Refactoring of the frontend phases [(Silver, 270)](https://github.com/viperproject/silver/issues/270)
+* 64-bit Z3 is now shipped with the Windows distribution (the 32-bit version which was inadvertently still being shipped can cause memory issues for some examples) [(Silicon, 375)](https://github.com/viperproject/silicon/issues/375)
+* Intermittent Failures on Viper Online (web interface) should no longer happen (but for now we only support the default backend) [(Silver, 264)](https://github.com/viperproject/silver/issues/264)
+* Reserved words are declared in only one place in the codebase [(Silver, 301)](https://github.com/viperproject/silver/issues/301)
+* The phases used to organise programmatically calling verifiers (frontends, in the codebase) have been made more consistent and flexible [(Silver, 270)](https://github.com/viperproject/silver/issues/270)
+* Several examples which had long runtimes are now apparently stable (but we would appreciate any feedback to the contrary!). e.g. [(Silver, 457)](https://github.com/viperproject/silver/issues/457)
+
 
 ### Viper Language API changes:
 * The `DomainAxiom` AST node no longer exists, it was replaced by:
@@ -40,17 +35,12 @@
 ### Backend-specific upgrades/changes
 
 * [Symbolic Execution Verifier](https://bitbucket.org/viperproject/silicon/)
-  * Non-aliasing incompleteness when using QPs [(Silicon, 502)](https://github.com/viperproject/silicon/issues/502)
-  * Z3 4.8.6 nightly exhausts memory on issues/carbon/0210.sil — matching loop? [(Silicon, 397)](https://github.com/viperproject/silicon/issues/397)
-  * Failing assert after magic wand application [(Silicon, 498)](https://github.com/viperproject/silicon/issues/498)
-  * Verification aborted exceptionally: pure quantifier and unfolding expression in function body [(Silicon, 491)](https://github.com/viperproject/silicon/issues/491)
+  * More-complete aliasing properties can be deduced in programs using quantified permissions [(Silicon, 502)](https://github.com/viperproject/silicon/issues/502)
+  * Potential crash removed when using quantifiers and unfolding expressions in a function body [(Silicon, 491)](https://github.com/viperproject/silicon/issues/491)
 
 * [Verification Condition Generation Verifier](https://bitbucket.org/viperproject/carbon/)
-  * Add well-definedness checks for built-in axiomatisations [(Carbon, 36)](https://github.com/viperproject/carbon/issues/36)
-  * Test case quantifiedpredicates/issues//block_array.sil is sporadically timing-out (on the build server) [(Carbon, 176)](https://github.com/viperproject/carbon/issues/176)
-  * Failing assert after magic wand application [(Carbon, 358)](https://github.com/viperproject/carbon/issues/358)
-  * Cannot restore full permission after a loop encoded with labels [(Carbon, 352)](https://github.com/viperproject/carbon/issues/352)
-  * Sequence containment does not work in triggers [(Carbon, 349)](https://github.com/viperproject/carbon/issues/349)
+  * Axioms used for sequence operations should be more complete (especially for cases such as dropping more elements than a sequence has) [(Carbon, 36)](https://github.com/viperproject/carbon/issues/36)
+  * Sequence contains function now works in triggers [(Carbon, 349)](https://github.com/viperproject/carbon/issues/349)
   * Carbon should now kill child Boogie and Z3 processes eagerly on stop(); this behaviour may be setup-dependent so please report any outstanding issues [(Carbon, 225)](https://github.com/viperproject/carbon/issues/225)
   * Predicates whose parameters include bound variables (e.g. from outer-quantifiers) now work in function specifications [(Carbon, 271)](https://github.com/viperproject/carbon/issues/271)
   * Work in progress on correct handling of perm-expressions inside unfolding expressions / quantifiers: some issues have been fixed; a summary of the current status is provided [(Carbon, 348)](https://github.com/viperproject/carbon/issues/348)
