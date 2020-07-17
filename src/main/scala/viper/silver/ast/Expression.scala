@@ -364,11 +364,10 @@ object FuncApp {
 
 /** User-defined domain function application. */
 case class DomainFuncApp(funcname: String, args: Seq[Exp], typVarMap: Map[TypeVar, Type])
-                        (val pos: Position, val info: Info, typPassed: => Type, val domainName:String, val errT: ErrorTrafo)
+                        (val pos: Position, val info: Info, override val typ: Type, val domainName:String, val errT: ErrorTrafo)
   extends AbstractDomainFuncApp with PossibleTrigger {
   override lazy val check : Seq[ConsistencyError] = args.flatMap(Consistency.checkPure)
 
-  def typ = typPassed
   def func = (p:Program) => p.findDomainFunction(funcname)
   def getArgs = args
   def withArgs(newArgs: Seq[Exp]) = DomainFuncApp(funcname,newArgs,typVarMap)(pos,info,typ,domainName, errT)
@@ -376,7 +375,7 @@ case class DomainFuncApp(funcname: String, args: Seq[Exp], typVarMap: Map[TypeVa
 
   //Strangely, the copy method is not a member of the DomainFuncApp case class,
   //therefore, We need this method that does the copying manually
-  def copy(funcname: String = this.funcname, args: Seq[Exp] = this.args, typVarMap: Map[TypeVar, Type] = this.typVarMap): (Position, Info, => Type, String, ErrorTrafo) => DomainFuncApp ={
+  def copy(funcname: String = this.funcname, args: Seq[Exp] = this.args, typVarMap: Map[TypeVar, Type] = this.typVarMap): (Position, Info, Type, String, ErrorTrafo) => DomainFuncApp ={
     DomainFuncApp(this.funcname,args,typVarMap)
   }
 }
