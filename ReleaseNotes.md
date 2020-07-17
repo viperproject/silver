@@ -48,6 +48,9 @@
   * Failing assert after magic wand application [(Carbon, 358)](https://github.com/viperproject/carbon/issues/358)
   * Cannot restore full permission after a loop encoded with labels [(Carbon, 352)](https://github.com/viperproject/carbon/issues/352)
   * Sequence containment does not work in triggers [(Carbon, 349)](https://github.com/viperproject/carbon/issues/349)
+  * Carbon should now kill child Boogie and Z3 processes eagerly on stop(); this behaviour may be setup-dependent so please report any outstanding issues [(Carbon, 225)](https://github.com/viperproject/carbon/issues/225)
+  * Predicates whose parameters include bound variables (e.g. from outer-quantifiers) now work in function specifications [(Carbon, 271)](https://github.com/viperproject/carbon/issues/271)
+  * Work in progress on correct handling of perm-expressions inside unfolding expressions / quantifiers: some issues have been fixed; a summary of the current status is provided [(Carbon, 348)](https://github.com/viperproject/carbon/issues/348)
 
 ---
 
