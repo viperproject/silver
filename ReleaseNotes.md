@@ -1,5 +1,6 @@
 ## Release 2020.7
 #### Date 17/07/20     [Download](http://www.pm.inf.ethz.ch/research/viper/downloads.html)
+##### Our repositories are now on GitHub: [github.com/viperproject](https://github.com/viperproject)
 
 ### Changes in Viper Language
 * Axiom names are now optional [(Silver, 193)](https://github.com/viperproject/silver/issues/193).
