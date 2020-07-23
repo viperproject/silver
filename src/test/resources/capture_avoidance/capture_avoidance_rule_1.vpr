@@ -1,0 +1,65 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Rules for capture-avoiding substitution with bound variables:
+//
+// 1) (forall x : e)[x -> e’] = (forall x : e), where:
+//
+//   x is a bound variable in e, therefore there isn’t any free variable in e named ‘x’.
+//   So the substitution x -> e’ does not change e.
+//
+// 2a) (forall x : e)[y -> e’] = (forall z : e[x -> z][y -> e’]), where:
+//   x != y
+//   x belongs to FV(e’), where FV(e) is the set of free variables in an expression e.
+//   z does not belong to vars(e’) U vars(e) U {x, y} U scope, effectively z is said to be “fresh”.
+//
+// 2b) (forall x : e)[y -> e’] = (forall x : e[y -> e’[z/x]]), where:
+//   x != y
+//   x does not belong to FV(e') but does belong to BV(e’), where BV(e) is the set of bound variables in an expression e.
+//   z does not belong to vars(e’) U vars(e) U {x, y} U scope, effectively z is said to be “fresh”.
+//   e[z/x] denotes the replacement *even of bound* occurrences of x in e with z; a different operation to capture-avoiding substition.
+//
+// 3) (forall x : e)[y -> e’] = (forall x : e[y -> e’]), where:
+//   x != y
+//   x does not belong to vars(e’)
+
+// Tests to enforce rule 1: (forall x : e)[x -> e’] = (forall x : e)
+
+// Remark: Viper does not allow name clashes or variable hiding via scope and therefore attempting
+// to perform the replacement stated in rule number 1 will cause a "duplicate identifier x" error.
+// A solution was proposed in method Sanitizer.sanitizeBoundVariables, consisting in renaming
+// bound variables should they collide with existing names in scope. This solution wasn't
+// deployed because conceptually name clashes are forbidden in Viper, but the code remains
+// as a suggestion to how this problem could be addressed.
+
+// The code bellow is a regression test of Sanitizer.sanitizeBoundVariables for documentation
+// purposes. Since the feature is not officially supported, the regression test bellow is commented.
+
+// function function1(x: Int): Bool
+//   requires forall x: Int :: x == x
+//         // forall x$0: Int :: x$0 == x$0
+//
+// function function2(): Bool
+//   requires forall x: Int :: (x == x && forall x: Int :: x == x)
+//         // forall x: Int :: x == x && forall x$0: Int :: x$0 == x$0
+//
+// function function3(): Bool
+//            (forall x: Int :: x == x) && (forall x: Int :: x == x) // No renaming needed
+//
+// function function4(x: Ref): Bool
+//   requires forall x: Int :: x == x && forall x: Int :: x == x
+//         // forall x$0: Int :: x$0 == x$0 && forall x$1: Int :: x$1 == x$1
+//
+// function function5(x: Ref): Bool
+//   requires (forall x: Int :: x == x) && (forall x: Int :: x == x) // Two independent renaming
+//         // (forall x$0: Int :: x$0 == x$0) && (forall x$0: Int :: x$0 == x$0)
+//
+// function function6(x: Ref, y: Ref): Bool
+//   requires forall x: Int :: x == x && forall y: Int :: x == y // Two independent renaming
+//         // forall x$0: Int :: x$0 == x$0 && forall y$0: Int :: x$0 == y$0
+//
+// function func7(x: Ref): Bool
+//   //:: ExpectedOutput(consistency.error)
+//   requires forall x: Int, x: Int :: x == x         // Although renaming occur still there's a repeated declaration of same variable,
+//         // forall x$0: Int, x$0: Int :: x$0 == x$0 // so the error message should report the names of the variables prior to renaming.
+

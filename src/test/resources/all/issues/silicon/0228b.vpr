@@ -1,0 +1,39 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+function cond(this: Ref, j: Int): Bool
+  requires acc(valid(this))
+{ 0 <= j && j < (unfolding acc(valid(this)) in this.len) }
+
+//define cond(this, j) 0 <= j && j < (unfolding acc(valid(this)) in this.len)
+
+function getptr(this: Ref): Ptr
+  requires acc(valid(this))
+{ unfolding acc(valid(this)) in this.ptr }
+
+//define getptr(this) unfolding acc(valid(this)) in this.ptr
+
+/* Using one of the two functions makes the assertion succeed,
+ * but it fails if none of the above fnuctions is used, i.e. if the function
+ * bodies are inlined.
+ */
+method not_ok(this: Ref)
+  requires acc(valid(this))
+  requires forall j: Int :: cond(this, j) ==> acc(loc(getptr(this), j).w)
+  requires forall j: Int :: cond(this, j) ==> acc(loc(getptr(this), j).w.w) // req3
+{
+  // assert forall j: Int :: cond(this, j) ==> loc(getptr(this), j) != null // Comment req3, assert this instead
+}
+
+field ptr: Ptr
+field len: Int
+
+predicate valid(this: Ref) {
+  acc(this.ptr) && acc(this.len)
+}
+
+field w: Ref
+
+domain Ptr {
+  function loc(a: Ptr, i: Int): Ref
+}

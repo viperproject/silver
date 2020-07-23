@@ -1,0 +1,11 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <decreases/int.vpr>
+
+function fact(x:Int): Int
+decreases x
+requires x>=0
+{
+    x==0 ? 1 : x*fact(x-1)
+}

@@ -1,0 +1,57 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// chaliceSuite/examples/producer-consumer.chalice
+domain GlobalKPermission {
+
+  unique function globalK$(): Perm
+
+  axiom globalKReadOnly {
+    (globalK$() > none) && (write > globalK$())
+  }
+}
+
+field joinable$: Bool
+
+field Consumerbuffer$: Ref
+
+field par$Producerrun$k$_2: Perm
+
+predicate Producervalid$(this: Ref) {
+  true
+}
+
+predicate Consumervalid$(this: Ref) {
+  true
+}
+
+method Producerinit$(this: Ref)
+  requires this != null
+  ensures acc(Producervalid$(this), write)
+{
+  fold acc(Producervalid$(this), write)
+}
+
+/*
+method Producerrun$(this: Ref, k$_2: Perm)
+  requires this != null
+  requires acc(Producervalid$(this), write)
+{
+}
+*/
+
+method Consumerinit$(this: Ref)
+  requires this != null
+  requires acc(this.Consumerbuffer$, write)
+  ensures acc(Consumervalid$(this), write)
+{
+  fold acc(Consumervalid$(this), write)
+}
+
+/*
+method Consumerrun$(this: Ref, k$_4: Perm)
+  requires this != null
+  requires acc(Consumervalid$(this), write)
+{
+}
+*/

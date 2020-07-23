@@ -1,0 +1,20 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <predicateinstance/pi.vpr>
+
+domain PredicateInstancesNestedRelation{
+    function nestedPredicates(l1: PredicateInstance, l2: PredicateInstance) : Bool
+
+    //Transitivity of the nested-Function
+    axiom nestedTrans{
+        forall l1: PredicateInstance, l2: PredicateInstance, l3: PredicateInstance :: {nestedPredicates(l1, l2), nestedPredicates(l2, l3)}
+            nestedPredicates(l1,l2) && nestedPredicates(l2,l3) ==> nestedPredicates(l1,l3)
+    }
+
+    //A predicate cannot be nested inside itself
+    axiom nestedReflex{
+        forall l1: PredicateInstance ::
+            !nestedPredicates(l1, l1)
+    }
+}

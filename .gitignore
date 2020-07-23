@@ -1,0 +1,14 @@
+.cache
+project/project/**
+project/target/**
+target/**
+bin/**
+.idea/
+.idea_modules/
+documentation/syntax/sil-syntax.synctex.gz
+documentation/syntax/sil-syntax.pdf
+documentation/syntax/sil-syntax.out
+documentation/syntax/sil-syntax.log
+documentation/syntax/sil-syntax.aux
+*.iml
+.DS_Store

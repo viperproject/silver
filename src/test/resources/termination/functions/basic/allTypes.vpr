@@ -1,0 +1,158 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <decreases/all.vpr>
+
+//Example decreasing Int
+function fact(x:Int): Int
+decreases x
+requires x>=0
+{
+    x==0 ? 1 : x*fact(x-1)
+}
+
+function fact_e(x:Int): Int
+decreases x
+requires x>=0
+{
+    //:: ExpectedOutput(termination.failed:tuple.false)
+    x==0 ? 1 : x*fact_e(x)
+}
+
+//Example decreasing Reference
+function references(r:Ref):Int
+decreases r
+{
+    r == null ? 1 : references(null)
+}
+
+function references_e(r:Ref):Int
+decreases r
+{
+    //:: ExpectedOutput(termination.failed:tuple.false)
+    r == null ? 1 : references_e(r)
+}
+
+
+//Example decreasing Booleans
+function booleans(b: Bool): Int
+decreases b
+ensures result == 1
+{
+    b ? booleans(!b) : 1
+}
+
+function booleans_e(b: Bool): Int
+decreases b
+ensures result == 1
+{
+    //:: ExpectedOutput(termination.failed:tuple.false)
+    !b ? booleans_e(!b) : 1
+}
+
+function rationals(r: Rational): Rational
+decreases r
+{
+    r >= 0/1 ? rationals(r - 1/1) : r
+}
+
+function rationals_e(r: Rational): Rational
+decreases r
+{
+    //:: ExpectedOutput(termination.failed:tuple.false)
+    r >= 0/1 ? rationals_e(r/2) : r
+}
+
+//Example decreasing Sequences (Integers)
+function sequences(seq:Seq[Int]): Int
+decreases seq
+ensures result == |seq|
+{
+    |seq| != 0? 1+sequences(seq[1..]) : 0
+}
+
+function sequences_e(seq:Seq[Int]): Int
+decreases seq
+ensures result == |seq|
+{
+    //:: ExpectedOutput(termination.failed:tuple.false)
+    |seq| != 0 ? sequences_e(seq[1..] ++ Seq(1)) : 0
+}
+
+
+////Example decreasing Sequences (Booleans)
+function numberOfUsers(seq:Seq[Bool]): Int
+decreases seq
+{
+    |seq| == 0 ? 0 :
+    //:: UnexpectedOutput(termination.failed:tuple.false, /silicon/issue/300/)
+        seq[0] ? 1 + numberOfUsers(seq[1..]) : numberOfUsers(seq[1..])
+}
+
+//Example decreasing Set
+function sets(s:Set[Int]):Int
+decreases s
+{
+    |s|>0 && (|s| in s) ? sets(s setminus Set(|s|)) : 1
+}
+
+function sets_e(s:Set[Int]):Int
+decreases s
+{
+    //:: ExpectedOutput(termination.failed:tuple.false)
+    |s|>0 && (|s| in s) ? 1 : sets_e(s setminus Set(|s|))
+}
+
+//Example decreasing MulitSet
+function multiSets(s: Multiset[Int]) : Int
+decreases s
+{
+    |s|>0 && (|s| in s) > 0 ? multiSets(s setminus Multiset(|s|)) : 1
+}
+
+function multiSets_e(s: Multiset[Int]) : Int
+decreases s
+{
+    //:: ExpectedOutput(termination.failed:tuple.false)
+    |s|>0 && (|s| in s) > 0 ? 1 : multiSets_e(s setminus Multiset(|s|))
+}
+
+method otherMultiSetTests()
+{
+    assert bounded(Multiset(1))
+    assert decreasing(Multiset(1),Multiset(1,1))
+    assert bounded(Multiset(1,2,3))
+    assert decreasing(Multiset(1,2,3), Multiset(1,2,2,3,3))
+
+     //:: ExpectedOutput(assert.failed:assertion.false)
+    assert decreasing(Multiset(1,1), Multiset(1,1))
+
+}
+
+method otherMultiSetTests2()
+{
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert decreasing(Multiset(2), Multiset(1))
+}
+
+
+field next: Ref
+predicate list(xs:Ref)
+{
+    acc(xs.next) && (xs.next != null ==> list(xs.next))
+}
+
+function predicates(xs: Ref): Int
+    requires list(xs)
+    decreases list(xs)
+{
+    unfolding list(xs) in xs.next != null ? predicates(xs.next) : 0
+}
+
+function predicates_e(xs: Ref): Int
+    requires list(xs)
+    decreases list(xs)
+{
+    //:: ExpectedOutput(termination.failed:tuple.false)
+    (unfolding list(xs) in xs.next != null) ? predicates_e(xs) : 0
+}

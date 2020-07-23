@@ -318,9 +318,17 @@ object DomainInstances {
             println("   " + f.toString())
           for (a <- as)
             println("   " + a.toString())
-          for (rf <- domain.functions.filter(f => fs.forall((ff) => ff.name != f.name)))
+          for (rf <- domain.functions.filter(f => fs.forall(ff => ff.name != f.name)))
             println("   Rejected " + substitute(rf, dt.typVarsMap, p).toString())
-          for (ra <- domain.axioms.filter(a => as.forall((aa) => aa.name != a.name)))
+          for (ra <- domain.axioms.filter(
+            {
+              case a: NamedDomainAxiom => as.forall(
+                {
+                  case aa: NamedDomainAxiom => aa.name != a.name
+                  case _ => true
+                })
+              case _ => true
+            }))
             println("   Rejected " + substitute(ra, dt.typVarsMap, p).toString())
       case _ =>
       }

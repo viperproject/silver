@@ -1,0 +1,66 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Rules for capture-avoiding substitution with bound variables:
+//
+// 1) (forall x : e)[x -> e’] = (forall x : e), where:
+//
+//   x is a bound variable in e, therefore there isn’t any free variable in e named ‘x’.
+//   So the substitution x -> e’ does not change e.
+//
+// 2a) (forall x : e)[y -> e’] = (forall z : e[x -> z][y -> e’]), where:
+//   x != y
+//   x belongs to FV(e’), where FV(e) is the set of free variables in an expression e.
+//   z does not belong to vars(e’) U vars(e) U {x, y} U scope, effectively z is said to be “fresh”.
+//
+// 2b) (forall x : e)[y -> e’] = (forall x : e[y -> e’[z/x]]), where:
+//   x != y
+//   x does not belong to FV(e') but does belong to BV(e’), where BV(e) is the set of bound variables in an expression e.
+//   z does not belong to vars(e’) U vars(e) U {x, y} U scope, effectively z is said to be “fresh”.
+//   e[z/x] denotes the replacement *even of bound* occurrences of x in e with z; a different operation to capture-avoiding substition.
+//
+// 3) (forall x : e)[y -> e’] = (forall x : e[y -> e’]), where:
+//   x != y
+//   x does not belong to vars(e’)
+
+// Tests to enforce rule 3: (forall y : e)[x -> e’] = (forall y : e[x -> e’])
+
+function function0(b: Bool, c: Bool): Bool
+  requires forall z: Int :: b && c
+        // forall z: Int :: x == 0 && y == 0
+
+function function1(b: Bool): Bool
+  requires forall w: Int :: b
+        // forall w: Int :: (forall z: Int :: z == z)
+
+function function2(b: Bool): Bool
+  requires forall i: Int :: b && b
+        // forall i: Int :: (forall z: Int :: z == z) && (forall z: Int :: z == z)
+
+function function3(b: Bool, z: Int): Bool
+  requires forall w: Int :: b && z == 0
+        // forall w: Int :: (forall z: Int :: z == z) && x == 0
+
+method client1(x: Int, y: Int)
+  requires x == 0 && y == 0
+{
+  var res: Bool
+
+  res := function0(x == 0, y == 0)
+  res := function1(forall z: Int :: z == z)
+  res := function2(forall z: Int :: z == z)
+  res := function3(forall z: Int :: z == z, x)
+}
+
+field f: Bool
+
+function function4(x: Bool): Bool
+  requires x && forall y: Ref :: acc(y.f)
+        // x && (forall y: Ref :: acc(y.f, write))
+
+method client2(x: Bool) returns (res: Bool)
+  requires forall z: Ref :: acc(z.f)
+  requires x == true
+{
+  res := function4(x)
+}

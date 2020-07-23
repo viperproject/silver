@@ -1,0 +1,17 @@
+domain test10 {
+  function foo(i:Int) : Multiset[Int]
+  function bar(a:Int, b:Int) : Bool
+  axiom foobar {
+    forall a:Int, b:Int :: {bar(a,b)}
+      bar(a,b) == (foo(a) subset foo(b))
+  }
+}
+
+method test11(a:Int, b:Int, c:Int)
+  requires foo(a) union foo(b) == foo(c)
+{
+  assert bar(a,c) // used to fail in Carbon using the isGoodMultiset idea on top of maps
+  assert bar(b,c)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert bar(a,b)
+}

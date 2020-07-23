@@ -1,0 +1,35 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+method ok(self$1: Ref, len: Int, rd$1: Perm) returns (res$1: Ref)
+  requires none < rd$1 && rd$1 < write
+  requires len > 0
+  requires acc(valid__Array(self$1), rd$1 / 2)
+  requires forall j: Int :: 0 <= j && j < len ==> acc(loc(unfolding acc(valid__Array(self$1), rd$1 / 2) in self$1.Array__ptr, j).pval)
+  requires forall j: Int :: 0 <= j && j < len ==> acc(loc(unfolding acc(valid__Array(self$1), rd$1 / 2) in self$1.Array__ptr, j).pval.Int__v)
+{
+}
+
+method not_ok(self$1: Ref, rd$1: Perm) returns (res$1: Ref)
+  requires none < rd$1 && rd$1 < write
+  requires acc(valid__Array(self$1), rd$1 / 2)
+  requires forall j: Int :: 0 <= j && j < (unfolding acc(valid__Array(self$1), rd$1 / 2) in self$1.Array__len) ==> acc(loc(unfolding acc(valid__Array(self$1), rd$1 / 2) in self$1.Array__ptr, j).pval)
+  requires forall j: Int :: 0 <= j && j < (unfolding acc(valid__Array(self$1), rd$1 / 2) in self$1.Array__len) ==> acc(loc(unfolding acc(valid__Array(self$1), rd$1 / 2) in self$1.Array__ptr, j).pval.Int__v)
+{
+}
+
+field Array__ptr: Ptr
+field Array__len: Int
+
+predicate valid__Array(self: Ref) {
+  acc(self.Array__ptr)&&
+  acc(self.Array__len)
+}
+
+field Int__v: Int
+
+
+domain Ptr {
+  function loc(a: Ptr, i: Int): Ref
+}
+field pval: Ref

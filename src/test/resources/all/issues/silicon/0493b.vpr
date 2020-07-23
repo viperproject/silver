@@ -1,0 +1,108 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field val: Int
+
+predicate one(a: Ref) {
+  acc(a.val)
+}
+
+predicate two(a: Ref, i: Int) {
+  acc(a.val)
+}
+
+define access_vals(as) forall a: Ref :: { a.val } a in as ==> acc(a.val)
+define access_one(as) forall a: Ref :: { one(a) } a in as ==> one(a)
+define access_two(as, is) forall a: Ref, i: Int :: { two(a, i) } a in as && i in  is ==> two(a, i)
+
+function foo_vals(as: Set[Ref]): Int
+  requires access_vals(as)
+
+function foo_ones(as: Set[Ref]): Int
+  requires access_one(as)
+
+function foo_twos(as: Set[Ref], is: Set[Int]): Int
+  requires access_two(as, is)
+
+method test_vals(as: Set[Ref]) {
+  inhale access_vals(as)
+  inhale foo_vals(as) == 0
+  exhale foo_vals(as) == 0
+}
+
+method test_vals_2(as: Set[Ref], bs: Set[Ref]) {
+  inhale access_vals(as) && access_vals(bs)
+  inhale foo_vals(as) == 0
+
+  var a1: Ref
+  assume a1 in as
+  a1.val := 1 + a1.val - 1
+
+  var b1: Ref
+  assume b1 in bs
+  b1.val := 1
+  exhale access_vals(bs)
+
+  exhale foo_vals(as) == 0
+}
+
+method test_ones(as: Set[Ref]) {
+  inhale access_one(as)
+  inhale foo_ones(as) == 0
+  exhale foo_ones(as) == 0
+}
+
+method test_ones_2(as: Set[Ref], bs: Set[Ref]) {
+  inhale access_one(as) && access_one(bs)
+  inhale foo_ones(as) == 0
+
+  var a1: Ref
+  assume a1 in as
+  unfold one(a1)
+  a1.val := 1 + a1.val - 1
+  fold one(a1)
+
+  var b1: Ref
+  assume b1 in bs
+  exhale one(b1)
+  exhale access_one(bs setminus Set(b1))
+
+  exhale foo_ones(as) == 0
+}
+
+method test_twos(as: Set[Ref], is: Set[Int]) {
+  inhale access_two(as, is)
+  inhale foo_twos(as, is) == 0
+  exhale foo_twos(as, is) == 0
+}
+
+method test_twos_2(as: Set[Ref], is: Set[Int]) {
+  inhale access_two(as, is)
+  inhale foo_twos(as, is) == 0
+
+  var a1: Ref; var i1: Int
+  assume a1 in as && i1 in is
+  unfold two(a1, i1)
+  fold two(a1, i1)
+
+  exhale foo_twos(as, is) == 0
+}
+
+method test_twos_3(as: Set[Ref], is: Set[Int], bs: Set[Ref], js: Set[Int]) {
+  inhale access_two(as, is) && access_two(bs, js)
+  inhale foo_twos(as, is) == 0
+
+  var b1: Ref; var j1: Int
+  assume b1 in bs && j1 in js
+  exhale two(b1, j1)
+
+  var a1: Ref; var i1: Int
+  assume a1 in as && i1 in is
+  unfold two(a1, i1)
+  a1.val := 1 + a1.val - 1
+  fold two(a1, i1)
+
+  exhale access_two(bs setminus Set(b1), js setminus Set(j1))
+
+  exhale foo_twos(as, is) == 0
+}

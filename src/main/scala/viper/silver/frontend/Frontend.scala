@@ -13,12 +13,10 @@ import ch.qos.logback.classic.Logger
 
 import scala.io.Source
 import viper.silver.ast._
-import viper.silver.reporter.{Reporter, StdIOReporter}
+import viper.silver.plugin.PluginAwareReporter
+import viper.silver.reporter.StdIOReporter
 import viper.silver.verifier._
 
-
-/** Represents one phase of a frontend */
-case class Phase(name: String, action: () => Unit)
 
 /** A translator for some programming language that produces a Viper program (which then in turn can be verified using a
   * Viper verifier).
@@ -49,35 +47,53 @@ trait Frontend {
     *
     * @see <a href="https://bitbucket.org/viperproject/viperserver/src">ViperServer</a> for more details.
     */
-  val reporter: Reporter = StdIOReporter()
+  val reporter: PluginAwareReporter = PluginAwareReporter(StdIOReporter())
 
-  /**
-    * Run the verification on the input and return the result.  This is equivalent to calling all the phases and then
-    * returning result.
-    */
-  def run(): VerificationResult = {
-    phases.foreach(_.action())
-    result
-  }
+  /** Represents a phase of the frontend */
+  case class Phase(name: String, f: () => Unit)
 
-  private def isValidPhase(phaseName: String) =
-    if (!phases.exists(_.name == phaseName))
-      sys.error(s"Phase $phaseName does not exist")
-
-  def runOnly(phaseName: String) = {
-    isValidPhase(phaseName)
-    val index = phases.indexWhere(_.name == phaseName)
-    phases(index).action()
-  }
-
-  def runTo(phaseName: String) = {
-    isValidPhase(phaseName)
-    val index = phases.indexWhere(_.name == phaseName) + 1
-    phases.slice(0, index).foreach(_.action())
-  }
-
-  /** The phases of this frontend which have to be executed in the order given by the list. */
+  /** Phases of the frontend which executes sequentially. */
   val phases: Seq[Phase]
+
+  /** Execute all phases of the frontend sequentially. */
+  def runAllPhases(): Unit = {
+    phases.foreach(_.f())
+  }
+
+  /** Executes only the specified phase of the frontend. The specified phase must a phase of the frontend.
+    * Prerequisites must be met, like running previous phases successfully.
+    * @param phase Phase to run. */
+  def runOnly(phase: Phase): Unit = {
+    assertPhase(phase)
+    phase.f()
+  }
+
+  /** Executes each phase of the frontend, from the specified phase up to the last one. The specified phase must be a
+    * phase of the frontend. Prerequisites must be met, like running phases prior to the specified one successfully.
+    * @param phase First phase that will run. */
+  def runFrom(phase: Phase): Unit = {
+    runRange(phase, phases.last)
+  }
+
+  /** Executes each phase of the frontend, from the first phase up to the specified one. The specified phase must be a
+    * phase of the frontend.
+    * @param phase Last phase that will run. */
+  def runTo(phase: Phase): Unit = {
+    runRange(phases.head, phase)
+  }
+
+  /** Executes each phase in the range specified by a pair of phases. Both phases must be phases of the frontend.
+    * Prerequisites must be met, like running phases prior to 'from' phase successfully.
+    * @param from First phase from range that will run.
+    * @param to   Last phase of range that will run. */
+  def runRange(from: Phase, to: Phase): Unit = {
+    assertPhase(from)
+    assertPhase(to)
+    phases.slice(phases.indexOf(from), phases.indexOf(to) + 1).foreach(_.f())
+  }
+
+  private def assertPhase(phase: Phase): Unit =
+    assert(phases.contains(phase), s"The phase ${phase.name} is not one of the phases of the frontend")
 
   /**
     * The result of the verification attempt (only available after parse, typecheck, translate and
@@ -91,11 +107,13 @@ trait Frontend {
 
 trait DefaultPhases extends Frontend {
 
-  val phases = Seq(Phase("Parsing",           parsing _),
-                   Phase("Semantic Analysis", semanticAnalysis _),
-                   Phase("Translation",       translation _),
-                   Phase("Consistency Check", consistencyCheck _),
-                   Phase("Verification",      verification _))
+  val Parsing          = Phase("Parsing",           parsing _)
+  val SemanticAnalysis = Phase("Semantic Analysis", semanticAnalysis _)
+  val Translation      = Phase("Translation",       translation _)
+  val ConsistencyCheck = Phase("Consistency Check", consistencyCheck _)
+  val Verification     = Phase("Verification",      verification _)
+
+  val phases = Seq(Parsing, SemanticAnalysis, Translation, ConsistencyCheck, Verification)
 
   /** Parse the program. */
   def parsing()
@@ -185,8 +203,6 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
     resetMessages()
   }
 
-  protected def mapVerificationResult(in: VerificationResult): VerificationResult
-
   protected def doParsing(input: String): Result[ParsingResult]
 
   protected def doSemanticAnalysis(input: ParsingResult): Result[SemanticAnalysisResult]
@@ -239,13 +255,14 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
 
   override def verification() = {
     if (state == DefaultStates.ConsistencyCheck && _errors.isEmpty) {
-      _verificationResult = Some(mapVerificationResult(_verifier.get.verify(_program.get)))
+      _verificationResult = Some(_verifier.get.verify(_program.get))
       assert(_verificationResult.isDefined)
       _state = DefaultStates.Verification
     }
   }
 
   override def result: VerificationResult = {
+
     if (_errors.isEmpty) {
       require(state >= DefaultStates.Verification)
       _verificationResult.get
@@ -257,5 +274,6 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
 }
 
 object DefaultStates extends Enumeration {
+  type DefaultStates = Value
   val Initial, Initialized, InputSet, Parsing, SemanticAnalysis, Translation, ConsistencyCheck, Verification = Value
 }

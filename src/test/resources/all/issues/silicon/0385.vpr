@@ -1,0 +1,71 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field flag : Bool
+
+domain Dummy {
+  function guard(a: Ref): Bool
+}
+
+// The following definitions of foo are all semantically equivalent
+
+function foo_1_1(y: Ref, x: Ref) : Bool
+  requires acc(x.flag)
+  requires guard(y) ==> acc(y.flag)
+{
+  !guard(y) || y.flag
+}
+
+function foo_1_2(y: Ref, x: Ref) : Bool
+  requires acc(x.flag)
+  requires guard(y) ==> acc(y.flag)
+{
+   guard(y) ==> y.flag
+}
+
+function foo_2_1(y: Ref, x: Ref) : Bool
+  requires guard(y) ? (acc(x.flag) && acc(y.flag)) : acc(x.flag)
+{
+  !guard(y) || y.flag
+}
+
+function foo_2_2(y: Ref, x: Ref) : Bool
+  requires guard(y) ? (acc(x.flag) && acc(y.flag)) : acc(x.flag)
+{
+   guard(y) ==> y.flag
+}
+
+
+method testA(s: Ref, r: Ref)
+  requires acc(r.flag)
+  requires acc(s.flag)
+  requires s.flag
+{
+  assert foo_1_1(s, r)
+  assert foo_1_2(s, r)
+  assert foo_2_1(s, r)
+  assert foo_2_2(s, r)
+}
+
+method testB(s: Ref, r: Ref)
+  requires acc(r.flag)
+  requires acc(s.flag)
+  requires r.flag
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert
+    foo_1_1(s, r) ||
+    foo_1_2(s, r) ||
+    foo_2_1(s, r) ||
+    foo_2_2(s, r)
+}
+
+method testC(s: Ref, r: Ref)
+  requires acc(r.flag)
+  requires acc(s.flag)
+{
+  assert
+    (foo_1_1(s, r) <==> foo_1_2(s, r)) &&
+    (foo_1_2(s, r) <==> foo_2_1(s, r)) &&
+    (foo_2_1(s, r) <==> foo_2_2(s, r))
+}

@@ -1,0 +1,53 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+//:: IgnoreFile(/carbon/issue/257/)
+
+field val: Int
+
+method test00(a: Ref) {
+  inhale acc(a.val) && a.val == 77
+  package true --* acc(a.val)
+  apply true --* acc(a.val)
+  assert a.val == 77
+}
+
+
+function reqA(a: Ref): Int
+  requires acc(a.val) --* acc(a.val)
+
+method test01(a: Ref) {
+  inhale acc(a.val) && a.val == 77
+  package acc(a.val) --* acc(a.val)
+  assert a.val == 77
+
+  inhale reqA(a) == 0
+
+  apply acc(a.val) --* acc(a.val)
+  assert a.val == 77
+
+  package acc(a.val) --* acc(a.val)
+  assert a.val == 77
+
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/496/)
+  assert reqA(a) == 0
+}
+
+
+function reqB(a: Ref): Int
+  requires true --* acc(a.val)
+
+method test02(a: Ref) {
+  inhale acc(a.val) && a.val == 77
+  package true --* acc(a.val)
+
+  inhale reqB(a) == 0
+
+  apply true --* acc(a.val)
+  assert a.val == 77
+
+  package true --* acc(a.val)
+
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/496/)
+  assert reqB(a) == 0
+}

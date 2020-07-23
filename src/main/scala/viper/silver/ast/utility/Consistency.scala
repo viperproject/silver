@@ -6,7 +6,6 @@
 
 package viper.silver.ast.utility
 
-import scala.util.parsing.input.{NoPosition, Position}
 import viper.silver.ast._
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.parser.FastParser
@@ -18,21 +17,7 @@ object Consistency {
   var messages: FastMessaging.Messages = Nil
   def recordIfNot(suspect: Positioned, property: Boolean, message: String) {
     if (!property) {
-      val pos = suspect.pos match {
-        case rp: AbstractSourcePosition =>
-          new Position {
-            val line = rp.line
-            val column = rp.column
-            val lineContents = "<none>"
-          }
-        case rp: HasLineColumn =>
-          new Position {
-            val line = rp.line
-            val column = rp.column
-            val lineContents = "<none>"
-          }
-        case rp@viper.silver.ast.NoPosition => NoPosition
-      }
+      val pos = suspect.pos
 
       this.messages ++= FastMessaging.aMessage(FastMessage(message,pos))  // this is the way to construct a message directly with a position (only).
     }
@@ -44,41 +29,7 @@ object Consistency {
     recordIfNot(suspect, !property, message)
 
   /** Names that are not allowed for use in programs. */
-  def reservedNames: Seq[String] = Seq("result",
-    // types
-    "Int", "Perm", "Bool", "Ref", "Rational",
-    // boolean constants
-    "true", "false",
-    // null
-    "null",
-    // preamble importing
-    "import",
-    // declaration keywords
-    "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "field", "define", "wand",
-    // specifications
-    "requires", "ensures", "invariant",
-    // statements
-    "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "package", "apply",
-    // control flow
-    "while", "if", "elseif", "else", "goto", "label",
-    // special fresh block
-    "fresh", "constraining",
-    // sequences
-    "Seq",
-    // sets and multisets
-    "Set", "Multiset", "union", "intersection", "setminus", "subset",
-    // prover hint expressions
-    "unfolding", "in", "applying",
-    // old expression
-    "old", FastParser.LHS_OLD_LABEL,
-    // other expressions
-    "let",
-    // quantification
-    "forall", "exists", "forperm",
-    // permission syntax
-    "acc", "wildcard", "write", "none", "epsilon", "perm",
-    // modifiers
-    "unique")
+  def reservedNames: Seq[String] = FastParser.keywords.toSeq
 
   /** Returns true iff the string `name` is a valid identifier. */
   val identFirstLetter = "[a-zA-Z$_]"
@@ -113,7 +64,7 @@ object Consistency {
   def noOld(n: Node) = !n.existsDefined { case _: Old => }
 
   /** Returns true if the given node contains no labelled-old expression. */
-  def noLabelledOld(n: Node) = !n.existsDefined { case LabelledOld(_, label) if label != FastParser.LHS_OLD_LABEL => }
+  def noLabelledOld(n: Node) = !n.existsDefined { case LabelledOld(_, label) if label != LabelledOld.LhsOldLabel => }
 
   /** Returns true if the given node contains no result. */
   def noResult(n: Node) = !n.existsDefined { case _: Result => }
@@ -135,24 +86,29 @@ object Consistency {
      *       i.e. strategies that executed for their side-effects or results, but that don't
      *       modify the visited AST.
      */
-
     var found = false
 
     val findPermissions = ViperStrategy.Ancestor({
-      case (acc: FieldAccessPredicate, _) =>
+      case (acc: FieldAccessPredicate, c) =>
         found = true
-        acc
+        (acc, c)
       case (acc: PredicateAccessPredicate, c) if c.parentOption.fold(true)(!_.isInstanceOf[Unfolding]) =>
         found = true
-        acc
+        (acc, c)
       case (mw: MagicWand, c) if c.parentOption.fold(true)(!_.isInstanceOf[Applying]) =>
         found = true
-        mw
+        (mw, c)
     }).traverse(Traverse.Innermost)
 
-    findPermissions.execute[Exp](n)
 
-    !found
+    findPermissions.execute[Exp](n)
+    /*
+    An extremely narrow temporary fix by G Rahul Kranti Kiran for using the termination check plugin
+     */
+    if(n.isInstanceOf[ExtensionExp])
+      true
+    else
+      !found
   }
 
   /** Convenience methods to treat null values as some other default values (e.g treat null as empty List) */
@@ -199,9 +155,6 @@ object Consistency {
 
     for (a@LocalVarAssign(l, _) <- b if argVars.contains(l)) {
       s :+= ConsistencyError(s"$a is a reassignment of formal argument $l.", a.pos)
-    }
-    for (f@Fresh(vars) <- b; v <- vars if argVars.contains(v)) {
-      s :+= ConsistencyError(s"$f is a reassignment of formal argument $v.", f.pos)
     }
     for (c@MethodCall(_, _, targets) <- b; t <- targets if argVars.contains(t)) {
       s :+= ConsistencyError(s"$c is a reassignment of formal argument $t.", c.pos)
@@ -371,7 +324,7 @@ object Consistency {
 
         c.copy(insideWandStatus = InsideWandStatus.Yes)
 
-      case po@LabelledOld(_, FastParser.LHS_OLD_LABEL) if !c.insideWandStatus.isInside =>
+      case po@LabelledOld(_, LabelledOld.LhsOldLabel) if !c.insideWandStatus.isInside =>
         s :+= ConsistencyError("Labelled old expressions with \"lhs\" label may only occur inside wands and their proof scripts.", po.pos)
         c
 
@@ -406,7 +359,7 @@ object Consistency {
         s ++= checkWandRelatedOldExpressions(lhs, c.copy(insideWandStatus = InsideWandStatus.Left))
         s ++= checkWandRelatedOldExpressions(rhs, c.copy(insideWandStatus = InsideWandStatus.Right))
 
-      case po @ LabelledOld(_, FastParser.LHS_OLD_LABEL) if !c.insideWandStatus.isRight =>
+      case po @ LabelledOld(_, LabelledOld.LhsOldLabel) if !c.insideWandStatus.isRight =>
           s :+= ConsistencyError("Wands may use the old[lhs]-expression on the rhs and in their proof script only.", po.pos)
     })
     s

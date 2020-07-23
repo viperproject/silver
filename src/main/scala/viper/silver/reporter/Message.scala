@@ -115,7 +115,7 @@ case class ProgramDefinitionsReport(definitions: List[Definition]) extends Messa
 }
 
 // TODO: Variable level of detail?
-case class ExecutionTraceReport(memberTraces: List[Any],
+case class ExecutionTraceReport(memberTraces: Seq[Any],
                                 axioms: List[Any],
                                 functionPostAxioms: List[Any]
                                ) extends Message {
@@ -151,6 +151,11 @@ case class ExternalDependenciesReport(deps: Seq[Dependency]) extends Message {
 case class WarningsDuringParsing(warnings: Seq[ParseReport]) extends Message {
   override def toString: String = s"warnings_during_parsing(warnings=${warnings.toString})"
   override val name: String = s"warnings_during_parsing"
+}
+
+case class WarningsDuringTypechecking(warnings: Seq[TypecheckerWarning]) extends Message {
+  override def toString: String = s"warnings_during_typechecking(warnings=${warnings.toString})"
+  override val name: String = s"warnings_during_typechecking"
 }
 
 /**

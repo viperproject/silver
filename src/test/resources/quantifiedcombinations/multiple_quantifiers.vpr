@@ -1,0 +1,199 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+field f: Int
+
+
+function rcvr(i: Int, j: Int): Ref
+
+function prm(i: Int): Perm
+  ensures none < result
+
+method test01(xs: Seq[Ref], n: Int) {
+  inhale 0 <= n && n <= |xs|
+
+  inhale forall i: Int, j: Int ::
+    0 <= i && i < n && j == i ==> acc(rcvr(i, j).f, prm(i))
+
+  assert forall i1: Int, i2: Int ::
+    0 <= i1 && i1 < n && 0 <= i2 && i2 < n && i1 != i2 ==>
+      rcvr(i1, i1) != rcvr(i2, i2)
+
+  exhale forall i: Int, j: Int ::
+    0 <= i && i < n && i == j ==> acc(rcvr(i, j).f, prm(i))
+}
+
+method test01_fail(xs: Seq[Ref], n: Int) {
+  inhale 0 <= n && n <= |xs|
+
+  inhale forall i: Int, j: Int ::
+    0 <= i && i < n && j == i ==> acc(rcvr(i, j).f, prm(i))
+
+  assert forall i1: Int, i2: Int ::
+    0 <= i1 && i1 < n && 0 <= i2 && i2 < n && i1 != i2 ==>
+      rcvr(i1, i1) != rcvr(i2, i2)
+
+  exhale forall i: Int, j: Int ::
+    0 <= i && i < n && i == j ==> acc(rcvr(i, j).f, prm(i))
+
+  //:: ExpectedOutput(exhale.failed:insufficient.permission)
+  exhale forall i: Int, j: Int ::
+      0 <= i && i < n && i == j ==> acc(rcvr(i, j).f, prm(i))
+}
+
+method test02(xs: Seq[Ref], n: Int) {
+  inhale 0 <= n && n <= |xs|
+
+  inhale forall i: Int, j: Int ::
+    0 <= i && i < n && j == i + 1 ==> acc(rcvr(i, j).f, prm(i))
+
+  var a: Int
+  inhale 0 <= a && a < n
+  inhale rcvr(a, a + 1).f > 1
+
+  exhale forall i: Int ::
+    0 <= i && i < n ==>
+         acc(rcvr(i, i + 1).f, prm(i))
+      && (i != a || rcvr(i, i + 1).f > 1)
+}
+
+
+function det(mat: IMatrix): Int
+  requires forall c: Int, r: Int ::
+              0 <= c && c < cols(mat) && 0 <= r && r < rows(mat) ==>
+                acc(loc(mat, c, r).val)
+
+function colsum(mat: IMatrix, col: Int): Int
+  requires 0 <= col && col < cols(mat)
+  requires forall r: Int :: 0 <= r && r < rows(mat) ==> acc(loc(mat, col, r).val)
+
+function rowsum(mat: IMatrix, row: Int): Int
+  requires 0 <= row && row < rows(mat)
+  requires forall c: Int :: 0 <= c && c < cols(mat) ==> acc(loc(mat, c, row).val)
+
+method test03(mat: IMatrix)
+  requires forall c: Int, r: Int ::
+              0 <= c && c < cols(mat) && 0 <= r && r < rows(mat) ==>
+                acc(loc(mat, c, r).val) && loc(mat, c, r).val > 0
+  requires forall c: Int, r: Int ::
+              0 < c && c < cols(mat) && 0 < r && r < rows(mat) ==>
+                   loc(mat, c, r).val
+                == loc(mat, c - 1, r).val + loc(mat, c, r - 1).val
+  requires 5 <= cols(mat) && cols(mat) <= rows(mat)
+{
+  assert     loc(mat, 1, 0).val == 1 && loc(mat, 0, 1).val == 3
+         ==> loc(mat, 1, 1).val == 4
+
+  var olddet: Int := det(mat)
+  var oldcolsum3: Int := colsum(mat, 3)
+  var oldrowsum2: Int := rowsum(mat, 2)
+
+  assert det(mat) == olddet
+  assert colsum(mat, 3) == oldcolsum3
+  assert rowsum(mat, 2) == oldrowsum2
+}
+
+
+predicate P(x: Ref, y: Ref) {
+  acc(x.f) && acc(y.f) && x.f < y.f
+}
+
+function getP(x: Ref, y: Ref): Int
+  requires P(x, y)
+{ unfolding P(x, y) in x.f + y.f }
+
+method test04(rs1: IArray[Ref], rs2: IArray[Ref]) {
+  inhale forall i1: Int, i2: Int ::
+    0 <= i1 && i1 < len(rs1) && 0 <= i2 && i2 < len(rs2) ==> P(aloc(rs1, i1), aloc(rs2, i2))
+
+
+
+  var k1: Int
+  var k2: Int
+  inhale 0 <= k1 && k1 < len(rs1)
+  inhale 0 <= k2 && k2 < len(rs2)
+
+  label l1
+
+  unfold P(aloc(rs1, k1), aloc(rs2, k2))
+  aloc(rs1, k1).f := aloc(rs2, k2).f
+  aloc(rs2, k2).f := aloc(rs2, k2).f + 1
+  fold P(aloc(rs1, k1), aloc(rs2, k2))
+
+  assert getP(aloc(rs1, k1), aloc(rs2, k2)) > old[l1](getP(aloc(rs1, k1), aloc(rs2, k2)))
+
+  exhale forall i1: Int, i2: Int ::
+    0 <= i1 && i1 < len(rs1) && 0 <= i2 && i2 < len(rs2) ==>
+         P(aloc(rs1, i1), aloc(rs2, i2))
+      && (i1 != k1 && i2 != k2 ==> getP(aloc(rs1, i1), aloc(rs2, i2)) == old[l1](getP(aloc(rs1, i1), aloc(rs2, i2))))
+}
+
+method test04_fail(rs1: IArray[Ref], rs2: IArray[Ref]) {
+  inhale forall i1: Int, i2: Int ::
+    0 <= i1 && i1 < len(rs1) && 0 <= i2 && i2 < len(rs2) ==> P(aloc(rs1, i1), aloc(rs2, i2))
+
+  exhale forall i1: Int, i2: Int ::
+      0 <= i1 && i1 < len(rs1) && 0 <= i2 && i2 < len(rs2) ==> P(aloc(rs1, i1), aloc(rs2, i2))
+
+
+
+  var k1: Int
+  var k2: Int
+  inhale 0 <= k1 && k1 < len(rs1)
+  inhale 0 <= k2 && k2 < len(rs2)
+
+  label l1
+
+  //:: ExpectedOutput(unfold.failed:insufficient.permission)
+  unfold P(aloc(rs1, k1), aloc(rs2, k2))
+
+}
+
+/* Encoding of arrays */
+domain IArray[T] {
+  function aloc(a: IArray[T], i: Int): T
+  function len(a: IArray[T]): Int
+  function first(r: T): IArray[T]
+  function second(r: T): Int
+
+  axiom array_all_diff {
+    forall a: IArray[T], i: Int :: {aloc(a, i)}
+      first(aloc(a, i)) == a && second(aloc(a, i)) == i
+  }
+
+  axiom length_nonneg {
+    forall a: IArray[T] :: len(a) >= 0
+  }
+}
+
+
+/* Encoding of matrices */
+
+field val: Int
+
+domain IMatrix {
+  function loc(mat: IMatrix, col: Int, row: Int): Ref
+
+  function cols(mat: IMatrix): Int
+  function rows(mat: IMatrix): Int
+
+  function loc_mat(r: Ref): IMatrix
+  function loc_col(r: Ref): Int
+  function loc_row(r: Ref): Int
+
+  axiom all_diff {
+    forall mat: IMatrix, col: Int, row: Int :: {loc(mat, col, row)}
+         loc_mat(loc(mat, col, row)) == mat
+      && loc_col(loc(mat, col, row)) == col
+      && loc_row(loc(mat, col, row)) == row
+  }
+
+  axiom cols_nonneg {
+    forall mat: IMatrix :: cols(mat) >= 0
+  }
+
+  axiom rows_nonneg {
+    forall mat: IMatrix :: rows(mat) >= 0
+  }
+}
