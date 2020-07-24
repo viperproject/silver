@@ -387,12 +387,13 @@ object DomainFuncApp {
 
 // --- References to built-in SMT Lib functions
 
-case class SMTFuncApp(smtfunc: SMTFunc, args: Seq[Exp])
-                     (val pos: Position, val info: Info, override val typ : Type, val errT: ErrorTrafo)
+case class SMTFuncApp(smtFunc: SMTFunc, args: Seq[Exp])
+                     (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
   extends AbstractDomainFuncApp {
   override lazy val check : Seq[ConsistencyError] = args.flatMap(Consistency.checkPure)
-  override def func = (p: Program) => smtfunc
-  def funcname = smtfunc.name
+  override def func = (p: Program) => smtFunc
+  def funcname = smtFunc.name
+  override def typ = smtFunc.typ
 }
 
 // --- Field and predicate accesses
