@@ -1,10 +1,10 @@
 package viper.silver.testing
 
 import org.scalatest.{BeforeAndAfterAllConfigMap, ConfigMap, FunSuite, Matchers}
-import viper.silver.ast.{AnySetContains, Assert, EqCmp, Field, FieldAccess, FieldAccessPredicate, FullPerm, Inhale, IntLit, LocalVarAssign, LocalVarDecl, Method, Program, Ref, SMTFuncApp, Seqn, SetType, Stmt}
+import viper.silver.ast.{AnySetContains, Assert, EqCmp, Exp, Field, FieldAccess, FieldAccessPredicate, FullPerm, Function, Inhale, IntLit, LocalVarAssign, LocalVarDecl, Method, Program, Ref, Result, SMTFuncApp, Seqn, SetType, Stmt}
 import viper.silver.ast.utility.{BVFactory, FloatFactory, RoundingMode}
 import viper.silver.verifier.{Failure, Success, Verifier}
-import viper.silver.verifier.errors.AssertFailed
+import viper.silver.verifier.errors.{AssertFailed, PostconditionViolated}
 
 trait SMTTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfigMap {
 
@@ -66,6 +66,34 @@ trait SMTTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfigMap
     (wrapInProgram(Seq(assert), Seq(), Seq()), assert)
   }
 
+  def generateFloatOpFunctionTest(success: Boolean) : (Program, Function, Exp) = {
+    val rne = RoundingMode.RNE
+    val fp = FloatFactory(24, 8, rne)
+    val first = 1081081856 // 3.75
+    val second = 1103888384 // 25.5
+    val result = 1105854464 // 29.25
+    val bv32 = BVFactory(32)
+    val from_int = bv32.from_int("toBV32")
+    val to_fp = fp.from_bv("tofp")
+    val fp_eq = fp.eq("fp_eq")
+    val fp_add = fp.add("fp_add")
+
+    val first_float = SMTFuncApp(to_fp, Seq(SMTFuncApp(from_int, Seq(IntLit(first)()))()))()
+    val second_float = SMTFuncApp(to_fp, Seq(SMTFuncApp(from_int, Seq(IntLit(second)()))()))()
+    val result_float = SMTFuncApp(to_fp, Seq(SMTFuncApp(from_int, Seq(IntLit(result)()))()))()
+
+    val zero_float = SMTFuncApp(to_fp, Seq(SMTFuncApp(from_int, Seq(IntLit(0)()))()))()
+
+    val addition = SMTFuncApp(fp_add, Seq(first_float, second_float))()
+    val result_addition = SMTFuncApp(fp_add, Seq(result_float, if (success) zero_float else first_float))()
+
+    val equality = SMTFuncApp(fp_eq, Seq(Result(fp.typ)(), result_addition))()
+
+    val fun = Function("test", Seq(), fp.typ, Seq(), Seq(equality), Some(addition))()
+    val program = Program(Seq(), Seq(), Seq(fun), Seq(), Seq(), Seq())()
+    (program, fun, equality)
+  }
+
   def generateBvOpTest(success: Boolean) : (Program, Assert) = {
     val bv23 = BVFactory(23)
     val from_int = bv23.from_int("toBV23")
@@ -112,7 +140,7 @@ trait SMTTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfigMap
     val (prog, assertNode) = generateTypeCombinationTest(false)
     val res  = verifier.verify(prog)
     assert(res match {
-      case Failure(Seq(AssertFailed(assertNode, _, _))) => true
+      case Failure(Seq(AssertFailed(a, _, _))) if a == assertNode => true
       case _ => false
     })
   }
@@ -127,7 +155,7 @@ trait SMTTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfigMap
     val (prog, assertNode) = generateFieldTypeTest(false)
     val res  = verifier.verify(prog)
     assert(res match {
-      case Failure(Seq(AssertFailed(assertNode, _, _))) => true
+      case Failure(Seq(AssertFailed(a, _, _))) if a == assertNode => true
       case _ => false
     })
   }
@@ -142,7 +170,7 @@ trait SMTTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfigMap
     val (prog, assertNode) = generateBvOpTest(false)
     val res  = verifier.verify(prog)
     assert(res match {
-      case Failure(Seq(AssertFailed(assertNode, _, _))) => true
+      case Failure(Seq(AssertFailed(a, _, _))) if a == assertNode => true
       case _ => false
     })
   }
@@ -157,7 +185,22 @@ trait SMTTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfigMap
     val (prog, assertNode) = generateFloatOpTest(false)
     val res  = verifier.verify(prog)
     assert(res match {
-      case Failure(Seq(AssertFailed(assertNode, _, _))) => true
+      case Failure(Seq(AssertFailed(a, _, _))) if a == assertNode => true
+      case _ => false
+    })
+  }
+
+  test("floatOpFunctionSuccess") {
+    val (prog, fun, exp) = generateFloatOpFunctionTest(true)
+    val res  = verifier.verify(prog)
+    assert(res == Success)
+  }
+
+  test("floatOpFunctionFail") {
+    val (prog, fun, exp) = generateFloatOpFunctionTest(false)
+    val res  = verifier.verify(prog)
+    assert(res match {
+      case Failure(Seq(PostconditionViolated(e, f, _, _))) if e == exp && fun == f => true
       case _ => false
     })
   }
