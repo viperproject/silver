@@ -230,9 +230,13 @@ object errors {
     val text = "Wrapped error, should be unwrapped"
     val offendingNode = wrappedError.offendingNode
     val reason = wrappedError.reason
+
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) =
       ErrorWrapperWithExampleTransformer(wrappedError.withNode(offendingNode).asInstanceOf[AbstractVerificationError], transformer)
+
     def withReason(r: ErrorReason) = ErrorWrapperWithExampleTransformer(wrappedError.withReason(r), transformer)
+
+    override def readableMessage(withId: Boolean, withPosition: Boolean) = wrappedError.readableMessage(withId, withPosition)
   }
 
   def PreconditionInAppFalse(offendingNode: FuncApp): PartialVerificationError =
