@@ -34,6 +34,7 @@ method needsPredicateTrigger() {
 
   fold list2(l2, k)
 
+  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/360/)
   //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/491/)
   assert foo(l2, k)
 
