@@ -407,7 +407,7 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
             val children = n.children.map(child => if (allowedToRecurse(child)) rewriteTopDown(child, c) else child)
 
             // Adopt rewritten children
-            (n.children = children).asInstanceOf[A]
+            n.withChildren(children).asInstanceOf[A]
           }
 
         case value => value
@@ -434,7 +434,7 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
           val children = node.children.map(child => if (allowedToRecurse(child)) rewriteBottomUp(child, c) else child)
 
           // Adopt rewritten children
-          val n = (node.children = children).asInstanceOf[N]
+          val n = node.withChildren(children).asInstanceOf[N]
 
           // Rewrite node and context
           rule.execute(n, c.replaceNode(n).asInstanceOf[C])._1.asInstanceOf[A]
@@ -467,7 +467,7 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
             val children = n.children.map(child => if (allowedToRecurse(child)) rewriteInnermost(child, c) else child)
 
             // Adopt rewritten children
-            (n.children = children).asInstanceOf[A]
+            n.withChildren(children).asInstanceOf[A]
           }
 
         case value => value

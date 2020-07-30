@@ -9,7 +9,7 @@ package viper.silver.ast
 import viper.silver.ast.pretty.{Fixity, Infix, LeftAssociative, NonAssociative, Prefix, RightAssociative}
 import utility.{Consistency, DomainInstances, Nodes, Types, Visitor}
 import viper.silver.ast.MagicWandStructure.MagicWandStructure
-import viper.silver.cfg.silver.CfgGenerator
+import viper.silver.cfg.silver.{CfgGenerator, SilverCfg}
 import viper.silver.verifier.ConsistencyError
 import viper.silver.utility.{CacheHelper, DependencyAware}
 
@@ -384,7 +384,7 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
   /**
     * Returns a control flow graph that corresponds to this method.
     */
-  def toCfg(simplify: Boolean = true) = CfgGenerator.methodToCfg(this, simplify)
+  def toCfg(simplify: Boolean = true): SilverCfg = CfgGenerator.methodToCfg(this, simplify)
 }
 
 object MethodWithLabelsInScope {

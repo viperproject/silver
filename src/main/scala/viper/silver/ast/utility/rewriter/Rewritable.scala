@@ -21,7 +21,7 @@ trait Rewritable extends Product {
 
   def children: Seq[Any] = productIterator.toList
 
-  def children_= (children: Seq[Any]): this.type = {
+  def withChildren(children: Seq[Any]): this.type = {
     if (!forceRewrite && this.children == children)
       this
     else {
@@ -89,7 +89,7 @@ trait Rewritable extends Product {
     (metadata(0).asInstanceOf[Position], metadata(1).asInstanceOf[Info], metadata(2).asInstanceOf[ErrorTrafo])
   }
 
-  def meta_= (posInfoTrafo: (Position, Info, ErrorTrafo)): this.type = {
+  def withMeta(posInfoTrafo: (Position, Info, ErrorTrafo)): this.type = {
     assert(this.isInstanceOf[Node], "Only descendants of class 'Node' have metadata")
 
     val (pos, info, trafo) = posInfoTrafo
