@@ -53,7 +53,7 @@ case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv
 
       case EntitySuccessMessage(verifier, concerning, time, _, _) =>
         csv_file.write(s"EntitySuccessMessage,${concerning.name},${time}\n")
-      case EntityFailureMessage(verifier, concerning, time, result, _, _) =>
+      case EntityFailureMessage(verifier, concerning, time, result, _) =>
         csv_file.write(s"EntityFailureMessage,${concerning.name},${time}\n")
       case ConfigurationConfirmation(_) =>
       case InternalWarningMessage(_) =>
