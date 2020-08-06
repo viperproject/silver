@@ -51,9 +51,9 @@ case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv
         })
       case CopyrightReport(text) =>
 
-      case EntitySuccessMessage(verifier, concerning, time) =>
+      case EntitySuccessMessage(verifier, concerning, time, _, _) =>
         csv_file.write(s"EntitySuccessMessage,${concerning.name},${time}\n")
-      case EntityFailureMessage(verifier, concerning, time, result) =>
+      case EntityFailureMessage(verifier, concerning, time, result, _, _) =>
         csv_file.write(s"EntityFailureMessage,${concerning.name},${time}\n")
       case ConfigurationConfirmation(_) =>
       case InternalWarningMessage(_) =>
@@ -131,8 +131,8 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
       case CopyrightReport(text) =>
         println( text )
 
-      case EntitySuccessMessage(_, _, _) =>    // FIXME Currently, we only print overall verification results to STDOUT.
-      case EntityFailureMessage(_, _, _, _) => // FIXME Currently, we only print overall verification results to STDOUT.
+      case EntitySuccessMessage(_, _, _, _, _) =>    // FIXME Currently, we only print overall verification results to STDOUT.
+      case EntityFailureMessage(_, _, _, _, _) => // FIXME Currently, we only print overall verification results to STDOUT.
       case ConfigurationConfirmation(_) =>     // TODO  use for progress reporting
         //println( s"Configuration confirmation: $text" )
       case InternalWarningMessage(_) =>        // TODO  use for progress reporting
