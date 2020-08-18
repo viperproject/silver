@@ -904,7 +904,7 @@ object FastParser extends PosParser[Char, String] {
     case (args, res, body) => PForPerm(args, res, body)
   }
 
-  lazy val unfolding: P[PExp] = P(keyword("unfolding") ~/ predicateAccessPred ~ "in" ~ exp).map { case (a, b) => PUnfolding(a, b) }
+  lazy val unfolding: P[PExp] = P(keyword("unfolding") ~ predicateAccessPred ~ "in" ~ exp).map { case (a, b) => PUnfolding(a, b) }
 
   lazy val predicateAccessPred: P[PAccPred] = P(accessPred | predAcc.map (
     loc => {
