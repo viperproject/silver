@@ -1,0 +1,14 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+method m(l: Seq[Bool])
+  requires |l| == 3 && forall i: Int :: (0 <= i && i < |l|) ==> l[i]
+{
+  assert l[(exists i: Int :: i == 0) ? 1 : 2]
+}
+
+method n(l: Seq[Bool])
+  requires |l| == 3 && forall i: Int :: (0 <= i && i < |l|) ==> l[i]
+{
+  assert l[(forall i: Int :: i == i) ? 1 : 2]
+}
