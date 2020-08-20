@@ -13,19 +13,16 @@ case class PluginAwareReporter(reporter: Reporter) {
     val transformedMsg =
       msg match {
         case OverallFailureMessage(ver, time, res) =>
-//          println(s"--- PluginAwareReporter::report   transform($res) = ${transform(res)}")
           VerificationResultMessage(ver, time, transform(res))
         case OverallSuccessMessage(ver, time) =>
-//          println(s"--- PluginAwareReporter::report   transform(Success) = ${transform(Success)}")
           VerificationResultMessage(ver, time, transform(Success))
-        case EntityFailureMessage(ver, ent, time, res) =>
-//          println(s"--- PluginAwareReporter::report   transform($res) = ${transform(res)}")
-          VerificationResultMessage(ver, ent, time, transform(res))
-        case EntitySuccessMessage(ver, ent, time) =>
-//          println(s"--- PluginAwareReporter::report   transform(Success) = ${transform(Success)}")
-          VerificationResultMessage(ver, ent, time, transform(Success))
+        case EntityFailureMessage(ver, ent, time, res, cached) =>
+          VerificationResultMessage(ver, ent, time, transform(res), cached)
+        case EntitySuccessMessage(ver, ent, time, cached) =>
+          VerificationResultMessage(ver, ent, time, transform(Success), cached)
         case _ => msg
       }
     reporter report transformedMsg
   }
 }
+
