@@ -889,9 +889,9 @@ object FastParser extends PosParser[Char, String] {
     // domain type without type arguments (might also be a type variable)
     idnuse.map(name => PDomainType(name, Nil)))
 
-  lazy val seqType: P[PType] = P(keyword("Seq") ~/ "[" ~ typ ~ "]").map(PSeqType)
+  lazy val seqType: P[PType] = P(keyword("Seq") ~ "[" ~ typ ~ "]").map(PSeqType)
 
-  lazy val setType: P[PType] = P(keyword("Set") ~/ "[" ~ typ ~ "]").map(PSetType)
+  lazy val setType: P[PType] = P(keyword("Set") ~ "[" ~ typ ~ "]").map(PSetType)
 
   lazy val multisetType: P[PType] = P(keyword("Multiset") ~/ "[" ~ typ ~ "]").map(PMultisetType)
 
