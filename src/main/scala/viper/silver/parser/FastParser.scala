@@ -893,7 +893,7 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val setType: P[PType] = P(keyword("Set") ~ "[" ~ typ ~ "]").map(PSetType)
 
-  lazy val multisetType: P[PType] = P(keyword("Multiset") ~/ "[" ~ typ ~ "]").map(PMultisetType)
+  lazy val multisetType: P[PType] = P(keyword("Multiset") ~ "[" ~ typ ~ "]").map(PMultisetType)
 
   lazy val primitiveTyp: P[PType] = P(keyword("Rational").map(_ => PPrimitiv("Perm"))
     | (StringIn("Int", "Bool", "Perm", "Ref") ~~ !identContinues).!.map(PPrimitiv))
