@@ -6,8 +6,14 @@
 
 package viper.silver.cfg.utility
 
-import viper.silver.ast.{Info, Stmt}
+import java.util.concurrent.atomic.AtomicInteger
+
+import viper.silver.ast.utility.ViperStrategy
+import viper.silver.ast.utility.rewriter.Traverse
+import viper.silver.ast.{Exp, If, Info, Infoed, MakeInfoPair, Method, NoInfo, Node, Seqn, Stmt}
 import viper.silver.cfg._
+import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
+import viper.silver.cfg.silver.{CfgGenerator, SilverCfg}
 
 import scala.collection.mutable
 
@@ -18,6 +24,12 @@ import scala.collection.mutable
   */
 case class IdInfo(id: Int) extends Info {
   override def comment: Seq[String] = Seq(s"id = $id")
+
+  override def isCached: Boolean = false
+}
+
+case class LoopInfo(head: Option[Int], loops: Set[Int]) extends Info {
+  override def comment: Seq[String] = Seq(toString)
 
   override def isCached: Boolean = false
 }
@@ -39,15 +51,136 @@ object LoopDetector {
     *         are marked.
     */
   def detect[C <: Cfg[S, E], S, E](cfg: C, loops: Map[Block[S, E], Set[Block[S, E]]] = Map[Block[S, E], Set[Block[S, E]]]()): C = {
+    // compute natural loops and merge them with provided loop information
+    val allLoops = naturalLoops[C, S, E](cfg).foldLeft(loops) {
+      case (current, (key, value)) => current.updated(key, current.getOrElse(key, Set.empty) ++ value)
+    }
+    // augment cfg with loop information
+    augment(cfg, allLoops)
+  }
+
+  def detect(method: Method): Method = method.body match {
+    case Some(body) =>
+      val saved = ViperStrategy.forceRewrite
+      ViperStrategy.forceRewrite = true
+
+      // extend statements in ast with ids
+      val id = new AtomicInteger(0)
+      val withIds = body.transform({
+        case node@(_: If | _: Seqn) => node
+        case node =>
+          val (pos, info, err) = node.meta
+          val updated = MakeInfoPair(IdInfo(id.incrementAndGet()), info)
+          node.withMeta(pos, updated, err)
+      }, Traverse.TopDown)
+
+      // compute cfg and loops
+      val (cfg, syntacticLoops) = CfgGenerator.computeCfg(withIds)
+      val loops = naturalLoops[SilverCfg, Stmt, Exp](cfg).foldLeft(syntacticLoops) {
+        case (current, (key, value)) => current.updated(key, current.getOrElse(key, Set.empty) ++ value)
+      }
+
+      def getId(stmt: Stmt): Option[Int] = stmt.info.getUniqueInfo[IdInfo].map(_.id)
+
+      def getFirst(block: SilverBlock): Option[Stmt] = block.elements.collectFirst { case Left(s) => s }
+
+      def getLast(block: SilverBlock): Option[Stmt] = block.elements.collect { case Left(s) => s }.lastOption
+
+      // contract edges such that there are no empty blocks in between blocks
+      val contractedEdges = cfg.blocks.flatMap { block =>
+        def contract(block: SilverBlock, first: Option[SilverBlock] = None): Seq[SilverEdge] =
+          if (first.contains(block)) Seq.empty
+          else cfg.outEdges(block).flatMap { edge =>
+            val next = edge.target
+            next match {
+              case StatementBlock(stmts) if stmts.isEmpty =>
+                contract(next, first.orElse(Some(block))).map { nextEdge =>
+                  val source = edge.source
+                  val target = nextEdge.target
+                  UnconditionalEdge(source, target)
+                }
+              case _ => Seq(edge)
+            }
+          }
+
+        contract(block)
+      }
+
+      // maps blocks to ids
+      val ids = cfg.blocks.foldLeft(Map.empty[SilverBlock, Int]) {
+        case (map, block@LoopHeadBlock(_, _, Some(id))) => map.updated(block, id)
+        case (map, block) => getFirst(block)
+          .flatMap(getId)
+          .map { id => map.updated(block, id) }
+          .getOrElse(map)
+      }
+
+      // compute loop information
+      val infos = contractedEdges.foldLeft(Map.empty[Int, LoopInfo]) {
+        case (map, edge) =>
+          val sourceHeads = loops.getOrElse(edge.source, Set.empty).map(ids)
+          val targetHeads = loops.getOrElse(edge.target, Set.empty).map(ids)
+          val outHeads = sourceHeads -- targetHeads
+          val inHeads = targetHeads -- sourceHeads
+          if (outHeads.isEmpty && inHeads.isEmpty) map
+          else {
+            // update before info
+            val before = getLast(edge.source).flatMap(getId)
+            val map2 = before
+              .map { id =>
+                val head = before.flatMap { id => map.get(id).flatMap(_.head) }
+                map.updated(id, LoopInfo(head, sourceHeads))
+              }
+              .getOrElse(map)
+            // update after info
+            val after = edge.target match {
+              case LoopHeadBlock(_, _, loopId) => loopId
+              case block => getFirst(block).flatMap(getId)
+            }
+            val map3 = after
+              .map { id =>
+                val head = if (inHeads.nonEmpty) after else None
+                map2.updated(id, LoopInfo(head, targetHeads))
+              }
+              .getOrElse(map2)
+            // return updated map
+            map3
+          }
+      }
+
+      // extend ast with loop information
+      val withInfo = withIds.transform({
+        case node: Infoed =>
+          val (pos, info, err) = node.meta
+          info.getUniqueInfo[IdInfo] match {
+            case Some(idInfo) =>
+              val removed = info.removeUniqueInfo[IdInfo]
+              val loopInfo = infos.getOrElse(idInfo.id, NoInfo)
+              val updated = MakeInfoPair(removed, loopInfo)
+              node.withMeta(pos, updated, err)
+            case None => node
+          }
+        case node => node
+      }, Traverse.TopDown)
+
+      // restore forced rewriting settings
+      ViperStrategy.forceRewrite = saved
+
+      // return updated method
+      method.copy(body = Some(withInfo))(method.pos, method.info, method.errT)
+    case _ => method
+  }
+
+  private def naturalLoops[C <: Cfg[S, E], S, E](cfg: C): Map[Block[S, E], Set[Block[S, E]]] = {
     // check whether the control flow graph is reducible
     val dominators = new Dominators(cfg)
     if (!isReducible(cfg, dominators))
       throw new IllegalArgumentException("Control flow graph is not reducible.")
 
     // populate map that maps each block to the set of loop heads corresponding to all loops that contain the block
-    val loopHeads = cfg.edges
+    cfg.edges
       .filter(dominators.isBackedge)
-      .foldLeft[Map[Block[S, E], Set[Block[S, E]]]](loops) {
+      .foldLeft[Map[Block[S, E], Set[Block[S, E]]]](Map.empty) {
       case (current, edge) =>
         val head = edge.target
         collectBlocks(cfg, edge).foldLeft(current) {
@@ -56,7 +189,9 @@ object LoopDetector {
             c.updated(block, existing + head)
         }
     }
+  }
 
+  private def augment[C <: Cfg[S, E], S, E](cfg: C, loops: Map[Block[S, E], Set[Block[S, E]]]): C = {
     val queue = mutable.Queue[Block[S, E]]()
     val heads = mutable.Map[Block[S, E], Block[S, E]]()
     // we use linked hash sets to preserve the insertion order of blocks and
@@ -76,8 +211,8 @@ object LoopDetector {
       val block = queue.dequeue()
 
       for (edge <- cfg.outEdges(block)) {
-        val sourceHeads = loopHeads.getOrElse(edge.source, Set.empty)
-        val targetHeads = loopHeads.getOrElse(edge.target, Set.empty)
+        val sourceHeads = loops.getOrElse(edge.source, Set.empty)
+        val targetHeads = loops.getOrElse(edge.target, Set.empty)
         val out = (sourceHeads -- targetHeads).size
         val in = (targetHeads -- sourceHeads).size
         val mid = Math.max(out + in - 1, 0)
