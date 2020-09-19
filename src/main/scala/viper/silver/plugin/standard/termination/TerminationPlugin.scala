@@ -58,6 +58,8 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
     ParserExtension.addNewKeywords(Set[String](DecreasesKeyword))
     // Add new parser to the precondition
     ParserExtension.addNewPreCondition(decreases)
+    // Add new parser to the postcondition
+    ParserExtension.addNewPostCondition(decreases)
     // Add new parser to the invariants
     ParserExtension.addNewInvariantCondition(decreases)
     input
@@ -143,19 +145,17 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
    */
   private lazy val extractDecreasesClauses: Strategy[Node, SimpleContext[Node]] = ViperStrategy.Slim({
     case f: Function =>
-      val (pres, decreasesSpecification) = extractDecreasesClausesFromExps(f.pres)
+      val (_, decreasesSpecification) = extractDecreasesClausesFromExps(f.pres ++ f.posts)
+      val (pres, _) = extractDecreasesClausesFromExps(f.pres)
+      val (posts, _) = extractDecreasesClausesFromExps(f.posts)
 
-      val newFunction =
-        if (pres != f.pres) {
-          f.copy(pres = pres)(f.pos, f.info, f.errT)
-        } else {
-          f
-        }
+      val newFunction = f.copy(pres = pres, posts = posts)(f.pos, f.info, f.errT)
 
       decreasesSpecification match {
         case Some(dc) => dc.appendToFunction(newFunction)
         case None => newFunction
       }
+
     case m: Method =>
       val (pres, decreasesSpecification) = extractDecreasesClausesFromExps(m.pres)
 

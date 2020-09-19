@@ -197,7 +197,10 @@ case class PIdnUse(name: String) extends PExp with PIdentifier {
      */
   override val typeSubstitutions = List(PTypeSubstitution.id)
 
-  def forceSubstitution(ts: PTypeSubstitution) = {}
+  def forceSubstitution(ts: PTypeSubstitution) = {
+    typ = typ.substitute(ts)
+    assert(typ.isGround)
+  }
 }
 
 //case class PLocalVar
@@ -770,7 +773,8 @@ case class PLet(exp: PExp, nestedScope: PLetNestedScope) extends PBinder{
   override def forceSubstitution(ts: PTypeSubstitution) = {
     super.forceSubstitution(ts)
     exp.forceSubstitution(ts)
-    this.nestedScope.variable.typ = exp.typ
+    body.forceSubstitution(ts)
+    nestedScope.variable.typ = exp.typ
   }
 }
 case class PLetNestedScope(variable: PFormalArgDecl, body: PExp) extends PNode with PScope
