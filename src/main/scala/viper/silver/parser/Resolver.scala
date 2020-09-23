@@ -841,7 +841,8 @@ case class NameAnalyser() {
               case None =>
                 globalDeclarationMap.get(d.idndef.name) match {
                   case Some(e: PDeclaration) =>
-                    messages ++= FastMessaging.message(e, "Identifier shadowing `" + e.idndef.name + "' at " + e.idndef.start + " and at " + d.idndef.start)
+                    if (!(d.parent.isDefined && d.parent.get.isInstanceOf[PDomainFunction]))
+                      messages ++= FastMessaging.message(e, "Identifier shadowing `" + e.idndef.name + "' at " + e.idndef.start + " and at " + d.idndef.start)
                   case Some(e: PErrorEntity) =>
                   case None =>
                     getMap(d).put(d.idndef.name, d)
