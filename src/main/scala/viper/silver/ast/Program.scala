@@ -188,7 +188,9 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       var s: Seq[ConsistencyError] = Seq.empty[ConsistencyError]
       //check name declarations
       currentScope.scopedDecls.foreach(l=> {
-        if(!Consistency.validUserDefinedIdentifier(l.name)) s :+= ConsistencyError(s"${l.name} is not a valid identifier.", l.pos)
+        if(!Consistency.validUserDefinedIdentifier(l.name))
+          s :+= ConsistencyError(s"${l.name} is not a valid identifier.", l.pos)
+
         declarationMap.get(l.name) match {
           case Some(_: Declaration) => s :+= ConsistencyError(s"Duplicate identifier ${l.name} found.", l.pos)
           case None => declarationMap += (l.name -> l)
@@ -196,11 +198,18 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       })
 
       //check name uses
-      Visitor.visitOpt(currentScope.asInstanceOf[Node], Nodes.subnodes){n=> {
+      Visitor.visitOpt(currentScope.asInstanceOf[Node], Nodes.subnodes){ n => {
         n match {
-          case sc: Scope => if (sc == currentScope) true else {
-            s ++= checkNamesInScope(sc, declarationMap)
-            false
+          case sc: Scope => {
+            if (sc == currentScope)
+              true
+            else {
+              n match {
+                case _: DomainFunc => s ++= checkNamesInScope(sc, immutable.HashMap.empty[String, Declaration])
+                case _ => s ++= checkNamesInScope(sc, declarationMap)
+              }
+              false
+            }
           }
           case _ =>
             val optionalError = n match {

@@ -486,7 +486,7 @@ case object LabelledOld {
 
 case class Let(variable: LocalVarDecl, exp: Exp, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp with Scope {
   override lazy val check : Seq[ConsistencyError] = {
-    var errors: Seq[ConsistencyError] = Seq()
+    var errors = Seq.empty[ConsistencyError]
 
     if(!(exp.typ isSubtype variable.typ))
       errors ++= Seq(ConsistencyError( s"Let-bound variable ${variable.name} is of type ${variable.typ}, but bound expression is of type ${exp.typ}", exp.pos))
