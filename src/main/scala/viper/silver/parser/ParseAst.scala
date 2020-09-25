@@ -203,7 +203,9 @@ case class PIdnUse(name: String) extends PExp with PIdentifier {
   }
 }
 
-//case class PLocalVar
+trait PAnyFormalArgDecl extends PNode with PUnnamedTypedDeclaration
+
+case class PUnnamedFormalArgDecl(var typ: PType) extends PAnyFormalArgDecl
 
 /* Formal arguments.
  * [2014-11-13 Malte] Changed type to be a var, so that it can be updated
@@ -211,7 +213,7 @@ case class PIdnUse(name: String) extends PExp with PIdentifier {
  * explicit type in the binding of the variable, i.e., "let x: T = e1 in e2",
  * would be rather cumbersome.
  */
-case class PFormalArgDecl(idndef: PIdnDef, var typ: PType) extends PNode with PTypedDeclaration with PLocalDeclaration
+case class PFormalArgDecl(idndef: PIdnDef, var typ: PType) extends PAnyFormalArgDecl with PTypedDeclaration with PLocalDeclaration
 
 // Types
 trait PType extends PNode {
@@ -1020,24 +1022,25 @@ trait PDeclaration extends PNode with PEntity {
   def idndef: PIdnDef
 }
 
+sealed trait PUnnamedTypedDeclaration extends PNode {
+  def typ: PType
+}
+
 trait PGlobalDeclaration extends PDeclaration
 trait PLocalDeclaration extends PDeclaration
 trait PUniversalDeclaration extends PDeclaration
 
-sealed trait PTypedDeclaration extends PDeclaration {
-  def typ: PType
-}
+sealed trait PTypedDeclaration extends PDeclaration with PUnnamedTypedDeclaration
+
 abstract class PErrorEntity(name: String) extends PEntity
 
 
 // a member (like method or axiom) that is its own name scope
-trait PMember extends PDeclaration with PScope {
-//  def idndef: PIdnDef
-}
+trait PMember extends PDeclaration with PScope
 
 trait PAnyFunction extends PMember with PGlobalDeclaration with PTypedDeclaration{
   def idndef: PIdnDef
-  def formalArgs: Seq[PFormalArgDecl]
+  def formalArgs: Seq[PAnyFormalArgDecl]
   def typ: PType
 }
 case class PProgram(imports: Seq[PImport], macros: Seq[PDefine], domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod], extensions: Seq[PExtender], errors: Seq[ParseReport]) extends PNode
@@ -1069,14 +1072,14 @@ case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PTyp
   }
 }
 
-case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean)(val domainName:PIdnUse) extends PAnyFunction
+case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl], typ: PType, unique: Boolean)(val domainName:PIdnUse) extends PAnyFunction
 case class PAxiom(idndef: Option[PIdnDef], exp: PExp)(val domainName:PIdnUse) extends PScope
 case class PField(idndef: PIdnDef, typ: PType) extends PMember with PTypedDeclaration with PGlobalDeclaration
 case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: Option[PExp]) extends PMember with PTypedDeclaration with PGlobalDeclaration{
   val typ = PPredicateType()
 }
 
-case class PDomainFunction1(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends FastPositioned
+case class PDomainFunction1(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl], typ: PType, unique: Boolean) extends FastPositioned
 case class PAxiom1(idndef: Option[PIdnDef], exp: PExp) extends FastPositioned
 
 /**
@@ -1209,6 +1212,7 @@ object Nodes {
       case PDefine(idndef, optArgs, body) => Seq(idndef) ++ optArgs.getOrElse(Nil) ++ Seq(body)
       case t : PExtender => t.getSubnodes()
       case _: PSkip => Nil
+      case _: PUnnamedFormalArgDecl => Nil
     }
   }
 }

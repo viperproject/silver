@@ -588,9 +588,12 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
   }
 
   /** Show a list of formal arguments. */
-  def showVars(vars: Seq[LocalVarDecl]): Cont = ssep(vars map showVar, char (',') <> space)
+  def showVars(vars: Seq[AnyLocalVarDecl]): Cont = ssep(vars map showVar, char (',') <> space)
   /** Show a variable name with the type of the variable (e.g. to be used in formal argument lists). */
-  def showVar(v: LocalVarDecl): Cont = text(v.name) <> ":" <+> showType(v.typ)
+  def showVar(v: AnyLocalVarDecl): Cont = v match {
+    case l: LocalVarDecl => text(l.name) <> ":" <+> showType(l.typ)
+    case u: UnnamedLocalVarDecl => showType(u.typ)
+  }
 
   /** Show field name */
   private def showLocation(loc: Location): Cont = loc.name
