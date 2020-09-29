@@ -774,7 +774,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
     case dfa@DomainFuncApp(funcname, args, tvMap) =>
       if (tvMap.nonEmpty)
         // Type may be underconstrained, so to be safe we explicitly print out the type.
-        parens(text(funcname) <> parens(ssep(args map show, char (',') <> space)) <> char(':') <+> show(dfa.typ))
+        text(funcname) <> parens(ssep(args map show, char (',') <> space))
       else
         text(funcname) <> parens(ssep(args map show, char (',') <> space))
 
