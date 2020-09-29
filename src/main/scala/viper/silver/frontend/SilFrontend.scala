@@ -6,10 +6,6 @@
 
 package viper.silver.frontend
 
-import java.nio.file.{Path, Paths}
-
-import fastparse.all
-import fastparse.all.{Parsed, ParserInput}
 import viper.silver.ast.utility.Consistency
 import viper.silver.ast.{SourcePosition, _}
 import viper.silver.parser._

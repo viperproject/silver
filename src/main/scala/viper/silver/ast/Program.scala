@@ -127,7 +127,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
           if (!Consistency.areAssignable(args, funcDef.formalArgs map {
             fa =>
               // substitute parameter types
-              LocalVarDecl(fa.name, fa.typ.substitute(typVarMap))(fa.pos)
+              UnnamedLocalVarDecl(fa.typ.substitute(typVarMap))(fa.pos)
           })) {
             s :+= ConsistencyError(
               s"Domain function $name with formal arguments ${funcDef.formalArgs} cannot be applied to provided arguments $args.",
@@ -188,7 +188,9 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       var s: Seq[ConsistencyError] = Seq.empty[ConsistencyError]
       //check name declarations
       currentScope.scopedDecls.foreach(l=> {
-        if(!Consistency.validUserDefinedIdentifier(l.name)) s :+= ConsistencyError(s"${l.name} is not a valid identifier.", l.pos)
+        if(!Consistency.validUserDefinedIdentifier(l.name))
+          s :+= ConsistencyError(s"${l.name} is not a valid identifier.", l.pos)
+
         declarationMap.get(l.name) match {
           case Some(_: Declaration) => s :+= ConsistencyError(s"Duplicate identifier ${l.name} found.", l.pos)
           case None => declarationMap += (l.name -> l)
@@ -196,11 +198,18 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       })
 
       //check name uses
-      Visitor.visitOpt(currentScope.asInstanceOf[Node], Nodes.subnodes){n=> {
+      Visitor.visitOpt(currentScope.asInstanceOf[Node], Nodes.subnodes){ n => {
         n match {
-          case sc: Scope => if (sc == currentScope) true else {
-            s ++= checkNamesInScope(sc, declarationMap)
-            false
+          case sc: Scope => {
+            if (sc == currentScope)
+              true
+            else {
+              n match {
+                case _: DomainFunc => s ++= checkNamesInScope(sc, immutable.HashMap.empty[String, Declaration])
+                case _ => s ++= checkNamesInScope(sc, declarationMap)
+              }
+              false
+            }
           }
           case _ =>
             val optionalError = n match {
@@ -445,21 +454,28 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres
 }
 
 
+trait AnyLocalVarDecl extends Hashable with Positioned with Infoed with Typed with TransformableErrors {
+  override def getMetadata: Seq[Any] = {
+    Seq(pos, info, errT)
+  }
+}
+
+// --- Unnamed local variable declarations
+
+case class UnnamedLocalVarDecl(typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AnyLocalVarDecl
+
+
 // --- Local variable declarations
 
 /**
  * Local variable declaration.  Note that these are not statements in the AST, but
  * rather occur as part of a method, loop, function, etc.
  */
-case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Hashable with Positioned with Infoed with Typed with Declaration with TransformableErrors {
+case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AnyLocalVarDecl with Declaration {
   /**
    * Returns a local variable with equivalent information
    */
   lazy val localVar = LocalVar(name, typ)(pos, info, errT)
-
-  override def getMetadata:Seq[Any] = {
-    Seq(pos, info, errT)
-  }
 }
 
 
@@ -515,7 +531,7 @@ object Substitution{
   def toString(s : Substitution) : String = s.mkString(",")
 }
 /** Domain function which is not a binary or unary operator. */
-case class DomainFunc(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, unique: Boolean = false)
+case class DomainFunc(name: String, formalArgs: Seq[AnyLocalVarDecl], typ: Type, unique: Boolean = false)
                      (val pos: Position = NoPosition, val info: Info = NoInfo,val domainName : String, val errT: ErrorTrafo = NoTrafos)
                       extends AbstractDomainFunc with DomainMember with Declaration {
   override lazy val check : Seq[ConsistencyError] =
@@ -524,7 +540,7 @@ case class DomainFunc(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, un
   override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)
   }
-  val scopedDecls: Seq[Declaration] = formalArgs
+  val scopedDecls: Seq[Declaration] = formalArgs.filter(p => p.isInstanceOf[LocalVarDecl]).asInstanceOf[Seq[LocalVarDecl]]
 }
 
 // --- Common functionality
@@ -544,7 +560,7 @@ sealed trait DomainMember extends Hashable with Positioned with Infoed with Scop
 
 /** Common ancestor for things with formal arguments. */
 sealed trait Callable {
-  def formalArgs: Seq[LocalVarDecl]
+  def formalArgs: Seq[AnyLocalVarDecl]
   def name: String
 }
 

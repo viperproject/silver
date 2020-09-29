@@ -1068,11 +1068,17 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val domainTypeVarDecl: P[PTypeVarDecl] = P(idndef).map(PTypeVarDecl)
 
-  lazy val domainFunctionDecl: P[PDomainFunction1] = P("unique".!.? ~ functionSignature ~ ";".?).map {
+  lazy val domainFunctionDecl: P[PDomainFunction1] = P("unique".!.? ~ domainFunctionSignature  ~ ";".?).map {
     case (unique, fdecl) => fdecl match {
       case (name, formalArgs, t) => PDomainFunction1(name, formalArgs, t, unique.isDefined)
     }
   }
+
+  lazy val domainFunctionSignature = P("function" ~ idndef ~ "(" ~ anyFormalArgList ~ ")" ~ ":" ~ typ)
+
+  lazy val anyFormalArgList: P[Seq[PAnyFormalArgDecl]] = P((formalArg | unnamedFormalArg).rep(sep = ","))
+
+  lazy val unnamedFormalArg = P(typ).map(t => PUnnamedFormalArgDecl(t))
 
   lazy val functionSignature = P("function" ~ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ)
 
