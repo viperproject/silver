@@ -564,7 +564,6 @@ object FastParser extends PosParser[Char, String] {
       // their respective arguments in the following steps (by replacer)
       case varUse: PIdnUse if renamesMap.contains(varUse.name) =>
         PIdnUse(renamesMap(varUse.name))
-
     })
 
     // Strategy to replace macro's parameters by their respective arguments
@@ -641,6 +640,10 @@ object FastParser extends PosParser[Char, String] {
                 case _ =>
               }.execute[PNode](_)
             )
+            StrategyBuilder.SlimVisitor[PNode]({
+              case id: PIdnDef => scopeAtMacroCall += id.name
+              case _ =>
+            }).execute(subtree)
             renamesMap.clear
             replacerOnBody(body, mapParamsToArgs(parameters, arguments), call)
           } catch {

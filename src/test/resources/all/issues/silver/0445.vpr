@@ -1,0 +1,11 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+define macro() {
+  var x: Int
+}
+
+method m(){
+  assert forall x: Int :: true
+  macro()
+}
