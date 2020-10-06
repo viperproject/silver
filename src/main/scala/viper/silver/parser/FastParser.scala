@@ -564,7 +564,6 @@ object FastParser extends PosParser[Char, String] {
       // their respective arguments in the following steps (by replacer)
       case varUse: PIdnUse if renamesMap.contains(varUse.name) =>
         PIdnUse(renamesMap(varUse.name))
-
     })
 
     // Strategy to replace macro's parameters by their respective arguments
@@ -582,8 +581,14 @@ object FastParser extends PosParser[Char, String] {
     // Replace variables in macro body, adapt positions correctly (same line number as macro call)
     def replacerOnBody(body: PNode, paramToArgMap: Map[String, PExp], pos: FastPositioned): PNode = {
 
+      // Duplicate the body of the macro to allow for differing type checks depending on the context
+      val oldForce = viper.silver.ast.utility.ViperStrategy.forceRewrite
+      viper.silver.ast.utility.ViperStrategy.forceRewrite = true
+      val replicatedBody = body.deepCopyAll
+      viper.silver.ast.utility.ViperStrategy.forceRewrite = oldForce
+
       // Rename locally bound variables in macro's body
-      val bodyWithRenamedVars = renamer.execute[PNode](body)
+      val bodyWithRenamedVars = renamer.execute[PNode](replicatedBody)
       adaptPositions(bodyWithRenamedVars, pos)
 
       // Create context
@@ -635,6 +640,10 @@ object FastParser extends PosParser[Char, String] {
                 case _ =>
               }.execute[PNode](_)
             )
+            StrategyBuilder.SlimVisitor[PNode]({
+              case id: PIdnDef => scopeAtMacroCall += id.name
+              case _ =>
+            }).execute(subtree)
             renamesMap.clear
             replacerOnBody(body, mapParamsToArgs(parameters, arguments), call)
           } catch {
@@ -829,7 +838,7 @@ object FastParser extends PosParser[Char, String] {
     case None => a
   }}
 
-  lazy val accessPredImpl: P[PAccPred] = P((keyword("acc") ~/ "(" ~ locAcc ~ ("," ~ exp).? ~ ")").map {
+  lazy val accessPredImpl: P[PAccPred] = P((keyword("acc") ~ "(" ~ locAcc ~ ("," ~ exp).? ~ ")").map {
     case (loc, perms) => PAccPred(loc, perms.getOrElse(PFullPerm()))
   })
 
@@ -876,8 +885,8 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val idndef: P[PIdnDef] = P(ident).map(PIdnDef)
 
-  lazy val quant: P[PExp] = P((keyword("forall") ~/ nonEmptyFormalArgList ~ "::" ~/ trigger.rep ~ exp).map { case (a, b, c) => PForall(a, b, c) } |
-    (keyword("exists") ~/ nonEmptyFormalArgList ~ "::" ~ trigger.rep ~ exp).map { case (a, b, c) => PExists(a, b, c) })
+  lazy val quant: P[PExp] = P((keyword("forall") ~ nonEmptyFormalArgList ~ "::" ~ trigger.rep ~ exp).map { case (a, b, c) => PForall(a, b, c) } |
+    (keyword("exists") ~ nonEmptyFormalArgList ~ "::" ~ trigger.rep ~ exp).map { case (a, b, c) => PExists(a, b, c) })
 
   lazy val nonEmptyFormalArgList: P[Seq[PFormalArgDecl]] = P(formalArg.rep(min = 1, sep = ","))
 
@@ -889,22 +898,22 @@ object FastParser extends PosParser[Char, String] {
     // domain type without type arguments (might also be a type variable)
     idnuse.map(name => PDomainType(name, Nil)))
 
-  lazy val seqType: P[PType] = P(keyword("Seq") ~/ "[" ~ typ ~ "]").map(PSeqType)
+  lazy val seqType: P[PType] = P(keyword("Seq") ~ "[" ~ typ ~ "]").map(PSeqType)
 
-  lazy val setType: P[PType] = P(keyword("Set") ~/ "[" ~ typ ~ "]").map(PSetType)
+  lazy val setType: P[PType] = P(keyword("Set") ~ "[" ~ typ ~ "]").map(PSetType)
 
-  lazy val multisetType: P[PType] = P(keyword("Multiset") ~/ "[" ~ typ ~ "]").map(PMultisetType)
+  lazy val multisetType: P[PType] = P(keyword("Multiset") ~ "[" ~ typ ~ "]").map(PMultisetType)
 
   lazy val primitiveTyp: P[PType] = P(keyword("Rational").map(_ => PPrimitiv("Perm"))
     | (StringIn("Int", "Bool", "Perm", "Ref") ~~ !identContinues).!.map(PPrimitiv))
 
   lazy val trigger: P[PTrigger] = P("{" ~/ exp.rep(sep = ",") ~ "}").map(s => PTrigger(s))
 
-  lazy val forperm: P[PExp] = P(keyword("forperm") ~ nonEmptyFormalArgList ~ "[" ~ resAcc ~ "]" ~ "::" ~/ exp).map {
+  lazy val forperm: P[PExp] = P(keyword("forperm") ~ nonEmptyFormalArgList ~ "[" ~ resAcc ~ "]" ~ "::" ~ exp).map {
     case (args, res, body) => PForPerm(args, res, body)
   }
 
-  lazy val unfolding: P[PExp] = P(keyword("unfolding") ~/ predicateAccessPred ~ "in" ~ exp).map { case (a, b) => PUnfolding(a, b) }
+  lazy val unfolding: P[PExp] = P(keyword("unfolding") ~ predicateAccessPred ~ "in" ~ exp).map { case (a, b) => PUnfolding(a, b) }
 
   lazy val predicateAccessPred: P[PAccPred] = P(accessPred | predAcc.map (
     loc => {
@@ -1068,11 +1077,17 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val domainTypeVarDecl: P[PTypeVarDecl] = P(idndef).map(PTypeVarDecl)
 
-  lazy val domainFunctionDecl: P[PDomainFunction1] = P("unique".!.? ~ functionSignature ~ ";".?).map {
+  lazy val domainFunctionDecl: P[PDomainFunction1] = P("unique".!.? ~ domainFunctionSignature  ~ ";".?).map {
     case (unique, fdecl) => fdecl match {
       case (name, formalArgs, t) => PDomainFunction1(name, formalArgs, t, unique.isDefined)
     }
   }
+
+  lazy val domainFunctionSignature = P("function" ~ idndef ~ "(" ~ anyFormalArgList ~ ")" ~ ":" ~ typ)
+
+  lazy val anyFormalArgList: P[Seq[PAnyFormalArgDecl]] = P((formalArg | unnamedFormalArg).rep(sep = ","))
+
+  lazy val unnamedFormalArg = P(typ).map(t => PUnnamedFormalArgDecl(t))
 
   lazy val functionSignature = P("function" ~ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ)
 

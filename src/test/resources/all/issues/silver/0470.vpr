@@ -1,0 +1,15 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+method m(x: Ref)
+{
+  //:: ExpectedOutput(consistency.error)
+  assert let a == (acc(x.f)) in a
+}
+
+method n(x: Ref)
+{
+  assert let a == (true) in acc(x.f) && a
+}

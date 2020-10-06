@@ -1,3 +1,53 @@
+## Release 2020.7
+#### Date 17/07/20     [Download](http://www.pm.inf.ethz.ch/research/viper/downloads.html)
+##### Our repositories are now on GitHub: [github.com/viperproject](https://github.com/viperproject)
+
+### Changes in Viper Language
+* Axiom names are now optional [(Silver, 193)](https://github.com/viperproject/silver/issues/193).
+For example, we now allow domains such as:
+	```
+    domain MyDomain {
+      function foo(): Int
+
+      axiom  { foo() > 2 }
+      axiom  upperlimit { foo() < 8 }
+    }
+	```
+* Experimental support for **termination checks** [tutorial section about termination](http://viper.ethz.ch/tutorial/#termination).
+  * This extension provides support for specifying termination measures for heap-dependent functions and using them to prove termination.
+  * There is also support for proving termination of methods and loops, but those are still experimental and support for these features as well as the semantics of the specifications might change.
+  * Details are explained in the Viper tutorial.
+* Experimental support for **counter examples**:
+  * Added the command line option `--counterexample`. When using either backend with `--counterexamples=variables`, it will return, along with each verification error, a counter example for the values of all local variables (but not the heap or functions) on the Viper level. Alternatively, using the option `--counterexample=native` will return a backend-specific counter example along with each error that contains the entire model exactly as returned by the SMT solver, i.e., including any renaming and encoding the backends may have performed.
+
+### Bug fixes
+* 64-bit Z3 is now shipped with the Windows distribution (the 32-bit version which was inadvertently still being shipped can cause memory issues for some examples) [(Silicon, 375)](https://github.com/viperproject/silicon/issues/375)
+* Intermittent Failures on Viper Online (web interface) should no longer happen (but for now we only support the default backend) [(Silver, 264)](https://github.com/viperproject/silver/issues/264)
+* Reserved words are declared in only one place in the codebase [(Silver, 301)](https://github.com/viperproject/silver/issues/301)
+* The phases used to organise programmatically calling verifiers (frontends, in the codebase) have been made more consistent and flexible [(Silver, 270)](https://github.com/viperproject/silver/issues/270)
+* Several examples which had long runtimes are now apparently stable (but we would appreciate any feedback to the contrary!). e.g. [(Silver, 457)](https://github.com/viperproject/silver/issues/457)
+
+
+### Viper Language API changes:
+* The `DomainAxiom` AST node no longer exists, it was replaced by:
+  * `NamedDomainAxiom`, providing exactly the same features as `DomainAxiom`.
+  * `AnonymousDomainAxiom`, which is similar to the node above except for the absence of the `name` parameter.
+
+### Backend-specific upgrades/changes
+
+* [Symbolic Execution Verifier](https://bitbucket.org/viperproject/silicon/)
+  * More-complete aliasing properties can be deduced in programs using quantified permissions [(Silicon, 502)](https://github.com/viperproject/silicon/issues/502)
+  * Potential crash removed when using quantifiers and unfolding expressions in a function body [(Silicon, 491)](https://github.com/viperproject/silicon/issues/491)
+
+* [Verification Condition Generation Verifier](https://bitbucket.org/viperproject/carbon/)
+  * Axioms used for sequence operations should be more complete (especially for cases such as dropping more elements than a sequence has) [(Carbon, 36)](https://github.com/viperproject/carbon/issues/36)
+  * Sequence contains function now works in triggers [(Carbon, 349)](https://github.com/viperproject/carbon/issues/349)
+  * Carbon should now kill child Boogie and Z3 processes eagerly on stop(); this behaviour may be setup-dependent so please report any outstanding issues [(Carbon, 225)](https://github.com/viperproject/carbon/issues/225)
+  * Predicates whose parameters include bound variables (e.g. from outer-quantifiers) now work in function specifications [(Carbon, 271)](https://github.com/viperproject/carbon/issues/271)
+  * Work in progress on correct handling of perm-expressions inside unfolding expressions / quantifiers: some issues have been fixed; a summary of the current status is provided [(Carbon, 348)](https://github.com/viperproject/carbon/issues/348)
+
+---
+
 ## Release 2020.1
 #### Date 31/01/20     [Download](http://www.pm.inf.ethz.ch/research/viper/downloads.html)
 

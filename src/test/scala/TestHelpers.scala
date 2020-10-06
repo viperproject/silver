@@ -23,7 +23,7 @@ object TestHelpers {
       _state = DefaultStates.Initialized
 
       reset(silverFile)
-      runTo("Translation")
+      runTo(Translation)
 
       (_program, _errors)
     }

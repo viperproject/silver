@@ -90,6 +90,13 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     hidden = false
   )
 
+  val counterexample = opt[String]("counterexample",
+    descr="Return counterexample for errors. Pass 'native' for returning the native model from the backend " +
+      "or 'variables' for returning a model of all local Viper variables.",
+    default = None,
+    noshort = true
+  )
+
   val terminationPlugin = opt[Boolean]("disableTerminationPlugin",
     descr = "Disable the termination plugin, which adds termination checks to functions, " +
       "methods and loops.",

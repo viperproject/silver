@@ -68,7 +68,8 @@ object Nodes {
           case LocalVarDeclStmt(decl) => Seq(decl)
           case e: ExtensionStmt => e.extensionSubnodes
         }
-      case vd: LocalVarDecl => Nil
+      case _: LocalVarDecl => Nil
+      case _: UnnamedLocalVarDecl => Nil
       case e: Exp =>
         // Note: If you have to update this pattern match to make it exhaustive, it
         // might also be necessary to update the PrettyPrinter.toParenDoc method.

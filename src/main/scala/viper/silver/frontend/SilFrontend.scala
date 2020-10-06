@@ -6,10 +6,6 @@
 
 package viper.silver.frontend
 
-import java.nio.file.{Path, Paths}
-
-import fastparse.all
-import fastparse.all.{Parsed, ParserInput}
 import viper.silver.ast.utility.Consistency
 import viper.silver.ast.{SourcePosition, _}
 import viper.silver.parser._
@@ -17,6 +13,35 @@ import viper.silver.plugin.SilverPluginManager
 import viper.silver.plugin.SilverPluginManager.PluginException
 import viper.silver.reporter._
 import viper.silver.verifier._
+import fastparse.all.{Parsed, ParserInput}
+import fastparse.all
+import java.nio.file.{Path, Paths}
+
+//class TestPhase extends TestA {
+//  type PProgram = viper.silver.parser.PProgram
+//  type Program = viper.silver.ast.Program
+//  type Message = String
+//
+//  override def parsing(program: String): Result[PProgram] = {
+//    Success(PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq()))
+//  }
+//
+//  override def semanticAnalysis(program: PProgram): Result[PProgram] = {
+//    Success(PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq()))
+//  }
+//
+//  override def translation(program: PProgram): Result[Program] = {
+//    Success(Program(Seq(), Seq(), Seq(), Seq(), Seq())())
+//  }
+//
+//  override def consistencyCheck(program: Program): Result[Program] = {
+//    Success(Program(Seq(), Seq(), Seq(), Seq(), Seq())())
+//  }
+
+//  override def verification(program: Program): Result[Message] = {
+//    Success("Program verified correctly")
+//  }
+//}
 import viper.silver.{FastMessaging, FastPositions}
 
 /**
@@ -24,6 +49,8 @@ import viper.silver.{FastMessaging, FastPositions}
  * provides code to invoke the parser, parse common command-line options and print
  * error messages in a user-friendly fashion.
  */
+case class MissingDependencyException(msg: String) extends Exception
+
 trait SilFrontend extends DefaultFrontend {
 
   /**
@@ -168,11 +195,15 @@ trait SilFrontend extends DefaultFrontend {
     }
 
     // Parse, type check, translate and verify
-    run()
-
-    finish()
+    try {
+      runAllPhases()
+      finish()
+    }
+    catch {
+        case MissingDependencyException(msg) =>
+          println("Missing dependency exception: " + msg)
+    }
   }
-
 
   override def reset(input: Path): Unit = {
     super.reset(input)

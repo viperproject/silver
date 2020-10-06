@@ -9,7 +9,7 @@ package viper.silver.cfg.silver
 import viper.silver.ast._
 import viper.silver.cfg._
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
-import viper.silver.cfg.utility.{CfgSimplifier, LoopDetector}
+import viper.silver.cfg.utility.{CfgSimplifier, IdInfo, LoopDetector}
 import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.mutable
@@ -45,7 +45,7 @@ object CfgGenerator {
     // generate cfg for the body
     val bodyCfg =
       method.body.getOrElse(Seqn(Vector.empty, Vector.empty)())
-                 .toCfg(simplify = false)
+        .toCfg(simplify = false)
 
     // create precondition block and corresponding edge
     val preBlock: SilverBlock = PreconditionBlock(method.pres)
@@ -102,7 +102,7 @@ object CfgGenerator {
 
     def generate(name: String): TmpLabel = {
       val freshId = id.incrementAndGet()
-      new TmpLabel(s"${freshId}_${name}")
+      new TmpLabel(s"${freshId}_$name")
     }
   }
 
@@ -121,10 +121,7 @@ object CfgGenerator {
   final case class ConditionalJumpStmt(cond: Exp, thnTarget: TmpLabel, elsTarget: TmpLabel)
     extends TmpStmt
 
-  final case class LoopHeadStmt(invs: Seq[Exp], after: TmpLabel)
-    extends TmpStmt
-
-  final case class ConstrainingStmt(vars: Seq[LocalVar], body: SilverCfg, after: TmpLabel)
+  final case class LoopHeadStmt(invs: Seq[Exp], after: TmpLabel, loopId: Option[Int])
     extends TmpStmt
 
   final case class EmptyStmt()
@@ -174,13 +171,15 @@ object CfgGenerator {
         // set label after if statement
         addLabel(afterTarget)
       case While(cond, invs, body) =>
+        // check whether the loop is tagged with an id
+        val loopId = stmt.info.getUniqueInfo[IdInfo].map(_.id)
         // create labels
         val headTarget = TmpLabel.generate("head")
         val loopTarget = TmpLabel.generate("loop")
         val afterTarget = TmpLabel.generate("after")
         // process loop head
         addLabel(headTarget, addEmptyStmt = false)
-        addStatement(LoopHeadStmt(invs, afterTarget))
+        addStatement(LoopHeadStmt(invs, afterTarget, loopId))
         addStatement(ConditionalJumpStmt(cond, loopTarget, afterTarget))
         // process loop body
         addLabel(loopTarget)
@@ -189,7 +188,7 @@ object CfgGenerator {
         // set label after loop
         addLabel(afterTarget)
       case Seqn(ss, scopedDecls) =>
-        val locals = scopedDecls.collect {case l: LocalVarDecl => l}
+        val locals = scopedDecls.collect { case l: LocalVarDecl => l }
         for (local <- locals) {
           val decl = LocalVarDeclStmt(local)(pos = local.pos)
           addStatement(WrappedStmt(decl))
@@ -229,7 +228,7 @@ object CfgGenerator {
       * @param addEmptyStmt Flag indicating whether an empty statement should be
       *                     added.
       */
-    private def addLabel(label: TmpLabel, addEmptyStmt: Boolean = true) = {
+    private def addLabel(label: TmpLabel, addEmptyStmt: Boolean = true): Unit = {
       val index = stmts.size
       labels.put(label, index)
       if (addEmptyStmt) addStatement(EmptyStmt())
@@ -280,7 +279,7 @@ object CfgGenerator {
       * The entry block of the control flow graph. The value is computed lazily
       * and therefore should not be accessed before all blocks are added.
       */
-    private lazy val entry: SilverBlock = blocks.get(0).get
+    private lazy val entry: SilverBlock = blocks(0)
 
     /**
       * The exit block of the control flow graph. The value is computed lazily
@@ -352,23 +351,17 @@ object CfgGenerator {
               addTmpEdge(TmpConditionalEdge(neg, currentIndex, resolve(elsTarget)))
             }
             current = None
-          case LoopHeadStmt(invs, after) =>
+          case LoopHeadStmt(invs, after, id) =>
+            // TODO: ID
             current.foreach { last =>
               current = Some(index)
               // create loop head
-              val block: SilverBlock = LoopHeadBlock(invs, Nil)
+              val block: SilverBlock = LoopHeadBlock(invs, Nil, id)
               // push current loop id block onto stack
               loopStack = (block, resolve(after)) :: loopStack
               // add loop head
               addBlock(index, block)
               addTmpEdge(TmpUnconditionalEdge(last, index))
-            }
-          case ConstrainingStmt(vars, body, after) =>
-            current.foreach { last =>
-              current = Some(index)
-              addBlock(index, ConstrainingBlock(vars, body))
-              addTmpEdge(TmpUnconditionalEdge(last, index))
-              addTmpEdge(TmpUnconditionalEdge(index, resolve(after)))
             }
           case EmptyStmt() =>
             current.foreach { last =>
@@ -389,8 +382,7 @@ object CfgGenerator {
       phase1.labels.get(label) match {
         case Some(n) => n
         case None =>
-          sys.error(s"Cannot resolve label '${label.name}', probably because it is out of scope. "
-            + "This happens, e.g. when jumping out of a constraining-block.")
+          sys.error(s"Cannot resolve label '${label.name}', probably because it is out of scope.")
       }
 
     private def heads(index: Int): Set[SilverBlock] = {
@@ -406,7 +398,7 @@ object CfgGenerator {
       blocks.put(index, block)
     }
 
-    private def addEdge(edge: SilverEdge) =
+    private def addEdge(edge: SilverEdge): Unit =
       edges.append(edge)
 
     private def addTmpEdge(edge: TmpEdge) = {
@@ -414,12 +406,13 @@ object CfgGenerator {
       if (!blocks.contains(edge.target)) blocks.put(edge.target, StatementBlock())
     }
 
-    private def finalizeBlock() = {
+    private def finalizeBlock(): Unit = {
       current.foreach { index =>
         val block: SilverBlock = tmpStmts.toList match {
           case (l@Label(_, invs)) :: rest if invs.nonEmpty =>
+            val loopId = l.info.getUniqueInfo[IdInfo].map(_.id)
             val label = Label(l.name, Nil)(pos = l.pos, l.info)
-            LoopHeadBlock(invs, label :: rest)
+            LoopHeadBlock(invs, label :: rest, loopId)
           case stmts =>
             StatementBlock(stmts)
         }

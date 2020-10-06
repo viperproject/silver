@@ -132,7 +132,7 @@ case class Translator(program: PProgram) {
       case PFunction(_, formalArgs, typ, _, _, _) =>
         Function(name, formalArgs map liftVarDecl, ttyp(typ), null, null, null)(pos)
       case pdf@ PDomainFunction(_, args, typ, unique) =>
-        DomainFunc(name, args map liftVarDecl, ttyp(typ), unique)(pos,NoInfo,pdf.domainName.name)
+        DomainFunc(name, args map liftAnyVarDecl, ttyp(typ), unique)(pos,NoInfo,pdf.domainName.name)
       case PDomain(_, typVars, _, _) =>
         Domain(name, null, null, typVars map (t => TypeVar(t.idndef.name)))(pos)
       case PPredicate(_, formalArgs, _) =>
@@ -505,9 +505,16 @@ case class Translator(program: PProgram) {
     }
   }
 
-  /** Takes a `PFormalArgDecl` and turns it into a `LocalVar`. */
+  /** Takes a `PAnyFormalArgDecl` and turns it into a `AnyLocalVarDecl`. */
+  def liftAnyVarDecl(formal: PAnyFormalArgDecl) =
+    formal match {
+      case f: PFormalArgDecl => LocalVarDecl(f.idndef.name, ttyp(f.typ))(f.idndef)
+      case u: PUnnamedFormalArgDecl => UnnamedLocalVarDecl(ttyp(u.typ))(u.typ)
+    }
+
+  /** Takes a `PFormalArgDecl` and turns it into a `LocalVarDecl`. */
   def liftVarDecl(formal: PFormalArgDecl) =
-    LocalVarDecl(formal.idndef.name, ttyp(formal.typ))(formal.idndef)
+      LocalVarDecl(formal.idndef.name, ttyp(formal.typ))(formal.idndef)
 
   /** Takes a `PType` and turns it into a `Type`. */
   def ttyp(t: PType): Type = t match {

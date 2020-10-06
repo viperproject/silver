@@ -112,8 +112,8 @@ trait Cfg[S, E] {
         case StatementBlock(stmts) => StatementBlock(stmts.flatMap(stmtMap))
         case PreconditionBlock(pres) => PreconditionBlock(pres.map(expMap))
         case PostconditionBlock(posts) => PostconditionBlock(posts.map(expMap))
-        case LoopHeadBlock(invs, stmts) => LoopHeadBlock(invs.map(expMap), stmts.flatMap(stmtMap))
-        case ConstrainingBlock(vars, body) => ConstrainingBlock(vars.map(expMap), body.map[C, S2, E2](factory)(stmtMap, expMap))
+        case LoopHeadBlock(invs, stmts, loopId) => LoopHeadBlock(invs.map(expMap), stmts.flatMap(stmtMap), loopId)
+        //case ConstrainingBlock(vars, body) => ConstrainingBlock(vars.map(expMap), body.map[C, S2, E2](factory)(stmtMap, expMap))
       }
       block -> mapped
     }.toMap
@@ -160,10 +160,8 @@ trait Cfg[S, E] {
         block.toString + "|" + pres.map(_.toString).map(escape).mkString("|")
       case PostconditionBlock(posts) =>
         block.toString + "|" + posts.map(_.toString).map(escape).mkString("|")
-      case LoopHeadBlock(invs, stmts) =>
+      case LoopHeadBlock(invs, stmts, _) =>
         block.toString + "|" + invs.map(inv => "invariant " + escape(inv.toString)).mkString("|") + "|" + stmts.map(_.toString).map(escape).mkString("|")
-      case ConstrainingBlock(_, _) =>
-        block.toString
     }
 
     val blockStr = new StringBuilder()
@@ -186,14 +184,6 @@ trait Cfg[S, E] {
         blockStr.append(s"    ${style(block)}\n")
         blockStr.append("    label=\"" + label(block) + "\"\n")
         blockStr.append("  ];\n")
-        block match {
-          case c@ConstrainingBlock(_, _) =>
-            processBlocks(c.body.blocks)
-            processEdges(c.body.edges)
-            edgeStr.append("  " + id(c) + " -> " + id(c.body.entry) + "[style=dotted];\n")
-            c.body.exit.map(exit => edgeStr.append("  " + id(exit) + " -> " + id(c) + "[style=dotted];\n"))
-          case _ =>
-        }
       }
     }
 

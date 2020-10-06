@@ -485,8 +485,17 @@ case object LabelledOld {
 // --- Other expressions
 
 case class Let(variable: LocalVarDecl, exp: Exp, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp with Scope {
-  override lazy val check : Seq[ConsistencyError] =
-    if(!(exp.typ isSubtype variable.typ)) Seq(ConsistencyError( s"Let-bound variable ${variable.name} is of type ${variable.typ}, but bound expression is of type ${exp.typ}", exp.pos)) else Seq()
+  override lazy val check : Seq[ConsistencyError] = {
+    var errors = Seq.empty[ConsistencyError]
+
+    if(!(exp.typ isSubtype variable.typ))
+      errors ++= Seq(ConsistencyError( s"Let-bound variable ${variable.name} is of type ${variable.typ}, but bound expression is of type ${exp.typ}", exp.pos))
+
+    if (!exp.isPure)
+      errors ++= Seq(ConsistencyError(s"Let expression '${exp}' is not pure", exp.pos))
+
+    errors
+  }
   val typ = body.typ
   val scopedDecls: Seq[Declaration] = Seq(variable)
 }

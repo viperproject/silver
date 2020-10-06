@@ -6,9 +6,21 @@
 
 package viper.silver.cfg.utility
 
+import viper.silver.ast.{Info, Stmt}
 import viper.silver.cfg._
 
 import scala.collection.mutable
+
+/**
+  * An info used to assign unique identifier to AST nodes.
+  *
+  * @param id The id of the node.
+  */
+case class IdInfo(id: Int) extends Info {
+  override def comment: Seq[String] = Seq(s"id = $id")
+
+  override def isCached: Boolean = false
+}
 
 /**
   * An object that provides a method to detect loops in a control flow graph.
@@ -27,21 +39,22 @@ object LoopDetector {
     *         are marked.
     */
   def detect[C <: Cfg[S, E], S, E](cfg: C, loops: Map[Block[S, E], Set[Block[S, E]]] = Map[Block[S, E], Set[Block[S, E]]]()): C = {
-
-    val allLoops = mutable.Map[Block[S, E], Set[Block[S, E]]](loops.toSeq: _*).withDefault(_ => Set())
+    // check whether the control flow graph is reducible
     val dominators = new Dominators(cfg)
-
     if (!isReducible(cfg, dominators))
       throw new IllegalArgumentException("Control flow graph is not reducible.")
 
-    for (edge <- cfg.edges if dominators.isBackedge(edge)) {
-      val head = edge.target
-      val blocks = collectBlocks(cfg, edge)
-      //blocks.map(loops).foreach(_.add(head))t
-      for (block <- blocks) {
-        val updated = allLoops(block) + head
-        allLoops.put(block, updated)
-      }
+    // populate map that maps each block to the set of loop heads corresponding to all loops that contain the block
+    val loopHeads = cfg.edges
+      .filter(dominators.isBackedge)
+      .foldLeft[Map[Block[S, E], Set[Block[S, E]]]](loops) {
+      case (current, edge) =>
+        val head = edge.target
+        collectBlocks(cfg, edge).foldLeft(current) {
+          case (c, block) =>
+            val existing = c.getOrElse(block, Set.empty)
+            c.updated(block, existing + head)
+        }
     }
 
     val queue = mutable.Queue[Block[S, E]]()
@@ -63,22 +76,25 @@ object LoopDetector {
       val block = queue.dequeue()
 
       for (edge <- cfg.outEdges(block)) {
-        val before = allLoops(edge.source)
-        val after = allLoops(edge.target)
-        val out = (before -- after).size
-        val in = (after -- before).size
+        val sourceHeads = loopHeads.getOrElse(edge.source, Set.empty)
+        val targetHeads = loopHeads.getOrElse(edge.target, Set.empty)
+        val out = (sourceHeads -- targetHeads).size
+        val in = (targetHeads -- sourceHeads).size
         val mid = Math.max(out + in - 1, 0)
 
         // get source
         val first = heads.getOrElse(edge.source, edge.source)
         // turn target into loop head if edge is an in-edge
         val last = if (0 < in && out == 0) edge.target match {
-          case head@LoopHeadBlock(_, _) => head
+          case head@LoopHeadBlock(_, _, _) => head
           case block@StatementBlock(stmts) =>
-            val head: Block[S, E] = LoopHeadBlock(stmts = stmts)
+            val loopId = stmts.head match {
+              case stmt: Stmt => stmt.info.getUniqueInfo[IdInfo].map(_.id)
+              case _ => None
+            }
+            val head: Block[S, E] = LoopHeadBlock(Seq.empty, stmts, loopId)
             heads.put(block, head)
             head
-          case ConstrainingBlock(_, _) => ??? // TODO:
           case _ => ??? // We don't expect this to happen.
         } else heads.getOrElse(edge.target, edge.target)
 

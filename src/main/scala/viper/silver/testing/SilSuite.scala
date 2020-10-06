@@ -103,7 +103,7 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAllC
     def run(input: AnnotatedTestInput): Seq[AbstractOutput] = {
       val fe = frontend(verifier, input.files)
       val tPhases = fe.phases.map { p =>
-        formatTime(time(p.action)._2) + " (" + p.name + ")"
+        formatTime(time(p.f)._2) + " (" + p.name + ")"
       }.mkString(", ")
       info(s"Verifier used: ${verifier.name} ${verifier.version}.")
       info(s"Time required: $tPhases.")

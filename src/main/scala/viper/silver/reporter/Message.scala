@@ -54,6 +54,30 @@ object VerificationResultMessage {
       case failure: Failure => EntityFailureMessage(verifier, entity, verificationTime, failure)
     }
   }
+
+  def apply(verifier: String, entity: Entity, verificationTime: Time, result: VerificationResult, cached: Boolean)
+  : VerificationResultMessage = {
+
+    result match {
+      case Success => EntitySuccessMessage(verifier, entity, verificationTime, cached)
+      case failure: Failure => EntityFailureMessage(verifier, entity, verificationTime, failure, cached)
+    }
+  }
+}
+
+trait CachedEntityMessage extends VerificationResultMessage {
+
+}
+
+object CachedEntityMessage {
+
+  def apply(verifier: String, entity: Entity, result: VerificationResult)
+  : VerificationResultMessage = {
+    result match {
+      case Success => EntitySuccessMessage(verifier, entity, 0, true)
+      case failure: Failure => EntityFailureMessage(verifier, entity, 0, failure, true)
+    }
+  }
 }
 
 // Overall results concern results for the entire program (e.g. those presently produced by the Carbon backend)
@@ -74,18 +98,18 @@ case class OverallFailureMessage(verifier: String, verificationTime: Time, resul
 }
 
 // Entity results concern results for specific program entities (these are presently produced by the Silicon backend)
-case class EntitySuccessMessage(verifier: String, concerning: Entity, verificationTime: Time)
-    extends VerificationResultMessage {
+case class EntitySuccessMessage(verifier: String, concerning: Entity, verificationTime: Time, val cached: Boolean = false)
+  extends VerificationResultMessage {
 
   override def toString: String = s"entry_success_message(" +
     s"verifier=${verifier}, " +
     s"concerning=${concerning.toString()}, time=${verificationTime.toString()})"
 
-  val result: VerificationResult = Success
+ val result: VerificationResult = Success
 }
 
-case class EntityFailureMessage(verifier: String, concerning: Entity, verificationTime: Time, result: Failure)
-    extends VerificationResultMessage {
+case class EntityFailureMessage(verifier: String, concerning: Entity, verificationTime: Time, result: Failure, val cached: Boolean = false)
+  extends VerificationResultMessage {
 
   override def toString: String = s"entry_failure_message(" +
     s"verifier=${verifier}, concerning=${concerning.toString()}, " +
@@ -93,7 +117,7 @@ case class EntityFailureMessage(verifier: String, concerning: Entity, verificati
 }
 
 case class StatisticsReport(nOfMethods: Int, nOfFunctions: Int, nOfPredicates: Int, nOfDomains: Int, nOfFields: Int)
-    extends Message {
+  extends Message {
 
   override def toString: String = s"statistics_report(" +
     s"nom=${nOfMethods.toString()}, nofu=${nOfFunctions.toString()}, nop=${nOfPredicates.toString()}, " +
