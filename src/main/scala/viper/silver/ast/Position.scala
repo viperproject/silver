@@ -71,8 +71,8 @@ class IdentifierPosition(val file: Path, val start: HasLineColumn, val end: Opti
 
 object LineCol {
   def apply(input: ParserInput, index: Int) = {
-    val Array(line, column) = input.prettyIndex(index).split(":")
-    (line.toInt, column.toInt)
+    val pos = input.prettyIndex(index).split(":")
+    (pos(0).toInt, pos(1).toInt)
   }
 }
 

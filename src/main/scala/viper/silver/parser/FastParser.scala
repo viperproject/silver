@@ -9,7 +9,7 @@ package viper.silver.parser
 import java.net.URL
 import java.nio.file.{Files, Path, Paths}
 
-//import scala.util.parsing.input.{NoPosition, Position} //?
+import scala.util.parsing.input.{NoPosition, Position}  //?
 import viper.silver.ast.{LabelledOld, LineCol, SourcePosition}
 import viper.silver.FastPositions
 import viper.silver.ast.utility.rewriter.{ContextA, PartialContextC, StrategyBuilder}
@@ -28,7 +28,7 @@ case class SuffixedExpressionGenerator[E <: PExp](func: PExp => E) extends (PExp
   override def apply(v1: PExp): E = func(v1)
 }
 
-object FastParser extends PosParser[Char, String] {
+object FastParser { // extends PosParser[Char, String] {
 
   /* When importing a file from standard library, e.g. `include <inc.vpr>`, the file is expected
    * to be located in `resources/${standard_import_directory}`, e.g. `resources/import/inv.vpr`.
@@ -36,6 +36,7 @@ object FastParser extends PosParser[Char, String] {
   val standard_import_directory = "import"
 
   var _lines: Array[Int] = null
+  var _file: Path = null
 
   def parse(s: String, f: Path, plugins: Option[SilverPluginManager] = None) = {
     _file = f.toAbsolutePath
@@ -794,7 +795,7 @@ object FastParser extends PosParser[Char, String] {
 
   def exp[_: P]: P[PExp] = P(iteExpr)
 
-  def suffix[_: P]: fastparse.noApi.Parser[SuffixedExpressionGenerator[PExp]] =
+  def suffix[_: P]: P[SuffixedExpressionGenerator[PExp]] =
     P(("." ~ idnuse).map { id => SuffixedExpressionGenerator[PExp]((e: PExp) => PFieldAccess(e, id)) } |
       ("[" ~ Pass ~ ".." ~/ exp ~ "]").map { n => SuffixedExpressionGenerator[PExp]((e: PExp) => PSeqTake(e, n)) } |
       ("[" ~ exp ~ ".." ~ Pass ~ "]").map { n => SuffixedExpressionGenerator[PExp]((e: PExp) => PSeqDrop(e, n)) } |
