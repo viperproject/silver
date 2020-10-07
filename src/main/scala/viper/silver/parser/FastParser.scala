@@ -950,7 +950,7 @@ object FastParser { // extends PosParser[Char, String] {
 
   def explicitSeqNonEmpty[_: P]: P[PExp] = P("Seq" ~ "(" ~/ exp.rep(min = 1, sep = ",") ~ ")").map(PExplicitSeq)
 
-  private def collectionTypedEmpty(name: String, typeConstructor: PType => PExp): P[PExp] =
+  private def collectionTypedEmpty[_: P](name: String, typeConstructor: PType => PExp): P[PExp] =
     P(`name` ~ ("[" ~/ typ ~ "]").? ~ "(" ~ ")").map(typ => typeConstructor(typ.getOrElse(PTypeVar("#E"))))
 
 
@@ -1074,7 +1074,7 @@ object FastParser { // extends PosParser[Char, String] {
     )
   )
 
-  def relativeFilePath[_: P]: P[String] = P(CharIn("~.").?.! ~~ (CharIn("/").? ~~ CharIn(".", 'A' to 'Z', 'a' to 'z', '0' to '9', "_- \n\t")).rep(1))
+  def relativeFilePath[_: P]: P[String] = P(CharIn("~.").?.! ~~ (CharIn("/").? ~~ CharIn(".", "A-Z", "a-z", "0-9", "_- \n\t")).rep(1))
 
   def domainDecl[_: P]: P[PDomain] = P("domain" ~/ idndef ~ ("[" ~ domainTypeVarDecl.rep(sep = ",") ~ "]").? ~ "{" ~ (domainFunctionDecl | axiomDecl).rep ~
     "}").map {

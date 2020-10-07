@@ -8,7 +8,7 @@ package viper.silver.cfg
 
 import java.nio.file.{Files, Path, Paths}
 
-import fastparse.core.Parsed.Success
+import fastparse.Parsed.Success
 import viper.silver.parser.{FastParser, PProgram, Resolver, Translator}
 import viper.silver.verifier.ParseWarning
 
