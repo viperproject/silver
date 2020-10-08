@@ -28,6 +28,6 @@ trait LifetimeComponent {
   * The implementing component is free to be more permissive regarding the
   * expected sequence of events (start, reset, stop).
   */
-trait StatefulComponent extends LifetimeComponent with Mutable {
+trait StatefulComponent extends LifetimeComponent {
   def reset()
 }

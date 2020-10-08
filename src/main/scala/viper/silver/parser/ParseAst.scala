@@ -79,22 +79,22 @@ trait PNode extends FastPositioned with Product with Rewritable {
   }
 
   /** @see [[Visitor.visit()]] */
-  def visit(f: PartialFunction[PNode, Unit]) {
+  def visit(f: PartialFunction[PNode, Unit]): Unit = {
     Visitor.visit(this, Nodes.subnodes)(f)
   }
 
   /** @see [[Visitor.visit()]] */
-  def visit(f1: PartialFunction[PNode, Unit], f2: PartialFunction[PNode, Unit]) {
+  def visit(f1: PartialFunction[PNode, Unit], f2: PartialFunction[PNode, Unit]): Unit = {
     Visitor.visit(this, Nodes.subnodes, f1, f2)
   }
 
   /** @see [[Visitor.visitOpt()]] */
-  def visitOpt(f: PNode => Boolean) {
+  def visitOpt(f: PNode => Boolean): Unit = {
     Visitor.visitOpt(this, Nodes.subnodes)(f)
   }
 
   /** @see [[Visitor.visitOpt()]] */
-  def visitOpt(f1: PNode => Boolean, f2: PNode => Unit) {
+  def visitOpt(f1: PNode => Boolean, f2: PNode => Unit): Unit = {
     Visitor.visitOpt(this, Nodes.subnodes, f1, f2)
   }
 
@@ -477,7 +477,7 @@ trait POpApp extends PExp{
   def opName : String
   def args : Seq[PExp]
 
-  private val _typeSubstitutions = new scala.collection.mutable.MutableList[PTypeSubstitution]()
+  private val _typeSubstitutions = new scala.collection.mutable.ArrayDeque[PTypeSubstitution]()
   final override def typeSubstitutions = _typeSubstitutions
   def signatures : List[PTypeSubstitution]
   def extraLocalTypeVariables : Set[PDomainType] = Set()

@@ -6,7 +6,6 @@
 
 package viper.silver.plugin.standard.termination
 
-import fastparse.noApi
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.{SimpleContext, Strategy, StrategyBuilder}
 import viper.silver.ast.{Applying, Assert, CondExp, CurrentPerm, Exp, Function, InhaleExhaleExp, MagicWand, Method, Node, Program, Unfolding, While}

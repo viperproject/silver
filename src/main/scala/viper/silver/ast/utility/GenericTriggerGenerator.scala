@@ -20,7 +20,7 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
                                        Type <: AnyRef,
                                        Exp  <: Node : ClassTag,
                                        Var <: Node : ClassTag,
-                                       Quantification <: Exp : ClassTag] extends Mutable {
+                                       Quantification <: Exp : ClassTag] {
   /* 2014-09-22 Malte: I tried to use abstract type members instead of type
    * parameters, but that resulted in the warning "The outer reference in this
    * type test cannot be checked at run time.".

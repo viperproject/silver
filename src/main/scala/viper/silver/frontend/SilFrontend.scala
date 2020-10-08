@@ -124,7 +124,7 @@ trait SilFrontend extends DefaultFrontend {
 
   def getTime: Long = System.currentTimeMillis() - _startTime
 
-  def resetMessages() {
+  def resetMessages(): Unit = {
     Consistency.resetMessages()
   }
 
@@ -172,7 +172,7 @@ trait SilFrontend extends DefaultFrontend {
    * the Viper program to the verifier.  The resulting error messages (if any) will be
    * shown in a user-friendly fashion.
    */
-  def execute(args: Seq[String]) {
+  def execute(args: Seq[String]): Unit = {
     setStartTime()
 
     /* Create the verifier */
@@ -249,7 +249,7 @@ trait SilFrontend extends DefaultFrontend {
     }
   }
 
-  protected def parseCommandLine(args: Seq[String]) {
+  protected def parseCommandLine(args: Seq[String]): Unit = {
     _config = configureVerifier(args)
   }
 
@@ -266,7 +266,7 @@ trait SilFrontend extends DefaultFrontend {
               }
               else Fail(err_list)
             case fail @ Parsed.Failure(_, index, extra) =>
-              val msg = ParseError(fail.asInstanceOf[Parsed.Failure]).getMessage()
+              val msg = fail.trace().longMsg
               val (line, col) = LineCol(extra.input.asInstanceOf[ParserInput], index)
               Fail(List(ParseError(s"Expected $msg", SourcePosition(file, line, col))))
             case error: ParseError => Fail(List(error))

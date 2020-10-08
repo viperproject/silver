@@ -6,7 +6,6 @@
 
 package viper.silver.plugin.standard.predicateinstance
 
-import fastparse.noApi
 import viper.silver.ast.{Domain, DomainType, ErrTrafo, FuncApp, Function, Position, PredicateAccess, PredicateAccessPredicate, Program, WildcardPerm}
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.Traverse
@@ -16,6 +15,8 @@ import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier.{ConsistencyError, Failure, Success, VerificationResult}
 import viper.silver.verifier.errors.PreconditionInAppFalse
 
+import fastparse._
+import NoWhitespace._
 
 class PredicateInstancePlugin  extends SilverPlugin with ParserPluginTemplate {
 
@@ -26,14 +27,11 @@ class PredicateInstancePlugin  extends SilverPlugin with ParserPluginTemplate {
 
   val PredicateInstanceDomainName = "PredicateInstance"
 
-  import White._
-  import fastparse.noApi._
-
   /**
    * Parser for declaring predicate instances.
    *
    */
-    lazy val predicateInstance: noApi.P[PPredicateInstance] = P(PredicateInstanceMarker ~/ P(predAcc)).map(p => PPredicateInstance(p.args, p.idnuse))
+    lazy val predicateInstance: P[PPredicateInstance] = P(PredicateInstanceMarker ~/ P(predAcc)).map(p => PPredicateInstance(p.args, p.idnuse))
 
   /** Called before any processing happened.
    *

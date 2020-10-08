@@ -17,8 +17,8 @@ case class PPredicateInstance(args: Seq[PExp], idnuse: PIdnUse) extends PExtende
   typ = PPrimitiv("PredicateInstance")
 
   // TODO: Don't know if this is correct
-  private val _typeSubstitutions = new scala.collection.mutable.MutableList[PTypeSubstitution]()
-  final override def typeSubstitutions: mutable.MutableList[PTypeSubstitution] = _typeSubstitutions
+  private val _typeSubstitutions = new scala.collection.mutable.ArrayDeque[PTypeSubstitution]()
+  final override def typeSubstitutions: mutable.ArrayDeque[PTypeSubstitution] = _typeSubstitutions
   override def forceSubstitution(ts: PTypeSubstitution): Unit = {}
 
   override def getSubnodes(): Seq[PNode] = args :+ idnuse
