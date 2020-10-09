@@ -49,7 +49,7 @@ case class TypeChecker(names: NameAnalyser) {
     messages.isEmpty || messages.forall(m => !m.error)
   }
 
-  def check(p: PProgram) {
+  def check(p: PProgram): Unit = {
     p.domains foreach checkFunctions
     p.domains foreach checkAxioms
     p.fields foreach check
@@ -69,20 +69,20 @@ case class TypeChecker(names: NameAnalyser) {
     }
   }
 
-  def checkMember(m: PScope)(fcheck: => Unit) {
+  def checkMember(m: PScope)(fcheck: => Unit): Unit = {
     val oldCurMember = curMember
     curMember = m
     fcheck
     curMember = oldCurMember
   }
 
-  def checkDeclaration(m: PMethod) {
+  def checkDeclaration(m: PMethod): Unit = {
     checkMember(m) {
       (m.formalArgs ++ m.formalReturns) foreach (a => check(a.typ))
     }
   }
 
-  def checkBody(m: PMethod) {
+  def checkBody(m: PMethod): Unit = {
     checkMember(m) {
       m.pres foreach (check(_, Bool))
       m.posts foreach (check(_, Bool))
@@ -90,7 +90,7 @@ case class TypeChecker(names: NameAnalyser) {
     }
   }
 
-  def checkDeclaration(f: PFunction) {
+  def checkDeclaration(f: PFunction): Unit = {
     checkMember(f) {
       assert(curFunction==null)
       curFunction=f
@@ -99,7 +99,7 @@ case class TypeChecker(names: NameAnalyser) {
       curFunction=null
     }
   }
-  def checkBody(f: PFunction) {
+  def checkBody(f: PFunction): Unit = {
     checkMember(f) {
       assert(curFunction==null)
       curFunction=f
@@ -112,46 +112,46 @@ case class TypeChecker(names: NameAnalyser) {
     }
   }
 
-  def checkDeclaration(p: PPredicate) {
+  def checkDeclaration(p: PPredicate): Unit = {
     checkMember(p) {
       p.formalArgs foreach (a => check(a.typ))
     }
   }
-  def checkBody(p: PPredicate) {
+  def checkBody(p: PPredicate): Unit = {
     checkMember(p) {
       p.body.foreach(check(_, Bool))
     }
   }
 
-  def check(f: PField) {
+  def check(f: PField): Unit = {
     checkMember(f) {
       check(f.typ)
     }
   }
 
-  def checkFunctions(d: PDomain) {
+  def checkFunctions(d: PDomain): Unit = {
     checkMember(d) {
       d.funcs foreach check
     }
   }
-  def checkAxioms(d: PDomain) {
+  def checkAxioms(d: PDomain): Unit = {
     checkMember(d) {
       d.axioms foreach check
     }
   }
 
-  def check(a: PAxiom) {
+  def check(a: PAxiom): Unit = {
     checkMember(a) {
       check(a.exp, Bool)
     }
   }
 
-  def check(f: PDomainFunction) {
+  def check(f: PDomainFunction): Unit = {
     check(f.typ)
     f.formalArgs foreach (a => check(a.typ))
   }
 
-  def check(stmt: PStmt) {
+  def check(stmt: PStmt): Unit = {
     stmt match {
       case PMacroRef(id) =>
         messages ++= FastMessaging.message(stmt, "unknown macro used: " + id.name )
@@ -261,7 +261,7 @@ case class TypeChecker(names: NameAnalyser) {
     }
   }
 
-  def acceptNonAbstractPredicateAccess(exp: PExp, messageIfAbstractPredicate: String) {
+  def acceptNonAbstractPredicateAccess(exp: PExp, messageIfAbstractPredicate: String): Unit = {
     exp match {
       case PAccPred(PPredicateAccess(_, idnuse), _) =>
         acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate"){(_, _predicate) =>
@@ -283,7 +283,7 @@ case class TypeChecker(names: NameAnalyser) {
     }
   }
 
-  def checkMagicWand(e: PExp) = e match {
+  def checkMagicWand(e: PExp): Unit = e match {
     case PBinExp(_, MagicWandOp.op, _) =>
     case _ =>
       messages ++= FastMessaging.message(e, "expected magic wand")
@@ -315,7 +315,7 @@ case class TypeChecker(names: NameAnalyser) {
     */
   def acceptAndCheckTypedEntity[T1 : ClassTag, T2 : ClassTag]
                                (idnUses: Seq[PIdnUse], errorMessage: String)
-                               (handle: (PIdnUse, PTypedDeclaration) => Unit = (_, _) => ()) {
+                               (handle: (PIdnUse, PTypedDeclaration) => Unit = (_, _) => ()): Unit = {
 
     /* TODO: Ensure that the ClassTags denote subtypes of TypedEntity */
     val acceptedClasses = Seq[Class[_]](classTag[T1].runtimeClass, classTag[T2].runtimeClass)
@@ -332,7 +332,7 @@ case class TypeChecker(names: NameAnalyser) {
     }
   }
 
-  def check(typ: PType) {
+  def check(typ: PType): Unit = {
     typ match {
       case _: PPredicateType | _: PWandType =>
         sys.error("unexpected use of internal typ")
@@ -497,7 +497,7 @@ case class TypeChecker(names: NameAnalyser) {
     /**
      * Set the type of 'exp', and check that the actual type is allowed by one of the expected types.
      */
-    def setType(actual: PType) {
+    def setType(actual: PType): Unit = {
       exp.typ = actual
     }
     /**
@@ -506,7 +506,7 @@ case class TypeChecker(names: NameAnalyser) {
      *
      * TODO: Similar to Consistency.recordIfNot. Combine!
      */
-    def issueError(n: FastPositioned, m: String) {
+    def issueError(n: FastPositioned, m: String): Unit = {
       messages ++= FastMessaging.message(n, m)
       setErrorType() // suppress further warnings
     }
@@ -514,11 +514,11 @@ case class TypeChecker(names: NameAnalyser) {
     /**
      * Sets an error type for 'exp' to suppress further warnings.
      */
-    def setErrorType() {
+    def setErrorType(): Unit = {
       setType(PUnknown())
     }
 
-    def setPIdnUseTypeAndEntity(piu: PIdnUse, typ: PType, entity: PDeclaration) {
+    def setPIdnUseTypeAndEntity(piu: PIdnUse, typ: PType, entity: PDeclaration): Unit = {
       setType(typ)
       piu.decl = entity
     }
@@ -667,13 +667,14 @@ case class TypeChecker(names: NameAnalyser) {
               val rrt: PDomainType = POpApp.pRes.substitute(ltr).asInstanceOf[PDomainType] // return type (which is a dummy type variable) replaced with fresh type
               val flat = poa.args.indices map (i => POpApp.pArg(i).substitute(ltr)) //fresh local argument types
               // the triples below are: (fresh argument type, argument type as used in domain of substitutions, substitutions)
-              poa.typeSubstitutions ++= unifySequenceWithSubstitutions(rlts, flat.indices.map(i => (flat(i), poa.args(i).typ, poa.args(i).typeSubstitutions.distinct)) ++
+              poa.typeSubstitutions ++= unifySequenceWithSubstitutions(rlts, flat.indices.map(i => (flat(i), poa.args(i).typ, poa.args(i).typeSubstitutions.distinct.toSeq)) ++
                 (
                   extraReturnTypeConstraint match {
                     case None => Nil
                     case Some(t) => Seq((rrt, t, List(PTypeSubstitution.id)))
                   }
-                  ))
+                )
+              )
               val ts = poa.typeSubstitutions.distinct
               if (ts.isEmpty)
                 typeError(poa)
@@ -733,7 +734,7 @@ case class TypeChecker(names: NameAnalyser) {
   /**
    * If b is false, report an error for node.
    */
-  def ensure(b: Boolean, node: FastPositioned, msg: String) {
+  def ensure(b: Boolean, node: FastPositioned, msg: String): Unit = {
     if (!b) messages ++= FastMessaging.message(node, msg)
   }
 }
@@ -785,7 +786,7 @@ case class NameAnalyser() {
     }
   }
 
-  def reset() {
+  def reset(): Unit = {
     globalDeclarationMap.clear()
     localDeclarationMaps.clear()
     universalDeclarationMap.clear()

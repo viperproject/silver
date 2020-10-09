@@ -48,7 +48,7 @@ Some design choices:
   * Note that all but Program are transitive subtypes of `Node` via `Hashable`. The reason is
   * that AST node hashes may depend on the entire program, not just their sub-AST.
   */
-trait Node extends Traversable[Node] with Rewritable {
+trait Node extends Iterable[Node] with Rewritable {
 
   /** @see [[Nodes.subnodes()]] */
   def subnodes = Nodes.subnodes(this)
@@ -61,36 +61,54 @@ trait Node extends Traversable[Node] with Rewritable {
     Visitor.reduceWithContext(this, Nodes.subnodes)(context, enter, combine)
   }
 
+  override def iterator: Iterator[Node] = {
+    val iterator = new Iterator[Node] {
+      var remaining = Seq[Node]().empty
+
+      override def hasNext: Boolean = remaining.nonEmpty
+
+      override def next(): Node = {
+        val result = remaining.head
+        remaining = remaining.tail
+        result
+      }
+    }
+
+    Visitor.visit(this, Nodes.subnodes) { case n: Node => iterator.remaining ++= Seq(n) }
+
+    iterator
+  }
+
   /** Applies the function `f` to the AST node, then visits all subnodes. */
-  def foreach[A](f: Node => A) = Visitor.visit(this, Nodes.subnodes) { case a: Node => f(a) }
+  //? override def foreach[A](f: Node => A) = Visitor.visit(this, Nodes.subnodes) { case a: Node => f(a) }
 
   /** @see [[Visitor.visit()]] */
-  def visit[A](f: PartialFunction[Node, A]) {
+  def visit[A](f: PartialFunction[Node, A]): Unit = {
     Visitor.visit(this, Nodes.subnodes)(f)
   }
 
   /** @see [[Visitor.visitWithContext()]] */
-  def visitWithContext[C](c: C)(f: C => PartialFunction[Node, C]) {
+  def visitWithContext[C](c: C)(f: C => PartialFunction[Node, C]): Unit = {
     Visitor.visitWithContext(this, Nodes.subnodes, c)(f)
   }
 
   /** @see [[Visitor.visitWithContextManually()]] */
-  def visitWithContextManually[C, A](c: C)(f: C => PartialFunction[Node, A]) {
+  def visitWithContextManually[C, A](c: C)(f: C => PartialFunction[Node, A]): Unit = {
     Visitor.visitWithContextManually(this, Nodes.subnodes, c)(f)
   }
 
   /** @see [[Visitor.visit()]] */
-  def visit[A](f1: PartialFunction[Node, A], f2: PartialFunction[Node, A]) {
+  def visit[A](f1: PartialFunction[Node, A], f2: PartialFunction[Node, A]): Unit = {
     Visitor.visit(this, Nodes.subnodes, f1, f2)
   }
 
   /** @see [[Visitor.visitOpt()]] */
-  def visitOpt(f: Node => Boolean) {
+  def visitOpt(f: Node => Boolean): Unit = {
     Visitor.visitOpt(this, Nodes.subnodes)(f)
   }
 
   /** @see [[Visitor.visitOpt()]] */
-  def visitOpt[A](f1: Node => Boolean, f2: Node => A) {
+  def visitOpt[A](f1: Node => Boolean, f2: Node => A): Unit = {
     Visitor.visitOpt(this, Nodes.subnodes, f1, f2)
   }
 

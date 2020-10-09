@@ -16,6 +16,8 @@ import viper.silver.plugin.standard.termination.transformation.Trafo
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier.errors.AssertFailed
 import viper.silver.verifier._
+import fastparse._
+import NoWhitespace._
 
 class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
                         logger: ch.qos.logback.classic.Logger,
@@ -28,9 +30,6 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
    */
   private val DecreasesKeyword: String = "decreases"
 
-  import White._
-  import fastparse.noApi._
-
   /**
    * Parser for decreases clauses with following possibilities.
    *
@@ -40,19 +39,19 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
    * or
    * decreases *
    */
-  lazy val decreases: noApi.P[PDecreasesClause] =
+  def decreases[_: P]: P[PDecreasesClause] =
     P(keyword(DecreasesKeyword) ~/ (decreasesWildcard | decreasesStar | decreasesTuple) ~ ";".?)
-  lazy val decreasesTuple: noApi.P[PDecreasesTuple] =
+  def decreasesTuple[_: P]: P[PDecreasesTuple] =
     P(exp.rep(sep = ",") ~/ condition.?).map { case (a, c) => PDecreasesTuple(a, c) }
-  lazy val decreasesWildcard: noApi.P[PDecreasesWildcard] = P("_" ~/ condition.?).map(c => PDecreasesWildcard(c))
-  lazy val decreasesStar: noApi.P[PDecreasesStar] = P("*").map(_ => PDecreasesStar())
-  lazy val condition: noApi.P[PExp] = P("if" ~/ exp)
+  def decreasesWildcard[_: P]: P[PDecreasesWildcard] = P("_" ~/ condition.?).map(c => PDecreasesWildcard(c))
+  def decreasesStar[_: P]: P[PDecreasesStar] = P("*").map(_ => PDecreasesStar())
+  def condition[_: P]: P[PExp] = P("if" ~/ exp)
 
 
   /**
    * Add extensions to the parser
    */
-  override def beforeParse(input: String, isImported: Boolean): String = {
+  override def beforeParse[_: P](input: String, isImported: Boolean): String = {
     // Add new keyword
     ParserExtension.addNewKeywords(Set[String](DecreasesKeyword))
     // Add new parser to the precondition

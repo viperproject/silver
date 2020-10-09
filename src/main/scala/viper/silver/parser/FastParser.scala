@@ -70,7 +70,7 @@ object FastParser { // extends PosParser[Char, String] {
         var extensions = p.extensions
         var errors = p.errors
 
-        def appendNewImports(imports: Seq[PImport], current: Path, fromLocal: Boolean) {
+        def appendNewImports(imports: Seq[PImport], current: Path, fromLocal: Boolean): Unit = {
           for (ip <- imports) {
             ip match {
               case localImport: PLocalImport if fromLocal =>
@@ -96,7 +96,7 @@ object FastParser { // extends PosParser[Char, String] {
           }
         }
 
-        def appendNewProgram(newProg: PProgram) {
+        def appendNewProgram(newProg: PProgram): Unit = {
           macros ++= newProg.macros
           domains ++= newProg.domains
           fields ++= newProg.fields
@@ -741,7 +741,7 @@ object FastParser { // extends PosParser[Char, String] {
 
   def result[_: P]: P[PResultLit] = P(keyword("result").map { _ => PResultLit() })
 
-  def unExp[_: P]: P[PUnExp] = P((CharIn("-!").! ~~ suffixExpr).map { case (a, b) => PUnExp(a, b) })
+  def unExp[_: P]: P[PUnExp] = P((CharIn("\\-!").! ~~ suffixExpr).map { case (a, b) => PUnExp(a, b) })
 
   def strInteger[_: P]: P[String] = P(CharIn("0-9").rep(1)).!
 

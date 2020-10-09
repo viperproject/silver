@@ -18,11 +18,11 @@ class PositionMap {
       Option (memo.getIfPresent (t).asInstanceOf[Position])
     }
 
-    def put (t : Any, u : Position) {
+    def put (t : Any, u : Position): Unit = {
       memo.put (t.asInstanceOf[AnyRef], u.asInstanceOf[AnyRef])
     }
 
-    def putIfNotPresent (t : Any, u : Position) {
+    def putIfNotPresent (t : Any, u : Position): Unit = {
       if (!hasBeenComputedAt (t))
         put (t, u)
     }
@@ -47,14 +47,14 @@ object FastPositions {
     def getFinish (t : Any) : Position =
       MapFinish.get (t).getOrElse (NoPosition)
 
-    def setStart (t : Any, p : Position, force : Boolean = false) {
+    def setStart (t : Any, p : Position, force : Boolean = false): Unit = {
       if (force)
         MapStart.put(t, p)
       else
         MapStart.putIfNotPresent(t, p)
     }
 
-    def setFinish (t : Any, p : Position, force : Boolean = false) {
+    def setFinish (t : Any, p : Position, force : Boolean = false): Unit = {
       if (force)
         MapFinish.put(t, p)
       else

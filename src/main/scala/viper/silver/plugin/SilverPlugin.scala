@@ -12,6 +12,7 @@ import viper.silver.frontend.SilFrontendConfig
 import viper.silver.parser.PProgram
 import viper.silver.reporter.Reporter
 import viper.silver.verifier.{AbstractError, VerificationResult}
+import fastparse._
 
 /** Implement this abstract class in order to give your plugin access to SilFrontend's IO:
   * 1. Reporter,
@@ -39,14 +40,14 @@ trait SilverPlugin {
     * @param isImported Whether the current input is an imported file or the main file
     * @return Modified source code
     */
-  def beforeParse(input: String, isImported: Boolean) : String = input
+  def beforeParse(input: String, isImported: Boolean): String = input
 
   /** Called after parse AST has been constructed but before identifiers are resolved and the program is type checked.
     *
     * @param input Parse AST
     * @return Modified Parse AST
     */
-  def beforeResolve(input: PProgram) : PProgram = input
+  def beforeResolve(input: PProgram): PProgram = input
 
   /** Called after identifiers have been resolved but before the parse AST is translated into the normal AST.
     *

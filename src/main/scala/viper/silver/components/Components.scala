@@ -15,8 +15,8 @@ package viper.silver.components
   * expected sequence of events (start, stop).
   */
 trait LifetimeComponent {
-  def start()
-  def stop()
+  def start(): Unit
+  def stop(): Unit
 }
 
 /** Describes a component that potentially has state which must be taken care
@@ -29,5 +29,5 @@ trait LifetimeComponent {
   * expected sequence of events (start, reset, stop).
   */
 trait StatefulComponent extends LifetimeComponent {
-  def reset()
+  def reset(): Unit
 }

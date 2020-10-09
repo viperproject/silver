@@ -139,7 +139,7 @@ trait PNode extends FastPositioned with Product with Rewritable {
   var next :Option[PNode] = None
   var prev :Option[PNode] = None
 
-  def initProperties() {
+  def initProperties(): Unit = {
 
     var ind : Int = 0
     var prev : PNode = null
@@ -384,7 +384,7 @@ case class PWandType() extends PInternalType {
 trait PExp extends PNode {
   var typ: PType = PUnknown()
   def typeSubstitutions : scala.collection.Seq[PTypeSubstitution]
-  def forceSubstitution(ts: PTypeSubstitution)
+  def forceSubstitution(ts: PTypeSubstitution): Unit
 }
 
 case class PMagicWandExp(override val left: PExp, override val right: PExp) extends PBinExp(left, MagicWandOp.op, right) with PResourceAccess

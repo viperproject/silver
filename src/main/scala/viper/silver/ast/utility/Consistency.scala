@@ -15,7 +15,7 @@ import viper.silver.{FastMessage, FastMessaging}
 /** An utility object for consistency checking. */
 object Consistency {
   var messages: FastMessaging.Messages = Nil
-  def recordIfNot(suspect: Positioned, property: Boolean, message: String) {
+  def recordIfNot(suspect: Positioned, property: Boolean, message: String): Unit = {
     if (!property) {
       val pos = suspect.pos
 
@@ -23,9 +23,9 @@ object Consistency {
     }
   }
 
-  def resetMessages() { this.messages = Nil }
+  def resetMessages(): Unit = { this.messages = Nil }
   @inline
-  def recordIf(suspect: Positioned, property: Boolean, message: String) =
+  def recordIf(suspect: Positioned, property: Boolean, message: String): Unit =
     recordIfNot(suspect, !property, message)
 
   /** Names that are not allowed for use in programs. */

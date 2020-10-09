@@ -107,9 +107,9 @@ object Triggers {
       LocalVar(s"__rw_$name$nextUniqueId", typ)()
     }
 
-    protected def log(message: String) {}
-    protected def log(key: String, item: Any) {}
-    protected def log(key: String, items: Iterable[Any]) {}
+    protected def log(message: String): Unit = {}
+    protected def log(key: String, item: Any): Unit = {}
+    protected def log(key: String, items: Iterable[Any]): Unit = {}
   }
 
   object SimpleArithmeticSolver extends GenericArithmeticSolver[Type, Exp, LocalVar, Add, Sub] {

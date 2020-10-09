@@ -13,9 +13,10 @@ import viper.silver.parser.{FastParser, PProgram, Resolver, Translator}
 import viper.silver.verifier.ParseWarning
 
 import scala.io.Source
+import fastparse._
 
 object CfgTest {
-  def main(args: Array[String]): Unit = {
+  def main[_: P](args: Array[String]): Unit = {
     if (args.isEmpty) throw new RuntimeException("No input file specified")
     val path = args(0)
 
@@ -35,7 +36,7 @@ object CfgTest {
     }
   }
 
-  private def parse(input: String, file: Path): Option[PProgram] = {
+  private def parse[_: P](input: String, file: Path): Option[PProgram] = {
     val result = FastParser.parse(input, file)
     result match {
       case Success(program@PProgram(_, _, _, _, _, _, _,_, errors), _) =>

@@ -100,7 +100,7 @@ object QuantifiedPermissions {
   private def quantifiedFields(toVisit: mutable.Queue[Member],
                                collected: mutable.LinkedHashSet[Field],
                                visited: mutable.Set[Member],
-                               program: Program) {
+                               program: Program): Unit = {
 
     while (toVisit.nonEmpty) {
       val root = toVisit.dequeue()
@@ -121,7 +121,7 @@ object QuantifiedPermissions {
   private def quantifiedPredicates(toVisit: mutable.Queue[Member],
                                    collected: mutable.LinkedHashSet[Predicate],
                                    visited: mutable.Set[Member],
-                                   program: Program) {
+                                   program: Program): Unit = {
 
     while (toVisit.nonEmpty) {
       val root = toVisit.dequeue()

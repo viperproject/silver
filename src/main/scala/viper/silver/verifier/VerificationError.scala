@@ -6,7 +6,7 @@
 
 package viper.silver.verifier
 
-import fastparse.core.Parsed
+import fastparse.Parsed
 import viper.silver.ast._
 import viper.silver.ast.pretty.FastPrettyPrinter
 import viper.silver.ast.utility.rewriter.Rewritable
@@ -49,7 +49,7 @@ object CounterexampleTransformer {
 object Model {
 
   def apply(modelString: String) : Model = {
-    ModelParser.model.parse(modelString) match{
+    fastparse.parse(modelString, ModelParser.model(_)) match{
       case Parsed.Success(m, index) => return m
       case f@Parsed.Failure(last, index, extra) => throw new Exception(f.toString)
     }

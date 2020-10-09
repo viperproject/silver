@@ -123,7 +123,7 @@ case class Translator(program: PProgram) {
     *           method call no longer needs the method node, the method name (as a string)
     *           suffices
     */
-  private def translateMemberSignature(p: PMember) {
+  private def translateMemberSignature(p: PMember): Unit = {
     val pos = p
     val name = p.idndef.name
     val t = p match {

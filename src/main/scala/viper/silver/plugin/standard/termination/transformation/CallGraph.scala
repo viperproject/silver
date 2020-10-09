@@ -19,7 +19,7 @@ protected object CallGraph {
   def mutuallyRecursiveVertices[V](graph: DefaultDirectedGraph[V, DefaultEdge]): Seq[Set[V]] = {
     val stronglyConnected = new KosarajuStrongConnectivityInspector(graph)
     val c = stronglyConnected.stronglyConnectedSets()
-    c.asScala.map(_.asScala.toSet)
+    c.asScala.map(_.asScala.toSet).toSeq
   }
 
 

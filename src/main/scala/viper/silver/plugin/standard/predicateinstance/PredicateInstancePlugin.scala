@@ -31,7 +31,7 @@ class PredicateInstancePlugin  extends SilverPlugin with ParserPluginTemplate {
    * Parser for declaring predicate instances.
    *
    */
-    lazy val predicateInstance: P[PPredicateInstance] = P(PredicateInstanceMarker ~/ P(predAcc)).map(p => PPredicateInstance(p.args, p.idnuse))
+  def predicateInstance[_: P]: P[PPredicateInstance] = P(PredicateInstanceMarker ~/ P(predAcc)).map(p => PPredicateInstance(p.args, p.idnuse))
 
   /** Called before any processing happened.
    *

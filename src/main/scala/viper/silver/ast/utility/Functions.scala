@@ -35,7 +35,7 @@ object Functions {
       graph.addVertex(f)
     }
 
-    def process(f: Function, e: Exp) {
+    def process(f: Function, e: Exp): Unit = {
       e visit {
         case FuncApp(f2name, _) =>
           graph.addEdge(f, program.findFunction(f2name))
@@ -156,7 +156,7 @@ object Functions {
   def recursiveCallsAndSurroundingUnfoldings(f : Function) : Seq[(FuncApp,Seq[Unfolding])] = {
     var result: Seq[(FuncApp, Seq[Unfolding])] = Seq()
 
-    def recordCallsAndUnfoldings(e: Node, ufs: Seq[Unfolding]) {
+    def recordCallsAndUnfoldings(e: Node, ufs: Seq[Unfolding]): Unit = {
       e.shallowCollect {
       case Let(v, e, bod) => recordCallsAndUnfoldings(e.replace(e, bod), ufs)
       case uf@Unfolding (acc, body) =>

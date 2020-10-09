@@ -15,32 +15,6 @@ import viper.silver.reporter._
 import viper.silver.verifier._
 import fastparse.{Parsed, ParserInput}
 import java.nio.file.{Path, Paths}
-
-//class TestPhase extends TestA {
-//  type PProgram = viper.silver.parser.PProgram
-//  type Program = viper.silver.ast.Program
-//  type Message = String
-//
-//  override def parsing(program: String): Result[PProgram] = {
-//    Success(PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq()))
-//  }
-//
-//  override def semanticAnalysis(program: PProgram): Result[PProgram] = {
-//    Success(PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq()))
-//  }
-//
-//  override def translation(program: PProgram): Result[Program] = {
-//    Success(Program(Seq(), Seq(), Seq(), Seq(), Seq())())
-//  }
-//
-//  override def consistencyCheck(program: Program): Result[Program] = {
-//    Success(Program(Seq(), Seq(), Seq(), Seq(), Seq())())
-//  }
-
-//  override def verification(program: Program): Result[Message] = {
-//    Success("Program verified correctly")
-//  }
-//}
 import viper.silver.{FastMessaging, FastPositions}
 
 /**
