@@ -17,6 +17,8 @@ import fastparse._
 import NoWhitespace._
 
 trait ParserPluginTemplate {
+  import ParserPluginTemplate.Extension
+
   /**
     * The import statements that instantiate the PWhiteSpaceApi class and then import the overloaded sequencing operators
     * of the "fastparse" library. It is extremely essential for these statements to exist in the parser.
@@ -33,13 +35,14 @@ trait ParserPluginTemplate {
   /**
     * The following three 10 variables form the main hooks for extending the parser
     */
+
   /**
     * The high level declarations which provide a hook for any type of independent declarations like new function or new predicates etc.
     * The high level declarations at the End Position are conservative extensions to the grammar. Extending the top level declaration using this parser
     * will not cause any effects in the pre existing parser and any other viper codes.
     *
     */
-  def newDeclAtEnd[_: P]: P[PExtender] = ParserPluginTemplate.defaultExtension
+  def newDeclAtEnd : Extension[PExtender] = ParserPluginTemplate.defaultExtension
 
   /**
     * The high level declarations that are checked at the start of the parser. These have the highest priority over
@@ -47,46 +50,50 @@ trait ParserPluginTemplate {
     * if that particular top level construct is either particularly different from the top-level constructs in viper
     * or the programmer needs this particular rules to be executed with priority.
     */
-  def newDeclAtStart[_: P]: P[PExtender] = ParserPluginTemplate.defaultExtension
+  def newDeclAtStart : Extension[PExtender] = ParserPluginTemplate.defaultExtension
+
   /**
     * The newStmt parser which is essentially an extension of the stmt rules in the new parser.
     * The statements at the End Position are conservative extensions to the grammar. Extending the statements using this parser
     * will not cause any effects in the pre existing parser and any other viper codes.
     *
     */
-  def newStmtAtEnd[_: P]: P[PStmt] = ParserPluginTemplate.defaultStmtExtension
+  def newStmtAtEnd : Extension[PStmt] = ParserPluginTemplate.defaultStmtExtension
 
  /**
    * The newStmt parser which is essentially an extension of the stmt rules in the new parser.
    * This provides an extension to statements that can be used force the parser to parse certain rules with high priority
    */
-  def newStmtAtStart[_: P]: P[PStmt] = ParserPluginTemplate.defaultStmtExtension
+  def newStmtAtStart : Extension[PStmt] = ParserPluginTemplate.defaultStmtExtension
 
   /**
     * The newExp rule provides an extension to the expression parsers.
     * The expressions at the End Position are conservative extensions to the grammar. Extending the expressions using this parser
     * will not cause any effects in the pre existing parser and any other viper codes.
     */
-  def newExpAtEnd[_: P]: P[PExp] = ParserPluginTemplate.defaultExpExtension
+  def newExpAtEnd : Extension[PExp] = ParserPluginTemplate.defaultExpExtension
 
 /**
   * The newExp rule provides an extension to the expression parsers.
   * This provides an extension to expressions that can be used force the parser to parse certain rules with high priority
   */
-  def newExpAtStart[_: P]: P[PExp] = ParserPluginTemplate.defaultExpExtension
+  def newExpAtStart : Extension[PExp] = ParserPluginTemplate.defaultExpExtension
 
   /**
     * The specification rule provides an extension to the precondition expressions
     */
-  def preSpecification[_: P]: P[PExp] = ParserPluginTemplate.defaultExpExtension
+  def preSpecification : Extension[PExp] = ParserPluginTemplate.defaultExpExtension
+
   /**
     * The specification rule provides an extension to the postcondition expressions
     */
-  def postSpecification[_: P]: P[PExp] = ParserPluginTemplate.defaultExpExtension
+  def postSpecification : Extension[PExp] = ParserPluginTemplate.defaultExpExtension
+
   /**
     * The specification rule provides an extension to the loop invariant specification expressions
     */
-  def invSpecification[_: P]: P[PExp] = ParserPluginTemplate.defaultExpExtension
+  def invSpecification : Extension[PExp] = ParserPluginTemplate.defaultExpExtension
+
   /**
     * This rule extends the keywords. So new strings added to the set will be considered as keywords.
     */
@@ -168,13 +175,18 @@ trait ParserPluginTemplate {
   }
 }
 
-
 /**
   * A Companion Obejct that defines the default values of the parser extensions of types, PExtender(basic), PStmt(Statements)
   * and PExp(Expressions)
   */
-object ParserPluginTemplate{
-  def defaultExtension[_: P]: P[PExtender] = Fail
-  def defaultStmtExtension[_: P]: P[PStmt] = Fail
-  def defaultExpExtension[_: P]: P[PExp] = Fail
+object ParserPluginTemplate {
+  type Extension[T] = P[_] => P[T]
+
+  def combine[T](left : Extension[T], right : Extension[T]) : Extension[T] = {
+    implicit ctx : P[_] => P(left(ctx) | right(ctx))
+  }
+
+  def defaultExtension : Extension[PExtender] = Fail(_)
+  def defaultStmtExtension : Extension[PStmt] = Fail(_)
+  def defaultExpExtension : Extension[PExp] = Fail(_)
 }

@@ -732,11 +732,11 @@ object FastParser { // extends PosParser[Char, String] {
     "unique") | ParserExtension.extendedKeywords
 
 
-  def atom[_: P]: P[PExp] = P(ParserExtension.newExpAtStart | integer | booltrue | boolfalse | nul | old
+  def atom(implicit ctx : P[_]) : P[PExp] = P(ParserExtension.newExpAtStart(ctx) | integer | booltrue | boolfalse | nul | old
     | result | unExp
     | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | applying
     | setTypedEmpty | explicitSetNonEmpty | multiSetTypedEmpty | explicitMultisetNonEmpty | seqTypedEmpty
-    | seqLength | explicitSeqNonEmpty | seqRange | fapp | typedFapp | idnuse | ParserExtension.newExpAtEnd)
+    | seqLength | explicitSeqNonEmpty | seqRange | fapp | typedFapp | idnuse | ParserExtension.newExpAtEnd(ctx))
 
 
   def result[_: P]: P[PResultLit] = P(keyword("result").map { _ => PResultLit() })
@@ -965,13 +965,13 @@ object FastParser { // extends PosParser[Char, String] {
     case (func, args, typeGiven) => PCall(func, args, Some(typeGiven))
   }
 
-  def stmt[_: P]: P[PStmt] = P(ParserExtension.newStmtAtStart | macroassign | fieldassign | localassign | fold | unfold | exhale | assertP |
+  def stmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | macroassign | fieldassign | localassign | fold | unfold | exhale | assertP |
     inhale | assume | ifthnels | whle | varDecl | defineDecl | newstmt | 
-    methodCall | goto | lbl | packageWand | applyWand | macroref | block | ParserExtension.newStmtAtEnd)
+    methodCall | goto | lbl | packageWand | applyWand | macroref | block | ParserExtension.newStmtAtEnd(ctx))
 
-  def nodefinestmt[_: P]: P[PStmt] = P(ParserExtension.newStmtAtStart | fieldassign | localassign | fold | unfold | exhale | assertP |
+  def nodefinestmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | fieldassign | localassign | fold | unfold | exhale | assertP |
     inhale | assume | ifthnels | whle | varDecl | newstmt |
-    methodCall | goto | lbl | packageWand | applyWand | macroref | block | ParserExtension.newStmtAtEnd)
+    methodCall | goto | lbl | packageWand | applyWand | macroref | block | ParserExtension.newStmtAtEnd(ctx))
 
   def macroref[_: P]: P[PMacroRef] = P(idnuse).map(a => PMacroRef(a))
 
@@ -1017,7 +1017,7 @@ object FastParser { // extends PosParser[Char, String] {
     case (cond, invs, body) => PWhile(cond, invs, body)
   }
 
-  def inv[_: P]: P[PExp] = P((keyword("invariant") ~ exp ~ ";".?) | ParserExtension.invSpecification)
+  def inv(implicit ctx : P[_]) : P[PExp] = P((keyword("invariant") ~ exp ~ ";".?) | ParserExtension.invSpecification(ctx))
 
   def varDecl[_: P]: P[PLocalVarDecl] = P(keyword("var") ~/ idndef ~ ":" ~ typ ~ (":=" ~ exp).?).map { case (a, b, c) => PLocalVarDecl(a, b, c) }
 
@@ -1052,7 +1052,7 @@ object FastParser { // extends PosParser[Char, String] {
 
   def applying[_: P]: P[PExp] = P(keyword("applying") ~/ "(" ~ magicWandExp ~ ")" ~ "in" ~ exp).map { case (a, b) => PApplying(a, b) }
 
-  def programDecl[_: P]: P[PProgram] = P((ParserExtension.newDeclAtStart | preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl | ParserExtension.newDeclAtEnd).rep).map {
+  def programDecl(implicit ctx : P[_]) : P[PProgram] = P((ParserExtension.newDeclAtStart(ctx) | preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl | ParserExtension.newDeclAtEnd(ctx)).rep).map {
     decls => {
       PProgram(
         decls.collect { case i: PImport => i }, // Imports
@@ -1114,9 +1114,9 @@ object FastParser { // extends PosParser[Char, String] {
     post.rep ~ ("{" ~ exp ~ "}").?).map { case (a, b, c, d, e, f) => PFunction(a, b, c, d, e, f) }
 
 
-  def pre[_: P]: P[PExp] = P(("requires" ~/ exp ~ ";".?) | ParserExtension.preSpecification)
+  def pre(implicit ctx : P[_]) : P[PExp] = P(("requires" ~/ exp ~ ";".?) | ParserExtension.preSpecification(ctx))
 
-  def post[_: P]: P[PExp] = P(("ensures" ~/ exp ~ ";".?) | ParserExtension.postSpecification)
+  def post(implicit ctx : P[_]) : P[PExp] = P(("ensures" ~/ exp ~ ";".?) | ParserExtension.postSpecification(ctx))
 
   def decCl[_: P]: P[Seq[PExp]] = P(exp.rep(sep = ","))
 

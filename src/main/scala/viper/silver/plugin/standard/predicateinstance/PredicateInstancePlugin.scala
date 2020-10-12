@@ -41,7 +41,7 @@ class PredicateInstancePlugin  extends SilverPlugin with ParserPluginTemplate {
    */
   override def beforeParse(input: String, isImported: Boolean): String = {
     // Add new keyword
-    ParserExtension.addNewExpAtStart(predicateInstance)
+    ParserExtension.addNewExpAtStart(predicateInstance(_))
     input
   }
 
