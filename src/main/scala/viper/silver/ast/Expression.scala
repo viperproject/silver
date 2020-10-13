@@ -552,11 +552,19 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
     if (exp.isPure)
       Seq()
     else {
+      case class InAcc(inside: Boolean)
+
       var result = Seq.empty[ConsistencyError]
-      StrategyBuilder.SlimVisitor[Node]({
-        case c: CondExp => result ++= Seq(ConsistencyError("Impure forall expressions cannot contain conditional expressions.", c.pos))
-        case _ =>
-      }).execute(exp)
+
+      StrategyBuilder.ContextVisitor[Node, InAcc]({
+        case (n: CondExp, c) if !c.c.inside =>
+          result ++= Seq(ConsistencyError("Impure forall expressions cannot contain conditional expressions.", n.pos))
+          c
+        case (_: FieldAccessPredicate, c) =>
+          c.updateContext(InAcc(true))
+        case (_, c) => c
+      }, InAcc(false)).execute(exp)
+
       result
     }
   }
