@@ -560,7 +560,7 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
         case (n: CondExp, c) if !c.c.inside =>
           result ++= Seq(ConsistencyError("Impure forall expressions cannot contain conditional expressions.", n.pos))
           c
-        case (_: FieldAccessPredicate, c) =>
+        case (_: AccessPredicate, c) =>
           c.updateContext(InAcc(true))
         case (_, c) => c
       }, InAcc(false)).execute(exp)
