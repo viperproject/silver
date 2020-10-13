@@ -227,4 +227,14 @@ class ConsistencyTests extends FunSuite with Matchers {
       ConsistencyError("No matching identifier g found of type DomainFunc.", NoPosition)
     )
   }
+
+  test("Testing detection of if expressions in impure forall expression") {
+
+    val f = Field("f", Int)()
+    val forall = Forall(Seq(LocalVarDecl("i", Int)()), Seq(), CondExp(FalseLit()(), TrueLit()(), FieldAccessPredicate(FieldAccess(LocalVar("r", Ref)(), f)(), FullPerm()())())())()
+
+    forall.checkTransitively shouldBe Seq(
+      ConsistencyError("Impure forall expressions cannot contain conditional expressions.", NoPosition)
+    )
+  }
 }

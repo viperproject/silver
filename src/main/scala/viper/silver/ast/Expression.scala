@@ -536,7 +536,8 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
   override lazy val check : Seq[ConsistencyError] =
     (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Body of universal quantifier must be of Bool type, but found ${exp.typ}", exp.pos)) else Seq()) ++
     Consistency.checkAllVarsMentionedInTriggers(variables, triggers) ++
-    checkNoNestedQuantsForQuantPermissions
+    checkNoNestedQuantsForQuantPermissions ++
+    checkIfsInImpureForall
 
   /** checks against nested quantification for quantified permissions */
   lazy val checkNoNestedQuantsForQuantPermissions : Seq[ConsistencyError] = {
@@ -544,6 +545,19 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
       case None => Seq()
       case Some((_, exp, _)) => if(exp.existsDefined({case _: Forall => }) && !exp.isPure)
         Seq(ConsistencyError("Nested quantifiers are not allowed for quantified permissions.", exp.pos)) else Seq()
+    }
+  }
+
+  lazy val checkIfsInImpureForall: Seq[ConsistencyError] = {
+    if (exp.isPure)
+      Seq()
+    else {
+      var result = Seq.empty[ConsistencyError]
+      StrategyBuilder.SlimVisitor[Node]({
+        case c: CondExp => result ++= Seq(ConsistencyError("Impure forall expressions cannot contain conditional expressions.", c.pos))
+        case _ =>
+      }).execute(exp)
+      result
     }
   }
   /** Returns an identical forall quantification that has some automatically generated triggers
