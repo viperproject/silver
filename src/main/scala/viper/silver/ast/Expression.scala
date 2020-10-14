@@ -549,24 +549,27 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
   }
 
   lazy val checkIfsInImpureForall: Seq[ConsistencyError] = {
-    if (exp.isPure)
-      Seq()
-    else {
-      case class InAcc(inside: Boolean)
+    if (!exp.isInstanceOf[Implies])
+      Seq(ConsistencyError("Forall expressions must have an implies expression.", exp.pos))
+    else
+      if (exp.isPure)
+        Seq()
+      else {
+        case class InAcc(inside: Boolean)
 
-      var result = Seq.empty[ConsistencyError]
+        var result = Seq.empty[ConsistencyError]
 
-      StrategyBuilder.ContextVisitor[Node, InAcc]({
-        case (n: CondExp, c) if !c.c.inside =>
-          result ++= Seq(ConsistencyError("Impure forall expressions cannot contain conditional expressions.", n.pos))
-          c
-        case (_: AccessPredicate, c) =>
-          c.updateContext(InAcc(true))
-        case (_, c) => c
-      }, InAcc(false)).execute(exp)
+        StrategyBuilder.ContextVisitor[Node, InAcc]({
+          case (n: CondExp, c) if !c.c.inside =>
+            result ++= Seq(ConsistencyError("Impure forall expressions cannot contain conditional expressions.", n.pos))
+            c
+          case (_: AccessPredicate, c) =>
+            c.updateContext(InAcc(true))
+          case (_, c) => c
+        }, InAcc(false)).execute(exp)
 
-      result
-    }
+        result
+      }
   }
   /** Returns an identical forall quantification that has some automatically generated triggers
     * if necessary and possible.
