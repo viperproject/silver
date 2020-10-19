@@ -6,6 +6,9 @@
 
 // Settings common to Silver and backends
 // Compilation settings
+
+import sbt.ClassLoaderLayeringStrategy.ScalaLibrary
+
 ThisBuild / scalaVersion := "2.13.3"
 ThisBuild / scalacOptions ++= Seq(
   "-encoding", "UTF-8",               // Enforce UTF-8, instead of relying on properly set locales
@@ -38,7 +41,9 @@ lazy val silver = (project in file("."))
 
     // Fork test to a different JVM than SBT's, avoiding SBT's classpath interfering with
     // classpath used by Scala's reflection.
-    Test / fork := true,
+    Test / fork := false, //?
+    // Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaLibrary, //?
+    Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat, //?
 
     // Compilation settings
     libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,             // Scala
@@ -59,3 +64,4 @@ lazy val silver = (project in file("."))
     assembly / assemblyJarName := "silver.jar",
     assembly / test := {},
   )
+

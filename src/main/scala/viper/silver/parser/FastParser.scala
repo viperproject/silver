@@ -20,7 +20,7 @@ import viper.silver.verifier.{ParseError, ParseWarning}
 import scala.collection.mutable
 
 import fastparse._
-import NoWhitespace._
+import ScalaWhitespace._
 
 case class ParseException(msg: String, pos: scala.util.parsing.input.Position) extends Exception
 

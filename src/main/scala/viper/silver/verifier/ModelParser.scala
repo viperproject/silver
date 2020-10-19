@@ -3,7 +3,7 @@ package viper.silver.verifier
 import java.util.regex.{Matcher, Pattern}
 
 import fastparse._
-import NoWhitespace._
+import ScalaWhitespace._
 
 import scala.collection.mutable
 

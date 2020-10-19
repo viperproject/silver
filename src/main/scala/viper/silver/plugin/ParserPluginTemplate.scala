@@ -14,7 +14,7 @@ import viper.silver.verifier.VerificationResult
 import scala.collection.Set
 
 import fastparse._
-import NoWhitespace._
+import ScalaWhitespace._
 
 trait ParserPluginTemplate {
   import ParserPluginTemplate.Extension
