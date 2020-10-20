@@ -234,8 +234,6 @@ class RegexStrategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTa
       node match {
         case map: Map[_, _] => map.map(replaceTopDown(_, matches, ancList)).asInstanceOf[A]
 
-        case collection: Iterable[_] => collection.map(replaceTopDown(_, matches, ancList)).asInstanceOf[A]
-
         case Some(value) => Some(replaceTopDown(value, matches, ancList)).asInstanceOf[A]
 
         case n: N => {
@@ -265,6 +263,8 @@ class RegexStrategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTa
             newNode.withChildren(children).asInstanceOf[A]
           }
         }
+
+        case collection: Iterable[_] => collection.map(replaceTopDown(_, matches, ancList)).asInstanceOf[A]
 
         case value => value
       }
