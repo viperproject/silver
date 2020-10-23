@@ -13,7 +13,10 @@ import viper.silver.parser.{FastParser, PProgram, Resolver, Translator}
 import viper.silver.verifier.ParseWarning
 
 import scala.io.Source
-import fastparse._
+
+import fastparse.{P => FP, _}
+import ScalaWhitespace._
+import viper.silver.parser.FastParser.P
 
 object CfgTest {
   def main[_: P](args: Array[String]): Unit = {

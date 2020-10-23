@@ -12,7 +12,6 @@ import viper.silver.frontend.SilFrontendConfig
 import viper.silver.parser.PProgram
 import viper.silver.reporter.Reporter
 import viper.silver.verifier.{AbstractError, VerificationResult}
-import fastparse._
 
 /** Implement this abstract class in order to give your plugin access to SilFrontend's IO:
   * 1. Reporter,

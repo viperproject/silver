@@ -13,8 +13,10 @@ import viper.silver.verifier.VerificationResult
 
 import scala.collection.Set
 
-import fastparse._
+import fastparse.{P => FP, _}
 import ScalaWhitespace._
+
+import viper.silver.parser.FastParser.P
 
 trait ParserPluginTemplate {
   import ParserPluginTemplate.Extension

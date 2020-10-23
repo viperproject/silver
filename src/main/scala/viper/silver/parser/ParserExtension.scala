@@ -9,7 +9,8 @@ package viper.silver.parser
 import viper.silver.plugin._
 import scala.collection.Set
 
-import fastparse._
+import fastparse.{P => FP, _}
+import ScalaWhitespace._
 
 object ParserExtension extends ParserPluginTemplate {
 //override val White = PWrapper { //?

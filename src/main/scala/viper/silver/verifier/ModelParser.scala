@@ -2,11 +2,11 @@ package viper.silver.verifier
 
 import java.util.regex.{Matcher, Pattern}
 
-import fastparse._
-import ScalaWhitespace._
-
 import scala.collection.mutable
 
+import fastparse.{P => FP, _}
+import ScalaWhitespace._
+import viper.silver.parser.FastParser.P
 
 object ModelParser {
   // val White = PWrapper { //?

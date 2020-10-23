@@ -12,7 +12,6 @@ import viper.silver.frontend.SilFrontendConfig
 import viper.silver.parser.PProgram
 import viper.silver.reporter.Reporter
 import viper.silver.verifier.{AbstractError, VerificationResult}
-import fastparse._
 
 /** Manage the loaded plugins and execute them during the different hooks (see [[viper.silver.plugin.SilverPlugin]]).
   *

@@ -240,7 +240,7 @@ trait SilFrontend extends DefaultFrontend {
               }
               else Fail(err_list)
             case fail @ Parsed.Failure(_, index, extra) =>
-              val msg = fail.trace().longMsg
+              val msg = fail.trace().longAggregateMsg
               val (line, col) = LineCol(extra.input.asInstanceOf[ParserInput], index)
               Fail(List(ParseError(s"Expected $msg", SourcePosition(file, line, col))))
             case error: ParseError => Fail(List(error))

@@ -15,7 +15,7 @@ import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier.{ConsistencyError, Failure, Success, VerificationResult}
 import viper.silver.verifier.errors.PreconditionInAppFalse
 
-import fastparse._
+import fastparse.{P => FP, _} //?
 import ScalaWhitespace._
 
 class PredicateInstancePlugin  extends SilverPlugin with ParserPluginTemplate {

@@ -19,8 +19,6 @@ import viper.silver.verifier.{ParseError, ParseWarning}
 
 import scala.collection.mutable
 
-import fastparse._
-import ScalaWhitespace._
 
 case class ParseException(msg: String, pos: scala.util.parsing.input.Position) extends Exception
 
@@ -28,7 +26,31 @@ case class SuffixedExpressionGenerator[E <: PExp](func: PExp => E) extends (PExp
   override def apply(v1: PExp): E = func(v1)
 }
 
-object FastParser { // extends PosParser[Char, String] {
+object FastParser { // extends PosParser[Char, String] { //?
+  import fastparse.{P => FP, _}
+  import ScalaWhitespace._
+
+  type P[T] = FP[T]
+
+  def P[T](t: P[T])(implicit name: sourcecode.Name, ctx: P[_]): P[T] = {
+
+    def getLineAndColumn(index: Int): (Int, Int) = {
+      val Array(line, col) = ctx.input.prettyIndex(index).split(":").map(_.toInt)
+      (line, col)
+    }
+
+    t map {
+      case node: T => {
+        val start = getLineAndColumn(ctx.startIndex)
+        val end = getLineAndColumn(ctx.index)
+        FastPositions.setStart(node, FilePosition(_file, start._1, start._2))
+        FastPositions.setFinish(node, FilePosition(_file, end._1, end._2))
+        if (node.isInstanceOf[PMethod])
+          println("Achei")
+        node
+      }
+    }
+  }
 
   /* When importing a file from standard library, e.g. `include <inc.vpr>`, the file is expected
    * to be located in `resources/${standard_import_directory}`, e.g. `resources/import/inv.vpr`.
@@ -1074,7 +1096,7 @@ object FastParser { // extends PosParser[Char, String] {
     )
   )
 
-  def relativeFilePath[_: P]: P[String] = P(CharIn("~.").?.! ~~ (CharIn("/").? ~~ CharIn(".", "A-Z", "a-z", "0-9", "_- \n\t")).rep(1))
+  def relativeFilePath[_: P]: P[String] = P(CharIn("~.").?.! ~~ (CharIn("/").? ~~ CharIn(".", "A-Z", "a-z", "0-9", "_\\- \n\t")).rep(1))
 
   def domainDecl[_: P]: P[PDomain] = P("domain" ~/ idndef ~ ("[" ~ domainTypeVarDecl.rep(sep = ",") ~ "]").? ~ "{" ~ (domainFunctionDecl | axiomDecl).rep ~
     "}").map {
@@ -1123,7 +1145,7 @@ object FastParser { // extends PosParser[Char, String] {
   def predicateDecl[_: P]: P[PPredicate] = P("predicate" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ("{" ~ exp ~ "}").?).map { case (a, b, c) => PPredicate(a, b, c) }
 
   def methodDecl[_: P]: P[PMethod] = P(methodSignature ~/ pre.rep ~ post.rep ~ block.?).map {
-    case (name, args, rets, pres, posts, body) =>
+    case p@(name, args, rets, pres, posts, body) =>
       PMethod(name, args, rets.getOrElse(Nil), pres, posts, body)
   }
 

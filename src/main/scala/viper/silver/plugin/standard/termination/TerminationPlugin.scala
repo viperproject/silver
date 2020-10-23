@@ -16,7 +16,7 @@ import viper.silver.plugin.standard.termination.transformation.Trafo
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier.errors.AssertFailed
 import viper.silver.verifier._
-import fastparse._
+import fastparse.{P => FP, _} //?
 import ScalaWhitespace._
 
 class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
