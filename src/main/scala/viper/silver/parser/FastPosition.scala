@@ -41,16 +41,8 @@ object FastPositions {
     private val MapStart = new PositionMap
     private val MapFinish = new PositionMap
 
-    def getStart (t : Any) : Position = {
-      //? MapStart.get (t).getOrElse (NoPosition)
-      val res = MapStart.get(t)
-      if (res.isDefined)
-        res.get
-      else {
-        println("Not defined")
-        NoPosition
-      }
-    }
+    def getStart (t : Any) : Position =
+      MapStart.get (t).getOrElse (NoPosition)
 
     def getFinish (t : Any) : Position =
       MapFinish.get (t).getOrElse (NoPosition)

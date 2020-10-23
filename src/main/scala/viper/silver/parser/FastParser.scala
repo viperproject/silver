@@ -41,12 +41,15 @@ object FastParser { // extends PosParser[Char, String] { //?
 
     t map {
       case node: T => { //? Change to PNode
-        val start = getLineAndColumn(ctx.startIndex)
-        val finish = getLineAndColumn(ctx.index)
-        _begin = FilePosition(_file, start._1, start._2)
-        _end = FilePosition(_file, finish._1, finish._2)
+        val (beginLine, beginColumn) = getLineAndColumn(ctx.index) //?
+        val (endLine, endColumn) = getLineAndColumn(ctx.index)
+
+        _begin = FilePosition(_file, beginLine, beginColumn)
+        _end = FilePosition(_file, endLine, endColumn)
+
         FastPositions.setStart(node, _begin)
         FastPositions.setFinish(node, _end)
+
         node
       }
     }
