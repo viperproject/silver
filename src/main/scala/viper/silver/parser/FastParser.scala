@@ -40,13 +40,13 @@ object FastParser { // extends PosParser[Char, String] { //?
     }
 
     t map {
-      case node: T => {
+      case node: T => { //? Change to PNode
         val start = getLineAndColumn(ctx.startIndex)
-        val end = getLineAndColumn(ctx.index)
-        FastPositions.setStart(node, FilePosition(_file, start._1, start._2))
-        FastPositions.setFinish(node, FilePosition(_file, end._1, end._2))
-        if (node.isInstanceOf[PMethod])
-          println("Achei")
+        val finish = getLineAndColumn(ctx.index)
+        _begin = FilePosition(_file, start._1, start._2)
+        _end = FilePosition(_file, finish._1, finish._2)
+        FastPositions.setStart(node, _begin)
+        FastPositions.setFinish(node, _end)
         node
       }
     }
@@ -59,6 +59,9 @@ object FastParser { // extends PosParser[Char, String] { //?
 
   var _lines: Array[Int] = null
   var _file: Path = null
+
+  var _begin: FilePosition = FilePosition(null, 0, 0)
+  var _end: FilePosition = FilePosition(null, 0, 0)
 
   def parse(s: String, f: Path, plugins: Option[SilverPluginManager] = None) = {
     _file = f.toAbsolutePath
@@ -1145,8 +1148,11 @@ object FastParser { // extends PosParser[Char, String] { //?
   def predicateDecl[_: P]: P[PPredicate] = P("predicate" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ("{" ~ exp ~ "}").?).map { case (a, b, c) => PPredicate(a, b, c) }
 
   def methodDecl[_: P]: P[PMethod] = P(methodSignature ~/ pre.rep ~ post.rep ~ block.?).map {
-    case p@(name, args, rets, pres, posts, body) =>
-      PMethod(name, args, rets.getOrElse(Nil), pres, posts, body)
+    case (name, args, rets, pres, posts, body) =>
+      val m = PMethod(name, args, rets.getOrElse(Nil), pres, posts, body)
+      FastPositions.setStart(m, _begin)
+      FastPositions.setFinish(m, _end)
+      m
   }
 
   def methodSignature[_: P] = P("method" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ("returns" ~ "(" ~ formalArgList ~ ")").?)
