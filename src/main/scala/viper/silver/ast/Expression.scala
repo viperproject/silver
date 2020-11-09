@@ -922,6 +922,154 @@ case class AnySetCardinality(s: Exp)(val pos: Position = NoPosition, val info: I
   def withArgs(newArgs: Seq[Exp]) = AnySetCardinality(newArgs.head)(pos, info, errT)
 }
 
+// --- Mathematical maps
+
+/**
+  * Marker trait for all map-related expressions.
+  * Does not imply that the type of the expression is `MapType`.
+  */
+sealed trait MapExp extends Exp with PossibleTrigger
+
+/**
+  * The empty map with keys of type `keyType` and values of type `valueType`.
+  */
+case class EmptyMap(keyType: Type, valueType: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends MapExp {
+  lazy val typ = MapType(keyType, valueType)
+  def getArgs : Seq[Exp] = Seq()
+  def withArgs(newArgs: Seq[Exp]) : MapExp = this
+}
+
+/**
+  * An explicit, non-empty map defined by the collection `elems`,
+  * whose elements are expected to alternate between keys and values;
+  * that is, 'Map(`elems[0]` := `elems[1]`, `elems[2]` := `elems[3]`, ...)'.
+  */
+case class ExplicitMap(elems: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends MapExp {
+  lazy val keyType : Type = pairs.head.key.typ
+  lazy val valueType : Type = pairs.head.value.typ
+  lazy val typ: MapType = MapType(keyType, valueType)
+
+  lazy val pairs : Seq[KeyValuePair] = elems.grouped(2).flatMap {
+    case Seq(key, value) => Some(KeyValuePair(key, value))
+    case _ => None
+  }.toSeq
+
+  override lazy val check : Seq[ConsistencyError] =
+    (if (elems.isEmpty) Seq(ConsistencyError("Explicit map must be non-empty.", pos)) else Seq()) ++
+      (if (elems.length % 2 == 0) Seq(ConsistencyError("All mapped keys must have corresponding values.", pos)) else Seq()) ++
+      (if (!pairs.tail.forall(e => e.key.typ == pairs.head.key.typ)) Seq(ConsistencyError("All keys within the map must have same type.", pairs.head.key.pos)) else Seq()) ++
+      (if (!pairs.tail.forall(e => e.value.typ == pairs.head.value.typ)) Seq(ConsistencyError("All values within the map must have same type.", pairs.head.value.pos)) else Seq()) ++
+      elems.flatMap(Consistency.checkPure)
+
+  def getArgs : Seq[Exp] = elems
+  def withArgs(newArgs: Seq[Exp]) : MapExp = ExplicitMap(newArgs)(pos, info, errT)
+
+  lazy val desugared : MapExp = pairs.foldLeft[MapExp](EmptyMap(keyType, valueType)(pos, info, errT)) {
+    case (map, KeyValuePair(key, value)) => MapUpdate(map, key, value)(pos, info, errT)
+  }
+}
+
+/**
+  * A single map entry.
+  */
+case class KeyValuePair(key : Exp, value : Exp)
+
+/**
+  * The same map as `base`, but with `key` mapping to `value`.
+  */
+case class MapUpdate(base: Exp, key: Exp, value: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends MapExp {
+  lazy val typ : Type = base.typ
+
+  override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(value) ++ (base.typ match {
+    case MapType(keyType, valueType) =>
+      (if (!(key.typ isSubtype keyType)) Seq(ConsistencyError(s"Expected the key to be of type $keyType, but found ${key.typ}", key.pos)) else Seq()) ++
+        (if (!(value.typ isSubtype valueType)) Seq(ConsistencyError(s"Expected the value to be of type $valueType, but found ${value.typ}", value.pos)) else Seq())
+    case t => Seq(ConsistencyError(s"Expected map type but found $t", base.pos))
+  })
+
+  def getArgs : Seq[Exp] = Seq(base, key, value)
+  def withArgs(newArgs: Seq[Exp]) : MapExp = MapUpdate(newArgs.head, newArgs(1), newArgs(2))(pos, info, errT)
+}
+
+/**
+  * Access to a value within the map `base` at the given `key`.
+  */
+case class MapIndex(base : Exp, key : Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends MapExp {
+  lazy val typ : Type = base.typ.asInstanceOf[MapType].valueType
+
+  override lazy val check : Seq[ConsistencyError] = base.typ match {
+    case MapType(keyType, _) =>
+      if (!(key.typ isSubtype keyType)) Seq(ConsistencyError(s"Expected the key to be of type $keyType, but found ${key.typ}", key.pos)) else Seq()
+    case t => Seq(ConsistencyError(s"Expected map type but found $t", base.pos))
+  }
+
+  def getArgs : Seq[Exp] = Seq(base, key)
+  def withArgs(newArgs: Seq[Exp]) : MapExp = MapIndex(newArgs.head, newArgs(1))(pos, info, errT)
+}
+
+/**
+  * Determines whether `key` is mapped by (contained in) the given map `base`.
+  */
+case class MapContains(base : Exp, key : Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends MapExp with PrettyBinaryExpression {
+  lazy val typ : Type = Bool
+  lazy val priority : Int = 7
+  lazy val fixity : Fixity = Infix(LeftAssociative)
+  lazy val left : PrettyExpression = base
+  lazy val right : PrettyExpression = key
+  lazy val op : String = "in"
+
+  override lazy val check : Seq[ConsistencyError] = base.typ match {
+    case MapType(keyType, _) =>
+      if (!(key.typ isSubtype keyType)) Seq(ConsistencyError(s"Expected the key to be of type $keyType, but found ${key.typ}", key.pos)) else Seq()
+    case t => Seq(ConsistencyError(s"Expected map type but found $t", base.pos))
+  }
+
+  def getArgs : Seq[Exp] = Seq(base, key)
+  def withArgs(newArgs: Seq[Exp]) : MapExp = MapContains(newArgs.head, newArgs(1))(pos, info, errT)
+}
+
+/**
+  * The number of keys mapped by the given map `base`.
+  */
+case class MapCardinality(base : Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends MapExp {
+  lazy val typ : Type = Int
+
+  override lazy val check : Seq[ConsistencyError] =
+    if (!base.typ.isInstanceOf[MapType]) Seq(ConsistencyError(s"Expected map type but found ${base.typ}", base.pos)) else Seq()
+
+  def getArgs : Seq[Exp] = Seq(base)
+  def withArgs(newArgs: Seq[Exp]) : MapExp = MapCardinality(newArgs.head)(pos, info, errT)
+}
+
+/**
+  * The domain of the given map `base`; that is,
+  * the set of all keys containing a mapping in `base`.
+  */
+case class MapDomain(base : Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AnySetExp {
+  lazy val typ : Type = SetType(base.asInstanceOf[MapType].keyType)
+
+  override lazy val check : Seq[ConsistencyError] =
+    if (!base.typ.isInstanceOf[MapType]) Seq(ConsistencyError(s"Expected map type but found ${base.typ}", base.pos)) else Seq()
+
+  def getArgs : Seq[Exp] = Seq(base)
+  def withArgs(newArgs: Seq[Exp]) : SetExp = MapDomain(newArgs.head)(pos, info, errT)
+}
+
+/**
+  * The range (or image) of the given map `base`; that is,
+  * the set of all values to which a mapping is contained in `base`.
+  */
+case class MapRange(base : Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AnySetExp {
+  lazy val typ : Type = SetType(base.asInstanceOf[MapType].keyType)
+
+  override lazy val check : Seq[ConsistencyError] =
+    if (!base.typ.isInstanceOf[MapType]) Seq(ConsistencyError(s"Expected map type but found ${base.typ}", base.pos)) else Seq()
+
+  def getArgs : Seq[Exp] = Seq(base)
+  def withArgs(newArgs: Seq[Exp]) : SetExp = MapRange(newArgs.head)(pos, info, errT)
+}
+
+
 // --- Common functionality
 
 /** Common super trait for all kinds of literals. */

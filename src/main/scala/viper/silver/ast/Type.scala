@@ -125,6 +125,22 @@ sealed case class MultisetType(override val  elementType: Type) extends Collecti
 //    MultisetType(elementType.substitute(typVarsMap))
 }
 
+/** Type of maps */
+sealed case class MapType(keyType : Type, valueType : Type) extends BuiltInType with GenericType {
+  val keyTypeParameter : TypeVar = TypeVar("K")
+  val ValueTypeParameter : TypeVar = TypeVar("V")
+
+  override type MyType = MapType
+  override val genericName = "Map"
+  override val typeParameters = Seq(keyTypeParameter, ValueTypeParameter)
+  override val typVarsMap: Map[TypeVar, Type] = Map(keyTypeParameter -> keyType, ValueTypeParameter -> valueType)
+
+  override def make(s : Substitution) : MyType = MapType(
+    typVarsMap(keyTypeParameter).substitute(s),
+    typVarsMap(ValueTypeParameter).substitute(s)
+  )
+}
+
 /** Type for user-defined domains. See also the companion object below, which allows passing a
   * Domain - this should be used in general for creation (so that domainTypVars is guaranteed to
   * be set correctly)
