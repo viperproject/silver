@@ -34,12 +34,21 @@ object FastParser extends PosParser[Char, String] {
    */
   val standard_import_directory = "import"
 
-  var _lines: Array[Int] = null
+  var _line_offset: Array[Int] = null
 
   def parse(s: String, f: Path, plugins: Option[SilverPluginManager] = None) = {
     _file = f.toAbsolutePath
+
+    // Add an empty line at the end to make `computeFrom(s.length)` return `(lines.length, 1)`, as the old
+    // implementation of `computeFrom` used to do.
     val lines = s.linesWithSeparators
-    _lines = lines.map(_.length).toArray
+    _line_offset = (lines.map(_.length) ++ Seq(0)).toArray
+    var offset = 0
+    for (i <- _line_offset.indices) {
+      val line_length = _line_offset(i)
+      _line_offset(i) = offset
+      offset += line_length
+    }
 
     // Strategy to handle imports
     // Idea: Import every import reference and merge imported methods, functions, imports, .. into current program
@@ -155,7 +164,6 @@ object FastParser extends PosParser[Char, String] {
           column = pos.column
         }
         ParseError(msg, SourcePosition(_file, line, column))
-      case _:Throwable =>
     }
   }
 
