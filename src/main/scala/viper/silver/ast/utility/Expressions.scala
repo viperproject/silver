@@ -38,7 +38,8 @@ object Expressions {
          | _: SeqExp
          | _: SetExp
          | _: MultisetExp
-         | _:ForPerm
+         | _: MapExp
+         | _: ForPerm
       => true
   }
 

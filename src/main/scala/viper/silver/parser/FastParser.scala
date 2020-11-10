@@ -740,7 +740,7 @@ object FastParser extends PosParser[Char, String] {
     | result | unExp
     | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | applying
     | setTypedEmpty | explicitSetNonEmpty | multiSetTypedEmpty | explicitMultisetNonEmpty | seqTypedEmpty
-    | seqLength | explicitSeqNonEmpty | seqRange
+    | size | explicitSeqNonEmpty | seqRange
     | mapTypedEmpty | explicitMapNonEmpty | mapDomain | mapRange
     | fapp | typedFapp | idnuse | ParserExtension.newExpAtEnd)
 
@@ -937,7 +937,7 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val seqTypedEmpty: P[PExp] = collectionTypedEmpty("Seq", PEmptySeq)
 
-  lazy val seqLength: P[PExp] = P("|" ~ exp ~ "|").map(PSize)
+  lazy val size: P[PExp] = P("|" ~ exp ~ "|").map(PSize)
 
   lazy val explicitSeqNonEmpty: P[PExp] = P("Seq" ~ "(" ~/ exp.rep(min = 1, sep = ",") ~ ")").map(PExplicitSeq)
 

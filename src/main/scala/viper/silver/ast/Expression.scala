@@ -940,23 +940,18 @@ case class EmptyMap(keyType: Type, valueType: Type)(val pos: Position = NoPositi
 }
 
 /**
-  * An explicit, non-empty map defined by the collection `elems`,
-  * whose elements are expected to alternate between keys and values;
-  * that is, 'Map(`elems[0]` := `elems[1]`, `elems[2]` := `elems[3]`, ...)'.
+  * An explicit, non-empty map defined by the collection `elems`
+  * of key-value pairs (that is, `KeyValuePair`s).
   */
 case class ExplicitMap(elems: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends MapExp {
+  lazy val pairs : Seq[KeyValuePair] = elems.collect { case p : KeyValuePair => p }
   lazy val keyType : Type = pairs.head.key.typ
   lazy val valueType : Type = pairs.head.value.typ
   lazy val typ: MapType = MapType(keyType, valueType)
 
-  lazy val pairs : Seq[KeyValuePair] = elems.grouped(2).flatMap {
-    case Seq(key, value) => Some(KeyValuePair(key, value))
-    case _ => None
-  }.toSeq
-
   override lazy val check : Seq[ConsistencyError] =
     (if (elems.isEmpty) Seq(ConsistencyError("Explicit map must be non-empty.", pos)) else Seq()) ++
-      (if (elems.length % 2 == 0) Seq(ConsistencyError("All mapped keys must have corresponding values.", pos)) else Seq()) ++
+      (if (elems.length != pairs.length) Seq(ConsistencyError("All elements of a map must be key-value pairs.", pos)) else Seq()) ++
       (if (!pairs.tail.forall(e => e.key.typ == pairs.head.key.typ)) Seq(ConsistencyError("All keys within the map must have same type.", pairs.head.key.pos)) else Seq()) ++
       (if (!pairs.tail.forall(e => e.value.typ == pairs.head.value.typ)) Seq(ConsistencyError("All values within the map must have same type.", pairs.head.value.pos)) else Seq()) ++
       elems.flatMap(Consistency.checkPure)
@@ -964,15 +959,25 @@ case class ExplicitMap(elems: Seq[Exp])(val pos: Position = NoPosition, val info
   def getArgs : Seq[Exp] = elems
   def withArgs(newArgs: Seq[Exp]) : MapExp = ExplicitMap(newArgs)(pos, info, errT)
 
+  /**
+    * Desugars this explicit map into a nested sequence of
+    * map updates, started from an empty map.
+    */
   lazy val desugared : MapExp = pairs.foldLeft[MapExp](EmptyMap(keyType, valueType)(pos, info, errT)) {
     case (map, KeyValuePair(key, value)) => MapUpdate(map, key, value)(pos, info, errT)
   }
 }
 
 /**
-  * A single map entry.
+  * A single map entry as a key-value pair.
+  * Such a key-value pair is also considered to be
+  * a singleton map.
   */
-case class KeyValuePair(key : Exp, value : Exp)
+case class KeyValuePair(key : Exp, value : Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends MapExp {
+  override def getArgs: Seq[Exp] = Seq(key, value)
+  override def withArgs(args: Seq[Exp]): PossibleTrigger = KeyValuePair(args.head, args(1))(pos, info, errT)
+  override def typ: MapType = MapType(key.typ, value.typ)
+}
 
 /**
   * The same map as `base`, but with `key` mapping to `value`.

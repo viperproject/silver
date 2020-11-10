@@ -1276,6 +1276,7 @@ object Nodes {
       case PExplicitMap(elems) => elems
       case PMapRange(base) => Seq(base)
       case PMapDomain(base) => Seq(base)
+      case PKeyValuePair(key, value) => Seq(key, value)
       case PMacroRef(name) => Nil
       case PSeqn(ss) => ss
       case PFold(exp) => Seq(exp)

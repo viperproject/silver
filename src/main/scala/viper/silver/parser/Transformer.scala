@@ -35,6 +35,7 @@ object Transformer {
         case PSeqType(elementType) => PSeqType(go(elementType))
         case PSetType(elementType) => PSetType(go(elementType))
         case PMultisetType(elementType) => PMultisetType(go(elementType))
+        case PMapType(keyType, valueType) => PMapType(go(keyType), go(valueType))
         case _: PUnknown => parent
         case _: PPredicateType | _: PWandType => parent
         case PMagicWandExp(left, right) => PMagicWandExp(go(left), go(right))
@@ -84,7 +85,11 @@ object Transformer {
         case PEmptyMultiset(t) => PEmptyMultiset(go(t))
         //        case _: PEmptyMultiset => parent
         case PExplicitMultiset(elems) => PExplicitMultiset(elems map go)
-
+        case PEmptyMap(keyType, valueType) => PEmptyMap(go(keyType), go(valueType))
+        case PExplicitMap(exprs) => PExplicitMap(exprs map go)
+        case PKeyValuePair(key, value) => PKeyValuePair(go(key), go(value))
+        case PMapDomain(base) => PMapDomain(go(base))
+        case PMapRange(base) => PMapRange(go(base))
         case PSeqn(ss) => PSeqn(ss map go)
         case PFold(e) => PFold(go(e))
         case PUnfold(e) => PUnfold(go(e))
