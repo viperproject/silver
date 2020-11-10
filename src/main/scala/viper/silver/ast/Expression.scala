@@ -1015,12 +1015,12 @@ case class MapLookup(base : Exp, key : Exp)(val pos: Position = NoPosition, val 
 /**
   * Determines whether `key` is mapped by (contained in) the given map `base`.
   */
-case class MapContains(base : Exp, key : Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends MapExp with PrettyBinaryExpression {
+case class MapContains(key : Exp, base : Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends MapExp with PrettyBinaryExpression {
   lazy val typ : Type = Bool
   lazy val priority : Int = 7
   lazy val fixity : Fixity = Infix(LeftAssociative)
-  lazy val left : PrettyExpression = base
-  lazy val right : PrettyExpression = key
+  lazy val left : PrettyExpression = key
+  lazy val right : PrettyExpression = base
   lazy val op : String = "in"
 
   override lazy val check : Seq[ConsistencyError] = base.typ match {
@@ -1029,7 +1029,7 @@ case class MapContains(base : Exp, key : Exp)(val pos: Position = NoPosition, va
     case t => Seq(ConsistencyError(s"Expected map type but found $t", base.pos))
   }
 
-  def getArgs : Seq[Exp] = Seq(base, key)
+  def getArgs : Seq[Exp] = Seq(key, base)
   def withArgs(newArgs: Seq[Exp]) : MapExp = MapContains(newArgs.head, newArgs(1))(pos, info, errT)
 }
 

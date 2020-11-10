@@ -896,7 +896,7 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val formalArg: P[PFormalArgDecl] = P(idndef ~ ":" ~ typ).map { case (a, b) => PFormalArgDecl(a, b) }
 
-  lazy val typ: P[PType] = P(primitiveTyp | domainTyp | seqType | setType | multisetType)
+  lazy val typ: P[PType] = P(primitiveTyp | domainTyp | seqType | setType | multisetType | mapType)
 
   lazy val domainTyp: P[PDomainType] = P((idnuse ~ "[" ~ typ.rep(sep = ",") ~ "]").map { case (a, b) => PDomainType(a, b) } |
     // domain type without type arguments (might also be a type variable)
@@ -907,6 +907,10 @@ object FastParser extends PosParser[Char, String] {
   lazy val setType: P[PType] = P(keyword("Set") ~ "[" ~ typ ~ "]").map(PSetType)
 
   lazy val multisetType: P[PType] = P(keyword("Multiset") ~ "[" ~ typ ~ "]").map(PMultisetType)
+
+  lazy val mapType : P[PType] = P(keyword("Map") ~ "[" ~ typ ~ "," ~ typ ~ "]").map {
+    case (keyType, valueType) => PMapType(keyType, valueType)
+  }
 
   lazy val primitiveTyp: P[PType] = P(keyword("Rational").map(_ => PPrimitiv("Perm"))
     | (StringIn("Int", "Bool", "Perm", "Ref") ~~ !identContinues).!.map(PPrimitiv))

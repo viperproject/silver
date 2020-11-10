@@ -620,9 +620,10 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       case Perm => "Perm"
       case InternalType => "InternalType"
       case Wand => "$WandType"
-      case SeqType(elemType) => text("Seq") <> "[" <> show(elemType) <> "]"
-      case SetType(elemType) => text("Set") <> "[" <> show(elemType) <> "]"
-      case MultisetType(elemType) => text("Multiset") <> "[" <> show(elemType) <> "]"
+      case SeqType(elemType) => text("Seq") <> brackets(show(elemType))
+      case SetType(elemType) => text("Set") <> brackets(show(elemType))
+      case MultisetType(elemType) => text("Multiset") <> brackets(show(elemType))
+      case MapType(keyType, valueType) => text("Map") <> brackets(show(keyType) <> "," <> show(valueType))
       case TypeVar(v) => v
       case dt@DomainType(domainName, typVarsMap) =>
         val typArgs = dt.typeParameters map (t => show(typVarsMap.getOrElse(t, t)))
@@ -819,6 +820,25 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       parens(show(elem) <+> "in" <+> show(s))
     case AnySetCardinality(s) =>
       surround(show(s),char ('|'))
+
+    case EmptyMap(keyType, valueType) =>
+      text("Map") <> brackets(showType(keyType) <> "," <> showType(valueType)) <> "()"
+    case ExplicitMap(elems) =>
+      text("Map") <> parens(ssep(elems map show, char(',') <> space))
+    case KeyValuePair(key, value) =>
+      show(key) <+> ":=" <+> show(value)
+    case MapLookup(base, key) =>
+      show(base) <> brackets(show(key))
+    case MapContains(key, base) =>
+      parens(show(key) <+> "in" <+> show(base))
+    case MapCardinality(base) =>
+      surround(show(base), char('|'))
+    case MapUpdate(base, key, value) =>
+      show(base) <> brackets(show(key) <+> ":=" <+> show(value))
+    case MapDomain(base) =>
+      text("domain") <> parens(show(base))
+    case MapRange(base) =>
+      text("range") <> parens(show(base))
 
     case null => uninitialized
     case u: PrettyUnaryExpression => showPrettyUnaryExp(u)
