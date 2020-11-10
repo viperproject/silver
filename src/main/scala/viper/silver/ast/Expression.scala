@@ -537,7 +537,7 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
     (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Body of universal quantifier must be of Bool type, but found ${exp.typ}", exp.pos)) else Seq()) ++
     Consistency.checkAllVarsMentionedInTriggers(variables, triggers) ++
     checkNoNestedQuantsForQuantPermissions ++
-    checkIfsInImpureForall
+    checkExpressionIsImplication
 
   /** checks against nested quantification for quantified permissions */
   lazy val checkNoNestedQuantsForQuantPermissions : Seq[ConsistencyError] = {
@@ -548,28 +548,11 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
     }
   }
 
-  lazy val checkIfsInImpureForall: Seq[ConsistencyError] = {
+  lazy val checkExpressionIsImplication: Seq[ConsistencyError] = {
     if (!exp.isInstanceOf[Implies])
-      Seq(ConsistencyError("Forall expressions must have an implies expression.", exp.pos))
+      Seq(ConsistencyError("Forall AST nodes must have implication as expression.", exp.pos))
     else
-      if (exp.isPure)
-        Seq()
-      else {
-        case class InAcc(inside: Boolean)
-
-        var result = Seq.empty[ConsistencyError]
-
-        StrategyBuilder.ContextVisitor[Node, InAcc]({
-          case (n: CondExp, c) if !c.c.inside =>
-            result ++= Seq(ConsistencyError("Impure forall expressions cannot contain conditional expressions.", n.pos))
-            c
-          case (_: AccessPredicate, c) =>
-            c.updateContext(InAcc(true))
-          case (_, c) => c
-        }, InAcc(false)).execute(exp)
-
-        result
-      }
+      Seq()
   }
   /** Returns an identical forall quantification that has some automatically generated triggers
     * if necessary and possible.

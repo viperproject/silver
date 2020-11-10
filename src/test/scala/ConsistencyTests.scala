@@ -228,13 +228,13 @@ class ConsistencyTests extends FunSuite with Matchers {
     )
   }
 
-  test("Testing detection of if expressions in impure forall expression") {
+  test("Testing if Forall AST nodes have implication as expression") {
 
     val f = Field("f", Int)()
     val forall = Forall(Seq(LocalVarDecl("i", Int)()), Seq(), CondExp(FalseLit()(), TrueLit()(), FieldAccessPredicate(FieldAccess(LocalVar("r", Ref)(), f)(), FullPerm()())())())()
 
     forall.checkTransitively shouldBe Seq(
-      ConsistencyError("Impure forall expressions cannot contain conditional expressions.", NoPosition)
+      ConsistencyError("Forall AST nodes must have implication as expression.", NoPosition)
     )
   }
 }
