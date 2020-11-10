@@ -73,10 +73,10 @@ object Transformer {
         case PEmptySeq(t) => PEmptySeq(go(t))
         case PExplicitSeq(elems) => PExplicitSeq(elems map go)
         case PRangeSeq(low, high) => PRangeSeq(go(low), go(high))
-        case PSeqIndex(seq, idx) => PSeqIndex(go(seq), go(idx))
+        case PLookup(seq, idx) => PLookup(go(seq), go(idx))
         case PSeqTake(seq, n) => PSeqTake(go(seq), go(n))
         case PSeqDrop(seq, n) => PSeqDrop(go(seq), go(n))
-        case PSeqUpdate(seq, idx, elem) => PSeqUpdate(go(seq), go(idx), go(elem))
+        case PUpdate(seq, idx, elem) => PUpdate(go(seq), go(idx), go(elem))
         case PSize(seq) => PSize(go(seq))
         case PEmptySet(t) => PEmptySet(go(t))
         //        case _: PEmptySet => parent

@@ -868,15 +868,20 @@ case class PRangeSeq(low: PExp, high: PExp) extends POpApp{
   override val signatures : List[PTypeSubstitution]= List(
     Map(POpApp.pArgS(0)->Int,POpApp.pArgS(1)->Int,POpApp.pResS->PSeqType(Int)))
 }
-case class PSeqIndex(seq: PExp, idx: PExp) extends POpApp{
-  override val opName = "Seq#At"
-  override val args = Seq(seq,idx)
-  override val signatures : List[PTypeSubstitution]= List(
-    Map(
-      POpApp.pArgS(0)->PSeqType(POpApp.pRes),
-      POpApp.pArgS(1)->Int)
+
+case class PLookup(base: PExp, idx: PExp) extends POpApp {
+  val keyType : PDomainType = POpApp.pArg(1)
+
+  override val opName = "lookup"
+  override val args = Seq(base, idx)
+  override val extraLocalTypeVariables : Set[PDomainType] = Set(keyType)
+
+  override val signatures : List[PTypeSubstitution] = List(
+    Map(POpApp.pArgS(0) -> PSeqType(POpApp.pRes), POpApp.pArgS(1) -> Int),
+    Map(POpApp.pArgS(0) -> PMapType(keyType, POpApp.pRes))
   )
 }
+
 case class PSeqTake(seq: PExp, n: PExp) extends POpApp{
   override val opName = "Seq#Take"
   val elementType = PTypeVar("#E")
@@ -901,32 +906,34 @@ case class PSeqDrop(seq: PExp, n: PExp) extends POpApp{
       POpApp.pResS->PSeqType(elementType)
     ))
 }
-case class PSeqUpdate(seq: PExp, idx: PExp, elem: PExp) extends POpApp{
-  override val opName = "Seq#update"
-  val elementType = POpApp.pArg(2)
-  override val args = Seq(seq,idx,elem)
+
+case class PUpdate(base : PExp, key : PExp, value : PExp) extends POpApp {
+  val keyType : PDomainType = POpApp.pArg(1)
+  val elementType : PDomainType = POpApp.pArg(2)
+
+  override val opName = "update"
+  override val args = Seq(base, key, value)
+  override val extraLocalTypeVariables : Set[PDomainType] = Set(keyType, elementType)
+
   override val signatures : List[PTypeSubstitution] = List(
-    Map(
-      POpApp.pArgS(0)->PSeqType(elementType),
-      POpApp.pArgS(1)->Int,
-      POpApp.pResS->PSeqType(elementType)
-    ))
-  override val extraLocalTypeVariables = Set(elementType)
+    Map(POpApp.pArgS(0) -> PSeqType(elementType), POpApp.pArgS(1) -> Int, POpApp.pResS -> PSeqType(elementType)),
+    Map(POpApp.pArgS(0) -> PMapType(keyType, elementType), POpApp.pResS -> PMapType(keyType, elementType))
+  )
 }
 
 case class PSize(seq: PExp) extends POpApp {
-  val elementType = PTypeVar("#E")
-  val valueType = PTypeVar("#V")
+  val keyType : PDomainType = PTypeVar("#K")
+  val elementType : PDomainType = PTypeVar("#E")
 
-  override val opName = "Seq#size"
-  override val extraLocalTypeVariables = Set(elementType, valueType)
+  override val opName = "size"
+  override val extraLocalTypeVariables : Set[PDomainType] = Set(keyType, elementType)
   override val args = Seq(seq)
 
   override val signatures : List[PTypeSubstitution] = List(
     Map(POpApp.pArgS(0) -> PSeqType(elementType), POpApp.pResS -> Int),
     Map(POpApp.pArgS(0) -> PSetType(elementType), POpApp.pResS -> Int),
     Map(POpApp.pArgS(0) -> PMultisetType(elementType), POpApp.pResS -> Int),
-    Map(POpApp.pArgS(0) -> PMapType(elementType, valueType), POpApp.pResS -> Int)
+    Map(POpApp.pArgS(0) -> PMapType(keyType, elementType), POpApp.pResS -> Int)
   )
 }
 
@@ -996,22 +1003,9 @@ case class PKeyValuePair(key : PExp, value : PExp) extends PMapLiteral {
   ))
 }
 
-case class PMapLookup(base : PExp, key : PExp) extends POpApp {
-  val elementType: PDomainType = PTypeVar("#E")
-
-  override val opName = "Map#lookup"
-  override val args = Seq(base, key)
-  override val extraLocalTypeVariables: Set[PDomainType] = Set(elementType)
-
-  override val signatures : List[PTypeSubstitution] = List(Map(
-    POpApp.pArgS(0) -> PMapType(elementType, POpApp.pRes),
-    POpApp.pArgS(1) -> elementType
-  ))
-}
-
 case class PMapDomain(base : PExp) extends POpApp {
   val keyType: PDomainType = PTypeVar("#K")
-  val valueType: PDomainType = PTypeVar("#V")
+  val valueType: PDomainType = PTypeVar("#E")
 
   override val opName = "Map#domain"
   override val args = Seq(base)
@@ -1025,7 +1019,7 @@ case class PMapDomain(base : PExp) extends POpApp {
 
 case class PMapRange(base : PExp) extends POpApp {
   val keyType: PDomainType = PTypeVar("#K")
-  val valueType: PDomainType = PTypeVar("#V")
+  val valueType: PDomainType = PTypeVar("#E")
 
   override val opName = "Map#range"
   override val args = Seq(base)
@@ -1034,20 +1028,6 @@ case class PMapRange(base : PExp) extends POpApp {
   override val signatures : List[PTypeSubstitution] = List(Map(
     POpApp.pArgS(0) -> PMapType(keyType, valueType),
     POpApp.pResS -> PSetType(valueType)
-  ))
-}
-
-case class PMapUpdate(base : PExp, key : PExp, value : PExp) extends POpApp {
-  val keyType : PDomainType = POpApp.pArg(1)
-  val valueType : PDomainType = POpApp.pArg(2)
-
-  override val opName = "Map#update"
-  override val args = Seq(base, key, value)
-  override val extraLocalTypeVariables: Set[PDomainType] = Set(keyType, valueType)
-
-  override val signatures : List[PTypeSubstitution] = List(Map(
-    POpApp.pArgS(0) -> PMapType(keyType, valueType),
-    POpApp.pResS -> PMapType(keyType, valueType)
   ))
 }
 
@@ -1248,6 +1228,7 @@ object Nodes {
       case PSeqType(elemType) => Seq(elemType)
       case PSetType(elemType) => Seq(elemType)
       case PMultisetType(elemType) => Seq(elemType)
+      case PMapType(keyType, valueType) => Seq(keyType, valueType)
       case PUnknown() => Nil
       case PBinExp(left, op, right) => Seq(left, right)
       case PMagicWandExp(left, right) => Seq(left, right)
@@ -1282,16 +1263,19 @@ object Nodes {
       case PEmptySeq(_) => Nil
       case PExplicitSeq(elems) => elems
       case PRangeSeq(low, high) => Seq(low, high)
-      case PSeqIndex(seq, idx) => Seq(seq, idx)
       case PSeqTake(seq, nn) => Seq(seq, nn)
       case PSeqDrop(seq, nn) => Seq(seq, nn)
-      case PSeqUpdate(seq, idx, elem) => Seq(seq, idx, elem)
+      case PLookup(seq, idx) => Seq(seq, idx)
+      case PUpdate(seq, idx, elem) => Seq(seq, idx, elem)
       case PSize(seq) => Seq(seq)
-
       case PEmptySet(t) => Seq(t)
       case PExplicitSet(elems) => elems
       case PEmptyMultiset(t) => Seq(t)
       case PExplicitMultiset(elems) => elems
+      case PEmptyMap(k, v) => Seq(k, v)
+      case PExplicitMap(elems) => elems
+      case PMapRange(base) => Seq(base)
+      case PMapDomain(base) => Seq(base)
       case PMacroRef(name) => Nil
       case PSeqn(ss) => ss
       case PFold(exp) => Seq(exp)

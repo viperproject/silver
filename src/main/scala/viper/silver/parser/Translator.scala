@@ -470,13 +470,13 @@ case class Translator(program: PProgram) {
         ExplicitSeq(elems map exp)(pos)
       case PRangeSeq(low, high) =>
         RangeSeq(exp(low), exp(high))(pos)
-      case PSeqIndex(seq, idx) =>
+      case PLookup(seq, idx) =>
         SeqIndex(exp(seq), exp(idx))(pos)
       case PSeqTake(seq, n) =>
         SeqTake(exp(seq), exp(n))(pos)
       case PSeqDrop(seq, n) =>
         SeqDrop(exp(seq), exp(n))(pos)
-      case PSeqUpdate(seq, idx, elem) =>
+      case PUpdate(seq, idx, elem) =>
         SeqUpdate(exp(seq), exp(idx), exp(elem))(pos)
       case PSize(s) =>
         if (s.typ.isInstanceOf[PSeqType])

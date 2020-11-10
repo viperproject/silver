@@ -740,7 +740,9 @@ object FastParser extends PosParser[Char, String] {
     | result | unExp
     | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | applying
     | setTypedEmpty | explicitSetNonEmpty | multiSetTypedEmpty | explicitMultisetNonEmpty | seqTypedEmpty
-    | seqLength | explicitSeqNonEmpty | seqRange | fapp | typedFapp | idnuse | ParserExtension.newExpAtEnd)
+    | seqLength | explicitSeqNonEmpty | seqRange
+    | mapTypedEmpty | explicitMapNonEmpty | mapDomain | mapRange
+    | fapp | typedFapp | idnuse | ParserExtension.newExpAtEnd)
 
 
   lazy val result: P[PResultLit] = P(keyword("result").map { _ => PResultLit() })
@@ -797,8 +799,8 @@ object FastParser extends PosParser[Char, String] {
       ("[" ~ Pass ~ ".." ~/ exp ~ "]").map { n => SuffixedExpressionGenerator[PExp]((e: PExp) => PSeqTake(e, n)) } |
       ("[" ~ exp ~ ".." ~ Pass ~ "]").map { n => SuffixedExpressionGenerator[PExp]((e: PExp) => PSeqDrop(e, n)) } |
       ("[" ~ exp ~ ".." ~ exp ~ "]").map { case (n, m) => SuffixedExpressionGenerator[PExp]((e: PExp) => PSeqDrop(PSeqTake(e, m), n)) } |
-      ("[" ~ exp ~ "]").map { e1 => SuffixedExpressionGenerator[PExp]((e0: PExp) => PSeqIndex(e0, e1)) } |
-      ("[" ~ exp ~ ":=" ~ exp ~ "]").map { case (i, v) => SuffixedExpressionGenerator[PExp]((e: PExp) => PSeqUpdate(e, i, v)) })
+      ("[" ~ exp ~ "]").map { e1 => SuffixedExpressionGenerator[PExp]((e0: PExp) => PLookup(e0, e1)) } |
+      ("[" ~ exp ~ ":=" ~ exp ~ "]").map { case (i, v) => SuffixedExpressionGenerator[PExp]((e: PExp) => PUpdate(e, i, v)) })
 
   lazy val suffixExpr: P[PExp] = P((atom ~ suffix.rep).map { case (fac, ss) => foldPExp[PExp](fac, ss) })
 
@@ -942,9 +944,22 @@ object FastParser extends PosParser[Char, String] {
   private def collectionTypedEmpty(name: String, typeConstructor: PType => PExp): P[PExp] =
     P(`name` ~ ("[" ~/ typ ~ "]").? ~ "(" ~ ")").map(typ => typeConstructor(typ.getOrElse(PTypeVar("#E"))))
 
-
   lazy val seqRange: P[PExp] = P("[" ~ exp ~ ".." ~ exp ~ ")").map { case (a, b) => PRangeSeq(a, b) }
 
+  lazy val mapTypedEmpty : P[PMapLiteral] = P("Map" ~ ("[" ~/ typ ~ "," ~ typ ~ "]").? ~ "(" ~ ")").map {
+    case Some((keyType, valueType)) => PEmptyMap(keyType, valueType)
+    case None => PEmptyMap(PTypeVar("#K"), PTypeVar("#E"))
+  }
+
+  private lazy val keyValuePair : P[PKeyValuePair] = P(exp ~ ":=" ~ exp).map {
+    case (key, value) => PKeyValuePair(key, value)
+  }
+
+  lazy val explicitMapNonEmpty : P[PMapLiteral] = P("Map" ~ "(" ~/ keyValuePair.rep(min = 1, sep = ",") ~ ")").map(PExplicitMap)
+
+  lazy val mapDomain : P[PExp] = P("domain" ~ "(" ~ exp ~ ")").map(PMapDomain)
+
+  lazy val mapRange : P[PExp] = P("range" ~ "(" ~ exp ~ ")").map(PMapRange)
 
   lazy val fapp: P[PCall] = P(idnuse ~ parens(actualArgList)).map {
     case (func, args) => PCall(func, args, None)
