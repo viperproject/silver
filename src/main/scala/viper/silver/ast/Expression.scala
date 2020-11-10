@@ -537,7 +537,7 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
     (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Body of universal quantifier must be of Bool type, but found ${exp.typ}", exp.pos)) else Seq()) ++
     Consistency.checkAllVarsMentionedInTriggers(variables, triggers) ++
     checkNoNestedQuantsForQuantPermissions ++
-    checkExpressionIsImplication
+    checkQuantifiedPermission
 
   /** checks against nested quantification for quantified permissions */
   lazy val checkNoNestedQuantsForQuantPermissions : Seq[ConsistencyError] = {
@@ -548,9 +548,31 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
     }
   }
 
-  lazy val checkExpressionIsImplication: Seq[ConsistencyError] = {
-    if (!exp.isInstanceOf[Implies])
-      Seq(ConsistencyError("Forall AST nodes must have implication as expression.", exp.pos))
+  lazy val checkQuantifiedPermission: Seq[ConsistencyError] = {
+    case class InUnfolding(inside: Boolean)
+    var accessPredicateInside: Boolean = false
+
+    StrategyBuilder.ContextVisitor[Node, InUnfolding]({
+      case (_: AccessPredicate, c) if !c.c.inside =>
+        accessPredicateInside = true
+        c
+
+      case (_: Unfolding, c) =>
+        c.updateContext(InUnfolding(true))
+
+      case (_, c) =>
+        c
+    }, InUnfolding(false)).execute(exp)
+
+    if (accessPredicateInside) {
+      exp match {
+        case Implies(_, _) | AccessPredicate(_, _) =>
+          Seq()
+
+        case _ =>
+          Seq(ConsistencyError("Quantified permissions must have an implication as expression, with the access predicate in its right-hand side.", exp.pos))
+      }
+    }
     else
       Seq()
   }

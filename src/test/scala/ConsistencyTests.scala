@@ -234,7 +234,7 @@ class ConsistencyTests extends FunSuite with Matchers {
     val forall = Forall(Seq(LocalVarDecl("i", Int)()), Seq(), CondExp(FalseLit()(), TrueLit()(), FieldAccessPredicate(FieldAccess(LocalVar("r", Ref)(), f)(), FullPerm()())())())()
 
     forall.checkTransitively shouldBe Seq(
-      ConsistencyError("Forall AST nodes must have implication as expression.", NoPosition)
+      ConsistencyError("Quantified permissions must have an implication as expression, with the access predicate in its right-hand side.", NoPosition)
     )
   }
 }
