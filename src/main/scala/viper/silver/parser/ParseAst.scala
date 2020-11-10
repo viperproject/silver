@@ -353,6 +353,15 @@ case class PMultisetType(elementType: PType) extends PType with PGenericCollecti
   override def substitute(map: PTypeSubstitution) = PMultisetType(elementType.substitute(map))
 }
 
+case class PMapType(keyType : PType, valueType : PType) extends PType with PGenericType {
+  override val genericName = "Map"
+  override val subNodes = Seq(keyType, valueType)
+  override val typeArguments = Seq(keyType, valueType)
+
+  override def isValidOrUndeclared = typeArguments.forall(_.isValidOrUndeclared)
+  override def substitute(map: PTypeSubstitution) = PMapType(keyType.substitute(map), valueType.substitute(map))
+}
+
 /** Type used for internal nodes (e.g. typing predicate accesses) - should not be
   * the type of any expression whose value is meaningful in the translation.
   */
@@ -565,7 +574,7 @@ class PBinExp(val left: PExp, val opName: String, val right: PExp) extends POpAp
   val extraElementType = PTypeVar("#E")
   override val extraLocalTypeVariables: Set[PDomainType] =
     opName match {
-      case "++" | "union" | "intersection" | "setminus" | "subset" => Set(extraElementType)
+      case "++" | "union" | "intersection" | "setminus" | "subset" | "in" => Set(extraElementType)
       case _ => Set()
     }
   val signatures : List[PTypeSubstitution] = opName match {
@@ -602,7 +611,8 @@ class PBinExp(val left: PExp, val opName: String, val right: PExp) extends POpAp
     case "in" => List(
       Map(POpApp.pArgS(1) -> PSetType(POpApp.pArg(0)), POpApp.pResS -> Bool),
       Map(POpApp.pArgS(1) -> PSeqType(POpApp.pArg(0)), POpApp.pResS -> Bool),
-      Map(POpApp.pArgS(1) -> PMultisetType(POpApp.pArg(0)), POpApp.pResS -> Int)
+      Map(POpApp.pArgS(1) -> PMultisetType(POpApp.pArg(0)), POpApp.pResS -> Int),
+      Map(POpApp.pArgS(1) -> PMapType(POpApp.pArg(0), extraElementType), POpApp.pResS -> Bool)
     )
     case "++" => List(
       Map(POpApp.pArgS(0) -> PSeqType(extraElementType), POpApp.pArgS(1) -> PSeqType(extraElementType), POpApp.pResS -> PSeqType(extraElementType))
@@ -652,7 +662,7 @@ case class PUnExp(opName: String, exp: PExp) extends POpApp {
   val extraElementType = PTypeVar("#E")
   override val extraLocalTypeVariables: Set[PDomainType] =
     opName match {
-      case "++" | "union" | "intersection" | "setminus" | "subset" => Set(extraElementType)
+      case "++" | "union" | "intersection" | "setminus" | "subset" | "in" => Set(extraElementType)
       case _ => Set()
     }
   override val signatures : List[PTypeSubstitution] = opName match {
@@ -904,15 +914,19 @@ case class PSeqUpdate(seq: PExp, idx: PExp, elem: PExp) extends POpApp{
   override val extraLocalTypeVariables = Set(elementType)
 }
 
-case class PSize(seq: PExp) extends POpApp{
-  override val opName = "Seq#size"
+case class PSize(seq: PExp) extends POpApp {
   val elementType = PTypeVar("#E")
-  override val extraLocalTypeVariables = Set(elementType)
+  val valueType = PTypeVar("#V")
+
+  override val opName = "Seq#size"
+  override val extraLocalTypeVariables = Set(elementType, valueType)
   override val args = Seq(seq)
+
   override val signatures : List[PTypeSubstitution] = List(
-    Map(POpApp.pArgS(0)->PSeqType(elementType),POpApp.pResS->Int),
-    Map(POpApp.pArgS(0)->PSetType(elementType),POpApp.pResS->Int),
-    Map(POpApp.pArgS(0)->PMultisetType(elementType),POpApp.pResS->Int)
+    Map(POpApp.pArgS(0) -> PSeqType(elementType), POpApp.pResS -> Int),
+    Map(POpApp.pArgS(0) -> PSetType(elementType), POpApp.pResS -> Int),
+    Map(POpApp.pArgS(0) -> PMultisetType(elementType), POpApp.pResS -> Int),
+    Map(POpApp.pArgS(0) -> PMapType(elementType, valueType), POpApp.pResS -> Int)
   )
 }
 
@@ -930,6 +944,113 @@ sealed trait PMultiSetLiteral extends PCollectionLiteral{
 case class PEmptyMultiset(override val pElementType  : PType) extends PMultiSetLiteral with PEmptyCollectionLiteral
 
 case class PExplicitMultiset(override val args: Seq[PExp]) extends PMultiSetLiteral with PExplicitCollectionLiteral
+
+
+/* ** Maps */
+
+sealed trait PMapLiteral extends POpApp {
+  override val opName = "Map#Map"
+
+  def pKeyType : PType
+  def pValueType : PType
+
+  def pMapType(keyType : PType, valueType : PType) : PType =
+    if (keyType.isUnknown || valueType.isUnknown) PUnknown()
+    else PMapType(keyType, valueType)
+}
+
+case class PEmptyMap(override val pKeyType : PType, override val pValueType : PType) extends PMapLiteral {
+  override val args = Seq()
+
+  override val extraLocalTypeVariables : Set[PDomainType] =
+    Set(pKeyType, pValueType) collect { case t : PDomainType if t.isTypeVar => t }
+
+  override def signatures : List[PTypeSubstitution] = List(Map(
+    POpApp.pResS -> pMapType(pKeyType, pValueType)
+  ))
+}
+
+case class PExplicitMap(override val args : Seq[PKeyValuePair]) extends PMapLiteral {
+  override def pKeyType: PType = args.head.key.typ
+  override def pValueType: PType = args.head.value.typ
+
+  override def signatures: List[PTypeSubstitution] = List(
+    args.indices.map {
+      case 0 => POpApp.pResS -> POpApp.pArg(0)
+      case n => POpApp.pArgS(n) -> POpApp.pArg(0)
+    }.toMap
+  )
+}
+
+/**
+  * A key-value pair (i.e., an entry of an `PExplicitMap`) is
+  * considered to be a singleton map literal itself.
+  */
+case class PKeyValuePair(key : PExp, value : PExp) extends PMapLiteral {
+  override def pKeyType: PType = key.typ
+  override def pValueType: PType = value.typ
+  override def args: Seq[PExp] = Seq(key, value)
+
+  override def signatures: List[PTypeSubstitution] = List(Map(
+    POpApp.pResS -> PMapType(POpApp.pArg(0), POpApp.pArg(1))
+  ))
+}
+
+case class PMapLookup(base : PExp, key : PExp) extends POpApp {
+  val elementType: PDomainType = PTypeVar("#E")
+
+  override val opName = "Map#lookup"
+  override val args = Seq(base, key)
+  override val extraLocalTypeVariables: Set[PDomainType] = Set(elementType)
+
+  override val signatures : List[PTypeSubstitution] = List(Map(
+    POpApp.pArgS(0) -> PMapType(elementType, POpApp.pRes),
+    POpApp.pArgS(1) -> elementType
+  ))
+}
+
+case class PMapDomain(base : PExp) extends POpApp {
+  val keyType: PDomainType = PTypeVar("#K")
+  val valueType: PDomainType = PTypeVar("#V")
+
+  override val opName = "Map#domain"
+  override val args = Seq(base)
+  override val extraLocalTypeVariables: Set[PDomainType] = Set(keyType, valueType)
+
+  override val signatures : List[PTypeSubstitution] = List(Map(
+    POpApp.pArgS(0) -> PMapType(keyType, valueType),
+    POpApp.pResS -> PSetType(keyType)
+  ))
+}
+
+case class PMapRange(base : PExp) extends POpApp {
+  val keyType: PDomainType = PTypeVar("#K")
+  val valueType: PDomainType = PTypeVar("#V")
+
+  override val opName = "Map#range"
+  override val args = Seq(base)
+  override val extraLocalTypeVariables: Set[PDomainType] = Set(keyType, valueType)
+
+  override val signatures : List[PTypeSubstitution] = List(Map(
+    POpApp.pArgS(0) -> PMapType(keyType, valueType),
+    POpApp.pResS -> PSetType(valueType)
+  ))
+}
+
+case class PMapUpdate(base : PExp, key : PExp, value : PExp) extends POpApp {
+  val keyType : PDomainType = POpApp.pArg(1)
+  val valueType : PDomainType = POpApp.pArg(2)
+
+  override val opName = "Map#update"
+  override val args = Seq(base, key, value)
+  override val extraLocalTypeVariables: Set[PDomainType] = Set(keyType, valueType)
+
+  override val signatures : List[PTypeSubstitution] = List(Map(
+    POpApp.pArgS(0) -> PMapType(keyType, valueType),
+    POpApp.pResS -> PMapType(keyType, valueType)
+  ))
+}
+
 
 ///////////////////////////////////////////////////////////////////////////
 // Statements

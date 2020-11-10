@@ -992,9 +992,9 @@ case class MapUpdate(base: Exp, key: Exp, value: Exp)(val pos: Position = NoPosi
 }
 
 /**
-  * Access to a value within the map `base` at the given `key`.
+  * Lookup of the value within the map `base` at the given `key`.
   */
-case class MapIndex(base : Exp, key : Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends MapExp {
+case class MapLookup(base : Exp, key : Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends MapExp {
   lazy val typ : Type = base.typ.asInstanceOf[MapType].valueType
 
   override lazy val check : Seq[ConsistencyError] = base.typ match {
@@ -1004,7 +1004,7 @@ case class MapIndex(base : Exp, key : Exp)(val pos: Position = NoPosition, val i
   }
 
   def getArgs : Seq[Exp] = Seq(base, key)
-  def withArgs(newArgs: Seq[Exp]) : MapExp = MapIndex(newArgs.head, newArgs(1))(pos, info, errT)
+  def withArgs(newArgs: Seq[Exp]) : MapExp = MapLookup(newArgs.head, newArgs(1))(pos, info, errT)
 }
 
 /**

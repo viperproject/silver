@@ -720,6 +720,8 @@ object FastParser extends PosParser[Char, String] {
     "Seq",
     // sets and multisets
     "Set", "Multiset", "union", "intersection", "setminus", "subset",
+    // maps
+    "Map", "range",
     // prover hint expressions
     "unfolding", "in", "applying",
     // old expression
