@@ -1031,6 +1031,11 @@ case class MapContains(key : Exp, base : Exp)(val pos: Position = NoPosition, va
 
   def getArgs : Seq[Exp] = Seq(key, base)
   def withArgs(newArgs: Seq[Exp]) : MapExp = MapContains(newArgs.head, newArgs(1))(pos, info, errT)
+
+  /**
+    * Desugars the current expression into the set expression '`key` in domain(`base`)'.
+    */
+  lazy val desugared : SetExp = AnySetContains(key, MapDomain(base)(base.pos, base.info, base.errT))(pos, info, errT)
 }
 
 /**
@@ -1051,7 +1056,7 @@ case class MapCardinality(base : Exp)(val pos: Position = NoPosition, val info: 
   * the set of all keys containing a mapping in `base`.
   */
 case class MapDomain(base : Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AnySetExp {
-  lazy val typ : Type = SetType(base.asInstanceOf[MapType].keyType)
+  lazy val typ : Type = SetType(base.typ.asInstanceOf[MapType].keyType)
 
   override lazy val check : Seq[ConsistencyError] =
     if (!base.typ.isInstanceOf[MapType]) Seq(ConsistencyError(s"Expected map type but found ${base.typ}", base.pos)) else Seq()
@@ -1065,7 +1070,7 @@ case class MapDomain(base : Exp)(val pos: Position = NoPosition, val info: Info 
   * the set of all values to which a mapping is contained in `base`.
   */
 case class MapRange(base : Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AnySetExp {
-  lazy val typ : Type = SetType(base.asInstanceOf[MapType].keyType)
+  lazy val typ : Type = SetType(base.typ.asInstanceOf[MapType].valueType)
 
   override lazy val check : Seq[ConsistencyError] =
     if (!base.typ.isInstanceOf[MapType]) Seq(ConsistencyError(s"Expected map type but found ${base.typ}", base.pos)) else Seq()
