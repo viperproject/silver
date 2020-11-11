@@ -30,10 +30,7 @@ trait Type extends Hashable {
             }
         }
       case (Wand, Bool) => true
-      case _ => {
-        println(s"$this isSubtype $other")
-        this == other
-      }
+      case _ => this == other
     }
   }
 

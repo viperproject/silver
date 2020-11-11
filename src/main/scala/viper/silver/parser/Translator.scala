@@ -507,8 +507,10 @@ case class Translator(program: PProgram) {
       case PExplicitMultiset(elems) =>
         ExplicitMultiset(elems map exp)(pos)
 
-      case PEmptyMap(keyType, valueType) =>
-        EmptyMap(ttyp(keyType), ttyp(valueType))(pos)
+      case PEmptyMap(_, _) => EmptyMap(
+        ttyp(pexp.typ.asInstanceOf[PMapType].keyType),
+        ttyp(pexp.typ.asInstanceOf[PMapType].valueType)
+      )(pos)
       case PExplicitMap(elems) =>
         ExplicitMap(elems map exp)(pos)
       case PKeyValuePair(key, value) =>
