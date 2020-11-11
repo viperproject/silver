@@ -345,14 +345,22 @@ object DomainInstances {
         case (tv: TypeVar, t: Type) => getFTVDepths(t).map { case (tv2: TypeVar, d: Int) => tv2 -> d.+(1) }
       }
     case ct: CollectionType => getFTVDepths(ct.elementType).map { case (tv2: TypeVar, d: Int) => tv2 -> d.+(1) }
+
+    case m: MapType => {
+      val keys = getFTVDepths(m.keyType).map { case (t2, d) => t2 -> d.+(1) }
+      val values = getFTVDepths(m.valueType).map { case (t2, d) => t2 -> d.+(1) }
+      (keys.keySet union values.keySet).map(t2 => t2 -> (keys.get(t2).toList ++ values.get(t2).toList).max).toMap
+    }
+
     case tv: TypeVar => Map(tv -> 0)
-    case at: BuiltInType => Map()
+    case _: BuiltInType => Map()
   }
 
 
   def down1Types(t: Type): Set[Type] = t match {
     case dt: DomainType => dt.typVarsMap.values.toSet
     case ct: CollectionType => Set(ct.elementType)
+    case m: MapType => Set(m.keyType, m.valueType)
     case _: BuiltInType => Set()
     case _: TypeVar => Set()
   }
@@ -392,6 +400,7 @@ object DomainInstances {
 
   def makeTypeCoordinate(t: Type): TypeCoordinate = t match {
     case ct: CollectionType => new CollectionTypeCoordinate(ct,makeTypeCoordinate(ct.elementType))
+    case mt: MapType => new MapTypeCoordinate(mt, makeTypeCoordinate(mt.keyType), makeTypeCoordinate(mt.valueType))
     case bit: BuiltInType => AtomicTypeCoordinate(bit)
     case dt: DomainType => new DomainInstanceTypeCoordinate(dt,
       dt.typeParameters.map(tv => makeTypeCoordinate(dt.typVarsMap(tv)))
@@ -453,6 +462,11 @@ object DomainInstances {
     val cc: CollectionClass.Value = CollectionClass.getCC(ct)
     override def collectTypes(p: Program) = Set()
     override def typeSubstitution = Map()
+  }
+  sealed class MapTypeCoordinate(mt : MapType, keyCoord : TypeCoordinate, valueCoord : TypeCoordinate)
+    extends GenericInstanceTypeCoordinate("Map", Seq(keyCoord, valueCoord))(mt) {
+    override def typeSubstitution: Map[TypeVar, Type] = Map()
+    override def collectTypes(p: Program): Set[Type] = Set()
   }
   sealed class DomainInstanceTypeCoordinate(val dt: DomainType, typeArgs: Seq[TypeCoordinate])
     extends GenericInstanceTypeCoordinate(dt.domainName, typeArgs)(dt){
@@ -540,6 +554,7 @@ object DomainInstances {
       case dt: DomainType =>
         (dt.typeParameters.toSet -- dt.typVarsMap.keys) ++ dt.typVarsMap.values.flatMap(getTVs)
       case ct: CollectionType => getTVs(ct.elementType)
+      case m: MapType => getTVs(m.keyType) union getTVs(m.valueType)
       case _ => Set()
     }
 

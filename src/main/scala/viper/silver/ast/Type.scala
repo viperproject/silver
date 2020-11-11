@@ -30,7 +30,10 @@ trait Type extends Hashable {
             }
         }
       case (Wand, Bool) => true
-      case _ => this == other
+      case _ => {
+        println(s"$this isSubtype $other")
+        this == other
+      }
     }
   }
 
@@ -128,7 +131,7 @@ sealed case class MultisetType(override val  elementType: Type) extends Collecti
 /** Type of maps */
 sealed case class MapType(keyType : Type, valueType : Type) extends BuiltInType with GenericType {
   val keyTypeParameter : TypeVar = TypeVar("K")
-  val ValueTypeParameter : TypeVar = TypeVar("V")
+  val ValueTypeParameter : TypeVar = TypeVar("E")
 
   override type MyType = MapType
   override val genericName = "Map"
