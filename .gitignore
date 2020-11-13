@@ -12,3 +12,4 @@ documentation/syntax/sil-syntax.log
 documentation/syntax/sil-syntax.aux
 *.iml
 .DS_Store
+.bsp/
