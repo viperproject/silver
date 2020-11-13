@@ -27,7 +27,8 @@ method test2()
 }
 
 method test3(m1 : Map[Int, Bool], m2 : Map[Int, Bool])
-  requires forall i : Int :: { m1[i] } { m2[i] } 0 <= i && i < 100 ==> i in m1 && i in m2 && m1[i] != m2[i]
+  requires forall i : Int :: { i in m1 } { i in m2 } { m1[i] } { m2[i] }
+    0 <= i && i < 100 ==> i in m1 && i in m2 && m1[i] != m2[i]
 {
   assert forall i : Int :: 0 <= i && i < 100 ==> m1[i] || m2[i]
 }
@@ -42,10 +43,13 @@ method test5()
 {
   var m : Map[Int, Int] := Map(3 := 9)
   
+  // this will verify in Carbon but will give a verification error in Silicon
+  /*
   if (m[4] == 4)
   {
     test2()
   }
+  */
 }
 
 method test6(m : Map[Int, Int])

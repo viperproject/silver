@@ -43,6 +43,8 @@ method test4()
   
   assert !(4 in m2)
   assert m1 != m2
+  assert m2[4 := true][4]
+  assert m1 == m1[4 := true]
   assert m1 == m2[4 := true]
 }
 
@@ -69,3 +71,4 @@ method test6(m : Map[Int, Ref], x : Int)
     m[x].val := m[x].val + x
   }
 }
+

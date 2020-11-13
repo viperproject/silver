@@ -4,21 +4,17 @@
 field val : Int
 
 method test1(m : Map[Int, Ref], x : Int)
-  requires forall k : Int :: { k in m } k in m ==> acc(m[k].val)
+  requires x in m
 {
   //:: ExpectedOutput(assert.failed:insufficient.permission)
   assert 0 < m[x].val
 }
 
 method test2(m : Map[Int, Map[Int, Bool]])
-  requires forall i : Int :: { i in m } (0 <= i && i < 4 <==> i in m)
-  requires forall i : Int, j : Int :: { j in m[i] } i in m ==> (0 <= j && j < 4 <==> j in m[i])
-  requires forall i : Int, j : Int :: { m[i][j] } i in m && j in m ==> (m[i][j] <==> i == j)
+  requires forall i : Int :: { i in m } 0 <= i && i < 4 <==> i in m
 {
   //:: ExpectedOutput(assert.failed:assertion.false)
-  assert domain(m) == Set(0, 1, 2)
-  //:: ExpectedOutput(assert.failed:assertion.false)
-  assert !(3 in m)
+  assert domain(m) == Set(0, 1, 2) || !(3 in m)
 }
 
 method test3()
@@ -26,9 +22,7 @@ method test3()
   var m : Map[Int, Bool] := Map(6 := false, 2 := false)
   
   //:: ExpectedOutput(assert.failed:assertion.false)
-  assert !(4 in m)
-  //:: ExpectedOutput(assert.failed:assertion.false)
-  assert true in range(m)
+  assert 4 in m || true in range(m)
 }
 
 method test4()

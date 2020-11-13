@@ -977,6 +977,9 @@ case class KeyValuePair(key : Exp, value : Exp)(val pos: Position = NoPosition, 
   override def getArgs: Seq[Exp] = Seq(key, value)
   override def withArgs(args: Seq[Exp]): PossibleTrigger = KeyValuePair(args.head, args(1))(pos, info, errT)
   override def typ: MapType = MapType(key.typ, value.typ)
+
+  /** Desugars this key-value pair into a map update, with an empty map as base. */
+  lazy val desugared : MapExp = MapUpdate(EmptyMap(key.typ, value.typ)(pos, info, errT), key, value)(pos, info, errT)
 }
 
 /**
