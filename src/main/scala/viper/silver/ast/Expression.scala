@@ -971,10 +971,10 @@ case class EmptyMap(keyType: Type, valueType: Type)(val pos: Position = NoPositi
 
 /**
   * An explicit, non-empty map defined by the collection `elems`
-  * of key-value pairs (that is, `KeyValuePair`s).
+  * of key-value pairs (that is, `Maplet`s).
   */
 case class ExplicitMap(elems: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends MapExp {
-  lazy val pairs : Seq[KeyValuePair] = elems.collect { case p : KeyValuePair => p }
+  lazy val pairs : Seq[Maplet] = elems.collect { case p : Maplet => p }
   lazy val keyType : Type = pairs.head.key.typ
   lazy val valueType : Type = pairs.head.value.typ
   lazy val typ: MapType = MapType(keyType, valueType)
@@ -994,18 +994,18 @@ case class ExplicitMap(elems: Seq[Exp])(val pos: Position = NoPosition, val info
     * map updates, started from an empty map.
     */
   lazy val desugared : MapExp = pairs.foldLeft[MapExp](EmptyMap(keyType, valueType)(pos, info, errT)) {
-    case (map, KeyValuePair(key, value)) => MapUpdate(map, key, value)(pos, info, errT)
+    case (map, Maplet(key, value)) => MapUpdate(map, key, value)(pos, info, errT)
   }
 }
 
 /**
   * A single map entry as a key-value pair.
   * Such a key-value pair is also considered to be
-  * a singleton map.
+  * a singleton map, i.e., a maplet.
   */
-case class KeyValuePair(key : Exp, value : Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends MapExp {
+case class Maplet(key : Exp, value : Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends MapExp {
   override def getArgs: Seq[Exp] = Seq(key, value)
-  override def withArgs(args: Seq[Exp]): PossibleTrigger = KeyValuePair(args.head, args(1))(pos, info, errT)
+  override def withArgs(args: Seq[Exp]): PossibleTrigger = Maplet(args.head, args(1))(pos, info, errT)
   override def typ: MapType = MapType(key.typ, value.typ)
 
   /** Desugars this key-value pair into a map update, with an empty map as base. */

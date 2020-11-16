@@ -825,8 +825,8 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       text("Map") <> brackets(showType(keyType) <> "," <> showType(valueType)) <> "()"
     case ExplicitMap(elems) =>
       text("Map") <> parens(ssep(elems map show, char(',') <> space))
-    case KeyValuePair(key, value) =>
-      show(key) <+> ":=" <+> show(value)
+    case Maplet(key, value) =>
+      text("Map") <> parens(show(key) <+> ":=" <+> show(value))
     case MapLookup(base, key) =>
       show(base) <> brackets(show(key))
     case MapContains(key, base) =>

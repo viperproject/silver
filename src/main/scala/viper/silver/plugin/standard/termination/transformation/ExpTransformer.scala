@@ -109,7 +109,7 @@ trait ExpTransformer extends ErrorReporter {
     case (mp: MapExp, c) => mp match {
       case EmptyMap(_, _) => EmptyStmt
       case ExplicitMap(elems) => Seqn(elems.map(transformExp(_, c)), Nil)(mp.pos)
-      case KeyValuePair(key, value) => Seqn(Seq(transformExp(key, c), transformExp(value, c)), Nil)(mp.pos)
+      case Maplet(key, value) => Seqn(Seq(transformExp(key, c), transformExp(value, c)), Nil)(mp.pos)
       case MapCardinality(base) => Seqn(Seq(transformExp(base, c)), Nil)(mp.pos)
       case MapContains(key, base) => Seqn(Seq(transformExp(key, c), transformExp(base, c)), Nil)(mp.pos)
       case MapLookup(base, key) => Seqn(Seq(transformExp(base, c), transformExp(key, c)), Nil)(mp.pos)

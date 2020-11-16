@@ -977,7 +977,7 @@ case class PEmptyMap(override val pKeyType : PType, override val pValueType : PT
   ))
 }
 
-case class PExplicitMap(override val args : Seq[PKeyValuePair]) extends PMapLiteral {
+case class PExplicitMap(override val args : Seq[PMaplet]) extends PMapLiteral {
   override def pKeyType: PType = args.head.key.typ
   override def pValueType: PType = args.head.value.typ
 
@@ -993,7 +993,7 @@ case class PExplicitMap(override val args : Seq[PKeyValuePair]) extends PMapLite
   * A key-value pair (i.e., an entry of an `PExplicitMap`) is
   * considered to be a singleton map literal itself.
   */
-case class PKeyValuePair(key : PExp, value : PExp) extends PMapLiteral {
+case class PMaplet(key : PExp, value : PExp) extends PMapLiteral {
   override def pKeyType: PType = key.typ
   override def pValueType: PType = value.typ
   override def args: Seq[PExp] = Seq(key, value)
@@ -1276,7 +1276,7 @@ object Nodes {
       case PExplicitMap(elems) => elems
       case PMapRange(base) => Seq(base)
       case PMapDomain(base) => Seq(base)
-      case PKeyValuePair(key, value) => Seq(key, value)
+      case PMaplet(key, value) => Seq(key, value)
       case PMacroRef(name) => Nil
       case PSeqn(ss) => ss
       case PFold(exp) => Seq(exp)

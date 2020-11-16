@@ -513,8 +513,8 @@ case class Translator(program: PProgram) {
       )(pos)
       case PExplicitMap(elems) =>
         ExplicitMap(elems map exp)(pos)
-      case PKeyValuePair(key, value) =>
-        KeyValuePair(exp(key), exp(value))(pos)
+      case PMaplet(key, value) =>
+        Maplet(exp(key), exp(value))(pos)
       case PMapDomain(base) =>
         MapDomain(exp(base))(pos)
       case PMapRange(base) =>

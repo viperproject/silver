@@ -955,11 +955,11 @@ object FastParser extends PosParser[Char, String] {
     case None => PEmptyMap(PTypeVar("#K"), PTypeVar("#E"))
   }
 
-  private lazy val keyValuePair : P[PKeyValuePair] = P(exp ~ ":=" ~ exp).map {
-    case (key, value) => PKeyValuePair(key, value)
+  private lazy val maplet : P[PMaplet] = P(exp ~ ":=" ~ exp).map {
+    case (key, value) => PMaplet(key, value)
   }
 
-  lazy val explicitMapNonEmpty : P[PMapLiteral] = P("Map" ~ "(" ~/ keyValuePair.rep(min = 1, sep = ",") ~ ")").map(PExplicitMap)
+  lazy val explicitMapNonEmpty : P[PMapLiteral] = P("Map" ~ "(" ~/ maplet.rep(min = 1, sep = ",") ~ ")").map(PExplicitMap)
 
   lazy val mapDomain : P[PExp] = P("domain" ~ "(" ~ exp ~ ")").map(PMapDomain)
 

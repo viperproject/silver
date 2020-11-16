@@ -125,7 +125,7 @@ object Nodes {
 
           case EmptyMap(keyTyp, valueTyp) => Seq(keyTyp, valueTyp)
           case ExplicitMap(exprs) => exprs
-          case KeyValuePair(key, value) => Seq(key, value)
+          case Maplet(key, value) => Seq(key, value)
           case MapUpdate(base, key, value) => Seq(base, key, value)
           case MapLookup(base, key) => Seq(base, key)
           case MapContains(key, base) => Seq(key, base)

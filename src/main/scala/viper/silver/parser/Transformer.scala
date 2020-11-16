@@ -87,7 +87,7 @@ object Transformer {
         case PExplicitMultiset(elems) => PExplicitMultiset(elems map go)
         case PEmptyMap(keyType, valueType) => PEmptyMap(go(keyType), go(valueType))
         case PExplicitMap(exprs) => PExplicitMap(exprs map go)
-        case PKeyValuePair(key, value) => PKeyValuePair(go(key), go(value))
+        case PMaplet(key, value) => PMaplet(go(key), go(value))
         case PMapDomain(base) => PMapDomain(go(base))
         case PMapRange(base) => PMapRange(go(base))
         case PSeqn(ss) => PSeqn(ss map go)
