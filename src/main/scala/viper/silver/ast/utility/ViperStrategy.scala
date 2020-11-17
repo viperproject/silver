@@ -174,7 +174,7 @@ object ViperStrategy {
            * nodes that have been transformed themselves (or rather, if the `directlyRewritten`
            * is true).
            */
-          val newNodeTrafo = {
+          val newNodeTrafo = { //?
             if (directlyRewritten) {
               /* Attach an error transformation (in the form of a node transformation) from new to
                * old, but don't override any already attached transformations */

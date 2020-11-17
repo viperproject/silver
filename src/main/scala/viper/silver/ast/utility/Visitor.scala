@@ -12,7 +12,7 @@ object Visitor {
   /* Visit a tree for side-effects */
 
   /** Applies the function `f` to the AST node, then visits all subnodes. */
-  def visit[N, A](n: N, subs: N => Seq[N])(f: PartialFunction[N, A]) {
+  def visit[N, A](n: N, subs: N => Seq[N])(f: PartialFunction[N, A]): Unit = {
     if (f.isDefinedAt(n)) f(n)
 
     for (sub <- subs(n)) {
@@ -27,7 +27,7 @@ object Visitor {
     * @param c Initial context.
     * @param f Visitor function.
     */
-  def visitWithContext[N, C](n: N, subs: N => Seq[N], c: C)(f: C => PartialFunction[N, C]) {
+  def visitWithContext[N, C](n: N, subs: N => Seq[N], c: C)(f: C => PartialFunction[N, C]): Unit = {
     val fWithContext = f(c)
 
     val newContext =
@@ -50,7 +50,7 @@ object Visitor {
     * @param c Initial context.
     * @param f Visitor function.
     */
-  def visitWithContextManually[N, C, A](n: N, subs: N => Seq[N], c: C)(f: C => PartialFunction[N, A]) {
+  def visitWithContextManually[N, C, A](n: N, subs: N => Seq[N], c: C)(f: C => PartialFunction[N, A]): Unit = {
     val fWithContext = f(c)
     val isDefined = fWithContext.isDefinedAt(n)
 
@@ -66,7 +66,7 @@ object Visitor {
   /** Applies the function `f1` to this node, then visits all subnodes,
     * and finally applies `f2` to this node.
     */
-  def visit[N, A](n: N, subs: N => Seq[N], f1: PartialFunction[N, A], f2: PartialFunction[N, A]) {
+  def visit[N, A](n: N, subs: N => Seq[N], f1: PartialFunction[N, A], f2: PartialFunction[N, A]): Unit = {
     if (f1.isDefinedAt(n)) f1(n)
 
     for (sub <- subs(n)) {
@@ -79,7 +79,7 @@ object Visitor {
   /** Applies the function `f` to this node, then visits all subnodes if `f`
     * returned true.
     */
-  def visitOpt[N](n: N, subs: N => Seq[N])(f: N => Boolean) {
+  def visitOpt[N](n: N, subs: N => Seq[N])(f: N => Boolean): Unit = {
     if (f(n)) {
       for (sub <- subs(n)) {
         visitOpt(sub, subs)(f)
@@ -90,7 +90,7 @@ object Visitor {
   /** Applies the function `f1` to this node node, then visits all subnodes
     * if `f1` returned true, and finally applies `f2` to this node.
     */
-  def visitOpt[N, A](n: N, subs: N => Seq[N], f1: N => Boolean, f2: N => A) {
+  def visitOpt[N, A](n: N, subs: N => Seq[N], f1: N => Boolean, f2: N => A): Unit = {
     if (f1(n)) {
       for (sub <- subs(n)) {
         visitOpt[N, A](sub, subs, f1, f2)

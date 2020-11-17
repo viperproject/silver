@@ -131,7 +131,7 @@ object Consistency {
     val inhalesExhales: Seq[Node] = e.deepCollect({case ie: InhaleExhaleExp => ie})
     permsAndForperms.flatMap(p=>{
       inhalesExhales.find(_.contains(p)) match {
-        case Some(node) => Seq()
+        case Some(_) => Seq()
         case None => Seq(ConsistencyError("Perm and forperm in this context are only allowed if nested under inhale-exhale assertions.", p.asInstanceOf[Positioned].pos))
       }
     })
@@ -193,7 +193,7 @@ object Consistency {
     variables.foreach(v=>{
       varsInTriggers.foreach(varList=>{
         varList.find(_.name == v.name) match {
-          case Some(tr) =>
+          case Some(_) =>
           case None => s :+= ConsistencyError(s"Variable ${v.name} is not mentioned in one or more triggers.", v.pos)
         }
       })

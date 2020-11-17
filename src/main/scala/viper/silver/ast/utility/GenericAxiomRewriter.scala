@@ -234,7 +234,7 @@ abstract class GenericAxiomRewriter[Type <: AnyRef,
      */
 
     val unusedQVars =
-      solved.flatMap{case (qvar, entries) =>
+      solved.flatMap{case (qvar, _) =>
         if (rewrittenTriggerSets.exists(_.exps.exists(Exp_contains(_, `qvar`)))) None
         else Some(qvar)}
 

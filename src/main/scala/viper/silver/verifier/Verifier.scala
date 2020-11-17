@@ -90,7 +90,7 @@ trait Verifier extends LifetimeComponent {
   /** Stops the verifier. The behaviour of subsequent calls to `start` or `verify`
     * is unspecified.
     */
-  def stop()
+  def stop(): Unit
 }
 
 /**

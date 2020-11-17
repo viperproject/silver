@@ -41,9 +41,7 @@ lazy val silver = (project in file("."))
 
     // Fork test to a different JVM than SBT's, avoiding SBT's classpath interfering with
     // classpath used by Scala's reflection.
-    Test / fork := false, //?
-    // Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaLibrary, //?
-    Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat, //?
+    Test / fork := true,
 
     // Compilation settings
     libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,             // Scala
@@ -64,4 +62,3 @@ lazy val silver = (project in file("."))
     assembly / assemblyJarName := "silver.jar",
     assembly / test := {},
   )
-

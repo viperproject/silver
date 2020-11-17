@@ -35,8 +35,17 @@ object FastParser { // extends PosParser[Char, String] { //?
   def P[T](t: P[T])(implicit name: sourcecode.Name, ctx: P[_]): P[T] = {
 
     def getLineAndColumn(index: Int): (Int, Int) = {
-      val Array(line, col) = ctx.input.prettyIndex(index).split(":").map(_.toInt)
-      (line, col)
+      // val Array(line, col) = ctx.input.prettyIndex(index).split(":").map(_.toInt) //?
+      // (line, col)
+      var left = index
+      var i = 0
+      val arr = FastParser._lines
+      while (i < arr.length && left >= arr(i)){
+        left -= arr(i)
+        i += 1
+      }
+      val r1 = (i + 1, left + 1)
+      r1
     }
 
     t map {
@@ -218,7 +227,7 @@ object FastParser { // extends PosParser[Char, String] { //?
     es.foldLeft(e) { (t, a) =>
       val result = a(t)
       FastPositions.setStart(result, t.start)
-      FastPositions.setFinish(result, a.finish)
+      FastPositions.setFinish(result, t.finish)
       result
     }.asInstanceOf[E]
 
@@ -880,7 +889,12 @@ object FastParser { // extends PosParser[Char, String] { //?
   }
 
   def accessPredImpl[_: P]: P[PAccPred] = P((keyword("acc") ~ "(" ~ locAcc ~ ("," ~ exp).? ~ ")").map {
-    case (loc, perms) => PAccPred(loc, perms.getOrElse(PFullPerm()))
+    case (loc, perms) => {
+      val m = PAccPred(loc, perms.getOrElse(PFullPerm()))
+      FastPositions.setStart(m, loc.start)
+      FastPositions.setFinish(m, loc.finish)
+      m
+    }
   })
 
   def accessPred[_: P]: P[PAccPred] = P(accessPredImpl.map(acc => {
@@ -961,7 +975,10 @@ object FastParser { // extends PosParser[Char, String] { //?
       val perm = PFullPerm()
       FastPositions.setStart(perm, loc.start)
       FastPositions.setFinish(perm, loc.finish)
-      PAccPred(loc, perm)
+      val m = PAccPred(loc, perm)
+      FastPositions.setStart(m, loc.start)
+      FastPositions.setFinish(m, loc.finish)
+      m
   }))
 
   def setTypedEmpty[_: P]: P[PExp] = collectionTypedEmpty("Set", PEmptySet)
@@ -985,9 +1002,16 @@ object FastParser { // extends PosParser[Char, String] { //?
   def seqRange[_: P]: P[PExp] = P("[" ~ exp ~ ".." ~ exp ~ ")").map { case (a, b) => PRangeSeq(a, b) }
 
 
-  def fapp[_: P]: P[PCall] = P(idnuse ~ parens(actualArgList)).map {
-    case (func, args) => PCall(func, args, None)
-  }
+  def fapp[_: P]: P[PCall] = P(idnuse ~ parens(actualArgList)).map({
+    case (func, args) => {
+      val m = PCall(func, args, None)
+      FastPositions.setStart(m, _begin)
+      FastPositions.setFinish(m, _end)
+      FastPositions.setStart(func, _begin)
+      FastPositions.setFinish(func, _end)
+      m
+    }
+  })
 
   def typedFapp[_: P]: P[PExp] = P(parens(idnuse ~ parens(actualArgList) ~ ":" ~ typ)).map {
     case (func, args, typeGiven) => PCall(func, args, Some(typeGiven))
@@ -1063,8 +1087,18 @@ object FastParser { // extends PosParser[Char, String] { //?
   def starredNewstmt[_: P]: P[PStarredNewStmt] = P(idnuse ~ ":=" ~ "new" ~ "(" ~ "*" ~ ")").map(PStarredNewStmt)
 
   def methodCall[_: P]: P[PMethodCall] = P((idnuse.rep(sep = ",") ~ ":=").? ~ idnuse ~ parens(exp.rep(sep = ","))).map {
-    case (None, method, args) => PMethodCall(Nil, method, args)
-    case (Some(targets), method, args) => PMethodCall(targets, method, args)
+    case (None, method, args) => {
+      val m = PMethodCall(Nil, method, args)
+      FastPositions.setStart(m, _begin)
+      FastPositions.setFinish(m, _end)
+      m
+    }
+    case (Some(targets), method, args) => {
+      val m = PMethodCall(targets, method, args)
+      FastPositions.setStart(m, _begin)
+      FastPositions.setFinish(m, _end)
+      m
+    }
   }
 
   def goto[_: P]: P[PGoto] = P("goto" ~/ idnuse).map(PGoto)
@@ -1139,7 +1173,7 @@ object FastParser { // extends PosParser[Char, String] { //?
   def fieldDecl[_: P]: P[PField] = P("field" ~/ idndef ~ ":" ~ typ ~ ";".?).map { case (a, b) => PField(a, b) }
 
   def functionDecl[_: P]: P[PFunction] = P("function" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
-    post.rep ~ ("{" ~ exp ~ "}").?).map { case (a, b, c, d, e, f) => PFunction(a, b, c, d, e, f) }
+    post.rep ~ ("{" ~ exp ~ "}").?).map({ case (a, b, c, d, e, f) => PFunction(a, b, c, d, e, f) })
 
 
   def pre(implicit ctx : P[_]) : P[PExp] = P(("requires" ~/ exp ~ ";".?) | ParserExtension.preSpecification(ctx))

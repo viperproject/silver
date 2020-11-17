@@ -490,7 +490,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
 
   /** Show a program. */
   def showProgram(p: Program): Cont = {
-    val Program(domains, fields, functions, predicates, methods, extensions) = p
+    val Program(domains, fields, functions, predicates, methods, _) = p
     showComment(p) <@>
       ssep((domains ++ fields ++ functions ++ predicates ++ methods) map show, line <> line)
   }
@@ -564,7 +564,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
           })
       case d: Domain =>
         showDomain(d)
-      case t:ExtensionMember => nil
+      case _:ExtensionMember => nil
     }
     showComment(m) <@> memberDoc
   }
@@ -596,7 +596,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
   }
 
   /** Show field name */
-  private def showLocation(loc: Location): Cont = loc.name
+  //? private def showLocation(loc: Location): Cont = loc.name
 
   /** Show a user-defined domain. */
   def showDomain(d: Domain): Cont = {
@@ -771,7 +771,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       text("acc") <> parens(show(loc) <> "," <+> show(perm))
     case FuncApp(funcname, args) =>
       text(funcname) <> parens(ssep(args map show, char (',') <> space))
-    case dfa@DomainFuncApp(funcname, args, tvMap) =>
+    case DomainFuncApp(funcname, args, tvMap) =>
       if (tvMap.nonEmpty)
         // Type may be underconstrained, so to be safe we explicitly print out the type.
         text(funcname) <> parens(ssep(args map show, char (',') <> space))

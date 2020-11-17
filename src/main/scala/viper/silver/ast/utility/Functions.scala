@@ -13,7 +13,7 @@ import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 import org.jgrapht.traverse.TopologicalOrderIterator
 
 import scala.collection.mutable.{Set => MSet}
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 /**
  * Utility methods for functions.
@@ -158,10 +158,10 @@ object Functions {
 
     def recordCallsAndUnfoldings(e: Node, ufs: Seq[Unfolding]): Unit = {
       e.shallowCollect {
-      case Let(v, e, bod) => recordCallsAndUnfoldings(e.replace(e, bod), ufs)
-      case uf@Unfolding (acc, body) =>
+      case Let(_, e, bod) => recordCallsAndUnfoldings(e.replace(e, bod), ufs)
+      case uf@Unfolding (_, body) =>
         recordCallsAndUnfoldings (body, ufs :+ uf) // note: acc is not recursively-processed - we may want to revisit this decision
-      case fa@FuncApp (func, args) =>
+      case fa@FuncApp (_, args) =>
         result +:= (fa, ufs)
         args.foreach ((n) => recordCallsAndUnfoldings (n, ufs) )
       }
