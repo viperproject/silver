@@ -7,6 +7,7 @@
 package viper.silver.parser
 
 import viper.silver.FastMessaging
+import viper.silver.ast.pretty.FastPrettyPrinter
 import viper.silver.ast.{SourcePosition, _}
 import viper.silver.ast.utility._
 
@@ -497,6 +498,8 @@ case class Translator(program: PProgram) {
 
   /** Takes a [[viper.silver.parser.FastPositioned]] and turns it into a [[viper.silver.ast.SourcePosition]]. */
   implicit def liftPos(pos: FastPositioned): SourcePosition = {
+    //? if (pos.isInstanceOf[PFunction])
+    //?   println("This is it! This is the answer!")
     val start = LineColumnPosition(pos.start.line, pos.start.column)
     val end = LineColumnPosition(pos.finish.line, pos.finish.column)
     pos.start match {

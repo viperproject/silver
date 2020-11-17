@@ -50,6 +50,8 @@ object FastParser { // extends PosParser[Char, String] { //?
 
     t map {
       case node: T => { //? Change to PNode
+        //? if (node.isInstanceOf[PFunction])
+        //?   println("Of interest.")
         val (beginLine, beginColumn) = getLineAndColumn(ctx.index) //?
         val (endLine, endColumn) = getLineAndColumn(ctx.index)
 
@@ -1173,7 +1175,12 @@ object FastParser { // extends PosParser[Char, String] { //?
   def fieldDecl[_: P]: P[PField] = P("field" ~/ idndef ~ ":" ~ typ ~ ";".?).map { case (a, b) => PField(a, b) }
 
   def functionDecl[_: P]: P[PFunction] = P("function" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
-    post.rep ~ ("{" ~ exp ~ "}").?).map({ case (a, b, c, d, e, f) => PFunction(a, b, c, d, e, f) })
+    post.rep ~ ("{" ~ exp ~ "}").?).map({ case (a, b, c, d, e, f) =>
+      val func = PFunction(a, b, c, d, e, f)
+      FastPositions.setStart(func, FastPositions.getStart(b))
+      FastPositions.setFinish(func, FastPositions.getFinish(b))
+      func
+  })
 
 
   def pre(implicit ctx : P[_]) : P[PExp] = P(("requires" ~/ exp ~ ";".?) | ParserExtension.preSpecification(ctx))
