@@ -287,15 +287,15 @@ object FastParser { // extends PosParser[Char, String] { //?
     /* Extract the path component only, e.g. "import/my/stdlib.vpr" */
     val relativeImportStr = relativeImportUrl.getPath
 
-    /* Resolve the import using the specified class loader. Could point into the local file system
-     * or into a jar file. The latter case requires `relativeImportStr` to be a valid URL (which
-     * rules out Windows paths).
-     */
-    val source = scala.io.Source.fromResource(relativeImportStr, getClass.getClassLoader)
-
     // nested try-catch block because source.close() in finally could also cause a NullPointerException
     val buffer =
       try {
+        /* Resolve the import using the specified class loader. Could point into the local file system
+         * or into a jar file. The latter case requires `relativeImportStr` to be a valid URL (which
+         * rules out Windows paths).
+         */
+        val source = scala.io.Source.fromResource(relativeImportStr, getClass.getClassLoader)
+
         try {
           source.getLines.toArray
         } catch {
@@ -307,6 +307,8 @@ object FastParser { // extends PosParser[Char, String] { //?
       } catch {
         case e: java.lang.NullPointerException =>
           throw ParseException(s"""file <$path> does not exist""", FastPositions.getStart(importStmt))
+        case e@(_: RuntimeException | _: java.io.IOException) =>
+          throw ParseException(s"could not import file ($e)", FastPositions.getStart(importStmt))
       }
 
     //scala.io.Source.fromInputStream(getClass.getResourceAsStream("/import/"+ path.toString))
@@ -862,7 +864,11 @@ object FastParser { // extends PosParser[Char, String] { //?
 
   def cmpExp[_: P]: P[PExp] = P(sum ~ (cmpOp ~ cmpExp).?).map {
     case (a, b) => b match {
-      case Some(c) => PBinExp(a, c._1, c._2)
+      case Some(c) =>
+        val binExp = PBinExp(a, c._1, c._2)
+        FastPositions.setStart(binExp, FastPositions.getStart(a))
+        FastPositions.setFinish(binExp, FastPositions.getFinish(a))
+        binExp
       case None => a
     }
   }
@@ -871,14 +877,22 @@ object FastParser { // extends PosParser[Char, String] { //?
 
   def eqExp[_: P]: P[PExp] = P(cmpExp ~ (eqOp ~ eqExp).?).map {
     case (a, b) => b match {
-      case Some(c) => PBinExp(a, c._1, c._2)
+      case Some(c) =>
+        val binExp = PBinExp(a, c._1, c._2)
+        FastPositions.setStart(binExp, FastPositions.getStart(a))
+        FastPositions.setFinish(binExp, FastPositions.getFinish(a))
+        binExp
       case None => a
     }
   }
 
   def andExp[_: P]: P[PExp] = P(eqExp ~ ("&&".! ~ andExp).?).map {
     case (a, b) => b match {
-      case Some(c) => PBinExp(a, c._1, c._2)
+      case Some(c) =>
+        val binExp = PBinExp(a, c._1, c._2)
+        FastPositions.setStart(binExp, FastPositions.getStart(a))
+        FastPositions.setFinish(binExp, FastPositions.getFinish(a))
+        binExp
       case None => a
     }
   }
@@ -940,10 +954,24 @@ object FastParser { // extends PosParser[Char, String] { //?
       PLet(exp1, nestedScope)
     })
 
-  def idndef[_: P]: P[PIdnDef] = P(ident).map(PIdnDef)
+  def idndef[_: P]: P[PIdnDef] = P(ident).map({s =>
+    val i = PIdnDef(s)
+    FastPositions.setStart(i, _begin)
+    FastPositions.setFinish(i, _end)
+    i})
 
-  def quant[_: P]: P[PExp] = P((keyword("forall") ~ nonEmptyFormalArgList ~ "::" ~ trigger.rep ~ exp).map { case (a, b, c) => PForall(a, b, c) } |
-    (keyword("exists") ~ nonEmptyFormalArgList ~ "::" ~ trigger.rep ~ exp).map { case (a, b, c) => PExists(a, b, c) })
+  def quant[_: P]: P[PExp] = P((keyword("forall") ~ nonEmptyFormalArgList ~ "::" ~ trigger.rep ~ exp).map { case (a, b, c) =>
+      val fa = PForall(a, b, c)
+      FastPositions.setStart(fa, FastPositions.getStart(a))
+      FastPositions.setFinish(fa, FastPositions.getFinish(a))
+      fa
+    } |
+    (keyword("exists") ~ nonEmptyFormalArgList ~ "::" ~ trigger.rep ~ exp).map { case (a, b, c) =>
+      val ex = PExists(a, b, c)
+      FastPositions.setStart(ex, FastPositions.getStart(a))
+      FastPositions.setFinish(ex, FastPositions.getFinish(a))
+      ex
+    })
 
   def nonEmptyFormalArgList[_: P]: P[Seq[PFormalArgDecl]] = P(formalArg.rep(min = 1, sep = ","))
 
@@ -1039,9 +1067,19 @@ object FastParser { // extends PosParser[Char, String] { //?
 
   def unfold[_: P]: P[PUnfold] = P("unfold" ~ predicateAccessPred).map(PUnfold)
 
-  def exhale[_: P]: P[PExhale] = P(keyword("exhale") ~/ exp).map(PExhale)
+  def exhale[_: P]: P[PExhale] = P(keyword("exhale") ~/ exp).map(e => {
+    val ex = PExhale(e)
+    FastPositions.setStart(ex, FastPositions.getStart(e))
+    FastPositions.setFinish(ex, FastPositions.getFinish(e))
+    ex
+  })
 
-  def assertP[_: P]: P[PAssert] = P(keyword("assert") ~/ exp).map(PAssert)
+  def assertP[_: P]: P[PAssert] = P(keyword("assert") ~/ exp).map(e => {
+    val a = PAssert(e)
+    FastPositions.setStart(a, FastPositions.getStart(e))
+    FastPositions.setFinish(a, FastPositions.getFinish(e))
+    a
+  })
 
   def inhale[_: P]: P[PInhale] = P(keyword("inhale") ~/ exp).map(PInhale)
 
