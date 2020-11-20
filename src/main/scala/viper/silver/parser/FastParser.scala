@@ -951,7 +951,10 @@ object FastParser { // extends PosParser[Char, String] { //?
       val formalArgDecl = PFormalArgDecl(id, unresolvedType).setPos(id)
       val nestedScope = PLetNestedScope(formalArgDecl, exp2).setPos(exp2)
 
-      PLet(exp1, nestedScope)
+      val l = PLet(exp1, nestedScope)
+      FastPositions.setStart(l, FastPositions.getStart(exp1))
+      FastPositions.setFinish(l, FastPositions.getFinish(exp1))
+      l
     })
 
   def idndef[_: P]: P[PIdnDef] = P(ident).map({s =>
