@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.Traverse
-import viper.silver.ast.{Exp, If, Info, Infoed, MakeInfoPair, Method, NoInfo, Node, Seqn, Stmt}
+import viper.silver.ast.{Exp, If, Info, Infoed, LocalVar, MakeInfoPair, NoInfo, Seqn, Stmt}
 import viper.silver.cfg._
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.cfg.silver.{CfgGenerator, SilverCfg}
@@ -28,6 +28,12 @@ case class IdInfo(id: Int) extends Info {
   override def isCached: Boolean = false
 }
 
+/**
+  * An info used to connect the provide loop information to AST nodes.
+  *
+  * @param head Contains a loop identifier i iff the node is a loop head of loop i.
+  * @param loops All loops that the node is contained in.
+  */
 case class LoopInfo(head: Option[Int], loops: Set[Int]) extends Info {
   override def comment: Seq[String] = Seq(toString)
 
@@ -52,15 +58,30 @@ object LoopDetector {
     */
   def detect[C <: Cfg[S, E], S, E](cfg: C, loops: Map[Block[S, E], Set[Block[S, E]]] = Map[Block[S, E], Set[Block[S, E]]]()): C = {
     // compute natural loops and merge them with provided loop information
-    val allLoops = naturalLoops[C, S, E](cfg).foldLeft(loops) {
+    val (allLoops,_) = naturalLoops[C, S, E](cfg)
+    allLoops.foldLeft(loops) {
       case (current, (key, value)) => current.updated(key, current.getOrElse(key, Set.empty) ++ value)
     }
     // augment cfg with loop information
     augment(cfg, allLoops)
   }
 
-  def detect(method: Method): Method = method.body match {
-    case Some(body) =>
+  /**
+    *
+    * @param body The ast to analyze.
+    * @param generateUniqueIds If true, then in the returned AST the info field of each non-composite node in the
+    *                          returned AST contains a {@link IdInfo} object holding a unique identifier.
+    * @param computeWrittenVars If true, then a map is returned from loop identifiers to corresponding written variables.
+    * @return A tuple consisting of:
+    *         1) An augmented version of the provided AST, where only the info fields are adjusted. For each statement s
+    *         that is non-composite or a While statement, a LoopInfo object is added to the information field if the
+    *         following holds:
+    *         The next non-composite statement of s in the AST w.r.t. control flow (i.e., for a goto statement it would be the
+    *         corresponding label) is part of a different set of loops than s.
+    *         Furthermore, unique identifiers may be added dependent on the provided parameters.
+    *         2) A map from loop identifiers to corresponding written variables (depending on the provided parameters).
+    */
+  def detect(body: Seqn, generateUniqueIds: Boolean, computeWrittenVars: Boolean): (Seqn, Option[Map[Int, Seq[LocalVar]]]) = {
       val saved = ViperStrategy.forceRewrite
       ViperStrategy.forceRewrite = true
 
@@ -76,9 +97,13 @@ object LoopDetector {
 
       // compute cfg and loops
       val (cfg, syntacticLoops) = CfgGenerator.computeCfg(withIds)
-      val loops = naturalLoops[SilverCfg, Stmt, Exp](cfg).foldLeft(syntacticLoops) {
+
+      val (loops, dominators) = naturalLoops[SilverCfg, Stmt, Exp](cfg)
+      loops.foldLeft(syntacticLoops) {
         case (current, (key, value)) => current.updated(key, current.getOrElse(key, Set.empty) ++ value)
       }
+
+      val writtenVars = writtenVariables(cfg, dominators)
 
       def getId(stmt: Stmt): Option[Int] = stmt.info.getUniqueInfo[IdInfo].map(_.id)
 
@@ -108,14 +133,28 @@ object LoopDetector {
 
       // maps blocks to ids
       val ids = cfg.blocks.foldLeft(Map.empty[SilverBlock, Int]) {
-        case (map, block@LoopHeadBlock(_, _, Some(id))) => map.updated(block, id)
+        case (map, block@LoopHeadBlock(_, _, Some(id))) => {
+          map.updated(block, id)
+        }
         case (map, block) => getFirst(block)
           .flatMap(getId)
           .map { id => map.updated(block, id) }
           .getOrElse(map)
       }
 
-      // compute loop information
+      // associate written variables with block id
+      val loopToWrittenVars =
+        if(computeWrittenVars)
+          Some(
+            writtenVars.foldLeft(Map.empty[Int, Seq[LocalVar]]) {
+              case (map, (loopHead, writtenVars)) => {
+                map.updated(ids.get(loopHead).get, writtenVars.distinct)
+              }
+            })
+        else
+          None
+
+    // compute loop information
       val infos = contractedEdges.foldLeft(Map.empty[Int, LoopInfo]) {
         case (map, edge) =>
           val sourceHeads = loops.getOrElse(edge.source, Set.empty).map(ids)
@@ -154,7 +193,8 @@ object LoopDetector {
           val (pos, info, err) = node.meta
           info.getUniqueInfo[IdInfo] match {
             case Some(idInfo) =>
-              val removed = info.removeUniqueInfo[IdInfo]
+              //keep unique ids, if requested by caller
+              val removed = (if(generateUniqueIds) { info } else {info.removeUniqueInfo[IdInfo] })
               val loopInfo = infos.getOrElse(idInfo.id, NoInfo)
               val updated = MakeInfoPair(removed, loopInfo)
               node.withMeta(pos, updated, err)
@@ -167,18 +207,18 @@ object LoopDetector {
       ViperStrategy.forceRewrite = saved
 
       // return updated method
-      method.copy(body = Some(withInfo))(method.pos, method.info, method.errT)
-    case _ => method
+      (withInfo,  loopToWrittenVars)
   }
 
-  private def naturalLoops[C <: Cfg[S, E], S, E](cfg: C): Map[Block[S, E], Set[Block[S, E]]] = {
+  private def naturalLoops[C <: Cfg[S, E], S, E](cfg: C): (Map[Block[S, E], Set[Block[S, E]]], Dominators[S,E]) = {
     // check whether the control flow graph is reducible
     val dominators = new Dominators(cfg)
     if (!isReducible(cfg, dominators))
       throw new IllegalArgumentException("Control flow graph is not reducible.")
 
     // populate map that maps each block to the set of loop heads corresponding to all loops that contain the block
-    cfg.edges
+    val resultMap =
+      cfg.edges
       .filter(dominators.isBackedge)
       .foldLeft[Map[Block[S, E], Set[Block[S, E]]]](Map.empty) {
       case (current, edge) =>
@@ -189,6 +229,25 @@ object LoopDetector {
             c.updated(block, existing + head)
         }
     }
+    (resultMap, dominators)
+  }
+
+  private def writtenVariables(cfg: SilverCfg, dominators: Dominators[Stmt,Exp]) : Map[Block[Stmt,Exp], Seq[LocalVar]] = {
+    cfg.edges
+      .filter(dominators.isBackedge)
+      .foldLeft[Map[Block[Stmt,Exp], Seq[LocalVar]]](Map.empty) {
+        case (current, edge) =>
+          val head = edge.target
+          collectBlocks(cfg, edge).foldLeft(current) {
+            case (c, block) =>
+              val written = block.elements.flatMap {
+                case Left(stmt) => stmt.writtenVars
+                case Right(_) => Nil
+              }
+              val existing = c.getOrElse(head, Nil)
+              c.updated(head, existing ++ written)
+          }
+      }
   }
 
   private def augment[C <: Cfg[S, E], S, E](cfg: C, loops: Map[Block[S, E], Set[Block[S, E]]]): C = {
