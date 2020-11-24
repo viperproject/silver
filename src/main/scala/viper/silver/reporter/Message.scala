@@ -20,6 +20,37 @@ sealed trait Message {
   val name: String
 }
 
+/**
+ * A stub for future refactoring. Since AST construction is conceptually independent from verification,
+ * e.g. in ViperCoreServer, it might be convenient to use a separate sub-hierarcy of messages
+ * for purposes related to AST generation. Currently, messages such as [[WarningsDuringParsing]] are used.
+ *
+ * These messages already have their JSON marshallers defined in
+ * viper/server/frontends/http/jsonWriters/ViperIDEProtocol.scala
+ *
+ * ATG 2020
+ *
+sealed trait AstConstructionResultMessage extends Message {
+  override val name: String = s"ast_construction_result"
+  def reports: Seq[AbstractError]
+  def signature: String
+  def astConstructionTime: Time
+  override def toString = s"$signature(" +
+    s"time=${astConstructionTime.toString}, " +
+    s"reports=[${(reports map {r => r.toString}).mkString("", ",", "")}])"
+}
+
+case class AstConstructionSuccessMessage(astConstructionTime: Time, reports: Seq[AbstractError] = Seq())
+  extends AstConstructionResultMessage {
+  override def signature = "ast_construction_success"
+}
+
+case class AstConstructionFailureMessage(astConstructionTime: Time, reports: Seq[AbstractError])
+  extends AstConstructionResultMessage {
+  override def signature = "ast_construction_failure"
+}
+*/
+
 sealed trait VerificationResultMessage extends Message {
   override val name: String = s"verification_result"
   def result: VerificationResult
@@ -65,9 +96,7 @@ object VerificationResultMessage {
   }
 }
 
-trait CachedEntityMessage extends VerificationResultMessage {
-
-}
+trait CachedEntityMessage extends VerificationResultMessage {}
 
 object CachedEntityMessage {
 
