@@ -11,7 +11,7 @@ import scala.io.Source
 
 /**
  * A parser for test annotations.  For an explanation of possible annotations and their syntax see
- * [[https://bitbucket.org/viperproject/silver/wiki/End-to-End%20Testing%20of%20Verifiers%20Based%20on%20SIL the description on the wiki]].
+ * [[https://github.com/viperproject/silver/wiki/End-to-End-Testing-of-Verifiers-Based-on-Silver the description on the wiki]].
  */
 trait TestAnnotationParser {
 
