@@ -202,6 +202,7 @@ trait SilFrontend extends DefaultFrontend {
     catch {
         case MissingDependencyException(msg) =>
           println("Missing dependency exception: " + msg)
+          reporter report MissingDependencyReport(msg)
     }
   }
 

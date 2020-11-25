@@ -21,35 +21,34 @@ sealed trait Message {
 }
 
 /**
- * A stub for future refactoring. Since AST construction is conceptually independent from verification,
+ * Since AST construction is conceptually independent from verification,
  * e.g. in ViperCoreServer, it might be convenient to use a separate sub-hierarcy of messages
- * for purposes related to AST generation. Currently, messages such as [[WarningsDuringParsing]] are used.
+ * for purposes related to AST generation. Currently, messages such as [[WarningsDuringParsing]]
+ * are used.
  *
  * These messages already have their JSON marshallers defined in
  * viper/server/frontends/http/jsonWriters/ViperIDEProtocol.scala
  *
  * ATG 2020
- *
+ */
 sealed trait AstConstructionResultMessage extends Message {
   override val name: String = s"ast_construction_result"
-  def reports: Seq[AbstractError]
-  def signature: String
   def astConstructionTime: Time
-  override def toString = s"$signature(" +
+}
+
+case class AstConstructionSuccessMessage(astConstructionTime: Time)
+  extends AstConstructionResultMessage {
+  override def toString: String =
+    s"ast_construction_success(time=${astConstructionTime.toString})"
+}
+
+case class AstConstructionFailureMessage(astConstructionTime: Time, result: Failure)
+  extends AstConstructionResultMessage {
+  override def toString: String =
+    s"ast_construction_failure(" +
     s"time=${astConstructionTime.toString}, " +
-    s"reports=[${(reports map {r => r.toString}).mkString("", ",", "")}])"
+    s"result=${result.toString})"
 }
-
-case class AstConstructionSuccessMessage(astConstructionTime: Time, reports: Seq[AbstractError] = Seq())
-  extends AstConstructionResultMessage {
-  override def signature = "ast_construction_success"
-}
-
-case class AstConstructionFailureMessage(astConstructionTime: Time, reports: Seq[AbstractError])
-  extends AstConstructionResultMessage {
-  override def signature = "ast_construction_failure"
-}
-*/
 
 sealed trait VerificationResultMessage extends Message {
   override val name: String = s"verification_result"
@@ -103,8 +102,8 @@ object CachedEntityMessage {
   def apply(verifier: String, entity: Entity, result: VerificationResult)
   : VerificationResultMessage = {
     result match {
-      case Success => EntitySuccessMessage(verifier, entity, 0, true)
-      case failure: Failure => EntityFailureMessage(verifier, entity, 0, failure, true)
+      case Success => EntitySuccessMessage(verifier, entity, 0, cached = true)
+      case failure: Failure => EntityFailureMessage(verifier, entity, 0, failure, cached = true)
     }
   }
 }
@@ -211,35 +210,29 @@ case class WarningsDuringTypechecking(warnings: Seq[TypecheckerWarning]) extends
   override val name: String = s"warnings_during_typechecking"
 }
 
-/**
-  * Simple messages contain just one text field.
-  */
-
 abstract class SimpleMessage(val text: String) extends Message {
+  override def toString: String = s"$name(text=$text)"
   override val name: String = s"simple_message"
 }
 
 case class ConfigurationConfirmation(override val text: String) extends SimpleMessage(text) {
-  override def toString: String = s"configuration_confirmation(text=${text.toString()})"
   override val name: String = s"configuration_confirmation"
 }
 
 case class InternalWarningMessage(override val text: String) extends SimpleMessage(text) {
-
-  override def toString: String = s"internal_warning_message(text=${text.toString()})"
   override val name: String = s"internal_warning_message"
 }
 
 case class CopyrightReport(override val text: String) extends SimpleMessage(text) {
-
-  override def toString: String = s"copyright_report(text=${text.toString()})"
   override val name: String = s"copyright_report"
+}
+
+case class MissingDependencyReport(override val text: String) extends SimpleMessage(text) {
+  override val name = "missing_dependency_report"
 }
 
 // FIXME: for debug purposes only: a pong message can be reported to indicate
 // FIXME: that the verification backend is alive.
 case class PongMessage(override val text: String) extends SimpleMessage(text) {
-
-  override def toString: String = s"dbg__pong(text=$text)"
   override val name: String = s"dbg__pong"
 }

@@ -5,8 +5,8 @@ import ch.qos.logback.classic.Logger
 import viper.silver.ast.Program
 import viper.silver.logger.ViperStdOutLogger
 import viper.silver.plugin.PluginAwareReporter
-import viper.silver.reporter.Reporter
-import viper.silver.verifier.{Success, VerificationResult, Verifier}
+import viper.silver.reporter.{AstConstructionFailureMessage, AstConstructionSuccessMessage, Reporter}
+import viper.silver.verifier.{Failure, Success, VerificationResult, Verifier}
 
 
 class ViperAstProvider(override val reporter: PluginAwareReporter,
@@ -50,10 +50,27 @@ class ViperAstProvider(override val reporter: PluginAwareReporter,
   }
 
   // Verification phase omitted
-  override val phases = Seq(Parsing, SemanticAnalysis, Translation, ConsistencyCheck)
+  override val phases: Seq[Phase] = Seq(Parsing, SemanticAnalysis, Translation, ConsistencyCheck)
 
-  // Since verification did not take place yet, there is currently nothing to finish.
-  override def finish(): Unit = ()
+  override def result: VerificationResult = {
+
+    if (_errors.isEmpty && _program.isDefined) {
+      require(state >= DefaultStates.ConsistencyCheck)
+      Success
+    }
+    else {
+      Failure(_errors)
+    }
+  }
+
+  override def finish(): Unit = {
+    result match {
+      case Success =>
+        reporter report AstConstructionSuccessMessage(getTime)
+      case f: Failure =>
+        reporter report AstConstructionFailureMessage(getTime, f)
+    }
+  }
 
   protected var instance: AstProvidingVerifier = _
 
