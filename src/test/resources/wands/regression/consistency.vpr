@@ -52,12 +52,14 @@ method test03() {
 /* Applying/packaging must occur inside wands */
 
 function foobar(x: Ref): Int
+  //:: ExpectedOutput(consistency.error)
   requires true --* acc(x.f)
 {
   applying (true --* acc(x.f)) in x.f
 }
 
 predicate test18(x: Ref) {
+  //:: ExpectedOutput(consistency.error)
   acc(x.f) && (acc(x.f) --* acc(x.g)) && applying (acc(x.f) --* acc(x.g)) in true
 }
 
