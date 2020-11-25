@@ -66,8 +66,10 @@ object VerificationResultMessage {
   : VerificationResultMessage = {
 
     result match {
-      case Success => OverallSuccessMessage(verifier, verificationTime)
-      case failure: Failure => OverallFailureMessage(verifier, verificationTime, failure)
+      case Success => 
+        OverallSuccessMessage(verifier, verificationTime)
+      case failure: Failure => 
+        OverallFailureMessage(verifier, verificationTime, failure)
     }
   }
 
@@ -80,40 +82,47 @@ object VerificationResultMessage {
   : VerificationResultMessage = {
 
     result match {
-      case Success => EntitySuccessMessage(verifier, entity, verificationTime)
-      case failure: Failure => EntityFailureMessage(verifier, entity, verificationTime, failure)
+      case Success => 
+        EntitySuccessMessage(verifier, entity, verificationTime)
+      case failure: Failure => 
+        EntityFailureMessage(verifier, entity, verificationTime, failure)
     }
   }
 
-  def apply(verifier: String, entity: Entity, verificationTime: Time, result: VerificationResult, cached: Boolean)
+  def apply(verifier: String, entity: Entity, verificationTime: Time, 
+            result: VerificationResult, cached: Boolean)
   : VerificationResultMessage = {
 
     result match {
-      case Success => EntitySuccessMessage(verifier, entity, verificationTime, cached)
-      case failure: Failure => EntityFailureMessage(verifier, entity, verificationTime, failure, cached)
+      case Success => 
+        EntitySuccessMessage(verifier, entity, verificationTime, cached)
+      case failure: Failure => 
+        EntityFailureMessage(verifier, entity, verificationTime, failure, cached)
     }
   }
 }
 
-trait CachedEntityMessage extends VerificationResultMessage {}
+trait CachedEntityMessage extends VerificationResultMessage
 
 object CachedEntityMessage {
 
   def apply(verifier: String, entity: Entity, result: VerificationResult)
-  : VerificationResultMessage = {
+  : VerificationResultMessage =
     result match {
-      case Success => EntitySuccessMessage(verifier, entity, 0, cached = true)
-      case failure: Failure => EntityFailureMessage(verifier, entity, 0, failure, cached = true)
+      case Success => 
+        EntitySuccessMessage(verifier, entity, 0, cached = true)
+      case failure: Failure => 
+        EntityFailureMessage(verifier, entity, 0, failure, cached = true)
     }
-  }
 }
 
-// Overall results concern results for the entire program (e.g. those presently produced by the Carbon backend)
+// Overall results concern results for the entire program (e.g. those presently 
+// produced by the Carbon backend)
 case class OverallSuccessMessage(verifier: String, verificationTime: Time)
   extends VerificationResultMessage {
 
   override def toString: String = s"overall_success_message(" +
-    s"verifier=${verifier}, time=${verificationTime.toString()})"
+    s"verifier=${verifier}, time=${verificationTime.toString})"
 
   val result: VerificationResult = Success
 }
@@ -122,47 +131,51 @@ case class OverallFailureMessage(verifier: String, verificationTime: Time, resul
   extends VerificationResultMessage {
 
   override def toString: String = s"overall_failure_message(" +
-    s"verifier=${verifier}, time=${verificationTime.toString()}, result=${result.toString()})"
+    s"verifier=${verifier}, time=${verificationTime.toString}, result=${result.toString})"
 }
 
-// Entity results concern results for specific program entities (these are presently produced by the Silicon backend)
-case class EntitySuccessMessage(verifier: String, concerning: Entity, verificationTime: Time, val cached: Boolean = false)
+// Entity results concern results for specific program entities (these are presently 
+// produced by the Silicon backend)
+case class EntitySuccessMessage(verifier: String, concerning: Entity, 
+                                verificationTime: Time, cached: Boolean = false)
   extends VerificationResultMessage {
 
   override def toString: String = s"entry_success_message(" +
     s"verifier=${verifier}, " +
-    s"concerning=${concerning.toString()}, time=${verificationTime.toString()})"
+    s"concerning=${concerning.toString}, time=${verificationTime.toString})"
 
  val result: VerificationResult = Success
 }
 
-case class EntityFailureMessage(verifier: String, concerning: Entity, verificationTime: Time, result: Failure, val cached: Boolean = false)
+case class EntityFailureMessage(verifier: String, concerning: Entity, 
+                                verificationTime: Time, result: Failure, cached: Boolean = false)
   extends VerificationResultMessage {
 
   override def toString: String = s"entry_failure_message(" +
-    s"verifier=${verifier}, concerning=${concerning.toString()}, " +
-    s"time=${verificationTime.toString()}, result=${result.toString()})"
+    s"verifier=${verifier}, concerning=${concerning.toString}, " +
+    s"time=${verificationTime.toString}, result=${result.toString})"
 }
 
-case class StatisticsReport(nOfMethods: Int, nOfFunctions: Int, nOfPredicates: Int, nOfDomains: Int, nOfFields: Int)
+case class StatisticsReport(nOfMethods: Int, nOfFunctions: Int, nOfPredicates: Int, 
+                            nOfDomains: Int, nOfFields: Int)
   extends Message {
 
   override def toString: String = s"statistics_report(" +
-    s"nom=${nOfMethods.toString()}, nofu=${nOfFunctions.toString()}, nop=${nOfPredicates.toString()}, " +
-    s"nod=${nOfDomains.toString()}, nofi=${nOfFields.toString()})"
+    s"nom=${nOfMethods.toString}, nofu=${nOfFunctions.toString}, nop=${nOfPredicates.toString}, " +
+    s"nod=${nOfDomains.toString}, nofi=${nOfFields.toString})"
 
   override val name = s"statistics"
 }
 
 case class ProgramOutlineReport(members: List[Entity]) extends Message {
 
-  override def toString: String = s"program_outline_report(members=${members.toString()})"
+  override def toString: String = s"program_outline_report(members=${members.toString})"
   override val name: String = s"program_outline"
 }
 
 case class ProgramDefinitionsReport(definitions: List[Definition]) extends Message {
 
-  override def toString: String = s"program_definitions_report(definitions=${definitions.toString()}"
+  override def toString: String = s"program_definitions_report(definitions=${definitions.toString}"
   override val name: String = s"program_definitions"
 }
 
@@ -175,8 +188,8 @@ case class ExecutionTraceReport(memberTraces: Seq[Any],
   override def toString: String =
     s"""symbolic_execution_logger_report(
        |  members=${(memberTraces map {m => m.toString}).mkString("[", ",", "]")},
-       |  axioms=${axioms.toString()}
-       |  functionPostAxioms=${functionPostAxioms.toString()}
+       |  axioms=${axioms.toString}
+       |  functionPostAxioms=${functionPostAxioms.toString}
        |)""".stripMargin
 
   override val name: String = s"symbolic_execution_logger_report"
@@ -184,13 +197,15 @@ case class ExecutionTraceReport(memberTraces: Seq[Any],
 
 case class ExceptionReport(e: java.lang.Throwable) extends Message {
 
-  override def toString: String = s"exception_report(e=${e.toString()})"
+  override def toString: String = s"exception_report(e=${e.toString})"
   override val name: String = s"exception_report"
 }
 
-case class InvalidArgumentsReport(tool_signature: String, errors: List[AbstractError]) extends Message {
+case class InvalidArgumentsReport(tool_signature: String, errors: List[AbstractError])
+  extends Message {
 
-  override def toString: String = s"invalid_args_report(tool_signature=${tool_signature.toString()}, errors=[${errors.mkString(",")}])"
+  override def toString: String =
+    s"invalid_args_report(tool_signature=${tool_signature}, errors=[${errors.mkString(",")}])"
   override val name: String = s"invalid_args_report"
 }
 

@@ -11,7 +11,7 @@ import viper.silver.ast._
 import viper.silver.ast.pretty.FastPrettyPrinter
 import viper.silver.ast.utility.rewriter.Rewritable
 
-abstract class ModelEntry()
+sealed trait ModelEntry
 case class SingleEntry(value: String) extends ModelEntry {
   override def toString: String = value
 }
