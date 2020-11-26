@@ -1,6 +1,9 @@
 package viper.silver.plugin.standard.inline
 
+import viper.silver.ast.utility.ViperStrategy
+import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast.{Exp, LocalVar, Method, Node, PredicateAccess, Program}
+import viper.silver.plugin.standard.predicateinstance.PredicateInstance
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 
 class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate {
@@ -12,7 +15,11 @@ class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate {
     val methodsWithExpandedPres = declaredMethods.map(expandPreconditions(_, input))
 
     // TODO: actually rewrite program with methods with expanded predicates
-    input
+    val rewrittenProgram = ViperStrategy.Slim({
+      case program: Program =>
+        program.copy(methods = methodsWithExpandedPres)(program.pos, program.info, program.errT)
+    }, Traverse.BottomUp).execute(input)
+    rewrittenProgram
   }
 
   private[this] def expandPreconditions(method: Method, program: Program): Method = {
