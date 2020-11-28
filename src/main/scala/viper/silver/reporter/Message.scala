@@ -78,7 +78,8 @@ object VerificationResultMessage {
     *  if `result` is [[Success]] then an [[EntitySuccessMessage]] is created, otherwise (if `result`
     *  is a [[Failure]]) a [[EntityFailureMessage]] is created.
     */
-  def apply(verifier: String, entity: Entity, verificationTime: Time, result: VerificationResult)
+  def apply(verifier: String, entity: Entity, verificationTime: Time,
+            result: VerificationResult)
   : VerificationResultMessage = {
 
     result match {
@@ -111,7 +112,7 @@ object CachedEntityMessage {
     result match {
       case Success => 
         EntitySuccessMessage(verifier, entity, 0, cached = true)
-      case failure: Failure => 
+      case failure: Failure =>
         EntityFailureMessage(verifier, entity, 0, failure, cached = true)
     }
 }
@@ -140,9 +141,9 @@ case class EntitySuccessMessage(verifier: String, concerning: Entity,
                                 verificationTime: Time, cached: Boolean = false)
   extends VerificationResultMessage {
 
-  override def toString: String = s"entry_success_message(" +
-    s"verifier=${verifier}, " +
-    s"concerning=${concerning.toString}, time=${verificationTime.toString})"
+  override def toString: String = s"entity_success_message(" +
+    s"verifier=$verifier, " +
+    s"concerning=${print(concerning)}, time=${verificationTime.toString}, cached=$cached)"
 
  val result: VerificationResult = Success
 }
@@ -151,9 +152,9 @@ case class EntityFailureMessage(verifier: String, concerning: Entity,
                                 verificationTime: Time, result: Failure, cached: Boolean = false)
   extends VerificationResultMessage {
 
-  override def toString: String = s"entry_failure_message(" +
-    s"verifier=${verifier}, concerning=${concerning.toString}, " +
-    s"time=${verificationTime.toString}, result=${result.toString})"
+  override def toString: String = s"entity_failure_message(" +
+      s"verifier=$verifier, concerning=${print(concerning)}, " +
+      s"time=${verificationTime.toString}, result=${result.toString}, cached=$cached)"
 }
 
 case class StatisticsReport(nOfMethods: Int, nOfFunctions: Int, nOfPredicates: Int, 
@@ -169,7 +170,7 @@ case class StatisticsReport(nOfMethods: Int, nOfFunctions: Int, nOfPredicates: I
 
 case class ProgramOutlineReport(members: List[Entity]) extends Message {
 
-  override def toString: String = s"program_outline_report(members=${members.toString})"
+  override def toString: String = s"program_outline_report(members=${members.map(print)})"
   override val name: String = s"program_outline"
 }
 
