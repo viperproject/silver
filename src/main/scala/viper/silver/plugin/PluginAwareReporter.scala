@@ -7,7 +7,7 @@ import viper.silver.verifier.{Success, VerificationResult}
 // TODO consider implementing caching for verification results that were already mapped before.
 case class PluginAwareReporter(reporter: Reporter) {
 
-  var transform: Function[VerificationResult, VerificationResult] = identity
+  var transform: Function[VerificationResult, VerificationResult] = (x => x)
 
   def report(msg: viper.silver.reporter.Message): Unit = {
     val transformedMsg =

@@ -43,12 +43,13 @@ trait AbstractError {
   def readableMessage: String
 
   /* TODO: Simply looking for pos in message is rather fragile */
-  override def toString = {
+  override def toString: String = {
     val msg = readableMessage
     val posStr = pos.toString
 
-    if (msg contains posStr) s"$msg"
-    else s"$msg ($posStr)"
+    (if (msg contains posStr) s"$msg"
+    else s"$msg ($posStr)") +
+      (if (cached) " - cached" else "")
   }
 
   val cached: Boolean = false

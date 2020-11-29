@@ -77,7 +77,7 @@ trait VerificationError extends AbstractError with ErrorMessage {
       rm
     }
   }
-  def loggableMessage = s"$fullId-$pos"
+  def loggableMessage: String = s"$fullId-$pos" + (if (cached) "-cached" else "")
   def fullId = s"$id:${reason.id}"
   var counterexample : Option[Counterexample] = None
 }
@@ -151,7 +151,7 @@ abstract class AbstractVerificationError extends VerificationError {
 
   def withReason(reason: ErrorReason): AbstractVerificationError
 
-  override def toString = readableMessage(true, true)
+  override def toString = readableMessage(true, true) + (if (cached) " - cached" else "")
 }
 
 abstract class AbstractErrorReason extends ErrorReason {
