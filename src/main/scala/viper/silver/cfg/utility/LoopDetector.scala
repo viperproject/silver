@@ -68,7 +68,9 @@ object LoopDetector {
 
   /**
     *
-    * @param body The ast to analyze.
+    * @param body The ast to analyze. Ensure that:
+    *             1) The first statement of each if branch is a non-composite statement.
+    *             2) The first and last statement of each while loop is a non-composite statement.
     * @param generateUniqueIds If true, then in the returned AST the info field of each non-composite node in the
     *                          returned AST contains a {@link IdInfo} object holding a unique identifier.
     * @param computeWrittenVars If true, then a map is returned from loop identifiers to corresponding written variables.
@@ -89,10 +91,11 @@ object LoopDetector {
       val id = new AtomicInteger(0)
       val withIds = body.transform({
         case node@(_: If | _: Seqn) => node
-        case node =>
+        case node: Stmt =>
           val (pos, info, err) = node.meta
           val updated = MakeInfoPair(IdInfo(id.incrementAndGet()), info)
           node.withMeta(pos, updated, err)
+        case node: Any => node
       }, Traverse.TopDown)
 
       // compute cfg and loops
@@ -159,10 +162,13 @@ object LoopDetector {
         case (map, edge) =>
           val sourceHeads = loops.getOrElse(edge.source, Set.empty).map(ids)
           val targetHeads = loops.getOrElse(edge.target, Set.empty).map(ids)
+          //loops that are exited via edge
           val outHeads = sourceHeads -- targetHeads
+          //loops that are entered via edge
           val inHeads = targetHeads -- sourceHeads
           if (outHeads.isEmpty && inHeads.isEmpty) map
           else {
+            //at least one loop is entered or exited
             // update before info
             val before = getLast(edge.source).flatMap(getId)
             val map2 = before
