@@ -14,7 +14,6 @@ class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate with 
         program.copy(methods = methods.map {
           rewriteMethod(_, program)
         })(program.pos, program.info, program.errT)
-    }) // .recurseFunc(???) // TODO: Do we need to call this first?
-      .execute(input)
+    }).execute[Program](input)
   }
 }
