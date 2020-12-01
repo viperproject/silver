@@ -32,21 +32,21 @@ object FastParser { // extends PosParser[Char, String] { //?
 
   type P[T] = FP[T]
 
-  def P[T](t: P[T])(implicit name: sourcecode.Name, ctx: P[_]): P[T] = {
-
-    def getLineAndColumn(index: Int): (Int, Int) = {
-      // val Array(line, col) = ctx.input.prettyIndex(index).split(":").map(_.toInt) //?
-      // (line, col)
-      var left = index
-      var i = 0
-      val arr = FastParser._lines
-      while (i < arr.length && left >= arr(i)){
-        left -= arr(i)
-        i += 1
-      }
-      val r1 = (i + 1, left + 1)
-      r1
+  def getLineAndColumn(index: Int): (Int, Int) = {
+    // val Array(line, col) = ctx.input.prettyIndex(index).split(":").map(_.toInt) //?
+    // (line, col)
+    var left = index
+    var i = 0
+    val arr = FastParser._lines
+    while (i < arr.length && left >= arr(i)){
+      left -= arr(i)
+      i += 1
     }
+    val r1 = (i + 1, left + 1)
+    r1
+  }
+
+  def P[T](t: P[T])(implicit name: sourcecode.Name, ctx: P[_]): P[T] = {
 
     t map {
       case node: T => { //? Change to PNode
@@ -76,6 +76,8 @@ object FastParser { // extends PosParser[Char, String] { //?
 
   var _begin: FilePosition = FilePosition(null, 0, 0)
   var _end: FilePosition = FilePosition(null, 0, 0)
+
+  var _keywordPos: Map[String, (FilePosition, FilePosition)] = Map.empty[String, (FilePosition, FilePosition)]
 
   def parse(s: String, f: Path, plugins: Option[SilverPluginManager] = None) = {
     _file = f.toAbsolutePath
@@ -217,7 +219,16 @@ object FastParser { // extends PosParser[Char, String] { //?
   // Actual Parser starts from here
   def identContinues[_: P] = CharIn("0-9", "A-Z", "a-z", "$_")
 
-  def keyword[_: P](check: String) = check ~~ !identContinues
+  def keyword[_: P](check: String) = P(Index ~ check ~~ !identContinues ~ Index).map({
+    case (begin, end) =>
+      val (beginLine, beginColumn) = getLineAndColumn(begin)
+      val (endLine, endColumn) = getLineAndColumn(end)
+
+      val keywordBegin = FilePosition(_file, beginLine, beginColumn)
+      val keywordEnd = FilePosition(_file, endLine, endColumn)
+
+      _keywordPos += check -> (keywordBegin, keywordEnd)
+  })
 
   def parens[_: P, T](p: => P[T]) = "(" ~ p ~ ")"
 
@@ -798,7 +809,12 @@ object FastParser { // extends PosParser[Char, String] { //?
 
   def ident[_: P]: P[String] = P(identifier.!).filter(a => !keywords.contains(a)).opaque("invalid identifier (could be a keyword)")
 
-  def idnuse[_: P]: P[PIdnUse] = P(ident).map(PIdnUse)
+  def idnuse[_: P]: P[PIdnUse] = P(ident).map(id => {
+    val i = PIdnUse(id)
+    FastPositions.setStart(i, FastPositions.getStart(id))
+    FastPositions.setFinish(i, FastPositions.getFinish(id))
+    i
+  })
 
   def oldLabel[_: P]: P[PIdnUse] = P(idnuse | LabelledOld.LhsOldLabel.!).map { case idnuse: PIdnUse => idnuse
 
@@ -806,8 +822,12 @@ object FastParser { // extends PosParser[Char, String] { //?
 
   def old[_: P]: P[PExp] = P(StringIn("old") ~ (parens(exp).map(POld) | ("[" ~ oldLabel ~ "]" ~ parens(exp)).map { case (a, b) => PLabelledOld(a, b) }))
 
-  def magicWandExp[_: P]: P[PExp] = P(orExp ~ ("--*".! ~ exp).?).map { case (a, b) => b match {
-    case Some(c) => PMagicWandExp(a, c._2)
+  def magicWandExp[_: P]: P[PExp] = P(orExp ~ (keyword("--*").! ~ exp).?).map { case (a, b) => b match {
+    case Some(c) =>
+      val x = PMagicWandExp(a, c._2)
+      FastPositions.setStart(x, _keywordPos("--*")._1)
+      FastPositions.setFinish(x, _keywordPos("--*")._2)
+      x
     case None => a
   }}
 
@@ -995,7 +1015,13 @@ object FastParser { // extends PosParser[Char, String] { //?
   def primitiveTyp[_: P]: P[PType] = P(keyword("Rational").map(_ => PPrimitiv("Perm"))
     | (StringIn("Int", "Bool", "Perm", "Ref") ~~ !identContinues).!.map(PPrimitiv))
 
-  def trigger[_: P]: P[PTrigger] = P("{" ~/ exp.rep(sep = ",") ~ "}").map(s => PTrigger(s))
+  def trigger[_: P]: P[PTrigger] = P("{" ~/ exp.rep(sep = ",") ~ "}").map(
+    s => {
+      val x = PTrigger(s)
+      FastPositions.setStart(x, FastPositions.getStart(s))
+      FastPositions.setFinish(x, FastPositions.getFinish(s))
+      x
+    })
 
   def forperm[_: P]: P[PExp] = P(keyword("forperm") ~ nonEmptyFormalArgList ~ "[" ~ resAcc ~ "]" ~ "::" ~ exp).map {
     case (args, res, body) => PForPerm(args, res, body)
@@ -1072,15 +1098,15 @@ object FastParser { // extends PosParser[Char, String] { //?
 
   def exhale[_: P]: P[PExhale] = P(keyword("exhale") ~/ exp).map(e => {
     val ex = PExhale(e)
-    FastPositions.setStart(ex, FastPositions.getStart(e))
-    FastPositions.setFinish(ex, FastPositions.getFinish(e))
+    FastPositions.setStart(ex, _keywordPos("exhale")._1)
+    FastPositions.setFinish(ex, _keywordPos("exhale")._2)
     ex
   })
 
   def assertP[_: P]: P[PAssert] = P(keyword("assert") ~/ exp).map(e => {
     val a = PAssert(e)
-    FastPositions.setStart(a, FastPositions.getStart(e))
-    FastPositions.setFinish(a, FastPositions.getFinish(e))
+    FastPositions.setStart(a, _keywordPos("assert")._1)
+    FastPositions.setFinish(a, _keywordPos("assert")._2)
     a
   })
 
@@ -1109,7 +1135,11 @@ object FastParser { // extends PosParser[Char, String] { //?
   def els[_: P]: P[PSeqn] = (keyword("else") ~/ block).?.map { block => block.getOrElse(PSeqn(Nil)) }
 
   def whle[_: P]: P[PWhile] = P(keyword("while") ~/ "(" ~ exp ~ ")" ~ inv.rep ~ block).map {
-    case (cond, invs, body) => PWhile(cond, invs, body)
+    case (cond, invs, body) =>
+      val x = PWhile(cond, invs, body)
+      FastPositions.setStart(x, _keywordPos("while")._1)
+      FastPositions.setFinish(x, _keywordPos("while")._2)
+      x
   }
 
   def inv(implicit ctx : P[_]) : P[PExp] = P((keyword("invariant") ~ exp ~ ";".?) | ParserExtension.invSpecification(ctx))
@@ -1118,8 +1148,16 @@ object FastParser { // extends PosParser[Char, String] { //?
 
   def defineDecl[_: P]: P[PDefine] = P(keyword("define") ~/ idndef ~ ("(" ~ idndef.rep(sep = ",") ~ ")").? ~ (exp | "{" ~ (nodefinestmt ~ ";".?).rep ~ "}")).map {
     case (a, b, c) => c match {
-      case e: PExp => PDefine(a, b, e)
-      case ss: Seq[PStmt]@unchecked => PDefine(a, b, PSeqn(ss))
+      case e: PExp =>
+        val x = PDefine(a, b, e)
+        FastPositions.setStart(x, _keywordPos("define")._1)
+        FastPositions.setFinish(x, _keywordPos("define")._2)
+        x
+      case ss: Seq[PStmt]@unchecked =>
+        val x = PDefine(a, b, PSeqn(ss))
+        FastPositions.setStart(x, _keywordPos("define")._1)
+        FastPositions.setFinish(x, _keywordPos("define")._2)
+        x
     }
   }
 
@@ -1148,9 +1186,17 @@ object FastParser { // extends PosParser[Char, String] { //?
 
   def lbl[_: P]: P[PLabel] = P(keyword("label") ~/ idndef ~ (keyword("invariant") ~/ exp).rep).map { case (name, invs) => PLabel(name, invs) }
 
-  def packageWand[_: P]: P[PPackageWand] = P("package" ~/ magicWandExp ~ block.?).map {
-    case (wand, Some(proofScript)) => PPackageWand(wand, proofScript)
-    case (wand, None) => PPackageWand(wand, PSeqn(Seq()))
+  def packageWand[_: P]: P[PPackageWand] = P(keyword("package") ~/ magicWandExp ~ block.?).map {
+    case (wand, Some(proofScript)) =>
+      val x = PPackageWand(wand, proofScript)
+      FastPositions.setStart(x, _keywordPos("package")._1)
+      FastPositions.setFinish(x, _keywordPos("package")._2)
+      x
+    case (wand, None) =>
+      val x = PPackageWand(wand, PSeqn(Seq()))
+      FastPositions.setStart(x, _keywordPos("package")._1)
+      FastPositions.setFinish(x, _keywordPos("package")._2)
+      x
   }
 
   def applyWand[_: P]: P[PApplyWand] = P("apply" ~/ magicWandExp).map(PApplyWand)
@@ -1213,7 +1259,13 @@ object FastParser { // extends PosParser[Char, String] { //?
 
   def axiomDecl[_: P]: P[PAxiom1] = P(keyword("axiom") ~ idndef.? ~ "{" ~ exp ~ "}" ~ ";".?).map { case (a, b) => PAxiom1(a, b) }
 
-  def fieldDecl[_: P]: P[PField] = P("field" ~/ idndef ~ ":" ~ typ ~ ";".?).map { case (a, b) => PField(a, b) }
+  def fieldDecl[_: P]: P[PField] = P("field" ~/ idndef ~ ":" ~ typ ~ ";".?).map {
+    case (a, b) =>
+      val x = PField(a, b)
+      FastPositions.setStart(x, FastPositions.getStart(a))
+      FastPositions.setFinish(x, FastPositions.getFinish(a))
+      x
+  }
 
   def functionDecl[_: P]: P[PFunction] = P("function" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
     post.rep ~ ("{" ~ exp ~ "}").?).map({ case (a, b, c, d, e, f) =>
