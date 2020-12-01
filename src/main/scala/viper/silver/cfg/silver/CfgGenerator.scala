@@ -222,7 +222,8 @@ object CfgGenerator {
            _: Assume =>
         // handle regular, non-control statements
         addStatement(WrappedStmt(stmt))
-      case _: ExtensionStmt => sys.error("Extension statements are not handled.")
+      case _: ExtensionStmt =>
+        addStatement(WrappedStmt(stmt)) // TODO: Allow extensions to control how they are translated
     }
 
     /**

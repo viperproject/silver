@@ -128,8 +128,8 @@ trait PNode extends FastPositioned with Product with Rewritable {
    * (Its implementation(s) depend on the argument list of a concrete PNode type.)
    *
    * @see [[PNode.initProperties()]] */
-  def deepCopyAll[A <: PNode]: A =
-    StrategyBuilder.Slim[PNode](PartialFunction.empty).execute[A](this)
+  def deepCopyAll[A <: PNode]: PNode =
+    StrategyBuilder.Slim[PNode]({case n => n}).execute[PNode](this)
 
   private val _children = scala.collection.mutable.ListBuffer[PNode] ()
 

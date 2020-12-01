@@ -2,6 +2,8 @@
 // http://creativecommons.org/publicdomain/zero/1.0/
 
 //:: IgnoreFile(/carbon/issue/244/)
+//:: IgnoreFile(/silver/issue/478/)
+
 field f: Int
 
 predicate Cell(x: Ref) {
@@ -9,6 +11,7 @@ predicate Cell(x: Ref) {
 }
 
 function get(x: Ref): Int
+//:: ExpectedOutput(consistency.error)
 requires true --* acc(x.f) {
     applying (true --* acc(x.f)) in x.f
 }

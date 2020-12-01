@@ -9,6 +9,7 @@ package viper.silver.ast
 import viper.silver.ast.pretty.{Fixity, Infix, LeftAssociative, NonAssociative, Prefix, RightAssociative}
 import utility.{Consistency, DomainInstances, Nodes, Types, Visitor}
 import viper.silver.ast.MagicWandStructure.MagicWandStructure
+import viper.silver.ast.utility.rewriter.StrategyBuilder
 import viper.silver.cfg.silver.{CfgGenerator, SilverCfg}
 import viper.silver.verifier.ConsistencyError
 import viper.silver.utility.{CacheHelper, DependencyAware}
@@ -326,7 +327,17 @@ case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], body: Option[E
       Seq(ConsistencyError("Predicates must not contain old expressions.",body.get.pos))
      else Seq()) ++
     (if (body.isDefined && !(Consistency.noPerm(body.get) && Consistency.noForPerm(body.get)))
-      Seq(ConsistencyError("perm and forperm expressions are not allowed in predicate bodies", body.get.pos)) else Seq())
+      Seq(ConsistencyError("perm and forperm expressions are not allowed in predicate bodies", body.get.pos)) else Seq()) ++
+    {
+      var errors = Seq.empty[ConsistencyError]
+      if (body.isDefined) {
+        StrategyBuilder.SlimVisitor[Node]({
+          case m: MagicWand => errors ++= Seq(ConsistencyError("Magic wands are not supported in predicates.", m.pos))
+          case _ =>
+        }).execute[Node](body.get)
+      }
+      errors
+    }
 
   val scopedDecls: Seq[Declaration] = formalArgs
   def isAbstract = body.isEmpty
@@ -421,7 +432,17 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres
     posts.flatMap(p => if (!Consistency.noPermissions(p))
       Seq(ConsistencyError("Function post-conditions must not contain permissions.", p.pos)) else Seq()) ++
     (if(body.isDefined) Consistency.checkFunctionBody(body.get) else Seq()) ++
-    (if(!Consistency.noDuplicates(formalArgs)) Seq(ConsistencyError("There must be no duplicates in formal args.", pos)) else Seq())
+    (if(!Consistency.noDuplicates(formalArgs)) Seq(ConsistencyError("There must be no duplicates in formal args.", pos)) else Seq()) ++
+    {
+      var errors = Seq.empty[ConsistencyError]
+      pres.foreach(pre => {
+        StrategyBuilder.SlimVisitor[Node]({
+          case m: MagicWand => errors ++= Seq(ConsistencyError("Magic wands are not supported in function's preconditions.", m.pos))
+          case _ =>
+        }).execute[Node](pre)
+      })
+      errors
+    }
 
   val scopedDecls: Seq[Declaration] = formalArgs
   /**

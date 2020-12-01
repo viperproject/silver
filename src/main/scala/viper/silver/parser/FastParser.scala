@@ -155,7 +155,6 @@ object FastParser extends PosParser[Char, String] {
           column = pos.column
         }
         ParseError(msg, SourcePosition(_file, line, column))
-      case _:Throwable =>
     }
   }
 
@@ -409,10 +408,13 @@ object FastParser extends PosParser[Char, String] {
         case v => v
       }
 
-      if (body != method.body)
-        PMethod(method.idndef, method.formalArgs, method.formalReturns, method.pres, method.posts, body)
-      else
+      if (body != method.body) {
+        val exp_method = PMethod(method.idndef, method.formalArgs, method.formalReturns, method.pres, method.posts, body)
+        exp_method.setPos(method)
+        exp_method
+      } else {
         method
+      }
     }
 
     val methods = p.methods.map(method => {
@@ -564,7 +566,6 @@ object FastParser extends PosParser[Char, String] {
       // their respective arguments in the following steps (by replacer)
       case varUse: PIdnUse if renamesMap.contains(varUse.name) =>
         PIdnUse(renamesMap(varUse.name))
-
     })
 
     // Strategy to replace macro's parameters by their respective arguments
@@ -582,8 +583,14 @@ object FastParser extends PosParser[Char, String] {
     // Replace variables in macro body, adapt positions correctly (same line number as macro call)
     def replacerOnBody(body: PNode, paramToArgMap: Map[String, PExp], pos: FastPositioned): PNode = {
 
+      // Duplicate the body of the macro to allow for differing type checks depending on the context
+      val oldForce = viper.silver.ast.utility.ViperStrategy.forceRewrite
+      viper.silver.ast.utility.ViperStrategy.forceRewrite = true
+      val replicatedBody = body.deepCopyAll
+      viper.silver.ast.utility.ViperStrategy.forceRewrite = oldForce
+
       // Rename locally bound variables in macro's body
-      val bodyWithRenamedVars = renamer.execute[PNode](body)
+      val bodyWithRenamedVars = renamer.execute[PNode](replicatedBody)
       adaptPositions(bodyWithRenamedVars, pos)
 
       // Create context
@@ -635,6 +642,10 @@ object FastParser extends PosParser[Char, String] {
                 case _ =>
               }.execute[PNode](_)
             )
+            StrategyBuilder.SlimVisitor[PNode]({
+              case id: PIdnDef => scopeAtMacroCall += id.name
+              case _ =>
+            }).execute(subtree)
             renamesMap.clear
             replacerOnBody(body, mapParamsToArgs(parameters, arguments), call)
           } catch {
