@@ -47,14 +47,12 @@ trait InlineRewrite {
     // Forgive me deities of functional programming for I sin
     val expandablePredicates = mutable.Set[String]()
     val expandedExpr = ViperStrategy.CustomContext[Set[String]]({
-      case (expr, args) => expr match {
-        case pred: PredicateAccess =>
-          val body = pred.predicateBody(program, args)
-          if (body.isDefined) expandablePredicates += pred.predicateName
-          (body.getOrElse(pred), args)
-        case quant: QuantifiedExp => ???
-          // TODO: Continue traversing quant, but with context (args ++ quant.scopedDecls.map { _.name }.toSet)
-      }
+      case (PredicateAccessPredicate(pred, _), args) =>
+        val body = pred.predicateBody(program, args)
+        if (body.isDefined) expandablePredicates += pred.predicateName
+        (body.getOrElse(pred), args)
+      case (quant: QuantifiedExp, args) => ???
+        // TODO: Continue traversing quant, but with context (args ++ quant.scopedDecls.map { _.name }.toSet)
     }, method.scopedDecls.map { _.name }.toSet)
       // .recurseFunc(???) // TODO: Do we need to call this first?
       .execute(expr)
