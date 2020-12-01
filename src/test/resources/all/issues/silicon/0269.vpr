@@ -1,8 +1,6 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-//:: IgnoreFile(/carbon/issue/182/)
-
 field Container_value: Ref
 
 method nested_try_finally_fails(out: Ref)
