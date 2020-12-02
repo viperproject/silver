@@ -1259,13 +1259,13 @@ object FastParser { // extends PosParser[Char, String] { //?
 
   def axiomDecl[_: P]: P[PAxiom1] = P(keyword("axiom") ~ idndef.? ~ "{" ~ exp ~ "}" ~ ";".?).map { case (a, b) => PAxiom1(a, b) }
 
-  def fieldDecl[_: P]: P[PField] = P("field" ~/ idndef ~ ":" ~ typ ~ ";".?).map {
+  def fieldDecl[_: P]: P[PField] = P("field" ~/ idndef ~ ":" ~ typ ~ ";".?).map({
     case (a, b) =>
       val x = PField(a, b)
-      FastPositions.setStart(x, FastPositions.getStart(a))
-      FastPositions.setFinish(x, FastPositions.getFinish(a))
+      FastPositions.setStart(x, FastPositions.getStart(b))
+      FastPositions.setFinish(x, FastPositions.getFinish(b))
       x
-  }
+  })
 
   def functionDecl[_: P]: P[PFunction] = P("function" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
     post.rep ~ ("{" ~ exp ~ "}").?).map({ case (a, b, c, d, e, f) =>
