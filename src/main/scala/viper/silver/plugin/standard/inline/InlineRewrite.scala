@@ -45,7 +45,10 @@ trait InlineRewrite {
     val expandedExpr = ViperStrategy.Context[Set[String]]({
       case exp@(PredicateAccessPredicate(pred, _), ctxt) =>
         val body = pred.predicateBody(program, ctxt.c)
-        val isInUnfolding = ctxt.parentOption.exists({case Unfolding(_, _) => true})
+        val isInUnfolding = ctxt.parentOption.exists{
+          case Unfolding(_, _) => true
+          case _ => false
+        }
         if (body.isDefined && !isInUnfolding) {
           expandablePredicates += pred.predicateName
           (body.get, ctxt)
