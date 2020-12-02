@@ -78,8 +78,9 @@ object LoopDetector {
     *         1) An augmented version of the provided AST, where only the info fields are adjusted. For each statement s
     *         that is non-composite or a While statement, a LoopInfo object is added to the information field if the
     *         following holds:
-    *         The next non-composite statement of s in the AST w.r.t. control flow (i.e., for a goto statement it would be the
-    *         corresponding label) is part of a different set of loops than s.
+    *         The next non-composite statement of s (or a previous non-composite statement of s) in the AST w.r.t.
+    *         control flow (i.e., for a goto statement the next non-composite statement would be the corresponding label)
+    *         is part of a different set of loops than s.
     *         Furthermore, unique identifiers may be added dependent on the provided parameters.
     *         2) A map from loop identifiers to corresponding written variables (depending on the provided parameters).
     */
