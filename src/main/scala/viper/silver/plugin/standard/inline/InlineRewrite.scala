@@ -21,8 +21,8 @@ trait InlineRewrite {
     val (expandedPosts, expandablePostPredsIds) = method.posts
       .map { expandPredicates(_, method, program) }
       .unzip
-    val expandablePrePredIds = expandablePrePredsIds.fold(Set())(_ ++ _)
-    val expandablePostPredIds = expandablePostPredsIds.fold(Set())(_ ++ _)
+    val expandablePrePredIds = expandablePrePredsIds.flatten.toSet
+    val expandablePostPredIds = expandablePostPredsIds.flatten.toSet
     val rewrittenBody = method.body
       .map { removeFoldUnfolds(_, expandablePrePredIds, expandablePostPredIds) }
     method.copy(body = rewrittenBody,
