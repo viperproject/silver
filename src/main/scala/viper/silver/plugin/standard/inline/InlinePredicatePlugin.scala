@@ -10,7 +10,8 @@ class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate with 
 
   override def beforeVerify(input: Program): Program = {
     val rewrittenMethods = input.methods.map { method =>
-      val (inlinedPredMethod, prePredIds, postPredIds) = inlinePredicates(method, input)
+      val (prePredIds, postPredIds) = getPrePostPredIds(method, input)
+      val inlinedPredMethod = inlinePredicates(method, input, prePredIds, postPredIds)
       rewriteMethod(inlinedPredMethod, input, prePredIds, postPredIds)
     }
     ViperStrategy.Slim({

@@ -4,23 +4,23 @@ import scala.collection.mutable
 import viper.silver.ast._
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.Traverse
+import viper.silver.ast.utility.rewriter.StrategyBuilder
 
 trait InlineRewrite {
 
-  def inlinePredicates(method: Method, program: Program): (Method, Set[String], Set[String]) = {
-    val (expandedPres, expandablePrePredsIds) = method.pres
-      .map { expandPredicates(_, method, program) }
-      .unzip
-    val (expandedPosts, expandablePostPredsIds) = method.posts
-      .map { expandPredicates(_, method, program) }
-      .unzip
-    val prePredIds = expandablePrePredsIds.flatten.toSet
-    val postPredIds = expandablePostPredsIds.flatten.toSet
-    val expandedMethod = method.copy(
+  def getPrePostPredIds(method: Method, program: Program): (Set[String], Set[String]) = {
+    val expandablePrePredIds = method.pres.map { expandablePredicates(_, method, program) }.flatten.toSet
+    val expandablePostPredsIds = method.posts.map { expandablePredicates(_, method, program) }.flatten.toSet
+    (expandablePrePredIds, expandablePostPredsIds)
+  }
+
+  def inlinePredicates(method: Method, program: Program, prePredIds: Set[String], postPredIds: Set[String]): Method = {
+    val expandedPres = method.pres.map { expandPredicates(_, method, program, prePredIds) }
+    val expandedPosts = method.posts.map { expandPredicates(_, method, program, postPredIds) }
+    method.copy(
       pres = expandedPres,
       posts = expandedPosts
     )(method.pos, method.info, method.errT)
-    (expandedMethod, prePredIds, postPredIds)
   }
 
   def rewriteMethod(method: Method, program: Program, prePredIds: Set[String], postPredIds: Set[String]): Method = {
@@ -34,29 +34,50 @@ trait InlineRewrite {
   }
 
   /**
+    * Returns a set of the names of the predicates that can be expanded into their bodies.
+    *
+    * @param expr The expression to check for predicates
+    * @param method The method containing the expression, used to determine locally-scoped variables
+    * @param program The program containing the expression, used to get predicate bodies
+    * @return A set of the names of the expandable predicates
+    */
+  private[this] def expandablePredicates(expr: Exp, method: Method, program: Program): Set[String] = {
+    // Forgive me deities of functional programming for I sin
+    val expandablePredicates = mutable.Set[String]()
+    StrategyBuilder.ContextVisitor[Node, Set[String]]({
+      case exp@(PredicateAccessPredicate(pred, _), ctxt) =>
+        // TODO: Check for `inline` modifier
+        if (pred.predicateBody(program, ctxt.c).isDefined) {
+          expandablePredicates += pred.predicateName
+        }
+        ctxt
+      case (quant: QuantifiedExp, ctxt) =>
+        ctxt.updateContext(ctxt.c ++ quant.scopedDecls.map { _.name }.toSet)
+      case (_, ctxt) => ctxt
+    }, method.scopedDecls.map { _.name }.toSet).execute[Exp](expr)
+    expandablePredicates.toSet
+  }
+
+  /**
     * Expands all predicates to their bodies in given expression.
     *
     * @param expr The expression whose predicates will be expanded
     * @param method The method containing the expression, used to determine locally-scoped variables
     * @param program The program containing the expression, used to expand predicates
-    * @return The expression with expanded predicates and a set of their names
+    * @param preds The predicates that we are allowed to expand
+    * @return The expression with expanded predicates
     */
-  private[this] def expandPredicates(expr: Exp, method: Method, program: Program): (Exp, Set[String]) = {
-    // Forgive me deities of functional programming for I sin
-    val expandablePredicates = mutable.Set[String]()
-    val expandedExpr = ViperStrategy.Context[Set[String]]({
-      case exp@(e@PredicateAccessPredicate(pred, _), ctxt) =>
-        val body = pred.predicateBody(program, ctxt.c)
+  private[this] def expandPredicates(expr: Exp, method: Method, program: Program, preds: Set[String]): Exp = {
+    ViperStrategy.Context[Set[String]]({
+      case exp@(PredicateAccessPredicate(pred, _), ctxt) =>
         val isInUnfolding = ctxt.parentOption.exists({_.isInstanceOf[Unfolding]})
-        if (body.isDefined && !isInUnfolding) {
-          expandablePredicates += pred.predicateName
-          (body.get, ctxt)
+        if (preds(pred.predicateName) && !isInUnfolding) {
+          (pred.predicateBody(program, ctxt.c).get, ctxt)
         } else exp
       case (quant: QuantifiedExp, ctxt) =>
         (quant, ctxt.updateContext(ctxt.c ++ quant.scopedDecls.map { _.name }.toSet))
     }, method.scopedDecls.map { _.name }.toSet, Traverse.TopDown)
       .execute[Exp](expr)
-    (expandedExpr, expandablePredicates.toSet)
   }
 
   /**
