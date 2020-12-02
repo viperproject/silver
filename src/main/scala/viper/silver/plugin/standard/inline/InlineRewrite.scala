@@ -7,27 +7,29 @@ import viper.silver.ast.utility.rewriter.Traverse
 
 trait InlineRewrite {
 
-  /**
-    * Rewrites a method by expanding the predicates in its pre- and postconditions,
-    * then by removing the corresponding unfold and fold statements in the body.
-    * Note that we only remove unfolds for predicates from the preconditions,
-    * and folds for predicates from the postconditions.
-    * (I think that's how it works.)
-    */
-  def rewriteMethod(method: Method, program: Program): Method = {
+  def inlinePredicates(method: Method, program: Program): (Method, Set[String], Set[String]) = {
     val (expandedPres, expandablePrePredsIds) = method.pres
       .map { expandPredicates(_, method, program) }
       .unzip
     val (expandedPosts, expandablePostPredsIds) = method.posts
       .map { expandPredicates(_, method, program) }
       .unzip
-    val expandablePrePredIds = expandablePrePredsIds.flatten.toSet
-    val expandablePostPredIds = expandablePostPredsIds.flatten.toSet
-    val rewrittenBody = method.body
-      .map { removeFoldUnfolds(_, expandablePrePredIds, expandablePostPredIds) }
-    method.copy(body = rewrittenBody,
+    val prePredIds = expandablePrePredsIds.flatten.toSet
+    val postPredIds = expandablePostPredsIds.flatten.toSet
+    val expandedMethod = method.copy(
       pres = expandedPres,
-      posts = expandedPosts,
+      posts = expandedPosts
+    )(method.pos, method.info, method.errT)
+    (expandedMethod, prePredIds, postPredIds)
+  }
+
+  def rewriteMethod(method: Method, program: Program, prePredIds: Set[String], postPredIds: Set[String]): Method = {
+    val rewrittenPres = method.pres.map { removeUnfoldings(_, prePredIds) }
+    val rewrittenPosts = method.posts.map { removeUnfoldings(_, postPredIds) }
+    val rewrittenBody = method.body.map { removeFoldUnfolds(_, prePredIds, postPredIds) }
+    method.copy(body = rewrittenBody,
+      pres = rewrittenPres,
+      posts = rewrittenPosts,
     )(method.pos, method.info, method.errT)
   }
 
@@ -43,22 +45,32 @@ trait InlineRewrite {
     // Forgive me deities of functional programming for I sin
     val expandablePredicates = mutable.Set[String]()
     val expandedExpr = ViperStrategy.Context[Set[String]]({
-      case exp@(PredicateAccessPredicate(pred, _), ctxt) =>
+      case exp@(e@PredicateAccessPredicate(pred, _), ctxt) =>
         val body = pred.predicateBody(program, ctxt.c)
-        val isInUnfolding = ctxt.parentOption.exists{
-          case Unfolding(_, _) => true
-          case _ => false
-        }
+        val isInUnfolding = ctxt.parentOption.exists({_.isInstanceOf[Unfolding]})
         if (body.isDefined && !isInUnfolding) {
           expandablePredicates += pred.predicateName
           (body.get, ctxt)
         } else exp
-      case (Unfolding(_, body), ctxt) => (body, ctxt)
       case (quant: QuantifiedExp, ctxt) =>
         (quant, ctxt.updateContext(ctxt.c ++ quant.scopedDecls.map { _.name }.toSet))
-    }, method.scopedDecls.map { _.name }.toSet, Traverse.BottomUp)
+    }, method.scopedDecls.map { _.name }.toSet, Traverse.TopDown)
       .execute[Exp](expr)
     (expandedExpr, expandablePredicates.toSet)
+  }
+
+  /**
+    * Replaces unfolding expressions by their bodies if the unfolded predicate had been expanded
+    *
+    * @param expr The expression whose unfoldings may be substituted
+    * @param preds A set of the string names of the predicates that have been expanded
+    * @return The expression with unfoldings possibly substituted
+    */
+  private[this] def removeUnfoldings(expr: Exp, preds: Set[String]): Exp = {
+    ViperStrategy.Slim({
+      case unfolding@Unfolding(PredicateAccessPredicate(PredicateAccess(_, name), _), body) =>
+        if (preds(name)) body else unfolding
+    }, Traverse.BottomUp).execute[Exp](expr)
   }
 
   /**
