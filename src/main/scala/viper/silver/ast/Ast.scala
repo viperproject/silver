@@ -328,6 +328,12 @@ trait Info {
       case _ => None
     }
   }
+
+  def removeUniqueInfo[T <: Info]: Info = this match {
+    case ConsInfo(a, b) => MakeInfoPair(a.removeUniqueInfo[T], b.removeUniqueInfo[T])
+    case t: T => NoInfo
+    case info => info
+  }
 }
 
 /** A default `Info` that is empty. */

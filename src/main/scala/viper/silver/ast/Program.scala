@@ -404,7 +404,7 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
   /**
     * Returns a control flow graph that corresponds to this method.
     */
-  def toCfg(simplify: Boolean = true): SilverCfg = CfgGenerator.methodToCfg(this, simplify)
+  def toCfg(simplify: Boolean = true, detect: Boolean = true): SilverCfg = CfgGenerator.methodToCfg(this, simplify, detect)
 }
 
 object MethodWithLabelsInScope {
