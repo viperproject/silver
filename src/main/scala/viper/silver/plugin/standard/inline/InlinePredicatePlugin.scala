@@ -25,7 +25,8 @@ class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate with 
 
   override def beforeVerify(input: Program): Program = {
     val rewrittenMethods = input.methods.map { method =>
-      val (prePredIds, postPredIds) = getPrePostPredIds(method, input)
+      val inlinePredIds = input.extensions.collect({case InlinePredicate(p) => p.name}).toSet
+      val (prePredIds, postPredIds) = getPrePostPredIds(method, input, inlinePredIds)
       val inlinedPredMethod = inlinePredicates(method, input, prePredIds, postPredIds)
       rewriteMethod(inlinedPredMethod, input, prePredIds, postPredIds)
     }

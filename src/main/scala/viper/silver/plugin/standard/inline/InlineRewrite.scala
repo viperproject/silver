@@ -8,9 +8,9 @@ import viper.silver.ast.utility.rewriter.StrategyBuilder
 
 trait InlineRewrite {
 
-  def getPrePostPredIds(method: Method, program: Program): (Set[String], Set[String]) = {
-    val expandablePrePredIds = method.pres.map { expandablePredicates(_, method, program) }.flatten.toSet
-    val expandablePostPredsIds = method.posts.map { expandablePredicates(_, method, program) }.flatten.toSet
+  def getPrePostPredIds(method: Method, program: Program, inlinePredIds: Set[String]): (Set[String], Set[String]) = {
+    val expandablePrePredIds = method.pres.map { expandablePredicates(_, method, program, inlinePredIds) }.flatten.toSet
+    val expandablePostPredsIds = method.posts.map { expandablePredicates(_, method, program, inlinePredIds) }.flatten.toSet
     (expandablePrePredIds, expandablePostPredsIds)
   }
 
@@ -41,12 +41,12 @@ trait InlineRewrite {
     * @param program The program containing the expression, used to get predicate bodies
     * @return A set of the names of the expandable predicates
     */
-  private[this] def expandablePredicates(expr: Exp, method: Method, program: Program): Set[String] = {
+  private[this] def expandablePredicates(expr: Exp, method: Method, program: Program, inlinePredIds: Set[String]): Set[String] = {
     // Forgive me deities of functional programming for I sin
     val expandablePredicates = mutable.Set[String]()
     StrategyBuilder.ContextVisitor[Node, Set[String]]({
       case exp@(PredicateAccessPredicate(pred, _), ctxt) =>
-        // TODO: Check for `inline` modifier
+        // TODO: Always check inlinePredIds(pred.predicateName)?
         if (pred.predicateBody(program, ctxt.c).isDefined) {
           expandablePredicates += pred.predicateName
         }
