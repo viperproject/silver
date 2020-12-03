@@ -6,14 +6,8 @@
 
 package viper.silver.cfg.utility
 
-import java.util.concurrent.atomic.AtomicInteger
-
-import viper.silver.ast.utility.ViperStrategy
-import viper.silver.ast.utility.rewriter.Traverse
-import viper.silver.ast.{Exp, If, Info, Infoed, LocalVar, MakeInfoPair, NoInfo, Seqn, Stmt}
+import viper.silver.ast.{Info, Stmt}
 import viper.silver.cfg._
-import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
-import viper.silver.cfg.silver.{CfgGenerator, SilverCfg}
 
 import scala.collection.mutable
 
@@ -24,18 +18,6 @@ import scala.collection.mutable
   */
 case class IdInfo(id: Int) extends Info {
   override def comment: Seq[String] = Seq(s"id = $id")
-
-  override def isCached: Boolean = false
-}
-
-/**
-  * An info used to connect the provide loop information to AST nodes.
-  *
-  * @param head Contains a loop identifier i iff the node is a loop head of loop i.
-  * @param loops All loops that the node is contained in.
-  */
-case class LoopInfo(head: Option[Int], loops: Set[Int]) extends Info {
-  override def comment: Seq[String] = Seq(toString)
 
   override def isCached: Boolean = false
 }
@@ -57,177 +39,15 @@ object LoopDetector {
     *         are marked.
     */
   def detect[C <: Cfg[S, E], S, E](cfg: C, loops: Map[Block[S, E], Set[Block[S, E]]] = Map[Block[S, E], Set[Block[S, E]]]()): C = {
-    // compute natural loops and merge them with provided loop information
-    val (allLoops,_) = naturalLoops[C, S, E](cfg)
-    allLoops.foldLeft(loops) {
-      case (current, (key, value)) => current.updated(key, current.getOrElse(key, Set.empty) ++ value)
-    }
-    // augment cfg with loop information
-    augment(cfg, allLoops)
-  }
-
-  /**
-    *
-    * @param body The ast to analyze. Ensure that:
-    *             1) The first statement of each if branch is a non-composite statement.
-    *             2) The first and last statement of each while loop is a non-composite statement.
-    * @param generateUniqueIds If true, then in the returned AST the info field of each non-composite node in the
-    *                          returned AST contains a {@link IdInfo} object holding a unique identifier.
-    * @param computeWrittenVars If true, then a map is returned from loop identifiers to corresponding written variables.
-    * @return A tuple consisting of:
-    *         1) An augmented version of the provided AST, where only the info fields are adjusted. For each statement s
-    *         that is non-composite or a While statement, a LoopInfo object is added to the information field if the
-    *         following holds:
-    *         The next non-composite statement of s (or a previous non-composite statement of s) in the AST w.r.t.
-    *         control flow (i.e., for a goto statement the next non-composite statement would be the corresponding label)
-    *         is part of a different set of loops than s.
-    *         Furthermore, unique identifiers may be added dependent on the provided parameters.
-    *         2) A map from loop identifiers to corresponding written variables (depending on the provided parameters).
-    */
-  def detect(body: Seqn, generateUniqueIds: Boolean, computeWrittenVars: Boolean): (Seqn, Option[Map[Int, Seq[LocalVar]]]) = {
-      val saved = ViperStrategy.forceRewrite
-      ViperStrategy.forceRewrite = true
-
-      // extend statements in ast with ids
-      val id = new AtomicInteger(0)
-      val withIds = body.transform({
-        case node@(_: If | _: Seqn) => node
-        case node: Stmt =>
-          val (pos, info, err) = node.meta
-          val updated = MakeInfoPair(IdInfo(id.incrementAndGet()), info)
-          node.withMeta(pos, updated, err)
-        case node: Any => node
-      }, Traverse.TopDown)
-
-      // compute cfg and loops
-      val (cfg, syntacticLoops) = CfgGenerator.computeCfg(withIds)
-
-      val (loops, dominators) = naturalLoops[SilverCfg, Stmt, Exp](cfg)
-      loops.foldLeft(syntacticLoops) {
-        case (current, (key, value)) => current.updated(key, current.getOrElse(key, Set.empty) ++ value)
-      }
-
-      val writtenVars = writtenVariables(cfg, dominators)
-
-      def getId(stmt: Stmt): Option[Int] = stmt.info.getUniqueInfo[IdInfo].map(_.id)
-
-      def getFirst(block: SilverBlock): Option[Stmt] = block.elements.collectFirst { case Left(s) => s }
-
-      def getLast(block: SilverBlock): Option[Stmt] = block.elements.collect { case Left(s) => s }.lastOption
-
-      // contract edges such that there are no empty blocks in between blocks
-      val contractedEdges = cfg.blocks.flatMap { block =>
-        def contract(block: SilverBlock, first: Option[SilverBlock] = None): Seq[SilverEdge] =
-          if (first.contains(block)) Seq.empty
-          else cfg.outEdges(block).flatMap { edge =>
-            val next = edge.target
-            next match {
-              case StatementBlock(stmts) if stmts.isEmpty =>
-                contract(next, first.orElse(Some(block))).map { nextEdge =>
-                  val source = edge.source
-                  val target = nextEdge.target
-                  UnconditionalEdge(source, target)
-                }
-              case _ => Seq(edge)
-            }
-          }
-
-        contract(block)
-      }
-
-      // maps blocks to ids
-      val ids = cfg.blocks.foldLeft(Map.empty[SilverBlock, Int]) {
-        case (map, block@LoopHeadBlock(_, _, Some(id))) => {
-          map.updated(block, id)
-        }
-        case (map, block) => getFirst(block)
-          .flatMap(getId)
-          .map { id => map.updated(block, id) }
-          .getOrElse(map)
-      }
-
-      // associate written variables with block id
-      val loopToWrittenVars =
-        if(computeWrittenVars)
-          Some(
-            writtenVars.foldLeft(Map.empty[Int, Seq[LocalVar]]) {
-              case (map, (loopHead, writtenVars)) => {
-                map.updated(ids.get(loopHead).get, writtenVars.distinct)
-              }
-            })
-        else
-          None
-
-    // compute loop information
-      val infos = contractedEdges.foldLeft(Map.empty[Int, LoopInfo]) {
-        case (map, edge) =>
-          val sourceHeads = loops.getOrElse(edge.source, Set.empty).map(ids)
-          val targetHeads = loops.getOrElse(edge.target, Set.empty).map(ids)
-          //loops that are exited via edge
-          val outHeads = sourceHeads -- targetHeads
-          //loops that are entered via edge
-          val inHeads = targetHeads -- sourceHeads
-          if (outHeads.isEmpty && inHeads.isEmpty) map
-          else {
-            //at least one loop is entered or exited
-            // update before info
-            val before = getLast(edge.source).flatMap(getId)
-            val map2 = before
-              .map { id =>
-                val head = before.flatMap { id => map.get(id).flatMap(_.head) }
-                map.updated(id, LoopInfo(head, sourceHeads))
-              }
-              .getOrElse(map)
-            // update after info
-            val after = edge.target match {
-              case LoopHeadBlock(_, _, loopId) => loopId
-              case block => getFirst(block).flatMap(getId)
-            }
-            val map3 = after
-              .map { id =>
-                val head = if (inHeads.nonEmpty) after else None
-                map2.updated(id, LoopInfo(head, targetHeads))
-              }
-              .getOrElse(map2)
-            // return updated map
-            map3
-          }
-      }
-
-      // extend ast with loop information
-      val withInfo = withIds.transform({
-        case node: Infoed =>
-          val (pos, info, err) = node.meta
-          info.getUniqueInfo[IdInfo] match {
-            case Some(idInfo) =>
-              //keep unique ids, if requested by caller
-              val removed = (if(generateUniqueIds) { info } else {info.removeUniqueInfo[IdInfo] })
-              val loopInfo = infos.getOrElse(idInfo.id, NoInfo)
-              val updated = MakeInfoPair(removed, loopInfo)
-              node.withMeta(pos, updated, err)
-            case None => node
-          }
-        case node => node
-      }, Traverse.TopDown)
-
-      // restore forced rewriting settings
-      ViperStrategy.forceRewrite = saved
-
-      // return updated method
-      (withInfo,  loopToWrittenVars)
-  }
-
-  private def naturalLoops[C <: Cfg[S, E], S, E](cfg: C): (Map[Block[S, E], Set[Block[S, E]]], Dominators[S,E]) = {
     // check whether the control flow graph is reducible
     val dominators = new Dominators(cfg)
     if (!isReducible(cfg, dominators))
       throw new IllegalArgumentException("Control flow graph is not reducible.")
 
     // populate map that maps each block to the set of loop heads corresponding to all loops that contain the block
-    val resultMap =
-      cfg.edges
+    val loopHeads = cfg.edges
       .filter(dominators.isBackedge)
-      .foldLeft[Map[Block[S, E], Set[Block[S, E]]]](Map.empty) {
+      .foldLeft[Map[Block[S, E], Set[Block[S, E]]]](loops) {
       case (current, edge) =>
         val head = edge.target
         collectBlocks(cfg, edge).foldLeft(current) {
@@ -236,28 +56,7 @@ object LoopDetector {
             c.updated(block, existing + head)
         }
     }
-    (resultMap, dominators)
-  }
 
-  private def writtenVariables(cfg: SilverCfg, dominators: Dominators[Stmt,Exp]) : Map[Block[Stmt,Exp], Seq[LocalVar]] = {
-    cfg.edges
-      .filter(dominators.isBackedge)
-      .foldLeft[Map[Block[Stmt,Exp], Seq[LocalVar]]](Map.empty) {
-        case (current, edge) =>
-          val head = edge.target
-          collectBlocks(cfg, edge).foldLeft(current) {
-            case (c, block) =>
-              val written = block.elements.flatMap {
-                case Left(stmt) => stmt.writtenVars
-                case Right(_) => Nil
-              }
-              val existing = c.getOrElse(head, Nil)
-              c.updated(head, existing ++ written)
-          }
-      }
-  }
-
-  private def augment[C <: Cfg[S, E], S, E](cfg: C, loops: Map[Block[S, E], Set[Block[S, E]]]): C = {
     val queue = mutable.Queue[Block[S, E]]()
     val heads = mutable.Map[Block[S, E], Block[S, E]]()
     // we use linked hash sets to preserve the insertion order of blocks and
@@ -277,8 +76,8 @@ object LoopDetector {
       val block = queue.dequeue()
 
       for (edge <- cfg.outEdges(block)) {
-        val sourceHeads = loops.getOrElse(edge.source, Set.empty)
-        val targetHeads = loops.getOrElse(edge.target, Set.empty)
+        val sourceHeads = loopHeads.getOrElse(edge.source, Set.empty)
+        val targetHeads = loopHeads.getOrElse(edge.target, Set.empty)
         val out = (sourceHeads -- targetHeads).size
         val in = (targetHeads -- sourceHeads).size
         val mid = Math.max(out + in - 1, 0)
