@@ -8,7 +8,7 @@ package viper.silver.ast
 
 import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.ast.utility.{Consistency, Statements}
-import viper.silver.cfg.silver.{CfgGenerator, SilverCfg}
+import viper.silver.cfg.silver.CfgGenerator
 import viper.silver.verifier.ConsistencyError
 
 // --- Statements
@@ -19,7 +19,7 @@ sealed trait Stmt extends Hashable with Infoed with Positioned with Transformabl
   /**
     * Returns a control flow graph that corresponds to this statement.
     */
-  def toCfg(simplify: Boolean = true, detect: Boolean = true): SilverCfg = CfgGenerator.statementToCfg(this, simplify, detect)
+  def toCfg(simplify: Boolean = true) = CfgGenerator.statementToCfg(this, simplify)
 
   /**
     * Returns a list of all undeclared local variables contained in this statement and
