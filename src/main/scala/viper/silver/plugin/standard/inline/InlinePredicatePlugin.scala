@@ -28,6 +28,7 @@ class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate with 
       // TODO: Check if any of these marked inline are recursive predicates and
       // warn user that the recursive inline-annotated predicates will *not* be expanded
       val inlinePredIds = input.extensions.collect({case InlinePredicate(p) => p.name}).toSet
+      // TODO: Do we also need to inline in inhale/exhale/assert/assume and package/apply statements?
       val (prePredIds, postPredIds) = getPrePostPredIds(method, input, inlinePredIds)
       val inlinedPredMethod = inlinePredicates(method, input, prePredIds, postPredIds)
       rewriteMethod(inlinedPredMethod, input, prePredIds, postPredIds)
