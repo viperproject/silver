@@ -45,6 +45,7 @@ trait InlineRewrite {
     // Forgive me deities of functional programming for I sin
     val expandablePredicates = mutable.Set[String]()
     StrategyBuilder.ContextVisitor[Node, Set[String]]({
+      // TODO: Do we need to keep track of the permission value?
       case exp@(PredicateAccessPredicate(pred, _), ctxt) =>
         // TODO: Always check inlinePredIds(pred.predicateName)?
         if (pred.predicateBody(program, ctxt.c).isDefined) {
@@ -89,6 +90,7 @@ trait InlineRewrite {
     */
   private[this] def removeUnfoldings(expr: Exp, preds: Set[String]): Exp = {
     ViperStrategy.Slim({
+      // TODO: Do we always remove unfoldings regardless of permission value?
       case unfolding@Unfolding(PredicateAccessPredicate(PredicateAccess(_, name), _), body) =>
         if (preds(name)) body else unfolding
     }, Traverse.BottomUp).execute[Exp](expr)
@@ -106,6 +108,7 @@ trait InlineRewrite {
     ViperStrategy.Slim({
       case seqn@Seqn(ss, scopedDecls) =>
         seqn.copy(ss = ss.filter {
+          // TODO: Do we always remove folds/unfolds regardless of permission value?
           case Fold(PredicateAccessPredicate(PredicateAccess(_, name), _)) => !foldPreds(name)
           case Unfold(PredicateAccessPredicate(PredicateAccess(_, name), _)) => !unfoldPreds(name)
           case _ => true

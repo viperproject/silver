@@ -25,11 +25,14 @@ class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate with 
 
   override def beforeVerify(input: Program): Program = {
     val rewrittenMethods = input.methods.map { method =>
+      // TODO: Check if any of these marked inline are recursive predicates and
+      // warn user that the recursive inline-annotated predicates will *not* be expanded
       val inlinePredIds = input.extensions.collect({case InlinePredicate(p) => p.name}).toSet
       val (prePredIds, postPredIds) = getPrePostPredIds(method, input, inlinePredIds)
       val inlinedPredMethod = inlinePredicates(method, input, prePredIds, postPredIds)
       rewriteMethod(inlinedPredMethod, input, prePredIds, postPredIds)
     }
+    // TODO: Do we also need to rewrite functions?
     ViperStrategy.Slim({
       case program@Program(_, _, _, predicates, methods, extensions) =>
         program.copy(
