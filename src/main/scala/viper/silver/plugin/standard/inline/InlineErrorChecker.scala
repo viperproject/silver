@@ -40,9 +40,7 @@ trait InlineErrorChecker {
         case PredicateAccessPredicate(PredicateAccess(_, name), _) => name == predId
         case _ => false
       }
-      val isInChildNodes = subNodes.foldLeft(false) { (acc, node) =>
-        acc || isRecursivePred(predId, Some(node))
-      }
+      val isInChildNodes = subNodes.exists(child => isRecursivePred(predId, Some(child)))
       existsAtTopLevelNode || isInChildNodes
     }
 }
