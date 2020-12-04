@@ -16,8 +16,9 @@ import viper.silver.plugin.standard.termination.transformation.Trafo
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier.errors.AssertFailed
 import viper.silver.verifier._
-import fastparse.{P => FP, _} //?
-import ScalaWhitespace._
+import fastparse._
+import viper.silver.parser.FastParser.whitespace
+import viper.silver.parser.FastParser.P
 
 class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
                         logger: ch.qos.logback.classic.Logger,
@@ -40,7 +41,7 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
    * decreases *
    */
   def decreases[_: P]: P[PDecreasesClause] =
-    P(keyword(DecreasesKeyword) ~/ (decreasesWildcard | decreasesStar | decreasesTuple) ~ ";".?)
+    P(keyword(DecreasesKeyword) ~/ (decreasesWildcard | decreasesStar | decreasesTuple) ~ ";".?).map(e => e._3)
   def decreasesTuple[_: P]: P[PDecreasesTuple] =
     P(exp.rep(sep = ",") ~/ condition.?).map { case (a, c) => PDecreasesTuple(a, c) }
   def decreasesWildcard[_: P]: P[PDecreasesWildcard] = P("_" ~/ condition.?).map(c => PDecreasesWildcard(c))

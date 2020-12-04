@@ -1,19 +1,12 @@
 package viper.silver.verifier
 
 import java.util.regex.{Matcher, Pattern}
-
 import scala.collection.mutable
-
-import fastparse.{P => FP, _}
-import ScalaWhitespace._
+import fastparse._
+import viper.silver.parser.FastParser.whitespace
 import viper.silver.parser.FastParser.P
 
 object ModelParser {
-  // val White = PWrapper { //?
-  //   import fastparse.all._
-
-  //   NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
-  // }
 
   def identifier[_: P]: P[Unit] = P(CharIn("0-9", "A-Z", "a-z", "[]\"'#+-*/:=!$_@<>.%~") ~~ CharIn("0-9", "A-Z", "a-z", "[]\"'#+-*/:=!$_@<>.%~").repX)
 

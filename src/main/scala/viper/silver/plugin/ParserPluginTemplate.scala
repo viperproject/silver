@@ -13,9 +13,7 @@ import viper.silver.verifier.VerificationResult
 
 import scala.collection.Set
 
-import fastparse.{P => FP, _}
-import ScalaWhitespace._
-
+import fastparse._
 import viper.silver.parser.FastParser.P
 
 trait ParserPluginTemplate {
@@ -25,14 +23,10 @@ trait ParserPluginTemplate {
     * The import statements that instantiate the PWhiteSpaceApi class and then import the overloaded sequencing operators
     * of the "fastparse" library. It is extremely essential for these statements to exist in the parser.
     */
-//val White = PWrapper {  //?
-//  import fastparse.all._
-//  NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
-//}
   /**
     * The below line is essential if one wishes to use the overridden files from fastparse for the plugin.
     */
-  /** import White._ */
+  /** import White._ */ //? Outdated explanation
 
   /**
     * The following three 10 variables form the main hooks for extending the parser

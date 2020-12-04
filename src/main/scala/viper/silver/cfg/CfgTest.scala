@@ -14,8 +14,8 @@ import viper.silver.verifier.ParseWarning
 
 import scala.io.Source
 
-import fastparse.{P => FP, _}
-import ScalaWhitespace._
+import fastparse._
+import viper.silver.parser.FastParser.whitespace
 import viper.silver.parser.FastParser.P
 
 object CfgTest {
