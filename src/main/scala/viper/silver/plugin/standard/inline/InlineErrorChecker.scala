@@ -29,10 +29,15 @@ trait InlineErrorChecker {
     * @param maybePredBody the possible body of the predicate.
     * @return true iff the predicate is found to be recursively defined.
     */
-  private[this] def isRecursivePred(predId: String, maybePredBody: Option[Exp]): Boolean =
+  private[this] def isRecursivePred(predId: String, maybePredBody: Option[Node]): Boolean =
     maybePredBody.fold(false) { predBody =>
-      predBody.existsDefined {
+      val subNodes = predBody.subnodes
+      val existsAtTopLevelNode = subNodes.exists {
         case PredicateAccessPredicate(PredicateAccess(_, name), _) => name == predId
+        case _ => false
+      }
+      existsAtTopLevelNode || subNodes.foldLeft(false) { (acc, node) =>
+        acc || isRecursivePred(predId, Some(node))
       }
     }
 }
