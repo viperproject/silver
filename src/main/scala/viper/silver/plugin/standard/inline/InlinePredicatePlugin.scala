@@ -9,7 +9,9 @@ import viper.silver.parser.FastParser._
 import viper.silver.parser._
 import White._
 
-class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate with InlineRewrite {
+class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate
+  with InlineRewrite
+  with InlineErrorChecker {
   import fastparse.noApi._
 
   private[this] val InlinePredicateKeyword = "inline"
@@ -25,9 +27,8 @@ class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate with 
 
   override def beforeVerify(input: Program): Program = {
     val rewrittenMethods = input.methods.map { method =>
-      // TODO: Check if any of these marked inline are recursive predicates and
-      // warn user that the recursive inline-annotated predicates will *not* be expanded
       val inlinePredIds = input.extensions.collect({case InlinePredicate(p) => p.name}).toSet
+      checkRecursive(inlinePredIds, input)
       // TODO: Do we also need to inline in inhale/exhale/assert/assume and package/apply statements?
       val (prePredIds, postPredIds) = getPrePostPredIds(method, input, inlinePredIds)
       val inlinedPredMethod = inlinePredicates(method, input, prePredIds, postPredIds)

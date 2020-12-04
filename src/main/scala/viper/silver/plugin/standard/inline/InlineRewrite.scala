@@ -9,8 +9,8 @@ import viper.silver.ast.utility.rewriter.StrategyBuilder
 trait InlineRewrite {
 
   def getPrePostPredIds(method: Method, program: Program, inlinePredIds: Set[String]): (Set[String], Set[String]) = {
-    val expandablePrePredIds = method.pres.map { expandablePredicates(_, method, program, inlinePredIds) }.flatten.toSet
-    val expandablePostPredsIds = method.posts.map { expandablePredicates(_, method, program, inlinePredIds) }.flatten.toSet
+    val expandablePrePredIds = method.pres.flatMap(expandablePredicates(_, method, program, inlinePredIds)).toSet
+    val expandablePostPredsIds = method.posts.flatMap(expandablePredicates(_, method, program, inlinePredIds)).toSet
     (expandablePrePredIds, expandablePostPredsIds)
   }
 
@@ -99,7 +99,7 @@ trait InlineRewrite {
   /**
     * Removes given predicate unfolds and folds from statement.
     *
-    * @param stmt A Seqn whose statments will be traversed
+    * @param stmts A Seqn whose statements will be traversed
     * @param unfoldPreds A set of the string names of the precondition predicates to not unfold
     * @param foldPreds A set of the string names of the postcondition predicates to not fold
     * @return The Seqn with all above unfolds and folds removed
