@@ -6,18 +6,22 @@ trait InlineErrorChecker {
 
   /**
     * For each predicate id, find its associated body in the program. If the predicate is recursive,
-    * print a warning to the console that it shall not be inlined.
+    * print a warning to the console that it shall not be inlined. Return a set of predicates that
+    * are recursive.
     *
     * @param predicateIds the ids of the predicates we want to inline.
     * @param program the program for which we are performing predicate inlining on.
+    * @return the set of recursive predicates.
     */
-  def checkRecursive(predicateIds: Set[String], program: Program): Unit = {
+  def checkRecursive(predicateIds: Set[String], program: Program): Set[Predicate] = {
     val predicates = predicateIds.map(program.findPredicate)
-    predicates.foreach {
-      case Predicate(name, _, maybeBody) =>
-        if (isRecursivePred(name, maybeBody))
-          println(s"Predicate: `$name` is recursive. Will not be inlined")
+    val recursivePreds = predicates.filter {
+          case Predicate(name, _, maybeBody) => isRecursivePred(name, maybeBody)
     }
+    recursivePreds.foreach {
+      case Predicate(name, _, _) => println(s"Predicate: `$name` is recursive. Will not be inlined")
+    }
+    recursivePreds
   }
 
   /**
