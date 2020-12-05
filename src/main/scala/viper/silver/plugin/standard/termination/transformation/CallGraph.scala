@@ -9,7 +9,7 @@ package viper.silver.plugin.standard.termination.transformation
 import org.jgrapht.alg.connectivity.KosarajuStrongConnectivityInspector
 import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 protected object CallGraph {
 

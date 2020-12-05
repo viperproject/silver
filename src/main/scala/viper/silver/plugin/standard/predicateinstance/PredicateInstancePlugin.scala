@@ -14,10 +14,11 @@ import viper.silver.parser._
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier.{ConsistencyError, Failure, Success, VerificationResult}
 import viper.silver.verifier.errors.PreconditionInAppFalse
-
 import fastparse._
 import viper.silver.parser.FastParser.whitespace
 import viper.silver.parser.FastParser.P
+
+import scala.collection.immutable.ListMap
 
 class PredicateInstancePlugin  extends SilverPlugin with ParserPluginTemplate {
 
@@ -55,7 +56,7 @@ class PredicateInstancePlugin  extends SilverPlugin with ParserPluginTemplate {
     val PredicateInstanceDomain: Option[Domain] =  input.domains.find(_.name == "PredicateInstance")
 
     // list of all created predicate instance functions
-    val createdPIFunctions: collection.mutable.ListMap[String, Function] = collection.mutable.ListMap[String, Function]()
+    var createdPIFunctions = ListMap[String, Function]()
 
     def getPIFunction(predicateInstance: PredicateInstance, program: Program): FuncApp = {
       createdPIFunctions.get(predicateInstance.p) match {
@@ -71,7 +72,7 @@ class PredicateInstancePlugin  extends SilverPlugin with ParserPluginTemplate {
               Seq(),
               None
             )(PredicateInstanceDomain.get.pos, PredicateInstanceDomain.get.info)
-          createdPIFunctions.update(predicateInstance.p, newPIFunction)
+          createdPIFunctions = createdPIFunctions.updated(predicateInstance.p, newPIFunction)
           FuncApp(newPIFunction, predicateInstance.args)(predicateInstance.pos, predicateInstance.info, errT)
       }
     }

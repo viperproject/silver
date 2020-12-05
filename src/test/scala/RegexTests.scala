@@ -205,7 +205,7 @@ class RegexTests extends AnyFunSuite with FileComparisonHelper {
   test("ManyToOneAssert") {
     val filePrefix = "transformations/ManyToOneAssert/"
     val files = Seq("simple", "interrupted", "nested", "nestedBlocks")
-    var accumulator: mutable.ListBuffer[Exp] = mutable.ListBuffer.empty[Exp]
+    val accumulator: mutable.ListBuffer[Exp] = mutable.ListBuffer.empty[Exp]
 
     val t = TreeRegexBuilder.ancestor[Node]
     val strat = t &> n.r[Assert] |-> {

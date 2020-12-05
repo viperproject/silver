@@ -6,7 +6,6 @@
 
 import java.nio.file.Paths
 
-import org.scalatest.FunSuite
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast.{LocalVar, Perm, Program}
 import viper.silver.frontend.{SilFrontend, SilFrontendConfig}

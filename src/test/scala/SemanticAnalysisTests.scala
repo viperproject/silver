@@ -6,7 +6,6 @@
 
 package viper.silver
 
-import org.scalatest.FunSuite
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.frontend._
 import viper.silver.parser._

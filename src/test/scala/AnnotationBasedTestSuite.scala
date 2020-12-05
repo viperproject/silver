@@ -167,7 +167,7 @@ case class OutputMatcher(
     remainingOutputs.foreach { _ match {
       case e: ExpectedOutput =>
         missingOutputs.find(_.sameSource(e)) match {
-          case Some(mo) => missingOutputs = missingOutputs.diff(Seq(e))
+          case Some(_) => missingOutputs = missingOutputs.diff(Seq(e))
           case None => errors ::= TestExpectedButMissingOutputError(e)
         }
       case u: UnexpectedOutput =>

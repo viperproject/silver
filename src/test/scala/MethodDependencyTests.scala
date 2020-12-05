@@ -4,7 +4,6 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-import org.scalatest._
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast._
