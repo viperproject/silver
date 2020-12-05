@@ -1,8 +1,6 @@
 package viper.silver.plugin.standard.inline
 
-import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 import viper.silver.ast._
-import viper.silver.plugin.CallGraph
 
 trait InlineErrorChecker {
 
@@ -37,23 +35,8 @@ trait InlineErrorChecker {
     */
   def checkMutualRecursive(predicateIds: Set[String], program: Program): Set[Predicate] = {
     val predicatesToInspect = predicateIds.map(program.findPredicate)
-    val predicateCallGraph = {
-      val graph = new DefaultDirectedGraph[Predicate, DefaultEdge](classOf[DefaultEdge])
-      predicatesToInspect.foreach(graph.addVertex)
-
-      def process(pred: Predicate, node: Node): Unit =
-        node.visit {
-          case PredicateAccessPredicate(PredicateAccess(_, name), _) =>
-            graph.addEdge(pred, program.findPredicate(name))
-        }
-
-      predicatesToInspect.foreach { pred =>
-        pred.body.foreach(process(pred, _))
-      }
-      graph
-    }
-    val mutRecPreds = CallGraph.mutuallyRecursiveVertices(predicateCallGraph)
-      .filter(_.size > 1).flatten.toSet
+    val predicateCallGraph = PredicateCallGraph.graph(predicatesToInspect, program)
+    val mutRecPreds = PredicateCallGraph.mutuallyRecursivePreds(predicateCallGraph)
     mutRecPreds.foreach {
       case Predicate(name, _, _) => println(s"Predicate: `$name` is mutually-recursive. Will not be inlined")
     }
