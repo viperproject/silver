@@ -1,6 +1,8 @@
 package viper.silver.plugin.standard.inline
 
+import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 import viper.silver.ast._
+import viper.silver.plugin.CallGraph
 
 trait InlineErrorChecker {
 
@@ -22,6 +24,40 @@ trait InlineErrorChecker {
       case Predicate(name, _, _) => println(s"Predicate: `$name` is recursive. Will not be inlined")
     }
     recursivePreds
+  }
+
+  /**
+    * Construct a call-graph of predicates specified by the given predicate ids. If any predicates
+    * are found to be mutually-recursive, print a warning to the console that it shall not be inlined.
+    * Return a set of predicates that are mutually-recursive.
+    *
+    * @param predicateIds the ids of the predicates we want to inline.
+    * @param program the program for which we are performing predicate inlining on.
+    * @return the set of mutually-recursive predicates.
+    */
+  def checkMutualRecursive(predicateIds: Set[String], program: Program): Set[Predicate] = {
+    val predicatesToInspect = predicateIds.map(program.findPredicate)
+    val predicateCallGraph = {
+      val graph = new DefaultDirectedGraph[Predicate, DefaultEdge](classOf[DefaultEdge])
+      predicatesToInspect.foreach(graph.addVertex)
+
+      def process(pred: Predicate, node: Node): Unit =
+        node.visit {
+          case PredicateAccessPredicate(PredicateAccess(_, name), _) =>
+            graph.addEdge(pred, program.findPredicate(name))
+        }
+
+      predicatesToInspect.foreach { pred =>
+        pred.body.foreach(process(pred, _))
+      }
+      graph
+    }
+    val mutRecPreds = CallGraph.mutuallyRecursiveVertices(predicateCallGraph)
+      .filter(_.size > 1).flatten.toSet
+    mutRecPreds.foreach {
+      case Predicate(name, _, _) => println(s"Predicate: `$name` is mutually-recursive. Will not be inlined")
+    }
+    mutRecPreds
   }
 
   /**
