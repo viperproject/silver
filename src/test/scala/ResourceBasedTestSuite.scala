@@ -7,8 +7,9 @@
 package viper.silver.testing
 
 import org.scalatest._
-import java.nio.file.{Path, Files}
-import scala.collection.JavaConverters._
+import java.nio.file.{Files, Path}
+import org.scalatest.funsuite.AnyFunSuite
+import scala.jdk.CollectionConverters._
 
 /** A test suite for end-to-end toolchain testing that operates on source files
   * in resource directories.
@@ -18,7 +19,7 @@ import scala.collection.JavaConverters._
   * Subclasses need to implement the actual testing logic in `registerTest`.
   *
   */
-abstract class ResourceBasedTestSuite extends FunSuite {
+abstract class ResourceBasedTestSuite extends AnyFunSuite {
   // Subclasses can extend the test input with further information
   // such as annotations
   type InputType <: TestInput

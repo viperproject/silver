@@ -279,7 +279,7 @@ object FastParser { // extends PosParser[Char, String] { //?
       case fastparse.Parsed.Success(prog, _) => prog
       case fail @ fastparse.Parsed.Failure(_, index, extra) =>
         val msg = fail.trace().longMsg
-        val (line, col) = LineCol(extra.input, index)
+        val (line, col) = LineCol(index)
         throw ParseException(s"Expected $msg", FilePosition(path, line, col))
     }
   }
@@ -323,7 +323,7 @@ object FastParser { // extends PosParser[Char, String] { //?
           source.close()
         }
       } catch {
-        case e: java.lang.NullPointerException =>
+        case _: java.lang.NullPointerException =>
           throw ParseException(s"""file <$path> does not exist""", FastPositions.getStart(importStmt))
         case e@(_: RuntimeException | _: java.io.IOException) =>
           throw ParseException(s"could not import file ($e)", FastPositions.getStart(importStmt))
@@ -378,7 +378,7 @@ object FastParser { // extends PosParser[Char, String] { //?
     )
 
     // Check if all macros names are unique
-    var uniqueMacroNames = new mutable.HashMap[String, Position]()
+    val uniqueMacroNames = new mutable.HashMap[String, Position]()
     for (define <- globalMacros) {
       if (uniqueMacroNames.contains(define.idndef.name)) {
         throw ParseException(s"Another macro named '${define.idndef.name}' already " +
@@ -701,7 +701,7 @@ object FastParser { // extends PosParser[Char, String] { //?
               case id: PIdnDef => scopeAtMacroCall += id.name
               case _ =>
             }).execute(subtree)
-            renamesMap.clear
+            renamesMap.clear()
             replacerOnBody(body, mapParamsToArgs(parameters, arguments), call)
           } catch {
             case problem: ParseTreeDuplicationError =>

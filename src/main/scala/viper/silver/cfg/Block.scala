@@ -31,7 +31,7 @@ sealed trait Block[S, E] {
 }
 
 object Block {
-  private var id = new AtomicInteger(0)
+  private val id = new AtomicInteger(0)
 
   def nextId(): Int = {
     id.incrementAndGet()

@@ -157,7 +157,7 @@ trait PNode extends FastPositioned with Product with Rewritable {
           if (prev != null)
             prev.next = Some(c)
           prev = c
-          c.initProperties
+          c.initProperties()
         case Some (o) =>
           setNodeChildConnections (o)
           case s : GenTraversable[_] =>
@@ -424,8 +424,8 @@ class PTypeSubstitution(val m:Map[String,PType])  //extends Map[String,PType]()
     val bs = b.substitute(this)
     (as, bs) match {
       case (aa,bb) if aa == bb => Some(this)
-      case (tv@PTypeVar(name), t) if PTypeVar.isFreePTVName(name) => assert(!contains(name)); Some(substitute(name,t)+(name->t))
-      case (t, PTypeVar(name))    if PTypeVar.isFreePTVName(name) => add(bs,as)
+      case (PTypeVar(name), t) if PTypeVar.isFreePTVName(name) => assert(!contains(name)); Some(substitute(name,t)+(name->t))
+      case (_, PTypeVar(name))    if PTypeVar.isFreePTVName(name) => add(bs,as)
       case (gt1: PGenericType, gt2: PGenericType) if gt1.genericName == gt2.genericName =>
         ((gt1.typeArguments zip gt2.typeArguments).foldLeft[Option[PTypeSubstitution]](Some(this))
           ((ss: Option[PTypeSubstitution], p: (PType, PType)) => ss match {
@@ -507,7 +507,7 @@ case class PCall(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PType] =
   override val idnuse = func
   override val opName = func.name
   override def signatures = if (function!=null&& function.formalArgs.size == args.size) (function match{
-    case pf:PFunction => List(
+    case _: PFunction => List(
       new PTypeSubstitution(args.indices.map(i => POpApp.pArg(i).domain.name -> function.formalArgs(i).typ) :+ (POpApp.pRes.domain.name -> function.typ))
     )
     case pdf:PDomainFunction =>
@@ -519,7 +519,7 @@ case class PCall(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PType] =
 
   })
   else if(extfunction!=null && extfunction.formalArgs.size == args.size)( extfunction match{
-    case ppa: PPredicate => List(
+    case _: PPredicate => List(
       new PTypeSubstitution(args.indices.map(i => POpApp.pArg(i).domain.name -> extfunction.formalArgs(i).typ) :+ (POpApp.pRes.domain.name -> Bool))
     )
   })
@@ -993,7 +993,7 @@ object PNewStmt {
 
   def unapply(s: PNewStmt): Option[(PIdnUse, Option[Seq[PIdnUse]])] = s match {
     case PRegularNewStmt(target, fields) => Some((target, Some(fields)))
-    case PStarredNewStmt(target) => Some((s.target, None))
+    case PStarredNewStmt(_) => Some((s.target, None))
   }
 }
 
@@ -1051,13 +1051,13 @@ case class PStandardImport(file: String) extends PImport()
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: Option[PStmt]) extends PMember with PGlobalDeclaration {
   def deepCopy(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, formalReturns: Seq[PFormalArgDecl] = this.formalReturns, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, body: Option[PStmt] = this.body): PMethod = {
     StrategyBuilder.Slim[PNode]({
-      case m: PMethod => PMethod(idndef, formalArgs, formalReturns, pres, posts, body)
+      case _: PMethod => PMethod(idndef, formalArgs, formalReturns, pres, posts, body)
     }).execute[PMethod](this)
   }
   def deepCopyWithNameSubstitution(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, formalReturns: Seq[PFormalArgDecl] = this.formalReturns, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, body: Option[PStmt] = this.body)
                                   (idn_generic_name: String, idn_substitution: String): PMethod = {
     StrategyBuilder.Slim[PNode]({
-      case m: PMethod => PMethod(idndef, formalArgs, formalReturns, pres, posts, body)
+      case _: PMethod => PMethod(idndef, formalArgs, formalReturns, pres, posts, body)
       case PIdnDef(name) if name == idn_generic_name => PIdnDef(idn_substitution)
       case PIdnUse(name) if name == idn_generic_name => PIdnUse(idn_substitution)
     }).execute[PMethod](this)
@@ -1067,7 +1067,7 @@ case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDoma
 case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp]) extends PAnyFunction {
   def deepCopy(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, typ: PType = this.typ, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, body: Option[PExp] = this.body): PFunction = {
     StrategyBuilder.Slim[PNode]({
-      case f: PFunction => PFunction(idndef, formalArgs, typ, pres, posts, body)
+      case _: PFunction => PFunction(idndef, formalArgs, typ, pres, posts, body)
     }).execute[PFunction](this)
   }
 }
@@ -1119,21 +1119,21 @@ object Nodes {
    */
   def subnodes(n: PNode): Seq[PNode] = {
     n match {
-      case PIdnDef(name) => Nil
-      case PIdnUse(name) => Nil
+      case PIdnDef(_) => Nil
+      case PIdnUse(_) => Nil
       case PFormalArgDecl(idndef, typ) => Seq(idndef, typ)
-      case PPrimitiv(name) => Nil
+      case PPrimitiv(_) => Nil
       case PDomainType(domain, args) => Seq(domain) ++ args
       case PSeqType(elemType) => Seq(elemType)
       case PSetType(elemType) => Seq(elemType)
       case PMultisetType(elemType) => Seq(elemType)
       case PUnknown() => Nil
-      case PBinExp(left, op, right) => Seq(left, right)
+      case PBinExp(left, _, right) => Seq(left, right)
       case PMagicWandExp(left, right) => Seq(left, right)
-      case PUnExp(op, exp) => Seq(exp)
+      case PUnExp(_, exp) => Seq(exp)
       case PTrigger(exp) => exp
-      case PIntLit(i) => Nil
-      case PBoolLit(b) => Nil
+      case PIntLit(_) => Nil
+      case PBoolLit(_) => Nil
       case PNullLit() => Nil
       case PPredicateType() => Nil
       case PWandType() => Nil
@@ -1171,7 +1171,7 @@ object Nodes {
       case PExplicitSet(elems) => elems
       case PEmptyMultiset(t) => Seq(t)
       case PExplicitMultiset(elems) => elems
-      case PMacroRef(name) => Nil
+      case PMacroRef(_) => Nil
       case PSeqn(ss) => ss
       case PFold(exp) => Seq(exp)
       case PUnfold(exp) => Seq(exp)
@@ -1192,18 +1192,18 @@ object Nodes {
       case PIf(cond, thn, els) => Seq(cond, thn, els)
       case PWhile(cond, invs, body) => Seq(cond) ++ invs ++ Seq(body)
       case PLocalVarDecl(idndef, typ, init) => Seq(idndef, typ) ++ (if (init.isDefined) Seq(init.get) else Nil)
-      case PProgram(files, macros, domains, fields, functions, predicates, methods, extensions, errors) =>
+      case PProgram(_, _, domains, fields, functions, predicates, methods, extensions, _) =>
         domains ++ fields ++ functions ++ predicates ++ methods ++ extensions
-      case PLocalImport(file) =>
+      case PLocalImport(_) =>
         Seq()
-      case PStandardImport(file) => Seq()
+      case PStandardImport(_) => Seq()
       case PDomain(idndef, typVars, funcs, axioms) => Seq(idndef) ++ typVars ++ funcs ++ axioms
       case PField(idndef, typ) => Seq(idndef, typ)
       case PMethod(idndef, args, rets, pres, posts, body) =>
         Seq(idndef) ++ args ++ rets ++ pres ++ posts ++ body.toSeq
       case PFunction(name, args, typ, pres, posts, body) =>
         Seq(name) ++ args ++ Seq(typ) ++ pres ++ posts ++ body
-      case PDomainFunction(name, args, typ, unique) =>
+      case PDomainFunction(name, args, typ, _) =>
         Seq(name) ++ args ++ Seq(typ)
       case PPredicate(name, args, body) =>
         Seq(name) ++ args ++ body

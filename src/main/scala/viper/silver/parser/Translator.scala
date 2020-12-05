@@ -7,7 +7,6 @@
 package viper.silver.parser
 
 import viper.silver.FastMessaging
-import viper.silver.ast.pretty.FastPrettyPrinter
 import viper.silver.ast.{SourcePosition, _}
 import viper.silver.ast.utility._
 
@@ -145,8 +144,7 @@ case class Translator(program: PProgram) {
   }
 
   private def translateMemberSignature(p: PExtender): Unit ={
-    val pos = p
-    val t = p match {
+    p match {
       case t: PMember =>
         val l = p.translateMemberSignature(this)
         members.put(t.idndef.name, l)
@@ -201,8 +199,7 @@ case class Translator(program: PProgram) {
         Apply(exp(e).asInstanceOf[MagicWand])(pos)
       case PInhale(e) =>
         Inhale(exp(e))(pos)
-      case assume@PAssume(e) =>
-        val sub = exp(e)
+      case PAssume(e) =>
         Assume(exp(e))(pos)
       case PExhale(e) =>
         Exhale(exp(e))(pos)
@@ -422,7 +419,7 @@ case class Translator(program: PProgram) {
           desugaredForalls.tail.foldLeft(desugaredForalls.head: Exp)((conjuncts, forall) =>
             And(conjuncts, forall)(fa.pos, fa.info, fa.errT))
         }
-      case f@PForPerm(vars, res, e) =>
+      case PForPerm(vars, res, e) =>
         val varList = vars map liftVarDecl
         exp(res) match {
           case PredicateAccessPredicate(inner, _) => ForPerm(varList, inner, exp(e))(pos)

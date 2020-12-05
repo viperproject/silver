@@ -4,12 +4,13 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-import org.scalatest.{FunSuite, Matchers}
+import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.matchers.should.Matchers
 import viper.silver.ast._
 import viper.silver.ast.utility.AssumeRewriter
 
 
-class UtilityTests extends FunSuite with Matchers {
+class UtilityTests extends AnyFunSuite with Matchers {
 
   /* These tests exercise utility methods on the AST (transformers, visitors, rewriters etc.) */
 

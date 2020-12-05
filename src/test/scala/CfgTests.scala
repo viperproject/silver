@@ -5,12 +5,13 @@
 // Copyright (c) 2011-2019 ETH Zurich.
 
 import java.nio.file.Paths
+
 import TestHelpers.MockSilFrontend
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast.{Exp, Not}
 import viper.silver.cfg.ConditionalEdge
 
-class CfgTests extends FunSuite {
+class CfgTests extends AnyFunSuite {
   val count = 100
   val prefix = "cfgtests/determinism/"
   val files = Seq("if", "while")

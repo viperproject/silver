@@ -5,7 +5,6 @@
 // Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silver.ast
-import fastparse.ParserInput
 import viper.silver.utility.Common.StructuralEquality
 import java.nio.file.Path
 
@@ -72,7 +71,7 @@ class IdentifierPosition(val file: Path, val start: HasLineColumn, val end: Opti
 }
 
 object LineCol {
-  def apply(input: ParserInput, index: Int) = {
+  def apply(index: Int) = {
     // val Array(line, column) = input.prettyIndex(index).split(":")
     // (line.toInt, column.toInt)
     var left = index

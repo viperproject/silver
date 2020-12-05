@@ -7,13 +7,14 @@
 import java.io.File
 import java.nio.file.Paths
 
-import org.scalatest.{FunSuite, Matchers}
+import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.matchers.should.Matchers
 import viper.silver.ast.{NoPosition, Position, Program}
 import viper.silver.frontend.{SilFrontend, SilFrontendConfig}
 import viper.silver.verifier.errors.ErrorNode
 import viper.silver.verifier._
 
-class IOTests extends FunSuite with Matchers {
+class IOTests extends AnyFunSuite with Matchers {
 
   val test_prefix = s"Test standard IO of SilFrontend"
 

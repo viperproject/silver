@@ -13,7 +13,7 @@ import viper.silver.plugin.SilverPluginManager
 import viper.silver.plugin.SilverPluginManager.PluginException
 import viper.silver.reporter._
 import viper.silver.verifier._
-import fastparse.{Parsed, ParserInput}
+import fastparse.Parsed
 import java.nio.file.{Path, Paths}
 import viper.silver.{FastMessaging, FastPositions}
 
@@ -241,7 +241,7 @@ trait SilFrontend extends DefaultFrontend {
               else Fail(err_list)
             case fail @ Parsed.Failure(_, index, extra) =>
               val msg = fail.trace().longAggregateMsg
-              val (line, col) = LineCol(extra.input, index)
+              val (line, col) = LineCol(index)
               Fail(List(ParseError(s"Expected $msg", SourcePosition(file, line, col))))
             case error: ParseError => Fail(List(error))
           }

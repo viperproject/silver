@@ -197,7 +197,7 @@ object CfgGenerator {
       case Goto(name) =>
         val target = TmpLabel(name)
         addStatement(JumpStmt(target))
-      case Label(name, invs) =>
+      case Label(name, _) =>
         val label = TmpLabel(name)
         addLabel(label)
         addStatement(WrappedStmt(stmt))

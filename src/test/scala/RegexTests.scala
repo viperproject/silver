@@ -5,14 +5,15 @@
 // Copyright (c) 2011-2019 ETH Zurich.
 
 import java.nio.file.Paths
+
 import scala.collection.mutable
 import TestHelpers.{FileComparisonHelper, MockSilFrontend}
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast._
 import viper.silver.ast.utility.rewriter._
 import viper.silver.ast.utility._
 
-class RegexTests extends FunSuite with FileComparisonHelper {
+class RegexTests extends AnyFunSuite with FileComparisonHelper {
   test("Sharing") {
     val shared = FalseLit()()
     val sharedAST = And(Not(shared)(), shared)()

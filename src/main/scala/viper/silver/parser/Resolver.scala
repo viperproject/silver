@@ -227,9 +227,9 @@ case class TypeChecker(names: NameAnalyser) {
           case _ =>
             messages ++= FastMessaging.message(stmt, "expected a method")
         }
-      case PLabel(name, invs) =>
+      case PLabel(_, invs) =>
         invs foreach (check(_, Bool))
-      case PGoto(label) =>
+      case PGoto(_) =>
       case PFieldAssign(field, rhs) =>
         names.definition(curMember)(field.idnuse, Some(PField.getClass)) match {
           case PField(_, typ) =>
@@ -246,7 +246,7 @@ case class TypeChecker(names: NameAnalyser) {
         check(cond, Bool)
         invs foreach (check(_, Bool))
         check(body)
-      case PLocalVarDecl(idndef, typ, init) =>
+      case PLocalVarDecl(_, typ, init) =>
         check(typ)
         init match {
           case Some(i) => check(i, typ)
@@ -271,7 +271,7 @@ case class TypeChecker(names: NameAnalyser) {
       case PAccPred(PCall( idnuse, _, _), _) =>
         val ad = names.definition(curMember)(idnuse)
         ad match {
-          case ppa : PPredicate =>
+          case _: PPredicate =>
             acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate"){(_, _predicate) =>
               val predicate = _predicate.asInstanceOf[PPredicate]
               if (predicate.body.isEmpty) messages ++= FastMessaging.message(idnuse, messageIfAbstractPredicate)
@@ -338,7 +338,7 @@ case class TypeChecker(names: NameAnalyser) {
         sys.error("unexpected use of internal typ")
       case PPrimitiv(_) =>
         /* Nothing to type check (or resolve) */
-      case dt@PDomainType(domain, args) if dt.isResolved =>
+      case dt@PDomainType(_, _) if dt.isResolved =>
         /* Already resolved, nothing left to do */
       case dt@PDomainType(domain, args) =>
         assert(!dt.isResolved, "Only yet-unresolved domain types should be type-checked and resolved")
@@ -354,12 +354,12 @@ case class TypeChecker(names: NameAnalyser) {
         }
 
         x match {
-          case d@PDomain(name, typVars, _, _) =>
+          case PDomain(_, typVars, _, _) =>
             ensure(args.length == typVars.length, typ, "wrong number of type arguments")
             dt.kind = PDomainTypeKinds.Domain
-          case PTypeVarDecl(typeVar) =>
+          case PTypeVarDecl(_) =>
             dt.kind = PDomainTypeKinds.TypeVar
-          case other =>
+          case _ =>
             dt.kind = PDomainTypeKinds.Undeclared
         }
 
@@ -397,8 +397,8 @@ case class TypeChecker(names: NameAnalyser) {
         if domain1 == domain2 && args1.length == args2.length =>
         (args1 zip args2) forall (x => isCompatible(x._1, x._2))
 
-      case (a: PExtender,b)  => false// TBD: the equality function for two type variables
-      case (a, b: PExtender) => false // TBD: the equality function for two type variables
+      case (_: PExtender, _)  => false// TBD: the equality function for two type variables
+      case (_, _: PExtender) => false // TBD: the equality function for two type variables
 
       case _ => false
     }
@@ -493,7 +493,7 @@ case class TypeChecker(names: NameAnalyser) {
     check(exp,PTypeSubstitution.id)
   }
 
-  def check(exp: PExp, s : PTypeSubstitution) : Unit = {
+  def check(exp: PExp, s: PTypeSubstitution) : Unit = {
     /**
      * Set the type of 'exp', and check that the actual type is allowed by one of the expected types.
      */
@@ -593,7 +593,7 @@ case class TypeChecker(names: NameAnalyser) {
                           if (inAxiomScope(Some(pfa)))
                             issueError(func, func.name + " is not a domain function")
 
-                        case pdf@PDomainFunction(_, _, resultType, unique) =>
+                        case pdf@PDomainFunction(_, _, _, _) =>
                           val domain = names.definition(curMember)(pdf.domainName).asInstanceOf[PDomain]
                           val fdtv = PTypeVar.freshTypeSubstitution((domain.typVars map (tv => tv.idndef.name)).distinct) //fresh domain type variables
                           pfa.domainTypeRenaming = Some(fdtv)
@@ -603,12 +603,12 @@ case class TypeChecker(names: NameAnalyser) {
                     case ppa: PPredicate =>
                       pfa.extfunction = ppa
                       val predicate = names.definition(curMember)(func).asInstanceOf[PPredicate]
-                      acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(func), "expected predicate") { (id, decl) =>
+                      acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(func), "expected predicate") { (id, _) =>
                         checkInternal(id)
                         if (args.length != predicate.formalArgs.length)
                           issueError(func, "predicate arity doesn't match")
                       }
-                    case x =>
+                    case _ =>
                       issueError(func, "expected function or predicate ")
                   }
                 }
@@ -622,7 +622,7 @@ case class TypeChecker(names: NameAnalyser) {
               case PApplying(wand, _) =>
                 checkMagicWand(wand)
 
-              case pfa@PFieldAccess(rcv, idnuse) =>
+              case PFieldAccess(rcv, idnuse) =>
                 /* For a field access of the type rcv.fld we have to ensure that the
                  * receiver denotes a local variable. Just checking that it is of type
                  * Ref is not sufficient, since it could also denote a Ref-typed field.
@@ -635,7 +635,7 @@ case class TypeChecker(names: NameAnalyser) {
                 }
 
                 acceptAndCheckTypedEntity[PField, Nothing](Seq(idnuse), "expected field")(
-                  (id, decl) => checkInternal(id))
+                  (id, _) => checkInternal(id))
 
               case PAccPred(loc, _) =>
                 loc match {
@@ -647,7 +647,7 @@ case class TypeChecker(names: NameAnalyser) {
 
               case ppa@PPredicateAccess(args, idnuse) =>
                 val predicate = names.definition(curMember)(ppa.idnuse).asInstanceOf[PPredicate]
-                acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate") { (id, decl) =>
+                acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate") { (id, _) =>
                   checkInternal(id)
                   if (args.length != predicate.formalArgs.length)
                     issueError(idnuse, "predicate arity doesn't match")
@@ -686,7 +686,7 @@ case class TypeChecker(names: NameAnalyser) {
           }
         }
 
-      case piu @ PIdnUse(name) =>
+      case piu @ PIdnUse(_) =>
         names.definition(curMember)(piu) match {
           case decl @ PLocalVarDecl(_, typ, _) => setPIdnUseTypeAndEntity(piu, typ, decl)
           case decl @ PFormalArgDecl(_, typ) => setPIdnUseTypeAndEntity(piu, typ, decl)
@@ -838,7 +838,7 @@ case class NameAnalyser() {
             getMap(d).get(d.idndef.name) match {
               case Some(e: PDeclaration) =>
                 messages ++= FastMessaging.message(e.idndef, "Duplicate identifier `" + e.idndef.name + "' at " + e.idndef.start + " and at " + d.idndef.start)
-              case Some(e: PErrorEntity) =>
+              case Some(_: PErrorEntity) =>
               case None =>
                 globalDeclarationMap.get(d.idndef.name) match {
                   case Some(e: PDeclaration) =>

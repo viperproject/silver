@@ -7,12 +7,12 @@
 import java.nio.file.Paths
 
 import TestHelpers.{FileComparisonHelper, MockSilFrontend}
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast._
 import viper.silver.ast.utility.rewriter._
 import viper.silver.ast.utility._
 
-class RewriterTests extends FunSuite with FileComparisonHelper {
+class RewriterTests extends AnyFunSuite with FileComparisonHelper {
   test("Performance_BinomialHeap") {
     val fileName = "transformations/Performance/BinomialHeap"
 

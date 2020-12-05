@@ -484,7 +484,7 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
   * @param s2 strategy 2
   */
 class ConcatenatedStrategy[N <: Rewritable](s1: StrategyInterface[N], val s2: StrategyInterface[N]) extends StrategyInterface[N] {
-  private var strategies = mutable.ListBuffer.empty[StrategyInterface[N]]
+  private val strategies = mutable.ListBuffer.empty[StrategyInterface[N]]
 
   strategies.append(s1)
   strategies.append(s2)

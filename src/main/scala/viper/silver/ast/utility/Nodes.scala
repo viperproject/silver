@@ -124,7 +124,7 @@ object Nodes {
           case ExplicitMultiset(elems) => elems
           case e: ExtensionExp => e.extensionSubnodes
         }
-      case t: Type => Nil
+      case _: Type => Nil
     }
     n match {
       case t: Typed => subnodesWithType ++ Seq(t.typ)

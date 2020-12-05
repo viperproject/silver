@@ -92,7 +92,7 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAllC
         prefixSpecificConfigMap.getOrElseUpdate(prefix, mutable.HashMap()).update(key, value)
     }
 
-    prefixSpecificConfigMap.mapValues(_.toMap).toMap
+    prefixSpecificConfigMap.view.mapValues(_.toMap).toMap
   }
 
   private case class VerifierUnderTest(verifier: Verifier)

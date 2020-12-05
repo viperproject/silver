@@ -9,16 +9,7 @@ package viper.silver.parser
 
 import java.nio.file.Path
 
-import scala.annotation.tailrec
 import scala.language.implicitConversions
-// import fastparse.{WhitespaceApi, all}
-// import fastparse.core.Implicits
-// import fastparse.core.Implicits.{Repeater, Sequencer}
-// import fastparse.all._
-// import fastparse.core.{Mutable, ParseCtx, Parser}
-// import fastparse.parsers.Combinators.{Repeat, Rule}
-// import fastparse.parsers.Terminals.Pass
-// import fastparse.utils.ReprOps
 import viper.silver.ast.HasLineColumn
 
 case class FilePosition(file: Path, vline: Int, col: Int) extends util.parsing.input.Position with HasLineColumn

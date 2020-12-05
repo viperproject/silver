@@ -6,12 +6,12 @@
 
 package viper.silver
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast.utility.rewriter.StrategyBuilder
 import viper.silver.frontend._
 import viper.silver.verifier.Verifier
 
-class ASTTransformationTests extends FunSuite {
+class ASTTransformationTests extends AnyFunSuite {
   object frontend extends SilFrontend {
     def configureVerifier(args: Seq[String]): SilFrontendConfig = ???
     def createVerifier(fullCmd: String): Verifier = ???
