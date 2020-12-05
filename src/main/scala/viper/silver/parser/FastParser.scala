@@ -65,9 +65,7 @@ object FastParser { // extends PosParser[Char, String] { //?
   def P[T](t: P[T])(implicit name: sourcecode.Name, ctx: P[_]): P[T] = {
 
     t map {
-      case node: T => { //? Change to PNode
-        //? if (node.isInstanceOf[PFunction])
-        //?   println("Of interest.")
+      case node: T => {
         val (beginLine, beginColumn) = getLineAndColumn(ctx.index) //?
         val (endLine, endColumn) = getLineAndColumn(ctx.index)
 
@@ -277,7 +275,7 @@ object FastParser { // extends PosParser[Char, String] { //?
     val p = RecParser(path).parses(transformed_source)
     p match {
       case fastparse.Parsed.Success(prog, _) => prog
-      case fail @ fastparse.Parsed.Failure(_, index, extra) =>
+      case fail @ fastparse.Parsed.Failure(_, index, _) =>
         val msg = fail.trace().longMsg
         val (line, col) = LineCol(index)
         throw ParseException(s"Expected $msg", FilePosition(path, line, col))
@@ -315,7 +313,7 @@ object FastParser { // extends PosParser[Char, String] { //?
         val source = scala.io.Source.fromResource(relativeImportStr, getClass.getClassLoader)
 
         try {
-          source.getLines.toArray
+          source.getLines().toArray
         } catch {
           case e@(_: RuntimeException | _: java.io.IOException) =>
             throw ParseException(s"could not import file ($e)", FastPositions.getStart(importStmt))
@@ -349,7 +347,7 @@ object FastParser { // extends PosParser[Char, String] { //?
     val source = scala.io.Source.fromInputStream(Files.newInputStream(path))
 
     val buffer = try {
-      source.getLines.toArray
+      source.getLines().toArray
     } catch {
       case e@(_: RuntimeException | _: java.io.IOException) =>
         throw ParseException(s"""could not import file ($e)""", FastPositions.getStart(importStmt))

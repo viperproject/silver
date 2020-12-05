@@ -26,10 +26,10 @@ class UtilityTests extends AnyFunSuite with Matchers {
 
     // val rewritten = AssumeRewriter.rewrite(assumeBody,testProgram)
 
-    //rewritten should be (TrueLit()(NoPosition)) this (spurious) test seems to cause an infinite recursion bug..
+    // rewritten should be (TrueLit()(NoPosition)) // this (spurious) test seems to cause an infinite recursion bug..
     assert(true) // dummy check for now, since test causes trouble
     //assert(rewritten == rewritten)
-    //assert(rewritten == TrueLit()())
+    // assert(rewritten == TrueLit()())
   }
   /*
   test("Substitution (simple)"){ // forall x. f(x) >= f(y) && exists y. f(y) >

@@ -9,7 +9,6 @@ package viper.silver.parser
 
 import java.nio.file.Path
 
-import scala.language.implicitConversions
 import viper.silver.ast.HasLineColumn
 
 case class FilePosition(file: Path, vline: Int, col: Int) extends util.parsing.input.Position with HasLineColumn
@@ -20,7 +19,7 @@ case class FilePosition(file: Path, vline: Int, col: Int) extends util.parsing.i
   override lazy val toString = s"${file.getFileName}@$vline.$col"
 }
 
-// trait PosComputer {
+// trait PosComputer { //?
 //   def computeFrom(index: Int) : (Int, Int) = {
 //     var left = index
 //     var i = 0
