@@ -108,7 +108,7 @@ trait SilFrontend extends DefaultFrontend {
 
   def prepare(args: Seq[String]): Boolean = {
 
-    reporter report CopyrightReport(s"${_ver.signature}\n")//${_ver.copyright}") // we agreed on 11/03/19 to drop the copyright
+    reporter report CopyrightReport(_ver.signature)//${_ver.copyright}") // we agreed on 11/03/19 to drop the copyright
 
     /* Parse command line arguments and populate _config */
     parseCommandLine(args)
@@ -175,6 +175,7 @@ trait SilFrontend extends DefaultFrontend {
     catch {
         case MissingDependencyException(msg) =>
           println("Missing dependency exception: " + msg)
+          reporter report MissingDependencyReport(msg)
     }
   }
 

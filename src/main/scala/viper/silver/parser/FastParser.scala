@@ -210,7 +210,6 @@ object FastParser { // extends PosParser[Char, String] { //?
           column = pos.column
         }
         ParseError(msg, SourcePosition(_file, line, column))
-      case _:Throwable =>
     }
   }
 
@@ -464,10 +463,13 @@ object FastParser { // extends PosParser[Char, String] { //?
         case v => v
       }
 
-      if (body != method.body)
-        PMethod(method.idndef, method.formalArgs, method.formalReturns, method.pres, method.posts, body)
-      else
+      if (body != method.body) {
+        val exp_method = PMethod(method.idndef, method.formalArgs, method.formalReturns, method.pres, method.posts, body)
+        exp_method.setPos(method)
+        exp_method
+      } else {
         method
+      }
     }
 
     val methods = p.methods.map(method => {
