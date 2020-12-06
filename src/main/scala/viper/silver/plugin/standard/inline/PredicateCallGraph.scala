@@ -2,7 +2,7 @@ package viper.silver.plugin.standard.inline
 
 import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 import viper.silver.ast.{Node, Predicate, PredicateAccess, PredicateAccessPredicate, Program}
-import viper.silver.plugin.CallGraph
+import viper.silver.plugin.standard.termination.transformation.CallGraph
 
 object PredicateCallGraph {
 
