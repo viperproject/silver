@@ -9,7 +9,7 @@
 
 import sbt.ClassLoaderLayeringStrategy.ScalaLibrary
 
-ThisBuild / scalaVersion := "2.13.3"
+ThisBuild / scalaVersion := "2.13.4"
 ThisBuild / scalacOptions ++= Seq(
   "-encoding", "UTF-8",               // Enforce UTF-8, instead of relying on properly set locales
   "-deprecation",                     // Warn when using deprecated language features
