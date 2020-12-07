@@ -30,15 +30,17 @@ case class FilePosition(file: Path, vline: Int, col: Int) extends util.parsing.i
 
 trait PosComputer {
   def computeFrom(index: Int) : (Int, Int) = {
-    var left = index
-    var i = 0
-    val arr = FastParser._lines
-    while (i < arr.length && left >= arr(i)){
-      left -= arr(i)
-      i += 1
+    val line_offset =  FastParser._line_offset
+    val result = java.util.Arrays.binarySearch(line_offset, index)
+    if (result >= 0) {
+      // Exact match
+      val line = result
+      (line + 1, index - line_offset(line) + 1)
+    } else {
+      // The binary search returned `- insertionPoint - 1`
+      val line = - result - 2
+      (line + 1, index - line_offset(line) + 1)
     }
-    val r1 = (i + 1, left + 1)
-    r1
   }
 }
 /**
