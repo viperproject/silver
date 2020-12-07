@@ -37,27 +37,13 @@ object FastParser { // extends PosParser[Char, String] { //?
 
   type P[T] = FP[T]
 
-  def getLineAndColumn(index: Int): (Int, Int) = {
-    // val Array(line, col) = ctx.input.prettyIndex(index).split(":").map(_.toInt) //?
-    // (line, col)
-    var left = index
-    var i = 0
-    val arr = FastParser._lines
-    while (i < arr.length && left >= arr(i)){
-      left -= arr(i)
-      i += 1
-    }
-    val r1 = (i + 1, left + 1)
-    r1
-  }
-
   def setPosition(n: Any, start: Int, finish: Int): Unit = {
     {
-      val (line, column) = getLineAndColumn(start)
+      val (line, column) = LineCol(start)
       FastPositions.setStart(n, FilePosition(_file, line, column))
     }
     {
-      val (line, column) = getLineAndColumn(finish)
+      val (line, column) = LineCol(finish)
       FastPositions.setFinish(n, FilePosition(_file, line, column))
     }
   }
@@ -66,8 +52,8 @@ object FastParser { // extends PosParser[Char, String] { //?
 
     t map {
       case node: T => {
-        val (beginLine, beginColumn) = getLineAndColumn(ctx.index) //?
-        val (endLine, endColumn) = getLineAndColumn(ctx.index)
+        val (beginLine, beginColumn) = LineCol(ctx.index) //?
+        val (endLine, endColumn) = LineCol(ctx.index)
 
         _begin = FilePosition(_file, beginLine, beginColumn)
         _end = FilePosition(_file, endLine, endColumn)
@@ -85,7 +71,7 @@ object FastParser { // extends PosParser[Char, String] { //?
    */
   val standard_import_directory = "import"
 
-  var _lines: Array[Int] = null
+  var _line_offset: Array[Int] = null
   var _file: Path = null
 
   var _begin: FilePosition = FilePosition(null, 0, 0)
@@ -93,8 +79,17 @@ object FastParser { // extends PosParser[Char, String] { //?
 
   def parse(s: String, f: Path, plugins: Option[SilverPluginManager] = None) = {
     _file = f.toAbsolutePath
+
+    // Add an empty line at the end to make `computeFrom(s.length)` return `(lines.length, 1)`, as the old
+    // implementation of `computeFrom` used to do.
     val lines = s.linesWithSeparators
-    _lines = lines.map(_.length).toArray
+    _line_offset = (lines.map(_.length) ++ Seq(0)).toArray
+    var offset = 0
+    for (i <- _line_offset.indices) {
+      val line_length = _line_offset(i)
+      _line_offset(i) = offset
+      offset += line_length
+    }
 
     // Strategy to handle imports
     // Idea: Import every import reference and merge imported methods, functions, imports, .. into current program
@@ -223,16 +218,7 @@ object FastParser { // extends PosParser[Char, String] { //?
   // Actual Parser starts from here
   def identContinues[_: P] = CharIn("0-9", "A-Z", "a-z", "$_")
 
-  def keyword[_: P](check: String) = P(Index ~ check ~~ !identContinues ~ Index)//.map({
-    // case (begin, end) => //?
-    //   val (beginLine, beginColumn) = getLineAndColumn(begin)
-    //   val (endLine, endColumn) = getLineAndColumn(end)
-
-    //   val keywordBegin = FilePosition(_file, beginLine, beginColumn)
-    //   val keywordEnd = FilePosition(_file, endLine, endColumn)
-
-    //   _keywordPos += check -> (keywordBegin, keywordEnd)
-  //})
+  def keyword[_: P](check: String) = P(Index ~ check ~~ !identContinues ~ Index)
 
   def parens[_: P, T](p: => P[T]) = "(" ~ p ~ ")"
 
