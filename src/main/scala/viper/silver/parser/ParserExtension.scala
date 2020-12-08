@@ -86,47 +86,47 @@ object ParserExtension extends ParserPluginTemplate {
 
   override def extendedKeywords : Set[String] = _extendedKeywords
 
-  def addNewDeclAtEnd(t: => Extension[PExtender]) : Unit = _newDeclAtEnd match {
+  def addNewDeclAtEnd(t: Extension[PExtender]) : Unit = _newDeclAtEnd match {
     case None => _newDeclAtEnd = Some(t)
     case Some(s) => _newDeclAtEnd = Some(combine(s, t))
   }
 
-  def addNewDeclAtStart(t: => Extension[PExtender]) : Unit = _newDeclAtStart match {
+  def addNewDeclAtStart(t: Extension[PExtender]) : Unit = _newDeclAtStart match {
     case None => _newDeclAtStart = Some(t)
     case Some(s) => _newDeclAtStart = Some(combine(s, t))
   }
 
-  def addNewExpAtEnd(t: => Extension[PExp]) : Unit = _newExpAtEnd match {
+  def addNewExpAtEnd(t: Extension[PExp]) : Unit = _newExpAtEnd match {
     case None => _newExpAtEnd = Some(t)
     case Some(s) => _newExpAtEnd = Some(combine(s, t))
   }
 
-  def addNewExpAtStart(t: => Extension[PExp]) : Unit = _newExpAtStart match {
+  def addNewExpAtStart(t: Extension[PExp]) : Unit = _newExpAtStart match {
     case None => _newExpAtStart = Some(t)
     case Some(s) => _newExpAtStart = Some(combine(s, t))
   }
 
-  def addNewStmtAtEnd(t: => Extension[PStmt]) : Unit = _newStmtAtEnd match {
+  def addNewStmtAtEnd(t: Extension[PStmt]) : Unit = _newStmtAtEnd match {
     case None => _newStmtAtEnd = Some(t)
     case Some(s) => _newStmtAtEnd = Some(combine(s, t))
   }
 
-  def addNewStmtAtStart(t: => Extension[PStmt]) : Unit = _newStmtAtStart match {
+  def addNewStmtAtStart(t: Extension[PStmt]) : Unit = _newStmtAtStart match {
     case None => _newStmtAtStart = Some(t)
     case Some(s) => _newStmtAtStart = Some(combine(s, t))
   }
 
-  def addNewPreCondition(t: => Extension[PExp]) : Unit = _preSpecification match {
+  def addNewPreCondition(t: Extension[PExp]) : Unit = _preSpecification match {
     case None => _preSpecification = Some(t)
     case Some(s) => _preSpecification = Some(combine(s, t))
   }
 
-  def addNewPostCondition(t: => Extension[PExp]) : Unit = _postSpecification match {
+  def addNewPostCondition(t: Extension[PExp]) : Unit = _postSpecification match {
     case None => _postSpecification = Some(t)
     case Some(s) => _postSpecification = Some(combine(s, t))
   }
 
-  def addNewInvariantCondition(t: => Extension[PExp]) : Unit = _invSpecification match {
+  def addNewInvariantCondition(t: Extension[PExp]) : Unit = _invSpecification match {
     case None => _invSpecification = Some(t)
     case Some(s) => _invSpecification = Some(combine(s, t))
   }
