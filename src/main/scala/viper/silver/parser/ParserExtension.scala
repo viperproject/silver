@@ -86,7 +86,7 @@ object ParserExtension extends ParserPluginTemplate {
 
   override def extendedKeywords : Set[String] = _extendedKeywords
 
-  def addNewDeclAtEnd(t: => Extension[PExtender]) : Unit = _newDeclAtEnd match { //? Check if it is needed (already is a function). Try to remove.
+  def addNewDeclAtEnd(t: => Extension[PExtender]) : Unit = _newDeclAtEnd match {
     case None => _newDeclAtEnd = Some(t)
     case Some(s) => _newDeclAtEnd = Some(combine(s, t))
   }

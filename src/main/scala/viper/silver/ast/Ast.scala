@@ -50,8 +50,6 @@ Some design choices:
   * that AST node hashes may depend on the entire program, not just their sub-AST.
   */
 trait Node extends Iterable[Node] with Rewritable {
-// trait Node extends Rewritable {
-// trait Node extends Traversable[Node] with Rewritable { //?
 
   /** @see [[Nodes.subnodes()]] */
   def subnodes = Nodes.subnodes(this)
@@ -81,9 +79,6 @@ trait Node extends Iterable[Node] with Rewritable {
 
     iterator
   }
-
-///** Applies the function `f` to the AST node, then visits all subnodes. */
- // def foreach[A](f: Node => A) = Visitor.visit(this, Nodes.subnodes) { case a: Node => f(a) } //?
 
   /** @see [[Visitor.visit()]] */
   def visit[A](f: PartialFunction[Node, A]): Unit = {

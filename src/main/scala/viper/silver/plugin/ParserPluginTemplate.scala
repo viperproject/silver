@@ -20,16 +20,7 @@ trait ParserPluginTemplate {
   import ParserPluginTemplate.Extension
 
   /**
-    * The import statements that instantiate the PWhiteSpaceApi class and then import the overloaded sequencing operators
-    * of the "fastparse" library. It is extremely essential for these statements to exist in the parser.
-    */
-  /**
-    * The below line is essential if one wishes to use the overridden files from fastparse for the plugin.
-    */
-  /** import White._ */ //? Outdated explanation
-
-  /**
-    * The following three 10 variables form the main hooks for extending the parser
+    * The following variables form the main hooks for extending the parser
     */
 
   /**

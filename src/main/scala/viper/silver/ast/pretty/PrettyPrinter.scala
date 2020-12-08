@@ -595,9 +595,6 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
     case u: UnnamedLocalVarDecl => showType(u.typ)
   }
 
-  /** Show field name */
-  //? private def showLocation(loc: Location): Cont = loc.name
-
   /** Show a user-defined domain. */
   def showDomain(d: Domain): Cont = {
     d match {

@@ -9,7 +9,7 @@ package viper.silver.parser
 import java.net.URL
 import java.nio.file.{Files, Path, Paths}
 
-import scala.util.parsing.input.{NoPosition, Position}  //?
+import scala.util.parsing.input.{NoPosition, Position}
 import viper.silver.ast.{LabelledOld, LineCol, SourcePosition}
 import viper.silver.FastPositions
 import viper.silver.ast.utility.rewriter.{ContextA, PartialContextC, StrategyBuilder}
@@ -26,7 +26,7 @@ case class SuffixedExpressionGenerator[E <: PExp](func: PExp => E) extends (PExp
   override def apply(v1: PExp): E = func(v1)
 }
 
-object FastParser { // extends PosParser[Char, String] { //?
+object FastParser {
   import fastparse.{P => FP, _}
 
   implicit val whitespace = {
@@ -52,7 +52,7 @@ object FastParser { // extends PosParser[Char, String] { //?
 
     t map {
       case node: T => {
-        val (beginLine, beginColumn) = LineCol(ctx.index) //?
+        val (beginLine, beginColumn) = LineCol(ctx.index)
         val (endLine, endColumn) = LineCol(ctx.index)
 
         _begin = FilePosition(_file, beginLine, beginColumn)

@@ -495,8 +495,6 @@ case class Translator(program: PProgram) {
 
   /** Takes a [[viper.silver.parser.FastPositioned]] and turns it into a [[viper.silver.ast.SourcePosition]]. */
   implicit def liftPos(pos: FastPositioned): SourcePosition = {
-    //? if (pos.isInstanceOf[PFunction])
-    //?   println("This is it! This is the answer!")
     val start = LineColumnPosition(pos.start.line, pos.start.column)
     val end = LineColumnPosition(pos.finish.line, pos.finish.column)
     pos.start match {
