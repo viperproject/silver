@@ -43,7 +43,7 @@ lazy val silver = (project in file("."))
 
     // Compilation settings
     libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,             // Scala
-    libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.2" % "test",                   // Testing
+    libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.2",                            // Testing
     libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2",    // Parsing
     libraryDependencies += "com.lihaoyi" %% "fastparse" % "2.2.2",                              // Parsing
     libraryDependencies += "org.rogach" %% "scallop" % "3.5.0",                                 // CLI parsing
