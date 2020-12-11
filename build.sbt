@@ -32,6 +32,7 @@ ThisBuild / Test / publishArtifact := true
 // Silver specific project settings
 lazy val silver = (project in file("."))
   .settings(
+
     // General settings
     name := "silver",
     organization := "viper",
