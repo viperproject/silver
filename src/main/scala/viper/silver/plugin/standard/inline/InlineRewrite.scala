@@ -23,10 +23,11 @@ trait InlineRewrite {
     )(method.pos, method.info, method.errT)
   }
 
-  def rewriteMethod(method: Method, program: Program, prePredIds: Set[String], postPredIds: Set[String]): Method = {
+  def rewriteMethod(method: Method, prePredIds: Set[String], postPredIds: Set[String]): Method = {
     val rewrittenPres = method.pres.map { removeUnfoldings(_, prePredIds) }
     val rewrittenPosts = method.posts.map { removeUnfoldings(_, postPredIds) }
-    val rewrittenBody = method.body.map { removeFoldUnfolds(_, prePredIds, postPredIds) }
+    val allPredIds = prePredIds ++ postPredIds
+    val rewrittenBody = method.body.map(removeFoldUnfolds(_, allPredIds))
     method.copy(body = rewrittenBody,
       pres = rewrittenPres,
       posts = rewrittenPosts,
@@ -100,18 +101,17 @@ trait InlineRewrite {
     * Removes given predicate unfolds and folds from statement.
     *
     * @param stmts A Seqn whose statements will be traversed
-    * @param unfoldPreds A set of the string names of the precondition predicates to not unfold
-    * @param foldPreds A set of the string names of the postcondition predicates to not fold
+    * @param predIds The set of predicates for which we will remove unfold and fold statements
     * @return The Seqn with all above unfolds and folds removed
     */
-  private[this] def removeFoldUnfolds(stmts: Seqn, unfoldPreds: Set[String], foldPreds: Set[String]): Seqn = {
+  private[this] def removeFoldUnfolds(stmts: Seqn, predIds: Set[String]): Seqn = {
     ViperStrategy.Slim({
-      case seqn@Seqn(ss, scopedDecls) =>
-        seqn.copy(ss = ss.filter {
+      case seqn@Seqn(ss, _) =>
+        seqn.copy(ss = ss.filterNot {
           // TODO: Do we always remove folds/unfolds regardless of permission value?
-          case Fold(PredicateAccessPredicate(PredicateAccess(_, name), _)) => !foldPreds(name)
-          case Unfold(PredicateAccessPredicate(PredicateAccess(_, name), _)) => !unfoldPreds(name)
-          case _ => true
+          case Fold(PredicateAccessPredicate(PredicateAccess(_, name), _)) => predIds(name)
+          case Unfold(PredicateAccessPredicate(PredicateAccess(_, name), _)) => predIds(name)
+          case _ => false
         })(seqn.pos, seqn.info, seqn.errT)
     }, Traverse.BottomUp).execute[Seqn](stmts)
   }

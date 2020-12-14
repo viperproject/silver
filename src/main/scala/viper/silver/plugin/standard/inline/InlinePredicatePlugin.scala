@@ -32,14 +32,14 @@ class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate
       // TODO: Do we also need to inline in inhale/exhale/assert/assume and package/apply statements?
       val (prePredIds, postPredIds) = getPrePostPredIds(method, input, inlinePredIds)
       val inlinedPredMethod = inlinePredicates(method, input, prePredIds, postPredIds)
-      rewriteMethod(inlinedPredMethod, input, prePredIds, postPredIds)
+      rewriteMethod(inlinedPredMethod, prePredIds, postPredIds)
     }
     // TODO: Do we also need to rewrite functions?
     ViperStrategy.Slim({
-      case program@Program(_, _, _, predicates, methods, extensions) =>
+      case program@Program(_, _, _, predicates, _, extensions) =>
         program.copy(
           methods = rewrittenMethods,
-          predicates = predicates ++ extensions.collect{case InlinePredicate(p) => p},  
+          predicates = predicates ++ extensions.collect{case InlinePredicate(p) => p},
         )(program.pos, program.info, program.errT)
     }).execute[Program](input)
   }
