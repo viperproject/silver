@@ -58,7 +58,7 @@ trait Verifier extends LifetimeComponent {
    * the full command line that was used to (indirectly, for instance, via a translator) start the
    * verifier.
    */
-  def debugInfo(info: Seq[(String, Any)])
+  def debugInfo(info: Seq[(String, Any)]): Unit
 
   /**
    * Returns the dependencies.  A dependency could be any library or stand-alone
@@ -71,13 +71,13 @@ trait Verifier extends LifetimeComponent {
   /** Set the command-line arguments to be used in this verifier.
     * Is expected to be called before `start`.
     */
-  def parseCommandLine(args: Seq[String])
+  def parseCommandLine(args: Seq[String]): Unit
 
   /** Starts the verifier. Afterwards, a series of calls to `verify` is expected,
     * finally followed by a call to `stop`.
     * Is expected to be preceded by a call to `parseCommandLine`.
     */
-  def start()
+  def start(): Unit
 
   /** Verifies a given Viper program and returns a sequence of ''verification errors''.
     * Is expected to be preceded by a call to `start`.
@@ -90,7 +90,7 @@ trait Verifier extends LifetimeComponent {
   /** Stops the verifier. The behaviour of subsequent calls to `start` or `verify`
     * is unspecified.
     */
-  def stop()
+  def stop(): Unit
 }
 
 /**
@@ -103,8 +103,8 @@ class NoVerifier extends Verifier {
   val copyright = ""
   val dependencies = Nil
 
-  def debugInfo(info: Seq[(String, Any)]) {}
-  def parseCommandLine(args: Seq[String]) {}
+  def debugInfo(info: Seq[(String, Any)]): Unit = {}
+  def parseCommandLine(args: Seq[String]): Unit = {}
 
   def start() = {}
 

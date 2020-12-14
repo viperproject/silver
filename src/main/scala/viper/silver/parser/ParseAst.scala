@@ -79,22 +79,22 @@ trait PNode extends FastPositioned with Product with Rewritable {
   }
 
   /** @see [[Visitor.visit()]] */
-  def visit(f: PartialFunction[PNode, Unit]) {
+  def visit(f: PartialFunction[PNode, Unit]): Unit = {
     Visitor.visit(this, Nodes.subnodes)(f)
   }
 
   /** @see [[Visitor.visit()]] */
-  def visit(f1: PartialFunction[PNode, Unit], f2: PartialFunction[PNode, Unit]) {
+  def visit(f1: PartialFunction[PNode, Unit], f2: PartialFunction[PNode, Unit]): Unit = {
     Visitor.visit(this, Nodes.subnodes, f1, f2)
   }
 
   /** @see [[Visitor.visitOpt()]] */
-  def visitOpt(f: PNode => Boolean) {
+  def visitOpt(f: PNode => Boolean): Unit = {
     Visitor.visitOpt(this, Nodes.subnodes)(f)
   }
 
   /** @see [[Visitor.visitOpt()]] */
-  def visitOpt(f1: PNode => Boolean, f2: PNode => Unit) {
+  def visitOpt(f1: PNode => Boolean, f2: PNode => Unit): Unit = {
     Visitor.visitOpt(this, Nodes.subnodes, f1, f2)
   }
 
@@ -128,8 +128,8 @@ trait PNode extends FastPositioned with Product with Rewritable {
    * (Its implementation(s) depend on the argument list of a concrete PNode type.)
    *
    * @see [[PNode.initProperties()]] */
-  def deepCopyAll[A <: PNode]: A =
-    StrategyBuilder.Slim[PNode](PartialFunction.empty).execute[A](this)
+  def deepCopyAll[A <: PNode]: PNode =
+    StrategyBuilder.Slim[PNode]({case n => n}).execute[PNode](this)
 
   private val _children = scala.collection.mutable.ListBuffer[PNode] ()
 
@@ -139,7 +139,7 @@ trait PNode extends FastPositioned with Product with Rewritable {
   var next :Option[PNode] = None
   var prev :Option[PNode] = None
 
-  def initProperties() {
+  def initProperties(): Unit = {
 
     var ind : Int = 0
     var prev : PNode = null
@@ -157,7 +157,7 @@ trait PNode extends FastPositioned with Product with Rewritable {
           if (prev != null)
             prev.next = Some(c)
           prev = c
-          c.initProperties
+          c.initProperties()
         case Some (o) =>
           setNodeChildConnections (o)
           case s : GenTraversable[_] =>
@@ -197,10 +197,15 @@ case class PIdnUse(name: String) extends PExp with PIdentifier {
      */
   override val typeSubstitutions = List(PTypeSubstitution.id)
 
-  def forceSubstitution(ts: PTypeSubstitution) = {}
+  def forceSubstitution(ts: PTypeSubstitution) = {
+    typ = typ.substitute(ts)
+    assert(typ.isGround)
+  }
 }
 
-//case class PLocalVar
+trait PAnyFormalArgDecl extends PNode with PUnnamedTypedDeclaration
+
+case class PUnnamedFormalArgDecl(var typ: PType) extends PAnyFormalArgDecl
 
 /* Formal arguments.
  * [2014-11-13 Malte] Changed type to be a var, so that it can be updated
@@ -208,7 +213,7 @@ case class PIdnUse(name: String) extends PExp with PIdentifier {
  * explicit type in the binding of the variable, i.e., "let x: T = e1 in e2",
  * would be rather cumbersome.
  */
-case class PFormalArgDecl(idndef: PIdnDef, var typ: PType) extends PNode with PTypedDeclaration with PLocalDeclaration
+case class PFormalArgDecl(idndef: PIdnDef, var typ: PType) extends PAnyFormalArgDecl with PTypedDeclaration with PLocalDeclaration
 
 // Types
 trait PType extends PNode {
@@ -379,7 +384,7 @@ case class PWandType() extends PInternalType {
 trait PExp extends PNode {
   var typ: PType = PUnknown()
   def typeSubstitutions : scala.collection.Seq[PTypeSubstitution]
-  def forceSubstitution(ts: PTypeSubstitution)
+  def forceSubstitution(ts: PTypeSubstitution): Unit
 }
 
 case class PMagicWandExp(override val left: PExp, override val right: PExp) extends PBinExp(left, MagicWandOp.op, right) with PResourceAccess
@@ -419,8 +424,8 @@ class PTypeSubstitution(val m:Map[String,PType])  //extends Map[String,PType]()
     val bs = b.substitute(this)
     (as, bs) match {
       case (aa,bb) if aa == bb => Some(this)
-      case (tv@PTypeVar(name), t) if PTypeVar.isFreePTVName(name) => assert(!contains(name)); Some(substitute(name,t)+(name->t))
-      case (t, PTypeVar(name))    if PTypeVar.isFreePTVName(name) => add(bs,as)
+      case (PTypeVar(name), t) if PTypeVar.isFreePTVName(name) => assert(!contains(name)); Some(substitute(name,t)+(name->t))
+      case (_, PTypeVar(name))    if PTypeVar.isFreePTVName(name) => add(bs,as)
       case (gt1: PGenericType, gt2: PGenericType) if gt1.genericName == gt2.genericName =>
         ((gt1.typeArguments zip gt2.typeArguments).foldLeft[Option[PTypeSubstitution]](Some(this))
           ((ss: Option[PTypeSubstitution], p: (PType, PType)) => ss match {
@@ -472,7 +477,7 @@ trait POpApp extends PExp{
   def opName : String
   def args : Seq[PExp]
 
-  private val _typeSubstitutions = new scala.collection.mutable.MutableList[PTypeSubstitution]()
+  private val _typeSubstitutions = new scala.collection.mutable.ArrayDeque[PTypeSubstitution]()
   final override def typeSubstitutions = _typeSubstitutions
   def signatures : List[PTypeSubstitution]
   def extraLocalTypeVariables : Set[PDomainType] = Set()
@@ -502,7 +507,7 @@ case class PCall(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PType] =
   override val idnuse = func
   override val opName = func.name
   override def signatures = if (function!=null&& function.formalArgs.size == args.size) (function match{
-    case pf:PFunction => List(
+    case _: PFunction => List(
       new PTypeSubstitution(args.indices.map(i => POpApp.pArg(i).domain.name -> function.formalArgs(i).typ) :+ (POpApp.pRes.domain.name -> function.typ))
     )
     case pdf:PDomainFunction =>
@@ -514,7 +519,7 @@ case class PCall(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PType] =
 
   })
   else if(extfunction!=null && extfunction.formalArgs.size == args.size)( extfunction match{
-    case ppa: PPredicate => List(
+    case _: PPredicate => List(
       new PTypeSubstitution(args.indices.map(i => POpApp.pArg(i).domain.name -> extfunction.formalArgs(i).typ) :+ (POpApp.pRes.domain.name -> Bool))
     )
   })
@@ -770,7 +775,8 @@ case class PLet(exp: PExp, nestedScope: PLetNestedScope) extends PBinder{
   override def forceSubstitution(ts: PTypeSubstitution) = {
     super.forceSubstitution(ts)
     exp.forceSubstitution(ts)
-    this.nestedScope.variable.typ = exp.typ
+    body.forceSubstitution(ts)
+    nestedScope.variable.typ = exp.typ
   }
 }
 case class PLetNestedScope(variable: PFormalArgDecl, body: PExp) extends PNode with PScope
@@ -987,7 +993,7 @@ object PNewStmt {
 
   def unapply(s: PNewStmt): Option[(PIdnUse, Option[Seq[PIdnUse]])] = s match {
     case PRegularNewStmt(target, fields) => Some((target, Some(fields)))
-    case PStarredNewStmt(target) => Some((s.target, None))
+    case PStarredNewStmt(_) => Some((s.target, None))
   }
 }
 
@@ -1016,24 +1022,25 @@ trait PDeclaration extends PNode with PEntity {
   def idndef: PIdnDef
 }
 
+sealed trait PUnnamedTypedDeclaration extends PNode {
+  def typ: PType
+}
+
 trait PGlobalDeclaration extends PDeclaration
 trait PLocalDeclaration extends PDeclaration
 trait PUniversalDeclaration extends PDeclaration
 
-sealed trait PTypedDeclaration extends PDeclaration {
-  def typ: PType
-}
+sealed trait PTypedDeclaration extends PDeclaration with PUnnamedTypedDeclaration
+
 abstract class PErrorEntity(name: String) extends PEntity
 
 
 // a member (like method or axiom) that is its own name scope
-trait PMember extends PDeclaration with PScope {
-//  def idndef: PIdnDef
-}
+trait PMember extends PDeclaration with PScope
 
 trait PAnyFunction extends PMember with PGlobalDeclaration with PTypedDeclaration{
   def idndef: PIdnDef
-  def formalArgs: Seq[PFormalArgDecl]
+  def formalArgs: Seq[PAnyFormalArgDecl]
   def typ: PType
 }
 case class PProgram(imports: Seq[PImport], macros: Seq[PDefine], domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod], extensions: Seq[PExtender], errors: Seq[ParseReport]) extends PNode
@@ -1044,13 +1051,13 @@ case class PStandardImport(file: String) extends PImport()
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: Option[PStmt]) extends PMember with PGlobalDeclaration {
   def deepCopy(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, formalReturns: Seq[PFormalArgDecl] = this.formalReturns, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, body: Option[PStmt] = this.body): PMethod = {
     StrategyBuilder.Slim[PNode]({
-      case m: PMethod => PMethod(idndef, formalArgs, formalReturns, pres, posts, body)
+      case _: PMethod => PMethod(idndef, formalArgs, formalReturns, pres, posts, body)
     }).execute[PMethod](this)
   }
   def deepCopyWithNameSubstitution(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, formalReturns: Seq[PFormalArgDecl] = this.formalReturns, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, body: Option[PStmt] = this.body)
                                   (idn_generic_name: String, idn_substitution: String): PMethod = {
     StrategyBuilder.Slim[PNode]({
-      case m: PMethod => PMethod(idndef, formalArgs, formalReturns, pres, posts, body)
+      case _: PMethod => PMethod(idndef, formalArgs, formalReturns, pres, posts, body)
       case PIdnDef(name) if name == idn_generic_name => PIdnDef(idn_substitution)
       case PIdnUse(name) if name == idn_generic_name => PIdnUse(idn_substitution)
     }).execute[PMethod](this)
@@ -1060,19 +1067,19 @@ case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDoma
 case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp]) extends PAnyFunction {
   def deepCopy(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, typ: PType = this.typ, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, body: Option[PExp] = this.body): PFunction = {
     StrategyBuilder.Slim[PNode]({
-      case f: PFunction => PFunction(idndef, formalArgs, typ, pres, posts, body)
+      case _: PFunction => PFunction(idndef, formalArgs, typ, pres, posts, body)
     }).execute[PFunction](this)
   }
 }
 
-case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean)(val domainName:PIdnUse) extends PAnyFunction
+case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl], typ: PType, unique: Boolean)(val domainName:PIdnUse) extends PAnyFunction
 case class PAxiom(idndef: Option[PIdnDef], exp: PExp)(val domainName:PIdnUse) extends PScope
 case class PField(idndef: PIdnDef, typ: PType) extends PMember with PTypedDeclaration with PGlobalDeclaration
 case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: Option[PExp]) extends PMember with PTypedDeclaration with PGlobalDeclaration{
   val typ = PPredicateType()
 }
 
-case class PDomainFunction1(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends FastPositioned
+case class PDomainFunction1(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl], typ: PType, unique: Boolean) extends FastPositioned
 case class PAxiom1(idndef: Option[PIdnDef], exp: PExp) extends FastPositioned
 
 /**
@@ -1112,21 +1119,21 @@ object Nodes {
    */
   def subnodes(n: PNode): Seq[PNode] = {
     n match {
-      case PIdnDef(name) => Nil
-      case PIdnUse(name) => Nil
+      case PIdnDef(_) => Nil
+      case PIdnUse(_) => Nil
       case PFormalArgDecl(idndef, typ) => Seq(idndef, typ)
-      case PPrimitiv(name) => Nil
+      case PPrimitiv(_) => Nil
       case PDomainType(domain, args) => Seq(domain) ++ args
       case PSeqType(elemType) => Seq(elemType)
       case PSetType(elemType) => Seq(elemType)
       case PMultisetType(elemType) => Seq(elemType)
       case PUnknown() => Nil
-      case PBinExp(left, op, right) => Seq(left, right)
+      case PBinExp(left, _, right) => Seq(left, right)
       case PMagicWandExp(left, right) => Seq(left, right)
-      case PUnExp(op, exp) => Seq(exp)
+      case PUnExp(_, exp) => Seq(exp)
       case PTrigger(exp) => exp
-      case PIntLit(i) => Nil
-      case PBoolLit(b) => Nil
+      case PIntLit(_) => Nil
+      case PBoolLit(_) => Nil
       case PNullLit() => Nil
       case PPredicateType() => Nil
       case PWandType() => Nil
@@ -1164,7 +1171,7 @@ object Nodes {
       case PExplicitSet(elems) => elems
       case PEmptyMultiset(t) => Seq(t)
       case PExplicitMultiset(elems) => elems
-      case PMacroRef(name) => Nil
+      case PMacroRef(_) => Nil
       case PSeqn(ss) => ss
       case PFold(exp) => Seq(exp)
       case PUnfold(exp) => Seq(exp)
@@ -1185,18 +1192,18 @@ object Nodes {
       case PIf(cond, thn, els) => Seq(cond, thn, els)
       case PWhile(cond, invs, body) => Seq(cond) ++ invs ++ Seq(body)
       case PLocalVarDecl(idndef, typ, init) => Seq(idndef, typ) ++ (if (init.isDefined) Seq(init.get) else Nil)
-      case PProgram(files, macros, domains, fields, functions, predicates, methods, extensions, errors) =>
+      case PProgram(_, _, domains, fields, functions, predicates, methods, extensions, _) =>
         domains ++ fields ++ functions ++ predicates ++ methods ++ extensions
-      case PLocalImport(file) =>
+      case PLocalImport(_) =>
         Seq()
-      case PStandardImport(file) => Seq()
+      case PStandardImport(_) => Seq()
       case PDomain(idndef, typVars, funcs, axioms) => Seq(idndef) ++ typVars ++ funcs ++ axioms
       case PField(idndef, typ) => Seq(idndef, typ)
       case PMethod(idndef, args, rets, pres, posts, body) =>
         Seq(idndef) ++ args ++ rets ++ pres ++ posts ++ body.toSeq
       case PFunction(name, args, typ, pres, posts, body) =>
         Seq(name) ++ args ++ Seq(typ) ++ pres ++ posts ++ body
-      case PDomainFunction(name, args, typ, unique) =>
+      case PDomainFunction(name, args, typ, _) =>
         Seq(name) ++ args ++ Seq(typ)
       case PPredicate(name, args, body) =>
         Seq(name) ++ args ++ body
@@ -1205,6 +1212,7 @@ object Nodes {
       case PDefine(idndef, optArgs, body) => Seq(idndef) ++ optArgs.getOrElse(Nil) ++ Seq(body)
       case t : PExtender => t.getSubnodes()
       case _: PSkip => Nil
+      case _: PUnnamedFormalArgDecl => Nil
     }
   }
 }

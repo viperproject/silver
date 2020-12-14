@@ -9,7 +9,7 @@ package viper.silver.plugin.standard.termination.transformation
 import org.jgrapht.alg.connectivity.KosarajuStrongConnectivityInspector
 import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 protected object CallGraph {
 
@@ -19,7 +19,7 @@ protected object CallGraph {
   def mutuallyRecursiveVertices[V](graph: DefaultDirectedGraph[V, DefaultEdge]): Seq[Set[V]] = {
     val stronglyConnected = new KosarajuStrongConnectivityInspector(graph)
     val c = stronglyConnected.stronglyConnectedSets()
-    c.asScala.map(_.asScala.toSet)
+    c.asScala.map(_.asScala.toSet).toSeq
   }
 
 

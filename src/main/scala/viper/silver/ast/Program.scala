@@ -9,7 +9,8 @@ package viper.silver.ast
 import viper.silver.ast.pretty.{Fixity, Infix, LeftAssociative, NonAssociative, Prefix, RightAssociative}
 import utility.{Consistency, DomainInstances, Nodes, Types, Visitor}
 import viper.silver.ast.MagicWandStructure.MagicWandStructure
-import viper.silver.cfg.silver.CfgGenerator
+import viper.silver.ast.utility.rewriter.StrategyBuilder
+import viper.silver.cfg.silver.{CfgGenerator, SilverCfg}
 import viper.silver.verifier.ConsistencyError
 import viper.silver.utility.{CacheHelper, DependencyAware}
 
@@ -127,7 +128,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
           if (!Consistency.areAssignable(args, funcDef.formalArgs map {
             fa =>
               // substitute parameter types
-              LocalVarDecl(fa.name, fa.typ.substitute(typVarMap))(fa.pos)
+              UnnamedLocalVarDecl(fa.typ.substitute(typVarMap))(fa.pos)
           })) {
             s :+= ConsistencyError(
               s"Domain function $name with formal arguments ${funcDef.formalArgs} cannot be applied to provided arguments $args.",
@@ -188,7 +189,9 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       var s: Seq[ConsistencyError] = Seq.empty[ConsistencyError]
       //check name declarations
       currentScope.scopedDecls.foreach(l=> {
-        if(!Consistency.validUserDefinedIdentifier(l.name)) s :+= ConsistencyError(s"${l.name} is not a valid identifier.", l.pos)
+        if(!Consistency.validUserDefinedIdentifier(l.name))
+          s :+= ConsistencyError(s"${l.name} is not a valid identifier.", l.pos)
+
         declarationMap.get(l.name) match {
           case Some(_: Declaration) => s :+= ConsistencyError(s"Duplicate identifier ${l.name} found.", l.pos)
           case None => declarationMap += (l.name -> l)
@@ -196,11 +199,18 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       })
 
       //check name uses
-      Visitor.visitOpt(currentScope.asInstanceOf[Node], Nodes.subnodes){n=> {
+      Visitor.visitOpt(currentScope.asInstanceOf[Node], Nodes.subnodes){ n => {
         n match {
-          case sc: Scope => if (sc == currentScope) true else {
-            s ++= checkNamesInScope(sc, declarationMap)
-            false
+          case sc: Scope => {
+            if (sc == currentScope)
+              true
+            else {
+              n match {
+                case _: DomainFunc => s ++= checkNamesInScope(sc, immutable.HashMap.empty[String, Declaration])
+                case _ => s ++= checkNamesInScope(sc, declarationMap)
+              }
+              false
+            }
           }
           case _ =>
             val optionalError = n match {
@@ -317,7 +327,17 @@ case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], body: Option[E
       Seq(ConsistencyError("Predicates must not contain old expressions.",body.get.pos))
      else Seq()) ++
     (if (body.isDefined && !(Consistency.noPerm(body.get) && Consistency.noForPerm(body.get)))
-      Seq(ConsistencyError("perm and forperm expressions are not allowed in predicate bodies", body.get.pos)) else Seq())
+      Seq(ConsistencyError("perm and forperm expressions are not allowed in predicate bodies", body.get.pos)) else Seq()) ++
+    {
+      var errors = Seq.empty[ConsistencyError]
+      if (body.isDefined) {
+        StrategyBuilder.SlimVisitor[Node]({
+          case m: MagicWand => errors ++= Seq(ConsistencyError("Magic wands are not supported in predicates.", m.pos))
+          case _ =>
+        }).execute[Node](body.get)
+      }
+      errors
+    }
 
   val scopedDecls: Seq[Declaration] = formalArgs
   def isAbstract = body.isEmpty
@@ -384,7 +404,7 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
   /**
     * Returns a control flow graph that corresponds to this method.
     */
-  def toCfg(simplify: Boolean = true) = CfgGenerator.methodToCfg(this, simplify)
+  def toCfg(simplify: Boolean = true): SilverCfg = CfgGenerator.methodToCfg(this, simplify)
 }
 
 object MethodWithLabelsInScope {
@@ -412,7 +432,17 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres
     posts.flatMap(p => if (!Consistency.noPermissions(p))
       Seq(ConsistencyError("Function post-conditions must not contain permissions.", p.pos)) else Seq()) ++
     (if(body.isDefined) Consistency.checkFunctionBody(body.get) else Seq()) ++
-    (if(!Consistency.noDuplicates(formalArgs)) Seq(ConsistencyError("There must be no duplicates in formal args.", pos)) else Seq())
+    (if(!Consistency.noDuplicates(formalArgs)) Seq(ConsistencyError("There must be no duplicates in formal args.", pos)) else Seq()) ++
+    {
+      var errors = Seq.empty[ConsistencyError]
+      pres.foreach(pre => {
+        StrategyBuilder.SlimVisitor[Node]({
+          case m: MagicWand => errors ++= Seq(ConsistencyError("Magic wands are not supported in function's preconditions.", m.pos))
+          case _ =>
+        }).execute[Node](pre)
+      })
+      errors
+    }
 
   val scopedDecls: Seq[Declaration] = formalArgs
   /**
@@ -445,21 +475,28 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres
 }
 
 
+trait AnyLocalVarDecl extends Hashable with Positioned with Infoed with Typed with TransformableErrors {
+  override def getMetadata: Seq[Any] = {
+    Seq(pos, info, errT)
+  }
+}
+
+// --- Unnamed local variable declarations
+
+case class UnnamedLocalVarDecl(typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AnyLocalVarDecl
+
+
 // --- Local variable declarations
 
 /**
  * Local variable declaration.  Note that these are not statements in the AST, but
  * rather occur as part of a method, loop, function, etc.
  */
-case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Hashable with Positioned with Infoed with Typed with Declaration with TransformableErrors {
+case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AnyLocalVarDecl with Declaration {
   /**
    * Returns a local variable with equivalent information
    */
   lazy val localVar = LocalVar(name, typ)(pos, info, errT)
-
-  override def getMetadata:Seq[Any] = {
-    Seq(pos, info, errT)
-  }
 }
 
 
@@ -515,7 +552,7 @@ object Substitution{
   def toString(s : Substitution) : String = s.mkString(",")
 }
 /** Domain function which is not a binary or unary operator. */
-case class DomainFunc(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, unique: Boolean = false)
+case class DomainFunc(name: String, formalArgs: Seq[AnyLocalVarDecl], typ: Type, unique: Boolean = false)
                      (val pos: Position = NoPosition, val info: Info = NoInfo,val domainName : String, val errT: ErrorTrafo = NoTrafos)
                       extends AbstractDomainFunc with DomainMember with Declaration {
   override lazy val check : Seq[ConsistencyError] =
@@ -524,7 +561,7 @@ case class DomainFunc(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, un
   override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)
   }
-  val scopedDecls: Seq[Declaration] = formalArgs
+  val scopedDecls: Seq[Declaration] = formalArgs.filter(p => p.isInstanceOf[LocalVarDecl]).asInstanceOf[Seq[LocalVarDecl]]
 }
 
 // --- Common functionality
@@ -544,7 +581,7 @@ sealed trait DomainMember extends Hashable with Positioned with Infoed with Scop
 
 /** Common ancestor for things with formal arguments. */
 sealed trait Callable {
-  def formalArgs: Seq[LocalVarDecl]
+  def formalArgs: Seq[AnyLocalVarDecl]
   def name: String
 }
 

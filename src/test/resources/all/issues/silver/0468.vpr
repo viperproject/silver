@@ -1,0 +1,10 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Ref
+
+method r(l: Seq[Int])
+  requires |l| == 3 && forall i: Int :: (0 <= i && i < |l|) ==> l[i] == 4
+{
+  assert l[(forperm y: Ref [y.f] :: false) ? 1 : 2] == 4;
+}

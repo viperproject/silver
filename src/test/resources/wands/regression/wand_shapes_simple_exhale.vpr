@@ -2,6 +2,8 @@
 // http://creativecommons.org/publicdomain/zero/1.0/
 
 //:: IgnoreFile(/carbon/issue/244/)
+//:: IgnoreFile(/silver/issue/478/)
+
 field f: Ref
 field g: Int
 
@@ -25,6 +27,7 @@ method t02(x: Ref) {
 }
 
 predicate P(x:Ref) {
+  //:: ExpectedOutput(consistency.error)
   acc(x.f) --* acc(x.f)
 }
 

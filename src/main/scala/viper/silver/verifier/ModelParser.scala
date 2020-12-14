@@ -1,68 +1,58 @@
 package viper.silver.verifier
 
 import java.util.regex.{Matcher, Pattern}
-
-import viper.silver.parser.FastParser.PWrapper
-
 import scala.collection.mutable
-
+import fastparse._
+import viper.silver.parser.FastParser.whitespace
+import viper.silver.parser.FastParser.P
 
 object ModelParser {
-  val White = PWrapper {
-    import fastparse.all._
 
-    NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
-  }
+  def identifier[_: P]: P[Unit] = P(CharIn("0-9", "A-Z", "a-z", "[]\"'#+-*/:=!$_@<>.%~") ~~ CharIn("0-9", "A-Z", "a-z", "[]\"'#+-*/:=!$_@<>.%~").repX)
 
-  import fastparse.noApi._
+  def idnuse[_: P]: P[String] = P(identifier).!.filter(a => a != "else" && a != "let" && a != "->")
 
-  import White._
+  def numeral[_: P] = P(CharIn("0-9") ~~ CharIn("0-9").repX)
 
-  lazy val identifier: P[Unit] = P(CharIn('0' to '9', 'A' to 'Z', 'a' to 'z', "+-*/:=!$_@<>.%~") ~~ CharIn('0' to '9', 'A' to 'Z', 'a' to 'z', "+-*/:=!$_@<>.%~").repX)
+  def modelEntry[_: P] : P[(String, ModelEntry)] = P(idnuse ~ "->" ~ definition)
 
-  lazy val idnuse: P[String] = P(identifier).!.filter(a => a != "else" && a != "let" && a != "->")
+  def definition[_: P]: P[ModelEntry] = P(mapping | valueAsSingle)
 
-  lazy val numeral = P(CharIn('0' to '9') ~~ CharIn('0' to '9').repX)
+  def mapping[_: P]: P[MapEntry] = P("{" ~/ mappingContent ~"}")
 
-  lazy val modelEntry : P[(String, ModelEntry)] = P(idnuse ~ "->" ~ definition)
+  def mappingContent[_: P] = P(options | valueAsElse)
 
-  lazy val definition: P[ModelEntry] = P(mapping | valueAsSingle)
-
-  lazy val mapping: P[MapEntry] = P("{" ~/ mappingContent ~"}")
-
-  lazy val mappingContent = P(options | valueAsElse)
-
-  lazy val options: P[MapEntry] = P(option.rep(min=1) ~ "else" ~ "->" ~ value).map{
+  def options[_: P]: P[MapEntry] = P(option.rep(0) ~ "else" ~ "->" ~ value).map{
     case (options, els) => MapEntry(options.toMap, els)
   }
 
-  lazy val option = P(value.rep(min=1) ~ "->" ~/ value)
+  def option[_: P] = P(value.rep(1) ~ "->" ~/ value)
 
-  lazy val value: P[String] = P(idnuse | let | application)
+  def value[_: P]: P[String] = P(idnuse | let | application)
 
-  lazy val valueAsSingle : P[SingleEntry] = P(value).map(SingleEntry)
+  def valueAsSingle[_: P] : P[SingleEntry] = P(value).map(SingleEntry)
 
-  lazy val valueAsElse : P[MapEntry] = P(value).map{
+  def valueAsElse[_: P] : P[MapEntry] = P(value).map{
     case v => {
-      boolFuncDef.parse(v) match {
+      parse(v, boolFuncDef(_)) match {
         case Parsed.Success(e, _) => e
         case _ => MapEntry(Map(), v)
       }
     }
   }
 
-  lazy val let : P[String] = P("(let" ~ "(" ~ vardef.rep(min=1) ~ ")" ~ value ~ ")").map{
+  def let[_: P] : P[String] = P("(let" ~ "(" ~ vardef.rep(1) ~ ")" ~ value ~ ")").map{
     case (defs, body) =>
       defs.foldLeft(body)((currentBody, definition) => currentBody.replaceAll(Pattern.quote(definition._1), Matcher.quoteReplacement(definition._2)))
   }
 
-  lazy val vardef : P[(String, String)] = P("(" ~ idnuse ~ value ~")")
+  def vardef[_: P] : P[(String, String)] = P("(" ~ idnuse ~ value ~")")
 
-  lazy val application: P[String] = P("(" ~ value.rep(min=1) ~")").!
+  def application[_: P]: P[String] = P("(" ~ value.rep(1) ~")").!
 
-  lazy val partsOfApplication: P[Seq[String]] = P("(" ~ value.rep(min=1) ~")")
+  def partsOfApplication[_: P]: P[Seq[String]] = P("(" ~ value.rep(1) ~")")
 
-  lazy val model : P[Model] = P(Start ~ modelEntry.rep ~ End).map(entries => {
+  def model[_: P] : P[Model] = P(Start ~ modelEntry.rep ~ End).map(entries => {
     val res: mutable.Map[String, ModelEntry] = mutable.Map()
     for ((name, entry) <- entries) {
       if (res.contains(name)){
@@ -81,22 +71,22 @@ object ModelParser {
     Model(res.toMap)
   })
 
-  lazy val boolFuncDef: P[MapEntry] = P(Start ~ alternatives ~ End).map{
+  def boolFuncDef[_: P]: P[MapEntry] = P(Start ~ alternatives ~ End).map{
     case options => MapEntry(options.map(lhs => lhs -> "true").toMap, "false")
   }
 
-  lazy val alternatives: P[Seq[Seq[String]]] = P(singleAlternative | multipleAlternatives)
+  def alternatives[_: P]: P[Seq[Seq[String]]] = P(singleAlternative | multipleAlternatives)
 
-  lazy val multipleAlternatives = P("(or" ~ boolOption.rep(min=1) ~")")
+  def multipleAlternatives[_: P] = P("(or" ~ boolOption.rep(1) ~")")
 
-  lazy val singleAlternative: P[Seq[Seq[String]]] = P(boolOption).map(Seq(_))
+  def singleAlternative[_: P]: P[Seq[Seq[String]]] = P(boolOption).map(Seq(_))
 
-  lazy val boolOption: P[Seq[String]] = P("(and"~ equality.rep(min=1) ~")")
+  def boolOption[_: P]: P[Seq[String]] = P("(and"~ equality.rep(1) ~")")
 
-  lazy val equality: P[String] = P("(=" ~ "(:var" ~ numeral ~")" ~ idnuse  ~ ")")
+  def equality[_: P]: P[String] = P("(=" ~ "(:var" ~ numeral ~")" ~ idnuse  ~ ")")
 
   def getApplication(s: String) = {
-    partsOfApplication.parse(s) match {
+    parse(s, partsOfApplication(_)) match {
       case Parsed.Success(parts, _) => parts
       case _ => sys.error("This case should be impossible")
     }

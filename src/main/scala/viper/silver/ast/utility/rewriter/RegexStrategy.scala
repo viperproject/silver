@@ -85,7 +85,7 @@ case class SimpleRegexContext[N <: Rewritable](p: PartialFunction[N, N]) extends
   * @param p Partial function used for rewriting
   * @tparam N Common supertype of every node in the tree
   */
-class SlimRegexStrategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag](a: TRegexAutomaton, p: PartialFunction[N, N]) extends RegexStrategy[N, Any](a, SimpleRegexContext(p), new PartialContextR(null, (x, y) => x, (x, y) => true))
+class SlimRegexStrategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag](a: TRegexAutomaton, p: PartialFunction[N, N]) extends RegexStrategy[N, Any](a, SimpleRegexContext(p), new PartialContextR(null, (x, _) => x, (_, _) => true))
 
 /**
   * A strategy that performs rewriting according to the Regex and Rewriting function specified
@@ -128,7 +128,7 @@ class RegexStrategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTa
 
     }
     // Get the tuple that matches parameter node
-    def get(node: N, ancList:Seq[N]): Option[CTXT] = {
+    def get(node: N, ancList: Seq[N]): Option[CTXT] = {
       // Get all matching nodes together with their index (only way to delete them later)
       val candidates = map.zipWithIndex.filter( _._1._1 eq node )
 
@@ -234,8 +234,6 @@ class RegexStrategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTa
       node match {
         case map: Map[_, _] => map.map(replaceTopDown(_, matches, ancList)).asInstanceOf[A]
 
-        case collection: Iterable[_] => collection.map(replaceTopDown(_, matches, ancList)).asInstanceOf[A]
-
         case Some(value) => Some(replaceTopDown(value, matches, ancList)).asInstanceOf[A]
 
         case n: N => {
@@ -262,9 +260,11 @@ class RegexStrategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTa
             val allowedToRecurse = recursionFunc.applyOrElse(newNode, (_: N) => newNode.children).toSet
             val children = newNode.children.map(child => if (allowedToRecurse(child)) replaceTopDown(child, matches, newAncList) else child)
 
-            (newNode.children = children).asInstanceOf[A]
+            newNode.withChildren(children).asInstanceOf[A]
           }
         }
+
+        case collection: Iterable[_] => collection.map(replaceTopDown(_, matches, ancList)).asInstanceOf[A]
 
         case value => value
       }

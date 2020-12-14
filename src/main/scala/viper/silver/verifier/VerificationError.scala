@@ -6,11 +6,12 @@
 
 package viper.silver.verifier
 
-import fastparse.core.Parsed
+import fastparse.Parsed
 import viper.silver.ast._
+import viper.silver.ast.pretty.FastPrettyPrinter
 import viper.silver.ast.utility.rewriter.Rewritable
 
-abstract class ModelEntry()
+sealed trait ModelEntry
 case class SingleEntry(value: String) extends ModelEntry {
   override def toString: String = value
 }
@@ -48,7 +49,7 @@ object CounterexampleTransformer {
 object Model {
 
   def apply(modelString: String) : Model = {
-    ModelParser.model.parse(modelString) match{
+    fastparse.parse(modelString, ModelParser.model(_)) match{
       case Parsed.Success(m, index) => return m
       case f@Parsed.Failure(last, index, extra) => throw new Exception(f.toString)
     }
@@ -76,7 +77,7 @@ trait VerificationError extends AbstractError with ErrorMessage {
       rm
     }
   }
-  def loggableMessage = s"$fullId-$pos"
+  def loggableMessage: String = s"$fullId-$pos" + (if (cached) "-cached" else "")
   def fullId = s"$id:${reason.id}"
   var counterexample : Option[Counterexample] = None
 }
@@ -150,7 +151,7 @@ abstract class AbstractVerificationError extends VerificationError {
 
   def withReason(reason: ErrorReason): AbstractVerificationError
 
-  override def toString = readableMessage(true, true)
+  override def toString = readableMessage(true, true) + (if (cached) " - cached" else "")
 }
 
 abstract class AbstractErrorReason extends ErrorReason {
@@ -230,9 +231,13 @@ object errors {
     val text = "Wrapped error, should be unwrapped"
     val offendingNode = wrappedError.offendingNode
     val reason = wrappedError.reason
+
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) =
       ErrorWrapperWithExampleTransformer(wrappedError.withNode(offendingNode).asInstanceOf[AbstractVerificationError], transformer)
+
     def withReason(r: ErrorReason) = ErrorWrapperWithExampleTransformer(wrappedError.withReason(r), transformer)
+
+    override def readableMessage(withId: Boolean, withPosition: Boolean) = wrappedError.readableMessage(withId, withPosition)
   }
 
   def PreconditionInAppFalse(offendingNode: FuncApp): PartialVerificationError =
@@ -520,7 +525,7 @@ object reasons {
 
   case class InsufficientPermission(offendingNode: LocationAccess) extends AbstractErrorReason {
     val id = "insufficient.permission"
-    def readableMessage = s"There might be insufficient permission to access $offendingNode."
+    def readableMessage = s"There might be insufficient permission to access " + FastPrettyPrinter.pretty(offendingNode)
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = InsufficientPermission(offendingNode.asInstanceOf[LocationAccess])
   }

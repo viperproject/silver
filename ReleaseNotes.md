@@ -1,5 +1,6 @@
 ## Release 2020.7
 #### Date 17/07/20     [Download](http://www.pm.inf.ethz.ch/research/viper/downloads.html)
+##### Our repositories are now on GitHub: [github.com/viperproject](https://github.com/viperproject)
 
 ### Changes in Viper Language
 * Axiom names are now optional [(Silver, 193)](https://github.com/viperproject/silver/issues/193).
@@ -17,7 +18,7 @@ For example, we now allow domains such as:
   * There is also support for proving termination of methods and loops, but those are still experimental and support for these features as well as the semantics of the specifications might change.
   * Details are explained in the Viper tutorial.
 * Experimental support for **counter examples**:
-  * Added the command line option `--counterexample` to return, for each verification error, either a backend-independent counter example for only the values of local variables, or a native backend-specific counter example (in both Silicon and Carbon).
+  * Added the command line option `--counterexample`. When using either backend with `--counterexamples=variables`, it will return, along with each verification error, a counter example for the values of all local variables (but not the heap or functions) on the Viper level. Alternatively, using the option `--counterexample=native` will return a backend-specific counter example along with each error that contains the entire model exactly as returned by the SMT solver, i.e., including any renaming and encoding the backends may have performed.
 
 ### Bug fixes
 * 64-bit Z3 is now shipped with the Windows distribution (the 32-bit version which was inadvertently still being shipped can cause memory issues for some examples) [(Silicon, 375)](https://github.com/viperproject/silicon/issues/375)

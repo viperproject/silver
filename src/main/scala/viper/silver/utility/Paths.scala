@@ -107,9 +107,9 @@ object Paths {
   }
 
   /** Closes all open file systems stored in `openFileSystems`. */
-  private def addShutdownHookForOpenFileSystems() {
+  private def addShutdownHookForOpenFileSystems(): Unit = {
     Runtime.getRuntime.addShutdownHook(new Thread {
-      override def run() {
+      override def run(): Unit = {
         if (openFileSystems != null) {
           openFileSystems foreach (fs => if (fs.isOpen) {fs.close()})
         }

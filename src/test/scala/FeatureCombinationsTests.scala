@@ -4,7 +4,8 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-import org.scalatest.{Matchers, FunSuite}
+import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.matchers.should.Matchers
 import viper.silver.ast._
 import viper.silver.ast.utility.Simplifier._
 
@@ -17,7 +18,7 @@ import viper.silver.ast.utility.Simplifier._
   *
   */
 
-class FeatureCombinationsTests extends FunSuite with Matchers {
+class FeatureCombinationsTests extends AnyFunSuite with Matchers {
 
   /** forall tests */
 

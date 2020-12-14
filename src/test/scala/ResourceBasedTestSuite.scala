@@ -7,8 +7,9 @@
 package viper.silver.testing
 
 import org.scalatest._
-import java.nio.file.{Path, Files}
-import scala.collection.JavaConverters._
+import java.nio.file.{Files, Path}
+import org.scalatest.funsuite.AnyFunSuite
+import scala.jdk.CollectionConverters._
 
 /** A test suite for end-to-end toolchain testing that operates on source files
   * in resource directories.
@@ -18,7 +19,7 @@ import scala.collection.JavaConverters._
   * Subclasses need to implement the actual testing logic in `registerTest`.
   *
   */
-abstract class ResourceBasedTestSuite extends FunSuite {
+abstract class ResourceBasedTestSuite extends AnyFunSuite {
   // Subclasses can extend the test input with further information
   // such as annotations
   type InputType <: TestInput
@@ -41,7 +42,7 @@ abstract class ResourceBasedTestSuite extends FunSuite {
    * To be implemented by subclasses.
    * @param input the test input as built in `buildTestInput`
    */
-  def registerTest(input: InputType)
+  def registerTest(input: InputType): Unit
 
   /**
    * Builds the test input from the given source file.
@@ -87,7 +88,7 @@ abstract class ResourceBasedTestSuite extends FunSuite {
    *            assumed to be a test file.
    * @param prefix The initial prefix used for naming and tagging the resulting ScalaTest tests.
    */
-  private def registerTestDirectory(dir: Path, prefix: String) {
+  private def registerTestDirectory(dir: Path, prefix: String): Unit = {
     assert(dir != null, "Directory must not be null")
     assert(Files.isDirectory(dir), "Path must represent a directory")
 
@@ -153,7 +154,7 @@ abstract class ResourceBasedTestSuite extends FunSuite {
     viper.silver.utility.Paths.pathFromResource(classLoader.getResource(testDir))
   }
 
-  private def registerTests() {
+  private def registerTests(): Unit = {
     if (_testsRegistered) return
 
     // Here, the order of elements in testDirectories is defined

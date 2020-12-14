@@ -4,12 +4,12 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-import org.scalatest.FunSuite
 import viper.silver.verifier.ConsistencyError
 import viper.silver.ast._
-import org.scalatest.Matchers
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.funsuite.AnyFunSuite
 
-class ConsistencyTests extends FunSuite with Matchers {
+class ConsistencyTests extends AnyFunSuite with Matchers {
 
     /* These tests invoke errors from consistency checks made at AST nodes.
     At the moment, many of these errors cannot be invoked by parsing a Silver program
@@ -225,6 +225,16 @@ class ConsistencyTests extends FunSuite with Matchers {
       ConsistencyError("No matching domain function f found of return type Bool, instead found with return type Int.", NoPosition),
       ConsistencyError("Domain function f with formal arguments List(x: Int) cannot be applied to provided arguments List(boolRes).", NoPosition),
       ConsistencyError("No matching identifier g found of type DomainFunc.", NoPosition)
+    )
+  }
+
+  test("Testing if Forall AST nodes have implication as expression") {
+
+    val f = Field("f", Int)()
+    val forall = Forall(Seq(LocalVarDecl("i", Int)()), Seq(), CondExp(FalseLit()(), TrueLit()(), FieldAccessPredicate(FieldAccess(LocalVar("r", Ref)(), f)(), FullPerm()())())())()
+
+    forall.checkTransitively shouldBe Seq(
+      ConsistencyError("Quantified permissions must have an implication as expression, with the access predicate in its right-hand side.", NoPosition)
     )
   }
 }

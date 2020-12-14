@@ -1,0 +1,18 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+domain NamelessParameters[T] {
+  function add1(T, T): T
+}
+
+domain MixedNamedAndNamelessParameters1[T] {
+  function add2(T, right: T): T
+}
+
+domain MixedNamedAndNamelessParameters2[T] {
+  function add3(left: T, T): T
+}
+
+domain NamedParameters[T] {
+  function add4(left: T, right: T): T
+}

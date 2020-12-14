@@ -6,12 +6,12 @@
 
 package viper.silver
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.frontend._
 import viper.silver.parser._
 import viper.silver.verifier.Verifier
 
-class SemanticAnalysisTests extends FunSuite {
+class SemanticAnalysisTests extends AnyFunSuite {
 
   object frontend extends SilFrontend {
     def configureVerifier(args: Seq[String]): SilFrontendConfig = ???

@@ -27,6 +27,10 @@ case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv
 
   def report(msg: Message): Unit = {
     msg match {
+      case AstConstructionFailureMessage(time, result) =>
+        csv_file.write(s"AstConstructionFailureMessage,${time}\n")
+      case AstConstructionSuccessMessage(time) =>
+        csv_file.write(s"AstConstructionSuccessMessage,${time}\n")
       case OverallFailureMessage(verifier, time, result) =>
         csv_file.write(s"OverallFailureMessage,${time}\n")
       case OverallSuccessMessage(verifier, time) =>
@@ -50,11 +54,12 @@ case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv
           csv_file.write(s"WarningsDuringParsing,${error}\n")
         })
       case CopyrightReport(text) =>
+      case MissingDependencyReport(text) =>
 
-      case EntitySuccessMessage(verifier, concerning, time) =>
-        csv_file.write(s"EntitySuccessMessage,${concerning.name},${time}\n")
-      case EntityFailureMessage(verifier, concerning, time, result) =>
-        csv_file.write(s"EntityFailureMessage,${concerning.name},${time}\n")
+      case EntitySuccessMessage(verifier, concerning, time, cached) =>
+        csv_file.write(s"EntitySuccessMessage,${concerning.name},${time}, ${cached}\n")
+      case EntityFailureMessage(verifier, concerning, time, result, cached) =>
+        csv_file.write(s"EntityFailureMessage,${concerning.name},${time}, ${cached}\n")
       case ConfigurationConfirmation(_) =>
       case InternalWarningMessage(_) =>
       case sm:SimpleMessage =>
@@ -78,6 +83,20 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
 
   def report(msg: Message): Unit = {
     msg match {
+      case AstConstructionFailureMessage(t, res) =>
+        val num_errors = res.errors.length
+        if (!timeInfo)
+          println( s"AST construction resulted in $num_errors error${plurals(num_errors)}:" )
+        else
+          println( s"AST construction resulted in $num_errors error${plurals(num_errors)} in ${timeStr(t)}:" )
+        res.errors.zipWithIndex.foreach { case(e, n) => println( s"  [${bulletFmt(num_errors).format(n)}] ${e.readableMessage}" ) }
+
+      case AstConstructionSuccessMessage(t) =>
+        if (!timeInfo)
+          println( s"the file represents a consistent Viper program." )
+        else
+          println( s"the file represents a consistent Viper program; constructed AST in ${timeStr(t)}." )
+
       case OverallFailureMessage(v, t, res) =>
         val num_errors = res.errors.length
         if (!timeInfo)
@@ -131,8 +150,11 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
       case CopyrightReport(text) =>
         println( text )
 
-      case EntitySuccessMessage(_, _, _) =>    // FIXME Currently, we only print overall verification results to STDOUT.
-      case EntityFailureMessage(_, _, _, _) => // FIXME Currently, we only print overall verification results to STDOUT.
+      case MissingDependencyReport(text) =>
+        println( s"encountered missing dependency: $text" )
+
+      case EntitySuccessMessage(_, _, _, _) =>    // FIXME Currently, we only print overall verification results to STDOUT.
+      case EntityFailureMessage(_, _, _, _, _) => // FIXME Currently, we only print overall verification results to STDOUT.
       case ConfigurationConfirmation(_) =>     // TODO  use for progress reporting
         //println( s"Configuration confirmation: $text" )
       case InternalWarningMessage(_) =>        // TODO  use for progress reporting

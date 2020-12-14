@@ -496,8 +496,17 @@ case object LabelledOld {
 // --- Other expressions
 
 case class Let(variable: LocalVarDecl, exp: Exp, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp with Scope {
-  override lazy val check : Seq[ConsistencyError] =
-    if(!(exp.typ isSubtype variable.typ)) Seq(ConsistencyError( s"Let-bound variable ${variable.name} is of type ${variable.typ}, but bound expression is of type ${exp.typ}", exp.pos)) else Seq()
+  override lazy val check : Seq[ConsistencyError] = {
+    var errors = Seq.empty[ConsistencyError]
+
+    if(!(exp.typ isSubtype variable.typ))
+      errors ++= Seq(ConsistencyError( s"Let-bound variable ${variable.name} is of type ${variable.typ}, but bound expression is of type ${exp.typ}", exp.pos))
+
+    if (!exp.isPure)
+      errors ++= Seq(ConsistencyError(s"Let expression '${exp}' is not pure", exp.pos))
+
+    errors
+  }
   val typ = body.typ
   val scopedDecls: Seq[Declaration] = Seq(variable)
 }
@@ -538,7 +547,8 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
   override lazy val check : Seq[ConsistencyError] =
     (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Body of universal quantifier must be of Bool type, but found ${exp.typ}", exp.pos)) else Seq()) ++
     Consistency.checkAllVarsMentionedInTriggers(variables, triggers) ++
-    checkNoNestedQuantsForQuantPermissions
+    checkNoNestedQuantsForQuantPermissions ++
+    checkQuantifiedPermission
 
   /** checks against nested quantification for quantified permissions */
   lazy val checkNoNestedQuantsForQuantPermissions : Seq[ConsistencyError] = {
@@ -547,6 +557,35 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
       case Some((_, exp, _)) => if(exp.existsDefined({case _: Forall => }) && !exp.isPure)
         Seq(ConsistencyError("Nested quantifiers are not allowed for quantified permissions.", exp.pos)) else Seq()
     }
+  }
+
+  lazy val checkQuantifiedPermission: Seq[ConsistencyError] = {
+    case class InUnfolding(inside: Boolean)
+    var accessPredicateInside: Boolean = false
+
+    StrategyBuilder.ContextVisitor[Node, InUnfolding]({
+      case (_: AccessPredicate, c) if !c.c.inside =>
+        accessPredicateInside = true
+        c
+
+      case (_: Unfolding, c) =>
+        c.updateContext(InUnfolding(true))
+
+      case (_, c) =>
+        c
+    }, InUnfolding(false)).execute(exp)
+
+    if (accessPredicateInside) {
+      exp match {
+        case Implies(_, _) | AccessPredicate(_, _) =>
+          Seq()
+
+        case _ =>
+          Seq(ConsistencyError("Quantified permissions must have an implication as expression, with the access predicate in its right-hand side.", exp.pos))
+      }
+    }
+    else
+      Seq()
   }
   /** Returns an identical forall quantification that has some automatically generated triggers
     * if necessary and possible.

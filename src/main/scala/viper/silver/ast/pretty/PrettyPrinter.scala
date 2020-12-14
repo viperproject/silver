@@ -490,7 +490,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
 
   /** Show a program. */
   def showProgram(p: Program): Cont = {
-    val Program(domains, fields, functions, predicates, methods, extensions) = p
+    val Program(domains, fields, functions, predicates, methods, _) = p
     showComment(p) <@>
       ssep((domains ++ fields ++ functions ++ predicates ++ methods) map show, line <> line)
   }
@@ -564,7 +564,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
           })
       case d: Domain =>
         showDomain(d)
-      case t:ExtensionMember => nil
+      case _:ExtensionMember => nil
     }
     showComment(m) <@> memberDoc
   }
@@ -588,12 +588,12 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
   }
 
   /** Show a list of formal arguments. */
-  def showVars(vars: Seq[LocalVarDecl]): Cont = ssep(vars map showVar, char (',') <> space)
+  def showVars(vars: Seq[AnyLocalVarDecl]): Cont = ssep(vars map showVar, char (',') <> space)
   /** Show a variable name with the type of the variable (e.g. to be used in formal argument lists). */
-  def showVar(v: LocalVarDecl): Cont = text(v.name) <> ":" <+> showType(v.typ)
-
-  /** Show field name */
-  private def showLocation(loc: Location): Cont = loc.name
+  def showVar(v: AnyLocalVarDecl): Cont = v match {
+    case l: LocalVarDecl => text(l.name) <> ":" <+> showType(l.typ)
+    case u: UnnamedLocalVarDecl => showType(u.typ)
+  }
 
   /** Show a user-defined domain. */
   def showDomain(d: Domain): Cont = {
@@ -771,7 +771,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       text(funcname) <> parens(ssep(args map show, char (',') <> space))
     case dfa@DomainFuncApp(funcname, args, tvMap) =>
       if (tvMap.nonEmpty)
-      // Type may be underconstrained, so to be safe we explicitly print out the type.
+        // Type may be underconstrained, so to be safe we explicitly print out the type.
         parens(text(funcname) <> parens(ssep(args map show, char (',') <> space)) <> char(':') <+> show(dfa.typ))
       else
         text(funcname) <> parens(ssep(args map show, char (',') <> space))

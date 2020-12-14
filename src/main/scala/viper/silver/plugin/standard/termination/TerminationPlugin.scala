@@ -6,7 +6,6 @@
 
 package viper.silver.plugin.standard.termination
 
-import fastparse.noApi
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.{SimpleContext, Strategy, StrategyBuilder}
 import viper.silver.ast.{Applying, Assert, CondExp, CurrentPerm, Exp, Function, InhaleExhaleExp, MagicWand, Method, Node, Program, Unfolding, While}
@@ -17,6 +16,9 @@ import viper.silver.plugin.standard.termination.transformation.Trafo
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier.errors.AssertFailed
 import viper.silver.verifier._
+import fastparse._
+import viper.silver.parser.FastParser.whitespace
+import viper.silver.parser.FastParser.P
 
 class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
                         logger: ch.qos.logback.classic.Logger,
@@ -29,9 +31,6 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
    */
   private val DecreasesKeyword: String = "decreases"
 
-  import White._
-  import fastparse.noApi._
-
   /**
    * Parser for decreases clauses with following possibilities.
    *
@@ -41,13 +40,13 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
    * or
    * decreases *
    */
-  lazy val decreases: noApi.P[PDecreasesClause] =
-    P(keyword(DecreasesKeyword) ~/ (decreasesWildcard | decreasesStar | decreasesTuple) ~ ";".?)
-  lazy val decreasesTuple: noApi.P[PDecreasesTuple] =
+  def decreases[_: P]: P[PDecreasesClause] =
+    P(keyword(DecreasesKeyword) ~/ (decreasesWildcard | decreasesStar | decreasesTuple) ~ ";".?).map(e => e._3)
+  def decreasesTuple[_: P]: P[PDecreasesTuple] =
     P(exp.rep(sep = ",") ~/ condition.?).map { case (a, c) => PDecreasesTuple(a, c) }
-  lazy val decreasesWildcard: noApi.P[PDecreasesWildcard] = P("_" ~/ condition.?).map(c => PDecreasesWildcard(c))
-  lazy val decreasesStar: noApi.P[PDecreasesStar] = P("*").map(_ => PDecreasesStar())
-  lazy val condition: noApi.P[PExp] = P("if" ~/ exp)
+  def decreasesWildcard[_: P]: P[PDecreasesWildcard] = P("_" ~/ condition.?).map(c => PDecreasesWildcard(c))
+  def decreasesStar[_: P]: P[PDecreasesStar] = P("*").map(_ => PDecreasesStar())
+  def condition[_: P]: P[PExp] = P("if" ~/ exp)
 
 
   /**
@@ -57,9 +56,11 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
     // Add new keyword
     ParserExtension.addNewKeywords(Set[String](DecreasesKeyword))
     // Add new parser to the precondition
-    ParserExtension.addNewPreCondition(decreases)
+    ParserExtension.addNewPreCondition(decreases(_))
+    // Add new parser to the postcondition
+    ParserExtension.addNewPostCondition(decreases(_))
     // Add new parser to the invariants
-    ParserExtension.addNewInvariantCondition(decreases)
+    ParserExtension.addNewInvariantCondition(decreases(_))
     input
   }
 
@@ -143,19 +144,17 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
    */
   private lazy val extractDecreasesClauses: Strategy[Node, SimpleContext[Node]] = ViperStrategy.Slim({
     case f: Function =>
-      val (pres, decreasesSpecification) = extractDecreasesClausesFromExps(f.pres)
+      val (_, decreasesSpecification) = extractDecreasesClausesFromExps(f.pres ++ f.posts)
+      val (pres, _) = extractDecreasesClausesFromExps(f.pres)
+      val (posts, _) = extractDecreasesClausesFromExps(f.posts)
 
-      val newFunction =
-        if (pres != f.pres) {
-          f.copy(pres = pres)(f.pos, f.info, f.errT)
-        } else {
-          f
-        }
+      val newFunction = f.copy(pres = pres, posts = posts)(f.pos, f.info, f.errT)
 
       decreasesSpecification match {
         case Some(dc) => dc.appendToFunction(newFunction)
         case None => newFunction
       }
+
     case m: Method =>
       val (pres, decreasesSpecification) = extractDecreasesClausesFromExps(m.pres)
 

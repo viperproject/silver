@@ -5,11 +5,10 @@
 // Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silver.ast
-
 import viper.silver.utility.Common.StructuralEquality
-import fastparse.all._
-import fastparse.StringReprOps
 import java.nio.file.Path
+
+import viper.silver.parser.FastParser
 
 /** A trait describing the position of occurrence of an AST node. */
 sealed trait Position
@@ -72,9 +71,19 @@ class IdentifierPosition(val file: Path, val start: HasLineColumn, val end: Opti
 }
 
 object LineCol {
-  def apply(input: ParserInput, index: Int) = {
-    val Array(line, column) = StringReprOps.prettyIndex(input, index).split(":")
-    (line.toInt, column.toInt)
+  def apply(index: Int) = {
+    // val Array(line, col) = ctx.input.prettyIndex(index).split(":").map(_.toInt)
+    val line_offset =  FastParser._line_offset
+    val result = java.util.Arrays.binarySearch(line_offset, index)
+    if (result >= 0) {
+      // Exact match
+      val line = result
+      (line + 1, index - line_offset(line) + 1)
+    } else {
+      // The binary search returned `- insertionPoint - 1`
+      val line = - result - 2
+      (line + 1, index - line_offset(line) + 1)
+    }
   }
 }
 

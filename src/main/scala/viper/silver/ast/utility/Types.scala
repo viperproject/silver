@@ -20,7 +20,7 @@ object Types {
     */
   def typeVariables(typ: Type): Set[TypeVar] = typ match {
     case t : TypeVar => Set(t)
-    case dt@DomainType(domain,typeVarsMap) => typeVarsMap.values.flatMap(typeVariables).toSet
+    case DomainType(_,typeVarsMap) => typeVarsMap.values.flatMap(typeVariables).toSet
     case ct : CollectionType => typeVariables(ct.elementType)
     case _ => Set()
   }

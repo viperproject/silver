@@ -123,7 +123,7 @@ case class Translator(program: PProgram) {
     *           method call no longer needs the method node, the method name (as a string)
     *           suffices
     */
-  private def translateMemberSignature(p: PMember) {
+  private def translateMemberSignature(p: PMember): Unit = {
     val pos = p
     val name = p.idndef.name
     val t = p match {
@@ -132,7 +132,7 @@ case class Translator(program: PProgram) {
       case PFunction(_, formalArgs, typ, _, _, _) =>
         Function(name, formalArgs map liftVarDecl, ttyp(typ), null, null, null)(pos)
       case pdf@ PDomainFunction(_, args, typ, unique) =>
-        DomainFunc(name, args map liftVarDecl, ttyp(typ), unique)(pos,NoInfo,pdf.domainName.name)
+        DomainFunc(name, args map liftAnyVarDecl, ttyp(typ), unique)(pos,NoInfo,pdf.domainName.name)
       case PDomain(_, typVars, _, _) =>
         Domain(name, null, null, typVars map (t => TypeVar(t.idndef.name)))(pos)
       case PPredicate(_, formalArgs, _) =>
@@ -144,8 +144,7 @@ case class Translator(program: PProgram) {
   }
 
   private def translateMemberSignature(p: PExtender): Unit ={
-    val pos = p
-    val t = p match {
+    p match {
       case t: PMember =>
         val l = p.translateMemberSignature(this)
         members.put(t.idndef.name, l)
@@ -200,8 +199,7 @@ case class Translator(program: PProgram) {
         Apply(exp(e).asInstanceOf[MagicWand])(pos)
       case PInhale(e) =>
         Inhale(exp(e))(pos)
-      case assume@PAssume(e) =>
-        val sub = exp(e)
+      case PAssume(e) =>
         Assume(exp(e))(pos)
       case PExhale(e) =>
         Exhale(exp(e))(pos)
@@ -421,7 +419,7 @@ case class Translator(program: PProgram) {
           desugaredForalls.tail.foldLeft(desugaredForalls.head: Exp)((conjuncts, forall) =>
             And(conjuncts, forall)(fa.pos, fa.info, fa.errT))
         }
-      case f@PForPerm(vars, res, e) =>
+      case PForPerm(vars, res, e) =>
         val varList = vars map liftVarDecl
         exp(res) match {
           case PredicateAccessPredicate(inner, _) => ForPerm(varList, inner, exp(e))(pos)
@@ -505,9 +503,16 @@ case class Translator(program: PProgram) {
     }
   }
 
-  /** Takes a `PFormalArgDecl` and turns it into a `LocalVar`. */
+  /** Takes a `PAnyFormalArgDecl` and turns it into a `AnyLocalVarDecl`. */
+  def liftAnyVarDecl(formal: PAnyFormalArgDecl) =
+    formal match {
+      case f: PFormalArgDecl => LocalVarDecl(f.idndef.name, ttyp(f.typ))(f.idndef)
+      case u: PUnnamedFormalArgDecl => UnnamedLocalVarDecl(ttyp(u.typ))(u.typ)
+    }
+
+  /** Takes a `PFormalArgDecl` and turns it into a `LocalVarDecl`. */
   def liftVarDecl(formal: PFormalArgDecl) =
-    LocalVarDecl(formal.idndef.name, ttyp(formal.typ))(formal.idndef)
+      LocalVarDecl(formal.idndef.name, ttyp(formal.typ))(formal.idndef)
 
   /** Takes a `PType` and turns it into a `Type`. */
   def ttyp(t: PType): Type = t match {

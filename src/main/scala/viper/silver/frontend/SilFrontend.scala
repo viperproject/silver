@@ -6,10 +6,6 @@
 
 package viper.silver.frontend
 
-import java.nio.file.{Path, Paths}
-
-import fastparse.all
-import fastparse.all.{Parsed, ParserInput}
 import viper.silver.ast.utility.Consistency
 import viper.silver.ast.{SourcePosition, _}
 import viper.silver.parser._
@@ -17,35 +13,8 @@ import viper.silver.plugin.SilverPluginManager
 import viper.silver.plugin.SilverPluginManager.PluginException
 import viper.silver.reporter._
 import viper.silver.verifier._
-import fastparse.all.{Parsed, ParserInput}
-import fastparse.all
+import fastparse.Parsed
 import java.nio.file.{Path, Paths}
-
-//class TestPhase extends TestA {
-//  type PProgram = viper.silver.parser.PProgram
-//  type Program = viper.silver.ast.Program
-//  type Message = String
-//
-//  override def parsing(program: String): Result[PProgram] = {
-//    Success(PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq()))
-//  }
-//
-//  override def semanticAnalysis(program: PProgram): Result[PProgram] = {
-//    Success(PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq()))
-//  }
-//
-//  override def translation(program: PProgram): Result[Program] = {
-//    Success(Program(Seq(), Seq(), Seq(), Seq(), Seq())())
-//  }
-//
-//  override def consistencyCheck(program: Program): Result[Program] = {
-//    Success(Program(Seq(), Seq(), Seq(), Seq(), Seq())())
-//  }
-
-//  override def verification(program: Program): Result[Message] = {
-//    Success("Program verified correctly")
-//  }
-//}
 import viper.silver.{FastMessaging, FastPositions}
 
 /**
@@ -129,7 +98,7 @@ trait SilFrontend extends DefaultFrontend {
 
   def getTime: Long = System.currentTimeMillis() - _startTime
 
-  def resetMessages() {
+  def resetMessages(): Unit = {
     Consistency.resetMessages()
   }
 
@@ -139,7 +108,7 @@ trait SilFrontend extends DefaultFrontend {
 
   def prepare(args: Seq[String]): Boolean = {
 
-    reporter report CopyrightReport(s"${_ver.signature}\n")//${_ver.copyright}") // we agreed on 11/03/19 to drop the copyright
+    reporter report CopyrightReport(_ver.signature)//${_ver.copyright}") // we agreed on 11/03/19 to drop the copyright
 
     /* Parse command line arguments and populate _config */
     parseCommandLine(args)
@@ -177,7 +146,7 @@ trait SilFrontend extends DefaultFrontend {
    * the Viper program to the verifier.  The resulting error messages (if any) will be
    * shown in a user-friendly fashion.
    */
-  def execute(args: Seq[String]) {
+  def execute(args: Seq[String]): Unit = {
     setStartTime()
 
     /* Create the verifier */
@@ -206,6 +175,7 @@ trait SilFrontend extends DefaultFrontend {
     catch {
         case MissingDependencyException(msg) =>
           println("Missing dependency exception: " + msg)
+          reporter report MissingDependencyReport(msg)
     }
   }
 
@@ -254,7 +224,7 @@ trait SilFrontend extends DefaultFrontend {
     }
   }
 
-  protected def parseCommandLine(args: Seq[String]) {
+  protected def parseCommandLine(args: Seq[String]): Unit = {
     _config = configureVerifier(args)
   }
 
@@ -270,9 +240,9 @@ trait SilFrontend extends DefaultFrontend {
                 Succ({e.initProperties(); e})
               }
               else Fail(err_list)
-            case fail @ Parsed.Failure(_, index, extra) =>
-              val msg = all.ParseError(fail.asInstanceOf[Parsed.Failure]).getMessage()
-              val (line, col) = LineCol(extra.input.asInstanceOf[ParserInput], index)
+            case fail @ Parsed.Failure(_, index, _) =>
+              val msg = fail.trace().longAggregateMsg
+              val (line, col) = LineCol(index)
               Fail(List(ParseError(s"Expected $msg", SourcePosition(file, line, col))))
             case error: ParseError => Fail(List(error))
           }
