@@ -7,10 +7,11 @@
 package viper.silver.ast.utility.rewriter
 
 import viper.silver.FastPositions
-import viper.silver.parser.{FastPositioned, PDomainFunction}
+import viper.silver.parser.{FastPositioned, PBinExp, PDomainFunction}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
-import viper.silver.ast.{Node, AtomicType, FuncApp, DomainFuncApp, Position, Info, ErrorTrafo}
+import viper.silver.ast.{AtomicType, DomainFuncApp, ErrorTrafo, FuncApp, Info, Node, Position}
 import viper.silver.ast.utility.ViperStrategy.forceRewrite
+
 import scala.reflect.runtime.{universe => reflection}
 
 /**
