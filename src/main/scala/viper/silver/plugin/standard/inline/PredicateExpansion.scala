@@ -6,6 +6,15 @@ import viper.silver.ast.utility.rewriter.Traverse
 
 trait PredicateExpansion {
 
+  /**
+    * Given the body of a predicate, find any access statements and thread the original permission value
+    * into it. If the body is a None, evaluate to a None.
+    *
+    * @param maybeBody the body of a given predicate for which we want to thread the original permission value for.
+    * @param originalPerm the original permission value used before inlining occurs.
+    * @return the predicate body after threading the orignal permission value, if defined. Otherwise
+    *         evaluate to None.
+    */
   def propagatePermission(maybeBody: Option[Exp], originalPerm: Exp): Option[Exp] =
     maybeBody.map { body =>
       ViperStrategy.Slim({
