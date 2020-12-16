@@ -28,11 +28,13 @@ class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate
   override def beforeVerify(input: Program): Program = {
     val rewrittenMethods = input.methods.map { method =>
       val inlinePredIds = input.extensions.collect({case InlinePredicate(p) => p.name}).toSet
-      checkRecursive(inlinePredIds, input)
+      val recursivePreds = checkRecursive(inlinePredIds, input)
       // TODO: Do we also need to inline in inhale/exhale/assert/assume and package/apply statements?
       val (prePredIds, postPredIds) = getPrePostPredIds(method, input, inlinePredIds)
-      val inlinedPredMethod = inlinePredicates(method, input, prePredIds, postPredIds)
-      rewriteMethod(inlinedPredMethod, input, prePredIds, postPredIds)
+      val prePredIdsNoRecur = prePredIds.diff(recursivePreds.map(_.name))
+      val postPredIdsNoRecur = postPredIds.diff(recursivePreds.map(_.name))
+      val inlinedPredMethod = inlinePredicates(method, input, prePredIdsNoRecur, postPredIdsNoRecur)
+      rewriteMethod(inlinedPredMethod, input, prePredIdsNoRecur, postPredIdsNoRecur)
     }
     // TODO: Do we also need to rewrite functions?
     ViperStrategy.Slim({
