@@ -7,7 +7,7 @@
 package viper.silver.ast.utility.rewriter
 
 import viper.silver.FastPositions
-import viper.silver.parser.{FastPositioned, PBinExp, PDomainFunction}
+import viper.silver.parser.{FastPositioned, PDomainFunction}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
 import viper.silver.ast.{AtomicType, DomainFuncApp, ErrorTrafo, FuncApp, Info, Node, Position}
 import viper.silver.ast.utility.ViperStrategy.forceRewrite
@@ -50,9 +50,10 @@ trait Rewritable extends Product {
           case df: DomainFunc => secondArgList = Seq(df.pos, df.info, df.domainName, df.errT)
           case df: DomainFuncApp => secondArgList = Seq(df.pos, df.info, df.typ, df.domainName, df.errT)
           case no: Node => secondArgList = no.getMetadata
-          case pa: PAxiom => secondArgList = Seq(pa.domainName)
-          case _: PMagicWandExp => firstArgList = Seq(children.head) ++ children.drop(2)
-          case pd: PDomainFunction => secondArgList = Seq(pd.domainName)
+          case pa: PAxiom => secondArgList = Seq(pa.domainName) ++ Seq(pa.pos)
+          case pm: PMagicWandExp => firstArgList = Seq(children.head) ++ children.drop(2) ++ Seq(pm.pos)
+          case pd: PDomainFunction => secondArgList = Seq(pd.domainName) ++ Seq(pd.pos)
+          case pn: PNode => secondArgList = Seq(pn.pos)
           case _ =>
         }
 

@@ -104,3 +104,10 @@ case class TranslatedPosition(pos: AbstractSourcePosition) extends AbstractSourc
   val end = pos.end
 }
 
+case class FilePosition(file: Path, vline: Int, col: Int) extends util.parsing.input.Position with HasLineColumn
+{
+  override lazy val line = vline
+  override lazy val column = col
+  override lazy val lineContents = toString
+  override lazy val toString = s"${file.getFileName}@$vline.$col"
+}

@@ -180,12 +180,11 @@ case class TypeChecker(names: NameAnalyser) {
         check(e, Bool)
       case PAssume(e) =>
         check(e, Bool)
-      case PVarAssign(idnuse, PCall(func, args, _)) if names.definition(curMember)(func).isInstanceOf[PMethod] =>
+      case p@PVarAssign(idnuse, PCall(func, args, _)) if names.definition(curMember)(func).isInstanceOf[PMethod] =>
         /* This is a method call that got parsed in a slightly confusing way.
          * TODO: Get rid of this case! There is a matching case in the translator.
          */
-        val newnode: PStmt = PMethodCall(Seq(idnuse), func, args)
-        newnode.setPos(stmt)
+        val newnode: PStmt = PMethodCall(Seq(idnuse), func, args)(p.pos)
         check(newnode)
 
       case PVarAssign(idnuse, rhs) =>
@@ -515,7 +514,7 @@ case class TypeChecker(names: NameAnalyser) {
      * Sets an error type for 'exp' to suppress further warnings.
      */
     def setErrorType(): Unit = {
-      setType(PUnknown())
+      setType(PUnknown()())
     }
 
     def setPIdnUseTypeAndEntity(piu: PIdnUse, typ: PType, entity: PDeclaration): Unit = {
@@ -681,7 +680,7 @@ case class TypeChecker(names: NameAnalyser) {
               poa.typ = if (ts.size == 1) rrt.substitute(ts.head) else rrt
             } else {
               poa.typeSubstitutions.clear()
-              poa.typ = PUnknown()
+              poa.typ = PUnknown()()
             }
           }
         }

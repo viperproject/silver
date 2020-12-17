@@ -58,12 +58,12 @@ class RewriterTests extends AnyFunSuite with FileComparisonHelper {
   }
 
   test("Binary expression") {
-    val original = PBinExp(PIdnUse("a"), ">", PIdnUse("b"))
-    val transformed = PBinExp(PIdnUse("a"), "<=", PIdnUse("b"))
+    val original = PBinExp(PIdnUse("a")(), ">", PIdnUse("b")())()
+    val transformed = PBinExp(PIdnUse("a")(), "<=", PIdnUse("b")())()
 
     val strategy = StrategyBuilder.Slim[PNode](
       {
-        case PBinExp(a, op, b) if op == ">" => PBinExp(a, "<=", b)
+        case PBinExp(a, op, b) if op == ">" => PBinExp(a, "<=", b)()
       })
 
     val res = strategy.execute[PNode](original)

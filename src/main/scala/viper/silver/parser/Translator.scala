@@ -163,12 +163,11 @@ case class Translator(program: PProgram) {
   def stmt(s: PStmt): Stmt = {
     val pos = s
     s match {
-      case PVarAssign(idnuse, PCall(func, args, _)) if members(func.name).isInstanceOf[Method] =>
+      case p@PVarAssign(idnuse, PCall(func, args, _)) if members(func.name).isInstanceOf[Method] =>
         /* This is a method call that got parsed in a slightly confusing way.
          * TODO: Get rid of this case! There is a matching case in the resolver.
          */
-        val call = PMethodCall(Seq(idnuse), func, args)
-        call.setPos(s)
+        val call = PMethodCall(Seq(idnuse), func, args)(p.pos)
         stmt(call)
       case PVarAssign(idnuse, rhs) =>
         LocalVarAssign(LocalVar(idnuse.name, ttyp(idnuse.typ))(pos), exp(rhs))(pos)
@@ -494,13 +493,26 @@ case class Translator(program: PProgram) {
   }
 
   /** Takes a [[viper.silver.parser.FastPositioned]] and turns it into a [[viper.silver.ast.SourcePosition]]. */
-  implicit def liftPos(pos: FastPositioned): SourcePosition = {
-    val start = LineColumnPosition(pos.start.line, pos.start.column)
-    val end = LineColumnPosition(pos.finish.line, pos.finish.column)
-    pos.start match {
-      case fp: FilePosition => SourcePosition(fp.file, start, end)
-      case NoPosition => SourcePosition(null, 0, 0)
+  implicit def liftPos(node: Where): SourcePosition = {
+    if (node.pos._1.isInstanceOf[FilePosition]) {
+      assert(node.pos._2.isInstanceOf[FilePosition])
+
+      val begin = node.pos._1.asInstanceOf[FilePosition]
+      val end = node.pos._2.asInstanceOf[FilePosition]
+
+      SourcePosition(begin.file,
+        LineColumnPosition(begin.line, begin.column),
+        LineColumnPosition(end.line, end.column))
     }
+    else {
+      SourcePosition(null, 0, 0)
+    }
+    //? val start = LineColumnPosition(pos.start.line, pos.start.column)
+    //? val end = LineColumnPosition(pos.finish.line, pos.finish.column)
+    //? pos.start match {
+    //?   case fp: FilePosition => SourcePosition(fp.file, start, end)
+    //?   case NoPosition => SourcePosition(null, 0, 0)
+    //? }
   }
 
   /** Takes a `PAnyFormalArgDecl` and turns it into a `AnyLocalVarDecl`. */

@@ -7,7 +7,7 @@
 package viper.silver
 
 import viper.silver.ast.{HasLineColumn, SourcePosition, Position=>ViperPosition}
-import viper.silver.parser.FilePosition
+import viper.silver.ast.FilePosition
 
 import scala.util.parsing.input.Position
 

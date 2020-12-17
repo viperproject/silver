@@ -4,7 +4,6 @@ import java.util.regex.{Matcher, Pattern}
 import scala.collection.mutable
 import fastparse._
 import viper.silver.parser.FastParser.whitespace
-import viper.silver.parser.FastParser.P
 
 object ModelParser {
 

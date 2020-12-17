@@ -8,13 +8,11 @@ package viper.silver.cfg
 
 import java.nio.file.{Files, Path, Paths}
 
-import fastparse.Parsed.Success
+import fastparse._
 import viper.silver.parser.{FastParser, PProgram, Resolver, Translator}
 import viper.silver.verifier.ParseWarning
 
 import scala.io.Source
-
-import viper.silver.parser.FastParser.P
 
 object CfgTest {
   def main[_: P](args: Array[String]): Unit = {
@@ -40,7 +38,7 @@ object CfgTest {
   private def parse[_: P](input: String, file: Path): Option[PProgram] = {
     val result = FastParser.parse(input, file)
     result match {
-      case Success(program@PProgram(_, _, _, _, _, _, _,_, errors), _) =>
+      case Parsed.Success(program@PProgram(_, _, _, _, _, _, _,_, errors), _) =>
         if (errors.isEmpty || errors.forall(_.isInstanceOf[ParseWarning])) Some(program)
         else None
       case _ => None
