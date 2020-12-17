@@ -59,4 +59,43 @@ class InlineErrorCheckerTest extends FunSuite with InlineErrorChecker with Inlin
     val result = checkRecursive(predicateIds = Set(firstRec, secondRec), program)
     result.size == 2 && result(firstRecursivePred) && result(secondRecursivePred)
   }
+
+  test("checkMutualRecursive should evaluate to an empty set given an empty set of predicates") {
+    val program = programCopy()
+
+    checkMutualRecursive(predicateIds = Set(), program).isEmpty
+  }
+
+  test("checkMutualRecursive should evaluate to an empty set given the id of a non-recursive predicate") {
+    val predId = "nonrec"
+    val maybeNonRecursiveBody = Some(Add(IntLit(69)(), IntLit(420)())())
+    val nonRecursivePred = Predicate(predId, formalArgs = Seq(), body = maybeNonRecursiveBody)()
+    val program = programCopy(predicates = Seq(nonRecursivePred))
+
+    checkMutualRecursive(predicateIds = Set(predId), program).isEmpty
+  }
+
+  test("checkMutualRecursive should evaluate to an empty set given a program with only non-recursive predicates") {
+    val addPredId = "blazeIt"
+    val maybeNonRecursiveBody = Some(Add(IntLit(69)(), IntLit(420)())())
+    val addPred = Predicate(addPredId, formalArgs = Seq(), body = maybeNonRecursiveBody)()
+    val emptyPredId = "noBody"
+    val emptyPred = Predicate(emptyPredId, formalArgs = Seq(), body = None)()
+    val program = programCopy(predicates = Seq(addPred, emptyPred))
+
+    checkMutualRecursive(predicateIds = Set(addPredId, emptyPredId), program).isEmpty
+  }
+
+  test("checkMutualRecursive should evaluate to a set containing mutually-recursive predicates given their ids") {
+    val firstPredId = "list"
+    val secondPredId = "calledByList"
+    val maybeFirstPredBody = Some(PredicateAccessPredicate(PredicateAccess(Seq(), secondPredId)(), FullPerm.apply()())())
+    val maybeSecondPredBody = Some(PredicateAccessPredicate(PredicateAccess(Seq(), firstPredId)(), FullPerm.apply()())())
+    val firstPred = Predicate(firstPredId, formalArgs = Seq(), body = maybeFirstPredBody)()
+    val secondPred = Predicate(secondPredId, formalArgs = Seq(), body = maybeSecondPredBody)()
+    val program = programCopy(predicates = Seq(firstPred, secondPred))
+
+    val result = checkMutualRecursive(Set(firstPredId, secondPredId), program)
+    result.size == 2 && result(firstPred) && result(secondPred)
+  }
 }
