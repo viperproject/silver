@@ -38,7 +38,7 @@ trait InlineErrorChecker {
     val predicateCallGraph = PredicateCallGraph.graph(predicatesToInspect, program)
     val mutRecPreds = PredicateCallGraph.mutuallyRecursivePreds(predicateCallGraph)
     if (mutRecPreds.nonEmpty) {
-      prettyPrint(mutRecPreds, "mutually-recursive")
+      prettyPrint(mutRecPreds, "mutually recursive")
     }
     mutRecPreds
   }
@@ -66,9 +66,9 @@ trait InlineErrorChecker {
   private[this] def prettyPrint(preds: Set[Predicate], errorReason: String): Unit = {
     val predIds = preds.map(_.name).mkString(", ")
     if (preds.size > 1) {
-      println(s"[$predIds] are $errorReason predicates and will not be inlined")
+      println(s"[$predIds] are $errorReason predicates and will not be inlined.")
     } else {
-      println(s"[$predIds] is a $errorReason predicate and will not be inlined")
+      println(s"[$predIds] is a $errorReason predicate and will not be inlined.")
     }
   }
 }
