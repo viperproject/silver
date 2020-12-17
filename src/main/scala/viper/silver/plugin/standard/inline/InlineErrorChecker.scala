@@ -18,8 +18,8 @@ trait InlineErrorChecker {
     val recursivePreds = predicates.filter {
           case Predicate(name, _, maybeBody) => isRecursivePred(name, maybeBody)
     }
-    recursivePreds.foreach {
-      case Predicate(name, _, _) => println(s"Predicate: `$name` is recursive. Will not be inlined")
+    if (recursivePreds.nonEmpty) {
+      prettyPrint(recursivePreds, "recursive")
     }
     recursivePreds
   }
@@ -37,8 +37,8 @@ trait InlineErrorChecker {
     val predicatesToInspect = predicateIds.map(program.findPredicate)
     val predicateCallGraph = PredicateCallGraph.graph(predicatesToInspect, program)
     val mutRecPreds = PredicateCallGraph.mutuallyRecursivePreds(predicateCallGraph)
-    mutRecPreds.foreach {
-      case Predicate(name, _, _) => println(s"Predicate: `$name` is mutually-recursive. Will not be inlined")
+    if (mutRecPreds.nonEmpty) {
+      prettyPrint(mutRecPreds, "mutually-recursive")
     }
     mutRecPreds
   }
@@ -62,4 +62,13 @@ trait InlineErrorChecker {
       val isInChildNodes = subNodes.exists(child => isRecursivePred(predId, Some(child)))
       existsAtTopLevelNode || isInChildNodes
     }
+
+  private[this] def prettyPrint(preds: Set[Predicate], errorReason: String): Unit = {
+    val predIds = preds.map(_.name).mkString(", ")
+    if (preds.size > 1) {
+      println(s"[$predIds] are $errorReason predicates and will not be inlined")
+    } else {
+      println(s"[$predIds] is a $errorReason predicate and will not be inlined")
+    }
+  }
 }
