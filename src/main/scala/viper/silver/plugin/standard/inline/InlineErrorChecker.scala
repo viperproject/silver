@@ -18,10 +18,29 @@ trait InlineErrorChecker {
     val recursivePreds = predicates.filter {
           case Predicate(name, _, maybeBody) => isRecursivePred(name, maybeBody)
     }
-    recursivePreds.foreach {
-      case Predicate(name, _, _) => println(s"Predicate: `$name` is recursive. Will not be inlined")
+    if (recursivePreds.nonEmpty) {
+      prettyPrint(recursivePreds, "recursive")
     }
     recursivePreds
+  }
+
+  /**
+    * Construct a call-graph of predicates specified by the given predicate ids. If any predicates
+    * are found to be mutually-recursive, print a warning to the console that it shall not be inlined.
+    * Return a set of predicates that are mutually-recursive.
+    *
+    * @param predicateIds the ids of the predicates we want to inline.
+    * @param program the program for which we are performing predicate inlining on.
+    * @return the set of mutually-recursive predicates.
+    */
+  def checkMutualRecursive(predicateIds: Set[String], program: Program): Set[Predicate] = {
+    val predicatesToInspect = predicateIds.map(program.findPredicate)
+    val predicateCallGraph = PredicateCallGraph.graph(predicatesToInspect, program)
+    val mutRecPreds = PredicateCallGraph.mutuallyRecursivePreds(predicateCallGraph)
+    if (mutRecPreds.nonEmpty) {
+      prettyPrint(mutRecPreds, "mutually recursive")
+    }
+    mutRecPreds
   }
 
   /**
@@ -40,7 +59,16 @@ trait InlineErrorChecker {
         case PredicateAccessPredicate(PredicateAccess(_, name), _) => name == predId
         case _ => false
       }
-      val isInChildNodes = subNodes.exists(child => isRecursivePred(predId, Some(child)))
+      lazy val isInChildNodes = subNodes.exists(child => isRecursivePred(predId, Some(child)))
       existsAtTopLevelNode || isInChildNodes
     }
+
+  private[this] def prettyPrint(preds: Set[Predicate], errorReason: String): Unit = {
+    val predIds = preds.map(_.name).mkString(", ")
+    if (preds.size > 1) {
+      println(s"[$predIds] are $errorReason predicates and will not be inlined.")
+    } else {
+      println(s"[$predIds] is a $errorReason predicate and will not be inlined.")
+    }
+  }
 }

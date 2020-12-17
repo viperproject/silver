@@ -3,10 +3,9 @@ package viper.silver.plugin.standard.inline
 import scala.collection.mutable
 import viper.silver.ast._
 import viper.silver.ast.utility.ViperStrategy
-import viper.silver.ast.utility.rewriter.Traverse
-import viper.silver.ast.utility.rewriter.StrategyBuilder
+import viper.silver.ast.utility.rewriter.{StrategyBuilder, Traverse}
 
-trait InlineRewrite {
+trait InlineRewrite extends PredicateExpansion {
 
   def getPrePostPredIds(method: Method, program: Program, inlinePredIds: Set[String]): (Set[String], Set[String]) = {
     val expandablePrePredIds = method.pres.flatMap(expandablePredicates(_, method, program, inlinePredIds)).toSet
@@ -71,10 +70,11 @@ trait InlineRewrite {
     */
   private[this] def expandPredicates(expr: Exp, method: Method, program: Program, preds: Set[String]): Exp = {
     ViperStrategy.Context[Set[String]]({
-      case exp@(PredicateAccessPredicate(pred, _), ctxt) =>
+      case exp@(PredicateAccessPredicate(pred, perm), ctxt) =>
         val isInUnfolding = ctxt.parentOption.exists({_.isInstanceOf[Unfolding]})
         if (preds(pred.predicateName) && !isInUnfolding) {
-          (pred.predicateBody(program, ctxt.c).get, ctxt)
+          val maybePredBody = pred.predicateBody(program, ctxt.c)
+          (propagatePermission(maybePredBody, perm).get, ctxt)
         } else exp
       case (quant: QuantifiedExp, ctxt) =>
         (quant, ctxt.updateContext(ctxt.c ++ quant.scopedDecls.map { _.name }.toSet))
