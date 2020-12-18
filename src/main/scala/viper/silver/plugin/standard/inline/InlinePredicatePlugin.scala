@@ -27,21 +27,23 @@ class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate
 
   override def beforeVerify(input: Program): Program = {
     val rewrittenMethods = input.methods.map { method =>
-      val inlinePredIds = input.extensions.collect({case InlinePredicate(p) => p.name}).toSet
-      val recursivePreds = checkRecursive(inlinePredIds, input) ++ checkMutualRecursive(inlinePredIds, input)
-      // TODO: Do we also need to inline in inhale/exhale/assert/assume and package/apply statements?
-      val (prePredIds, postPredIds) = getPrePostPredIds(method, input, inlinePredIds)
-      val prePredIdsNoRecur = prePredIds.diff(recursivePreds.map(_.name))
-      val postPredIdsNoRecur = postPredIds.diff(recursivePreds.map(_.name))
-      val inlinedPredMethod = inlinePredicates(method, input, prePredIdsNoRecur, postPredIdsNoRecur)
-      rewriteMethod(inlinedPredMethod, input, prePredIdsNoRecur, postPredIdsNoRecur)
+      val allPredIds = input.predicates.collect{ case p if p.body.isDefined => p.name }.toSet
+      val recursivePredIds = (checkRecursive(allPredIds, input) ++ checkMutualRecursive(allPredIds, input)).map(_.name)
+      val nonrecursivePredIds = allPredIds.diff(recursivePredIds)
+      val cond = { pred: String => nonrecursivePredIds(pred) }
+      // val inlinePredIds = input.extensions.collect({
+      //   case InlinePredicate(p) if p.body.isDefined => p.name
+      // }).toSet
+      // val nonrecursiveInlinePredIds = inlinePredIds.diff(recursivePredIds)
+      // val cond = { pred: String => nonrecursiveInlinePredIds(pred) }
+      val inlinedPredMethod = inlinePredicates(method, input, cond)
+      rewriteMethod(inlinedPredMethod, cond)
     }
-    // TODO: Do we also need to rewrite functions?
     ViperStrategy.Slim({
-      case program@Program(_, _, _, predicates, methods, extensions) =>
+      case program@Program(_, _, _, predicates, _, extensions) =>
         program.copy(
           methods = rewrittenMethods,
-          predicates = predicates ++ extensions.collect{case InlinePredicate(p) => p},  
+          predicates = predicates ++ extensions.collect{case InlinePredicate(p) => p},
         )(program.pos, program.info, program.errT)
     }).execute[Program](input)
   }

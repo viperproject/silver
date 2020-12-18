@@ -3,59 +3,27 @@ package viper.silver.plugin.standard.inline
 import scala.collection.mutable
 import viper.silver.ast._
 import viper.silver.ast.utility.ViperStrategy
-import viper.silver.ast.utility.rewriter.{StrategyBuilder, Traverse}
+import viper.silver.ast.utility.rewriter.Traverse
 
 trait InlineRewrite extends PredicateExpansion {
 
-  def getPrePostPredIds(method: Method, program: Program, inlinePredIds: Set[String]): (Set[String], Set[String]) = {
-    val expandablePrePredIds = method.pres.flatMap(expandablePredicates(_, method, program, inlinePredIds)).toSet
-    val expandablePostPredsIds = method.posts.flatMap(expandablePredicates(_, method, program, inlinePredIds)).toSet
-    (expandablePrePredIds, expandablePostPredsIds)
-  }
-
-  def inlinePredicates(method: Method, program: Program, prePredIds: Set[String], postPredIds: Set[String]): Method = {
-    val expandedPres = method.pres.map { expandPredicates(_, method, program, prePredIds) }
-    val expandedPosts = method.posts.map { expandPredicates(_, method, program, postPredIds) }
+  def inlinePredicates(method: Method, program: Program, cond: String => Boolean): Method = {
+    val expandedPres = method.pres.map(expandPredicates(_, method, program, cond))
+    val expandedPosts = method.posts.map(expandPredicates(_, method, program, cond))
     method.copy(
       pres = expandedPres,
       posts = expandedPosts
     )(method.pos, method.info, method.errT)
   }
 
-  def rewriteMethod(method: Method, program: Program, prePredIds: Set[String], postPredIds: Set[String]): Method = {
-    val rewrittenPres = method.pres.map { removeUnfoldings(_, prePredIds) }
-    val rewrittenPosts = method.posts.map { removeUnfoldings(_, postPredIds) }
-    val rewrittenBody = method.body.map { removeFoldUnfolds(_, prePredIds, postPredIds) }
+  def rewriteMethod(method: Method, cond: String => Boolean): Method = {
+    val rewrittenPres = method.pres.map { removeUnfoldings(_, cond) }
+    val rewrittenPosts = method.posts.map { removeUnfoldings(_, cond) }
+    val rewrittenBody = method.body.map { removeFoldUnfolds(_, cond) }
     method.copy(body = rewrittenBody,
       pres = rewrittenPres,
       posts = rewrittenPosts,
     )(method.pos, method.info, method.errT)
-  }
-
-  /**
-    * Returns a set of the names of the predicates that can be expanded into their bodies.
-    *
-    * @param expr The expression to check for predicates
-    * @param method The method containing the expression, used to determine locally-scoped variables
-    * @param program The program containing the expression, used to get predicate bodies
-    * @return A set of the names of the expandable predicates
-    */
-  private[this] def expandablePredicates(expr: Exp, method: Method, program: Program, inlinePredIds: Set[String]): Set[String] = {
-    // Forgive me deities of functional programming for I sin
-    val expandablePredicates = mutable.Set[String]()
-    StrategyBuilder.ContextVisitor[Node, Set[String]]({
-      // TODO: Do we need to keep track of the permission value?
-      case exp@(PredicateAccessPredicate(pred, _), ctxt) =>
-        // TODO: Always check inlinePredIds(pred.predicateName)?
-        if (pred.predicateBody(program, ctxt.c).isDefined) {
-          expandablePredicates += pred.predicateName
-        }
-        ctxt
-      case (quant: QuantifiedExp, ctxt) =>
-        ctxt.updateContext(ctxt.c ++ quant.scopedDecls.map { _.name }.toSet)
-      case (_, ctxt) => ctxt
-    }, method.scopedDecls.map { _.name }.toSet).execute[Exp](expr)
-    expandablePredicates.toSet
   }
 
   /**
@@ -64,20 +32,22 @@ trait InlineRewrite extends PredicateExpansion {
     * @param expr The expression whose predicates will be expanded
     * @param method The method containing the expression, used to determine locally-scoped variables
     * @param program The program containing the expression, used to expand predicates
-    * @param preds The predicates that we are allowed to expand
-    * @return The expression with expanded predicates
+    * @param cond The predicate (Scala) that the predicates (Viper) must satisfy
+    * @return The expression with expanded predicates and the expandable precondition and postcondition predicates
     */
-  private[this] def expandPredicates(expr: Exp, method: Method, program: Program, preds: Set[String]): Exp = {
+  private[this] def expandPredicates(expr: Exp, method: Method, program: Program, cond: String => Boolean): Exp = {
+    val expandablePredicates = mutable.Set[String]()
     ViperStrategy.Context[Set[String]]({
       case exp@(PredicateAccessPredicate(pred, perm), ctxt) =>
-        val isInUnfolding = ctxt.parentOption.exists({_.isInstanceOf[Unfolding]})
-        if (preds(pred.predicateName) && !isInUnfolding) {
-          val maybePredBody = pred.predicateBody(program, ctxt.c)
-          (propagatePermission(maybePredBody, perm).get, ctxt)
+        val isInUnfolding = ctxt.parentOption.exists(_.isInstanceOf[Unfolding])
+        if (cond(pred.predicateName) && !isInUnfolding) {
+          expandablePredicates += pred.predicateName
+          val optPredBody = pred.predicateBody(program, ctxt.c)
+          (propagatePermission(optPredBody, perm).get, ctxt)
         } else exp
-      case (quant: QuantifiedExp, ctxt) =>
-        (quant, ctxt.updateContext(ctxt.c ++ quant.scopedDecls.map { _.name }.toSet))
-    }, method.scopedDecls.map { _.name }.toSet, Traverse.TopDown)
+      case (scope: Scope, ctxt) =>
+        (scope, ctxt.updateContext(ctxt.c ++ scope.scopedDecls.map(_.name).toSet))
+    }, method.scopedDecls.map(_.name).toSet, Traverse.TopDown)
       .execute[Exp](expr)
   }
 
@@ -85,14 +55,13 @@ trait InlineRewrite extends PredicateExpansion {
     * Replaces unfolding expressions by their bodies if the unfolded predicate had been expanded
     *
     * @param expr The expression whose unfoldings may be substituted
-    * @param preds A set of the string names of the predicates that have been expanded
+    * @param cond The condition a predicate must satisfy to be un-unfolding-ed
     * @return The expression with unfoldings possibly substituted
     */
-  private[this] def removeUnfoldings(expr: Exp, preds: Set[String]): Exp = {
+  private[this] def removeUnfoldings(expr: Exp, cond: String => Boolean): Exp = {
     ViperStrategy.Slim({
-      // TODO: Do we always remove unfoldings regardless of permission value?
       case unfolding@Unfolding(PredicateAccessPredicate(PredicateAccess(_, name), _), body) =>
-        if (preds(name)) body else unfolding
+        if (cond(name)) body else unfolding
     }, Traverse.BottomUp).execute[Exp](expr)
   }
 
@@ -100,18 +69,16 @@ trait InlineRewrite extends PredicateExpansion {
     * Removes given predicate unfolds and folds from statement.
     *
     * @param stmts A Seqn whose statements will be traversed
-    * @param unfoldPreds A set of the string names of the precondition predicates to not unfold
-    * @param foldPreds A set of the string names of the postcondition predicates to not fold
+    * @param cond The condition a predicate must satisfy to no longer require (un)folding
     * @return The Seqn with all above unfolds and folds removed
     */
-  private[this] def removeFoldUnfolds(stmts: Seqn, unfoldPreds: Set[String], foldPreds: Set[String]): Seqn = {
+  private[this] def removeFoldUnfolds(stmts: Seqn, cond: String => Boolean): Seqn = {
     ViperStrategy.Slim({
-      case seqn@Seqn(ss, scopedDecls) =>
-        seqn.copy(ss = ss.filter {
-          // TODO: Do we always remove folds/unfolds regardless of permission value?
-          case Fold(PredicateAccessPredicate(PredicateAccess(_, name), _)) => !foldPreds(name)
-          case Unfold(PredicateAccessPredicate(PredicateAccess(_, name), _)) => !unfoldPreds(name)
-          case _ => true
+      case seqn@Seqn(ss, _) =>
+        seqn.copy(ss = ss.filterNot {
+          case Fold(PredicateAccessPredicate(PredicateAccess(_, name), _)) => cond(name)
+          case Unfold(PredicateAccessPredicate(PredicateAccess(_, name), _)) => cond(name)
+          case _ => false
         })(seqn.pos, seqn.info, seqn.errT)
     }, Traverse.BottomUp).execute[Seqn](stmts)
   }
