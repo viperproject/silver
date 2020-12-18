@@ -4,11 +4,13 @@ import viper.silver.ast._
 
 sealed trait InlinePredicateDeclaration extends ExtensionMember {}
 
-case class InlinePredicate(predicate: Predicate)
-                          (override val pos: Position = predicate.pos,
-                           override val info: Info = predicate.info,
-                           override val errT: ErrorTrafo = predicate.errT) extends InlinePredicateDeclaration {
-  override def name: String = predicate.name
-  override val scopedDecls: Seq[Declaration] = predicate.scopedDecls
-  override def extensionSubnodes: Seq[Node] = Seq(predicate)
+case class InlinePredicate(name: String, formalArgs: Seq[LocalVarDecl], maybeBody: Option[Exp])
+                          (override val pos: Position = NoPosition,
+                           override val info: Info = NoInfo,
+                           override val errT: ErrorTrafo = NoTrafos) extends InlinePredicateDeclaration {
+  override val scopedDecls: Seq[Declaration] = formalArgs
+  override def extensionSubnodes: Seq[Node] = Seq(Predicate(name, formalArgs, maybeBody)(pos, info, errT))
+
+  def toPredicate: Predicate =
+    Predicate(name, formalArgs, maybeBody)(pos, info, errT)
 }

@@ -17,7 +17,8 @@ class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate
   private[this] val InlinePredicateKeyword = "inline"
 
   lazy val inlinePredicate: noApi.P[PInlinePredicate] =
-    P(keyword(InlinePredicateKeyword) ~/ predicateDecl).map(pred => PInlinePredicate(pred))
+    P(keyword(InlinePredicateKeyword) ~/ predicateDecl)
+      .map(pPred => PInlinePredicate(pPred.idndef, pPred.formalArgs, pPred.body))
 
   override def beforeParse(input: String, isImported: Boolean): String = {
     ParserExtension.addNewKeywords(Set[String](InlinePredicateKeyword))
@@ -43,7 +44,9 @@ class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate
       case program@Program(_, _, _, predicates, _, extensions) =>
         program.copy(
           methods = rewrittenMethods,
-          predicates = predicates ++ extensions.collect{case InlinePredicate(p) => p},
+          predicates = predicates ++ extensions.collect {
+            case inlinePred: InlinePredicate => inlinePred.toPredicate
+          },
         )(program.pos, program.info, program.errT)
     }).execute[Program](input)
   }
