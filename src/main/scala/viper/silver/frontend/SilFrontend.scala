@@ -15,7 +15,7 @@ import viper.silver.reporter._
 import viper.silver.verifier._
 import fastparse.Parsed
 import java.nio.file.{Path, Paths}
-import viper.silver.{FastMessaging, FastPositions}
+import viper.silver.FastMessaging
 
 /**
  * Common functionality to implement a command-line verifier for Viper.  This trait
@@ -191,8 +191,6 @@ trait SilFrontend extends DefaultFrontend {
       }
       _plugins = SilverPluginManager(plugins)(reporter.reporter, logger, _config)
     }
-
-    FastPositions.reset()
   }
 
   def setStartTime(): Unit = {

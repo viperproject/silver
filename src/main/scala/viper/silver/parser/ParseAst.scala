@@ -10,45 +10,44 @@ import scala.collection.{GenTraversable, Set}
 import scala.language.implicitConversions
 import viper.silver.ast.utility.Visitor
 import viper.silver.ast.{Exp, FilePosition, MagicWandOp, Member, NoPosition, Position, Stmt, Type}
-import viper.silver.FastPositions
 import viper.silver.ast.utility.rewriter.{Rewritable, StrategyBuilder}
 import viper.silver.parser.TypeHelper._
 import viper.silver.verifier.ParseReport
 
 
-trait FastPositioned {
-
-  /** Do not use these first three interfaces for reporting the positions.
-    * They may or may not contain the rel_file field, depending on whether
-    * the AST is constructed through the Parser or via the Scala interfaces. */
-
-  /** TODO get ride of 'implicit def liftPos' of Translator.scala and make these methods private. */
-  def start = FastPositions.getStart(this)
-  def finish = FastPositions.getFinish(this)
-
-  /** Used for reporting the starting position of an AST node. */
-  def startPosStr = start match {
-    case fp: FilePosition =>
-      s"${fp.file.getFileName}@${start}"
-    case _ =>
-      s"${start}"
-  }
-
-  /** Used for reporting the range of positions occupied by an AST node. */
-  def rangeStr = start match {
-       case fp_a: FilePosition =>
-      require(finish.isInstanceOf[FilePosition],
-        s"start and finish positions must be instances of FilePosition at the same time")
-      val fp_b = finish.asInstanceOf[FilePosition]
-      if (fp_a.file == fp_b.file)
-        s"${fp_a.file.getFileName}@[${start.line}.${start.column}-${finish.line}.${finish.column}]"
-      else
-      // An AST node should probably not spread between multiple source files, but who knows?
-        s"[${fp_a.toString}--]"
-    case _ =>
-      s"[${start}-${finish}]"
-  }
-}
+//? trait FastPositioned {
+//?
+//?   /** Do not use these first three interfaces for reporting the positions.
+//?     * They may or may not contain the rel_file field, depending on whether
+//?     * the AST is constructed through the Parser or via the Scala interfaces. */
+//?
+//?   /** TODO get ride of 'implicit def liftPos' of Translator.scala and make these methods private. */
+//?   def start = FastPositions.getStart(this)
+//?   def finish = FastPositions.getFinish(this)
+//?
+//?   /** Used for reporting the starting position of an AST node. */
+//?   def startPosStr = start match {
+//?     case fp: FilePosition =>
+//?       s"${fp.file.getFileName}@${start}"
+//?     case _ =>
+//?       s"${start}"
+//?   }
+//?
+//?   /** Used for reporting the range of positions occupied by an AST node. */
+//?   def rangeStr = start match {
+//?        case fp_a: FilePosition =>
+//?       require(finish.isInstanceOf[FilePosition],
+//?         s"start and finish positions must be instances of FilePosition at the same time")
+//?       val fp_b = finish.asInstanceOf[FilePosition]
+//?       if (fp_a.file == fp_b.file)
+//?         s"${fp_a.file.getFileName}@[${start.line}.${start.column}-${finish.line}.${finish.column}]"
+//?       else
+//?       // An AST node should probably not spread between multiple source files, but who knows?
+//?         s"[${fp_a.toString}--]"
+//?     case _ =>
+//?       s"[${start}-${finish}]"
+//?   }
+//? }
 
 trait Where {
   val pos: (Position, Position)
@@ -58,7 +57,7 @@ trait Where {
  * The root of the parser abstract syntax tree.  Note that we prefix all nodes with `P` to avoid confusion
  * with the actual Viper abstract syntax tree.
  */
-trait PNode extends FastPositioned with Where with Product with Rewritable {
+trait PNode extends Where with Product with Rewritable {
 
   /** Returns a list of all direct sub-nodes of this node. */
   def subnodes = Nodes.subnodes(this)
@@ -1073,8 +1072,8 @@ case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: Op
   val typ = PPredicateType()()
 }
 
-case class PDomainFunction1(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl], typ: PType, unique: Boolean)(val pos: (Position, Position)) extends FastPositioned
-case class PAxiom1(idndef: Option[PIdnDef], exp: PExp)(val pos: (Position, Position)) extends FastPositioned
+case class PDomainFunction1(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl], typ: PType, unique: Boolean)(val pos: (Position, Position))
+case class PAxiom1(idndef: Option[PIdnDef], exp: PExp)(val pos: (Position, Position))
 
 /**
  * A entity represented by names for whom we have seen more than one

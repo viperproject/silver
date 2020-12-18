@@ -6,8 +6,7 @@
 
 package viper.silver.ast.utility.rewriter
 
-import viper.silver.FastPositions
-import viper.silver.parser.{FastPositioned, PDomainFunction}
+import viper.silver.parser.PDomainFunction
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
 import viper.silver.ast.{AtomicType, DomainFuncApp, ErrorTrafo, FuncApp, Info, Node, Position}
 import viper.silver.ast.utility.ViperStrategy.forceRewrite
@@ -62,14 +61,6 @@ trait Rewritable extends Product {
         catch {
           case _: Exception if (this.isInstanceOf[PNode]) =>
             throw ParseTreeDuplicationError(this.asInstanceOf[PNode], children)
-        }
-
-        // Copy position information for PNodes, as they are stored outside of the AST
-        this match {
-          case fp: FastPositioned =>
-            FastPositions.setStart(newNode, FastPositions.getStart(fp))
-            FastPositions.setFinish(newNode, FastPositions.getFinish(fp))
-          case _ =>
         }
 
         // Copy member values, as they aren't in the parameters' list.

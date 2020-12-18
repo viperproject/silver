@@ -8,7 +8,7 @@ package viper.silver.parser
 
 import scala.collection.mutable
 import scala.reflect._
-import viper.silver.ast.{LabelledOld, MagicWandOp}
+import viper.silver.ast.{LabelledOld, MagicWandOp, Position}
 import viper.silver.ast.utility.Visitor
 import viper.silver.FastMessaging
 
@@ -456,7 +456,7 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   def typeError(exp:PExp) = {
-    messages ++= FastMessaging.message(exp, s"Type error in the expression at ${exp.rangeStr}")
+    messages ++= FastMessaging.message(exp, s"Type error in the expression at ${exp.pos._1}")
   }
 
   def check(exp: PExp, expected: PType) = exp match {
@@ -479,7 +479,7 @@ case class TypeChecker(names: NameAnalyser) {
       } else {
         oexpected match {
           case Some(expected) =>
-            messages ++= FastMessaging.message(exp, s"Expected type ${expected.toString}, but found ${exp.typ.toString} at the expression at ${exp.rangeStr}")
+            messages ++= FastMessaging.message(exp, s"Expected type ${expected.toString}, but found ${exp.typ.toString} at the expression at ${exp.pos._1}")
           case None =>
             typeError(exp)
         }
@@ -505,7 +505,7 @@ case class TypeChecker(names: NameAnalyser) {
      *
      * TODO: Similar to Consistency.recordIfNot. Combine!
      */
-    def issueError(n: FastPositioned, m: String): Unit = {
+    def issueError(n: PNode, m: String): Unit = {
       messages ++= FastMessaging.message(n, m)
       setErrorType() // suppress further warnings
     }
@@ -733,7 +733,7 @@ case class TypeChecker(names: NameAnalyser) {
   /**
    * If b is false, report an error for node.
    */
-  def ensure(b: Boolean, node: FastPositioned, msg: String): Unit = {
+  def ensure(b: Boolean, node: PNode, msg: String): Unit = {
     if (!b) messages ++= FastMessaging.message(node, msg)
   }
 }
@@ -836,13 +836,13 @@ case class NameAnalyser() {
           case d: PDeclaration =>
             getMap(d).get(d.idndef.name) match {
               case Some(e: PDeclaration) =>
-                messages ++= FastMessaging.message(e.idndef, "Duplicate identifier `" + e.idndef.name + "' at " + e.idndef.start + " and at " + d.idndef.start)
+                messages ++= FastMessaging.message(e.idndef, "Duplicate identifier `" + e.idndef.name + "' at " + e.idndef.pos._1 + " and at " + d.idndef.pos._1)
               case Some(_: PErrorEntity) =>
               case None =>
                 globalDeclarationMap.get(d.idndef.name) match {
                   case Some(e: PDeclaration) =>
                     if (!(d.parent.isDefined && d.parent.get.isInstanceOf[PDomainFunction]))
-                      messages ++= FastMessaging.message(e, "Identifier shadowing `" + e.idndef.name + "' at " + e.idndef.start + " and at " + d.idndef.start)
+                      messages ++= FastMessaging.message(e, "Identifier shadowing `" + e.idndef.name + "' at " + e.idndef.pos._1 + " and at " + d.idndef.pos._1)
                   case Some(_: PErrorEntity) =>
                   case None =>
                     getMap(d).put(d.idndef.name, d)

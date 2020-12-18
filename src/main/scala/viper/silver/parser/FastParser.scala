@@ -9,9 +9,7 @@ package viper.silver.parser
 import java.net.URL
 import java.nio.file.{Files, Path, Paths}
 
-import scala.util.parsing.input.{NoPosition, Position}
-import viper.silver.ast.{FilePosition, LabelledOld, LineCol, SourcePosition}
-import viper.silver.FastPositions
+import viper.silver.ast.{FilePosition, LabelledOld, LineCol, NoPosition, Position, SourcePosition}
 import viper.silver.ast.utility.rewriter.{ContextA, PartialContextC, StrategyBuilder}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
 import viper.silver.plugin.SilverPluginManager
@@ -20,9 +18,9 @@ import viper.silver.verifier.{ParseError, ParseWarning}
 import scala.collection.mutable
 
 
-case class ParseException(msg: String, pos: scala.util.parsing.input.Position) extends Exception
+case class ParseException(msg: String, pos: Position) extends Exception
 
-case class SuffixedExpressionGenerator[E <: PExp](func: PExp => E) extends (PExp => PExp) with FastPositioned {
+case class SuffixedExpressionGenerator[E <: PExp](func: PExp => E) extends (PExp => PExp) {
   override def apply(v1: PExp): E = func(v1)
 }
 
@@ -35,18 +33,7 @@ object FastParser {
       NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
   }
 
-  // type P[T] = FP[T]
-
-  def setPosition(n: Any, start: Int, finish: Int): Unit = {
-    {
-      val (line, column) = LineCol(start)
-      FastPositions.setStart(n, FilePosition(_file, line, column))
-    }
-    {
-      val (line, column) = LineCol(finish)
-      FastPositions.setFinish(n, FilePosition(_file, line, column))
-    }
-  }
+  //? type P[T] = FP[T]
 
   var currentParseIndex = 0
 
@@ -60,36 +47,8 @@ object FastParser {
         val startPos = ctx.input.prettyIndex(previousParseIndex).split(":").map(_.toInt)
         val finishPos = ctx.input.prettyIndex(currentParseIndex - 1).split(":").map(_.toInt)
 
-        // Remove - begin
-        val (beginLine, beginColumn) = LineCol(ctx.index)
-        val (endLine, endColumn) = LineCol(ctx.index)
-
-        _begin = FilePosition(_file, beginLine, beginColumn)
-        _end = FilePosition(_file, endLine, endColumn)
-
-        FastPositions.setStart(parsed, _begin)
-        FastPositions.setFinish(parsed, _end)
-
-        // parsed
-        // Remove - end
-
         ((FilePosition(_file, startPos(0), startPos(1)), FilePosition(_file, finishPos(0), finishPos(1))), parsed)
     }
-
-    //? t map {
-    //?   case node: T => {
-    //?     val (beginLine, beginColumn) = LineCol(ctx.index)
-    //?     val (endLine, endColumn) = LineCol(ctx.index)
-
-    //?     _begin = FilePosition(_file, beginLine, beginColumn)
-    //?     _end = FilePosition(_file, endLine, endColumn)
-
-    //?     FastPositions.setStart(node, _begin)
-    //?     FastPositions.setFinish(node, _end)
-
-    //?     node
-    //?   }
-    //? }
   }
 
   /* When importing a file from standard library, e.g. `include <inc.vpr>`, the file is expected
@@ -224,13 +183,14 @@ object FastParser {
     }
     catch {
       case ParseException(msg, pos) =>
-        var line = 0
-        var column = 0
-        if (pos != null) {
-          line = pos.line
-          column = pos.column
+        val location = pos match {
+          case NoPosition =>
+            SourcePosition(_file, 0, 0)
+          case f: FilePosition =>
+            SourcePosition(f.file, f.line, f.column)
         }
-        ParseError(msg, SourcePosition(_file, line, column))
+
+        ParseError(msg, location)
     }
   }
 
@@ -253,11 +213,7 @@ object FastParser {
   def quoted[_: P, T](p: => P[T]) = "\"" ~ p ~ "\""
 
   def foldPExp[E <: PExp](e: PExp, es: Seq[SuffixedExpressionGenerator[E]]): E =
-    es.foldLeft(e) { (t, a) =>
-      val result = a(t)
-      FastPositions.setStart(result, t.start)
-      FastPositions.setFinish(result, t.finish)
-      result
+    es.foldLeft(e) { (t, a) => a(t)
     }.asInstanceOf[E]
 
   def isFieldAccess(obj: Any) = {
@@ -278,7 +234,7 @@ object FastParser {
     val transformed_source = if (plugins.isDefined){
       plugins.get.beforeParse(imported_source, isImported = true) match {
         case Some(transformed) => transformed
-        case None => throw ParseException(s"Plugin failed: ${plugins.get.errors.map(_.toString).mkString(", ")}", importStmt.start)
+        case None => throw ParseException(s"Plugin failed: ${plugins.get.errors.map(_.toString).mkString(", ")}", importStmt.pos._1)
       }
     } else {
       imported_source
@@ -327,15 +283,15 @@ object FastParser {
           source.getLines().toArray
         } catch {
           case e@(_: RuntimeException | _: java.io.IOException) =>
-            throw ParseException(s"could not import file ($e)", FastPositions.getStart(importStmt))
+            throw ParseException(s"could not import file ($e)", importStmt.pos._1)
         } finally {
           source.close()
         }
       } catch {
         case _: java.lang.NullPointerException =>
-          throw ParseException(s"""file <$path> does not exist""", FastPositions.getStart(importStmt))
+          throw ParseException(s"""file <$path> does not exist""", importStmt.pos._1)
         case e@(_: RuntimeException | _: java.io.IOException) =>
-          throw ParseException(s"could not import file ($e)", FastPositions.getStart(importStmt))
+          throw ParseException(s"could not import file ($e)", importStmt.pos._1)
       }
 
     //scala.io.Source.fromInputStream(getClass.getResourceAsStream("/import/"+ path.toString))
@@ -351,7 +307,7 @@ object FastParser {
     */
   def importLocal(path: Path, importStmt: PImport, plugins: Option[SilverPluginManager]): PProgram = {
     if (java.nio.file.Files.notExists(path)) {
-      throw ParseException(s"""file "$path" does not exist""", FastPositions.getStart(importStmt))
+      throw ParseException(s"""file "$path" does not exist""", importStmt.pos._1)
     }
 
     _file = path
@@ -361,7 +317,7 @@ object FastParser {
       source.getLines().toArray
     } catch {
       case e@(_: RuntimeException | _: java.io.IOException) =>
-        throw ParseException(s"""could not import file ($e)""", FastPositions.getStart(importStmt))
+        throw ParseException(s"""could not import file ($e)""", importStmt.pos._1)
     } finally {
       source.close()
     }
@@ -391,9 +347,9 @@ object FastParser {
     for (define <- globalMacros) {
       if (uniqueMacroNames.contains(define.idndef.name)) {
         throw ParseException(s"Another macro named '${define.idndef.name}' already " +
-          s"exists at ${uniqueMacroNames(define.idndef.name)}", define.start)
+          s"exists at ${uniqueMacroNames(define.idndef.name)}", define.pos._1)
       } else {
-        uniqueMacroNames += ((define.idndef.name, define.start))
+        uniqueMacroNames += ((define.idndef.name, define.pos._1))
       }
     }
 
@@ -409,7 +365,7 @@ object FastParser {
     StrategyBuilder.ContextVisitor[PNode, InsideMagicWandContext](
       {
         case (_: PPackageWand, c) => c.updateContext(c.c.copy(true))
-        case (d: PDefine, c) if c.c.inside => throw ParseException("Macros cannot be defined inside magic wands proof scripts", d.start)
+        case (d: PDefine, c) if c.c.inside => throw ParseException("Macros cannot be defined inside magic wands proof scripts", d.pos._1)
         case (_, c) => c
       }, InsideMagicWandContext()).execute(p)
 
@@ -432,7 +388,7 @@ object FastParser {
 
       if (nonUsedParameter.nonEmpty) {
         Seq(ParseWarning(s"In macro ${define.idndef.name}, the following parameters were defined but not used: " +
-          s"${nonUsedParameter.mkString(", ")} ", SourcePosition(_file, define.start.line, define.start.column)))
+          s"${nonUsedParameter.mkString(", ")} ", SourcePosition(_file, define.pos._1.asInstanceOf[FilePosition].line, define.pos._1.asInstanceOf[FilePosition].column)))
       }
       else
         Seq()
@@ -526,22 +482,11 @@ object FastParser {
     // Handy method to get a macro from its name string
     def getMacroByName(name: String): PDefine = macros.find(_.idndef.name == name) match {
       case Some(mac) => mac
-      case None => throw ParseException(s"Macro " + name + " used but not present in scope", FastPositions.getStart(name))
+      case None => throw ParseException(s"Macro " + name + " used but not present in scope", NoPosition) //? String is not a node, fix this.
     }
 
     // Check if a string is a valid macro name
     def isMacro(name: String): Boolean = macros.exists(_.idndef.name == name)
-
-    // The position of every node inside the macro is the position where the macro is "called"
-    def adaptPositions(body: PNode, f: FastPositioned): Unit = {
-      val adapter = StrategyBuilder.SlimVisitor[PNode] {
-        case n => {
-          FastPositions.setStart(n, f.start, force = true)
-          FastPositions.setFinish(n, f.finish, force = true)
-        }
-      }
-      adapter.execute[PNode](body)
-    }
 
     object getFreshVarName {
       private val namesToNumbers = mutable.Map.empty[String, Int]
@@ -584,7 +529,7 @@ object FastParser {
           if (seen.contains(name)) {
             val position =
               macros.find(_.idndef.name == name)
-                    .fold[Position](NoPosition)(FastPositions.getStart)
+                    .fold[Position](NoPosition)({ d: PDefine => d.pos._1 })
 
             throw ParseException("Recursive macro declaration found: " + name, position)
           } else {
@@ -615,7 +560,7 @@ object FastParser {
 
           // Create a variable with new name to substitute the previous one
           val freshVarDecl = PIdnDef(freshVarName)(varDecl.pos)
-          //? adaptPositions(freshVarDecl, varDecl)
+
           freshVarDecl
         } else {
 
@@ -646,7 +591,7 @@ object FastParser {
     }, ReplaceContext())
 
     // Replace variables in macro body, adapt positions correctly (same line number as macro call)
-    def replacerOnBody(body: PNode, paramToArgMap: Map[String, PExp], pos: FastPositioned): PNode = {
+    def replacerOnBody(body: PNode, paramToArgMap: Map[String, PExp]): PNode = {
 
       // Duplicate the body of the macro to allow for differing type checks depending on the context
       val oldForce = viper.silver.ast.utility.ViperStrategy.forceRewrite
@@ -656,14 +601,12 @@ object FastParser {
 
       // Rename locally bound variables in macro's body
       val bodyWithRenamedVars = renamer.execute[PNode](replicatedBody)
-      adaptPositions(bodyWithRenamedVars, pos)
 
       // Create context
       val context = new PartialContextC[PNode, ReplaceContext](ReplaceContext(paramToArgMap))
 
       // Replace macro's call arguments for every occurrence of its respective parameters in the body
       val bodyWithReplacedParams = replacer.execute[PNode](bodyWithRenamedVars, context)
-      adaptPositions(bodyWithReplacedParams, pos)
 
       // Return expanded macro's body
       bodyWithReplacedParams
@@ -675,16 +618,15 @@ object FastParser {
           val macroDefinition = getMacroByName(name)
           val parameters = macroDefinition.parameters.getOrElse(Nil)
           val body = macroDefinition.body
-          val pos = FastPositions.getStart(call)
 
           if (arguments.length != parameters.length)
-            throw ParseException("Number of macro arguments does not match", pos)
+            throw ParseException("Number of macro arguments does not match", call.pos._1)
 
           (call, body) match {
             case (_: PStmt, _: PExp) =>
-              throw ParseException("Expression macro used in statement position", pos)
+              throw ParseException("Expression macro used in statement position", call.pos._1)
             case (_: PExp, _: PStmt) =>
-              throw ParseException("Statement macro used in expression position", pos)
+              throw ParseException("Statement macro used in expression position", call.pos._1)
             case _ =>
           }
 
@@ -693,9 +635,9 @@ object FastParser {
            */
           (ctx.parent, body) match {
             case (PAccPred(loc, _), _) if (loc eq call) && !body.isInstanceOf[PLocationAccess] =>
-              throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + body.toString, pos)
+              throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + body.toString, call.pos._1)
             case (_: PCurPerm, _) if !body.isInstanceOf[PLocationAccess] =>
-              throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + body.toString, pos)
+              throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + body.toString, call.pos._1)
             case _ => /* All good */
           }
 
@@ -712,10 +654,10 @@ object FastParser {
               case _ =>
             }).execute(subtree)
             renamesMap.clear()
-            replacerOnBody(body, mapParamsToArgs(parameters, arguments), call)
+            replacerOnBody(body, mapParamsToArgs(parameters, arguments))
           } catch {
             case problem: ParseTreeDuplicationError =>
-              throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError:)\n" + problem.getMessage, pos)
+              throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError:)\n" + problem.getMessage, call.pos._1)
           }
       }.applyOrElse(macroCall, (_: PNode) => macroCall)
     }
@@ -727,7 +669,7 @@ object FastParser {
       // Handles macros on the left hand-side of assignments
       case (PMacroAssign(call, exp), ctx) =>
         if (!isMacro(call.opName))
-          throw ParseException("The only calls that can be on the left-hand side of an assignment statement are calls to macros", FastPositions.getStart(call))
+          throw ParseException("The only calls that can be on the left-hand side of an assignment statement are calls to macros", call.pos._1)
 
         val body = ExpandMacroIfValid(call, ctx)
 
@@ -737,7 +679,7 @@ object FastParser {
           case fa: PFieldAccess =>
             val node = PFieldAssign(fa, exp)(fa.pos)
             (node, ctx)
-          case _ => throw ParseException("The body of this macro is not a suitable left-hand side for an assignment statement", FastPositions.getStart(call))
+          case _ => throw ParseException("The body of this macro is not a suitable left-hand side for an assignment statement", call.pos._1)
         }
 
       // Handles all other calls to macros
@@ -758,7 +700,7 @@ object FastParser {
       expander.execute[T](subtree)
     } catch {
       case problem: ParseTreeDuplicationError =>
-        throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError:)\n" + problem.getMessage, problem.original.start)
+        throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError:)\n" + problem.getMessage, problem.original.pos._1)
     }
   }
 
