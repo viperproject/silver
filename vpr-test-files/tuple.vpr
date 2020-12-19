@@ -1,0 +1,16 @@
+field left: Int
+field right: Int
+
+predicate allowAccess(this: Ref)
+{
+	acc(this.left) && acc(this.right)
+}
+
+method makeTuple(this: Ref, i: Int, j: Int)
+	requires allowAccess(this)
+{
+	unfold allowAccess(this)
+	this.left := this.left + i
+	this.right := this.right + j
+	fold allowAccess(this)
+}

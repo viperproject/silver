@@ -1,0 +1,23 @@
+predicate nonZero(k: Int)
+{
+  0 <= k
+}
+
+
+method sum(n: Int) returns (res: Int)
+  ensures  res == n * (n + 1) / 2
+  requires nonZero(n) 
+{
+  // predIds = {'nonZero'}
+  unfold nonZero(n)
+  res := 0
+  var i: Int := 0;
+  while(i <= n)
+    invariant i <= (n + 1)
+    invariant res == (i - 1) * i / 2
+  {
+    res := res + i
+    i := i + 1
+  }
+  fold nonZero(n)
+}

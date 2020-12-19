@@ -1,0 +1,8 @@
+field elem: Int
+field next: Ref
+
+predicate list(this: Ref) 
+{
+  acc(this.elem) && acc(this.next) &&
+		(this.next != null ==> list(this.next))
+}
