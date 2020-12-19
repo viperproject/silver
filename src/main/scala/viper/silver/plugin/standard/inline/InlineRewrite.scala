@@ -71,17 +71,11 @@ trait InlineRewrite extends PredicateExpansion {
     */
   private[this] def expandInhaleStatement(stmt: Stmt, method: Method, program: Program, cond: String => Boolean): Stmt =
     ViperStrategy.Context[Set[String]]({
-      case tup @ (Inhale(expr), ctxt) =>
-        val expandedExpr = expandInhaleContainedExpr(expr, method, program, cond)
-        tup match {
-          case (inhaleStmt: Inhale, _) =>
-            val expandedInhaleStmt =
-              inhaleStmt.copy(exp = expandedExpr)(pos = inhaleStmt.pos, info = inhaleStmt.info, errT = inhaleStmt.errT)
-            (expandedInhaleStmt, ctxt)
-          case _ =>
-            // This is required to silence the compiler warning for non-exhaustive pattern matching
-            throw new Error("This error should never be thrown")
-        }
+      case (inhaleStmt: Inhale, ctxt) =>
+        val expandedExpr = expandInhaleContainedExpr(inhaleStmt.exp, method, program, cond)
+        val expandedInhaleStmt =
+          inhaleStmt.copy(exp = expandedExpr)(pos = inhaleStmt.pos, info = inhaleStmt.info, errT = inhaleStmt.errT)
+        (expandedInhaleStmt, ctxt)
     }, method.scopedDecls.map(_.name).toSet, Traverse.TopDown).execute[Stmt](stmt)
 
   /**
@@ -96,17 +90,6 @@ trait InlineRewrite extends PredicateExpansion {
     */
   private[this] def expandInhaleContainedExpr(expr: Exp, method: Method, program: Program, cond: String => Boolean): Exp  =
     ViperStrategy.Context[Set[String]]({
-      case exp @ (PredicateAccess(_, name), ctxt) =>
-        val isInUnfolding = isWithinUnfolding(ctxt)
-        if (cond(name) && !isInUnfolding) {
-          val maybePredBody = exp match {
-            case (pred: PredicateAccess, _) => pred.predicateBody(program, ctxt.c)
-            case _ =>
-              // This is required to silence the compiler warning for non-exhaustive pattern matching
-              throw new Error("This error should never be thrown")
-          }
-          (maybePredBody.get, ctxt)
-        } else exp
       case exp @ (PredicateAccessPredicate(pred, perm), ctxt) =>
         val isInUnfolding = isWithinUnfolding(ctxt)
         if (cond(pred.predicateName) && !isInUnfolding) {
