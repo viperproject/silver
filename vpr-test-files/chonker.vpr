@@ -1,0 +1,51 @@
+// This should be really slow in Carbon
+
+field f: Int
+
+predicate boxed(this: Ref) {
+  acc(this.f)
+}
+
+method test() {
+  var box1: Ref
+  var box2: Ref
+  var box3: Ref
+  var box4: Ref
+  var box5: Ref
+  var box6: Ref
+  var box7: Ref
+  var box8: Ref
+  var box9: Ref
+
+  inhale boxed(box1)
+  inhale boxed(box2)
+  inhale boxed(box3)
+  inhale boxed(box4)
+  inhale boxed(box5)
+  inhale boxed(box6)
+  inhale boxed(box7)
+  inhale boxed(box8)
+  inhale boxed(box9)
+
+  unfold boxed(box1)
+  unfold boxed(box2)
+  unfold boxed(box3)
+  unfold boxed(box4)
+  unfold boxed(box5)
+  unfold boxed(box6)
+  unfold boxed(box7)
+  unfold boxed(box8)
+  unfold boxed(box9)
+
+  box1.f := 69
+  box2.f := box1.f
+  box3.f := box2.f
+  box4.f := box3.f
+  box5.f := box4.f
+  box6.f := box5.f
+  box7.f := box6.f
+  box8.f := box7.f
+  box9.f := box8.f
+
+  assert box9.f == 69
+}
