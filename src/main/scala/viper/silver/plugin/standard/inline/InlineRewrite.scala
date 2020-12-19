@@ -3,14 +3,22 @@ package viper.silver.plugin.standard.inline
 import scala.collection.mutable
 import viper.silver.ast._
 import viper.silver.ast.utility.ViperStrategy
-import viper.silver.ast.utility.rewriter.Traverse
+import viper.silver.ast.utility.rewriter.{ContextC, Traverse}
 
 trait InlineRewrite extends PredicateExpansion {
+
+  private type Context = ContextC[Node, Set[String]]
 
   def inlinePredicates(method: Method, program: Program, cond: String => Boolean): Method = {
     val expandedPres = method.pres.map(expandPredicates(_, method, program, cond))
     val expandedPosts = method.posts.map(expandPredicates(_, method, program, cond))
+    val rewrittenBody = method.body.map { ss =>
+      ss.copy(
+        ss = ss.ss.map(expandInhaleStatement(_, method, program, cond))
+      )(pos = ss.pos, info = ss.info, errT = ss.errT)
+    }
     method.copy(
+      body = rewrittenBody,
       pres = expandedPres,
       posts = expandedPosts
     )(method.pos, method.info, method.errT)
@@ -39,7 +47,7 @@ trait InlineRewrite extends PredicateExpansion {
     val expandablePredicates = mutable.Set[String]()
     ViperStrategy.Context[Set[String]]({
       case exp@(PredicateAccessPredicate(pred, perm), ctxt) =>
-        val isInUnfolding = ctxt.parentOption.exists(_.isInstanceOf[Unfolding])
+        val isInUnfolding = isWithinUnfolding(ctxt)
         if (cond(pred.predicateName) && !isInUnfolding) {
           expandablePredicates += pred.predicateName
           val optPredBody = pred.predicateBody(program, ctxt.c)
@@ -50,6 +58,65 @@ trait InlineRewrite extends PredicateExpansion {
     }, method.scopedDecls.map(_.name).toSet, Traverse.TopDown)
       .execute[Exp](expr)
   }
+
+  /**
+    * Given an inhale statement, look within it for any predicate accesses. If found, return the same inhale statement
+    * with the expanded value of the predicate.
+    *
+    * @param stmt The statement containing the inhale statement we wish to expana.
+    * @param method The method containing the inhale statement we wish to expand.
+    * @param program The Viper program for which we perform this expansion.
+    * @param cond The condition a predicate must satisfy to be expanded within an inhale statement.
+    * @return The expanded inhale statement.
+    */
+  private[this] def expandInhaleStatement(stmt: Stmt, method: Method, program: Program, cond: String => Boolean): Stmt =
+    ViperStrategy.Context[Set[String]]({
+      case tup @ (Inhale(expr), ctxt) =>
+        val expandedExpr = expandInhaleContainedExpr(expr, method, program, cond)
+        tup match {
+          case (inhaleStmt: Inhale, _) =>
+            val expandedInhaleStmt =
+              inhaleStmt.copy(exp = expandedExpr)(pos = inhaleStmt.pos, info = inhaleStmt.info, errT = inhaleStmt.errT)
+            (expandedInhaleStmt, ctxt)
+          case _ =>
+            // This is required to silence the compiler warning for non-exhaustive pattern matching
+            throw new Error("This error should never be thrown")
+        }
+    }, method.scopedDecls.map(_.name).toSet, Traverse.TopDown).execute[Stmt](stmt)
+
+  /**
+    * Given a predicate access or a predicate access predicate in the context of an inhale statement,
+    * expand the expression and produce it as a value.
+    *
+    * @param expr The expression (likely a PredicateAccess/PredicateAccessPredicate) that we want to expand.
+    * @param method The method in which this expansion occurs.
+    * @param program The Viper program for which we perform this expansion.
+    * @param cond The condition a predicate must satisfy to be expanded within an inhale statement.
+    * @return The expanded expression.
+    */
+  private[this] def expandInhaleContainedExpr(expr: Exp, method: Method, program: Program, cond: String => Boolean): Exp  =
+    ViperStrategy.Context[Set[String]]({
+      case exp @ (PredicateAccess(_, name), ctxt) =>
+        val isInUnfolding = isWithinUnfolding(ctxt)
+        if (cond(name) && !isInUnfolding) {
+          val maybePredBody = exp match {
+            case (pred: PredicateAccess, _) => pred.predicateBody(program, ctxt.c)
+            case _ =>
+              // This is required to silence the compiler warning for non-exhaustive pattern matching
+              throw new Error("This error should never be thrown")
+          }
+          (maybePredBody.get, ctxt)
+        } else exp
+      case exp @ (PredicateAccessPredicate(pred, perm), ctxt) =>
+        val isInUnfolding = isWithinUnfolding(ctxt)
+        if (cond(pred.predicateName) && !isInUnfolding) {
+          val maybePredBody = pred.predicateBody(program, ctxt.c)
+          (propagatePermission(maybePredBody, perm).get, ctxt)
+        } else exp
+      case (newScope: Scope, ctxt) =>
+        (newScope, ctxt.updateContext(ctxt.c ++ newScope.scopedDecls.map(_.name).toSet))
+    }, method.scopedDecls.map(_.name).toSet, Traverse.TopDown).execute[Exp](expr)
+
 
   /**
     * Replaces unfolding expressions by their bodies if the unfolded predicate had been expanded
@@ -81,5 +148,12 @@ trait InlineRewrite extends PredicateExpansion {
           case _ => false
         })(seqn.pos, seqn.info, seqn.errT)
     }, Traverse.BottomUp).execute[Seqn](stmts)
+  }
+
+  private[this] def isWithinUnfolding(ctxt: Context): Boolean = {
+    ctxt.parentOption.exists {
+      case _: Unfolding => true
+      case _ => false
+    }
   }
 }
