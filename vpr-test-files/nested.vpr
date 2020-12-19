@@ -1,0 +1,28 @@
+field left: Int
+field right: Int
+field middle: Int
+field elem: Int
+field next: Ref
+
+predicate list(this: Ref) 
+{
+  acc(this.elem) && acc(this.next) &&
+		(this.next != null ==> list(this.next))
+}
+
+predicate deep(this: Ref)
+{
+  acc(this.middle, write) && list(this)
+}
+
+
+predicate mid(this: Ref) {
+  acc(this.middle, write) && deep(this)
+}
+
+predicate triple(this: Ref) {
+  acc(this.left) && acc(this.right) && acc(this.right) && 
+  acc(this.left) && acc(this.right) && acc(this.right) &&
+  acc(this.left) && acc(this.right) && acc(this.right) &&
+  acc(this.left) && acc(this.right) && mid(this)
+}
