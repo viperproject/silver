@@ -11,7 +11,10 @@ case class PInlinePredicate(
   maybeBody: Option[PExp]
 ) extends PInlinePredicateDeclaration {
   override def getSubnodes(): Seq[PNode] = Seq(PPredicate(idndef, formalArgs, maybeBody))
-  override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = None // TODO
+  override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = None
   override def translateMember(t: Translator): Member =
-    InlinePredicate(???, ???, ???)(t.liftPos(PPredicate(idndef, formalArgs, maybeBody))) // TODO
+    InlinePredicate(
+      idndef.name,
+      formalArgs.map(t.liftVarDecl),
+      maybeBody.map(t.exp))(t.liftPos(PPredicate(idndef, formalArgs, maybeBody)))
 }
