@@ -38,14 +38,15 @@ class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate
     // val cond = { pred: String => nonrecursiveInlinePredIds(pred) }
     val rewrittenMethods = input.methods.map(rewriteMethod(_, input, cond))
     val rewrittenFunctions = input.functions.map(rewriteFunction(_, input, cond))
+    val allPredicates = input.predicates ++ input.extensions.collect {
+      case inlinedPred: InlinePredicate => inlinedPred.toPredicate
+    }
     ViperStrategy.Slim({
-      case program@Program(_, _, _, predicates, _, extensions) =>
+      case program: Program =>
         program.copy(
           methods = rewrittenMethods,
           functions = rewrittenFunctions,
-          predicates = predicates ++ extensions.collect {
-            case inlinePred: InlinePredicate => inlinePred.toPredicate
-          },
+          predicates = allPredicates
         )(program.pos, program.info, program.errT)
     }).execute[Program](input)
   }

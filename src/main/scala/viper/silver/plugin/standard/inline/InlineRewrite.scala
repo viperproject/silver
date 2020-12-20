@@ -6,30 +6,25 @@ import viper.silver.ast.utility.rewriter.Traverse
 
 trait InlineRewrite extends PredicateExpansion {
   def rewriteMethod(method: Method, program: Program, cond: String => Boolean): Method = {
-    val rewrittenMethod = rewriteContracts(method, program, cond)
-    val rewrittenBody = rewrittenMethod.body
+    val expandedPres = method.pres.map(expandExpression(_, method, program, cond))
+    val expandedPosts = method.posts.map(expandExpression(_, method, program, cond))
+    val rewrittenBody = method.body
       .map(removeFoldUnfolds(_, cond))
-      .map(expandStatements(_, rewrittenMethod, program, cond))
-    rewrittenMethod.copy(body = rewrittenBody)(rewrittenMethod.pos, rewrittenMethod.info, rewrittenMethod.errT)
+      .map(expandStatements(_, method, program, cond))
+    method.copy(body = rewrittenBody,
+      pres = expandedPres,
+      posts = expandedPosts
+    )(method.pos, method.info, method.errT)
   }
 
   def rewriteFunction(function: Function, program: Program, cond: String => Boolean): Function = {
-    val rewrittenFunction = rewriteContracts(function, program, cond)
-    val rewrittenBody = rewrittenFunction.body
-      .map(expandExpression(_, rewrittenFunction, program, cond))
-    rewrittenFunction.copy(body = rewrittenBody)(rewrittenFunction.pos, rewrittenFunction.info, rewrittenFunction.errT)
-  }
-
-  def rewriteContracts[M <: Contracted](member: M, program: Program, cond: String => Boolean): M = {
-    val expandedPres = member.pres.map(expandExpression(_, member, program, cond))
-    val expandedPosts = member.posts.map(expandExpression(_, member, program, cond))
-    member
-    /* How to copy?? I'm gonna go have dinner
-    member.copy(
+    val expandedPres = function.pres.map(expandExpression(_, function, program, cond))
+    val expandedPosts = function.posts.map(expandExpression(_, function, program, cond))
+    val rewrittenBody = function.body.map(expandExpression(_, function, program, cond))
+    function.copy(body = rewrittenBody,
       pres = expandedPres,
       posts = expandedPosts
-    )(member.pos, member.info, member.errT)
-    */
+    )(function.pos, function.info, function.errT)
   }
 
   /**
