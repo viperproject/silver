@@ -1,0 +1,32 @@
+field left: Int
+field middle: Int
+field right: Int
+
+predicate triple(this: Ref) {
+  acc(this.left) && acc(this.right) && mid(this)
+}
+
+predicate mid(this: Ref) {
+  acc(this.middle)
+}
+
+method tripleSum(this: Ref)
+  returns  (sum: Int)
+  requires triple(this)
+  ensures  triple(this)
+  ensures  unfolding triple(this) in unfolding mid(this) in sum == this.left + this.middle + this.right
+{
+  assert unfolding triple(this) in unfolding mid(this) in this.left == this.left
+  while (true)
+    invariant triple(this)
+  {
+    inhale triple(this)
+    exhale triple(this)
+  }
+
+  unfold triple(this)
+  unfold mid(this)
+  sum := this.left + this.middle + this.right
+  fold mid(this)
+  fold triple(this)
+}

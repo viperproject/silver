@@ -1,18 +1,14 @@
 package viper.silver.plugin.standard.inline
 
-import scala.collection.mutable
 import viper.silver.ast._
 import viper.silver.ast.utility.ViperStrategy
-import viper.silver.ast.utility.rewriter.{ContextC, Traverse}
+import viper.silver.ast.utility.rewriter.Traverse
 
 trait InlineRewrite extends PredicateExpansion {
-
-  private type Context = ContextC[Node, Set[String]]
-
   def inlinePredicates(method: Method, program: Program, cond: String => Boolean): Method = {
-    val expandedPres = method.pres.map(expandPredicates(_, method, program, cond))
-    val expandedPosts = method.posts.map(expandPredicates(_, method, program, cond))
-    val rewrittenBody = method.body.map(expandInhaleExhales(_, method, program, cond))
+    val expandedPres = method.pres.map(expandExpression(_, method, program, cond))
+    val expandedPosts = method.posts.map(expandExpression(_, method, program, cond))
+    val rewrittenBody = method.body.map(expandStatements(_, method, program, cond))
     method.copy(
       body = rewrittenBody,
       pres = expandedPres,
@@ -21,13 +17,8 @@ trait InlineRewrite extends PredicateExpansion {
   }
 
   def rewriteMethod(method: Method, cond: String => Boolean): Method = {
-    val rewrittenPres = method.pres.map { removeUnfoldings(_, cond) }
-    val rewrittenPosts = method.posts.map { removeUnfoldings(_, cond) }
-    val rewrittenBody = method.body.map { removeFoldUnfolds(_, cond) }
-    method.copy(body = rewrittenBody,
-      pres = rewrittenPres,
-      posts = rewrittenPosts,
-    )(method.pos, method.info, method.errT)
+    val rewrittenBody = method.body.map(removeFoldUnfolds(_, cond))
+    method.copy(body = rewrittenBody)(method.pos, method.info, method.errT)
   }
 
   /**
@@ -39,40 +30,43 @@ trait InlineRewrite extends PredicateExpansion {
     * @param cond The predicate (Scala) that the predicates (Viper) must satisfy.
     * @return The expression with expanded predicates and the expandable precondition and postcondition predicates.
     */
-  private[this] def expandPredicates(expr: Exp, method: Method, program: Program, cond: String => Boolean): Exp = {
-    val expandablePredicates = mutable.Set[String]()
-    ViperStrategy.Context[Set[String]]({
-      case exp@(PredicateAccessPredicate(pred, perm), ctxt) =>
-        val isInUnfolding = isWithinUnfolding(ctxt)
-        if (cond(pred.predicateName) && !isInUnfolding) {
-          expandablePredicates += pred.predicateName
-          val optPredBody = pred.predicateBody(program, ctxt.c)
+  private[this] def expandExpression(expr: Exp, method: Method, program: Program, cond: String => Boolean): Exp = {
+    val noUnfoldingExpr = removeUnfoldings(expr, cond)
+    ViperStrategy.CustomContext[Set[String]]({
+      case (expr@PredicateAccessPredicate(pred, perm), ctxt) =>
+        if (cond(pred.predicateName)) {
+          val optPredBody = pred.predicateBody(program, ctxt)
           (propagatePermission(optPredBody, perm).get, ctxt)
-        } else exp
+        } else (expr, ctxt)
       case (scope: Scope, ctxt) =>
-        (scope, ctxt.updateContext(ctxt.c ++ scope.scopedDecls.map(_.name).toSet))
-    }, method.scopedDecls.map(_.name).toSet, Traverse.TopDown)
-      .execute[Exp](expr)
+        (scope, ctxt ++ scope.scopedDecls.map(_.name).toSet)
+    }, method.scopedDecls.map(_.name).toSet, Traverse.TopDown).execute[Exp](noUnfoldingExpr)
   }
 
   /**
-    * Given an inhale or exhale statement, look within it for any predicate accesses.
+    * Given an inhale, exhale, or assert statement, look within it for any predicate accesses.
     * If found, return the same statement with the expanded body of the predicate.
     *
     * @param stmts A Seqn whose statements will be traversed.
     * @param method The method containing the inhale statement we wish to expand.
     * @param program The Viper program for which we perform this expansion.
     * @param cond The condition a predicate must satisfy to be expanded within an inhale statement.
-    * @return The Seqn with all inhale and exhale statements expanded.
+    * @return The Seqn with all inhale, exhale, and assert statements expanded.
     */
-  private[this] def expandInhaleExhales(stmts: Seqn, method: Method, program: Program, cond: String => Boolean): Seqn =
+  private[this] def expandStatements(stmts: Seqn, method: Method, program: Program, cond: String => Boolean): Seqn =
     ViperStrategy.Slim({
       case inhale@Inhale(expr) =>
-        val expandedExpr = expandPredicates(expr, method, program, cond)
+        val expandedExpr = expandExpression(expr, method, program, cond)
         inhale.copy(expandedExpr)(pos = inhale.pos, info = inhale.info, errT = inhale.errT)
       case exhale@Exhale(expr) =>
-        val expandedExpr = expandPredicates(expr, method, program, cond)
+        val expandedExpr = expandExpression(expr, method, program, cond)
         exhale.copy(expandedExpr)(pos = exhale.pos, info = exhale.info, errT = exhale.errT)
+      case assert@Assert(expr) =>
+        val expandedExpr = expandExpression(expr, method, program, cond)
+        assert.copy(expandedExpr)(pos = assert.pos, info = assert.info, errT = assert.errT)
+      case loop@While(_, invs, _) =>
+        val expandedInvs = invs.map(expandExpression(_, method, program, cond))
+        loop.copy(invs = expandedInvs)(pos = loop.pos, info = loop.info, errT = loop.errT)
     }, Traverse.TopDown).execute[Seqn](stmts)
 
   /**
@@ -105,12 +99,5 @@ trait InlineRewrite extends PredicateExpansion {
           case _ => false
         })(seqn.pos, seqn.info, seqn.errT)
     }, Traverse.TopDown).execute[Seqn](stmts)
-  }
-
-  private[this] def isWithinUnfolding(ctxt: Context): Boolean = {
-    ctxt.parentOption.exists {
-      case _: Unfolding => true
-      case _ => false
-    }
   }
 }
