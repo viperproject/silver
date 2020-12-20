@@ -8,9 +8,7 @@ trait InlineRewrite extends PredicateExpansion {
   def rewriteMethod(method: Method, program: Program, cond: String => Boolean): Method = {
     val expandedPres = method.pres.map(expandExpression(_, method, program, cond))
     val expandedPosts = method.posts.map(expandExpression(_, method, program, cond))
-    val rewrittenBody = method.body
-      .map(removeFoldUnfolds(_, cond))
-      .map(expandStatements(_, method, program, cond))
+    val rewrittenBody = method.body.map(expandStatements(_, method, program, cond))
     method.copy(body = rewrittenBody,
       pres = expandedPres,
       posts = expandedPosts
@@ -60,7 +58,8 @@ trait InlineRewrite extends PredicateExpansion {
     * @param cond The condition a predicate must satisfy to be expanded within an inhale statement.
     * @return The Seqn with all inhale, exhale, assert, and while loop statements expanded.
     */
-  private[this] def expandStatements(stmts: Seqn, member: Member, program: Program, cond: String => Boolean): Seqn =
+  private[this] def expandStatements(stmts: Seqn, member: Member, program: Program, cond: String => Boolean): Seqn = {
+    val noFoldUnfoldStmts = removeFoldUnfolds(stmts, cond)
     ViperStrategy.Slim({
       case inhale@Inhale(expr) =>
         val expandedExpr = expandExpression(expr, member, program, cond)
@@ -74,7 +73,8 @@ trait InlineRewrite extends PredicateExpansion {
       case loop@While(_, invs, _) =>
         val expandedInvs = invs.map(expandExpression(_, member, program, cond))
         loop.copy(invs = expandedInvs)(pos = loop.pos, info = loop.info, errT = loop.errT)
-    }, Traverse.TopDown).execute[Seqn](stmts)
+    }, Traverse.TopDown).execute[Seqn](noFoldUnfoldStmts)
+  }
 
   /**
     * Replaces unfolding expressions by their bodies if the unfolded predicate had been expanded
