@@ -5,6 +5,7 @@ import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.Traverse
 
 trait InlineRewrite extends PredicateExpansion {
+
   def rewriteMethod(method: Method, program: Program, cond: String => Boolean): Method = {
     val expandedPres = method.pres.map(expandExpression(_, method, program, cond))
     val expandedPosts = method.posts.map(expandExpression(_, method, program, cond))
@@ -53,7 +54,7 @@ trait InlineRewrite extends PredicateExpansion {
     * If found, return the same statement with the expanded body of the predicate.
     *
     * @param stmts A Seqn whose statements will be traversed.
-    * @param method The member containing the inhale statement we wish to expand.
+    * @param member The member containing the inhale statement we wish to expand.
     * @param program The Viper program for which we perform this expansion.
     * @param cond The condition a predicate must satisfy to be expanded within an inhale statement.
     * @return The Seqn with all inhale, exhale, assert, and while loop statements expanded.
