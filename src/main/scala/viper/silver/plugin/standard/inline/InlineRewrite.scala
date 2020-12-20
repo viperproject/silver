@@ -44,14 +44,15 @@ trait InlineRewrite extends PredicateExpansion {
   }
 
   /**
-    * Given an inhale, exhale, or assert statement, look within it for any predicate accesses.
+    * Given an inhale, exhale, or assert statement, or a while loop invariant,
+    * look within it for any predicate accesses.
     * If found, return the same statement with the expanded body of the predicate.
     *
     * @param stmts A Seqn whose statements will be traversed.
     * @param method The method containing the inhale statement we wish to expand.
     * @param program The Viper program for which we perform this expansion.
     * @param cond The condition a predicate must satisfy to be expanded within an inhale statement.
-    * @return The Seqn with all inhale, exhale, and assert statements expanded.
+    * @return The Seqn with all inhale, exhale, assert, and while loop statements expanded.
     */
   private[this] def expandStatements(stmts: Seqn, method: Method, program: Program, cond: String => Boolean): Seqn =
     ViperStrategy.Slim({
