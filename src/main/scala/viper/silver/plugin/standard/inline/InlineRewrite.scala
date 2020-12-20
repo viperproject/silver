@@ -5,32 +5,43 @@ import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.Traverse
 
 trait InlineRewrite extends PredicateExpansion {
-  def inlinePredicates(method: Method, program: Program, cond: String => Boolean): Method = {
-    val expandedPres = method.pres.map(expandExpression(_, method, program, cond))
-    val expandedPosts = method.posts.map(expandExpression(_, method, program, cond))
-    val rewrittenBody = method.body.map(expandStatements(_, method, program, cond))
-    method.copy(
-      body = rewrittenBody,
-      pres = expandedPres,
-      posts = expandedPosts
-    )(method.pos, method.info, method.errT)
+  def rewriteMethod(method: Method, program: Program, cond: String => Boolean): Method = {
+    val rewrittenMethod = rewriteContracts(method, program, cond)
+    val rewrittenBody = rewrittenMethod.body
+      .map(removeFoldUnfolds(_, cond))
+      .map(expandStatements(_, rewrittenMethod, program, cond))
+    rewrittenMethod.copy(body = rewrittenBody)(rewrittenMethod.pos, rewrittenMethod.info, rewrittenMethod.errT)
   }
 
-  def rewriteMethod(method: Method, cond: String => Boolean): Method = {
-    val rewrittenBody = method.body.map(removeFoldUnfolds(_, cond))
-    method.copy(body = rewrittenBody)(method.pos, method.info, method.errT)
+  def rewriteFunction(function: Function, program: Program, cond: String => Boolean): Function = {
+    val rewrittenFunction = rewriteContracts(function, program, cond)
+    val rewrittenBody = rewrittenFunction.body
+      .map(expandExpression(_, rewrittenFunction, program, cond))
+    rewrittenFunction.copy(body = rewrittenBody)(rewrittenFunction.pos, rewrittenFunction.info, rewrittenFunction.errT)
+  }
+
+  def rewriteContracts[M <: Contracted](member: M, program: Program, cond: String => Boolean): M = {
+    val expandedPres = member.pres.map(expandExpression(_, member, program, cond))
+    val expandedPosts = member.posts.map(expandExpression(_, member, program, cond))
+    member
+    /* How to copy?? I'm gonna go have dinner
+    member.copy(
+      pres = expandedPres,
+      posts = expandedPosts
+    )(member.pos, member.info, member.errT)
+    */
   }
 
   /**
     * Expands all predicates to their bodies in given expression.
     *
     * @param expr The expression whose predicates will be expanded.
-    * @param method The method containing the expression, used to determine locally-scoped variables.
+    * @param member The member containing the expression, used to determine locally-scoped variables.
     * @param program The program containing the expression, used to expand predicates.
     * @param cond The predicate (Scala) that the predicates (Viper) must satisfy.
     * @return The expression with expanded predicates and the expandable precondition and postcondition predicates.
     */
-  private[this] def expandExpression(expr: Exp, method: Method, program: Program, cond: String => Boolean): Exp = {
+  private[this] def expandExpression(expr: Exp, member: Member, program: Program, cond: String => Boolean): Exp = {
     val noUnfoldingExpr = removeUnfoldings(expr, cond)
     ViperStrategy.CustomContext[Set[String]]({
       case (expr@PredicateAccessPredicate(pred, perm), ctxt) =>
@@ -40,7 +51,7 @@ trait InlineRewrite extends PredicateExpansion {
         } else (expr, ctxt)
       case (scope: Scope, ctxt) =>
         (scope, ctxt ++ scope.scopedDecls.map(_.name).toSet)
-    }, method.scopedDecls.map(_.name).toSet, Traverse.TopDown).execute[Exp](noUnfoldingExpr)
+    }, member.scopedDecls.map(_.name).toSet, Traverse.TopDown).execute[Exp](noUnfoldingExpr)
   }
 
   /**
@@ -49,24 +60,24 @@ trait InlineRewrite extends PredicateExpansion {
     * If found, return the same statement with the expanded body of the predicate.
     *
     * @param stmts A Seqn whose statements will be traversed.
-    * @param method The method containing the inhale statement we wish to expand.
+    * @param method The member containing the inhale statement we wish to expand.
     * @param program The Viper program for which we perform this expansion.
     * @param cond The condition a predicate must satisfy to be expanded within an inhale statement.
     * @return The Seqn with all inhale, exhale, assert, and while loop statements expanded.
     */
-  private[this] def expandStatements(stmts: Seqn, method: Method, program: Program, cond: String => Boolean): Seqn =
+  private[this] def expandStatements(stmts: Seqn, member: Member, program: Program, cond: String => Boolean): Seqn =
     ViperStrategy.Slim({
       case inhale@Inhale(expr) =>
-        val expandedExpr = expandExpression(expr, method, program, cond)
+        val expandedExpr = expandExpression(expr, member, program, cond)
         inhale.copy(expandedExpr)(pos = inhale.pos, info = inhale.info, errT = inhale.errT)
       case exhale@Exhale(expr) =>
-        val expandedExpr = expandExpression(expr, method, program, cond)
+        val expandedExpr = expandExpression(expr, member, program, cond)
         exhale.copy(expandedExpr)(pos = exhale.pos, info = exhale.info, errT = exhale.errT)
       case assert@Assert(expr) =>
-        val expandedExpr = expandExpression(expr, method, program, cond)
+        val expandedExpr = expandExpression(expr, member, program, cond)
         assert.copy(expandedExpr)(pos = assert.pos, info = assert.info, errT = assert.errT)
       case loop@While(_, invs, _) =>
-        val expandedInvs = invs.map(expandExpression(_, method, program, cond))
+        val expandedInvs = invs.map(expandExpression(_, member, program, cond))
         loop.copy(invs = expandedInvs)(pos = loop.pos, info = loop.info, errT = loop.errT)
     }, Traverse.TopDown).execute[Seqn](stmts)
 
