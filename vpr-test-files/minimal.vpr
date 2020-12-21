@@ -1,0 +1,17 @@
+ field f: Int
+
+ predicate F(this: Ref) {
+   acc(this.f)
+ }
+
+ predicate loop(this: Ref) {
+   loop(this) && F(this)
+ }
+
+ method nestedPred(this: Ref)
+   requires loop(this)
+ {
+   unfold loop(this)
+   unfold F(this)
+   this.f := 0
+ }
