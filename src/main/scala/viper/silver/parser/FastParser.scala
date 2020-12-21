@@ -10,7 +10,7 @@ import java.net.URL
 import java.nio.file.{Files, Path, Paths}
 
 import viper.silver.ast.{FilePosition, LabelledOld, LineCol, NoPosition, Position, SourcePosition}
-import viper.silver.ast.utility.rewriter.{ContextA, PartialContextC, StrategyBuilder}
+import viper.silver.ast.utility.rewriter.{ContextA, PartialContextC, StrategyBuilder, Traverse}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
 import viper.silver.plugin.SilverPluginManager
 import viper.silver.verifier.{ParseError, ParseWarning}
@@ -33,20 +33,17 @@ object FastParser {
       NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
   }
 
-  //? type P[T] = FP[T]
-
-
   // As opposed to use Index ~ t ~ Index, this implementation is agnostic to white space specializations.
   def FP[T](t: P[T])(implicit name: sourcecode.Name, ctx: P[_]): P[((FilePosition, FilePosition), T)] = {
     t ~ Index map {
       case (parsed: T, index) =>
-        //? val startPos = ctx.input.prettyIndex(previousParseIndex).split(":").map(_.toInt)
-        //? val finishPos = ctx.input.prettyIndex(currentParseIndex - 1).split(":").map(_.toInt)
+        //  val startPos = ctx.input.prettyIndex(previousParseIndex).split(":").map(_.toInt)
+        //  val finishPos = ctx.input.prettyIndex(currentParseIndex - 1).split(":").map(_.toInt)
 
         val startPos = LineCol(ctx.index)
         val finishPos = LineCol(index)
 
-        //? ((FilePosition(_file, startPos(0), startPos(1)), FilePosition(_file, finishPos(0), finishPos(1))), parsed)
+        // ((FilePosition(_file, startPos(0), startPos(1)), FilePosition(_file, finishPos(0), finishPos(1))), parsed)
         ((FilePosition(_file, startPos._1, startPos._2), FilePosition(_file, finishPos._1, finishPos._2)), parsed)
     }
   }
@@ -588,13 +585,9 @@ object FastParser {
     }, ReplaceContext())
 
     // The position of every node inside the macro is the position where the macro is "called"
-    def adaptPositions(body: PNode, pos: (Position, Position)): PNode  = {
-      val adapter = StrategyBuilder.Slim[PNode] {
-        case n => {
-          n.withChildren(n.children, Some(pos))
-        }
-      }
-      adapter.execute[PNode](body)
+    def adaptPositions(body: PNode, pos: (Position, Position)): PNode = {
+      val children = body.children.map { child => if (child.isInstanceOf[PNode]) adaptPositions(child.asInstanceOf[PNode], pos) else child}
+      body.withChildren(children, Some(pos))
     }
 
     // Replace variables in macro body, adapt positions correctly (same line number as macro call)
@@ -996,8 +989,8 @@ object FastParser {
 
 
   def fapp[_: P]: P[PCall] = FP(idnuse ~ parens(actualArgList)).map {
-    case (pos, (func, args)) =>
-      PCall(func, args, None)(pos)
+    case (_, (func, args)) =>
+      PCall(func, args, None)(func.pos)
   }
 
   def typedFapp[_: P]: P[PExp] = FP(parens(idnuse ~ parens(actualArgList) ~ ":" ~ typ)).map {

@@ -507,12 +507,6 @@ case class Translator(program: PProgram) {
     else {
       SourcePosition(null, 0, 0)
     }
-    //? val start = LineColumnPosition(pos.start.line, pos.start.column)
-    //? val end = LineColumnPosition(pos.finish.line, pos.finish.column)
-    //? pos.start match {
-    //?   case fp: FilePosition => SourcePosition(fp.file, start, end)
-    //?   case NoPosition => SourcePosition(null, 0, 0)
-    //? }
   }
 
   /** Takes a `PAnyFormalArgDecl` and turns it into a `AnyLocalVarDecl`. */
