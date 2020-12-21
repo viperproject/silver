@@ -93,9 +93,9 @@ trait InlineErrorChecker {
   private[this] def prettyPrint(preds: Set[Predicate], errorReason: String): Unit = {
     val predIds = preds.map(_.name).mkString(", ")
     if (preds.size > 1) {
-      println(s"[$predIds] are $errorReason predicates and will not be inlined.")
+      println(s"${Console.RED} [$predIds] are $errorReason predicates and will not be inlined.")
     } else {
-      println(s"[$predIds] is a $errorReason predicate and will not be inlined.")
+      println(s"${Console.RED} [$predIds] is a $errorReason predicate and will not be inlined.")
     }
   }
 }
