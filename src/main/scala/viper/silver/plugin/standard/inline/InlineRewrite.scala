@@ -40,8 +40,8 @@ trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
     ViperStrategy.CustomContext[Set[String]]({
       case (expr@PredicateAccessPredicate(pred, perm), ctxt) =>
         if (cond(pred.predicateName)) {
-          val optPredBody = pred.predicateBody(program, ctxt)
-          (propagatePermission(optPredBody, perm).get, ctxt)
+          val optPredBody = propagatePermission(pred.predicateBody(program, ctxt), perm)
+          (optPredBody.get, ctxt)
         } else (expr, ctxt)
       case (scope: Scope, ctxt) =>
         (scope, ctxt ++ scope.scopedDecls.map(_.name).toSet)
@@ -60,7 +60,7 @@ trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
     * @return The Seqn with all inhale, exhale, assert, and while loop statements expanded.
     */
   private[this] def expandStatements(stmts: Seqn, member: Member, program: Program, cond: String => Boolean): Seqn = {
-    val noFoldUnfoldStmts = removeFoldUnfolds(stmts, cond)
+    val noFoldUnfoldStmts = removeFoldUnfolds(stmts, member, program, cond)
     ViperStrategy.Slim({
       case inhale@Inhale(expr) =>
         val expandedExpr = expandExpression(expr, member, program, cond)
@@ -92,20 +92,24 @@ trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
   }
 
   /**
-    * Removes given predicate unfolds and folds from statement.
+    * Transforms predicate unfolds and folds into assertions.
     *
     * @param stmts A Seqn whose statements will be traversed.
     * @param cond The condition a predicate must satisfy to no longer require (un)folding.
-    * @return The Seqn with all above unfolds and folds removed.
+    * @return The Seqn with all possible unfolds and folds turned into assertions.
     */
-  private[this] def removeFoldUnfolds(stmts: Seqn, cond: String => Boolean): Seqn = {
-    ViperStrategy.Slim({
-      case seqn@Seqn(ss, _) =>
-        seqn.copy(ss = ss.filterNot {
-          case Fold(PredicateAccessPredicate(PredicateAccess(_, name), _)) => cond(name)
-          case Unfold(PredicateAccessPredicate(PredicateAccess(_, name), _)) => cond(name)
-          case _ => false
-        })(seqn.pos, seqn.info, seqn.errT)
-    }, Traverse.TopDown).execute[Seqn](stmts)
+  private[this] def removeFoldUnfolds(stmts: Seqn, member: Member, program: Program, cond: String => Boolean): Seqn = {
+    ViperStrategy.CustomContext[Set[String]]({
+      case (fold@Fold(PredicateAccessPredicate(pred, perm)), ctxt) =>
+        if (cond(pred.predicateName)) {
+          val optPredbody = propagatePermission(pred.predicateBody(program, ctxt), perm)
+          (Assert(optPredbody.get)(fold.pos, fold.info, fold.errT), ctxt)
+        } else (fold, ctxt)
+      case (unfold@Unfold(PredicateAccessPredicate(pred, perm)), ctxt) =>
+        if (cond(pred.predicateName)) {
+          val optPredbody = propagatePermission(pred.predicateBody(program, ctxt), perm)
+          (Assert(optPredbody.get)(unfold.pos, unfold.info, unfold.errT), ctxt)
+        } else (unfold, ctxt)
+    }, member.scopedDecls.map(_.name).toSet, Traverse.BottomUp).execute[Seqn](stmts)
   }
 }
