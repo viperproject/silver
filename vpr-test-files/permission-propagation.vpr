@@ -1,0 +1,12 @@
+field i: Int
+
+predicate int(this: Ref) {
+  acc(this.i, 1/2)
+}
+
+predicate intint(this: Ref) {
+  acc(this.i, 1/4) && acc(int(this), 1/5)
+}
+
+method test(this: Ref)
+  requires acc(intint(this), 1/3) {}
