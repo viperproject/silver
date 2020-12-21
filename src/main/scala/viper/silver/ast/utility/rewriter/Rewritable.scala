@@ -10,6 +10,7 @@ import viper.silver.parser.PDomainFunction
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
 import viper.silver.ast.{AtomicType, DomainFuncApp, ErrorTrafo, FuncApp, Info, Node, Position}
 import viper.silver.ast.utility.ViperStrategy.forceRewrite
+import viper.silver.ast.Position
 
 import scala.reflect.runtime.{universe => reflection}
 
@@ -21,8 +22,8 @@ trait Rewritable extends Product {
 
   def children: Seq[Any] = productIterator.toList
 
-  def withChildren(children: Seq[Any]): this.type = {
-    if (!forceRewrite && this.children == children)
+  def withChildren(children: Seq[Any], pos: Option[(Position, Position)] = None): this.type = {
+    if (!forceRewrite && this.children == children && !pos.isDefined)
       this
     else {
       // Singleton objects shouldn't be rewritten, preserving their singularity
@@ -49,10 +50,10 @@ trait Rewritable extends Product {
           case df: DomainFunc => secondArgList = Seq(df.pos, df.info, df.domainName, df.errT)
           case df: DomainFuncApp => secondArgList = Seq(df.pos, df.info, df.typ, df.domainName, df.errT)
           case no: Node => secondArgList = no.getMetadata
-          case pa: PAxiom => secondArgList = Seq(pa.domainName) ++ Seq(pa.pos)
-          case pm: PMagicWandExp => firstArgList = Seq(children.head) ++ children.drop(2) ++ Seq(pm.pos)
-          case pd: PDomainFunction => secondArgList = Seq(pd.domainName) ++ Seq(pd.pos)
-          case pn: PNode => secondArgList = Seq(pn.pos)
+          case pa: PAxiom => secondArgList = Seq(pa.domainName) ++ (if (pos.isDefined) Seq(pos.get) else Seq(pa.pos))
+          case pm: PMagicWandExp => firstArgList = Seq(children.head) ++ children.drop(2) ++ (if (pos.isDefined) Seq(pos.get) else Seq(pm.pos))
+          case pd: PDomainFunction => secondArgList = Seq(pd.domainName) ++ (if (pos.isDefined) Seq(pos.get) else Seq(pd.pos))
+          case pn: PNode => secondArgList = (if (pos.isDefined) Seq(pos.get) else Seq(pn.pos))
           case _ =>
         }
 
