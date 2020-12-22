@@ -75,6 +75,7 @@ trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
       case loop@While(_, invs, _) =>
         val expandedInvs = invs.map(expandExpression(_, member, program, cond))
         loop.copy(invs = expandedInvs)(pos = loop.pos, info = loop.info, errT = loop.errT)
+      case expr: Exp => removeUnfoldings(expr, cond)
     }, Traverse.TopDown).execute[Seqn](noFoldUnfoldStmts)
   }
 
