@@ -41,7 +41,8 @@ trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
       case (expr@PredicateAccessPredicate(pred, perm), ctxt) =>
         if (cond(pred.predicateName)) {
           val optPredBody = propagatePermission(pred.predicateBody(program, ctxt), perm)
-          (optPredBody.get, ctxt)
+          val expandedExpr = expandExpression(optPredBody.get, member, program, cond)
+          (expandedExpr, ctxt)
         } else (expr, ctxt)
       case (scope: Scope, ctxt) =>
         (scope, ctxt ++ scope.scopedDecls.map(_.name).toSet)
