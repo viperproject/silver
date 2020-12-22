@@ -35,7 +35,7 @@ trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
     * @param cond The predicate (Scala) that the predicates (Viper) must satisfy.
     * @return The expression with expanded predicates and the expandable precondition and postcondition predicates.
     */
-  private[this] def expandExpression(expr: Exp, member: Member, program: Program, cond: String => Boolean): Exp = {
+  private[this] def expandExpression(expr: Exp, member: Member, program: Program, cond: String => Boolean, decls: Set[String] = Set()): Exp = {
     val noUnfoldingExpr = removeUnfoldings(expr, cond)
     ViperStrategy.CustomContext[Set[String]]({
       case (expr@PredicateAccessPredicate(pred, perm), ctxt) =>
@@ -46,7 +46,7 @@ trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
         } else (expr, ctxt)
       case (scope: Scope, ctxt) =>
         (scope, ctxt ++ scope.scopedDecls.map(_.name).toSet)
-    }, member.scopedDecls.map(_.name).toSet, Traverse.TopDown).execute[Exp](noUnfoldingExpr)
+    }, member.scopedDecls.map(_.name).toSet ++ decls, Traverse.TopDown).execute[Exp](noUnfoldingExpr)
   }
 
   /**
@@ -62,21 +62,23 @@ trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
     */
   private[this] def expandStatements(stmts: Seqn, member: Member, program: Program, cond: String => Boolean): Seqn = {
     val noFoldUnfoldStmts = removeFoldUnfolds(stmts, member, program, cond)
-    ViperStrategy.Slim({
-      case inhale@Inhale(expr) =>
-        val expandedExpr = expandExpression(expr, member, program, cond)
-        inhale.copy(expandedExpr)(pos = inhale.pos, info = inhale.info, errT = inhale.errT)
-      case exhale@Exhale(expr) =>
-        val expandedExpr = expandExpression(expr, member, program, cond)
-        exhale.copy(expandedExpr)(pos = exhale.pos, info = exhale.info, errT = exhale.errT)
-      case assert@Assert(expr) =>
-        val expandedExpr = expandExpression(expr, member, program, cond)
-        assert.copy(expandedExpr)(pos = assert.pos, info = assert.info, errT = assert.errT)
-      case loop@While(_, invs, _) =>
-        val expandedInvs = invs.map(expandExpression(_, member, program, cond))
-        loop.copy(invs = expandedInvs)(pos = loop.pos, info = loop.info, errT = loop.errT)
-      case expr: Exp => removeUnfoldings(expr, cond)
-    }, Traverse.TopDown).execute[Seqn](noFoldUnfoldStmts)
+    ViperStrategy.CustomContext[Set[String]]({
+      case (inhale@Inhale(expr), ctxt) =>
+        val expandedExpr = expandExpression(expr, member, program, cond, ctxt)
+        (inhale.copy(expandedExpr)(pos = inhale.pos, info = inhale.info, errT = inhale.errT), ctxt)
+      case (exhale@Exhale(expr), ctxt) =>
+        val expandedExpr = expandExpression(expr, member, program, cond, ctxt)
+        (exhale.copy(expandedExpr)(pos = exhale.pos, info = exhale.info, errT = exhale.errT), ctxt)
+      case (assert@Assert(expr), ctxt) =>
+        val expandedExpr = expandExpression(expr, member, program, cond, ctxt)
+        (assert.copy(expandedExpr)(pos = assert.pos, info = assert.info, errT = assert.errT), ctxt)
+      case (loop@While(_, invs, _), ctxt) =>
+        val expandedInvs = invs.map(expandExpression(_, member, program, cond, ctxt))
+        (loop.copy(invs = expandedInvs)(pos = loop.pos, info = loop.info, errT = loop.errT), ctxt)
+      case (seqn@Seqn(_, scopedDecls), ctxt) =>
+        (seqn, ctxt ++ scopedDecls.map(_.name))
+      case (expr: Exp, ctxt) => (removeUnfoldings(expr, cond), ctxt)
+    }, stmts.scopedDecls.map(_.name).toSet, Traverse.TopDown).execute[Seqn](noFoldUnfoldStmts)
   }
 
   /**
