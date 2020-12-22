@@ -9,7 +9,7 @@ class InlineErrorCheckerTest extends FunSuite with InlineErrorChecker with Inlin
   test("checkRecursive should evaluate to an empty set given an empty set of predicates") {
     val program = programCopy()
 
-    checkRecursive(predicateIds = Set(), program).isEmpty
+    assert(checkRecursive(predicateIds = Set(), program).isEmpty)
   }
 
   test("checkRecursive should evaluate to an empty set given a non-recursive predicate") {
@@ -18,7 +18,7 @@ class InlineErrorCheckerTest extends FunSuite with InlineErrorChecker with Inlin
     val nonRecursivePred = Predicate(predId, formalArgs = Seq(), body = maybeNonRecursiveBody)()
     val program = programCopy(predicates = Seq(nonRecursivePred))
 
-    checkRecursive(predicateIds = Set(predId), program).isEmpty
+    assert(checkRecursive(predicateIds = Set(predId), program).isEmpty)
   }
 
   test("checkRecursive should evaluate to a set of recursive predicates given their ids") {
@@ -28,10 +28,10 @@ class InlineErrorCheckerTest extends FunSuite with InlineErrorChecker with Inlin
     val program = programCopy(predicates = Seq(recursivePred))
 
     val result = checkRecursive(predicateIds = Set(predId), program)
-    result.size == 1 && result.forall {
+    assert(result.size == 1 && result.forall {
       case Predicate(name, _, _) => name == predId
       case _ => false
-    }
+    })
   }
 
   test("checkRecursive should evaluate to a set of recursive predicates given a deeper body") {
@@ -42,7 +42,7 @@ class InlineErrorCheckerTest extends FunSuite with InlineErrorChecker with Inlin
     val program = programCopy(predicates = Seq(recursivePred))
 
     val result = checkRecursive(predicateIds = Set(predId), program)
-    result.size == 1 && result(recursivePred)
+    assert(result.size == 1 && result(recursivePred))
   }
 
   test("checkRecursive should evaluate to a set of recursive predicates given a number of recursive preds") {
@@ -57,13 +57,13 @@ class InlineErrorCheckerTest extends FunSuite with InlineErrorChecker with Inlin
     val program = programCopy(predicates = Seq(firstRecursivePred, secondRecursivePred))
 
     val result = checkRecursive(predicateIds = Set(firstRec, secondRec), program)
-    result.size == 2 && result(firstRecursivePred) && result(secondRecursivePred)
+    assert(result.size == 2 && result(firstRecursivePred) && result(secondRecursivePred))
   }
 
   test("checkMutualRecursive should evaluate to an empty set given an empty set of predicates") {
     val program = programCopy()
 
-    checkMutualRecursive(predicateIds = Set(), program).isEmpty
+   assert(checkMutualRecursive(predicateIds = Set(), program).isEmpty)
   }
 
   test("checkMutualRecursive should evaluate to an empty set given the id of a non-recursive predicate") {
@@ -72,7 +72,7 @@ class InlineErrorCheckerTest extends FunSuite with InlineErrorChecker with Inlin
     val nonRecursivePred = Predicate(predId, formalArgs = Seq(), body = maybeNonRecursiveBody)()
     val program = programCopy(predicates = Seq(nonRecursivePred))
 
-    checkMutualRecursive(predicateIds = Set(predId), program).isEmpty
+    assert(checkMutualRecursive(predicateIds = Set(predId), program).isEmpty)
   }
 
   test("checkMutualRecursive should evaluate to an empty set given a program with only non-recursive predicates") {
@@ -83,7 +83,7 @@ class InlineErrorCheckerTest extends FunSuite with InlineErrorChecker with Inlin
     val emptyPred = Predicate(emptyPredId, formalArgs = Seq(), body = None)()
     val program = programCopy(predicates = Seq(addPred, emptyPred))
 
-    checkMutualRecursive(predicateIds = Set(addPredId, emptyPredId), program).isEmpty
+    assert(checkMutualRecursive(predicateIds = Set(addPredId, emptyPredId), program).isEmpty)
   }
 
   test("checkMutualRecursive should evaluate to a set containing mutually-recursive predicates given their ids") {
@@ -96,14 +96,14 @@ class InlineErrorCheckerTest extends FunSuite with InlineErrorChecker with Inlin
     val program = programCopy(predicates = Seq(firstPred, secondPred))
 
     val result = checkMutualRecursive(Set(firstPredId, secondPredId), program)
-    result.size == 2 && result(firstPred) && result(secondPred)
+    assert(result.size == 2 && result(firstPred) && result(secondPred))
   }
 
   test("predicatesCalledBy should evaluate to None given a predicate with an empty body") {
     val emptyPred = Predicate("empty", Seq(), body = None)()
     val program = programCopy()
 
-    nonRecursivePredsCalledBy(emptyPred, Set(), program).isEmpty
+    assert(nonRecursivePredsCalledBy(emptyPred, Set(), program).isEmpty)
   }
 
   test("predicatesCalledBy should not return predicates names for recursive preds") {
@@ -112,7 +112,7 @@ class InlineErrorCheckerTest extends FunSuite with InlineErrorChecker with Inlin
     val recursivePred = Predicate(predId, formalArgs = Seq(), body = maybeRecursiveBody)()
     val program = programCopy()
 
-    nonRecursivePredsCalledBy(recursivePred, Set("rec"), program).isEmpty
+    assert(nonRecursivePredsCalledBy(recursivePred, Set("rec"), program).isEmpty)
   }
 
   test("predicatesCalledBy should return predicates called in the body of the given predicate") {
@@ -129,7 +129,7 @@ class InlineErrorCheckerTest extends FunSuite with InlineErrorChecker with Inlin
     val pred = Predicate("loop", formalArgs = Seq(), body = maybeRecursiveBody)()
 
     val result = nonRecursivePredsCalledBy(pred, Set("loop"), program)
-    result.size == 1 && result(calledPredId)
+    assert(result.size == 1 && result(calledPredId))
   }
 
   test("predicatesCalledBy should traverse subpredicates") {
@@ -167,6 +167,6 @@ class InlineErrorCheckerTest extends FunSuite with InlineErrorChecker with Inlin
     )
 
     val result = nonRecursivePredsCalledBy(loopPred, Set("loop"), program)
-    result.size == 2 && Set(f, g) == result
+    assert(result.size == 2 && Set(f, g) == result)
   }
 }

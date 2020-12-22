@@ -16,7 +16,7 @@ trait InlineErrorChecker {
   def checkRecursive(predicateIds: Set[String], program: Program): Set[Predicate] = {
     val predicates = predicateIds.map(program.findPredicate)
     val recursivePreds = predicates.filter {
-          case Predicate(name, _, maybeBody) => isRecursivePred(name, maybeBody)
+      case Predicate(name, _, maybeBody) => maybeBody.fold(false)(isRecursivePred(name, _))
     }
     if (recursivePreds.nonEmpty) {
       prettyPrint(recursivePreds, "recursive")
@@ -79,16 +79,13 @@ trait InlineErrorChecker {
     * @param maybePredBody the possible body of the predicate.
     * @return true iff the predicate is found to be recursively defined.
     */
-  private[this] def isRecursivePred(predId: String, maybePredBody: Option[Node]): Boolean =
-    maybePredBody.fold(false) { predBody =>
-      val subNodes = predBody.subnodes
-      val existsAtTopLevelNode = subNodes.exists {
-        case PredicateAccessPredicate(PredicateAccess(_, name), _) => name == predId
-        case _ => false
-      }
-      lazy val isInChildNodes = subNodes.exists(child => isRecursivePred(predId, Some(child)))
-      existsAtTopLevelNode || isInChildNodes
+  private[this] def isRecursivePred(predId: String, predBody: Node): Boolean = {
+    lazy val isInChildNodes = predBody.subnodes.exists(isRecursivePred(predId, _))
+    predBody match {
+      case PredicateAccessPredicate(PredicateAccess(_, name), _) => name == predId
+      case _ => isInChildNodes
     }
+  }
 
   private[this] def prettyPrint(preds: Set[Predicate], errorReason: String): Unit = {
     val predIds = preds.map(_.name).mkString(", ")
