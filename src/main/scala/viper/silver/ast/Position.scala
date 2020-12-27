@@ -42,11 +42,25 @@ trait AbstractSourcePosition extends HasLineColumn {
   def start: HasLineColumn
   def end: Option[HasLineColumn]
 
-  lazy val line = start.line
-  lazy val column = start.column
+  lazy val line: Int = start.line
+  lazy val column: Int = start.column
 
-  override def toString =
-    s"${if(file==null || file.getFileName==null) "" else file.getFileName.toString + "@"}$line.$column"
+  private def fileComponent =
+    if (file==null || file.getFileName==null) {
+      ""
+    } else {
+      file.getFileName.toString + "@"
+    }
+
+  private def lineColComponent(lc_pos: HasLineColumn) =
+    s"${lc_pos.line}.${lc_pos.column}"
+
+  override def toString: String = end match {
+    case None =>
+      s"$fileComponent${lineColComponent(start)}"
+    case Some(end_pos) =>
+      s"$fileComponent${lineColComponent(start)}--${lineColComponent(end_pos)}"
+  }
 }
 
 object AbstractSourcePosition {
