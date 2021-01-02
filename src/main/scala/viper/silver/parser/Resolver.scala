@@ -8,7 +8,7 @@ package viper.silver.parser
 
 import scala.collection.mutable
 import scala.reflect._
-import viper.silver.ast.{LabelledOld, MagicWandOp, Position}
+import viper.silver.ast.{LabelledOld, MagicWandOp}
 import viper.silver.ast.utility.Visitor
 import viper.silver.FastMessaging
 

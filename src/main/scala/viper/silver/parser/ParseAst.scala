@@ -6,10 +6,10 @@
 
 package viper.silver.parser
 
-import scala.collection.{GenTraversable, Set}
+import scala.collection.Set
 import scala.language.implicitConversions
 import viper.silver.ast.utility.Visitor
-import viper.silver.ast.{Exp, FilePosition, MagicWandOp, Member, NoPosition, Position, Stmt, Type}
+import viper.silver.ast.{Exp, MagicWandOp, Member, NoPosition, Position, Stmt, Type}
 import viper.silver.ast.utility.rewriter.{Rewritable, StrategyBuilder}
 import viper.silver.parser.TypeHelper._
 import viper.silver.verifier.ParseReport
