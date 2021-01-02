@@ -117,7 +117,7 @@ trait PNode extends Where with Product with Rewritable {
           c.initProperties()
         case Some (o) =>
           setNodeChildConnections (o)
-          case s : GenTraversable[_] =>
+          case s : Iterable[_] =>
           for (v <- s)
             setNodeChildConnections (v)
         case _ =>

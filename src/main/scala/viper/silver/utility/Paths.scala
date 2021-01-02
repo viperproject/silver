@@ -9,8 +9,7 @@ package viper.silver.utility
 import java.io.File
 import java.net.{URI, URL}
 import java.nio.file.{FileSystem, FileSystems, Path}
-
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 /**
   * A collection of utility methods for dealing with paths and environment variables.
