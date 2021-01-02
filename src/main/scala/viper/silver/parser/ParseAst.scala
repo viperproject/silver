@@ -990,7 +990,9 @@ trait PUniversalDeclaration extends PDeclaration
 
 sealed trait PTypedDeclaration extends PDeclaration with PUnnamedTypedDeclaration
 
-abstract class PErrorEntity(name: String) extends PEntity
+abstract class PErrorEntity extends PEntity {
+  def name: String
+}
 
 
 // a member (like method or axiom) that is its own name scope
@@ -1044,12 +1046,16 @@ case class PAxiom1(idndef: Option[PIdnDef], exp: PExp)(val pos: (Position, Posit
  * A entity represented by names for whom we have seen more than one
  * declaration so we are unsure what is being represented.
  */
-case class PMultipleEntity() extends PErrorEntity("multiple")
+case class PMultipleEntity() extends PErrorEntity {
+  val name = "multiple"
+}
 
 /**
  * An unknown entity, represented by names whose declarations are missing.
  */
-case class PUnknownEntity() extends PErrorEntity("unknown")
+case class PUnknownEntity() extends PErrorEntity {
+  val name = "unknown"
+}
 
 
 trait PExtender extends PNode{

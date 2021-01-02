@@ -92,7 +92,7 @@ object Paths {
           fs = FileSystems.newFileSystem(fileURI, Map[String, Object]().asJava)
           openFileSystems = fs +: openFileSystems
         } catch {
-          case e: java.nio.file.FileSystemAlreadyExistsException =>
+          case _: java.nio.file.FileSystemAlreadyExistsException =>
             fs = FileSystems.getFileSystem(fileURI)
             assert(fs.isOpen, "The reused file system is expected to still be open")
         } finally {
