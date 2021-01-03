@@ -186,7 +186,7 @@ trait StatisticalTestSuite extends SilSuite {
       val worstRun: Seq[Long] = trimmedTimings.last
 
       val stddevTimings = trimmedTimings.transpose.zip(meanTimings).map { case (col, mean) =>
-        math.sqrt(col.map(v => math.pow(v - mean, 2)).sum / col.length).toLong
+        math.sqrt(col.map(v => math.pow((v - mean).toDouble, 2)).sum / col.length).toLong
       }
 
       val relStddevTimings = stddevTimings.zip(meanTimings).map { case (stddev, mean) =>
