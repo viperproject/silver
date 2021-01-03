@@ -94,6 +94,10 @@ abstract class ResourceBasedTestSuite extends AnyFunSuite {
 
     val directoryStream = Files.newDirectoryStream(dir).asScala
     val dirContent = directoryStream.toList
+
+    // This method is called before configMap has been populated, and defaultTestPattern
+    // will thus always be used.
+    // TODO: Remove use of configMap here
     val includeFilesPattern = configMap.getOrElse("includeFiles", defaultTestPattern).toString
 
     for (f: Path <- dirContent.sorted
@@ -186,12 +190,15 @@ abstract class ResourceBasedTestSuite extends AnyFunSuite {
   /** The filter passed to one of the `run`-methods. */
   protected var optFilter: Option[Filter] = None
 
-  protected override def runTest (
+  /** Invoked once per test to run, i.e. after the filter (ScalaTest runner's -n option)
+    * has already reduced the set of tests to run.
+    */
+  protected override def runTest(
       testName: String,
-      args : Args) : Status =
-    {
+      args : Args) : Status = {
 
     this.configMap = args.configMap
+    this.optFilter = Some(args.filter)
 
     registerTests()
 
