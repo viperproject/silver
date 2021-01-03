@@ -7,7 +7,7 @@ import viper.silver.parser.FastParser.whitespace
 
 object ModelParser {
 
-  def identifier[_: P]: P[Unit] = P(CharIn("0-9", "A-Z", "a-z", "[]\"'#+-*/:=!$_@<>.%~") ~~ CharIn("0-9", "A-Z", "a-z", "[]\"'#+-*/:=!$_@<>.%~").repX)
+  def identifier[_: P]: P[Unit] = P(CharIn("0-9", "A-Z", "a-z", "[]\"'#++--*/:=!$_@<>.%~") ~~ CharIn("0-9", "A-Z", "a-z", "[]\"'#++--*/:=!$_@<>.%~").repX)
 
   def idnuse[_: P]: P[String] = P(identifier).!.filter(a => a != "else" && a != "let" && a != "->")
 
