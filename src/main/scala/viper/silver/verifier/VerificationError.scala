@@ -12,18 +12,26 @@ import viper.silver.ast.pretty.FastPrettyPrinter
 import viper.silver.ast.utility.rewriter.Rewritable
 
 sealed trait ModelEntry
-case class SingleEntry(value: String) extends ModelEntry {
+
+sealed trait ValueEntry extends ModelEntry
+
+case class ConstantEntry(value: String) extends ValueEntry {
   override def toString: String = value
 }
-case class MapEntry(options: Map[Seq[String], String], els: String) extends ModelEntry {
+
+case class ApplicationEntry(name: String, arguments: Seq[ValueEntry]) extends ValueEntry {
+  override def toString: String = s"($name ${arguments.mkString(" ")})"
+}
+
+case class MapEntry(options: Map[Seq[ValueEntry], ValueEntry], default: ValueEntry) extends ModelEntry {
   override def toString: String = {
     if (options.nonEmpty)
-      "{\n" + options.map(o => "    " + o._1.mkString(" ") + " -> " + o._2).mkString("\n") + "\n    else -> " + els +"\n}"
+      "{\n" + options.map(o => "    " + o._1.mkString(" ") + " -> " + o._2).mkString("\n") + "\n    else -> " + default +"\n}"
     else
-      "{\n    " + els +"\n}"
+      "{\n    " + default +"\n}"
   }
 }
-case class Model(entries: Map[String,ModelEntry]) {
+case class Model(entries: Map[String, ModelEntry]) {
   override def toString: String = entries.map(e => e._1 + " -> " + e._2).mkString("\n")
 }
 
@@ -39,19 +47,18 @@ trait CounterexampleTransformer {
 }
 
 object CounterexampleTransformer {
-  def apply(ff: Counterexample => Counterexample) = {
+  def apply(ff: Counterexample => Counterexample): CounterexampleTransformer = {
     new CounterexampleTransformer {
-      def f: (Counterexample) => Counterexample = ff
+      def f: Counterexample => Counterexample = ff
     }
   }
 }
 
 object Model {
-
   def apply(modelString: String) : Model = {
     fastparse.parse(modelString, ModelParser.model(_)) match{
-      case Parsed.Success(m, index) => return m
-      case f@Parsed.Failure(last, index, extra) => throw new Exception(f.toString)
+      case Parsed.Success(model, _) => model
+      case failure: Parsed.Failure => throw new Exception(failure.toString)
     }
   }
 }
