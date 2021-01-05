@@ -11,6 +11,14 @@ import viper.silver.ast._
 import viper.silver.ast.pretty.FastPrettyPrinter
 import viper.silver.ast.utility.rewriter.Rewritable
 
+
+/**********************************************************************************
+  * IMPORTANT:
+  * After changing this file, please edit the corresponding JSON convertors in:
+  *  viper/server/frontends/http/jsonWriters/ViperIDEProtocol.scala
+  *  https://github.com/viperproject/viperserver
+  **********************************************************************************/
+
 sealed trait ModelEntry
 
 sealed trait ValueEntry extends ModelEntry
