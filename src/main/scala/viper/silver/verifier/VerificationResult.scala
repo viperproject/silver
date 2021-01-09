@@ -55,6 +55,16 @@ trait AbstractError {
   val cached: Boolean = false
 
   var scope: Option[Member] = None
+
+  /** This method could be used for implementing the scope filed via an offending node.
+    * TODO: make scope a mandatory field (do not provide a default value for it). */
+  protected def getMemberForNode(ast: Program, node: Node): Member = {
+    val members_with_this_node = ast.members.collect {
+      case m if m.deepCollect({ case n => n == node }).nonEmpty => m
+    }
+    assert(members_with_this_node.length == 1)
+    members_with_this_node.last
+  }
 }
 
 abstract class ParseReport(message: String, pos: Position) extends AbstractError

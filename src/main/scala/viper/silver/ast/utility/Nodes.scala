@@ -167,7 +167,7 @@ object Nodes {
      */
     val relevantChildren = (node match {
       case p: Product => p.productIterator.flatMap {
-        case t: Traversable[_] if !t.isInstanceOf[Node] => t
+        case t: Iterable[_] if !t.isInstanceOf[Node] => t
         case other => other :: Nil
       }
     }).toSeq

@@ -25,17 +25,17 @@ class SemanticAnalysisTests extends AnyFunSuite {
   // }
 
   test("Semantic analysis in AST without shared nodes") {
-    val binExp1 = PBinExp(PIntLit(1), "==", PIntLit(1))
-    val binExp2 = PBinExp(PIntLit(1), "==", PIntLit(1))
-    val method = PMethod(PIdnDef("m"), Seq(), Seq(), Seq(), Seq(), Some(PSeqn(Seq(PSeqn(Seq(PAssert(binExp1), PSeqn(Seq(PAssert(binExp2)))))))))
-    val program = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(method), Seq(), Seq())
+    val binExp1 = PBinExp(PIntLit(1)(), "==", PIntLit(1)())()
+    val binExp2 = PBinExp(PIntLit(1)(), "==", PIntLit(1)())()
+    val method = PMethod(PIdnDef("m")(), Seq(), Seq(), Seq(), Seq(), Some(PSeqn(Seq(PSeqn(Seq(PAssert(binExp1)(), PSeqn(Seq(PAssert(binExp2)()))()))()))()))()
+    val program = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(method), Seq(), Seq())()
     assert(frontend.doSemanticAnalysis(program) === frontend.Succ(program))
   }
 
   test("Semantic analysis in AST with shared nodes") {
-    val binExp = PBinExp(PIntLit(1), "==", PIntLit(1))
-    val method = PMethod(PIdnDef("m"), Seq(), Seq(), Seq(), Seq(), Some(PSeqn(Seq(PSeqn(Seq(PAssert(binExp), PSeqn(Seq(PAssert(binExp)))))))))
-    val program = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(method), Seq(), Seq())
+    val binExp = PBinExp(PIntLit(1)(), "==", PIntLit(1)())()
+    val method = PMethod(PIdnDef("m")(), Seq(), Seq(), Seq(), Seq(), Some(PSeqn(Seq(PSeqn(Seq(PAssert(binExp)(), PSeqn(Seq(PAssert(binExp)()))()))()))()))()
+    val program = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(method), Seq(), Seq())()
     assert(frontend.doSemanticAnalysis(program) === frontend.Succ(program))
   }
 }

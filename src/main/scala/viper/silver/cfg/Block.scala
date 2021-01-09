@@ -58,7 +58,7 @@ object StatementBlock {
   def apply[S, E](stmts: Seq[S] = Nil): StatementBlock[S, E] =
     new StatementBlock(Block.nextId(), stmts)
 
-  def unapply[S, E](block: StatementBlock[S, E]): Option[Seq[S]] =
+  def unapply[S, E](block: StatementBlock[S, E]): Some[Seq[S]] =
     Some(block.stmts)
 }
 
@@ -132,6 +132,6 @@ object LoopHeadBlock {
   def apply[S, E](invs: Seq[E] = Nil, stmts: Seq[S] = Nil, loopId: Option[Int] = None): LoopHeadBlock[S, E] =
     new LoopHeadBlock(Block.nextId(), invs, stmts, loopId)
 
-  def unapply[S, E](block: LoopHeadBlock[S, E]): Option[(Seq[E], Seq[S], Option[Int])] =
+  def unapply[S, E](block: LoopHeadBlock[S, E]): Some[(Seq[E], Seq[S], Option[Int])] =
     Some((block.invs, block.stmts, block.loopId))
 }

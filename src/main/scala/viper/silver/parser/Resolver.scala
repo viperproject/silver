@@ -180,12 +180,11 @@ case class TypeChecker(names: NameAnalyser) {
         check(e, Bool)
       case PAssume(e) =>
         check(e, Bool)
-      case PVarAssign(idnuse, PCall(func, args, _)) if names.definition(curMember)(func).isInstanceOf[PMethod] =>
+      case p@PVarAssign(idnuse, PCall(func, args, _)) if names.definition(curMember)(func).isInstanceOf[PMethod] =>
         /* This is a method call that got parsed in a slightly confusing way.
          * TODO: Get rid of this case! There is a matching case in the translator.
          */
-        val newnode: PStmt = PMethodCall(Seq(idnuse), func, args)
-        newnode.setPos(stmt)
+        val newnode: PStmt = PMethodCall(Seq(idnuse), func, args)(p.pos)
         check(newnode)
 
       case PVarAssign(idnuse, rhs) =>
@@ -457,7 +456,7 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   def typeError(exp:PExp) = {
-    messages ++= FastMessaging.message(exp, s"Type error in the expression at ${exp.rangeStr}")
+    messages ++= FastMessaging.message(exp, s"Type error in the expression at ${exp.pos._1}")
   }
 
   def check(exp: PExp, expected: PType) = exp match {
@@ -480,7 +479,7 @@ case class TypeChecker(names: NameAnalyser) {
       } else {
         oexpected match {
           case Some(expected) =>
-            messages ++= FastMessaging.message(exp, s"Expected type ${expected.toString}, but found ${exp.typ.toString} at the expression at ${exp.rangeStr}")
+            messages ++= FastMessaging.message(exp, s"Expected type ${expected.toString}, but found ${exp.typ.toString} at the expression at ${exp.pos._1}")
           case None =>
             typeError(exp)
         }
@@ -506,7 +505,7 @@ case class TypeChecker(names: NameAnalyser) {
      *
      * TODO: Similar to Consistency.recordIfNot. Combine!
      */
-    def issueError(n: FastPositioned, m: String): Unit = {
+    def issueError(n: PNode, m: String): Unit = {
       messages ++= FastMessaging.message(n, m)
       setErrorType() // suppress further warnings
     }
@@ -515,7 +514,7 @@ case class TypeChecker(names: NameAnalyser) {
      * Sets an error type for 'exp' to suppress further warnings.
      */
     def setErrorType(): Unit = {
-      setType(PUnknown())
+      setType(PUnknown()())
     }
 
     def setPIdnUseTypeAndEntity(piu: PIdnUse, typ: PType, entity: PDeclaration): Unit = {
@@ -681,7 +680,7 @@ case class TypeChecker(names: NameAnalyser) {
               poa.typ = if (ts.size == 1) rrt.substitute(ts.head) else rrt
             } else {
               poa.typeSubstitutions.clear()
-              poa.typ = PUnknown()
+              poa.typ = PUnknown()()
             }
           }
         }
@@ -734,7 +733,7 @@ case class TypeChecker(names: NameAnalyser) {
   /**
    * If b is false, report an error for node.
    */
-  def ensure(b: Boolean, node: FastPositioned, msg: String): Unit = {
+  def ensure(b: Boolean, node: PNode, msg: String): Unit = {
     if (!b) messages ++= FastMessaging.message(node, msg)
   }
 }
@@ -837,13 +836,13 @@ case class NameAnalyser() {
           case d: PDeclaration =>
             getMap(d).get(d.idndef.name) match {
               case Some(e: PDeclaration) =>
-                messages ++= FastMessaging.message(e.idndef, "Duplicate identifier `" + e.idndef.name + "' at " + e.idndef.start + " and at " + d.idndef.start)
+                messages ++= FastMessaging.message(e.idndef, "Duplicate identifier `" + e.idndef.name + "' at " + e.idndef.pos._1 + " and at " + d.idndef.pos._1)
               case Some(_: PErrorEntity) =>
               case None =>
                 globalDeclarationMap.get(d.idndef.name) match {
                   case Some(e: PDeclaration) =>
                     if (!(d.parent.isDefined && d.parent.get.isInstanceOf[PDomainFunction]))
-                      messages ++= FastMessaging.message(e, "Identifier shadowing `" + e.idndef.name + "' at " + e.idndef.start + " and at " + d.idndef.start)
+                      messages ++= FastMessaging.message(e, "Identifier shadowing `" + e.idndef.name + "' at " + e.idndef.pos._1 + " and at " + d.idndef.pos._1)
                   case Some(_: PErrorEntity) =>
                   case None =>
                     getMap(d).put(d.idndef.name, d)

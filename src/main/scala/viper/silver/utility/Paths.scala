@@ -9,8 +9,7 @@ package viper.silver.utility
 import java.io.File
 import java.net.{URI, URL}
 import java.nio.file.{FileSystem, FileSystems, Path}
-
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 /**
   * A collection of utility methods for dealing with paths and environment variables.
@@ -93,7 +92,7 @@ object Paths {
           fs = FileSystems.newFileSystem(fileURI, Map[String, Object]().asJava)
           openFileSystems = fs +: openFileSystems
         } catch {
-          case e: java.nio.file.FileSystemAlreadyExistsException =>
+          case _: java.nio.file.FileSystemAlreadyExistsException =>
             fs = FileSystems.getFileSystem(fileURI)
             assert(fs.isOpen, "The reused file system is expected to still be open")
         } finally {

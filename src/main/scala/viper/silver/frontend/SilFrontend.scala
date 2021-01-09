@@ -15,7 +15,7 @@ import viper.silver.reporter._
 import viper.silver.verifier._
 import fastparse.Parsed
 import java.nio.file.{Path, Paths}
-import viper.silver.{FastMessaging, FastPositions}
+import viper.silver.FastMessaging
 
 /**
  * Common functionality to implement a command-line verifier for Viper.  This trait
@@ -191,8 +191,6 @@ trait SilFrontend extends DefaultFrontend {
       }
       _plugins = SilverPluginManager(plugins)(reporter.reporter, logger, _config)
     }
-
-    FastPositions.reset()
   }
 
   def setStartTime(): Unit = {
@@ -240,10 +238,12 @@ trait SilFrontend extends DefaultFrontend {
                 Succ({e.initProperties(); e})
               }
               else Fail(err_list)
-            case fail @ Parsed.Failure(_, index, _) =>
+            case fail @ Parsed.Failure(_, index, extra) =>
               val msg = fail.trace().longAggregateMsg
               val (line, col) = LineCol(index)
               Fail(List(ParseError(s"Expected $msg", SourcePosition(file, line, col))))
+            //? val pos = extra.input.prettyIndex(index).split(":").map(_.toInt)
+              //? Fail(List(ParseError(s"Expected $msg", SourcePosition(file, pos(0), pos(1)))))
             case error: ParseError => Fail(List(error))
           }
 

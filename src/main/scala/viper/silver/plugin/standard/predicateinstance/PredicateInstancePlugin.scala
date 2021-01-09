@@ -16,7 +16,6 @@ import viper.silver.verifier.{ConsistencyError, Failure, Success, VerificationRe
 import viper.silver.verifier.errors.PreconditionInAppFalse
 import fastparse._
 import viper.silver.parser.FastParser.whitespace
-import viper.silver.parser.FastParser.P
 
 import scala.collection.immutable.ListMap
 
@@ -33,7 +32,7 @@ class PredicateInstancePlugin  extends SilverPlugin with ParserPluginTemplate {
    * Parser for declaring predicate instances.
    *
    */
-  def predicateInstance[_: P]: P[PPredicateInstance] = P(PredicateInstanceMarker ~/ P(predAcc)).map(p => PPredicateInstance(p.args, p.idnuse))
+  def predicateInstance[_: P]: P[PPredicateInstance] = FP(PredicateInstanceMarker ~/ P(predAcc)).map{ case (pos, p) => PPredicateInstance(p.args, p.idnuse)(pos) }
 
   /** Called before any processing happened.
    *

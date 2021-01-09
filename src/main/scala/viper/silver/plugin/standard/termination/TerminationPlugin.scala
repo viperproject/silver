@@ -18,7 +18,6 @@ import viper.silver.verifier.errors.AssertFailed
 import viper.silver.verifier._
 import fastparse._
 import viper.silver.parser.FastParser.whitespace
-import viper.silver.parser.FastParser.P
 
 class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
                         logger: ch.qos.logback.classic.Logger,
@@ -43,9 +42,9 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
   def decreases[_: P]: P[PDecreasesClause] =
     P(keyword(DecreasesKeyword) ~/ (decreasesWildcard | decreasesStar | decreasesTuple) ~ ";".?).map(e => e._3)
   def decreasesTuple[_: P]: P[PDecreasesTuple] =
-    P(exp.rep(sep = ",") ~/ condition.?).map { case (a, c) => PDecreasesTuple(a, c) }
-  def decreasesWildcard[_: P]: P[PDecreasesWildcard] = P("_" ~/ condition.?).map(c => PDecreasesWildcard(c))
-  def decreasesStar[_: P]: P[PDecreasesStar] = P("*").map(_ => PDecreasesStar())
+    FP(exp.rep(sep = ",") ~/ condition.?).map { case (pos, (a, c)) => PDecreasesTuple(a, c)(pos) }
+  def decreasesWildcard[_: P]: P[PDecreasesWildcard] = FP("_" ~/ condition.?).map{ case (pos, c) => PDecreasesWildcard(c)(pos) }
+  def decreasesStar[_: P]: P[PDecreasesStar] = FP("*").map{ case (pos, _) => PDecreasesStar()(pos)}
   def condition[_: P]: P[PExp] = P("if" ~/ exp)
 
 
@@ -72,10 +71,10 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
     // Transform predicate accesses to predicate instances
     // (which are not used in the unfolding to predicate instances)
     val transformPredicateInstances = StrategyBuilder.Slim[PNode]({
-      case pa@PPredicateAccess(args, idnuse) => PPredicateInstance(args, idnuse).setPos(pa)
+      case pa@PPredicateAccess(args, idnuse) => PPredicateInstance(args, idnuse)(pa.pos)
       case pc@PCall(idnUse, args, None) if input.predicates.exists(_.idndef.name == idnUse.name) =>
         // PCall represents the predicate access before the translation into the AST
-        PPredicateInstance(args, idnUse).setPos(pc)
+        PPredicateInstance(args, idnUse)(pc.pos)
       case d => d
     }).recurseFunc({
       case PUnfolding(_, exp) => // ignore predicate access when it is used for unfolding
