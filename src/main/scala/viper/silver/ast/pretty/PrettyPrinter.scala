@@ -624,6 +624,8 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       case dt@DomainType(domainName, typVarsMap) =>
         val typArgs = dt.typeParameters map (t => show(typVarsMap.getOrElse(t, t)))
         text(domainName) <> (if (typArgs.isEmpty) nil else brackets(ssep(typArgs, char (',') <> space)))
+      case BackendType(boogieName, _) if boogieName != null => boogieName
+      case BackendType(_, smtName) => smtName
     }
   }
 
@@ -768,13 +770,14 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       text("acc") <> parens(show(loc) <> "," <+> show(perm))
     case FuncApp(funcname, args) =>
       text(funcname) <> parens(ssep(args map show, char (',') <> space))
-    case DomainFuncApp(funcname, args, tvMap) =>
+    case dfa@DomainFuncApp(funcname, args, tvMap) =>
       if (tvMap.nonEmpty)
         // Type may be underconstrained, so to be safe we explicitly print out the type.
-        text(funcname) <> parens(ssep(args map show, char (',') <> space))
+        parens(text(funcname) <> parens(ssep(args map show, char (',') <> space)) <> char(':') <+> show(dfa.typ))
       else
         text(funcname) <> parens(ssep(args map show, char (',') <> space))
-
+    case BackendFuncApp(func, args) =>
+      text(func.name) <> parens(ssep(args map show, char(',') <> space))
     case EmptySeq(elemTyp) =>
       text("Seq[") <> showType(elemTyp) <> "]()"
     case ExplicitSeq(elems) =>

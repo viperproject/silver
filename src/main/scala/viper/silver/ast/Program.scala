@@ -770,6 +770,10 @@ case object NotOp extends UnOp with BoolDomainFunc {
   lazy val fixity = Prefix
 }
 
+
+case class BackendFunc(name: String, smtName: String, override val typ: Type, override val formalArgs: Seq[LocalVarDecl])
+  extends Node with AbstractDomainFunc with BuiltinDomainFunc
+
 /**
   * The Extension Member trait provides the way to expand the Ast to include new Top Level declarations
   */

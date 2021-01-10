@@ -106,6 +106,7 @@ object Nodes {
           case FuncApp(_, args) => args
           case DomainFuncApp(_, args, m) =>
             args ++ m.keys ++ m.values
+          case BackendFuncApp(_, args) => args
 
           case EmptySeq(elemTyp) => Seq(elemTyp)
           case ExplicitSeq(elems) => elems
