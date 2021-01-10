@@ -183,7 +183,7 @@ case class TypeVar(name: String) extends Type {
   //def !=(other: TypeVar) = name != other
 }
 
-case class SMTType(boogieName: String, smtName: String) extends AtomicType
+case class BackendType(boogieName: String, smtName: String) extends AtomicType
 
 trait ExtensionType extends Type{
   def getAstType: Type = ???

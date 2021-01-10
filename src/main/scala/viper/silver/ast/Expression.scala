@@ -385,15 +385,15 @@ object DomainFuncApp {
     DomainFuncApp(func.name,args,typVarMap)(pos, info, func.typ.substitute(typVarMap), func.domainName, errT)
 }
 
-// --- References to built-in SMT Lib functions
+// --- References to backend (i.e., SMTLIB or Boogie 'builtin') functions
 
-case class SMTFuncApp(smtFunc: SMTFunc, args: Seq[Exp])
-                     (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
+case class BackendFuncApp(backendFunc: BackendFunc, args: Seq[Exp])
+                         (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
   extends AbstractDomainFuncApp {
   override lazy val check : Seq[ConsistencyError] = args.flatMap(Consistency.checkPure)
-  override def func = (p: Program) => smtFunc
-  def funcname = smtFunc.name
-  override def typ = smtFunc.typ
+  override def func = (p: Program) => backendFunc
+  def funcname = backendFunc.name
+  override def typ = backendFunc.typ
 }
 
 // --- Field and predicate accesses

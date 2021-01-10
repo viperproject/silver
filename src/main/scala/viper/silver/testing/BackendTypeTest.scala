@@ -1,12 +1,12 @@
 package viper.silver.testing
 
 import org.scalatest.{BeforeAndAfterAllConfigMap, ConfigMap, FunSuite, Matchers}
-import viper.silver.ast.{AnySetContains, Assert, EqCmp, Exp, Field, FieldAccess, FieldAccessPredicate, FullPerm, Function, Inhale, IntLit, LocalVarAssign, LocalVarDecl, Method, Program, Ref, Result, SMTFuncApp, Seqn, SetType, Stmt}
+import viper.silver.ast.{AnySetContains, Assert, EqCmp, Exp, Field, FieldAccess, FieldAccessPredicate, FullPerm, Function, Inhale, IntLit, LocalVarAssign, LocalVarDecl, Method, Program, Ref, Result, BackendFuncApp, Seqn, SetType, Stmt}
 import viper.silver.ast.utility.{BVFactory, FloatFactory, RoundingMode}
 import viper.silver.verifier.{Failure, Success, Verifier}
 import viper.silver.verifier.errors.{AssertFailed, PostconditionViolated}
 
-trait SMTTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfigMap {
+trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfigMap {
 
   def generateTypeCombinationTest(success: Boolean) : (Program, Assert) = {
     val t = if (success) BVFactory(23).typ else FloatFactory(23, 11, RoundingMode.RNE).typ
@@ -52,16 +52,16 @@ trait SMTTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfigMap
     val fp_eq = fp.eq("fp_eq")
     val fp_add = fp.add("fp_add")
 
-    val first_float = SMTFuncApp(to_fp, Seq(SMTFuncApp(from_int, Seq(IntLit(first)()))()))()
-    val second_float = SMTFuncApp(to_fp, Seq(SMTFuncApp(from_int, Seq(IntLit(second)()))()))()
-    val result_float = SMTFuncApp(to_fp, Seq(SMTFuncApp(from_int, Seq(IntLit(result)()))()))()
+    val first_float = BackendFuncApp(to_fp, Seq(BackendFuncApp(from_int, Seq(IntLit(first)()))()))()
+    val second_float = BackendFuncApp(to_fp, Seq(BackendFuncApp(from_int, Seq(IntLit(second)()))()))()
+    val result_float = BackendFuncApp(to_fp, Seq(BackendFuncApp(from_int, Seq(IntLit(result)()))()))()
 
-    val zero_float = SMTFuncApp(to_fp, Seq(SMTFuncApp(from_int, Seq(IntLit(0)()))()))()
+    val zero_float = BackendFuncApp(to_fp, Seq(BackendFuncApp(from_int, Seq(IntLit(0)()))()))()
 
-    val addition = SMTFuncApp(fp_add, Seq(first_float, second_float))()
-    val result_addition = SMTFuncApp(fp_add, Seq(result_float, if (success) zero_float else first_float))()
+    val addition = BackendFuncApp(fp_add, Seq(first_float, second_float))()
+    val result_addition = BackendFuncApp(fp_add, Seq(result_float, if (success) zero_float else first_float))()
 
-    val equality = SMTFuncApp(fp_eq, Seq(addition, result_addition))()
+    val equality = BackendFuncApp(fp_eq, Seq(addition, result_addition))()
     val assert = Assert(equality)()
     (wrapInProgram(Seq(assert), Seq(), Seq()), assert)
   }
@@ -78,16 +78,16 @@ trait SMTTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfigMap
     val fp_eq = fp.eq("fp_eq")
     val fp_add = fp.add("fp_add")
 
-    val first_float = SMTFuncApp(to_fp, Seq(SMTFuncApp(from_int, Seq(IntLit(first)()))()))()
-    val second_float = SMTFuncApp(to_fp, Seq(SMTFuncApp(from_int, Seq(IntLit(second)()))()))()
-    val result_float = SMTFuncApp(to_fp, Seq(SMTFuncApp(from_int, Seq(IntLit(result)()))()))()
+    val first_float = BackendFuncApp(to_fp, Seq(BackendFuncApp(from_int, Seq(IntLit(first)()))()))()
+    val second_float = BackendFuncApp(to_fp, Seq(BackendFuncApp(from_int, Seq(IntLit(second)()))()))()
+    val result_float = BackendFuncApp(to_fp, Seq(BackendFuncApp(from_int, Seq(IntLit(result)()))()))()
 
-    val zero_float = SMTFuncApp(to_fp, Seq(SMTFuncApp(from_int, Seq(IntLit(0)()))()))()
+    val zero_float = BackendFuncApp(to_fp, Seq(BackendFuncApp(from_int, Seq(IntLit(0)()))()))()
 
-    val addition = SMTFuncApp(fp_add, Seq(first_float, second_float))()
-    val result_addition = SMTFuncApp(fp_add, Seq(result_float, if (success) zero_float else first_float))()
+    val addition = BackendFuncApp(fp_add, Seq(first_float, second_float))()
+    val result_addition = BackendFuncApp(fp_add, Seq(result_float, if (success) zero_float else first_float))()
 
-    val equality = SMTFuncApp(fp_eq, Seq(Result(fp.typ)(), result_addition))()
+    val equality = BackendFuncApp(fp_eq, Seq(Result(fp.typ)(), result_addition))()
 
     val fun = Function("test", Seq(), fp.typ, Seq(), Seq(equality), Some(addition))()
     val program = Program(Seq(), Seq(), Seq(fun), Seq(), Seq(), Seq())()
@@ -100,14 +100,14 @@ trait SMTTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfigMap
     val two_lit = IntLit(2)()
     val three_lit = IntLit(3)()
     val one_lit = IntLit(1) ()
-    val two = SMTFuncApp(from_int, Seq(two_lit))()
-    val three = SMTFuncApp(from_int, Seq(three_lit))()
-    val one = SMTFuncApp(from_int, Seq(one_lit))()
+    val two = BackendFuncApp(from_int, Seq(two_lit))()
+    val three = BackendFuncApp(from_int, Seq(three_lit))()
+    val one = BackendFuncApp(from_int, Seq(one_lit))()
     val result_decl = LocalVarDecl("three", bv23.typ)()
     val result_ref = result_decl.localVar
     val assign = LocalVarAssign(result_ref, if (success) three else one)()
     val xor = bv23.xor("xorBV23")
-    val xor_app = SMTFuncApp(xor, Seq(one, two))()
+    val xor_app = BackendFuncApp(xor, Seq(one, two))()
     val equality1 = EqCmp(result_ref, xor_app)()
     val assertion1 = Assert(equality1)()
     (wrapInProgram(Seq(assign, assertion1), Seq(), Seq(result_decl)), assertion1)

@@ -771,7 +771,7 @@ case object NotOp extends UnOp with BoolDomainFunc {
 }
 
 
-case class SMTFunc(name: String, smtName: String, override val typ: Type, override val formalArgs: Seq[LocalVarDecl])
+case class BackendFunc(name: String, smtName: String, override val typ: Type, override val formalArgs: Seq[LocalVarDecl])
   extends Node with AbstractDomainFunc with BuiltinDomainFunc
 
 /**
