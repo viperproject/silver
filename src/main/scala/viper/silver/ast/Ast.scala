@@ -344,6 +344,13 @@ trait Info {
       case _ => None
     }
   }
+
+  def getAllInfos[T <: Info : ClassTag]: Seq[T] =
+    this match {
+      case t: T => Seq(t)
+      case ConsInfo(head, tail) => head.getAllInfos[T] ++ tail.getAllInfos[T]
+      case _ => Seq.empty
+    }
 }
 
 /** A default `Info` that is empty. */
