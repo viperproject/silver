@@ -102,7 +102,7 @@ trait ExpTransformer extends ErrorReporter {
           transformExp(elem, c)), Nil)(sq.pos)
       case SeqLength(s) =>
         Seqn(Seq(transformExp(s, c)), Nil)(sq.pos)
-      case EmptySeq(e) => EmptyStmt
+      case EmptySeq(_) => EmptyStmt
 
       case unsupportedExp => transformUnknownExp(unsupportedExp, c)
         EmptyStmt
@@ -112,10 +112,10 @@ trait ExpTransformer extends ErrorReporter {
     case (mst: ExplicitMultiset, c) =>
       Seqn(mst.elems.map(transformExp(_, c)), Nil)(mst.pos)
     case (u: UnExp, c) => transformExp(u.exp, c)
-    case (l: Literal, c) => EmptyStmt
-    case (v: AbstractLocalVar, c) => EmptyStmt
-    case (p: AbstractConcretePerm, c) => EmptyStmt
-    case (la: LocationAccess, c) => EmptyStmt
+    case (_: Literal, _) => EmptyStmt
+    case (_: AbstractLocalVar, _) => EmptyStmt
+    case (_: AbstractConcretePerm, _) => EmptyStmt
+    case (_: LocationAccess, _) => EmptyStmt
 
     case (ap: AccessPredicate, c) =>
       val check = transformExp(ap.perm, c)

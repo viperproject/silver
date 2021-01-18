@@ -385,6 +385,17 @@ object DomainFuncApp {
     DomainFuncApp(func.name,args,typVarMap)(pos, info, func.typ.substitute(typVarMap), func.domainName, errT)
 }
 
+// --- References to backend (i.e., SMTLIB or Boogie 'builtin') functions
+
+case class BackendFuncApp(backendFunc: BackendFunc, args: Seq[Exp])
+                         (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
+  extends AbstractDomainFuncApp {
+  override lazy val check : Seq[ConsistencyError] = args.flatMap(Consistency.checkPure)
+  override def func = (p: Program) => backendFunc
+  def funcname = backendFunc.name
+  override def typ = backendFunc.typ
+}
+
 // --- Field and predicate accesses
 
 /** A common trait for expressions accessing a location. */
@@ -536,7 +547,8 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
   override lazy val check : Seq[ConsistencyError] =
     (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Body of universal quantifier must be of Bool type, but found ${exp.typ}", exp.pos)) else Seq()) ++
     Consistency.checkAllVarsMentionedInTriggers(variables, triggers) ++
-    checkNoNestedQuantsForQuantPermissions
+    checkNoNestedQuantsForQuantPermissions ++
+    checkQuantifiedPermission
 
   /** checks against nested quantification for quantified permissions */
   lazy val checkNoNestedQuantsForQuantPermissions : Seq[ConsistencyError] = {
@@ -545,6 +557,35 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
       case Some((_, exp, _)) => if(exp.existsDefined({case _: Forall => }) && !exp.isPure)
         Seq(ConsistencyError("Nested quantifiers are not allowed for quantified permissions.", exp.pos)) else Seq()
     }
+  }
+
+  lazy val checkQuantifiedPermission: Seq[ConsistencyError] = {
+    case class InUnfolding(inside: Boolean)
+    var accessPredicateInside: Boolean = false
+
+    StrategyBuilder.ContextVisitor[Node, InUnfolding]({
+      case (_: AccessPredicate, c) if !c.c.inside =>
+        accessPredicateInside = true
+        c
+
+      case (_: Unfolding, c) =>
+        c.updateContext(InUnfolding(true))
+
+      case (_, c) =>
+        c
+    }, InUnfolding(false)).execute(exp)
+
+    if (accessPredicateInside) {
+      exp match {
+        case Implies(_, _) | AccessPredicate(_, _) =>
+          Seq()
+
+        case _ =>
+          Seq(ConsistencyError("Quantified permissions must have an implication as expression, with the access predicate in its right-hand side.", exp.pos))
+      }
+    }
+    else
+      Seq()
   }
   /** Returns an identical forall quantification that has some automatically generated triggers
     * if necessary and possible.

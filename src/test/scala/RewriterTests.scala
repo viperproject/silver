@@ -7,12 +7,13 @@
 import java.nio.file.Paths
 
 import TestHelpers.{FileComparisonHelper, MockSilFrontend}
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast._
 import viper.silver.ast.utility.rewriter._
 import viper.silver.ast.utility._
+import viper.silver.parser.{PBinExp, PIdnDef, PIdnUse, PNode}
 
-class RewriterTests extends FunSuite with FileComparisonHelper {
+class RewriterTests extends AnyFunSuite with FileComparisonHelper {
   test("Performance_BinomialHeap") {
     val fileName = "transformations/Performance/BinomialHeap"
 
@@ -56,6 +57,19 @@ class RewriterTests extends FunSuite with FileComparisonHelper {
     }
   }
 
+  test("Binary expression") {
+    val original = PBinExp(PIdnUse("a")(), ">", PIdnUse("b")())()
+    val transformed = PBinExp(PIdnUse("a")(), "<=", PIdnUse("b")())()
+
+    val strategy = StrategyBuilder.Slim[PNode](
+      {
+        case PBinExp(a, op, b) if op == ">" => PBinExp(a, "<=", b)()
+      })
+
+    val res = strategy.execute[PNode](original)
+
+    assert(res == transformed)
+  }
 
   // same as the test above, but with a Context rather than SimpleContext strategy
   test("Sharing (richer context, unused)") {

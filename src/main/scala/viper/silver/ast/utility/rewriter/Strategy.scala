@@ -391,8 +391,6 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
       node match {
         case map: Map[_, _] => map.map(rewriteTopDown(_, context)).asInstanceOf[A]
 
-        case collection: Iterable[_] => collection.map(rewriteTopDown(_, context)).asInstanceOf[A]
-
         case Some(value) => Some(rewriteTopDown(value, context)).asInstanceOf[A]
 
         case node: N @unchecked =>
@@ -410,6 +408,8 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
             n.withChildren(children).asInstanceOf[A]
           }
 
+        case collection: Iterable[_] => collection.map(rewriteTopDown(_, context)).asInstanceOf[A]
+
         case value => value
       }
     }
@@ -421,8 +421,6 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
     else {
       node match {
         case map: Map[_, _] => map.map(rewriteBottomUp(_, context)).asInstanceOf[A]
-
-        case collection: Iterable[_] => collection.map(rewriteBottomUp(_, context)).asInstanceOf[A]
 
         case Some(value) => Some(rewriteBottomUp(value, context)).asInstanceOf[A]
 
@@ -439,6 +437,8 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
           // Rewrite node and context
           rule.execute(n, c.replaceNode(n).asInstanceOf[C])._1.asInstanceOf[A]
 
+        case collection: Iterable[_] => collection.map(rewriteBottomUp(_, context)).asInstanceOf[A]
+
         case value => value
       }
     }
@@ -450,8 +450,6 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
     else {
       node match {
         case map: Map[_, _] => map.map(rewriteInnermost(_, context)).asInstanceOf[A]
-
-        case collection: Iterable[_] => collection.map(rewriteInnermost(_, context)).asInstanceOf[A]
 
         case Some(value) => Some(rewriteInnermost(value, context)).asInstanceOf[A]
 
@@ -470,6 +468,8 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
             n.withChildren(children).asInstanceOf[A]
           }
 
+        case collection: Iterable[_] => collection.map(rewriteInnermost(_, context)).asInstanceOf[A]
+
         case value => value
       }
     }
@@ -484,7 +484,7 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
   * @param s2 strategy 2
   */
 class ConcatenatedStrategy[N <: Rewritable](s1: StrategyInterface[N], val s2: StrategyInterface[N]) extends StrategyInterface[N] {
-  private var strategies = mutable.ListBuffer.empty[StrategyInterface[N]]
+  private val strategies = mutable.ListBuffer.empty[StrategyInterface[N]]
 
   strategies.append(s1)
   strategies.append(s2)
@@ -908,8 +908,6 @@ class StrategyVisitor[N <: Rewritable, C <: Context[N]](val visitNode: PartialFu
       node match {
         case map: Map[_, _] => map.map(visitTopDown(_, context))
 
-        case collection: Iterable[_] => collection.map(visitTopDown(_, context))
-
         case Some(value) => Some(visitTopDown(value, context))
 
         case node: N @unchecked =>
@@ -920,6 +918,8 @@ class StrategyVisitor[N <: Rewritable, C <: Context[N]](val visitNode: PartialFu
 
           val allowedToRecurse = recursionFunc.applyOrElse(node, (_: N) => node.children).toSet
           node.children.filter(allowedToRecurse).foreach(visitTopDown(_, c))
+
+        case collection: Iterable[_] => collection.map(visitTopDown(_, context))
 
         case _ =>
       }
@@ -997,8 +997,6 @@ class Query[N <: Rewritable, B](val getInfo: PartialFunction[N, B]) {
     node match {
       case map: Map[_, _] => accumulator(map.map(execute(_)).toSeq)
 
-      case collection: Iterable[_] => accumulator(collection.map(execute).toSeq)
-
       case Some(value) => execute(value)
 
       case n: N @unchecked =>
@@ -1012,6 +1010,8 @@ class Query[N <: Rewritable, B](val getInfo: PartialFunction[N, B]) {
         val childrenQueryRes = accumulator(n.children.filter(allowedToRecurse).map(execute))
 
         accumulator(Seq(nodeQueryRes, childrenQueryRes))
+
+      case collection: Iterable[_] => accumulator(collection.map(execute).toSeq)
 
       case _ => accumulator(Seq())
     }

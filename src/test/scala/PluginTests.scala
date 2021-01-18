@@ -6,7 +6,7 @@
 
 import java.nio.file.Paths
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast.{LocalVar, Perm, Program}
 import viper.silver.frontend.{SilFrontend, SilFrontendConfig}
 import viper.silver.parser.{PIdnDef, PPredicate, PProgram}
@@ -120,11 +120,11 @@ class TestPluginAddPredicate extends SilverPlugin {
       input.domains,
       input.fields,
       input.functions,
-      input.predicates :+ PPredicate(PIdnDef("testPredicate"), Seq(), None),
+      input.predicates :+ PPredicate(PIdnDef("testPredicate")(), Seq(), None)(),
       input.methods,
       input.extensions,
       input.errors
-    )
+    )()
   }
 
   /** Called after methods are filtered but before the verification by the backend happens.
@@ -212,7 +212,7 @@ class TestPluginMapVsFinish extends SilverPlugin with TestPlugin {
   override def test(): Boolean = !mapping && finish
 }
 
-class PluginTests extends FunSuite {
+class PluginTests extends AnyFunSuite {
   val inputfile = "plugintests/plugininput.vpr"
   val plugins = Seq(
     "TestPluginImport",

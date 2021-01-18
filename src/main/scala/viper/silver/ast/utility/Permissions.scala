@@ -37,6 +37,6 @@ object Permissions {
       e.transform({
         case fa@FieldAccessPredicate(loc,p) => FieldAccessPredicate(loc,PermMul(p,permFactor)(p.pos,p.info))(fa.pos,fa.info)
         case pa@PredicateAccessPredicate(loc,p) => PredicateAccessPredicate(loc,PermMul(p,permFactor)(p.pos,p.info))(pa.pos,pa.info)
-        case mw: MagicWand => sys.error("Cannot yet permission-scale magic wands")
+        case _: MagicWand => sys.error("Cannot yet permission-scale magic wands")
       })}
 }

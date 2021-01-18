@@ -6,7 +6,6 @@
 
 package viper.silver.plugin.standard.termination
 
-import fastparse.noApi
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.{SimpleContext, Strategy, StrategyBuilder}
 import viper.silver.ast.{Applying, Assert, CondExp, CurrentPerm, Exp, Function, InhaleExhaleExp, MagicWand, Method, Node, Program, Unfolding, While}
@@ -17,6 +16,8 @@ import viper.silver.plugin.standard.termination.transformation.Trafo
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier.errors.AssertFailed
 import viper.silver.verifier._
+import fastparse._
+import viper.silver.parser.FastParser.whitespace
 
 class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
                         logger: ch.qos.logback.classic.Logger,
@@ -29,9 +30,6 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
    */
   private val DecreasesKeyword: String = "decreases"
 
-  import White._
-  import fastparse.noApi._
-
   /**
    * Parser for decreases clauses with following possibilities.
    *
@@ -41,13 +39,13 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
    * or
    * decreases *
    */
-  lazy val decreases: noApi.P[PDecreasesClause] =
-    P(keyword(DecreasesKeyword) ~/ (decreasesWildcard | decreasesStar | decreasesTuple) ~ ";".?)
-  lazy val decreasesTuple: noApi.P[PDecreasesTuple] =
-    P(exp.rep(sep = ",") ~/ condition.?).map { case (a, c) => PDecreasesTuple(a, c) }
-  lazy val decreasesWildcard: noApi.P[PDecreasesWildcard] = P("_" ~/ condition.?).map(c => PDecreasesWildcard(c))
-  lazy val decreasesStar: noApi.P[PDecreasesStar] = P("*").map(_ => PDecreasesStar())
-  lazy val condition: noApi.P[PExp] = P("if" ~/ exp)
+  def decreases[_: P]: P[PDecreasesClause] =
+    P(keyword(DecreasesKeyword) ~/ (decreasesWildcard | decreasesStar | decreasesTuple) ~ ";".?).map(e => e._3)
+  def decreasesTuple[_: P]: P[PDecreasesTuple] =
+    FP(exp.rep(sep = ",") ~/ condition.?).map { case (pos, (a, c)) => PDecreasesTuple(a, c)(pos) }
+  def decreasesWildcard[_: P]: P[PDecreasesWildcard] = FP("_" ~/ condition.?).map{ case (pos, c) => PDecreasesWildcard(c)(pos) }
+  def decreasesStar[_: P]: P[PDecreasesStar] = FP("*").map{ case (pos, _) => PDecreasesStar()(pos)}
+  def condition[_: P]: P[PExp] = P("if" ~/ exp)
 
 
   /**
@@ -57,11 +55,11 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
     // Add new keyword
     ParserExtension.addNewKeywords(Set[String](DecreasesKeyword))
     // Add new parser to the precondition
-    ParserExtension.addNewPreCondition(decreases)
+    ParserExtension.addNewPreCondition(decreases(_))
     // Add new parser to the postcondition
-    ParserExtension.addNewPostCondition(decreases)
+    ParserExtension.addNewPostCondition(decreases(_))
     // Add new parser to the invariants
-    ParserExtension.addNewInvariantCondition(decreases)
+    ParserExtension.addNewInvariantCondition(decreases(_))
     input
   }
 
@@ -73,10 +71,10 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
     // Transform predicate accesses to predicate instances
     // (which are not used in the unfolding to predicate instances)
     val transformPredicateInstances = StrategyBuilder.Slim[PNode]({
-      case pa@PPredicateAccess(args, idnuse) => PPredicateInstance(args, idnuse).setPos(pa)
+      case pa@PPredicateAccess(args, idnuse) => PPredicateInstance(args, idnuse)(pa.pos)
       case pc@PCall(idnUse, args, None) if input.predicates.exists(_.idndef.name == idnUse.name) =>
         // PCall represents the predicate access before the translation into the AST
-        PPredicateInstance(args, idnUse).setPos(pc)
+        PPredicateInstance(args, idnUse)(pc.pos)
       case d => d
     }).recurseFunc({
       case PUnfolding(_, exp) => // ignore predicate access when it is used for unfolding

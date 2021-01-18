@@ -6,24 +6,40 @@
 
 package viper.silver.verifier
 
-import fastparse.core.Parsed
+import fastparse.Parsed
 import viper.silver.ast._
 import viper.silver.ast.pretty.FastPrettyPrinter
 import viper.silver.ast.utility.rewriter.Rewritable
 
-abstract class ModelEntry()
-case class SingleEntry(value: String) extends ModelEntry {
+
+/**********************************************************************************
+  * IMPORTANT:
+  * After changing this file, please edit the corresponding JSON convertors in:
+  *  viper/server/frontends/http/jsonWriters/ViperIDEProtocol.scala
+  *  https://github.com/viperproject/viperserver
+  **********************************************************************************/
+
+sealed trait ModelEntry
+
+sealed trait ValueEntry extends ModelEntry
+
+case class ConstantEntry(value: String) extends ValueEntry {
   override def toString: String = value
 }
-case class MapEntry(options: Map[Seq[String], String], els: String) extends ModelEntry {
+
+case class ApplicationEntry(name: String, arguments: Seq[ValueEntry]) extends ValueEntry {
+  override def toString: String = s"($name ${arguments.mkString(" ")})"
+}
+
+case class MapEntry(options: Map[Seq[ValueEntry], ValueEntry], default: ValueEntry) extends ModelEntry {
   override def toString: String = {
     if (options.nonEmpty)
-      "{\n" + options.map(o => "    " + o._1.mkString(" ") + " -> " + o._2).mkString("\n") + "\n    else -> " + els +"\n}"
+      "{\n" + options.map(o => "    " + o._1.mkString(" ") + " -> " + o._2).mkString("\n") + "\n    else -> " + default +"\n}"
     else
-      "{\n    " + els +"\n}"
+      "{\n    " + default +"\n}"
   }
 }
-case class Model(entries: Map[String,ModelEntry]) {
+case class Model(entries: Map[String, ModelEntry]) {
   override def toString: String = entries.map(e => e._1 + " -> " + e._2).mkString("\n")
 }
 
@@ -39,19 +55,18 @@ trait CounterexampleTransformer {
 }
 
 object CounterexampleTransformer {
-  def apply(ff: Counterexample => Counterexample) = {
+  def apply(ff: Counterexample => Counterexample): CounterexampleTransformer = {
     new CounterexampleTransformer {
-      def f: (Counterexample) => Counterexample = ff
+      def f: Counterexample => Counterexample = ff
     }
   }
 }
 
 object Model {
-
   def apply(modelString: String) : Model = {
-    ModelParser.model.parse(modelString) match{
-      case Parsed.Success(m, index) => return m
-      case f@Parsed.Failure(last, index, extra) => throw new Exception(f.toString)
+    fastparse.parse(modelString, ModelParser.model(_)) match{
+      case Parsed.Success(model, _) => model
+      case failure: Parsed.Failure => throw new Exception(failure.toString)
     }
   }
 }
@@ -77,7 +92,7 @@ trait VerificationError extends AbstractError with ErrorMessage {
       rm
     }
   }
-  def loggableMessage = s"$fullId-$pos"
+  def loggableMessage: String = s"$fullId-$pos" + (if (cached) "-cached" else "")
   def fullId = s"$id:${reason.id}"
   var counterexample : Option[Counterexample] = None
 }
@@ -151,7 +166,7 @@ abstract class AbstractVerificationError extends VerificationError {
 
   def withReason(reason: ErrorReason): AbstractVerificationError
 
-  override def toString = readableMessage(true, true)
+  override def toString = readableMessage(true, true) + (if (cached) " - cached" else "")
 }
 
 abstract class AbstractErrorReason extends ErrorReason {

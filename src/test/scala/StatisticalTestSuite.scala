@@ -186,7 +186,7 @@ trait StatisticalTestSuite extends SilSuite {
       val worstRun: Seq[Long] = trimmedTimings.last
 
       val stddevTimings = trimmedTimings.transpose.zip(meanTimings).map { case (col, mean) =>
-        math.sqrt(col.map(v => math.pow(v - mean, 2)).sum / col.length).toLong
+        math.sqrt(col.map(v => math.pow((v - mean).toDouble, 2)).sum / col.length).toLong
       }
 
       val relStddevTimings = stddevTimings.zip(meanTimings).map { case (stddev, mean) =>
@@ -198,10 +198,20 @@ trait StatisticalTestSuite extends SilSuite {
 
       if (isWarmup) {
         info(s"[JVM warmup] Time required: ${printableTimings(meanTimings, phaseNames)}.")
-
       } else if (meaningfulReps == 1) {
         info(s"[Benchmark] Time required: ${printableTimings(meanTimings, phaseNames)}.")
 
+        if (csvFileName.isDefined) {
+          val csvRowData = Seq(
+            JPaths.get(targetDirName).toAbsolutePath.relativize(input.file.toAbsolutePath),
+            verResults.head.length,
+            meanTimings.last, stddevTimings.last, relStddevTimings.last,
+            bestRun.last, medianRun.last, worstRun.last)
+
+          csvFile.write(csvRowData.mkString(","))
+          csvFile.newLine()
+          csvFile.flush()
+        }
       } else {
         if (isTrimmed) {
           info(s"[Benchmark] Trimmed ${sortedTimings.length - trimmedTimings.length} marginal runs.")
@@ -227,6 +237,7 @@ trait StatisticalTestSuite extends SilSuite {
           csvFile.flush()
         }
       }
+
       verResults.flatten.map(SilOutput)
     }
 

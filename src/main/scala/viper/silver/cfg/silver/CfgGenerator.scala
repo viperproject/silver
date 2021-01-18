@@ -197,7 +197,7 @@ object CfgGenerator {
       case Goto(name) =>
         val target = TmpLabel(name)
         addStatement(JumpStmt(target))
-      case Label(name, invs) =>
+      case Label(name, _) =>
         val label = TmpLabel(name)
         addLabel(label)
         addStatement(WrappedStmt(stmt))
@@ -216,7 +216,8 @@ object CfgGenerator {
            _: Assume =>
         // handle regular, non-control statements
         addStatement(WrappedStmt(stmt))
-      case _: ExtensionStmt => sys.error("Extension statements are not handled.")
+      case _: ExtensionStmt =>
+        addStatement(WrappedStmt(stmt)) // TODO: Allow extensions to control how they are translated
     }
 
     /**

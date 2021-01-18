@@ -15,7 +15,7 @@ import viper.silver.{FastMessage, FastMessaging}
 /** An utility object for consistency checking. */
 object Consistency {
   var messages: FastMessaging.Messages = Nil
-  def recordIfNot(suspect: Positioned, property: Boolean, message: String) {
+  def recordIfNot(suspect: Positioned, property: Boolean, message: String): Unit = {
     if (!property) {
       val pos = suspect.pos
 
@@ -23,9 +23,9 @@ object Consistency {
     }
   }
 
-  def resetMessages() { this.messages = Nil }
+  def resetMessages(): Unit = { this.messages = Nil }
   @inline
-  def recordIf(suspect: Positioned, property: Boolean, message: String) =
+  def recordIf(suspect: Positioned, property: Boolean, message: String): Unit =
     recordIfNot(suspect, !property, message)
 
   /** Names that are not allowed for use in programs. */
@@ -131,7 +131,7 @@ object Consistency {
     val inhalesExhales: Seq[Node] = e.deepCollect({case ie: InhaleExhaleExp => ie})
     permsAndForperms.flatMap(p=>{
       inhalesExhales.find(_.contains(p)) match {
-        case Some(node) => Seq()
+        case Some(_) => Seq()
         case None => Seq(ConsistencyError("Perm and forperm in this context are only allowed if nested under inhale-exhale assertions.", p.asInstanceOf[Positioned].pos))
       }
     })
@@ -193,7 +193,7 @@ object Consistency {
     variables.foreach(v=>{
       varsInTriggers.foreach(varList=>{
         varList.find(_.name == v.name) match {
-          case Some(tr) =>
+          case Some(_) =>
           case None => s :+= ConsistencyError(s"Variable ${v.name} is not mentioned in one or more triggers.", v.pos)
         }
       })

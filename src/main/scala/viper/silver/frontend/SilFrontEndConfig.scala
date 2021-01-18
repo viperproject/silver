@@ -106,7 +106,7 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
   )
 
   validateOpt(file, ignoreFile) {
-    case (_, Some(true)) => Right(Unit)
+    case (_, Some(true)) => Right(())
     case (Some(filepath), _) => validateFileOpt(file.name, filepath)
     case (optFile, optIgnoreFile) =>
       /* Since the file is a trailing argument and thus mandatory, this case
@@ -121,12 +121,12 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     val file = new java.io.File(filepath)
     if (!file.isFile) Left(s"Cannot find file '$filepath' from '$optionName' argument")
     else if (!file.canRead) Left(s"Cannot read from file '$filepath' from '$optionName' argument'")
-    else Right(Unit)
+    else Right(())
   }
 
   protected def validateFileOpt(option: ScallopOption[String]): Unit = {
     validateOpt(option) {
-      case None => Right(Unit)
+      case None => Right(())
       case Some(filepath) => validateFileOpt(option.name, filepath)
     }
   }

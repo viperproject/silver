@@ -218,7 +218,7 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
         // no tuple is defined, hence, nothing must be checked
         // should not happen
       }
-      Seqn(stmts, Nil)()
+      Seqn(stmts.toSeq, Nil)()
     case default => super.transformExp(default)
   }
 
@@ -259,7 +259,7 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
 
     program.functions.foreach(graph.addVertex)
 
-    def process(f: Function, n: Node) {
+    def process(f: Function, n: Node): Unit = {
       n visit {
         case app: FuncApp =>
           graph.addEdge(f, app.func(program))

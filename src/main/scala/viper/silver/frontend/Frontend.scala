@@ -25,18 +25,18 @@ import viper.silver.verifier._
 trait Frontend {
 
   /** Initialize this translator with a given verifier. Only meant to be called once. */
-  protected def init(verifier: Verifier)
+  protected def init(verifier: Verifier): Unit
 
   /**
     * Reset the translator, and set the input program. Can be called many times to verify multiple programs
     * using the same verifier.
     */
-  def reset(input: Seq[Path])
+  def reset(input: Seq[Path]): Unit
 
   /**
     * Reset any messages recorded internally (errors from previous program translations, etc.)
     */
-  def resetMessages()
+  def resetMessages(): Unit
 
   /**
     * Reporter is the message interface which enables (potentially dynamic) feedback from the backend.
@@ -116,25 +116,25 @@ trait DefaultPhases extends Frontend {
   val phases = Seq(Parsing, SemanticAnalysis, Translation, ConsistencyCheck, Verification)
 
   /** Parse the program. */
-  def parsing()
+  def parsing(): Unit
 
   /** Perform semantic analysis in the program, such as type, names and scope checking. */
-  def semanticAnalysis()
+  def semanticAnalysis(): Unit
 
   /** Translate the program to Viper. */
-  def translation()
+  def translation(): Unit
 
   /** Perform a consistency check in Viper AST. */
-  def consistencyCheck()
+  def consistencyCheck(): Unit
 
   /** Verify the Viper program using a verifier. */
-  def verification()
+  def verification(): Unit
 }
 
 trait SingleFileFrontend {
-  def reset(file: Path)
+  def reset(file: Path): Unit
 
-  def reset(files: Seq[Path]) {
+  def reset(files: Seq[Path]): Unit = {
     files match {
       case f :: Nil => reset(f)
       case _ => sys.error("This frontend can only handle single files.")
@@ -185,12 +185,12 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
 
   def getVerificationResult: Option[VerificationResult] = _verificationResult
 
-  override def init(verifier: Verifier) {
+  override def init(verifier: Verifier): Unit = {
     _state = DefaultStates.Initialized
     _verifier = Some(verifier)
   }
 
-  override def reset(input: Path) {
+  override def reset(input: Path): Unit = {
     if (state < DefaultStates.Initialized) sys.error("The translator has not been initialized.")
     _state = DefaultStates.InputSet
     _inputFile = Some(input)

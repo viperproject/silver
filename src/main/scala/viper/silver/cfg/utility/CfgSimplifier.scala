@@ -93,7 +93,7 @@ object CfgSimplifier {
     enqueueBlock(entry)
 
     while (queue.nonEmpty) {
-      val edge = queue.dequeue
+      val edge = queue.dequeue()
       val block = edge.target
 
       val joined = block match {
