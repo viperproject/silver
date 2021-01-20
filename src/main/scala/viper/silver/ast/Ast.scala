@@ -13,6 +13,8 @@ import viper.silver.ast.utility.rewriter.Traverse.Traverse
 import viper.silver.ast.utility.rewriter.{Rewritable, StrategyBuilder, Traverse}
 import viper.silver.verifier.errors.ErrorNode
 import viper.silver.verifier.{AbstractVerificationError, ConsistencyError, ErrorReason}
+
+import scala.collection.mutable
 import scala.language.reflectiveCalls
 
 /*
@@ -64,18 +66,14 @@ trait Node extends Iterable[Node] with Rewritable {
 
   override def iterator: Iterator[Node] = {
     val iterator = new Iterator[Node] {
-      var remaining = Seq.empty[Node]
+      var remaining = mutable.Queue.empty[Node]
 
       override def hasNext: Boolean = remaining.nonEmpty
 
-      override def next(): Node = {
-        val result = remaining.head
-        remaining = remaining.tail
-        result
-      }
+      override def next(): Node = remaining.dequeue()
     }
 
-    Visitor.visit(this, Nodes.subnodes) { case n: Node => iterator.remaining ++= Seq(n) }
+    Visitor.visit(this, Nodes.subnodes) { case n: Node => iterator.remaining.enqueue(n) }
 
     iterator
   }
