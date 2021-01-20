@@ -15,7 +15,6 @@ import viper.silver.verifier.errors.ErrorNode
 import viper.silver.verifier.{AbstractVerificationError, ConsistencyError, ErrorReason}
 
 import scala.collection.mutable
-import scala.language.reflectiveCalls
 
 /*
 
@@ -65,17 +64,9 @@ trait Node extends Iterable[Node] with Rewritable {
   }
 
   override def iterator: Iterator[Node] = {
-    val iterator = new Iterator[Node] {
-      var remaining = mutable.Queue.empty[Node]
-
-      override def hasNext: Boolean = remaining.nonEmpty
-
-      override def next(): Node = remaining.dequeue()
-    }
-
-    Visitor.visit(this, Nodes.subnodes) { case n: Node => iterator.remaining.enqueue(n) }
-
-    iterator
+    val remaining = mutable.Queue.empty[Node]
+    Visitor.visit(this, Nodes.subnodes) { case n: Node => remaining.enqueue(n) }
+    remaining.iterator
   }
 
   /** @see [[Visitor.visit()]] */
