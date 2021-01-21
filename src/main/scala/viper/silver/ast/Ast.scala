@@ -6,6 +6,7 @@
 
 package viper.silver.ast
 
+import scala.collection.mutable
 import scala.reflect.ClassTag
 import pretty.FastPrettyPrinter
 import utility._
@@ -13,8 +14,6 @@ import viper.silver.ast.utility.rewriter.Traverse.Traverse
 import viper.silver.ast.utility.rewriter.{Rewritable, StrategyBuilder, Traverse}
 import viper.silver.verifier.errors.ErrorNode
 import viper.silver.verifier.{AbstractVerificationError, ConsistencyError, ErrorReason}
-
-import scala.collection.mutable
 
 /*
 
