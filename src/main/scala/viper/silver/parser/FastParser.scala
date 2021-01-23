@@ -8,8 +8,7 @@ package viper.silver.parser
 
 import java.net.URL
 import java.nio.file.{Files, Path, Paths}
-
-import viper.silver.ast.{FilePosition, LabelledOld, LineCol, NoPosition, Position, SourcePosition}
+import viper.silver.ast.{FilePosition, HasLineColumn, LabelledOld, LineCol, NoPosition, Position, SourcePosition}
 import viper.silver.ast.utility.rewriter.{ContextA, PartialContextC, StrategyBuilder, Traverse}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
 import viper.silver.plugin.SilverPluginManager
@@ -37,13 +36,27 @@ object FastParser {
   def FP[T](t: P[T])(implicit name: sourcecode.Name, ctx: P[_]): P[((FilePosition, FilePosition), T)] = {
     t ~ Index map {
       case (parsed: T, index) =>
-        //  val startPos = ctx.input.prettyIndex(previousParseIndex).split(":").map(_.toInt)
-        //  val finishPos = ctx.input.prettyIndex(currentParseIndex - 1).split(":").map(_.toInt)
 
-        val startPos = LineCol(ctx.index)
+        // For some reason, LineCol(ctx.index) sometimes gives us the index of the _end_ of the parsed object (e.g.,
+        // for methods). So, to avoid this in the cases we care about, we check if the parsed object consists
+        // of several parts and, if it does, use the start position of the first part.
+        val startPos = if (parsed.isInstanceOf[Product] && parsed.asInstanceOf[Product].productArity > 0) {
+          val sigh = parsed.asInstanceOf[Product].productElement(0)
+          sigh match {
+            case w: Where if w.pos._1.isInstanceOf[HasLineColumn] => {
+              val lc = w.pos._1.asInstanceOf[HasLineColumn]
+              (lc.line, lc.column)
+            }
+            case (lc: HasLineColumn, _) => {
+              (lc.line, lc.column)
+            }
+            case _ => LineCol(ctx.index)
+          }
+        }else{
+          LineCol(ctx.index)
+        }
         val finishPos = LineCol(index)
 
-        // ((FilePosition(_file, startPos(0), startPos(1)), FilePosition(_file, finishPos(0), finishPos(1))), parsed)
         ((FilePosition(_file, startPos._1, startPos._2), FilePosition(_file, finishPos._1, finishPos._2)), parsed)
     }
   }
