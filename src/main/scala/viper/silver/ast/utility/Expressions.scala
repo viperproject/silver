@@ -33,6 +33,7 @@ object Expressions {
          | _: PermExp
          | _: FuncApp
          | _: DomainFuncApp
+         | _: BackendFuncApp
          | _: LocationAccess
          | _: AbstractLocalVar
          | _: SeqExp
