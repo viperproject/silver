@@ -25,7 +25,6 @@ decreases x
 
 function h(x: Int): Int
 decreases x
-//:: UnexpectedOutput(postcondition.violated:assertion.false, /silicon/issue/247/)
 //:: UnexpectedOutput(postcondition.violated:assertion.false, /carbon/issue/155/)
 ensures result == 1
 {

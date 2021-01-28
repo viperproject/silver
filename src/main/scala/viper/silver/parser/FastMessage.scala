@@ -6,8 +6,9 @@
 
 package viper.silver
 
-import viper.silver.ast.{HasLineColumn, SourcePosition, Position=>ViperPosition}
-import viper.silver.parser.FilePosition
+import viper.silver.ast.{HasLineColumn, SourcePosition, Position => ViperPosition}
+import viper.silver.ast.FilePosition
+import viper.silver.parser.PNode
 
 import scala.util.parsing.input.Position
 
@@ -54,9 +55,9 @@ object FastMessaging {
     */
   def message (value : Any, msg : String, cond : Boolean = true, error : Boolean = true) : Messages =
     if (cond) {
-      val valuePos: SourcePosition = FastPositions.getStart(value) match {
+      val valuePos: SourcePosition = value.asInstanceOf[PNode].pos._1 match {
         case slc: FilePosition => {
-          FastPositions.getFinish(value) match {
+          value.asInstanceOf[PNode].pos._2 match {
             case flc: HasLineColumn => {
               SourcePosition(slc.file, slc, flc)
             }

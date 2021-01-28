@@ -490,7 +490,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
 
   /** Show a program. */
   def showProgram(p: Program): Cont = {
-    val Program(domains, fields, functions, predicates, methods, extensions) = p
+    val Program(domains, fields, functions, predicates, methods, _) = p
     showComment(p) <@>
       ssep((domains ++ fields ++ functions ++ predicates ++ methods) map show, line <> line)
   }
@@ -564,7 +564,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
           })
       case d: Domain =>
         showDomain(d)
-      case t:ExtensionMember => nil
+      case _:ExtensionMember => nil
     }
     showComment(m) <@> memberDoc
   }
@@ -594,9 +594,6 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
     case l: LocalVarDecl => text(l.name) <> ":" <+> showType(l.typ)
     case u: UnnamedLocalVarDecl => showType(u.typ)
   }
-
-  /** Show field name */
-  private def showLocation(loc: Location): Cont = loc.name
 
   /** Show a user-defined domain. */
   def showDomain(d: Domain): Cont = {
@@ -628,6 +625,8 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       case dt@DomainType(domainName, typVarsMap) =>
         val typArgs = dt.typeParameters map (t => show(typVarsMap.getOrElse(t, t)))
         text(domainName) <> (if (typArgs.isEmpty) nil else brackets(ssep(typArgs, char (',') <> space)))
+      case BackendType(boogieName, _) if boogieName != null => boogieName
+      case BackendType(_, smtName) => smtName
     }
   }
 
@@ -775,10 +774,11 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
     case dfa@DomainFuncApp(funcname, args, tvMap) =>
       if (tvMap.nonEmpty)
         // Type may be underconstrained, so to be safe we explicitly print out the type.
-        text(funcname) <> parens(ssep(args map show, char (',') <> space))
+        parens(text(funcname) <> parens(ssep(args map show, char (',') <> space)) <> char(':') <+> show(dfa.typ))
       else
         text(funcname) <> parens(ssep(args map show, char (',') <> space))
-
+    case BackendFuncApp(func, args) =>
+      text(func.name) <> parens(ssep(args map show, char(',') <> space))
     case EmptySeq(elemTyp) =>
       text("Seq[") <> showType(elemTyp) <> "]()"
     case ExplicitSeq(elems) =>

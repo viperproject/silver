@@ -122,10 +122,10 @@ trait ExpTransformer extends ErrorReporter {
     case (md: MapDomain, c) => Seqn(Seq(transformExp(md.base, c)), Nil)(md.pos)
     case (mr: MapRange, c) => Seqn(Seq(transformExp(mr.base, c)), Nil)(mr.pos)
     case (u: UnExp, c) => transformExp(u.exp, c)
-    case (l: Literal, c) => EmptyStmt
-    case (v: AbstractLocalVar, c) => EmptyStmt
-    case (p: AbstractConcretePerm, c) => EmptyStmt
-    case (la: LocationAccess, c) => EmptyStmt
+    case (_: Literal, _) => EmptyStmt
+    case (_: AbstractLocalVar, _) => EmptyStmt
+    case (_: AbstractConcretePerm, _) => EmptyStmt
+    case (_: LocationAccess, _) => EmptyStmt
 
     case (ap: AccessPredicate, c) =>
       val check = transformExp(ap.perm, c)

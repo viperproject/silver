@@ -7,11 +7,16 @@
 package viper.silver
 
 package object reporter {
-  type Time = Long // in milliseconds
+  type Time = Long  // in milliseconds
   type File = java.nio.file.Path
+
   type Entity = viper.silver.ast.Member with Serializable
+  def print(e: Entity): String =  // FIXME: treat the natural delimiters and insert `;` where needed.
+    e.toString().replaceAll("""\n""", " ").replaceAll("""\s+""", " ")
+
   type Position = viper.silver.ast.SourcePosition
 
   // The following case classes are essentially named tuple wrappers.
-  case class Definition(name: String, typ: String, location: viper.silver.ast.Position, scope: Option[viper.silver.ast.AbstractSourcePosition] = None)
+  case class Definition(name: String, typ: String, location: viper.silver.ast.Position,
+                        scope: Option[viper.silver.ast.AbstractSourcePosition] = None)
 }

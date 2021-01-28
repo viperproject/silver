@@ -359,7 +359,7 @@ object TreeRegexBuilder {
     * @tparam N Type of the AST
     * @return TreeRegexBuilder object
     */
-  def ancestor[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag] = new TreeRegexBuilder[N, Any]((x, y) => x, (x, y) => true, null)
+  def ancestor[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag] = new TreeRegexBuilder[N, Any]((x, _) => x, (_, _) => true, null)
 
   /**
     * Don't care about context at all
@@ -383,7 +383,7 @@ object n {
     * @tparam N Type of the AST
     * @return Node Match
     */
-  def apply[N <: Rewritable : TypeTag] = new NMatch[N]((x: N) => true, false)
+  def apply[N <: Rewritable : TypeTag] = new NMatch[N]((_: N) => true, false)
 
   /**
     * Node match with a predicate that needs to hold in order to match
@@ -391,14 +391,14 @@ object n {
     * @tparam N Type of the AST
     * @return Node match with predicate
     */
-  def P[N <: Rewritable : TypeTag](p: N => Boolean = (x: N) => true) = new NMatch[N](p, false)
+  def P[N <: Rewritable : TypeTag](p: N => Boolean = (_: N) => true) = new NMatch[N](p, false)
 
   /**
     * Node match and mark the matched node for rewriting
     * @tparam N Type of the AST
     * @return Node match marked for rewriting
     */
-  def r[N <: Rewritable : TypeTag] = new NMatch[N]((x: N) => true, true)
+  def r[N <: Rewritable : TypeTag] = new NMatch[N]((_: N) => true, true)
 
   /**
     * Node match with a predicate that needs to hold in order to match. Mark the matched node for rewriting
@@ -411,7 +411,7 @@ object n {
   /**
     * @return Convenient matcher that matches on every node
     */
-  def Wildcard = new NMatch[Rewritable]((x: Rewritable) => true, false)
+  def Wildcard = new NMatch[Rewritable]((_: Rewritable) => true, false)
 }
 
 /**
@@ -426,7 +426,7 @@ object c {
     * @tparam N Type of the AST
     * @return Context match
     */
-  def apply[N <: Rewritable : TypeTag](con: N => Any, p: N => Boolean = (x: N) => true) = new ContextNMatch[N](con, p, false)
+  def apply[N <: Rewritable : TypeTag](con: N => Any, p: N => Boolean = (_: N) => true) = new ContextNMatch[N](con, p, false)
 
   /**
     * In case the node matches extract context information from the node by applying function con and mark the node for rewriting. Only if predicate p holds
@@ -435,7 +435,7 @@ object c {
     * @tparam N Type of the AST
     * @return Context match
     */
-  def r[N <: Rewritable : TypeTag](con: N => Any, p: N => Boolean = (x: N) => true) = new ContextNMatch[N](con, p, true)
+  def r[N <: Rewritable : TypeTag](con: N => Any, p: N => Boolean = (_: N) => true) = new ContextNMatch[N](con, p, true)
 }
 
 /**
@@ -450,7 +450,7 @@ object iC {
     * @tparam N Type of the AST
     * @return Children Match
     */
-  def apply[N <: Rewritable : TypeTag](ch: N => Rewritable, p: N => Boolean = (x: N) => true): Match = new ChildSelectNMatch[N](ch, p, false)
+  def apply[N <: Rewritable : TypeTag](ch: N => Rewritable, p: N => Boolean = (_: N) => true): Match = new ChildSelectNMatch[N](ch, p, false)
 
   /**
     * In case the node matches extract the children we want to recurse on and mark the node for rewriting. Only if predicate `p` holds
@@ -459,5 +459,5 @@ object iC {
     * @tparam N Type of the AST
     * @return Children Match
     */
-  def r[N <: Rewritable : TypeTag](ch: N => Rewritable, p: N => Boolean = (x: N) => true): Match = new ChildSelectNMatch[N](ch, p, true)
+  def r[N <: Rewritable : TypeTag](ch: N => Rewritable, p: N => Boolean = (_: N) => true): Match = new ChildSelectNMatch[N](ch, p, true)
 }

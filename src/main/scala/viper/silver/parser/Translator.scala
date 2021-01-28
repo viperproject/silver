@@ -123,7 +123,7 @@ case class Translator(program: PProgram) {
     *           method call no longer needs the method node, the method name (as a string)
     *           suffices
     */
-  private def translateMemberSignature(p: PMember) {
+  private def translateMemberSignature(p: PMember): Unit = {
     val pos = p
     val name = p.idndef.name
     val t = p match {
@@ -144,8 +144,7 @@ case class Translator(program: PProgram) {
   }
 
   private def translateMemberSignature(p: PExtender): Unit ={
-    val pos = p
-    val t = p match {
+    p match {
       case t: PMember =>
         val l = p.translateMemberSignature(this)
         members.put(t.idndef.name, l)
@@ -164,12 +163,11 @@ case class Translator(program: PProgram) {
   def stmt(s: PStmt): Stmt = {
     val pos = s
     s match {
-      case PVarAssign(idnuse, PCall(func, args, _)) if members(func.name).isInstanceOf[Method] =>
+      case p@PVarAssign(idnuse, PCall(func, args, _)) if members(func.name).isInstanceOf[Method] =>
         /* This is a method call that got parsed in a slightly confusing way.
          * TODO: Get rid of this case! There is a matching case in the resolver.
          */
-        val call = PMethodCall(Seq(idnuse), func, args)
-        call.setPos(s)
+        val call = PMethodCall(Seq(idnuse), func, args)(p.pos)
         stmt(call)
       case PVarAssign(idnuse, rhs) =>
         LocalVarAssign(LocalVar(idnuse.name, ttyp(idnuse.typ))(pos), exp(rhs))(pos)
@@ -200,8 +198,7 @@ case class Translator(program: PProgram) {
         Apply(exp(e).asInstanceOf[MagicWand])(pos)
       case PInhale(e) =>
         Inhale(exp(e))(pos)
-      case assume@PAssume(e) =>
-        val sub = exp(e)
+      case PAssume(e) =>
         Assume(exp(e))(pos)
       case PExhale(e) =>
         Exhale(exp(e))(pos)
@@ -424,7 +421,7 @@ case class Translator(program: PProgram) {
           desugaredForalls.tail.foldLeft(desugaredForalls.head: Exp)((conjuncts, forall) =>
             And(conjuncts, forall)(fa.pos, fa.info, fa.errT))
         }
-      case f@PForPerm(vars, res, e) =>
+      case PForPerm(vars, res, e) =>
         val varList = vars map liftVarDecl
         exp(res) match {
           case PredicateAccessPredicate(inner, _) => ForPerm(varList, inner, exp(e))(pos)
@@ -525,12 +522,19 @@ case class Translator(program: PProgram) {
   }
 
   /** Takes a [[viper.silver.parser.FastPositioned]] and turns it into a [[viper.silver.ast.SourcePosition]]. */
-  implicit def liftPos(pos: FastPositioned): SourcePosition = {
-    val start = LineColumnPosition(pos.start.line, pos.start.column)
-    val end = LineColumnPosition(pos.finish.line, pos.finish.column)
-    pos.start match {
-      case fp: FilePosition => SourcePosition(fp.file, start, end)
-      case NoPosition => SourcePosition(null, 0, 0)
+  implicit def liftPos(node: Where): SourcePosition = {
+    if (node.pos._1.isInstanceOf[FilePosition]) {
+      assert(node.pos._2.isInstanceOf[FilePosition])
+
+      val begin = node.pos._1.asInstanceOf[FilePosition]
+      val end = node.pos._2.asInstanceOf[FilePosition]
+
+      SourcePosition(begin.file,
+        LineColumnPosition(begin.line, begin.column),
+        LineColumnPosition(end.line, end.column))
+    }
+    else {
+      SourcePosition(null, 0, 0)
     }
   }
 

@@ -12,13 +12,13 @@ import viper.silver.parser._
 import scala.collection.mutable
 
 
-case class PPredicateInstance(args: Seq[PExp], idnuse: PIdnUse) extends PExtender with PExp {
+case class PPredicateInstance(args: Seq[PExp], idnuse: PIdnUse)(val pos: (Position, Position)) extends PExtender with PExp {
 
-  typ = PPrimitiv("PredicateInstance")
+  typ = PPrimitiv("PredicateInstance")()
 
   // TODO: Don't know if this is correct
-  private val _typeSubstitutions = new scala.collection.mutable.MutableList[PTypeSubstitution]()
-  final override def typeSubstitutions: mutable.MutableList[PTypeSubstitution] = _typeSubstitutions
+  private val _typeSubstitutions = new scala.collection.mutable.ArrayDeque[PTypeSubstitution]()
+  final override def typeSubstitutions: mutable.ArrayDeque[PTypeSubstitution] = _typeSubstitutions
   override def forceSubstitution(ts: PTypeSubstitution): Unit = {}
 
   override def getSubnodes(): Seq[PNode] = args :+ idnuse
@@ -27,9 +27,9 @@ case class PPredicateInstance(args: Seq[PExp], idnuse: PIdnUse) extends PExtende
     // TODO: Don't know if this is correct
     // check that idnuse is the id of a predicate
     n.definition(member = null)(idnuse) match {
-      case _: PPredicate =>
+      case p: PPredicate =>
         // type checking should be the same as for PPredicateAccess nodes
-        val predicateAccess = PPredicateAccess(args, idnuse).setPos(this)
+        val predicateAccess = PPredicateAccess(args, idnuse)(p.pos)
         t.check(predicateAccess, PTypeSubstitution.id)
         None
       case _ => Some(Seq("expected predicate"))
@@ -37,6 +37,6 @@ case class PPredicateInstance(args: Seq[PExp], idnuse: PIdnUse) extends PExtende
   }
 
   override def translateExp(t: Translator): ExtensionExp = {
-    PredicateInstance(args map t.exp, idnuse.name)(t.liftPos(pos = this))
+    PredicateInstance(args map t.exp, idnuse.name)(t.liftPos(this))
   }
 }

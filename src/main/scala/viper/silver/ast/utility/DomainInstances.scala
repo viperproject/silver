@@ -342,7 +342,7 @@ object DomainInstances {
   def getFTVDepths(t: Type): Map[TypeVar, Int] = t match {
     case dt: DomainType =>
       dt.typVarsMap.flatMap {
-        case (tv: TypeVar, t: Type) => getFTVDepths(t).map { case (tv2: TypeVar, d: Int) => tv2 -> d.+(1) }
+        case (_: TypeVar, t: Type) => getFTVDepths(t).map { case (tv2: TypeVar, d: Int) => tv2 -> d.+(1) }
       }
     case ct: CollectionType => getFTVDepths(ct.elementType).map { case (tv2: TypeVar, d: Int) => tv2 -> d.+(1) }
 
@@ -405,7 +405,7 @@ object DomainInstances {
     case dt: DomainType => new DomainInstanceTypeCoordinate(dt,
       dt.typeParameters.map(tv => makeTypeCoordinate(dt.typVarsMap(tv)))
     )
-    case tv:TypeVar => throw new Exception("Internal error in type system - unexpected non-ground type <" + t.toString() + ">")
+    case _:TypeVar => throw new Exception("Internal error in type system - unexpected non-ground type <" + t.toString() + ">")
   }
 
   sealed abstract class TypeCoordinate(val t: Type) {

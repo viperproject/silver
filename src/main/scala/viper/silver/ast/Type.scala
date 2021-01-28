@@ -6,7 +6,6 @@
 
 package viper.silver.ast
 
-import scala.collection.breakOut
 import utility.Types
 import viper.silver.verifier.ConsistencyError
 
@@ -157,7 +156,7 @@ sealed case class DomainType(domainName: String, partialTypVarsMap: Map[TypeVar,
    * `typVarsMap` thus contains a mapping for each type parameter.
    */
   val typVarsMap: Map[TypeVar, Type] =
-    typeParameters.map(tp => tp -> partialTypVarsMap.getOrElse(tp, tp))(breakOut)
+    typeParameters.map(tp => tp -> partialTypVarsMap.getOrElse(tp, tp)).to(implicitly)
 
   override lazy val check =
     if(!(typeParameters.toSet == typVarsMap.keys.toSet)) Seq(ConsistencyError(s"${typeParameters.toSet} doesn't equal ${typVarsMap.keys.toSet}", NoPosition)) else Seq()
@@ -199,6 +198,8 @@ case class TypeVar(name: String) extends Type {
 
   //def !=(other: TypeVar) = name != other
 }
+
+case class BackendType(boogieName: String, smtName: String) extends AtomicType
 
 trait ExtensionType extends Type{
   def getAstType: Type = ???

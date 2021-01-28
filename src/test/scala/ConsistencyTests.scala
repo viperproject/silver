@@ -4,12 +4,12 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-import org.scalatest.FunSuite
 import viper.silver.verifier.ConsistencyError
 import viper.silver.ast._
-import org.scalatest.Matchers
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.funsuite.AnyFunSuite
 
-class ConsistencyTests extends FunSuite with Matchers {
+class ConsistencyTests extends AnyFunSuite with Matchers {
 
     /* These tests invoke errors from consistency checks made at AST nodes.
     At the moment, many of these errors cannot be invoked by parsing a Silver program
