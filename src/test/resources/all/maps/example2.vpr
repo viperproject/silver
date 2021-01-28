@@ -1,0 +1,118 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+/**
+ * These examples and specifications are largely based on the Dafny examples at
+ * https://github.com/dafny-lang/dafny/blob/master/Test/dafny0/Maps.dfy,
+ * as on 11/11/2020; commit 'c477eecabd9948e63375e88fefcf2ad9ea62f69b'.
+ */
+ 
+method test1()
+{
+  var m : Map[Int, Int] := Map(2 := 3)
+  assert 2 in m
+  assert !(3 in m)
+  assert m[2] == 3
+  assert m[2 := 4] == Map(2 := 4)
+  assert m[7 := 1] == Map(2 := 3, 7 := 1)
+  assert m == Map(2 := 3)
+  
+}
+
+method test2()
+{
+  var m1 : Map[Int, Int] := Map(2 := 3)
+  var m2 : Map[Int, Int] := Map(3 := 2)
+  assert m1[m2[3]] == 3
+}
+
+method test3(m1 : Map[Int, Bool], m2 : Map[Int, Bool])
+  requires forall i : Int :: { i in m1 } { i in m2 } { m1[i] } { m2[i] }
+    0 <= i && i < 100 ==> i in m1 && i in m2 && m1[i] != m2[i]
+{
+  assert forall i : Int :: 0 <= i && i < 100 ==> m1[i] || m2[i]
+}
+
+method test4(m : Map[Int, Int])
+  requires forall i : Int :: 0 <= i && i < 100 ==> i in m && m[i] == i * i
+{
+  assert m[20] == 400
+}
+
+method test5()
+{
+  var m : Map[Int, Int] := Map(3 := 9)
+  
+  // this will verify in Carbon but will give a verification error in Silicon
+  /*
+  if (m[4] == 4)
+  {
+    test2()
+  }
+  */
+}
+
+method test6(m : Map[Int, Int])
+  requires 20 in m
+{
+  assert m[20] <= 0 || 0 < m[20]
+}
+
+method test7()
+{
+  var m : Map[Int, Int] := Map(3 := 9)
+  assert m[3 := 5] == Map(3 := 5)
+  assert m[2 := 5] == Map(2 := 5, 3 := 9)
+  assert m[2 := 5] == Map(2 := 6, 3 := 9, 2 := 5)
+}
+
+method test8()
+{
+  var m : Map[Int, Int] := Map(1 := 1, 2 := 4, 3 := 9)
+  assert forall i : Int :: { m[i] } i in m ==> m[i] == i * i
+  assert !(0 in m)
+  assert 1 in m
+  assert 2 in m
+  assert 3 in m
+  assert forall i : Int :: { i in m } i < 1 || i > 3 ==> !(i in m)
+}
+
+method test9()
+{
+  var m : Map[Int, Int] := Map()
+  assert forall k : Int :: !(k in m)
+  
+  var i : Int := 0
+  var n : Int := 100
+  
+  while (i < n)
+    invariant 0 <= i && i <= n && n == 100
+    invariant forall k : Int :: (0 <= k && k < i <==> k in m)
+    invariant forall k : Int :: k in m ==> m[k] == k * k
+  {
+    m := m[i := i * i]
+    i := i + 1
+  }
+  
+  test4(m)
+}
+
+method test10(m : Map[Int, Int])
+  requires forall i : Int :: { i in m } (0 <= i && i < 10 <==> i in m)
+  requires forall i : Int :: { m[i] } i in m ==> m[i] == i * 2
+{
+  assert 0 in m
+  assert 1 in m
+  assert !(10 in m)
+  assert m[0] == 0 && m[2] == 4
+}
+
+method test11(m : Map[Int, Int])
+  requires forall i : Int :: { i in m } (2 <= i && i < 6 <==> i in m)
+  requires forall i : Int :: { m[i] } i in m ==> m[i] == i + 1
+{
+  assert 5 in domain(m)
+  assert !(6 in domain(m))
+  assert m[5] == 6
+  assert 6 in range(m)
+}

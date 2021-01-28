@@ -743,6 +743,8 @@ object FastParser {
     "Seq",
     // sets and multisets
     "Set", "Multiset", "union", "intersection", "setminus", "subset",
+    // maps
+    "Map", "range",
     // prover hint expressions
     "unfolding", "in", "applying",
     // old expression
@@ -761,8 +763,10 @@ object FastParser {
     | result | unExp
     | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | applying
     | setTypedEmpty | explicitSetNonEmpty | multiSetTypedEmpty | explicitMultisetNonEmpty | seqTypedEmpty
-    | seqLength | explicitSeqNonEmpty | seqRange | fapp | typedFapp | idnuse | ParserExtension.newExpAtEnd(ctx))
-
+    // | seqLength | explicitSeqNonEmpty | seqRange | fapp | typedFapp | idnuse | ParserExtension.newExpAtEnd(ctx))
+    | size | explicitSeqNonEmpty | seqRange
+    | mapTypedEmpty | explicitMapNonEmpty | mapDomain | mapRange
+    | fapp | typedFapp | idnuse | ParserExtension.newExpAtEnd(ctx))
 
   def result[_: P]: P[PResultLit] = keyword("result").map { case (pos, _) => PResultLit()(pos) }
 
@@ -825,6 +829,16 @@ object FastParser {
   }
 
   def exp[_: P]: P[PExp] = P(iteExpr)
+
+  /* Maps:
+  lazy val suffix: fastparse.noApi.Parser[SuffixedExpressionGenerator[PExp]] =
+    P(("." ~ idnuse).map { id => SuffixedExpressionGenerator[PExp]((e: PExp) => PFieldAccess(e, id)) } |
+      ("[" ~ Pass ~ ".." ~/ exp ~ "]").map { n => SuffixedExpressionGenerator[PExp]((e: PExp) => PSeqTake(e, n)) } |
+      ("[" ~ exp ~ ".." ~ Pass ~ "]").map { n => SuffixedExpressionGenerator[PExp]((e: PExp) => PSeqDrop(e, n)) } |
+      ("[" ~ exp ~ ".." ~ exp ~ "]").map { case (n, m) => SuffixedExpressionGenerator[PExp]((e: PExp) => PSeqDrop(PSeqTake(e, m), n)) } |
+      ("[" ~ exp ~ "]").map { e1 => SuffixedExpressionGenerator[PExp]((e0: PExp) => PLookup(e0, e1)) } |
+      ("[" ~ exp ~ ":=" ~ exp ~ "]").map { case (i, v) => SuffixedExpressionGenerator[PExp]((e: PExp) => PUpdate(e, i, v)) })
+   */
 
   def suffix[_: P]: P[SuffixedExpressionGenerator[PExp]] =
     P(FP("." ~ idnuse).map { case (pos, id) => SuffixedExpressionGenerator[PExp]((e: PExp) => {
@@ -948,7 +962,8 @@ object FastParser {
 
   def formalArg[_: P]: P[PFormalArgDecl] = FP(idndef ~ ":" ~ typ).map { case (pos, (a, b)) => PFormalArgDecl(a, b)(pos) }
 
-  def typ[_: P]: P[PType] = P(primitiveTyp | domainTyp | seqType | setType | multisetType)
+  def typ[_: P]: P[PType] = P(primitiveTyp | domainTyp | seqType | setType | multisetType | mapType)
+  // Maps: lazy val typ: P[PType] = P(primitiveTyp | domainTyp | seqType | setType | multisetType | mapType)
 
   def domainTyp[_: P]: P[PDomainType] = P(FP(idnuse ~ "[" ~ typ.rep(sep = ",") ~ "]").map { case (pos, (a, b)) => PDomainType(a, b)(pos) } |
     // domain type without type arguments (might also be a type variable)
@@ -962,8 +977,18 @@ object FastParser {
 
   def multisetType[_: P]: P[PType] = FP(keyword("Multiset") ~ "[" ~ typ ~ "]").map{ case (pos, t) => PMultisetType(t._3)(pos)}
 
+  def mapType[_: P]: P[PType] = FP(keyword("Map") ~ "[" ~ typ ~ "]").map{ case (pos, t) => PSeqType(t._3)(pos)}
+  // Maps:
+  //lazy val mapType : P[PType] = P(keyword("Map") ~ "[" ~ typ ~ "," ~ typ ~ "]").map {
+   // case (keyType, valueType) => PMapType(keyType, valueType)
+  //}
+
   def primitiveTyp[_: P]: P[PType] = P(FP(keyword("Rational")).map{ case (pos, _) => PPrimitiv("Perm")(pos)}
     | FP((StringIn("Int", "Bool", "Perm", "Ref") ~~ !identContinues).!).map{ case (pos, name) => PPrimitiv(name)(pos)})
+/* Maps:
+  lazy val primitiveTyp: P[PType] = P(keyword("Rational").map(_ => PPrimitiv("Perm"))
+    | (StringIn("Int", "Bool", "Perm", "Ref") ~~ !identContinues).!.map(PPrimitiv))
+ */
 
   def trigger[_: P]: P[PTrigger] = FP("{" ~/ exp.rep(sep = ",") ~ "}").map{
     case (pos, s) => PTrigger(s)(pos)
@@ -990,16 +1015,35 @@ object FastParser {
 
   def seqTypedEmpty[_: P]: P[PExp] = collectionTypedEmpty("Seq", (a, b) => PEmptySeq(a)(b))
 
-  def seqLength[_: P]: P[PExp] = P("|" ~ exp ~ "|").map(PSize(_)())
+  //HEAD: def seqLength[_: P]: P[PExp] = P("|" ~ exp ~ "|").map(PSize(_)())
+  def size[_: P]: P[PExp] = P("|" ~ exp ~ "|").map(PSize(_)())
+  //MAP: lazy val size: P[PExp] = P("|" ~ exp ~ "|").map(PSize)
 
   def explicitSeqNonEmpty[_: P]: P[PExp] = P("Seq" ~ "(" ~/ exp.rep(min = 1, sep = ",") ~ ")").map(PExplicitSeq(_)())
 
   private def collectionTypedEmpty[_: P](name: String, typeConstructor: (PType, (Position, Position)) => PExp): P[PExp] =
     FP(`name` ~ ("[" ~/ typ ~ "]").? ~ "(" ~ ")").map{ case (pos, typ) => typeConstructor(typ.getOrElse(PTypeVar("#E")), pos)}
 
-
   def seqRange[_: P]: P[PExp] = FP("[" ~ exp ~ ".." ~ exp ~ ")").map { case (pos, (a, b)) => PRangeSeq(a, b)(pos) }
+  // MAPS: lazy val seqRange: P[PExp] = P("[" ~ exp ~ ".." ~ exp ~ ")").map { case (a, b) => PRangeSeq(a, b) }
 
+  def mapTypedEmpty[_: P] : P[PMapLiteral] = P("Map" ~ ("[" ~/ typ ~ "," ~ typ ~ "]").? ~ "(" ~ ")").map {
+    case Some((keyType, valueType)) => PEmptyMap(keyType, valueType)()
+    case None => PEmptyMap(PTypeVar("#K"), PTypeVar("#E"))()
+  }
+
+  def maplet[_: P]: P[PMaplet] = P(exp ~ ":=" ~ exp).map {
+    case (key, value) => PMaplet(key, value)()
+  }
+
+  // MAPS: lazy val explicitMapNonEmpty : P[PMapLiteral] = P("Map" ~ "(" ~/ maplet.rep(min = 1, sep = ",") ~ ")").map(PExplicitMap)
+  def explicitMapNonEmpty[_: P]: P[PMapLiteral] = P("Map" ~ "(" ~/ maplet.rep(sep = ",", min = 1) ~ ")").map(PExplicitMap(_)())
+
+  //lazy val mapDomain : P[PExp] = P("domain" ~ "(" ~ exp ~ ")").map(PMapDomain)
+  def mapDomain[_: P]: P[PExp] = P("domain" ~ "(" ~ exp ~ ")").map(PMapDomain(_)())
+  //def size[_: P]: P[PExp] = P("|" ~ exp ~ "|").map(PSize(_))
+
+  def mapRange[_: P] : P[PExp] = P("range" ~ "(" ~ exp ~ ")").map(PMapRange(_)())
 
   def fapp[_: P]: P[PCall] = FP(idnuse ~ parens(actualArgList)).map {
     case (_, (func, args)) =>

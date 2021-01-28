@@ -123,6 +123,17 @@ object Nodes {
           case ExplicitSet(elems) => elems
           case EmptyMultiset(elemTyp) => Seq(elemTyp)
           case ExplicitMultiset(elems) => elems
+
+          case EmptyMap(keyTyp, valueTyp) => Seq(keyTyp, valueTyp)
+          case ExplicitMap(exprs) => exprs
+          case Maplet(key, value) => Seq(key, value)
+          case MapUpdate(base, key, value) => Seq(base, key, value)
+          case MapLookup(base, key) => Seq(base, key)
+          case MapContains(key, base) => Seq(key, base)
+          case MapCardinality(base) => Seq(base)
+          case MapDomain(base) => Seq(base)
+          case MapRange(base) => Seq(base)
+
           case e: ExtensionExp => e.extensionSubnodes
         }
       case _: Type => Nil

@@ -22,6 +22,7 @@ object Types {
     case t : TypeVar => Set(t)
     case DomainType(_,typeVarsMap) => typeVarsMap.values.flatMap(typeVariables).toSet
     case ct : CollectionType => typeVariables(ct.elementType)
+    case m : MapType => typeVariables(m.keyType) union typeVariables(m.valueType)
     case _ => Set()
   }
 /*
@@ -74,5 +75,7 @@ object Types {
     case SeqType(elementType) => elementType :: typeConstituents(elementType)
     case SetType(elementType) => elementType :: typeConstituents(elementType)
     case MultisetType(elementType) => elementType :: typeConstituents(elementType)
+    case MapType(keyType, valueType) => keyType :: valueType ::
+      typeConstituents(keyType) ++ typeConstituents(valueType)
   }
 }

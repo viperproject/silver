@@ -103,14 +103,24 @@ trait ExpTransformer extends ErrorReporter {
       case SeqLength(s) =>
         Seqn(Seq(transformExp(s, c)), Nil)(sq.pos)
       case EmptySeq(_) => EmptyStmt
-
       case unsupportedExp => transformUnknownExp(unsupportedExp, c)
         EmptyStmt
+    }
+    case (mp: MapExp, c) => mp match {
+      case EmptyMap(_, _) => EmptyStmt
+      case ExplicitMap(elems) => Seqn(elems.map(transformExp(_, c)), Nil)(mp.pos)
+      case Maplet(key, value) => Seqn(Seq(transformExp(key, c), transformExp(value, c)), Nil)(mp.pos)
+      case MapCardinality(base) => Seqn(Seq(transformExp(base, c)), Nil)(mp.pos)
+      case MapContains(key, base) => Seqn(Seq(transformExp(key, c), transformExp(base, c)), Nil)(mp.pos)
+      case MapLookup(base, key) => Seqn(Seq(transformExp(base, c), transformExp(key, c)), Nil)(mp.pos)
+      case MapUpdate(base, key, value) => Seqn(Seq(transformExp(base, c), transformExp(key, c), transformExp(value, c)), Nil)(mp.pos)
     }
     case (st: ExplicitSet, c) =>
       Seqn(st.elems.map(transformExp(_, c)), Nil)(st.pos)
     case (mst: ExplicitMultiset, c) =>
       Seqn(mst.elems.map(transformExp(_, c)), Nil)(mst.pos)
+    case (md: MapDomain, c) => Seqn(Seq(transformExp(md.base, c)), Nil)(md.pos)
+    case (mr: MapRange, c) => Seqn(Seq(transformExp(mr.base, c)), Nil)(mr.pos)
     case (u: UnExp, c) => transformExp(u.exp, c)
     case (_: Literal, _) => EmptyStmt
     case (_: AbstractLocalVar, _) => EmptyStmt

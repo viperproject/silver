@@ -321,11 +321,14 @@ case class Translator(program: PProgram) {
           case "<==>" => EqCmp(l, r)(pos)
           case "&&" => And(l, r)(pos)
           case "||" => Or(l, r)(pos)
-          case "in" =>
-            if (right.typ.isInstanceOf[PSeqType])
-              SeqContains(l, r)(pos)
-            else
-              AnySetContains(l, r)(pos)
+
+          case "in" => right.typ match {
+            case _: PSeqType => SeqContains(l, r)(pos)
+            case _: PMapType => MapContains(l, r)(pos)
+            case _: PSetType | _: PMultisetType => AnySetContains(l, r)(pos)
+            case t => sys.error(s"unexpected type $t")
+          }
+
           case "++" => SeqAppend(l, r)(pos)
           case "subset" => AnySetSubset(l, r)(pos)
           case "intersection" => AnySetIntersection(l, r)(pos)
@@ -467,19 +470,31 @@ case class Translator(program: PProgram) {
         ExplicitSeq(elems map exp)(pos)
       case PRangeSeq(low, high) =>
         RangeSeq(exp(low), exp(high))(pos)
-      case PSeqIndex(seq, idx) =>
-        SeqIndex(exp(seq), exp(idx))(pos)
+
+      case PLookup(base, index) => base.typ match {
+        case _: PSeqType => SeqIndex(exp(base), exp(index))(pos)
+        case _: PMapType => MapLookup(exp(base), exp(index))(pos)
+        case t => sys.error(s"unexpected type $t")
+      }
+
       case PSeqTake(seq, n) =>
         SeqTake(exp(seq), exp(n))(pos)
       case PSeqDrop(seq, n) =>
         SeqDrop(exp(seq), exp(n))(pos)
-      case PSeqUpdate(seq, idx, elem) =>
-        SeqUpdate(exp(seq), exp(idx), exp(elem))(pos)
-      case PSize(s) =>
-        if (s.typ.isInstanceOf[PSeqType])
-          SeqLength(exp(s))(pos)
-        else
-          AnySetCardinality(exp(s))(pos)
+
+      case PUpdate(base, key, value) => base.typ match {
+        case _: PSeqType => SeqUpdate(exp(base), exp(key), exp(value))(pos)
+        case _: PMapType => MapUpdate(exp(base), exp(key), exp(value))(pos)
+        case t => sys.error(s"unexpected type $t")
+      }
+
+      case PSize(base) => base.typ match {
+        case _: PSeqType => SeqLength(exp(base))(pos)
+        case _: PMapType => MapCardinality(exp(base))(pos)
+        case _: PSetType | _: PMultisetType => AnySetCardinality(exp(base))(pos)
+        case t => sys.error(s"unexpected type $t")
+      }
+
       case PEmptySet(_) =>
         EmptySet(ttyp(pexp.typ.asInstanceOf[PSetType].elementType))(pos)
       case PExplicitSet(elems) =>
@@ -488,6 +503,20 @@ case class Translator(program: PProgram) {
         EmptyMultiset(ttyp(pexp.typ.asInstanceOf[PMultisetType].elementType))(pos)
       case PExplicitMultiset(elems) =>
         ExplicitMultiset(elems map exp)(pos)
+
+      case PEmptyMap(_, _) => EmptyMap(
+        ttyp(pexp.typ.asInstanceOf[PMapType].keyType),
+        ttyp(pexp.typ.asInstanceOf[PMapType].valueType)
+      )(pos)
+      case PExplicitMap(elems) =>
+        ExplicitMap(elems map exp)(pos)
+      case PMaplet(key, value) =>
+        Maplet(exp(key), exp(value))(pos)
+      case PMapDomain(base) =>
+        MapDomain(exp(base))(pos)
+      case PMapRange(base) =>
+        MapRange(exp(base))(pos)
+
       case t: PExtender => t.translateExp(this)
     }
   }
@@ -534,6 +563,8 @@ case class Translator(program: PProgram) {
       SetType(ttyp(elemType))
     case PMultisetType(elemType) =>
       MultisetType(ttyp(elemType))
+    case PMapType(keyType, valueType) =>
+      MapType(ttyp(keyType), ttyp(valueType))
     case PDomainType(name, args) =>
       members.get(name.name) match {
         case Some(d) =>
