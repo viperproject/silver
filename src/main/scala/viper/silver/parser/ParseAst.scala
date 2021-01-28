@@ -1264,10 +1264,12 @@ object Nodes {
       case PEpsilon() => Nil
       case PAccPred(loc, perm) => Seq(loc, perm)
       case PEmptySeq(_) => Nil
+      case PSeqIndex(seq, idx) => Seq(seq, idx)
       case PExplicitSeq(elems) => elems
       case PRangeSeq(low, high) => Seq(low, high)
       case PSeqTake(seq, nn) => Seq(seq, nn)
       case PSeqDrop(seq, nn) => Seq(seq, nn)
+      case PSeqUpdate(seq, idx, elem) => Seq(seq, idx, elem)
       case PLookup(seq, idx) => Seq(seq, idx)
       case PUpdate(seq, idx, elem) => Seq(seq, idx, elem)
       case PSize(seq) => Seq(seq)
