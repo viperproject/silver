@@ -6,7 +6,6 @@
 
 package viper.silver.ast
 
-import scala.collection.mutable
 import scala.reflect.ClassTag
 import pretty.FastPrettyPrinter
 import utility._
