@@ -19,7 +19,7 @@ trait Traversable[+A] {
   def withFilter(p: A => Boolean): Traversable[A] = new WithFilter(p)
 
   class WithFilter(p: A => Boolean) extends Traversable[A] {
-    /** Applies a function to all filtered element of the outer collection. */
+    /** Applies a function to all filtered elements of the outer collection. */
     def foreach[U](f: A => U): Unit = {
       for (x <- self) {
         if (p(x)) f(x)
@@ -27,10 +27,12 @@ trait Traversable[+A] {
     }
 
     /** Further refines the filter of this collection. */
-    override def withFilter(q: A => Boolean): WithFilter = new WithFilter(x => p(x) && q(x))
+    override def withFilter(q: A => Boolean): WithFilter = {
+      new WithFilter(x => p(x) && q(x))
+    }
   }
 
-  /** Finds the first element of the $coll for which the given partial
+  /** Finds the first element of this collection for which the given partial
     * function is defined, and applies the partial function to it.
     */
   def collectFirst[B](pf: PartialFunction[A, B]): Option[B] = {
@@ -42,8 +44,8 @@ trait Traversable[+A] {
     None
   }
 
-  /** Builds a new collection by applying a partial function to all elements of this collection on which the function
-    * is defined.
+  /** Builds a new collection by applying a partial function to all elements
+    * of this collection on which the function is defined.
     */
   def collect[B](pf: PartialFunction[A, B]): Iterable[B] = {
     val elements = mutable.Queue.empty[B]
