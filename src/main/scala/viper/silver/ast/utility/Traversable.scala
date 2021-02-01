@@ -30,8 +30,19 @@ trait Traversable[+A] {
     override def withFilter(q: A => Boolean): WithFilter = new WithFilter(x => p(x) && q(x))
   }
 
-  /**
-    * Builds a new collection by applying a partial function to all elements of this collection on which the function
+  /** Finds the first element of the $coll for which the given partial
+    * function is defined, and applies the partial function to it.
+    */
+  def collectFirst[B](pf: PartialFunction[A, B]): Option[B] = {
+    for (x <- self) {
+      if (pf.isDefinedAt(x)) {
+        return Some(pf(x))
+      }
+    }
+    None
+  }
+
+  /** Builds a new collection by applying a partial function to all elements of this collection on which the function
     * is defined.
     */
   def collect[B](pf: PartialFunction[A, B]): Iterable[B] = {
