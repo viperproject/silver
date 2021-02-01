@@ -49,7 +49,7 @@ Some design choices:
   * Note that all but Program are transitive subtypes of `Node` via `Hashable`. The reason is
   * that AST node hashes may depend on the entire program, not just their sub-AST.
   */
-trait Node extends Iterable[Node] with Rewritable {
+trait Node extends Traversable[Node] with Rewritable {
 
   /** @see [[Nodes.subnodes()]] */
   def subnodes = Nodes.subnodes(this)
@@ -62,11 +62,7 @@ trait Node extends Iterable[Node] with Rewritable {
     Visitor.reduceWithContext(this, Nodes.subnodes)(context, enter, combine)
   }
 
-  override def iterator: Iterator[Node] = {
-    val remaining = mutable.Queue.empty[Node]
-    Visitor.visit(this, Nodes.subnodes) { case n: Node => remaining.enqueue(n) }
-    remaining.iterator
-  }
+  override def foreach[A](f: Node => A) = Visitor.visit(this, Nodes.subnodes) { case a: Node => f(a) }
 
   /** @see [[Visitor.visit()]] */
   def visit[A](f: PartialFunction[Node, A]): Unit = {
