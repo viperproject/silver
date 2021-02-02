@@ -13,7 +13,6 @@ import viper.silver.ast.utility.rewriter.Traverse.Traverse
 import viper.silver.ast.utility.rewriter.{Rewritable, StrategyBuilder, Traverse}
 import viper.silver.verifier.errors.ErrorNode
 import viper.silver.verifier.{AbstractVerificationError, ConsistencyError, ErrorReason}
-import scala.language.reflectiveCalls
 
 /*
 
@@ -49,7 +48,7 @@ Some design choices:
   * Note that all but Program are transitive subtypes of `Node` via `Hashable`. The reason is
   * that AST node hashes may depend on the entire program, not just their sub-AST.
   */
-trait Node extends Iterable[Node] with Rewritable {
+trait Node extends Traversable[Node] with Rewritable {
 
   /** @see [[Nodes.subnodes()]] */
   def subnodes = Nodes.subnodes(this)
@@ -62,23 +61,7 @@ trait Node extends Iterable[Node] with Rewritable {
     Visitor.reduceWithContext(this, Nodes.subnodes)(context, enter, combine)
   }
 
-  override def iterator: Iterator[Node] = {
-    val iterator = new Iterator[Node] {
-      var remaining = Seq.empty[Node]
-
-      override def hasNext: Boolean = remaining.nonEmpty
-
-      override def next(): Node = {
-        val result = remaining.head
-        remaining = remaining.tail
-        result
-      }
-    }
-
-    Visitor.visit(this, Nodes.subnodes) { case n: Node => iterator.remaining ++= Seq(n) }
-
-    iterator
-  }
+  override def foreach[A](f: Node => A) = Visitor.visit(this, Nodes.subnodes) { case a: Node => f(a) }
 
   /** @see [[Visitor.visit()]] */
   def visit[A](f: PartialFunction[Node, A]): Unit = {
