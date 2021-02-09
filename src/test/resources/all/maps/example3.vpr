@@ -28,3 +28,27 @@ method test2()
   var s : Set[Int] := Set(1, 2, 3)
   assert f(2)[s] == 2
 }
+
+method test3()
+{  
+  var m : Map[Int, Bool]
+  var k : Int
+  assume domain(m[4 := true]) == Set(4)
+  assert (k in domain(m) ==> k == 4)
+}
+
+method test4()
+{
+  var m : Map[Int, Bool]
+  var k : Int
+  assume m[4 := true] == Map(4 := false, 5 := true)
+  assert (k in domain(m) ==> m[k])
+}
+
+method test5()
+{
+  var m : Map[Int, Bool]
+  var k : Int
+  assume k in domain(m)
+  assert range(m) != Set()
+}
