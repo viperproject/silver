@@ -6,6 +6,7 @@
 
 package viper.silver.ast
 
+import scala.collection.mutable
 import scala.reflect.ClassTag
 import pretty.FastPrettyPrinter
 import utility._
@@ -48,7 +49,7 @@ Some design choices:
   * Note that all but Program are transitive subtypes of `Node` via `Hashable`. The reason is
   * that AST node hashes may depend on the entire program, not just their sub-AST.
   */
-trait Node extends Traversable[Node] with Rewritable {
+trait Node extends Iterable[Node] with Rewritable {
 
   /** @see [[Nodes.subnodes()]] */
   def subnodes = Nodes.subnodes(this)
@@ -61,7 +62,17 @@ trait Node extends Traversable[Node] with Rewritable {
     Visitor.reduceWithContext(this, Nodes.subnodes)(context, enter, combine)
   }
 
+  /** Apply the given function to the AST node and all its subnodes. */
   override def foreach[A](f: Node => A) = Visitor.visit(this, Nodes.subnodes) { case a: Node => f(a) }
+
+  /** Builds a new collection with all the AST nodes and returns an iterator over it. */
+  def iterator: Iterator[Node] = {
+    val elements = mutable.Queue.empty[Node]
+    for (x <- this) {
+      elements.append(x)
+    }
+    elements.iterator
+  }
 
   /** @see [[Visitor.visit()]] */
   def visit[A](f: PartialFunction[Node, A]): Unit = {
