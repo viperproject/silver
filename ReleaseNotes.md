@@ -8,11 +8,11 @@
 * Optimized parser for large Viper files [(Silver, 477)](https://github.com/viperproject/silver/pull/477).
 
 ### Viper Language API changes:
+* **Breaking change**: New Scala (2.13.4) and fastparse version.
 * **Breaking change**: The constructor of DomainFuncApp now requires that the function's return type is passed as for standard function applications (and not using call-by-name as before) [(Silver, 490)](https://github.com/viperproject/silver/pull/490).
 * Calling Iterables' methods now internally allocates a collection with all the elements on which to iterate over.
-* Added backend support for SMTLib types on the AST-level (particularly bitvectors and floats) [(Silver, 428)](https://github.com/viperproject/silver/pull/428).
+* New backend support for SMTLib types on the AST-level (particularly bitvectors and floats) [(Silver, 428)](https://github.com/viperproject/silver/pull/428).
 * Magic wands used inside predicate definitions of function preconditions generate errors (these usages were never fully supported, but a clear error wasn’t shown). We hope to add support for these cases in future.
-* **Breaking change**: New Scala (2.13.4) and fastparse version.
 
 ### Backend-specific upgrades/changes
 
