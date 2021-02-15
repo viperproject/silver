@@ -1,3 +1,39 @@
+## Release 2021.1
+#### Date 15/02/21     [Download](http://www.pm.inf.ethz.ch/research/viper/downloads.html)
+
+### Changes in Viper Language
+* Basic support for partial maps. The associated keywords “domain” and “range” are experimental. Please report any observed incompletenesses w.r.t. map reasoning.
+
+### Optimizations
+* Optimized parser for large Viper files [(Silver, 477)](https://github.com/viperproject/silver/pull/477).
+
+### Viper Language API changes:
+* **Breaking change**: The constructor of DomainFuncApp now requires that the function's return type is passed as for standard function applications (and not using call-by-name as before) [(Silver, 490)](https://github.com/viperproject/silver/pull/490).
+* Calling Iterables' methods now internally allocates a collection with all the elements on which to iterate over.
+* Added backend support for SMTLib types on the AST-level (particularly bitvectors and floats) [(Silver, 428)](https://github.com/viperproject/silver/pull/428).
+* Magic wands used inside predicate definitions of function preconditions generate errors (these usages were never fully supported, but a clear error wasn’t shown). We hope to add support for these cases in future.
+* **Breaking change**: New Scala (2.13.4) and fastparse version.
+
+### Backend-specific upgrades/changes
+
+* [Symbolic Execution Verifier](https://bitbucket.org/viperproject/silicon/)
+  * Several minor bugfixes
+  * Two permission-related incompleteness fixed: [(Silicon, 512)](https://github.com/viperproject/silicon/issues/512) and [(Silicon, 508)](https://github.com/viperproject/silicon/issues/508).
+  * Command-line option for avoiding creation of a local temp directory: https://github.com/viperproject/silicon/issues/15
+
+* [Verification Condition Generation Verifier](https://bitbucket.org/viperproject/carbon/)
+  * Boogie upgrade: Boogie is now built with .NET Core and is shipped with all dependencies. As a result, Mono is not required anymore for Boogie on Linux.
+  * Minor fixes
+    * Boogie AST changed to support unnamed parameters in domain functions [(Carbon, 364)](https://github.com/viperproject/carbon/issues/364).
+    * Fix negative fraction check in quantified permissions [(Carbon, 362)](https://github.com/viperproject/carbon/issues/362).
+
+### Miscellaneous
+* The Viper IDE (VSCode extension) cannot yet use the new Boogie version, and thus will continue to use the 2020.7 release.
+
+  ---
+
+
+
 ## Release 2020.7
 #### Date 17/07/20     [Download](http://www.pm.inf.ethz.ch/research/viper/downloads.html)
 ##### Our repositories are now on GitHub: [github.com/viperproject](https://github.com/viperproject)
