@@ -17,9 +17,9 @@
 ### Backend-specific upgrades/changes
 
 * [Symbolic Execution Verifier](https://bitbucket.org/viperproject/silicon/)
-  * Several minor bugfixes
+  * Several minor bugfixes.
   * Two permission-related incompleteness fixed: [(Silicon, 512)](https://github.com/viperproject/silicon/issues/512) and [(Silicon, 508)](https://github.com/viperproject/silicon/issues/508).
-  * Command-line option for avoiding creation of a local temp directory: https://github.com/viperproject/silicon/issues/15
+  * Command-line option for avoiding creation of a local temp directory [(Silicon, 15)](https://github.com/viperproject/silicon/issues/15).
 
 * [Verification Condition Generation Verifier](https://bitbucket.org/viperproject/carbon/)
   * Boogie upgrade: Boogie is now built with .NET Core and is shipped with all dependencies. As a result, Mono is not required anymore for Boogie on Linux.
