@@ -2,7 +2,7 @@
 #### Date 15/02/21     [Download](http://www.pm.inf.ethz.ch/research/viper/downloads.html)
 
 ### Changes in Viper Language
-* Basic support for partial maps. The associated keywords “domain” and “range” are experimental. Please report any observed incompletenesses w.r.t. map reasoning.
+* Basic support for partial maps. The associated keywords *domain* and *range* are experimental. Please report any observed incompletenesses w.r.t. map reasoning.
 
 ### Optimizations
 * Optimized parser for large Viper files [(Silver, 477)](https://github.com/viperproject/silver/pull/477).
@@ -10,7 +10,7 @@
 ### Viper Language API changes:
 * **Breaking change**: New Scala (2.13.4) and fastparse version.
 * **Breaking change**: The constructor of DomainFuncApp now requires that the function's return type is passed as for standard function applications (and not using call-by-name as before) [(Silver, 490)](https://github.com/viperproject/silver/pull/490).
-* Due to the deprecation of the Traversable trait, the Node class now extends the Iterable trait instead. The interface is similar, but the implementation of some methods like “find” and “exists” is less efficient because it internally creates a collection with all the elements on which to iterate over ([Silver, 493](https://github.com/viperproject/silver/pull/493) and [Silver, 497](https://github.com/viperproject/silver/pull/497)).
+* Due to the deprecation of the Traversable trait, the Node class now extends the Iterable trait instead. The interface is similar, but the implementation of some methods like *find* and *exists* is less efficient because it internally creates a collection with all the elements on which to iterate over ([Silver, 493](https://github.com/viperproject/silver/pull/493) and [Silver, 497](https://github.com/viperproject/silver/pull/497)).
 * New backend support for SMTLib types on the AST-level (particularly bitvectors and floats) [(Silver, 428)](https://github.com/viperproject/silver/pull/428).
 * Magic wands used inside predicate definitions of function preconditions generate errors (these usages were never fully supported, but a clear error wasn’t shown). We hope to add support for these cases in future.
 
