@@ -24,7 +24,7 @@
 * [Verification Condition Generation Verifier](https://bitbucket.org/viperproject/carbon/)
   * Boogie upgrade: Boogie is now built with .NET Core and is shipped with all dependencies. As a result, Mono is not required anymore for Boogie on Linux.
   * Minor fixes
-    * Boogie AST changed to support unnamed parameters in domain functions [(Carbon, 364)](https://github.com/viperproject/carbon/issues/364).
+    * Boogie AST changed to support unnamed parameters in domain functions [(Carbon, 363)](https://github.com/viperproject/carbon/issues/363).
     * Fix negative fraction check in quantified permissions [(Carbon, 362)](https://github.com/viperproject/carbon/issues/362).
 
 ### Miscellaneous
