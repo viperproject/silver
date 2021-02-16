@@ -10,7 +10,7 @@
 ### Viper Language API changes:
 * **Breaking change**: New Scala (2.13.4) and fastparse version.
 * **Breaking change**: The constructor of DomainFuncApp now requires that the function's return type is passed as for standard function applications (and not using call-by-name as before) [(Silver, 490)](https://github.com/viperproject/silver/pull/490).
-* Calling Iterables' methods now internally allocates a collection with all the elements on which to iterate over.
+* Due to the deprecation of the Traversable trait, the Node class now extends the Iterable trait instead. The interface is similar, but the implementation of some methods like “find” and “exists” is less efficient because it internally creates a collection with all the elements on which to iterate over [(Silver, 493](https://github.com/viperproject/silver/pull/493) and [Silver. 497](https://github.com/viperproject/silver/pull/497)).
 * New backend support for SMTLib types on the AST-level (particularly bitvectors and floats) [(Silver, 428)](https://github.com/viperproject/silver/pull/428).
 * Magic wands used inside predicate definitions of function preconditions generate errors (these usages were never fully supported, but a clear error wasn’t shown). We hope to add support for these cases in future.
 
@@ -29,6 +29,7 @@
 
 ### Miscellaneous
 * The Viper IDE (VSCode extension) cannot yet use the new Boogie version, and thus will continue to use the 2020.7 release.
+* Viper performs worse with Z3 4.8.9 than with 4.8.6, thus we recommend the use of Z3 4.8.6.
 
   ---
 
