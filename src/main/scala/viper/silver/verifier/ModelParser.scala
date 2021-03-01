@@ -27,7 +27,7 @@ object ModelParser {
   def option[_: P]: P[(Seq[ValueEntry], ValueEntry)] = P(value.rep(1) ~ "->" ~/ value)
 
   def default[_: P]: P[MapEntry] = P(value)
-    .map { default => MapEntry(Map.empty, default) }
+    .map { default => MapEntry(Map.empty, default).resolveFunctionDefinition }
 
   def value[_: P]: P[ValueEntry] = P(let | constant | application)
 
