@@ -607,10 +607,7 @@ object FastParser {
     def replacerOnBody(body: PNode, paramToArgMap: Map[String, PExp], pos: (Position, Position)): PNode = {
 
       // Duplicate the body of the macro to allow for differing type checks depending on the context
-      val oldForce = viper.silver.ast.utility.ViperStrategy.forceRewrite
-      viper.silver.ast.utility.ViperStrategy.forceRewrite = true
       val replicatedBody = body.deepCopyAll
-      viper.silver.ast.utility.ViperStrategy.forceRewrite = oldForce
 
       // Rename locally bound variables in macro's body
       var bodyWithRenamedVars = renamer.execute[PNode](replicatedBody)

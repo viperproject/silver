@@ -5,7 +5,11 @@
 // Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silver.ast.utility.rewriter
+import viper.silver.ast.Node
+import viper.silver.ast.pretty.FastPrettyPrinter
 import viper.silver.ast.utility.rewriter.Traverse.Traverse
+import viper.silver.parser.PIdnUse
+
 import scala.collection.mutable
 import scala.reflect.runtime.{universe => reflection}
 
@@ -159,7 +163,7 @@ object StrategyBuilder {
     * Strategy that allows both node and context to be rewritten.
     *
     * @param p          Partial function that transforms input (node, context) into a new (node, context)
-    * @param default    Initial context
+    * @param context    Initial context
     * @param t          Traversal order
     * @tparam N         Common supertype of every node in the tree
     * @tparam C         Type of the context
@@ -269,6 +273,15 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
     */
   def recurseFunc(r: PartialFunction[N, Seq[AnyRef]]): Strategy[N, C] = {
     recursionFunc = r
+    this
+  }
+
+  // specifies which nodes need to be clone even if their fields stay the same.
+  // if this function is not defined for a particular node the node is not cloned.
+  protected var forceCopyFunc: PartialFunction[N, Boolean] = PartialFunction.empty
+
+  def forceCopy(f: PartialFunction[N, Boolean]): Strategy[N, C] = {
+    forceCopyFunc = f
     this
   }
 
@@ -405,7 +418,8 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
             val children = n.children.map(child => if (allowedToRecurse(child)) rewriteTopDown(child, c) else child)
 
             // Adopt rewritten children
-            n.withChildren(children).asInstanceOf[A]
+            val forceRewrite: Boolean = forceCopyFunc.applyOrElse(n, (_: N) => false)
+            n.withChildren(children, forceRewrite = forceRewrite).asInstanceOf[A]
           }
 
         case collection: Iterable[_] => collection.map(rewriteTopDown(_, context)).asInstanceOf[A]
@@ -432,7 +446,8 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
           val children = node.children.map(child => if (allowedToRecurse(child)) rewriteBottomUp(child, c) else child)
 
           // Adopt rewritten children
-          val n = node.withChildren(children).asInstanceOf[N]
+          val forceRewrite: Boolean = forceCopyFunc.applyOrElse(node, (_: N) => false)
+          val n = node.withChildren(children, forceRewrite = forceRewrite).asInstanceOf[N]
 
           // Rewrite node and context
           rule.execute(n, c.replaceNode(n).asInstanceOf[C])._1.asInstanceOf[A]
@@ -465,7 +480,8 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
             val children = n.children.map(child => if (allowedToRecurse(child)) rewriteInnermost(child, c) else child)
 
             // Adopt rewritten children
-            n.withChildren(children).asInstanceOf[A]
+            val forceRewrite: Boolean = forceCopyFunc.applyOrElse(n, (_: N) => false)
+            n.withChildren(children, forceRewrite = forceRewrite).asInstanceOf[A]
           }
 
         case collection: Iterable[_] => collection.map(rewriteInnermost(_, context)).asInstanceOf[A]
