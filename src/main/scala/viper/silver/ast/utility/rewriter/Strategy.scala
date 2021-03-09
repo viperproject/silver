@@ -5,10 +5,7 @@
 // Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silver.ast.utility.rewriter
-import viper.silver.ast.Node
-import viper.silver.ast.pretty.FastPrettyPrinter
 import viper.silver.ast.utility.rewriter.Traverse.Traverse
-import viper.silver.parser.PIdnUse
 
 import scala.collection.mutable
 import scala.reflect.runtime.{universe => reflection}
