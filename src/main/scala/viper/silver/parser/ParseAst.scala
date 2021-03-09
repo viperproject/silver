@@ -86,7 +86,7 @@ trait PNode extends Where with Product with Rewritable {
    *
    * @see [[PNode.initProperties()]] */
   def deepCopyAll[A <: PNode]: PNode =
-    StrategyBuilder.Slim[PNode]({case n => n}).forceCopy(_ => true).execute[PNode](this)
+    StrategyBuilder.Slim[PNode]({case n => n}).forceCopy().execute[PNode](this)
 
   private val _children = scala.collection.mutable.ListBuffer[PNode] ()
 

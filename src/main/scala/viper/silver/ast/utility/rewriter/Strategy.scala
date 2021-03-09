@@ -273,12 +273,11 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
     this
   }
 
-  // specifies which nodes need to be clone even if their fields stay the same.
-  // if this function is not defined for a particular node the node is not cloned.
-  protected var forceCopyFunc: PartialFunction[N, Boolean] = PartialFunction.empty
+  // specifies which nodes need to be cloned even if their fields stay the same.
+  protected var shouldForceCopy: Boolean = false
 
-  def forceCopy(f: PartialFunction[N, Boolean]): Strategy[N, C] = {
-    forceCopyFunc = f
+  def forceCopy(f: Boolean = true): Strategy[N, C] = {
+    shouldForceCopy = f
     this
   }
 
@@ -415,8 +414,7 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
             val children = n.children.map(child => if (allowedToRecurse(child)) rewriteTopDown(child, c) else child)
 
             // Adopt rewritten children
-            val forceRewrite: Boolean = forceCopyFunc.applyOrElse(n, (_: N) => false)
-            n.withChildren(children, forceRewrite = forceRewrite).asInstanceOf[A]
+            n.withChildren(children, forceRewrite = shouldForceCopy).asInstanceOf[A]
           }
 
         case collection: Iterable[_] => collection.map(rewriteTopDown(_, context)).asInstanceOf[A]
@@ -443,8 +441,7 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
           val children = node.children.map(child => if (allowedToRecurse(child)) rewriteBottomUp(child, c) else child)
 
           // Adopt rewritten children
-          val forceRewrite: Boolean = forceCopyFunc.applyOrElse(node, (_: N) => false)
-          val n = node.withChildren(children, forceRewrite = forceRewrite).asInstanceOf[N]
+          val n = node.withChildren(children, forceRewrite = shouldForceCopy).asInstanceOf[N]
 
           // Rewrite node and context
           rule.execute(n, c.replaceNode(n).asInstanceOf[C])._1.asInstanceOf[A]
@@ -477,8 +474,7 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
             val children = n.children.map(child => if (allowedToRecurse(child)) rewriteInnermost(child, c) else child)
 
             // Adopt rewritten children
-            val forceRewrite: Boolean = forceCopyFunc.applyOrElse(n, (_: N) => false)
-            n.withChildren(children, forceRewrite = forceRewrite).asInstanceOf[A]
+            n.withChildren(children, forceRewrite = shouldForceCopy).asInstanceOf[A]
           }
 
         case collection: Iterable[_] => collection.map(rewriteInnermost(_, context)).asInstanceOf[A]
