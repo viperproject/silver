@@ -79,8 +79,6 @@ class SlimViperRegexBuilderWithMatch(regex: Match) {
   */
 object ViperStrategy {
 
-  var forceRewrite: Boolean = false
-
   def SlimRegex(m: Match, p: PartialFunction[Node, Node]) = {
     new SlimViperRegexBuilder &> m |-> p
   }
