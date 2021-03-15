@@ -58,10 +58,12 @@ object LoopDetector {
     */
   def detect[C <: Cfg[S, E], S, E](cfg: C, loops: Map[Block[S, E], Set[Block[S, E]]] = Map[Block[S, E], Set[Block[S, E]]]()): C = {
     // compute natural loops and merge them with provided loop information
-    val (allLoops,_) = naturalLoops[C, S, E](cfg)
+    val (allLoops,_) = naturalLoops[C, S, E](cfg, loops)
+    /*
     allLoops.foldLeft(loops) {
       case (current, (key, value)) => current.updated(key, current.getOrElse(key, Set.empty) ++ value)
     }
+    */
     // augment cfg with loop information
     augment(cfg, allLoops)
   }
@@ -85,12 +87,9 @@ object LoopDetector {
     *         2) A map from loop identifiers to corresponding written variables (depending on the provided parameters).
     */
   def detect(body: Seqn, generateUniqueIds: Boolean, computeWrittenVars: Boolean): (Seqn, Option[Map[Int, Seq[LocalVar]]]) = {
-      val saved = ViperStrategy.forceRewrite
-      ViperStrategy.forceRewrite = true
-
       // extend statements in ast with ids
       val id = new AtomicInteger(0)
-      val withIds = body.transform({
+      val withIds = body.transformForceCopy({
         case node@(_: If | _: Seqn) => node
         case node: Stmt =>
           val (pos, info, err) = node.meta
@@ -100,9 +99,9 @@ object LoopDetector {
       }, Traverse.TopDown)
 
       // compute cfg and loops
-      val (cfg, syntacticLoops) = CfgGenerator.computeCfg(withIds)
+      val (cfg, syntacticLoops) = CfgGenerator.computeCfg(withIds, true)
 
-      val (loops, dominators) = naturalLoops[SilverCfg, Stmt, Exp](cfg)
+      val (loops, dominators) = naturalLoops[SilverCfg, Stmt, Exp](cfg, syntacticLoops)
       loops.foldLeft(syntacticLoops) {
         case (current, (key, value)) => current.updated(key, current.getOrElse(key, Set.empty) ++ value)
       }
@@ -195,7 +194,7 @@ object LoopDetector {
       }
 
       // extend ast with loop information
-      val withInfo = withIds.transform({
+      val withInfo = withIds.transformForceCopy({
         case node: Infoed =>
           val (pos, info, err) = node.meta
           info.getUniqueInfo[IdInfo] match {
@@ -210,14 +209,11 @@ object LoopDetector {
         case node => node
       }, Traverse.TopDown)
 
-      // restore forced rewriting settings
-      ViperStrategy.forceRewrite = saved
-
       // return updated method
       (withInfo,  loopToWrittenVars)
   }
 
-  private def naturalLoops[C <: Cfg[S, E], S, E](cfg: C): (Map[Block[S, E], Set[Block[S, E]]], Dominators[S,E]) = {
+  private def naturalLoops[C <: Cfg[S, E], S, E](cfg: C, loops: Map[Block[S, E], Set[Block[S, E]]]) : (Map[Block[S, E], Set[Block[S, E]]], Dominators[S,E]) = {
     // check whether the control flow graph is reducible
     val dominators = new Dominators(cfg)
     if (!isReducible(cfg, dominators))
@@ -227,7 +223,7 @@ object LoopDetector {
     val resultMap =
       cfg.edges
       .filter(dominators.isBackedge)
-      .foldLeft[Map[Block[S, E], Set[Block[S, E]]]](Map.empty) {
+      .foldLeft[Map[Block[S, E], Set[Block[S, E]]]](loops) {
       case (current, edge) =>
         val head = edge.target
         collectBlocks(cfg, edge).foldLeft(current) {

@@ -80,15 +80,21 @@ object CfgGenerator {
     */
   def statementToCfg(ast: Stmt, simplify: Boolean = true, detect: Boolean = true): SilverCfg = {
     // compute cfg
-    val (cfg, loops) = computeCfg(ast)
+    val (cfg, loops) = computeCfg(ast, false)
     // detect loops
     val detected = if (detect) LoopDetector.detect[SilverCfg, Stmt, Exp](cfg, loops) else cfg
     // simplify control flow
     if (simplify) CfgSimplifier.simplify[SilverCfg, Stmt, Exp](detected) else detected
   }
 
-  def computeCfg(ast: Stmt): (SilverCfg, Map[SilverBlock, Set[SilverBlock]]) = {
-    val phase1 = new Phase1(ast)
+  /**
+    *
+    * @param ast The AST node
+    * @param cfgInformationReqInAst set to true if information from CFG will be translated back to AST later on
+    * @return
+    */
+  def computeCfg(ast: Stmt, cfgInformationReqInAst: Boolean): (SilverCfg, Map[SilverBlock, Set[SilverBlock]]) = {
+    val phase1 = new Phase1(ast, cfgInformationReqInAst)
     val phase2 = new Phase2(phase1)
     val cfg = CfgSimplifier.pruneUnreachable[SilverCfg, Stmt, Exp](phase2.cfg)
     val loops = phase2.loops
@@ -136,7 +142,7 @@ object CfgGenerator {
     * The first phase of the generation of the CFG that transforms the AST into
     * a list of temporary statements.
     */
-  class Phase1(ast: Stmt) {
+  class Phase1(ast: Stmt, preserveGotos: Boolean) {
     /**
       * The map used to look up the index of a label in the list of temporary
       * statements.
@@ -201,7 +207,9 @@ object CfgGenerator {
         ss.foreach(run)
       case Goto(name) =>
         val target = TmpLabel(name)
-        addStatement(WrappedStmt(stmt))
+        if(preserveGotos) {
+          addStatement(WrappedStmt(stmt))
+        }
         addStatement(JumpStmt(target))
       case Label(name, _) =>
         val label = TmpLabel(name)
