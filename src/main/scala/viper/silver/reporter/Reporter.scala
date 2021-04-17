@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (c) 2011-2019 ETH Zurich.
+// Copyright (c) 2011-2021 ETH Zurich.
 
 package viper.silver.reporter
 
@@ -55,7 +55,7 @@ case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv
         })
       case CopyrightReport(text) =>
       case MissingDependencyReport(text) =>
-
+      case BackendSubProcessReport(_, _, _, _) =>
       case EntitySuccessMessage(verifier, concerning, time, cached) =>
         csv_file.write(s"EntitySuccessMessage,${concerning.name},${time}, ${cached}\n")
       case EntityFailureMessage(verifier, concerning, time, result, cached) =>
@@ -149,6 +149,8 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
 
       case CopyrightReport(text) =>
         println( text )
+
+      case BackendSubProcessReport(_, _, _, _) =>
 
       case MissingDependencyReport(text) =>
         println( s"encountered missing dependency: $text" )
