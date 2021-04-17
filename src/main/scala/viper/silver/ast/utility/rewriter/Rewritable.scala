@@ -9,8 +9,6 @@ package viper.silver.ast.utility.rewriter
 import viper.silver.parser.PDomainFunction
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
 import viper.silver.ast.{AtomicType, DomainFuncApp, ErrorTrafo, FuncApp, Info, Node, Position}
-import viper.silver.ast.utility.ViperStrategy.forceRewrite
-import viper.silver.ast.Position
 
 import scala.reflect.runtime.{universe => reflection}
 
@@ -22,7 +20,7 @@ trait Rewritable extends Product {
 
   def children: Seq[Any] = productIterator.toList
 
-  def withChildren(children: Seq[Any], pos: Option[(Position, Position)] = None): this.type = {
+  def withChildren(children: Seq[Any], pos: Option[(Position, Position)] = None, forceRewrite: Boolean = false): this.type = {
     if (!forceRewrite && this.children == children && !pos.isDefined)
       this
     else {
@@ -50,10 +48,10 @@ trait Rewritable extends Product {
           case df: DomainFunc => secondArgList = Seq(df.pos, df.info, df.domainName, df.errT)
           case df: DomainFuncApp => secondArgList = Seq(df.pos, df.info, df.typ, df.domainName, df.errT)
           case no: Node => secondArgList = no.getMetadata
-          case pa: PAxiom => secondArgList = Seq(pa.domainName) ++ (if (pos.isDefined) Seq(pos.get) else Seq(pa.pos))
-          case pm: PMagicWandExp => firstArgList = Seq(children.head) ++ children.drop(2) ++ (if (pos.isDefined) Seq(pos.get) else Seq(pm.pos))
-          case pd: PDomainFunction => secondArgList = Seq(pd.domainName) ++ (if (pos.isDefined) Seq(pos.get) else Seq(pd.pos))
-          case pn: PNode => secondArgList = (if (pos.isDefined) Seq(pos.get) else Seq(pn.pos))
+          case pa: PAxiom => secondArgList = Seq(pa.domainName) ++ Seq(pos.getOrElse(pa.pos))
+          case pm: PMagicWandExp => firstArgList = Seq(children.head) ++ children.drop(2) ++ Seq(pos.getOrElse(pm.pos))
+          case pd: PDomainFunction => secondArgList = Seq(pd.domainName) ++ Seq(pos.getOrElse(pd.pos))
+          case pn: PNode => secondArgList = Seq(pos.getOrElse(pn.pos))
           case _ =>
         }
 

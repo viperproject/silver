@@ -38,6 +38,76 @@ case class MapEntry(options: Map[Seq[ValueEntry], ValueEntry], default: ValueEnt
     else
       "{\n    " + default +"\n}"
   }
+
+  /**
+   * Tries to parse this entry as a function definition, e.g.
+   * name -> {  (or
+   *                (and (= (:var 0) v1) (= (:var 1) v2))
+   *                (and (= (:var 0) v3) (= (:var 1) v4))
+   *             )
+   * }
+   * If this succeeds, converts the entry to the "normal" form
+   * name -> {
+   *   v1 v2 -> true
+   *   v3 v4 -> true
+    *  else -> false
+   * }
+   * Otherwise returns the original entry unchanged.
+   */
+  def resolveFunctionDefinition = {
+    if (options.isEmpty && default.isInstanceOf[ApplicationEntry]) {
+      parseArgConstraintDisjunction(default) match {
+        case Some(vvs) => {
+          MapEntry(vvs.map(args => args -> ConstantEntry("true")).toMap, ConstantEntry("false"))
+        }
+        case None => this
+      }
+    }else{
+      this
+    }
+  }
+
+  def parseArgConstraintDisjunction(e: ValueEntry) = e match {
+    case ApplicationEntry("or", arguments) => {
+      val args = arguments.map(parseArgConstraintConjunction)
+      if (args.forall(_.isDefined)) {
+        val values = args.map(_.get)
+        Some(values)
+      }else{
+        None
+      }
+    }
+    case _ => parseArgConstraintConjunction(e) match {
+      case Some(vs) => Some(Seq(vs))
+      case None => None
+    }
+  }
+
+  def parseArgConstraintConjunction(ae: ValueEntry) = ae match {
+    case ApplicationEntry("and", arguments) => {
+      val args = arguments.map(parseSingleArgConstraint)
+      if (args.forall(_.isDefined)) {
+        val indices = args.map(_.get._1)
+        // We expect the arguments in the order 0, 1, ..., n-1; if we get something else, reject.
+        // TODO: Find out if this order is always guaranteed,
+        if (indices != (0 until indices.size))
+          None
+        else
+          Some(args.map(_.get._2))
+      }else{
+        None
+      }
+    }
+    case _ => parseSingleArgConstraint(ae) match {
+      case Some(("0", v)) => Some(Seq(v))
+      case _ => None
+    }
+  }
+
+  def parseSingleArgConstraint(ae: ValueEntry) = ae match {
+    case ApplicationEntry("=", Seq(ApplicationEntry(":var", Seq(ConstantEntry(index))), v)) => Some(index, v)
+    case _ => None
+  }
 }
 case class Model(entries: Map[String, ModelEntry]) {
   override def toString: String = entries.map(e => e._1 + " -> " + e._2).mkString("\n")
