@@ -2,10 +2,11 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (c) 2011-2019 ETH Zurich.
+// Copyright (c) 2011-2021 ETH Zurich.
 
 package viper.silver.reporter
 
+import viper.silver.reporter.BackendSubProcessStages.BackendSubProcessStage
 import viper.silver.verifier._
 
 /**
@@ -208,6 +209,30 @@ case class InvalidArgumentsReport(tool_signature: String, errors: List[AbstractE
   override def toString: String =
     s"invalid_args_report(tool_signature=${tool_signature}, errors=[${errors.mkString(",")}])"
   override val name: String = s"invalid_args_report"
+}
+
+object BackendSubProcessStages extends Enumeration {
+  type BackendSubProcessStage = Value
+  val BeforeInputSent         = Value(1, "before_input_sent")
+  val AfterInputSent          = Value(2, "after_input_sent")
+  val onOutput                = Value(3, "on_output")
+  val OnError                 = Value(4, "on_error")
+  val BeforeTermination       = Value(5, "before_termination")
+  val OnExit                  = Value(6, "on_exit")
+  val AfterTermination        = Value(7, "after_termination")
+}
+
+case class BackendSubProcessReport(tool_signature: String, process_exe: String,
+                                   phase: BackendSubProcessStage, pid_maybe: Option[Long] = None) extends Message {
+
+  override def toString: String =
+    s"backend_sub_process_report(tool_signature=${tool_signature}, process_exe=${process_exe}, " +
+    s"phase=${phase.toString}, pid=${pid_maybe match {
+      case Some(pid) => pid.toString
+      case None => "<not provided>"
+    }})"
+
+  override val name: String = s"backend_sub_process_report"
 }
 
 case class ExternalDependenciesReport(deps: Seq[Dependency]) extends Message {
