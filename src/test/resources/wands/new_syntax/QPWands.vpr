@@ -35,7 +35,8 @@ requires acc(y.f) {
     assert forall x: Ref :: x in xs ==> acc(y.f) --* acc(x.f) && acc(y.f) && y.f == old[lhs](y.f)
     var some: Ref := xs[0]
     apply acc(y.f) --* acc(some.f) && acc(y.f) && y.f == old[lhs](y.f)
-    assert some.f == 0
+    //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/551/)
+    assert some.f == 0 //This shouldn't throw an error
     assert y.f == 1
 }
 
