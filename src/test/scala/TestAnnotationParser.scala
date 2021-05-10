@@ -101,19 +101,21 @@ trait TestAnnotationParser {
   }
   /** get first found annotation (replaces next function in the parse functions)*/
   private def getAnnotation(annotation:String,file:Path,lineNr:Int):Option[TestAnnotation]={
-      val finders :Seq[Option[TestAnnotation]]= getFinders(annotation,file,lineNr)
+      val finders :Seq[Option[TestAnnotation]]= getFinders() map (_.apply(annotation,file,lineNr))
       val found :Seq[TestAnnotation]= finders collect {case Some(a) => a}
       found.headOption
   }
 
-  /** get all defined annotation parsers intended to be replaced by extending classes */
-  private def getFinders(annotation:String,file:Path,lineNr:Int):Seq[Option[TestAnnotation]]={
-    Seq(isExpectedOutput(annotation,file,lineNr),
-        isUnexpectedOutput(annotation,file,lineNr),
-        isMissingOutput(annotation,file,lineNr),
-        isIgnoreOthers(annotation,file,lineNr),
-        isIgnoreFile(annotation,file,lineNr),
-        isIgnoreFileList(annotation,file,lineNr)
+  /** get all defined annotation parsers intended to be replaced by extending classes 
+   * the order of the entries are the same as the implicit "next field ordering" from before
+  */
+  private def getFinders():Seq[(String,Path,Int)=>Option[TestAnnotation]]={
+    Seq(isExpectedOutput,
+        isUnexpectedOutput,
+        isMissingOutput,
+        isIgnoreOthers,
+        isIgnoreFile,
+        isIgnoreFileList
         )
   }
 
