@@ -29,7 +29,7 @@ abstract class AnnotationBasedTestSuite extends ResourceBasedTestSuite {
    */
   def systemsUnderTest: Seq[SystemUnderTest]
 
-  def buildTestInput(file: Path, prefix: String) =
+  def buildTestInput(file: Path, prefix: String) :AnnotatedTestInput =
     DefaultAnnotatedTestInput(file, prefix)
 
   /** Registers a given test input for a given system under test. */
