@@ -109,7 +109,7 @@ trait TestAnnotationParser {
   /** Get all defined annotation parsers; intended to be replaced by extending classes.
    * The order of the entries are the same as the implicit "next field ordering" from before
   */
-  private def getFinders():Seq[(String,Path,Int)=>Option[TestAnnotation]]={
+  def getFinders():Seq[(String,Path,Int)=>Option[TestAnnotation]]={
     Seq(isExpectedOutput,
         isUnexpectedOutput,
         isMissingOutput,
