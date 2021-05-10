@@ -135,7 +135,7 @@ sealed trait LocatedAnnotation extends TestAnnotation {
  * Test annotations that have a location and an identifier
  * (i.e. describe an output of some sort).
  */
-sealed trait OutputAnnotation extends LocatedAnnotation {
+trait OutputAnnotation extends LocatedAnnotation {
   def id: OutputAnnotationId
 
   def sameSource(other: OutputAnnotation) =
