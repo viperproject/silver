@@ -60,12 +60,7 @@ trait TestAnnotationParser {
           l = l.substring(5)
 
           // what kind of annotation is it?
-          isExpectedOutput(l, file, curLineNr,
-            () => isUnexpectedOutput(l, file, curLineNr,
-              () => isMissingOutput(l, file, curLineNr,
-                () => isIgnoreOthers(l, file, curLineNr,
-                  () => isIgnoreFile(l, file, curLineNr,
-                    () => isIgnoreFileList(l, file, curLineNr)))))) match {
+          getAnnotation(l, file, curLineNr) match {
             case Some(e) =>
               curAnnotations ::= e
             case None =>
@@ -104,6 +99,23 @@ trait TestAnnotationParser {
       }
     }
   }
+  /** get first found annotation (replaces next function in the parse functions)*/
+  private def getAnnotation(annotation:String,file:Path,lineNr:Int):Option[TestAnnotation]={
+      val finders :Seq[Option[TestAnnotation]]= getFinders(annotation,file,lineNr)
+      val found :Seq[TestAnnotation]= finders collect {case Some(a) => a}
+      found.headOption
+  }
+
+  /** get all defined annotation parsers intended to be replaced by extending classes */
+  private def getFinders(annotation:String,file:Path,lineNr:Int):Seq[Option[TestAnnotation]]={
+    Seq(isExpectedOutput(annotation,file,lineNr),
+        isUnexpectedOutput(annotation,file,lineNr),
+        isMissingOutput(annotation,file,lineNr),
+        isIgnoreOthers(annotation,file,lineNr),
+        isIgnoreFile(annotation,file,lineNr),
+        isIgnoreFileList(annotation,file,lineNr)
+        )
+  }
 
   /**
    * A regular expression that matches an output id,
@@ -112,65 +124,65 @@ trait TestAnnotationParser {
   val outputIdPattern = "([^:]*)(:(.*))?"
 
   /** Try to parse the annotation as `ExpectedOutput`, and otherwise use `next`. */
-  private def isExpectedOutput(annotation: String, file: Path, lineNr: Int, next: () => Option[TestAnnotation] = () => None): Option[TestAnnotation] = {
+  private def isExpectedOutput(annotation: String, file: Path, lineNr: Int): Option[TestAnnotation] = {
     val regex = ("""^ExpectedOutput\(""" + outputIdPattern + """\)$""").r
     annotation match {
       case regex(keyId, _, null) =>
         Some(ExpectedOutput(OutputAnnotationId(keyId, None), file, -1, lineNr))
       case regex(keyId, _, valueId) =>
         Some(ExpectedOutput(OutputAnnotationId(keyId, Some(valueId)), file, -1, lineNr))
-      case _ => next()
+      case _ => None
     }
   }
 
   /** Try to parse the annotation as `UnexpectedOutput`, and otherwise use `next`. */
-  private def isUnexpectedOutput(annotation: String, file: Path, lineNr: Int, next: () => Option[TestAnnotation] = () => None): Option[TestAnnotation] = {
+  private def isUnexpectedOutput(annotation: String, file: Path, lineNr: Int): Option[TestAnnotation] = {
     val regex = ("""^UnexpectedOutput\(""" + outputIdPattern + """, /(.*)/issue/([0-9]+)/\)$""").r
     annotation match {
       case regex(reasonId, _, null, project, issueNr) =>
         Some(UnexpectedOutput(OutputAnnotationId(reasonId, None), file, -1, lineNr, project, issueNr.toInt))
       case regex(keyId, _, valueId, project, issueNr) =>
         Some(UnexpectedOutput(OutputAnnotationId(keyId, Some(valueId)), file, -1, lineNr, project, issueNr.toInt))
-      case _ => next()
+      case _ => None
     }
   }
 
   /** Try to parse the annotation as `MissingOutput`, and otherwise use `next`. */
-  private def isMissingOutput(annotation: String, file: Path, lineNr: Int, next: () => Option[TestAnnotation] = () => None): Option[TestAnnotation] = {
+  private def isMissingOutput(annotation: String, file: Path, lineNr: Int): Option[TestAnnotation] = {
     val regex = ("""^MissingOutput\(""" + outputIdPattern + """, /(.*)/issue/([0-9]+)/\)$""").r
     annotation match {
       case regex(reasonId, _, null, project, issueNr) =>
         Some(MissingOutput(OutputAnnotationId(reasonId, None), file, -1, lineNr, project, issueNr.toInt))
       case regex(keyId, _, valueId, project, issueNr) =>
         Some(MissingOutput(OutputAnnotationId(keyId, Some(valueId)), file, -1, lineNr, project, issueNr.toInt))
-      case _ => next()
+      case _ =>None
     }
   }
 
    /** Try to parse the annotation a ``IgnoreOthers``, and otherwise use `next`. */
-  private def isIgnoreOthers(annotation: String, file: Path, lineNr: Int, next: () => Option[TestAnnotation] = () => None): Option[TestAnnotation] = {
+  private def isIgnoreOthers(annotation: String, file: Path, lineNr: Int): Option[TestAnnotation] = {
     val regex = """^IgnoreOthers$""".r
     annotation match {
       case regex() => Some(IgnoreOthers(file, -1, lineNr))
-      case _ => next()
+      case _ => None
     }
   }
 
   /** Try to parse the annotation a ``IgnoreFile``, and otherwise use `next`. */
-    private def isIgnoreFile(annotation: String, file: Path, lineNr: Int, next: () => Option[TestAnnotation] = () => None): Option[TestAnnotation] = {
+    private def isIgnoreFile(annotation: String, file: Path, lineNr: Int): Option[TestAnnotation] = {
     val regex = """^IgnoreFile\(/(.*)/issue/([0-9]+)/\)$""".r
     annotation match {
       case regex(project, issueNr) => Some(IgnoreFile(file, lineNr, project, issueNr.toInt))
-      case _ => next()
+      case _ =>None
     }
   }
 
    /** Try to parse the annotation a ``IgnoreFileList``, and otherwise use `next`. */
-  private def isIgnoreFileList(annotation: String, file: Path, lineNr: Int, next: () => Option[TestAnnotation] = () => None): Option[TestAnnotation] = {
+  private def isIgnoreFileList(annotation: String, file: Path, lineNr: Int): Option[TestAnnotation] = {
     val regex = """^IgnoreFileList\(/(.*)/issue/([0-9]+)/\)$""".r
     annotation match {
       case regex(project, issueNr) => Some(IgnoreFileList(file, lineNr, project, issueNr.toInt))
-      case _ => next()
+      case _ => None
     }
   }
 
