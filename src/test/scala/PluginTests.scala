@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (c) 2011-2019 ETH Zurich.
+// Copyright (c) 2011-2021 ETH Zurich.
 
 import java.nio.file.Paths
 
@@ -11,6 +11,7 @@ import viper.silver.ast.{LocalVar, Perm, Program}
 import viper.silver.frontend.{SilFrontend, SilFrontendConfig}
 import viper.silver.parser.{PIdnDef, PPredicate, PProgram}
 import viper.silver.plugin.{SilverPlugin, SilverPluginManager}
+import viper.silver.reporter.{Reporter, StdIOReporter}
 import viper.silver.verifier.errors.Internal
 import viper.silver.verifier.reasons.FeatureUnsupported
 import viper.silver.verifier._
@@ -276,7 +277,7 @@ class PluginTests extends AnyFunSuite {
 
     override def buildVersion: String = "2.71"
 
-    override def copyright: String = "(c) Copyright ETH Zurich 2012 - 2018"
+    override def copyright: String = "(c) Copyright ETH Zurich 2012 - 2021"
 
     override def debugInfo(info: Seq[(String, Any)]): Unit = {}
 
@@ -293,6 +294,8 @@ class PluginTests extends AnyFunSuite {
     }
 
     override def stop(): Unit = {}
+
+    override def reporter: Reporter = StdIOReporter()
   }
 
   class MockPluginConfig(args: Seq[String]) extends SilFrontendConfig(args, "MockPluginVerifier"){
