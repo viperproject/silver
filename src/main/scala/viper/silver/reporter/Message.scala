@@ -215,7 +215,7 @@ object BackendSubProcessStages extends Enumeration {
   type BackendSubProcessStage = Value
   val BeforeInputSent         = Value(1, "before_input_sent")
   val AfterInputSent          = Value(2, "after_input_sent")
-  val onOutput                = Value(3, "on_output")
+  val OnOutput                = Value(3, "on_output")
   val OnError                 = Value(4, "on_error")
   val BeforeTermination       = Value(5, "before_termination")
   val OnExit                  = Value(6, "on_exit")
