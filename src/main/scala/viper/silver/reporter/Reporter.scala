@@ -53,16 +53,15 @@ case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv
         errors.foreach(error => {
           csv_file.write(s"WarningsDuringParsing,${error}\n")
         })
-      case CopyrightReport(text) =>
-      case MissingDependencyReport(text) =>
-      case BackendSubProcessReport(_, _, _, _) =>
+
       case EntitySuccessMessage(verifier, concerning, time, cached) =>
         csv_file.write(s"EntitySuccessMessage,${concerning.name},${time}, ${cached}\n")
       case EntityFailureMessage(verifier, concerning, time, result, cached) =>
         csv_file.write(s"EntityFailureMessage,${concerning.name},${time}, ${cached}\n")
-      case ConfigurationConfirmation(_) =>
-      case InternalWarningMessage(_) =>
-      case sm:SimpleMessage =>
+
+      case _: SimpleMessage | _: CopyrightReport | _: MissingDependencyReport | _: BackendSubProcessReport |
+           _: InternalWarningMessage | _: ConfigurationConfirmation=> // Irrelevant for reporting
+
       case _ =>
         println( s"Cannot properly print message of unsupported type: $msg" )
     }
@@ -150,7 +149,7 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
       case CopyrightReport(text) =>
         println( text )
 
-      case BackendSubProcessReport(_, _, _, _) =>
+      case BackendSubProcessReport(_, _, _, _) =>  // Not relevant to the end user
 
       case MissingDependencyReport(text) =>
         println( s"encountered missing dependency: $text" )
