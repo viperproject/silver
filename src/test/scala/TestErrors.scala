@@ -23,6 +23,7 @@ object TestErrorType extends Enumeration {
   val ExpectedButMissingOutput = Value
   val UnexpectedButMissingOutput = Value
   val MissingButPresentOutputs = Value
+  val Custom = Value
 
   /** The message to be displayed before all errors of the same given type. */
   def message(error: TestErrorType): String = error match {
@@ -43,6 +44,8 @@ object TestErrorType extends Enumeration {
       "The following outputs were specified to be missing erroneously " +
         "(MissingOutput) according to the test annotations, but did occur " +
         "during testing (this might be cause by invalid test annotations)"
+    case Custom =>
+      "User defined message:"
   }
 }
 
@@ -88,4 +91,8 @@ case class TestMissingButPresentOutputError(missingOutput: MissingOutput, output
     extends TestError(TestErrorType.MissingButPresentOutputs) {
 
   def message = output.toString
+}
+
+case class TestCustomError(errorMessage:String) extends TestError(TestErrorType.Custom){
+  def message = errorMessage
 }

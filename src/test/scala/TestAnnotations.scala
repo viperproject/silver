@@ -198,5 +198,5 @@ case class IgnoreFileList(
 
 trait CustomAnnotation extends LocatedAnnotation{
   def matches(is:AbstractOutput):Boolean
-  def notFoundMsg : String
+  def notFoundError : TestError
 }

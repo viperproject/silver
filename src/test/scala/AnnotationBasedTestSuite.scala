@@ -176,7 +176,9 @@ case class OutputMatcher(
       case _: IgnoreOthers =>
       case _: MissingOutput =>
         sys.error("MissingOutput should not occur here because they were previously filtered")
-      case c:CustomAnnotation =>sys.error(c.notFoundMsg) // TODO: make this carry more information
+      case c:CustomAnnotation => val corresponding = actualOutputs.find(_.isSameLine(c.file,c.forLineNr)) ;
+                                  if(corresponding.isDefined) {errors ::= TestAdditionalOutputError(corresponding.get) }
+                                    errors ::= c.notFoundError // TODO: make this carry more information
     }
     }
 
