@@ -38,7 +38,7 @@ sealed case class TestAnnotations(
    *   ProjectSpecificAnnotations include a project name, e.g., Silicon,
    *   and this case should return true iff the name of the current
    *   project under testing matches the project name that is part of the
-   *   annotation. This ensures that, e.g., UnexpectedOutput-annotations
+   *   annotation. This ensures that, e.g., Un2-annotations
    *   are only "expected" when the corresponding project is tested.
    *
    *   Having different forks of a project unfortunately complicates the
@@ -135,7 +135,7 @@ sealed trait LocatedAnnotation extends TestAnnotation {
  * Test annotations that have a location and an identifier
  * (i.e. describe an output of some sort).
  */
-trait OutputAnnotation extends LocatedAnnotation {
+sealed trait OutputAnnotation extends LocatedAnnotation {
   def id: OutputAnnotationId
 
   def sameSource(other: OutputAnnotation) =
@@ -195,3 +195,8 @@ case class IgnoreFileList(
     annotationLineNr: Int,
     project: String,
     issueNr: Int) extends ProjectSpecificAnnotation
+
+trait CustomAnnotation extends LocatedAnnotation{
+  def matches(is:AbstractOutput):Boolean
+  def notFoundMsg : String
+}
