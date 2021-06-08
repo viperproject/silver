@@ -1,7 +1,7 @@
 package viper.silver.testing
 
 import org.scalatest.{BeforeAndAfterAllConfigMap, ConfigMap, FunSuite, Matchers}
-import viper.silver.ast.{AnySetContains, Assert, EqCmp, Exp, Field, FieldAccess, FieldAccessPredicate, FullPerm, Function, Inhale, IntLit, LocalVarAssign, LocalVarDecl, Method, Program, Ref, Result, BackendFuncApp, Seqn, SetType, Stmt}
+import viper.silver.ast.{AnySetContains, Assert, BackendFuncApp, EqCmp, Exhale, Exp, Field, FieldAccess, FieldAccessPredicate, FieldAssign, Fold, FullPerm, Function, Inhale, IntLit, LocalVarAssign, LocalVarDecl, Method, Predicate, PredicateAccess, PredicateAccessPredicate, Program, Ref, Result, Seqn, SetType, Stmt}
 import viper.silver.ast.utility.{BVFactory, FloatFactory, RoundingMode}
 import viper.silver.verifier.{Failure, Success, Verifier}
 import viper.silver.verifier.errors.{AssertFailed, PostconditionViolated}
@@ -92,6 +92,34 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
     val fun = Function("test", Seq(), fp.typ, Seq(), Seq(equality), Some(addition))()
     val program = Program(Seq(), Seq(), Seq(fun), Seq(), Seq(), Seq())()
     (program, fun, equality)
+  }
+
+  def generateVytautasTest() : (Program) = {
+    val rne = RoundingMode.RNE
+    val fp = FloatFactory(52, 12, rne)
+    val value = BigInt("4591870180066957722")
+    val bv64 = BVFactory(64)
+    val from_int = bv64.from_int("toBV64")
+    val to_fp = fp.from_bv("tofp")
+    val field = Field("val_float", fp.typ)()
+    val selfVar = LocalVarDecl("self", Ref)()
+    val fieldAcc = FieldAccess(selfVar.localVar, field)()
+    val fieldAccPred = FieldAccessPredicate(fieldAcc, FullPerm()())()
+    val pred = Predicate("f64", Seq(selfVar), Some(fieldAccPred))()
+
+    val inhale = Inhale(fieldAccPred)()
+    val fpVal = BackendFuncApp(to_fp, Seq(BackendFuncApp(from_int, Seq(IntLit(value)()))()))()
+    val assign = FieldAssign(fieldAcc, fpVal)()
+    val predAcc = PredicateAccess(Seq(selfVar.localVar), pred.name)()
+    val predAccPred = PredicateAccessPredicate(predAcc, FullPerm()())()
+    val fold = Fold(predAccPred)()
+    val exhale = Exhale(predAccPred)()
+
+    val body = Seqn(Seq(inhale, assign, fold, exhale), Seq())()
+    val method = Method("m_id", Seq(), Seq(selfVar), Seq(), Seq(), Some(body))()
+    val prog = Program(Seq(), Seq(field), Seq(), Seq(pred), Seq(method), Seq())()
+
+    prog
   }
 
   def generateBvOpTest(success: Boolean) : (Program, Assert) = {
@@ -202,6 +230,15 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
     assert(res match {
       case Failure(Seq(PostconditionViolated(e, f, _, _))) if e == exp && fun == f => true
       case _ => false
+    })
+  }
+
+  test("vytautas") {
+    val (prog) = generateVytautasTest()
+    val res  = verifier.verify(prog)
+    assert(res match {
+      case Failure(_)  => false
+      case _ => true
     })
   }
 
