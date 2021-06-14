@@ -94,7 +94,8 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
     (program, fun, equality)
   }
 
-  def generateVytautasTest() : (Program) = {
+
+  def generatePredicateTest() : Program = {
     val rne = RoundingMode.RNE
     val fp = FloatFactory(52, 12, rne)
     val value = BigInt("4591870180066957722")
@@ -159,7 +160,7 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
   }
 
   test("typeCombinationSuccess") {
-    val (prog, assertNode) = generateTypeCombinationTest(true)
+    val (prog, _) = generateTypeCombinationTest(true)
     val res  = verifier.verify(prog)
     assert(res == Success)
   }
@@ -174,7 +175,7 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
   }
 
   test("fieldTypeSuccess") {
-    val (prog, assertNode) = generateFieldTypeTest(true)
+    val (prog, _) = generateFieldTypeTest(true)
     val res  = verifier.verify(prog)
     assert(res == Success)
   }
@@ -189,7 +190,7 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
   }
 
   test("bvOpSuccess") {
-    val (prog, assertNode) = generateBvOpTest(true)
+    val (prog, _) = generateBvOpTest(true)
     val res  = verifier.verify(prog)
     assert(res == Success)
   }
@@ -204,7 +205,7 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
   }
 
   test("floatOpSuccess") {
-    val (prog, assertNode) = generateFloatOpTest(true)
+    val (prog, _) = generateFloatOpTest(true)
     val res  = verifier.verify(prog)
     assert(res == Success)
   }
@@ -219,7 +220,7 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
   }
 
   test("floatOpFunctionSuccess") {
-    val (prog, fun, exp) = generateFloatOpFunctionTest(true)
+    val (prog, _, _) = generateFloatOpFunctionTest(true)
     val res  = verifier.verify(prog)
     assert(res == Success)
   }
@@ -233,13 +234,10 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
     })
   }
 
-  test("vytautas") {
-    val (prog) = generateVytautasTest()
+  test("predicateSuccess") {
+    val prog = generatePredicateTest()
     val res  = verifier.verify(prog)
-    assert(res match {
-      case Failure(_)  => false
-      case _ => true
-    })
+    assert(res == Success)
   }
 
 }
