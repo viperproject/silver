@@ -156,15 +156,13 @@ trait VerificationError extends AbstractError with ErrorMessage {
   def readableMessage(withId: Boolean = false, withPosition: Boolean = false): String
   override def readableMessage : String = {
     val rm : String = readableMessage(false, true)
-    if (counterexample.isDefined){
-      rm + "\n" + counterexample.get.toString
-    }else{
-      rm
-    }
+    rm + (if (counterexample.isDefined) ("\n" + counterexample.get) else "") +
+      ( if(branchConditions.nonEmpty) ("\n\t under branch conditions:\n\t\t" + branchConditions.mkString("\n\t\t")) else "") //TODO:J make prettier
   }
   def loggableMessage: String = s"$fullId-$pos" + (if (cached) "-cached" else "")
   def fullId = s"$id:${reason.id}"
   var counterexample : Option[Counterexample] = None
+  var branchConditions : Seq[Exp] = Seq()
 }
 
 /// used when an error/reason has no sensible node to use
@@ -231,6 +229,7 @@ abstract class AbstractVerificationError extends VerificationError {
 
     val res = errorT.withReason(reasonT)
     res.counterexample = counterexample
+    res.branchConditions = branchConditions
     res
   }
 
