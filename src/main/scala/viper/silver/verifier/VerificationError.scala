@@ -157,7 +157,7 @@ trait VerificationError extends AbstractError with ErrorMessage {
   override def readableMessage : String = {
     val rm : String = readableMessage(false, true)
     rm + (if (counterexample.isDefined) ("\n" + counterexample.get) else "") +
-      ( if(branchConditions.nonEmpty) ("\n\t under branch conditions:\n\t\t" + branchConditions.mkString("\n\t\t")) else "") //TODO:J make prettier
+      (if(branchConditions.nonEmpty) branchConditions.mkString("\n\t under branch conditions\n\t\t","\n\t\t","") else "")
   }
   def loggableMessage: String = s"$fullId-$pos" + (if (cached) "-cached" else "")
   def fullId = s"$id:${reason.id}"
