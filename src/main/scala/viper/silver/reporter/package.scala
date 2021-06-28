@@ -6,6 +6,8 @@
 
 package viper.silver
 
+import viper.silver.ast.Type
+
 package object reporter {
   type Time = Long  // in milliseconds
   type File = java.nio.file.Path
@@ -16,7 +18,56 @@ package object reporter {
 
   type Position = viper.silver.ast.SourcePosition
 
+
+  trait SymbolType {
+    val name: String
+  }
+
+  trait TypedSymbol extends SymbolType {
+    val viperType: Type
+  }
+
   // The following case classes are essentially named tuple wrappers.
-  case class Definition(name: String, typ: String, location: viper.silver.ast.Position,
+  case object ViperDomain extends SymbolType {
+    val name = "Domain"
+  }
+
+  case object ViperAxiom extends SymbolType {
+    val name = "Axiom"
+  }
+
+  case object ViperFunction extends SymbolType {
+    val name = "Function"
+  }
+
+  case object ViperPredicate extends SymbolType {
+    val name = "Predicate"
+  }
+
+  case class ViperField(viperType: Type) extends TypedSymbol {
+    val name = "Field"
+  }
+
+  case object ViperMethod extends SymbolType {
+    val name = "Method"
+  }
+
+  case class ViperArgument(viperType: Type) extends TypedSymbol {
+    val name = "Argument"
+  }
+
+  case class ViperReturnParameter(viperType: Type) extends TypedSymbol {
+    val name = "Return"
+  }
+
+  case object ViperUntypedLocalDefinition extends SymbolType {
+    val name = "Local"
+  }
+
+  case class ViperTypedLocalDefinition(viperType: Type) extends TypedSymbol {
+    val name = "Local"
+  }
+
+  case class Definition(name: String, typ: SymbolType, location: viper.silver.ast.Position,
                         scope: Option[viper.silver.ast.AbstractSourcePosition] = None)
 }
