@@ -2,12 +2,13 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (c) 2011-2019 ETH Zurich.
+// Copyright (c) 2011-2021 ETH Zurich.
 
 package viper.silver.verifier
 
 import viper.silver.ast.Program
 import viper.silver.components.LifetimeComponent
+import viper.silver.reporter.{NoopReporter, Reporter}
 
 /** An abstract class for verifiers of Viper programs.
   *
@@ -91,6 +92,8 @@ trait Verifier extends LifetimeComponent {
     * is unspecified.
     */
   def stop(): Unit
+
+  def reporter: Reporter
 }
 
 /**
@@ -102,6 +105,7 @@ class NoVerifier extends Verifier {
   val buildVersion = ""
   val copyright = ""
   val dependencies = Nil
+  val reporter: Reporter = NoopReporter
 
   def debugInfo(info: Seq[(String, Any)]): Unit = {}
   def parseCommandLine(args: Seq[String]): Unit = {}

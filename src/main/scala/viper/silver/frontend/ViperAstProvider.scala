@@ -1,3 +1,9 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2021 ETH Zurich.
+
 package viper.silver.frontend
 
 
@@ -19,7 +25,7 @@ class ViperAstProvider(override val reporter: PluginAwareReporter,
     verify()
   }
 
-  class AstProvidingVerifier extends Verifier {
+  class AstProvidingVerifier(rep: Reporter) extends Verifier {
     private var _config: Config = _
 
     def config: Config = _config
@@ -47,6 +53,8 @@ class ViperAstProvider(override val reporter: PluginAwareReporter,
     override def parseCommandLine(args: Seq[String]): Unit = {
       _config = new Config(args)
     }
+
+    override def reporter: Reporter = rep
   }
 
   // Verification phase omitted
@@ -75,7 +83,7 @@ class ViperAstProvider(override val reporter: PluginAwareReporter,
   protected var instance: AstProvidingVerifier = _
 
   override def createVerifier(fullCmd: String): Verifier = {
-    instance = new AstProvidingVerifier
+    instance = new AstProvidingVerifier(reporter.reporter)
     instance
   }
 
