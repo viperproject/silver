@@ -1,0 +1,29 @@
+field g: Ref
+
+method m(x: Ref) {
+    var c: Int
+
+    inhale acc(x.g,1/2)
+    while(c > 0)
+        invariant true
+    {
+        if(c == 5) {
+            inhale acc(x.g, 1/3)
+            //when jumping out should add frame acc(x.f, 1/2)
+            goto l 
+        }  else {
+            c := c-1
+        } 
+    }
+
+    label l
+    /* at this point one also needs to take into account the traces that reach 
+       via the goto */
+
+    inhale c == 5
+    //at this point the only traces are those reached via the goto
+    assert perm(x.g) == 1/2+1/3
+    
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
