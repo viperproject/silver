@@ -1,8 +1,6 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-//:: IgnoreFile(/carbon/issue/368/)
-
 field next: Ref
 
 predicate List(x: Ref) { true }
@@ -59,6 +57,7 @@ method test10() {
     b := false
   }
 
+  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/390/)
   assert false
 
   label end
