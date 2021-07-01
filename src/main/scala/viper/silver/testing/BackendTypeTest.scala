@@ -75,9 +75,8 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
     val from_int = bv32.from_int("toBV32")
     val to_fp = fp.from_bv("tofp")
     val fp_eq = fp.eq("fp_eq")
-    val fp_add = fp.add("fp_add")
     val fp_min = fp.min("fp_min")
-    val fp_max = fp.min("fp_max")
+    val fp_max = fp.max("fp_max")
 
     val first_float = BackendFuncApp(to_fp, Seq(BackendFuncApp(from_int, Seq(IntLit(first)()))()))()
     val second_float = BackendFuncApp(to_fp, Seq(BackendFuncApp(from_int, Seq(IntLit(second)()))()))()
