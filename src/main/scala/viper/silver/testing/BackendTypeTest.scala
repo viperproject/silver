@@ -1,7 +1,7 @@
 package viper.silver.testing
 
 import org.scalatest.{BeforeAndAfterAllConfigMap, ConfigMap, FunSuite, Matchers}
-import viper.silver.ast.{AnySetContains, Assert, EqCmp, Exp, Field, FieldAccess, FieldAccessPredicate, FullPerm, Function, Inhale, IntLit, LocalVarAssign, LocalVarDecl, Method, Program, Ref, Result, BackendFuncApp, Seqn, SetType, Stmt}
+import viper.silver.ast.{AnySetContains, And, Assert, BackendFuncApp, EqCmp, Exhale, Exp, Field, FieldAccess, FieldAccessPredicate, FieldAssign, Fold, FullPerm, Function, Inhale, IntLit, LocalVarAssign, LocalVarDecl, Method, Not, Predicate, PredicateAccess, PredicateAccessPredicate, Program, Ref, Result, Seqn, SetType, Stmt}
 import viper.silver.ast.utility.{BVFactory, FloatFactory, RoundingMode}
 import viper.silver.verifier.{Failure, Success, Verifier}
 import viper.silver.verifier.errors.{AssertFailed, PostconditionViolated}
@@ -66,6 +66,31 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
     (wrapInProgram(Seq(assert), Seq(), Seq()), assert)
   }
 
+  def generateFloatMinMaxTest(success: Boolean) : (Program, Assert) = {
+    val rne = RoundingMode.RNE
+    val fp = FloatFactory(24, 8, rne)
+    val first = 1081081856 // 3.75
+    val second = 1103888384 // 25.5
+    val bv32 = BVFactory(32)
+    val from_int = bv32.from_int("toBV32")
+    val to_fp = fp.from_bv("tofp")
+    val fp_eq = fp.eq("fp_eq")
+    val fp_min = fp.min("fp_min")
+    val fp_max = fp.max("fp_max")
+
+    val first_float = BackendFuncApp(to_fp, Seq(BackendFuncApp(from_int, Seq(IntLit(first)()))()))()
+    val second_float = BackendFuncApp(to_fp, Seq(BackendFuncApp(from_int, Seq(IntLit(second)()))()))()
+
+    val min = BackendFuncApp(fp_min, Seq(first_float, second_float))()
+    val max = BackendFuncApp(fp_max, Seq(first_float, second_float))()
+
+    val equality_min = BackendFuncApp(fp_eq, Seq(min, first_float))()
+    val equality_max = BackendFuncApp(fp_eq, Seq(max, second_float))()
+    val equality = And(equality_min, equality_max)()
+    val assert = Assert(if (success) equality else Not(equality)())()
+    (wrapInProgram(Seq(assert), Seq(), Seq()), assert)
+  }
+
   def generateFloatOpFunctionTest(success: Boolean) : (Program, Function, Exp) = {
     val rne = RoundingMode.RNE
     val fp = FloatFactory(24, 8, rne)
@@ -92,6 +117,35 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
     val fun = Function("test", Seq(), fp.typ, Seq(), Seq(equality), Some(addition))()
     val program = Program(Seq(), Seq(), Seq(fun), Seq(), Seq(), Seq())()
     (program, fun, equality)
+  }
+
+
+  def generatePredicateTest() : Program = {
+    val rne = RoundingMode.RNE
+    val fp = FloatFactory(52, 12, rne)
+    val value = BigInt("4591870180066957722")
+    val bv64 = BVFactory(64)
+    val from_int = bv64.from_int("toBV64")
+    val to_fp = fp.from_bv("tofp")
+    val field = Field("val_float", fp.typ)()
+    val selfVar = LocalVarDecl("self", Ref)()
+    val fieldAcc = FieldAccess(selfVar.localVar, field)()
+    val fieldAccPred = FieldAccessPredicate(fieldAcc, FullPerm()())()
+    val pred = Predicate("f64", Seq(selfVar), Some(fieldAccPred))()
+
+    val inhale = Inhale(fieldAccPred)()
+    val fpVal = BackendFuncApp(to_fp, Seq(BackendFuncApp(from_int, Seq(IntLit(value)()))()))()
+    val assign = FieldAssign(fieldAcc, fpVal)()
+    val predAcc = PredicateAccess(Seq(selfVar.localVar), pred.name)()
+    val predAccPred = PredicateAccessPredicate(predAcc, FullPerm()())()
+    val fold = Fold(predAccPred)()
+    val exhale = Exhale(predAccPred)()
+
+    val body = Seqn(Seq(inhale, assign, fold, exhale), Seq())()
+    val method = Method("m_id", Seq(), Seq(selfVar), Seq(), Seq(), Some(body))()
+    val prog = Program(Seq(), Seq(field), Seq(), Seq(pred), Seq(method), Seq())()
+
+    prog
   }
 
   def generateBvOpTest(success: Boolean) : (Program, Assert) = {
@@ -131,7 +185,7 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
   }
 
   test("typeCombinationSuccess") {
-    val (prog, assertNode) = generateTypeCombinationTest(true)
+    val (prog, _) = generateTypeCombinationTest(true)
     val res  = verifier.verify(prog)
     assert(res == Success)
   }
@@ -146,7 +200,7 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
   }
 
   test("fieldTypeSuccess") {
-    val (prog, assertNode) = generateFieldTypeTest(true)
+    val (prog, _) = generateFieldTypeTest(true)
     val res  = verifier.verify(prog)
     assert(res == Success)
   }
@@ -161,7 +215,7 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
   }
 
   test("bvOpSuccess") {
-    val (prog, assertNode) = generateBvOpTest(true)
+    val (prog, _) = generateBvOpTest(true)
     val res  = verifier.verify(prog)
     assert(res == Success)
   }
@@ -176,7 +230,7 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
   }
 
   test("floatOpSuccess") {
-    val (prog, assertNode) = generateFloatOpTest(true)
+    val (prog, _) = generateFloatOpTest(true)
     val res  = verifier.verify(prog)
     assert(res == Success)
   }
@@ -190,8 +244,23 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
     })
   }
 
+  test("floatMinMaxSuccess") {
+    val (prog, _) = generateFloatMinMaxTest(true)
+    val res  = verifier.verify(prog)
+    assert(res == Success)
+  }
+
+  test("floatMinMaxFail") {
+    val (prog, assertNode) = generateFloatMinMaxTest(false)
+    val res  = verifier.verify(prog)
+    assert(res match {
+      case Failure(Seq(AssertFailed(a, _, _))) if a == assertNode => true
+      case _ => false
+    })
+  }
+
   test("floatOpFunctionSuccess") {
-    val (prog, fun, exp) = generateFloatOpFunctionTest(true)
+    val (prog, _, _) = generateFloatOpFunctionTest(true)
     val res  = verifier.verify(prog)
     assert(res == Success)
   }
@@ -203,6 +272,12 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
       case Failure(Seq(PostconditionViolated(e, f, _, _))) if e == exp && fun == f => true
       case _ => false
     })
+  }
+
+  test("predicateSuccess") {
+    val prog = generatePredicateTest()
+    val res  = verifier.verify(prog)
+    assert(res == Success)
   }
 
 }

@@ -125,6 +125,11 @@ trait Node extends Iterable[Node] with Rewritable {
 
   StrategyBuilder.Slim[Node](pre, recurse) execute[this.type] (this)
 
+  def transformForceCopy(pre: PartialFunction[Node, Node] = PartialFunction.empty,
+                recurse: Traverse = Traverse.Innermost)
+  : this.type =
+
+    StrategyBuilder.Slim[Node](pre, recurse).forceCopy() execute[this.type] (this)
 
   /**
     * Allows a transformation with a custom context threaded through
@@ -345,6 +350,12 @@ trait Info {
       case ConsInfo(head, tail) => head.getAllInfos[T] ++ tail.getAllInfos[T]
       case _ => Seq.empty
     }
+
+  def removeUniqueInfo[T <: Info]: Info = this match {
+    case ConsInfo(a, b) => MakeInfoPair(a.removeUniqueInfo[T], b.removeUniqueInfo[T])
+    case t: T => NoInfo
+    case info => info
+  }
 }
 
 /** A default `Info` that is empty. */
