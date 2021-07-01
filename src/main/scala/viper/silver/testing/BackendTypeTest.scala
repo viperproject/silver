@@ -1,7 +1,7 @@
 package viper.silver.testing
 
 import org.scalatest.{BeforeAndAfterAllConfigMap, ConfigMap, FunSuite, Matchers}
-import viper.silver.ast.{AnySetContains, Assert, BackendFuncApp, EqCmp, Exhale, Exp, Field, FieldAccess, FieldAccessPredicate, FieldAssign, Fold, FullPerm, Function, Inhale, IntLit, LocalVarAssign, LocalVarDecl, Method, Predicate, PredicateAccess, PredicateAccessPredicate, Program, Ref, Result, Seqn, SetType, Stmt}
+import viper.silver.ast.{AnySetContains, And, Assert, BackendFuncApp, EqCmp, Exhale, Exp, Field, FieldAccess, FieldAccessPredicate, FieldAssign, Fold, FullPerm, Function, Inhale, IntLit, LocalVarAssign, LocalVarDecl, Method, Not, Predicate, PredicateAccess, PredicateAccessPredicate, Program, Ref, Result, Seqn, SetType, Stmt}
 import viper.silver.ast.utility.{BVFactory, FloatFactory, RoundingMode}
 import viper.silver.verifier.{Failure, Success, Verifier}
 import viper.silver.verifier.errors.{AssertFailed, PostconditionViolated}
@@ -63,6 +63,32 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
 
     val equality = BackendFuncApp(fp_eq, Seq(addition, result_addition))()
     val assert = Assert(equality)()
+    (wrapInProgram(Seq(assert), Seq(), Seq()), assert)
+  }
+
+  def generateFloatMinMaxTest(success: Boolean) : (Program, Assert) = {
+    val rne = RoundingMode.RNE
+    val fp = FloatFactory(24, 8, rne)
+    val first = 1081081856 // 3.75
+    val second = 1103888384 // 25.5
+    val bv32 = BVFactory(32)
+    val from_int = bv32.from_int("toBV32")
+    val to_fp = fp.from_bv("tofp")
+    val fp_eq = fp.eq("fp_eq")
+    val fp_add = fp.add("fp_add")
+    val fp_min = fp.min("fp_min")
+    val fp_max = fp.min("fp_max")
+
+    val first_float = BackendFuncApp(to_fp, Seq(BackendFuncApp(from_int, Seq(IntLit(first)()))()))()
+    val second_float = BackendFuncApp(to_fp, Seq(BackendFuncApp(from_int, Seq(IntLit(second)()))()))()
+
+    val min = BackendFuncApp(fp_min, Seq(first_float, second_float))()
+    val max = BackendFuncApp(fp_max, Seq(first_float, second_float))()
+
+    val equality_min = BackendFuncApp(fp_eq, Seq(min, first_float))()
+    val equality_max = BackendFuncApp(fp_eq, Seq(max, second_float))()
+    val equality = And(equality_min, equality_max)()
+    val assert = Assert(if (success) equality else Not(equality)())()
     (wrapInProgram(Seq(assert), Seq(), Seq()), assert)
   }
 
@@ -212,6 +238,21 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
 
   test("floatOpFail") {
     val (prog, assertNode) = generateFloatOpTest(false)
+    val res  = verifier.verify(prog)
+    assert(res match {
+      case Failure(Seq(AssertFailed(a, _, _))) if a == assertNode => true
+      case _ => false
+    })
+  }
+
+  test("floatMinMaxSuccess") {
+    val (prog, _) = generateFloatMinMaxTest(true)
+    val res  = verifier.verify(prog)
+    assert(res == Success)
+  }
+
+  test("floatMinMaxFail") {
+    val (prog, assertNode) = generateFloatMinMaxTest(false)
     val res  = verifier.verify(prog)
     assert(res match {
       case Failure(Seq(AssertFailed(a, _, _))) if a == assertNode => true
