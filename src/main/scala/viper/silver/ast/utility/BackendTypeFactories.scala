@@ -53,8 +53,9 @@ case class FloatFactory(mant: Int, exp: Int, roundingMode: RoundingMode) {
   def sub(name: String) = BackendFunc(name, s"fp.sub ${roundingMode}", typ, Seq(LocalVarDecl("x", typ)(), LocalVarDecl("y", typ)()))
   def mul(name: String) = BackendFunc(name, s"fp.mul ${roundingMode}", typ, Seq(LocalVarDecl("x", typ)(), LocalVarDecl("y", typ)()))
   def div(name: String) = BackendFunc(name, s"fp.div ${roundingMode}", typ, Seq(LocalVarDecl("x", typ)(), LocalVarDecl("y", typ)()))
-  def min(name: String) = BackendFunc(name, s"fp.min ${roundingMode}", typ, Seq(LocalVarDecl("x", typ)(), LocalVarDecl("y", typ)()))
-  def max(name: String) = BackendFunc(name, s"fp.max ${roundingMode}", typ, Seq(LocalVarDecl("x", typ)(), LocalVarDecl("y", typ)()))
+
+  def min(name: String) = BackendFunc(name, s"fp.min", typ, Seq(LocalVarDecl("x", typ)(), LocalVarDecl("y", typ)()))
+  def max(name: String) = BackendFunc(name, s"fp.max", typ, Seq(LocalVarDecl("x", typ)(), LocalVarDecl("y", typ)()))
 
   def eq(name: String) = BackendFunc(name, s"fp.eq", Bool, Seq(LocalVarDecl("x", typ)(), LocalVarDecl("y", typ)()))
   def leq(name: String) = BackendFunc(name, s"fp.leq", Bool, Seq(LocalVarDecl("x", typ)(), LocalVarDecl("y", typ)()))
