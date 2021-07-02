@@ -14,9 +14,62 @@ package object reporter {
   def print(e: Entity): String =  // FIXME: treat the natural delimiters and insert `;` where needed.
     e.toString().replaceAll("""\n""", " ").replaceAll("""\s+""", " ")
 
-  type Position = viper.silver.ast.SourcePosition
+  type DefPosition = viper.silver.ast.SourcePosition
+  type DefScope = viper.silver.ast.AbstractSourcePosition
+  type ViperType = viper.silver.ast.Type
+
+  sealed trait SymbolKind {
+    val name: String
+  }
+
+  sealed trait TypedSymbol extends SymbolKind {
+    val viperType: ViperType
+  }
 
   // The following case classes are essentially named tuple wrappers.
-  case class Definition(name: String, typ: String, location: viper.silver.ast.Position,
-                        scope: Option[viper.silver.ast.AbstractSourcePosition] = None)
+  case object ViperDomain extends SymbolKind {
+    val name = "Domain"
+  }
+
+  case object ViperAxiom extends SymbolKind {
+    val name = "Axiom"
+  }
+
+  case object ViperFunction extends SymbolKind {
+    val name = "Function"
+  }
+
+  case object ViperPredicate extends SymbolKind {
+    val name = "Predicate"
+  }
+
+  case class ViperField(viperType: ViperType) extends TypedSymbol {
+    val name = "Field"
+  }
+
+  case object ViperMethod extends SymbolKind {
+    val name = "Method"
+  }
+
+  case class ViperArgument(viperType: ViperType) extends TypedSymbol {
+    val name = "Argument"
+  }
+
+  case class ViperReturnParameter(viperType: ViperType) extends TypedSymbol {
+    val name = "Return"
+  }
+
+  case object ViperUntypedLocalDefinition extends SymbolKind {
+    // e.g. a label
+    val name = "Local"
+  }
+
+  case class ViperTypedLocalDefinition(viperType: ViperType) extends TypedSymbol {
+    // e.g. var x:Int
+    val name = "Local"
+  }
+
+  // TODO: discuss if "Declaration" is a better term than e.g. "Definition"
+  case class Definition(name: String, typ: SymbolKind, location: DefPosition,
+                        scope: Option[DefScope] = None)
 }
