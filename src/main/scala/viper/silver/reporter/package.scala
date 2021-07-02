@@ -23,7 +23,7 @@ package object reporter {
   }
 
   sealed trait TypedSymbol extends SymbolKind {
-    val viperType: Type
+    val viperType: ViperType
   }
 
   // The following case classes are essentially named tuple wrappers.
