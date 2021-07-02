@@ -6,8 +6,6 @@
 
 package viper.silver
 
-import viper.silver.ast.Type
-
 package object reporter {
   type Time = Long  // in milliseconds
   type File = java.nio.file.Path
@@ -16,9 +14,9 @@ package object reporter {
   def print(e: Entity): String =  // FIXME: treat the natural delimiters and insert `;` where needed.
     e.toString().replaceAll("""\n""", " ").replaceAll("""\s+""", " ")
 
-  type Position = viper.silver.ast.SourcePosition
-  type Scope = viper.silver.ast.AbstractSourcePosition
-
+  type DefPosition = viper.silver.ast.SourcePosition
+  type DefScope = viper.silver.ast.AbstractSourcePosition
+  type ViperType = viper.silver.ast.Type
 
   sealed trait SymbolKind {
     val name: String
@@ -45,7 +43,7 @@ package object reporter {
     val name = "Predicate"
   }
 
-  case class ViperField(viperType: Type) extends TypedSymbol {
+  case class ViperField(viperType: ViperType) extends TypedSymbol {
     val name = "Field"
   }
 
@@ -53,11 +51,11 @@ package object reporter {
     val name = "Method"
   }
 
-  case class ViperArgument(viperType: Type) extends TypedSymbol {
+  case class ViperArgument(viperType: ViperType) extends TypedSymbol {
     val name = "Argument"
   }
 
-  case class ViperReturnParameter(viperType: Type) extends TypedSymbol {
+  case class ViperReturnParameter(viperType: ViperType) extends TypedSymbol {
     val name = "Return"
   }
 
@@ -66,11 +64,12 @@ package object reporter {
     val name = "Local"
   }
 
-  case class ViperTypedLocalDefinition(viperType: Type) extends TypedSymbol {
+  case class ViperTypedLocalDefinition(viperType: ViperType) extends TypedSymbol {
     // e.g. var x:Int
     val name = "Local"
   }
 
-  case class Definition(name: String, typ: SymbolKind, location: Position,
-                        scope: Option[Scope] = None)
+  // TODO: discuss if "Declaration" is a better term than e.g. "Definition"
+  case class Definition(name: String, typ: SymbolKind, location: DefPosition,
+                        scope: Option[DefScope] = None)
 }
