@@ -14,7 +14,7 @@ package object reporter {
   def print(e: Entity): String =  // FIXME: treat the natural delimiters and insert `;` where needed.
     e.toString().replaceAll("""\n""", " ").replaceAll("""\s+""", " ")
 
-  type DefPosition = viper.silver.ast.SourcePosition
+  type DefPosition = viper.silver.ast.Position
   type DefScope = viper.silver.ast.AbstractSourcePosition
   type ViperType = viper.silver.ast.Type
 
