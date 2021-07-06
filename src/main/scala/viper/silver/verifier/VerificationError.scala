@@ -229,7 +229,6 @@ abstract class AbstractVerificationError extends VerificationError {
 
     val res = errorT.withReason(reasonT)
     res.failureContexts = failureContexts
-//    res.counterexample = counterexample
     res
   }
 
