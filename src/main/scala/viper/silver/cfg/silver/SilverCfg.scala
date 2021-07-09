@@ -81,7 +81,7 @@ class SilverCfg(val blocks: Seq[SilverBlock], val edges: Seq[SilverEdge], val en
                     edges: Seq[SilverEdge] = edges,
                     entry: SilverBlock = entry,
                     exit: Option[SilverBlock] = exit): SilverCfg =
-    SilverCfg(blocks, edges, entry, exit
+    SilverCfg(blocks, edges, entry, exit)
 
   private def findJoinPoint(queueInit: Iterable[SilverBlock],
                             visitedInit: Iterable[SilverBlock],
