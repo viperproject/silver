@@ -81,7 +81,67 @@ class SilverCfg(val blocks: Seq[SilverBlock], val edges: Seq[SilverEdge], val en
                     edges: Seq[SilverEdge] = edges,
                     entry: SilverBlock = entry,
                     exit: Option[SilverBlock] = exit): SilverCfg =
-    SilverCfg(blocks, edges, entry, exit)
+    SilverCfg(blocks, edges, entry, exit
+
+  private def findJoinPoint(queueInit: Iterable[SilverBlock],
+                            visitedInit: Iterable[SilverBlock],
+                            // We never enqueue loopHeads which we already have seen.
+                            // This would lead to non-termination.
+                            loopHeadsSeen: Iterable[SilverBlock],
+                            getNext: SilverBlock => Iterable[SilverBlock])
+  : (Option[SilverBlock], mutable.Map[SilverBlock, SilverBlock]) = {
+
+    var queue = mutable.Queue.from(queueInit)
+    var visited: Vector[SilverBlock] = Vector.from(visitedInit)
+    val map = mutable.Map[SilverBlock, SilverBlock]()
+    var loopHeads: Vector[SilverBlock] = Vector.from(loopHeadsSeen)
+
+    while (queue.nonEmpty) {
+      val curr = queue.dequeue()
+      val visitNext = curr match {
+        case curr =>
+          if (!visited.contains(curr)) {
+            visited :+= curr
+            if (curr.isInstanceOf[SilverLoopHeadBlock]) {
+              loopHeads :+= curr
+            }
+            getNext(curr) match {
+              case out @ Seq() => out
+              case out @ Seq(_) => out
+              case out @ Seq(_, _) =>
+                val (joinPoint, innerMap) =
+                  findJoinPoint(out.filter(!loopHeads.contains(_)), Seq(curr), loopHeads, getNext)
+                map ++= innerMap
+                joinPoint match {
+                  case Some(joinPoint) =>
+                    map += curr -> joinPoint
+                  case None => ()
+                }
+                joinPoint
+              case _ => sys.error("At most two outgoing edges expected.")
+            }
+          } else {
+            return (Some(curr), map)
+          }
+      }
+
+      // Avoid re-visiting already seen loop heads.
+      queue = queue.enqueueAll(visitNext.iterator.filter(!loopHeads.contains(_)))
+    }
+    (None, map)
+  }
+
+  /**
+    * Computes all local variables that are written to in the loop with the
+    * given basic block as loop head.
+    *
+    * @return Mapping from all branch points to join points.
+    */
+  lazy val joinPoints: mutable.Map[SilverBlock, SilverBlock] = {
+    val (jp, map) = findJoinPoint(Seq(entry), Seq.empty, Seq.empty, successors)
+    assert(jp.isEmpty)
+    map
+  }
 }
 
 object SilverCfg {
