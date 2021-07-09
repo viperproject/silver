@@ -132,8 +132,7 @@ class SilverCfg(val blocks: Seq[SilverBlock], val edges: Seq[SilverEdge], val en
   }
 
   /**
-    * Computes all local variables that are written to in the loop with the
-    * given basic block as loop head.
+    * Computes a mapping from all branch points to their corresponding join points.
     *
     * @return Mapping from all branch points to join points.
     */
