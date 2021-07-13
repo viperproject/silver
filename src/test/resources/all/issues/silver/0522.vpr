@@ -1,0 +1,94 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+predicate P(x: Ref) {
+  acc(x.f)
+}
+
+method test1(x: Ref) {
+  //:: ExpectedOutput(inhale.failed:negative.permission)
+  inhale acc(x.f, -1/2)
+}
+
+method test2(x: Ref)
+  //:: ExpectedOutput(not.wellformed:negative.permission)
+  requires acc(P(x), -write)
+
+method test3(x: Ref, p: Perm) {
+  //:: ExpectedOutput(inhale.failed:negative.permission)
+  inhale acc(x.f, p)
+}
+
+method test3b(x: Ref, p: Perm) {
+  inhale none <= p ==> acc(x.f, p)
+}
+
+method test4(x: Ref, p: Perm) {
+  inhale P(x)
+  //:: ExpectedOutput(unfold.failed:negative.permission)
+  //:: ExpectedOutput(unfold.failed:insufficient.permission)
+  //:: MissingOutput(unfold.failed:insufficient.permission, /Silicon/issue/34/)
+  unfold acc(P(x), p)
+}
+
+//:: ExpectedOutput(predicate.not.wellformed:negative.permission)
+//:: MissingOutput(predicate.not.wellformed:negative.permission, /Carbon/issue/380/)
+predicate Q(x: Ref, p: Perm) {
+  acc(x.f, p)
+}
+
+method test5(x: Ref, p: Perm) {
+  inhale Q(x, p)
+  //:: ExpectedOutput(inhale.failed:negative.permission)
+  inhale unfolding Q(x, p) in x != null
+}
+
+
+method test20(xs: Set[Ref], p: Perm)
+  //:: ExpectedOutput(not.wellformed:negative.permission)
+  requires forall x: Ref :: x in xs ==> acc(x.f, p)
+
+method test21(xs: Set[Ref], p: Perm) {
+  while (true)
+    //:: ExpectedOutput(while.failed:negative.permission)
+    //:: MissingOutput(while.failed:negative.permission, /Silicon/issue/34/)
+    //:: ExpectedOutput(invariant.not.established:insufficient.permission)
+    //:: MissingOutput(invariant.not.established:insufficient.permission, /Silicon/issue/34/)
+    //:: ExpectedOutput(invariant.not.established:negative.permission)
+    //:: MissingOutput(invariant.not.established:negative.permission, /Silicon/issue/34/)
+    //:: ExpectedOutput(not.wellformed:negative.permission)
+    invariant forall x: Ref :: x in xs ==> acc(P(x), p)
+  {}
+}
+
+method test22(xs: Set[Ref], p: Perm) {
+  inhale forall x: Ref :: x in xs ==> acc(x.f, none <= p ? p : none)
+}
+
+
+domain foo {
+  function permfun(x: Ref): Perm
+}
+
+method test23(p: Perm, y: Ref) {
+  var xs: Set[Ref]
+  assume forall x: Ref :: x in xs ==> none <= permfun(x)
+
+  xs := xs union Set(y)
+
+  //:: ExpectedOutput(inhale.failed:negative.permission)
+  inhale forall x: Ref :: x in xs ==> acc(x.f, permfun(x))
+}
+
+method test23b(p: Perm, y: Ref) {
+  var xs: Set[Ref]
+  assume y in xs
+  assume forall x: Ref :: x in xs ==> none <= permfun(x)
+
+  xs := xs union Set(y)
+
+  assert forall x: Ref :: x in xs ==> none <= permfun(x)
+  inhale forall x: Ref :: x in xs ==> acc(x.f, permfun(x))
+}
