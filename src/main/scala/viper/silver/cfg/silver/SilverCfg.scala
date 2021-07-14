@@ -87,7 +87,7 @@ class SilverCfg(val blocks: Seq[SilverBlock], val edges: Seq[SilverEdge], val en
     * Recursively finds the next join point to a branch point.
     *
     * @param queueInit Initializes the BFS queue with blocks that are yet to be visited.
-    * @param visitedInit Initialized list of visited nodes.
+    * @param visitedInit Initializes list of visited nodes.
     * @param loopHeadsSeen All the loop heads that were visited so far.
     * @param getNext function which returns the successor nodes.
     * @return (jp, m) where jp is the next join point,
