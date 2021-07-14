@@ -8,7 +8,7 @@ predicate pred1(a:Ref) {
 }
 
 predicate pred2(a:Ref, p:Perm) {
-	acc(a.f, p)
+	p >= none && acc(a.f, p)
 }
 
 method test01(x: Ref)
