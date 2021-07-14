@@ -5,7 +5,9 @@ field f: Int
 
 method m(xs1: Set[Ref], xs2: Set[Ref], xs3: Set[Ref], xs4: Set[Ref], xs5: Set[Ref], xs6: Set[Ref],
         xs7: Set[Ref], xs8: Set[Ref], xs9: Set[Ref], xs10: Set[Ref], xs11: Set[Ref],
-        x: Ref, p: Perm) {
+        x: Ref, p: Perm)
+   requires p >= none        
+{
 
   inhale acc(x.f, p)
 

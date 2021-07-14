@@ -40,6 +40,8 @@ method try_lock_shared()
     var v1: Int
     v1 := havocedInt()
 
+    assume 1/1 - (n(v1)+1)*eps() >= none
+
     inhale (v1 >= 0
     && acc(tokCountRef(resource()).tokCount, 1/1 - (n(v1)+1)*eps())
     && acc(tokCountRef(readers()).tokCount, 1/1 - n(v1)*eps())
