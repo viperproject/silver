@@ -92,3 +92,12 @@ method test23b(p: Perm, y: Ref) {
   assert forall x: Ref :: x in xs ==> none <= permfun(x)
   inhale forall x: Ref :: x in xs ==> acc(x.f, permfun(x))
 }
+
+
+method test31() {
+  inhale forall r: Ref :: {r.f} acc(r.f, wildcard)
+}
+
+method test32(r: Ref) {
+  inhale acc(r.f, wildcard)
+}
