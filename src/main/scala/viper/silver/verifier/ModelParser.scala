@@ -16,13 +16,13 @@ object ModelParser {
 
   def mapping[_: P]: P[MapEntry] = P("{" ~/ mappingContent ~ "}")
 
-  def mappingContent[_: P]: P[MapEntry] = P(options | partialOptions | default)
+  def mappingContent[_: P]: P[MapEntry] = P(partialOptions | options | default)
 
   def options[_: P]: P[MapEntry] = P(option.rep ~ "else" ~ "->" ~ value).map {
     case (options, default) => MapEntry(options.toMap, default)
   }
 
-  def partialOptions[_: P]: P[MapEntry] = P(option.rep).map(options =>
+  def partialOptions[_: P]: P[MapEntry] = P(option.rep(1)).map(options =>
     MapEntry(options.toMap, UnspecifiedEntry))
 
   def option[_: P]: P[(Seq[ValueEntry], ValueEntry)] = P(value.rep(1) ~ "->" ~/ value)
@@ -30,11 +30,13 @@ object ModelParser {
   def default[_: P]: P[MapEntry] = P(value)
     .map { default => MapEntry(Map.empty, default).resolveFunctionDefinition }
 
-  def value[_: P]: P[ValueEntry] = P(let | constant | application)
+  def value[_: P]: P[ValueEntry] = P(unspecified | let | constant | application)
 
   def let[_: P]: P[ValueEntry] = {
     def substitute(entry: ValueEntry, binding: (String, ValueEntry)): ValueEntry =
       entry match {
+        case UnspecifiedEntry =>
+          UnspecifiedEntry
         case ConstantEntry(value) =>
           binding match {
             case (`value`, replacement) => replacement
@@ -54,6 +56,8 @@ object ModelParser {
   }
 
   def binding[_: P]: P[(String, ValueEntry)] = P("(" ~ idnuse ~ value ~ ")")
+
+  def unspecified[_: P]: P[ValueEntry] = P("(#unspecified)").map(_ => UnspecifiedEntry)
 
   def constant[_: P]: P[ConstantEntry] = P(idnuse).map(ConstantEntry)
 
