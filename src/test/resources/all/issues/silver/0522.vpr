@@ -101,3 +101,15 @@ method test31() {
 method test32(r: Ref) {
   inhale acc(r.f, wildcard)
 }
+
+
+method test40(x: Ref) {
+  inhale forall r: Ref :: false ==> acc(r.f, none) // Silicon: enables QP algorithms for f
+
+  //:: ExpectedOutput(inhale.failed:negative.permission)
+  inhale acc(x.f, -1/2)
+}
+
+function funky(x: Ref): Bool
+  //:: ExpectedOutput(not.wellformed:negative.permission)
+  requires acc(x.f, -1/2)
