@@ -1,7 +1,5 @@
 package viper.silver.verifier
 
-import java.util.regex.{Matcher, Pattern}
-import scala.collection.mutable
 import fastparse._
 import viper.silver.parser.FastParser.whitespace
 
@@ -18,11 +16,14 @@ object ModelParser {
 
   def mapping[_: P]: P[MapEntry] = P("{" ~/ mappingContent ~ "}")
 
-  def mappingContent[_: P]: P[MapEntry] = P(options | default)
+  def mappingContent[_: P]: P[MapEntry] = P(options | partialOptions | default)
 
   def options[_: P]: P[MapEntry] = P(option.rep ~ "else" ~ "->" ~ value).map {
     case (options, default) => MapEntry(options.toMap, default)
   }
+
+  def partialOptions[_: P]: P[MapEntry] = P(option.rep).map(options =>
+    MapEntry(options.toMap, UnspecifiedEntry))
 
   def option[_: P]: P[(Seq[ValueEntry], ValueEntry)] = P(value.rep(1) ~ "->" ~/ value)
 

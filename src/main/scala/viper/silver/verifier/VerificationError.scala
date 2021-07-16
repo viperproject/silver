@@ -23,6 +23,10 @@ sealed trait ModelEntry
 
 sealed trait ValueEntry extends ModelEntry
 
+case object UnspecifiedEntry extends ValueEntry {
+  override def toString: String = "#unspecified"
+}
+
 case class ConstantEntry(value: String) extends ValueEntry {
   override def toString: String = value
 }
@@ -134,7 +138,7 @@ object CounterexampleTransformer {
 
 object Model {
   def apply(modelString: String) : Model = {
-    fastparse.parse(modelString, ModelParser.model(_)) match{
+    fastparse.parse(modelString, ModelParser.model(_)) match {
       case Parsed.Success(model, _) => model
       case failure: Parsed.Failure => throw new Exception(failure.toString)
     }
