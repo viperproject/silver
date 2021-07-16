@@ -7,14 +7,14 @@ field val : Int
 
 /* the function previously failed to verify */
 function vals(p: Perm, ar: Seq[Ref]): Seq[Int]
-  requires p != none
+  requires p > none
   requires (forall i: Int :: (0 <= i) && (i < |ar|) ==> acc(ar[i].val, p))
   ensures |result| == |ar|
   // :: UnexpectedOutput(not.wellformed:insufficient.permission, /carbon/issue/193/)
   ensures (forall i: Int :: (0 <= i) && (i < |ar|) ==> (ar[i].val == result[i]))
   
 method vals_meth(p: Perm, ar: Seq[Ref]) returns (res: Seq[Int])
-  requires p != none
+  requires p > none
   requires (forall i: Int :: (0 <= i) && (i < |ar|) ==> acc(ar[i].val, p))
   ensures |res| == |ar|
   // :: UnexpectedOutput(not.wellformed:insufficient.permission, /carbon/issue/193/)

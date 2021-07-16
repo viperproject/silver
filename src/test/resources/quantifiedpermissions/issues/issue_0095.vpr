@@ -16,8 +16,8 @@ method Bug(nodes: Set[Ref], rd: Perm)
 }
 
 method NoBug(nodes: Set[Ref], rd: Perm)
-  requires acc(Valid(nodes), rd)
   requires rd == write
+  requires acc(Valid(nodes), rd)
 {
   unfold acc(Valid(nodes), rd)
   fold acc(Valid(nodes), rd)

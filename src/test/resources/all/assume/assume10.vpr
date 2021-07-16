@@ -4,7 +4,9 @@
  field f: Int
 
  method m(x1: Ref, x2: Ref, x3: Ref, x4: Ref, x5: Ref, x6: Ref, x7: Ref, x8: Ref, x9: Ref, x10: Ref,
-    x11: Ref, x12: Ref, p: Perm) {
+    x11: Ref, x12: Ref, p: Perm)
+    requires p >= none
+{
     inhale acc(x1.f, p)
 
     assume acc(x2.f, p) && acc(x3.f, p) && acc(x4.f, p) && acc(x5.f, p) && acc(x6.f, p) && acc(x7.f, p)

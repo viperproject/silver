@@ -105,6 +105,14 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     hidden = true
   )
 
+  val checkInjectivity = opt[Boolean]("checkInjectivity",
+    descr = "Enable the injectivity check when inhaling quantified permissions. " +
+      "This feature will be enabled by default in the 2022.1 Viper release.",
+    default = Some(false),
+    noshort = true,
+    hidden = false
+  )
+
   validateOpt(file, ignoreFile) {
     case (_, Some(true)) => Right(())
     case (Some(filepath), _) => validateFileOpt(file.name, filepath)

@@ -369,6 +369,7 @@ method SubjectLock__lock(diz: Ref, current_thread_id: Int, count: Int, p: Perm) 
   requires diz != null
   requires current_thread_id >= 0
   requires count >= 0
+  requires p >= none
   requires (count > 0 ? acc(SubjectLock__locked(diz, p, count), write) : acc(SubjectLock__valid(diz), p))
   ensures acc(SubjectLock__locked(diz, p, count + 1), write)
   ensures (count == 0) ==> acc(SubjectLock__inv(diz), write)
@@ -382,6 +383,7 @@ method SubjectLock__unlock(diz: Ref, current_thread_id: Int, count: Int, p: Perm
   requires count > 0
   requires acc(SubjectLock__locked(diz, p, count), write)
   requires (count == 1) ==> acc(SubjectLock__inv(diz), write)
+  requires p >= none
   ensures (count == 1 ? acc(SubjectLock__valid(diz), p) : acc(SubjectLock__locked(diz, p, count - 1), write))
 {
   inhale false
