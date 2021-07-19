@@ -86,8 +86,8 @@ class SilverCfg(val blocks: Seq[SilverBlock], val edges: Seq[SilverEdge], val en
   /**
     * Recursively finds the next join point to a branch point.
     *
-    * @param queueInit Initializes the BFS queue with blocks that are yet to be visited.
-    * @param visitedInit Initializes list of visited nodes.
+    * @param queueInit Used to initialize the BFS queue with blocks that are yet to be visited.
+    * @param visitedInit Used to initialize list of visited nodes.
     * @param loopHeadsSeen All the loop heads that were visited so far.
     * @param getNext function which returns the successor nodes.
     * @return (jp, m) where jp is the next join point,
@@ -107,24 +107,30 @@ class SilverCfg(val blocks: Seq[SilverBlock], val edges: Seq[SilverEdge], val en
     val map = mutable.Map[SilverBlock, SilverBlock]()
     var loopHeads: mutable.Set[SilverBlock] = mutable.Set.from(loopHeadsSeen)
 
+    // BFS traversal of CFG.
     while (queue.nonEmpty) {
       val curr = queue.dequeue()
       val visitNext =
         if (!visited.contains(curr)) {
           visited += curr
           if (curr.isInstanceOf[SilverLoopHeadBlock]) {
+            // If current block is loop head, add it to set of seen loopheads.
             loopHeads += curr
           }
           getNext(curr) match {
             case out @ Seq() => out
             case out @ Seq(_) => out
             case out @ Seq(_, _) =>
+              // New branch point found, start findJoinPoint procedure
+              // recursively to find the corresponding join point.
               val (joinPoint, innerMap) =
                 findJoinPoint(out.filter(!loopHeads.contains(_)), Seq(curr), loopHeads, getNext)
+              // Add the join points found to the map of all join points.
               map ++= innerMap
               joinPoint foreach {
                 jp => map += curr -> jp
               }
+              // Continue BFS traversal from join point.
               joinPoint
             case _ => sys.error("At most two outgoing edges expected.")
           }
