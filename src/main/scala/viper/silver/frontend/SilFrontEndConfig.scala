@@ -91,8 +91,9 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
   )
 
   val counterexample = opt[String]("counterexample",
-    descr="Return counterexample for errors. Pass 'native' for returning the native model from the backend " +
-      "or 'variables' for returning a model of all local Viper variables.",
+    descr="Return counterexample for errors. Pass 'native' for returning the native model from the backend, " +
+      "'variables' for returning a model of all local Viper variables, or 'mapped' (only available on Silicon) " +
+      "for returning a model with Ref variables resolved to object-like structures.",
     default = None,
     noshort = true
   )
