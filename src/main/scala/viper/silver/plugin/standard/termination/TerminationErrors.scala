@@ -27,9 +27,9 @@ case class FunctionTerminationError(override val offendingNode: ErrorNode,
   override val text = s"Function might not terminate."
 
   override def withNode(offendingNode: errors.ErrorNode = this.offendingNode): FunctionTerminationError =
-    FunctionTerminationError(this.offendingNode, this.reason)
+    FunctionTerminationError(this.offendingNode, this.reason, this.cached)
 
-  override def withReason(r: ErrorReason): FunctionTerminationError = FunctionTerminationError(offendingNode, r)
+  override def withReason(r: ErrorReason): FunctionTerminationError = FunctionTerminationError(offendingNode, r, cached)
 }
 
 case class MethodTerminationError(override val offendingNode: ErrorNode,
@@ -38,9 +38,9 @@ case class MethodTerminationError(override val offendingNode: ErrorNode,
   override val text = s"Method might not terminate."
 
   override def withNode(offendingNode: errors.ErrorNode = this.offendingNode): MethodTerminationError =
-    MethodTerminationError(this.offendingNode, this.reason)
+    MethodTerminationError(this.offendingNode, this.reason, this.cached)
 
-  override def withReason(r: ErrorReason): MethodTerminationError = MethodTerminationError(offendingNode, r)
+  override def withReason(r: ErrorReason): MethodTerminationError = MethodTerminationError(offendingNode, r, this.cached)
 }
 
 case class LoopTerminationError(override val offendingNode: ErrorNode,
@@ -49,9 +49,9 @@ case class LoopTerminationError(override val offendingNode: ErrorNode,
   override val text = s"Loop might not terminate."
 
   override def withNode(offendingNode: errors.ErrorNode = this.offendingNode): LoopTerminationError =
-    LoopTerminationError(this.offendingNode, this.reason)
+    LoopTerminationError(this.offendingNode, this.reason, this.cached)
 
-  override def withReason(r: ErrorReason): LoopTerminationError = LoopTerminationError(offendingNode, r)
+  override def withReason(r: ErrorReason): LoopTerminationError = LoopTerminationError(offendingNode, r, cached)
 }
 
 

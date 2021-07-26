@@ -11,6 +11,7 @@ method parallel_max(a:Ref, start:Int, end:Int, kperm: Perm) returns (mx: Int, po
   requires a != null
   requires acc(a.array, wildcard)
   requires 0 <= start && start < end && end < |a.array|
+  requires kperm >= none
   requires forall i:Int :: i in [start..end) ==> acc(a.array[i].value, kperm)
   requires |a.array| >= 1
   requires none < kperm && kperm < write

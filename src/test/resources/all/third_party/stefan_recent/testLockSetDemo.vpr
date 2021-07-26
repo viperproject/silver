@@ -12,7 +12,7 @@ predicate LockSet__lockset(diz: Ref, S: Multiset[Ref]) {
 }
 
 predicate Client__inv(diz: Ref, p: Perm) {
-  acc(diz.Client__x, p)
+  p >= none && acc(diz.Client__x, p)
 }
 
 method LockSet__LockSet(current_thread_id: Int) returns (sys__result: Ref)

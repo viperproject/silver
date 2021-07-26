@@ -73,11 +73,11 @@ predicate Worker__postJoin_at_Thread(diz: Ref, p: Perm) {
 }
 
 predicate Worker__preFork_at_Worker(diz: Ref, p: Perm) {
-  acc(Worker__preFork_at_Thread(diz, p), write) && (acc(diz.Worker__input, wildcard) && (p != none) && acc(diz.Worker__output, p))
+  p >= none && acc(Worker__preFork_at_Thread(diz, p), write) && (acc(diz.Worker__input, wildcard) && (p != none) && acc(diz.Worker__output, p))
 }
 
 predicate Worker__postJoin_at_Worker(diz: Ref, p: Perm) {
-  acc(Worker__postJoin_at_Thread(diz, p), write) && (acc(diz.Worker__input, wildcard) && (p != none) && (acc(diz.Worker__output, p) && (diz.Worker__output == diz.Worker__input + 1)))
+  p >= none && acc(Worker__postJoin_at_Thread(diz, p), write) && (acc(diz.Worker__input, wildcard) && (p != none) && (acc(diz.Worker__output, p) && (diz.Worker__output == diz.Worker__input + 1)))
 }
 
 method Thread__run(diz: Ref, current_thread_id: Int) returns (sys__thrown: Ref)

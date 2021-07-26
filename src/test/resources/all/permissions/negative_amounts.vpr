@@ -24,6 +24,7 @@ method test02(x: Ref)
 }
 
 method test03(x: Ref, k: Perm) {
+  //:: ExpectedOutput(inhale.failed:negative.permission)
   inhale acc(x.f, k)
-  assert none <= k
+  assert k >= none
 }

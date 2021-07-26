@@ -3,14 +3,18 @@
 
 field val: Int
 
-method test01(x: Ref, p: Perm) {
+method test01(x: Ref, p: Perm)
+  requires p >= none
+{
   inhale acc(x.val, p)
   inhale forperm r: Ref [r.val] :: false
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert false
 }
 
-method test02(x: Ref, p: Perm) {
+method test02(x: Ref, p: Perm)
+  requires p >= none
+{
   inhale acc(x.val, p)
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert forperm r: Ref [r.val] :: false
