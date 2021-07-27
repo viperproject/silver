@@ -4,7 +4,7 @@
 ### Changes in Viper Language
 
 * **Breaking change**: Inhaling negative permission amounts now leads to a verification failure, whereas in the previous releases it was leading to an inconsistent state [(Silver, 522)](https://github.com/viperproject/silver/issues/522).
-* **Future breaking change**: Currently, Viper checks the [injectivity of the receiver expression when exhaling quantified permissions](http://viper.ethz.ch/tutorial/?page=1&section=#receiver-expressions-and-injectivity), but not when inhaling quantified permissions. We [plan to change this](https://github.com/viperproject/silver/issues/531) in the January 2022 release, that Viper will also check the injectivity when inhaling quantified permissions. Since this is an important breaking change, this feature is only enabled in this release if the _--checkInjectivity_ flag is provided. This flag will be removed in the next release, and this injectivity check will be enabled by default.
+* **Future breaking change**: Currently, Viper checks the [injectivity of the receiver expression when exhaling quantified permissions](http://viper.ethz.ch/tutorial/?page=1&section=#receiver-expressions-and-injectivity), but not when inhaling quantified permissions. We [plan to change this](https://github.com/viperproject/silver/issues/531) in the January 2022 release, that is Viper will also check the injectivity when inhaling quantified permissions. Since this is an important breaking change, this feature is only enabled in this release if the _--checkInjectivity_ flag is provided. This flag will be removed in the next release, and this injectivity check will be enabled by default.
 
 ### Backend-specific upgrades/changes
 
