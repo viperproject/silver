@@ -179,10 +179,16 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
     wrapInProgram(
       Seq(
         LocalVarAssign(res, BackendFuncApp(bv23.xor("xorBV23"), Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(bv23.xnor("xnorBV23"), Seq(one, two))())(),
         LocalVarAssign(res, BackendFuncApp(bv23.and("andBV23"), Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(bv23.nand("nandBV23"), Seq(one, two))())(),
         LocalVarAssign(res, BackendFuncApp(bv23.or("orBV23"), Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(bv23.nor("norBV23"), Seq(one, two))())(),
         LocalVarAssign(res, BackendFuncApp(bv23.add("addBV23"), Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(bv23.sub("subBV23"), Seq(one, two))())(),
         LocalVarAssign(res, BackendFuncApp(bv23.mul("mulBV23"), Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(bv23.smod("smodBV23"), Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(bv23.srem("sremBV23"), Seq(one, two))())(),
         LocalVarAssign(res, BackendFuncApp(bv23.udiv("udivBV23"), Seq(one, two))())(),
         LocalVarAssign(res, BackendFuncApp(bv23.urem("uremBV23"), Seq(one, two))())(),
         LocalVarAssign(res, BackendFuncApp(bv23.shl("shlBV23"), Seq(one, two))())(),

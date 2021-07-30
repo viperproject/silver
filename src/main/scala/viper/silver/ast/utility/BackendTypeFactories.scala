@@ -10,18 +10,78 @@ import viper.silver.ast.{Bool, Int, LocalVarDecl, BackendFunc, BackendType}
 case class BVFactory(size: Int) {
   lazy val typ = BackendType(s"bv${size}", s"(_ BitVec ${size})")
 
+  /**
+   * bit vector bitwise xor
+   */
   def xor(name: String) = BackendFunc(name, "bvxor", typ, Seq(LocalVarDecl("x", typ)(), LocalVarDecl("y", typ)()))
+  /**
+   * bit vector bitwise bvxnor
+   */
+  def xnor(name: String) = BackendFunc(name, "bvxnor", typ, Seq(LocalVarDecl("x", typ)(), LocalVarDecl("y", typ)()))
+  /**
+   * bit vector bitwise and
+   */
   def and(name: String) = BackendFunc(name, "bvand", typ, Seq(LocalVarDecl("x", typ)(), LocalVarDecl("y", typ)()))
+  /**
+   * bit vector bitwise nand
+   */
+  def nand(name: String) = BackendFunc(name, "bvnand", typ, Seq(LocalVarDecl("x", typ)(), LocalVarDecl("y", typ)()))
+  /**
+   * bit vector bitwise or
+   */
   def or(name: String) = BackendFunc(name, "bvor", typ, Seq(LocalVarDecl("x", typ)(), LocalVarDecl("y", typ)()))
+  /**
+   * bit vector bitwise nor
+   */
+  def nor(name: String) = BackendFunc(name, "bvnor", typ, Seq(LocalVarDecl("x", typ)(), LocalVarDecl("y", typ)()))
+  /**
+   * bit vector addition
+   */
   def add(name: String) = BackendFunc(name, "bvadd", typ, Seq(LocalVarDecl("x", typ)(), LocalVarDecl("y", typ)()))
+  /**
+   * bit vector subtraction
+   */
+  def sub(name: String) = BackendFunc(name, "bvsub", typ, Seq(LocalVarDecl("x", typ)(), LocalVarDecl("y", typ)()))
+  /**
+   * bit vector multiplication
+   */
   def mul(name: String) = BackendFunc(name, "bvmul", typ, Seq(LocalVarDecl("x", typ)(), LocalVarDecl("y", typ)()))
+  /**
+   * bit vector signed modulo
+   */
+  def smod(name: String) = BackendFunc(name, "bvsmod", typ, Seq(LocalVarDecl("x", typ)(), LocalVarDecl("y", typ)()))
+  /**
+   * bit vector unsigned division
+   */
   def udiv(name: String) = BackendFunc(name, "bvudiv", typ, Seq(LocalVarDecl("x", typ)(), LocalVarDecl("y", typ)()))
+  /**
+   * bit vector unsigned remainder
+   */
   def urem(name: String) = BackendFunc(name, "bvurem", typ, Seq(LocalVarDecl("x", typ)(), LocalVarDecl("y", typ)()))
+  /**
+   * bit vector signed remainder
+   */
+  def srem(name: String) = BackendFunc(name, "bvsrem", typ, Seq(LocalVarDecl("x", typ)(), LocalVarDecl("y", typ)()))
+  /**
+   * bit vector shift left
+   */
   def shl(name: String) = BackendFunc(name, "bvshl", typ, Seq(LocalVarDecl("x", typ)(), LocalVarDecl("y", typ)()))
+  /**
+   * bit vector unsigned (logical) shift right
+   */
   def lshr(name: String) = BackendFunc(name, "bvlshr", typ, Seq(LocalVarDecl("x", typ)(), LocalVarDecl("y", typ)()))
+  /**
+   * bit vector signed (arithmetical) shift right
+   */
   def ashr(name: String) = BackendFunc(name, "bvashr", typ, Seq(LocalVarDecl("x", typ)(), LocalVarDecl("y", typ)()))
 
+  /**
+   * bit vector bitwise not
+   */
   def not(name: String) = BackendFunc(name, "bvnot", typ, Seq(LocalVarDecl("x", typ)()))
+  /**
+   * bit vector unary minus
+   */
   def neg(name: String) = BackendFunc(name, "bvneg", typ, Seq(LocalVarDecl("x", typ)()))
 
   def from_int(name: String) = BackendFunc(name, s"(_ int2bv ${size})", typ, Seq(LocalVarDecl("x", Int)()))
