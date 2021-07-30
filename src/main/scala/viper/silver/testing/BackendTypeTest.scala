@@ -167,6 +167,36 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
     (wrapInProgram(Seq(assign, assertion1), Seq(), Seq(result_decl)), assertion1)
   }
 
+  def generateBvOpTest2() : Program = {
+    val bv23 = BVFactory(23)
+    val from_int = bv23.from_int("toBV23")
+    val two_lit = IntLit(2)()
+    val one_lit = IntLit(1) ()
+    val two = BackendFuncApp(from_int, Seq(two_lit))()
+    val one = BackendFuncApp(from_int, Seq(one_lit))()
+    val res_decl = LocalVarDecl("res", bv23.typ)()
+    val res = res_decl.localVar
+    wrapInProgram(
+      Seq(
+        LocalVarAssign(res, BackendFuncApp(bv23.xor("xorBV23"), Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(bv23.xnor("xnorBV23"), Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(bv23.and("andBV23"), Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(bv23.nand("nandBV23"), Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(bv23.or("orBV23"), Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(bv23.nor("norBV23"), Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(bv23.add("addBV23"), Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(bv23.sub("subBV23"), Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(bv23.mul("mulBV23"), Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(bv23.smod("smodBV23"), Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(bv23.srem("sremBV23"), Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(bv23.udiv("udivBV23"), Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(bv23.urem("uremBV23"), Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(bv23.shl("shlBV23"), Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(bv23.lshr("lshrBV23"), Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(bv23.ashr("ashrBV23"), Seq(one, two))())(),
+      ), Seq(), Seq(res_decl))
+  }
+
   def wrapInProgram(stmts: Seq[Stmt], params: Seq[LocalVarDecl], vars: Seq[LocalVarDecl], fields: Seq[Field] = Seq()): Program = {
     val block = Seqn(stmts, vars)()
     val method = Method("test", params, Seq(), Seq(), Seq(), Some(block))()
@@ -227,6 +257,12 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
       case Failure(Seq(AssertFailed(a, _, _))) if a == assertNode => true
       case _ => false
     })
+  }
+
+  test("bvOp2Success") {
+    val prog = generateBvOpTest2()
+    val res  = verifier.verify(prog)
+    assert(res == Success)
   }
 
   test("floatOpSuccess") {
