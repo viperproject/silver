@@ -19,6 +19,7 @@ case class BVFactory(size: Int) {
   def urem(name: String) = BackendFunc(name, "bvurem", typ, Seq(LocalVarDecl("x", typ)(), LocalVarDecl("y", typ)()))
   def shl(name: String) = BackendFunc(name, "bvshl", typ, Seq(LocalVarDecl("x", typ)(), LocalVarDecl("y", typ)()))
   def lshr(name: String) = BackendFunc(name, "bvlshr", typ, Seq(LocalVarDecl("x", typ)(), LocalVarDecl("y", typ)()))
+  def ashr(name: String) = BackendFunc(name, "bvashr", typ, Seq(LocalVarDecl("x", typ)(), LocalVarDecl("y", typ)()))
 
   def not(name: String) = BackendFunc(name, "bvnot", typ, Seq(LocalVarDecl("x", typ)()))
   def neg(name: String) = BackendFunc(name, "bvneg", typ, Seq(LocalVarDecl("x", typ)()))

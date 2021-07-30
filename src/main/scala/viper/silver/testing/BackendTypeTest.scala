@@ -187,6 +187,7 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
         LocalVarAssign(res, BackendFuncApp(bv23.urem("uremBV23"), Seq(one, two))())(),
         LocalVarAssign(res, BackendFuncApp(bv23.shl("shlBV23"), Seq(one, two))())(),
         LocalVarAssign(res, BackendFuncApp(bv23.lshr("lshrBV23"), Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(bv23.ashr("ashrBV23"), Seq(one, two))())(),
       ), Seq(), Seq(res_decl))
   }
 
