@@ -78,7 +78,7 @@ trait TestAnnotationParser {
           // there should be a space -> report error
           parseErrors ::= TestAnnotationParseError(l, file, curLineNr)
         }
-      } else if (l.startsWith(commentStart)) {
+      } else if (isCommentStart(l)) {
         // ignore comments
       } else {
         // finish parsing annotations
@@ -90,6 +90,16 @@ trait TestAnnotationParser {
       }
     }
     (parseErrors.reverse, finalAnnotations.reverse)
+  }
+
+  /**
+    * Decides whether a line should be ignored because it is a line comment.
+    * By default, all lines starting with `commentStart` are ignored.
+    * However, subclasses can override this function to e.g. differentiate between regular comments and specification
+    * occurring in comments
+    */
+  protected def isCommentStart(trimmedLine: String): Boolean = {
+    trimmedLine.startsWith(commentStart)
   }
 
   /** At the time we parse a test annotation, we cannot know the `forLineNr` yet, so add it correctly now. */
