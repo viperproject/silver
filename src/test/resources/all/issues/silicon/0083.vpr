@@ -16,7 +16,8 @@ method test2(xs: Seq[Int], n: Int)
   //:: ExpectedOutput(not.wellformed:seq.index.length)
   requires forall i: Int :: i in [0..n) ==> xs[i] != 0
 {
-  //:: UnexpectedOutput(assert.failed:seq.index.length, /Carbon/issue/388/)
+  //:: ExpectedOutput(assert.failed:seq.index.length)
+  //:: MissingOutput(assert.failed:seq.index.length, /silicon/issue/34/)
   assert xs[3] != 0
 }
 
@@ -33,5 +34,6 @@ function fun(i: Int): Bool
 method test20(xs: Seq[Int], i: Int) {
   //:: ExpectedOutput(assignment.failed:seq.index.negative)
   //:: ExpectedOutput(assignment.failed:seq.index.length)
+  //:: MissingOutput(assignment.failed:seq.index.length, /silicon/issue/34/)
   var b: Bool := fun(xs[i])
 }
