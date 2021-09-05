@@ -129,7 +129,6 @@ method insert(xs: Ref, x: Int) returns (i: Int)
     acc(List(xs)) && elems(xs) == old(elems(xs))[0..i] ++ (Seq(x) ++ crtElems)
 
   //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/290/)
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/550/)
   assert acc(List(crt))&& elems(crt) == Seq(x) ++ crtElems
 
   apply
