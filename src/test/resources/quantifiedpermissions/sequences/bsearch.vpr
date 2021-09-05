@@ -12,6 +12,7 @@ method bfind_orig(S: Seq[Ref], x: Int, p: Perm) returns (index: Int)
   ensures forall i: Int :: {S[i].f} i in [0..|S|) ==> acc(S[i].f, p)
   ensures index in [-1..|S|)
   //:: ExpectedOutput(postcondition.violated:assertion.false)
+  //:: MissingOutput(postcondition.violated:assertion.false, /silicon/issue/34/)
   ensures index in [0..|S|) ==> S[index].f == x
   //:: ExpectedOutput(postcondition.violated:assertion.false)
   ensures index == -1 ==> (forall i: Int :: {S[i].f} i in [0..|S|) ==> S[i].f != x)
