@@ -154,17 +154,16 @@ trait ErrorMessage {
 trait VerificationError extends AbstractError with ErrorMessage {
   def reason: ErrorReason
   def readableMessage(withId: Boolean = false, withPosition: Boolean = false): String
-  override def readableMessage : String = {
-    val rm : String = readableMessage(false, true)
-    if (counterexample.isDefined){
-      rm + "\n" + counterexample.get.toString
-    }else{
-      rm
-    }
-  }
+  override def readableMessage: String = readableMessage(false, true) + failureContexts.map(e => e.toString).mkString("\n")
   def loggableMessage: String = s"$fullId-$pos" + (if (cached) "-cached" else "")
   def fullId = s"$id:${reason.id}"
-  var counterexample : Option[Counterexample] = None
+  var failureContexts: Seq[FailureContext] = Seq() //TODO: make immutable
+
+}
+
+trait FailureContext {
+  def counterExample: Option[Counterexample]
+  def toString: String
 }
 
 /// used when an error/reason has no sensible node to use
@@ -230,7 +229,7 @@ abstract class AbstractVerificationError extends VerificationError {
     val reasonT = errorT.reason.offendingNode.transformReason(errorT.reason)
 
     val res = errorT.withReason(reasonT)
-    res.counterexample = counterexample
+    res.failureContexts = failureContexts
     res
   }
 
