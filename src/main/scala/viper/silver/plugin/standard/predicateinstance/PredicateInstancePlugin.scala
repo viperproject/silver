@@ -32,7 +32,7 @@ class PredicateInstancePlugin  extends SilverPlugin with ParserPluginTemplate {
    * Parser for declaring predicate instances.
    *
    */
-  def predicateInstance[_: P]: P[PPredicateInstance] = FP(PredicateInstanceMarker ~/ P(predAcc)).map{ case (pos, p) => PPredicateInstance(p.args, p.idnuse)(pos) }
+  def predicateInstance[B: P]: P[PPredicateInstance] = FP(PredicateInstanceMarker ~/ P(predAcc)).map{ case (pos, p) => PPredicateInstance(p.args, p.idnuse)(pos) }
 
   /** Called before any processing happened.
    *

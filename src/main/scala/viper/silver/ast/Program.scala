@@ -239,7 +239,8 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
   lazy val groundTypeInstances = DomainInstances.findNecessaryTypeInstances(this)
 
-  lazy val members: Seq[Member with Serializable] = domains ++ fields ++ functions ++ predicates ++ methods
+  // TODOJ: why is the cast needed?? Transparent traits in Scala 3... is there any way around the cast?
+  lazy val members: Seq[Member with Serializable] = (domains ++ fields ++ functions ++ predicates ++ methods).asInstanceOf[Seq[Member with Serializable]]
 
   def findField(name: String): Field = {
     this.fields.find(_.name == name) match {
@@ -777,6 +778,6 @@ case class BackendFunc(name: String, smtName: String, override val typ: Type, ov
 /**
   * The Extension Member trait provides the way to expand the Ast to include new Top Level declarations
   */
-trait ExtensionMember extends Member{
+trait ExtensionMember extends Member {
   def extensionSubnodes: Seq[Node]
 }

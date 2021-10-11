@@ -206,7 +206,7 @@ object QuantifiedPermissions {
                 Implies(newCond1, e1)(rhs.pos, rhs.info) // TODO: this positional/info choice seems surprising. See also issue #249
               )(source.pos, source.info))
 
-                newForalls0 ++ newForalls1
+            newForalls0 ++ newForalls1
 
           case nested@SourceQuantifiedPermissionAssertion(_, Implies(nestedCond, nestedRhs)) => // no need to check nestedRhs is pure, or else consistency check should already have failed (e.h. impure lhs of implication)
             /* Source forall denotes a quantified permission assertion that potentially

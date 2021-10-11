@@ -7,8 +7,11 @@
 // Settings common to Silver and backends
 // Compilation settings
 
-ThisBuild / scalaVersion := "2.13.4"
+ThisBuild / scalaVersion := "3.0.1"
+ThisBuild / crossScalaVersions ++= Seq("2.13.4", "3.0.1")
+
 ThisBuild / scalacOptions ++= Seq(
+  "-rewrite", "-source", "3.0-migration", "-Xignore-scala2-macros",
   "-encoding", "UTF-8",               // Enforce UTF-8, instead of relying on properly set locales
   "-deprecation",                     // Warn when using deprecated language features
   "-unchecked",                       // Warn on generated code assumptions
@@ -43,11 +46,11 @@ lazy val silver = (project in file("."))
     Test / fork := true,
 
     // Compilation settings
-    libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,             // Scala
-    libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.2",                            // Testing
-    libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2",    // Parsing
-    libraryDependencies += "com.lihaoyi" %% "fastparse" % "2.2.2",                              // Parsing
-    libraryDependencies += "org.rogach" %% "scallop" % "4.0.1",                                 // CLI parsing
+    //libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,             // Scala
+    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.9",                            // Testing
+    libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "2.0.0",    // Parsing
+    libraryDependencies += ("com.lihaoyi" %% "fastparse" % "2.2.2").cross(CrossVersion.for3Use2_13),                              // Parsing
+    libraryDependencies += "org.rogach" %% "scallop" % "4.0.4",                                 // CLI parsing
     libraryDependencies += "commons-io" % "commons-io" % "2.8.0",                               // I/O
     libraryDependencies += "com.google.guava" % "guava" % "29.0-jre",                           // Collections
     libraryDependencies += "org.jgrapht" % "jgrapht-core" % "1.5.0",                            // Graphs

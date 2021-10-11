@@ -39,13 +39,13 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
    * or
    * decreases *
    */
-  def decreases[_: P]: P[PDecreasesClause] =
+  def decreases[B: P]: P[PDecreasesClause] =
     P(keyword(DecreasesKeyword) ~/ (decreasesWildcard | decreasesStar | decreasesTuple) ~ ";".?).map(e => e._3)
-  def decreasesTuple[_: P]: P[PDecreasesTuple] =
+  def decreasesTuple[B: P]: P[PDecreasesTuple] =
     FP(exp.rep(sep = ",") ~/ condition.?).map { case (pos, (a, c)) => PDecreasesTuple(a, c)(pos) }
-  def decreasesWildcard[_: P]: P[PDecreasesWildcard] = FP("_" ~/ condition.?).map{ case (pos, c) => PDecreasesWildcard(c)(pos) }
-  def decreasesStar[_: P]: P[PDecreasesStar] = FP("*").map{ case (pos, _) => PDecreasesStar()(pos)}
-  def condition[_: P]: P[PExp] = P("if" ~/ exp)
+  def decreasesWildcard[B: P]: P[PDecreasesWildcard] = FP("_" ~/ condition.?).map{ case (pos, c) => PDecreasesWildcard(c)(pos) }
+  def decreasesStar[B: P]: P[PDecreasesStar] = FP("*").map{ case (pos, _) => PDecreasesStar()(pos)}
+  def condition[B: P]: P[PExp] = P("if" ~/ exp)
 
 
   /**

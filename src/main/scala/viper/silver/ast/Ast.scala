@@ -123,13 +123,13 @@ trait Node extends Iterable[Node] with Rewritable {
                 recurse: Traverse = Traverse.Innermost)
                : this.type =
 
-  StrategyBuilder.Slim[Node](pre, recurse) execute[this.type] (this)
+  StrategyBuilder.Slim[Node](pre, recurse).execute[this.type] (this)
 
   def transformForceCopy(pre: PartialFunction[Node, Node] = PartialFunction.empty,
                 recurse: Traverse = Traverse.Innermost)
   : this.type =
 
-    StrategyBuilder.Slim[Node](pre, recurse).forceCopy() execute[this.type] (this)
+    StrategyBuilder.Slim[Node](pre, recurse).forceCopy().execute[this.type] (this)
 
   /**
     * Allows a transformation with a custom context threaded through
@@ -139,7 +139,7 @@ trait Node extends Iterable[Node] with Rewritable {
                              initialContext: C,
                 recurse: Traverse = Traverse.Innermost)
   : this.type =
-    ViperStrategy.CustomContext[C](transformation, initialContext, recurse) execute[this.type] (this)
+    ViperStrategy.CustomContext[C](transformation, initialContext, recurse).execute[this.type] (this)
 
   def transformNodeAndContext[C](transformation: PartialFunction[(Node,C), (Node, C)],
                                  initialContext: C,

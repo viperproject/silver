@@ -35,14 +35,14 @@ sealed trait Bounce [+ A] {
         a match {
           case Done (v)     => f (v).resume
           case Call (k)     => Left (() => k () flatMap f)
-          case FlatMap(b,g) => b.flatMap ((x : Any) => g (x) flatMap f).resume
+          case FlatMap(b,g) => b.flatMap (x => g (x) flatMap f).resume // Not sure why x:Any must be removed here?
         }
     }
 
   def flatMap[B] (f : A => Bounce[B]) : Bounce[B] =
     this match {
       case FlatMap (a, g) =>
-        FlatMap (a, (x: Any) => g (x) flatMap f)
+        FlatMap (a, x => g (x) flatMap f)
       case x =>
         FlatMap (x, f)
     }

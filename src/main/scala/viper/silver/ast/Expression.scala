@@ -368,16 +368,16 @@ case class DomainFuncApp(funcname: String, args: Seq[Exp], typVarMap: Map[TypeVa
   extends AbstractDomainFuncApp with PossibleTrigger {
   override lazy val check : Seq[ConsistencyError] = args.flatMap(Consistency.checkPure)
 
-  def func = (p:Program) => p.findDomainFunction(funcname)
+  def func: (Program => DomainFunc) = (p:Program) => p.findDomainFunction(funcname)
   def getArgs = args
   def withArgs(newArgs: Seq[Exp]) = DomainFuncApp(funcname,newArgs,typVarMap)(pos,info,typ,domainName, errT)
   def asManifestation = this
 
   //Strangely, the copy method is not a member of the DomainFuncApp case class,
   //therefore, We need this method that does the copying manually
-  def copy(funcname: String = this.funcname, args: Seq[Exp] = this.args, typVarMap: Map[TypeVar, Type] = this.typVarMap): (Position, Info, Type, String, ErrorTrafo) => DomainFuncApp ={
-    DomainFuncApp(this.funcname,args,typVarMap)
-  }
+  // def copy(funcname: String = this.funcname, args: Seq[Exp] = this.args, typVarMap: Map[TypeVar, Type] = this.typVarMap): (Position, Info, Type, String, ErrorTrafo) => DomainFuncApp ={
+  //   DomainFuncApp(this.funcname,args,typVarMap)
+  // }
 }
 object DomainFuncApp {
   def apply(func : DomainFunc, args: Seq[Exp], typVarMap: Map[TypeVar, Type])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos) : DomainFuncApp =
@@ -430,7 +430,7 @@ case class PredicateAccess(args: Seq[Exp], predicateName: String)
                           (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
     extends LocationAccess {
 
-  def loc(p:Program) = p.findPredicate(predicateName)
+  def loc(p:Program): Predicate = p.findPredicate(predicateName)
   lazy val typ = Bool
 
   /** The body of the predicate with the arguments instantiated correctly. */
@@ -942,7 +942,7 @@ case class AnySetContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val
   override lazy val check : Seq[ConsistencyError] =
     if(!((s.typ.isInstanceOf[SetType] && (elem isSubtype s.typ.asInstanceOf[SetType].elementType)) ||
     (s.typ.isInstanceOf[MultisetType] && (elem isSubtype s.typ.asInstanceOf[MultisetType].elementType)))) Seq(ConsistencyError(s"Set type ${s.typ} and element type ${elem.typ} must be compatible.", elem.pos)) else Seq()
-    lazy val priority = 7
+  lazy val priority = 7
   lazy val fixity = Infix(NonAssociative)
   lazy val left = elem
   lazy val op = "in"

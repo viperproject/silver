@@ -112,7 +112,7 @@ object Simplifier {
         IntLit(left / right)(root.pos, root.info)
       case root @ Mod(IntLit(left), IntLit(right)) if right != bigIntZero =>
         IntLit((right.abs + (left % right)) % right.abs)(root.pos, root.info)
-    }, Traverse.BottomUp) execute[Exp](expression)
+    }, Traverse.BottomUp).execute[Exp](expression)
   }
 
   private val bigIntZero = BigInt(0)
