@@ -26,7 +26,7 @@ jobs:
     - name: Set up Scala and JDK 1.${{ matrix.java }}
       uses: olafurpg/setup-scala@v11
       with:
-        java-version: "temurin@1.${{ matrix.java }}"
+        java-version: "adopt@1.${{ matrix.java }}"
     - name: Generate artifact files
       run: sbt publishLocal
     - name: Run tests
