@@ -18,7 +18,9 @@ object ModelParser {
 
   def mappingContent[_: P]: P[MapEntry] = P(options | default)
 
-  def options[_: P]: P[MapEntry] = P(option.rep ~ ("else" ~ "->" ~ value).?).map {
+  def options[_: P]: P[MapEntry] = P(option.rep ~ ("else" ~ "->" ~ value).?).filter({
+    case (options, default) => options.nonEmpty || default.isDefined
+  }).map {
     case (options, default) => MapEntry(options.toMap, default.getOrElse(UnspecifiedEntry))
   }
 
@@ -54,7 +56,9 @@ object ModelParser {
 
   def binding[_: P]: P[(String, ValueEntry)] = P("(" ~ idnuse ~ value ~ ")")
 
-  def unspecified[_: P]: P[ValueEntry] = P("(#unspecified)").map(_ => UnspecifiedEntry)
+  def unspecified[_: P]: P[ValueEntry] = P("(#unspecified)").map({
+    case _ => UnspecifiedEntry
+  })
 
   def constant[_: P]: P[ConstantEntry] = P(idnuse).map(ConstantEntry)
 

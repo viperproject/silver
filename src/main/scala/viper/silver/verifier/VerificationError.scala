@@ -124,6 +124,10 @@ trait Counterexample {
 
 case class SimpleCounterexample(model: Model) extends Counterexample
 
+case class CompleteCounterexample(model: Model, extractedModel: ExtractedModel) extends Counterexample {
+  override def toString: String = extractedModel.toString
+}
+
 trait CounterexampleTransformer {
   def f: Counterexample => Counterexample
 }
@@ -144,6 +148,167 @@ object Model {
     }
   }
 }
+
+
+/// Marco: copied
+
+final class Rational(n: BigInt, d: BigInt) extends Ordered[Rational] {
+  require(d != 0, "Denominator of Rational must not be 0.")
+
+  private val g = n.gcd(d)
+  val numerator: BigInt = n / g * d.signum
+  val denominator: BigInt = d.abs / g
+
+  def +(that: Rational): Rational = {
+    val newNum = this.numerator * that.denominator + that.numerator * this.denominator
+    val newDen = this.denominator * that.denominator
+    Rational(newNum, newDen)
+  }
+  def -(that: Rational): Rational = this + (-that)
+  def unary_- = Rational(-numerator, denominator)
+  def abs = Rational(numerator.abs, denominator)
+  def signum = Rational(numerator.signum, 1)
+
+  def *(that: Rational): Rational = Rational(this.numerator * that.numerator, this.denominator * that.denominator)
+  def /(that: Rational): Rational = this * that.inverse
+  def inverse = Rational(denominator, numerator)
+
+  def compare(that: Rational) = (this.numerator * that.denominator - that.numerator * this.denominator).signum
+
+  override def equals(obj: Any) = obj match {
+    case that: Rational => this.numerator == that.numerator && this.denominator == that.denominator
+    case _ => false
+  }
+
+  override lazy val toString = s"$numerator/$denominator"
+}
+
+object Rational extends ((BigInt, BigInt) => Rational) {
+  val zero = Rational(0, 1)
+  val one = Rational(1, 1)
+
+  def apply(numer: BigInt, denom: BigInt) = new Rational(numer, denom)
+  def unapply(r: Rational) = Some(r.numerator, r.denominator)
+}
+
+//Classes for extracted Model Entries
+case class ExtractedModel(store: Map[String, ExtractedModelEntry],
+                          heap: ExtractedHeap,
+                          oldHeap: Option[ExtractedHeap],
+                          labelHeaps: Map[String, ExtractedHeap]) {
+  override def toString: String = {
+    val storeString = store.map({
+      case (name, entry) => s"$name -> $entry"
+    }).mkString("\n")
+    val labelHeapStrings = labelHeaps.map({
+      case (lbl, lblHeap) => s"Heap at label $lbl:\n$lblHeap"
+    }).mkString("\n")
+    s"Store:\n$storeString\nHeap:\n$heap\nOld heap:\n${oldHeap.get}\n$labelHeapStrings"
+  }
+}
+
+sealed trait ExtractedModelEntry {
+  def asValueEntry: ValueEntry
+  def toString: String
+}
+
+case class LitIntEntry(value: BigInt) extends ExtractedModelEntry {
+  override lazy val toString: String = value.toString
+  lazy val asValueEntry = {
+    if (value < 0) {
+      ApplicationEntry("-", Seq(ConstantEntry((-value).toString)))
+    } else {
+      ConstantEntry(value.toString)
+    }
+  }
+}
+
+case class LitBoolEntry(value: Boolean) extends ExtractedModelEntry {
+  override lazy val toString: String = value.toString
+  lazy val asValueEntry = ConstantEntry(value.toString)
+}
+
+case class LitPermEntry(value: Rational) extends ExtractedModelEntry {
+  override lazy val toString: String = value.toString
+  lazy val asValueEntry = {
+      ConstantEntry(value.toString)
+  }
+}
+
+case class RefEntry(
+                     name: String,
+                   ) extends ExtractedModelEntry {
+  override lazy val toString: String = {
+    s"Ref ($name)"
+  }
+  lazy val asValueEntry = ConstantEntry(name)
+}
+
+case class NullRefEntry(name: String) extends ExtractedModelEntry {
+  override lazy val toString = s"Null($name)"
+  lazy val asValueEntry = ConstantEntry(name)
+}
+
+case class RecursiveRefEntry(name: String) extends ExtractedModelEntry {
+  override lazy val toString = s"recursive reference to $name"
+  lazy val asValueEntry = ConstantEntry(name)
+}
+
+case class VarEntry(name: String) extends ExtractedModelEntry {
+  override lazy val toString: String = name
+  lazy val asValueEntry = ConstantEntry(name)
+}
+
+case class OtherEntry(value: String, problem: String = "")
+  extends ExtractedModelEntry {
+  override lazy val toString = s"$value [$problem]"
+  lazy val asValueEntry = ConstantEntry(value)
+}
+
+case class SeqEntry(name: String, values: Vector[ExtractedModelEntry])
+  extends ExtractedModelEntry {
+  override lazy val toString = s"($name): [${values.map(_.toString).mkString(", ")}]"
+  lazy val asValueEntry = ConstantEntry(name)
+}
+
+case class UnprocessedModelEntry(entry: ValueEntry)
+  extends ExtractedModelEntry {
+  override lazy val toString = s"$entry"
+  lazy val asValueEntry = entry
+}
+
+// processed Heap representation:
+sealed trait HeapEntry {
+  def toString: String
+}
+
+case class ExtractedHeap(entries: Seq[HeapEntry]) {
+  override def toString: String = entries.mkString("\n")
+}
+
+case class PredHeapEntry(
+                          name: String,
+                          args: Seq[ExtractedModelEntry],
+                          perm: Rational
+                        ) extends HeapEntry {
+  override lazy val toString = s"$name(${args.mkString(", ")})[$perm]"
+}
+case class FieldHeapEntry(
+                           recv: VarEntry,
+                           field: String,
+                           perm: Rational,
+//                           sort: Sort,
+                           entry: ExtractedModelEntry
+                         ) extends HeapEntry {
+  override lazy val toString = s"$recv.$field --$perm-> $entry"
+}
+
+//case class UnresolvedHeapEntry(chunk: Chunk, reason: String) extends HeapEntry {
+//  override lazy val toString = s"$chunk (not further processed because: $reason)"
+//}
+
+
+/// Marco: end
 
 trait ErrorMessage {
   def id: String
