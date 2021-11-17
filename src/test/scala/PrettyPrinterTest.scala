@@ -10,7 +10,7 @@ import viper.silver.ast._
 import viper.silver.ast.pretty.FastPrettyPrinter
 
 class PrettyPrinterTest extends AnyFunSuite with Matchers {
-  test("The comment of nested Seqn-s is always printed") {
+  test("The comment of nested Seqn-s is printed correctly") {
     val comment = "Comment XYZ"
     val a = Seqn(Seq(), Seq())(NoPosition, SimpleInfo(Seq(comment)))
     val b = Seqn(Seq(a), Seq())(NoPosition, NoInfo)
@@ -18,6 +18,7 @@ class PrettyPrinterTest extends AnyFunSuite with Matchers {
 
     val printed = FastPrettyPrinter.pretty(c)
 
-    assert(printed.contains(comment))
+    // In particular, we don't want `printed` to end with a newline.
+    assert(printed == "// " + comment)
   }
 }
