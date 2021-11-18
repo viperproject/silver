@@ -1,10 +1,10 @@
 field i: Int
 
-predicate int(this: Ref) {
+inline predicate int(this: Ref) {
   acc(this.i, 1/2)
 }
 
-predicate intint(this: Ref) {
+inline predicate intint(this: Ref) {
   acc(this.i, 1/4) && acc(int(this), 1/5)
 }
 

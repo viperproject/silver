@@ -2,11 +2,11 @@ field left: Int
 field right: Int
 field middle: Int
 
-predicate triple(this: Ref) {
+inline predicate triple(this: Ref) {
   acc(this.left) && acc(this.right) && mid(this)
 }
 
-predicate mid(this: Ref) {
+inline predicate mid(this: Ref) {
   acc(this.middle)
 }
 

@@ -2,7 +2,7 @@
 
 field f: Int
 
-predicate boxed(this: Ref) {
+inline predicate boxed(this: Ref) {
   acc(this.f)
 }
 

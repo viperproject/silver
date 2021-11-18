@@ -1,10 +1,10 @@
  field f: Int
 
- predicate F(this: Ref) {
+ inline predicate F(this: Ref) {
    acc(this.f)
  }
 
- predicate loop(this: Ref) {
+ inline predicate loop(this: Ref) {
    loop(this) && F(this)
  }
 

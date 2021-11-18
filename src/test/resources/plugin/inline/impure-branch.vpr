@@ -2,7 +2,7 @@
 field f: Int
 field g: Int
 
-predicate P(b: Bool, x: Ref) {
+inline predicate P(b: Bool, x: Ref) {
 	b ? acc(x.f) : acc(x.g)
 }
 

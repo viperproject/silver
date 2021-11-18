@@ -1,6 +1,6 @@
 field x: Bool
 
-predicate P(this: Ref) {
+inline predicate P(this: Ref) {
   acc(this.x)
 }
 

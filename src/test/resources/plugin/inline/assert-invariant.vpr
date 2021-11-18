@@ -6,7 +6,7 @@ inline predicate triple(this: Ref) {
   acc(this.left) && acc(this.right) && mid(this)
 }
 
-predicate mid(this: Ref) {
+inline predicate mid(this: Ref) {
   acc(this.middle)
 }
 

@@ -1,4 +1,4 @@
-predicate nonZero(k: Int)
+inline predicate nonZero(k: Int)
 {
   0 <= k
 }

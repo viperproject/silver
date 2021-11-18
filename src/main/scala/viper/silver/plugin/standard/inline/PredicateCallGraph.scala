@@ -36,8 +36,13 @@ object PredicateCallGraph {
     @tailrec
     def iterate(oldLoopBreakers: Set[T], oldGraph: Graph[T]): Set[T] = {
       val stronglyConnected = new KosarajuStrongConnectivityInspector(graph)
-      val scc = stronglyConnected.stronglyConnectedSets()
-      val newLoopBreakers = Set() ++ scc.collect{case x if x.size() > 1 => x.maxBy(oldGraph.degreeOf)}
+      val sccs = stronglyConnected.stronglyConnectedSets()
+      val newLoopBreakers = Set() ++ sccs.collect{
+        case scc if scc.size() > 1 => scc.maxBy(
+          // Choose to avoid inlining the predicate called by the most other predicates within the scc
+          v => oldGraph.incomingEdgesOf(v).count(e => scc.contains(oldGraph.getEdgeSource(e)))
+        )
+      }
       val loopBreakers = oldLoopBreakers ++ newLoopBreakers
       if (loopBreakers == oldLoopBreakers) {
         loopBreakers
