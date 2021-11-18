@@ -28,10 +28,7 @@ class InlineErrorCheckerTest extends FunSuite with InlineErrorChecker with Inlin
     val program = programCopy(predicates = Seq(recursivePred))
 
     val result = checkRecursive(predicateIds = Set(predId), program)
-    assert(result.size == 1 && result.forall {
-      case Predicate(name, _, _) => name == predId
-      case _ => false
-    })
+    assert(result.size == 1 && result.forall(name => name == predId))
   }
 
   test("checkRecursive should evaluate to a set of recursive predicates given a deeper body") {
@@ -42,7 +39,7 @@ class InlineErrorCheckerTest extends FunSuite with InlineErrorChecker with Inlin
     val program = programCopy(predicates = Seq(recursivePred))
 
     val result = checkRecursive(predicateIds = Set(predId), program)
-    assert(result.size == 1 && result(recursivePred))
+    assert(result.size == 1 && result(recursivePred.name))
   }
 
   test("checkRecursive should evaluate to a set of recursive predicates given a number of recursive preds") {
@@ -57,7 +54,7 @@ class InlineErrorCheckerTest extends FunSuite with InlineErrorChecker with Inlin
     val program = programCopy(predicates = Seq(firstRecursivePred, secondRecursivePred))
 
     val result = checkRecursive(predicateIds = Set(firstRec, secondRec), program)
-    assert(result.size == 2 && result(firstRecursivePred) && result(secondRecursivePred))
+    assert(result.size == 2 && result(firstRecursivePred.name) && result(secondRecursivePred.name))
   }
 
   test("checkMutualRecursive should evaluate to an empty set given an empty set of predicates") {
@@ -96,7 +93,7 @@ class InlineErrorCheckerTest extends FunSuite with InlineErrorChecker with Inlin
     val program = programCopy(predicates = Seq(firstPred, secondPred))
 
     val result = checkMutualRecursive(Set(firstPredId, secondPredId), program)
-    assert(result.size == 2 && result(firstPred) && result(secondPred))
+    assert(result.size == 2 && result(firstPred.name) && result(secondPred.name))
   }
 
   test("predicatesCalledBy should evaluate to None given a predicate with an empty body") {

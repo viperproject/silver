@@ -6,24 +6,26 @@ import viper.silver.plugin.standard.termination.transformation.CallGraph
 
 object PredicateCallGraph {
 
-  type PredicateCallGraph = DefaultDirectedGraph[Predicate, DefaultEdge]
+  type PredicateCallGraph = DefaultDirectedGraph[String, DefaultEdge]
 
-  def graph(preds: Set[Predicate], program: Program): PredicateCallGraph = {
-    val graph = new DefaultDirectedGraph[Predicate, DefaultEdge](classOf[DefaultEdge])
+  def graph(preds: Set[String], program: Program): PredicateCallGraph = {
+    val graph = new PredicateCallGraph(classOf[DefaultEdge])
     preds.foreach(graph.addVertex)
 
-    def process(pred: Predicate, node: Node): Unit =
+    def process(src: String, node: Node): Unit =
       node.visit {
-        case PredicateAccessPredicate(PredicateAccess(_, name), _) =>
-          graph.addEdge(pred, program.findPredicate(name))
+        case PredicateAccessPredicate(PredicateAccess(_, dst), _) =>
+          if (preds(dst)) {
+            graph.addEdge(src, dst)
+          }
       }
 
     preds.foreach { pred =>
-      pred.body.foreach(process(pred, _))
+      program.findPredicate(pred).body.foreach(process(pred, _))
     }
     graph
   }
 
-  def mutuallyRecursivePreds(graph: PredicateCallGraph): Set[Predicate] =
+  def mutuallyRecursivePreds(graph: PredicateCallGraph): Set[String] =
     CallGraph.mutuallyRecursiveVertices(graph).filter(_.size > 1).flatten.toSet
 }

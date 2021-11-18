@@ -13,15 +13,16 @@ trait InlineErrorChecker {
     * @param program the program for which we are performing predicate inlining on.
     * @return the set of recursive predicates.
     */
-  def checkRecursive(predicateIds: Set[String], program: Program): Set[Predicate] = {
+  def checkRecursive(predicateIds: Set[String], program: Program): Set[String] = {
     val predicates = predicateIds.map(program.findPredicate)
     val recursivePreds = predicates.filter {
       case Predicate(name, _, maybeBody) => maybeBody.fold(false)(isRecursivePred(name, _))
     }
-    if (recursivePreds.nonEmpty) {
-      prettyPrint(recursivePreds, "recursive")
+    val recursivePredIds = recursivePreds.map(_.name)
+    if (recursivePredIds.nonEmpty) {
+      prettyPrint(recursivePredIds, "recursive")
     }
-    recursivePreds
+    recursivePredIds
   }
 
   /**
@@ -33,9 +34,8 @@ trait InlineErrorChecker {
     * @param program the program for which we are performing predicate inlining on.
     * @return the set of mutually-recursive predicates.
     */
-  def checkMutualRecursive(predicateIds: Set[String], program: Program): Set[Predicate] = {
-    val predicatesToInspect = predicateIds.map(program.findPredicate)
-    val predicateCallGraph = PredicateCallGraph.graph(predicatesToInspect, program)
+  def checkMutualRecursive(predicateIds: Set[String], program: Program): Set[String] = {
+    val predicateCallGraph = PredicateCallGraph.graph(predicateIds, program)
     val mutRecPreds = PredicateCallGraph.mutuallyRecursivePreds(predicateCallGraph)
     if (mutRecPreds.nonEmpty) {
       prettyPrint(mutRecPreds, "mutually recursive")
@@ -76,7 +76,7 @@ trait InlineErrorChecker {
     * If such a node is found, the predicate is recursively defined.
     *
     * @param predId the id for the predicate we want to check for a recursive definition.
-    * @param maybePredBody the possible body of the predicate.
+    * @param predBody the possible body of the predicate.
     * @return true iff the predicate is found to be recursively defined.
     */
   private[this] def isRecursivePred(predId: String, predBody: Node): Boolean = {
@@ -87,8 +87,8 @@ trait InlineErrorChecker {
     }
   }
 
-  private[this] def prettyPrint(preds: Set[Predicate], errorReason: String): Unit = {
-    val predIds = preds.map(_.name).mkString(", ")
+  private[this] def prettyPrint(preds: Set[String], errorReason: String): Unit = {
+    val predIds = preds.mkString(", ")
     if (preds.size > 1) {
       println(s"${Console.YELLOW} [$predIds] are $errorReason predicates and will not be inlined.${Console.RESET}")
     } else {

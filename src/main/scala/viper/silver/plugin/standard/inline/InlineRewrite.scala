@@ -26,6 +26,12 @@ trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
     )(function.pos, function.info, function.errT)
   }
 
+  def rewritePredicate(pred: Predicate, program: Program, cond: String => Boolean): Predicate = {
+    val rewrittenBody = pred.body.map(expandExpression(_, pred, program, cond))
+    pred.copy(body = rewrittenBody,
+    )(pred.pos, pred.info, pred.errT)
+  }
+
   /**
     * Expands all predicates to their bodies in given expression.
     *
