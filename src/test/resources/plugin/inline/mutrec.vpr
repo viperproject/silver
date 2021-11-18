@@ -1,7 +1,7 @@
 field elem: Int
 field next: Ref
 
-predicate foo(this: Ref) {
+inline predicate foo(this: Ref) {
   list(this) && acc(this.elem)
 }
 
