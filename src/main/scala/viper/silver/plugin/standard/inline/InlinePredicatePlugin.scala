@@ -40,10 +40,10 @@ class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate
 
   override def beforeVerify(input: Program): Program = {
     val annotatedPredIds = this.annotatedPredIds
-    val recursivePredIds = checkRecursive(annotatedPredIds, input) ++ checkMutualRecursive(annotatedPredIds, input)
+    val loopBreakers = findLoopBreakers(annotatedPredIds, input)
     val cond = { pred: String =>
       input.findPredicate(pred).body.nonEmpty &&
-      !recursivePredIds(pred) &&
+      !loopBreakers(pred) &&
       annotatedPredIds(pred)
     }
     // val inlinePredIds = input.extensions.collect({

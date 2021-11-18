@@ -11,8 +11,8 @@ package plugin.inline{
   import java.nio.file.Paths
 
   class CheckOutput extends FunSuite with FileComparisonHelper {
-    test("Performance_BinomialHeap") {
-      val fileName = "mutrec"
+    test("CheckOutput") {
+      val fileName = "recursive"
 
       val frontend = new MockSilFrontend
       val fileRes = getClass.getResource(s"$fileName.vpr")
