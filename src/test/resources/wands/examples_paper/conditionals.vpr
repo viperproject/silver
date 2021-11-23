@@ -106,5 +106,6 @@ method conditionals02(x: Ref)
     // we are now again in a state where we hold permissions to all three
     // fields.
     
-  assert acc(x.f) && acc(x.g) && acc(x.h)
+    //:: ExpectedOutput(assert.failed:insufficient.permission)
+    assert acc(x.f) && acc(x.g) && acc(x.h)
 }

@@ -1,0 +1,26 @@
+field f: Int
+field g: Int
+
+
+method test(x: Ref)
+    requires acc(x.f) --* acc(x.g)
+    requires acc(x.f, 3/4)
+    ensures acc(x.f, 1/2) --* acc(x.g)
+    ensures acc(x.f, 1/4)
+{
+    package acc(x.f, 1/2) --* acc(x.g)
+    {
+        apply acc(x.f) --* acc(x.g) 
+    }
+}
+
+method wandLHS(x: Ref)
+  requires acc(x.f)
+  //:: ExpectedOutput(postcondition.violated:assertion.false)
+  ensures false
+{
+  package (acc(x.f) --* acc(x.g)) --* acc(x.g)
+  {
+    apply acc(x.f) --* acc(x.g)
+  }
+}

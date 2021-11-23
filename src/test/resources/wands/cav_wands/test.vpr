@@ -1,0 +1,115 @@
+field next: Ref
+field f: Int
+field p: Perm
+
+
+method better_completeness(x: Ref, a: Ref, b: Ref)
+    requires acc(a.f) && acc(b.f)
+{
+    package acc(x.next, 1/2) && (x.next == a || x.next == b) --* acc(x.next.f)
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert perm(a.f) > none || perm(b.f) > none
+
+    //assert acc(a.f) && acc(b.next) && acc(b.f) && acc(a.next, 1/2)
+}
+
+
+method better_completeness_2(x: Ref)
+    requires forall r: Ref :: { r.f } acc(r.f)
+{
+    package acc(x.next, 1/2) --* acc(x.next.f)
+
+    var a: Ref
+    var b: Ref
+
+    assume a != b
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert perm(a.f) > none || perm(b.f) > none
+
+
+    //assert acc(a.f) && acc(b.next) && acc(b.f) && acc(a.next, 1/2)
+}
+
+
+method example1(a: Ref, b: Ref)
+    requires acc(a.next) && acc(a.f) && acc(b.next) && acc(b.f)
+{
+    package acc(a.next, 1/2) --* acc(a.next) 
+    assert acc(a.f) && acc(b.next) && acc(b.f) && acc(a.next, 1/2)
+}
+
+method example2(a: Ref, b: Ref)
+    requires acc(a.next) && acc(a.f) && acc(b.next) && acc(b.f)
+{
+    package acc(a.next, 1/2) && (a.next == a || a.next == b) --* acc(a.next) && acc(a.next.f, 1/2)
+    assert acc(a.f, 1/2) && acc(b.next) && acc(b.f, 1/2) && acc(a.next, 1/2)
+    assert perm(a.f) >= 1/2 && perm(b.f) >= 1/2
+
+    // Should verify
+    assert perm(a.f) > 1/2 || perm(b.f) > 1/2
+}
+
+method example2_bis(a: Ref, b: Ref)
+    requires acc(a.next) && acc(a.f) && acc(b.next) && acc(b.f)
+{
+    package acc(a.next, 1/2) && (a.next == a || a.next == b) --* acc(a.next, 1/2) && acc(a.next.f, 1/2)
+    assert acc(a.f, 1/2) && acc(b.next) && acc(b.f, 1/2) && acc(a.next, 1/2)
+    assert perm(a.f) >= 1/2 && perm(b.f) >= 1/2
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert perm(a.f) > 1/2 || perm(b.f) > 1/2
+}
+
+
+method example_3(x: Ref, y: Ref)
+    requires acc(x.next) && acc(y.f)
+{
+    package acc(x.next, 1/2) && acc(x.next.f) && x.next.f >= 5 --* acc(x.next) && acc(x.next.f, 1/2) && x.next.f > 0
+    assert acc(x.next, 1/2) && acc(y.f)
+}
+
+method unsound_example_1(x: Ref, a: Ref, b: Ref)
+    requires acc(x.f) && acc(a.f) && acc(b.f)
+    ensures false
+{
+    package acc(x.f) && (x.f > 0 ? acc(a.f, 1/2) : acc(b.f, 1/2))  --* acc(a.f, 1/2) && acc(b.f, 1/2)
+    
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert (perm(a.f) == 1/1 && perm(b.f) == 1/2) || (perm(a.f) == 1/2 && perm(b.f) == 1/1)
+
+    x.f := perm(a.f) == 1/1 ? 0 : 1
+    apply acc(x.f) && (x.f > 0 ? acc(a.f, 1/2) : acc(b.f, 1/2)) --* acc(a.f, 1/2) && acc(b.f, 1/2)
+}
+
+method real_temporary_unsoundness(x: Ref)
+    requires acc(x.f) && acc(x.p)
+{
+    package acc(x.p) && x.p > none && x.p < write --* acc(x.p) && acc(x.f, write - x.p)
+    
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert perm(x.f) > none
+/*
+    x.p := perm(x.f) / 2
+
+    apply acc(x.p) && x.p > none && x.p < write --* acc(x.p) && acc(x.f, write - x.p)
+    // MAX [0, 1)
+    */
+}
+
+method incomplete1(x: Ref)
+    requires acc(x.f)
+{
+    package acc(x.f) --* acc(x.f) && acc(x.f) && false
+}
+
+method incomplete2(x: Ref)
+{
+    package acc(x.next) && acc(x.next.f) --* acc(x.next) && acc(x.next.f) && x.next != null
+}
+
+method incomplete3(a: Ref, b: Ref)
+{
+    package acc(a.f) && acc(b.f) --* a != b
+}

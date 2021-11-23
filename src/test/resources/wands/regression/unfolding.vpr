@@ -72,7 +72,7 @@ method test02(p: Ref) {
 
 method test03(p: Ref) {
   package (acc(Pair(p), 1/2)) --* acc(p.f) && acc(p.g) {
-      //:: ExpectedOutput(unfold.failed:insufficient.permission)
+      //:: ExpectedOutput(package.failed:insufficient.permission)
       unfold acc(Pair(p))
   }
 }

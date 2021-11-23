@@ -1,0 +1,30 @@
+field f: Int
+
+predicate P(x: Ref)
+{
+    acc(x.f, 1/2) && x.f == 5
+}
+
+method main(x: Ref)
+    requires acc(x.f)
+    ensures acc(x.f, 5/8)
+{
+    package acc(x.f, 1/4) && x.f > 4 && x.f < 6 --* P(x) && acc(x.f, 1/8)
+    {
+        fold P(x)
+    }
+}
+
+predicate A()
+predicate B() { A() }
+predicate C() { A() && A() }
+
+method test()
+    requires B()
+{
+    package A() --* C()
+    {
+        unfold B()
+        fold C()
+    }
+}

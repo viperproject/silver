@@ -1,0 +1,38 @@
+field f: Int
+
+method m(x: Ref, y: Ref) {
+    inhale acc(x.f)
+    inhale acc(y.f)
+
+    //package acc(x.f, 1/2)&&x.f==2 --* acc(x.f,3/4)&&acc(y.f,1/2)
+    //exhale acc(x.f, 1/2)&&x.f==2 --* acc(x.f,3/4)&&acc(y.f,1/2)
+
+    exhale acc(x.f, 1/4) && (x.f == 2 ==> acc(y.f,1/2))
+
+    // Two cases:
+    // 1: x.f == 2
+    // One possible footprint: acc(x.f,1/4)&&acc(y.f,1/2)
+    // 2: x.f != 2
+    // One possible footprint: acc(x.f, wildcard)
+
+    // Footprint: acc(x.f, 1/4) && x.f == 2 ==> acc(y.f,1/2)
+
+
+    // "ideal" footprint: x.f = 1/4, y.f = 1/2
+    // depends on certain condition
+
+    inhale acc(y.f, wildcard)
+    // Case 2: I can angelically go to magic
+    // Because 1 + wildcard > 1
+
+
+    // In this state, we know we have put permission to y.f inside the wand
+    // Thus, x.f == 2
+
+    // If in the past, x.f != 2, then no permission to y.f in the wand
+    // Thus x.f != 2 ==> false
+
+    // means that you must have removed *some* permission from y.f
+    // Thus: x.f == 2 
+    assert x.f == 2
+}
