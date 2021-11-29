@@ -183,19 +183,31 @@ object AssumeRewriter {
     * @return rewritten perm expression that replaces the impure assume statement
     */
   def generatePermUsingFunc(context: Seq[((Exp, Seq[Exp]), Exp)], rcv: Seq[Exp], perm: Exp, permLoc: CurrentPerm, cond: Option[Exp]): Exp = {
-
     assert(context.forall(c => c._1._2.length == rcv.length))
 
-    val contextWithoutRcv = cond match {
-      case Some(exp) =>
-        context.filter(c => !c._1._1.equals(exp))
-      case None =>
-        context.filter(c => !rcv.forall(e => c._1._1.contains(e)))
-    }
-    if (contextWithoutRcv.isEmpty) return PermGeCmp(permLoc, perm)()
+//    val contextWithoutRcv = cond match {
+//      case Some(exp) =>
+//        context.filter(c => !c._1._1.equals(exp))
+//      case None =>
+//        context.filter(c => !rcv.forall(e => c._1._1.contains(e)))
+//    }
+    val contextWithoutRcv = context
+//    if (contextWithoutRcv.isEmpty) return PermGeCmp(permLoc, perm)()
 
-    val conds = contextWithoutRcv map (c => c._1._1.replace((c._1._2 zip rcv).toMap[Exp, Exp]))
-    val perms = (contextWithoutRcv map (_._2)) :+ perm
+    val conds: Seq[Exp] = contextWithoutRcv
+      .map(c => c._1._1.replace((c._1._2 zip rcv).toMap[Exp, Exp]))
+      .map(viper.silver.ast.utility.Simplifier.simplify)
+
+    println(s"\n\nrcv = $rcv  [${rcv.head.pos}]")
+    println("context = " + context)
+    println("cond = " + cond)
+    println("conds = " + conds)
+
+//    if (conds.length == 1 && conds.head.isInstanceOf[TrueLit]) {
+//      return PermGeCmp(permLoc, perm)()
+//    }
+
+    val perms: Seq[Exp] = (contextWithoutRcv map (_._2)) :+ perm
 
     if (funcs.length <= contextWithoutRcv.length-1) {
       val (fun, ax) = generateFunc(funcs.length + 1)
@@ -205,6 +217,7 @@ object AssumeRewriter {
 
     val func = funcs(contextWithoutRcv.length-1)
     val funcApp = DomainFuncApp(func, conds ++ perms, Map[TypeVar, Type]())()
+
     PermGeCmp(permLoc, funcApp)()
   }
 
