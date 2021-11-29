@@ -7,7 +7,7 @@
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 import viper.silver.ast._
-import viper.silver.ast.utility.AssumeRewriter
+import viper.silver.ast.utility.ImpureAssumeRewriter
 
 
 class UtilityTests extends AnyFunSuite with Matchers {

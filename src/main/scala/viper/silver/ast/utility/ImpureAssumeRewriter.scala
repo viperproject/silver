@@ -19,13 +19,16 @@ import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssert
   *   if there are more conjunctions, additional functions are generated to check aliasing
   */
 
-object AssumeRewriter {
-  val domainName = "Assume"
+object ImpureAssumeRewriter {
+  val domainName = "__ns__impure_assume_rewriter"
 
-  var funcs: Seq[DomainFunc] = Seq()
-  var axioms: Seq[DomainAxiom] = Seq()
-  var inverses = Seq.empty[DomainFunc]
-  var domains = Seq.empty[Domain]
+  private def localDummyVar[S](suffix: S, typ: Type): LocalVar = LocalVar("__iar__dummy" + suffix, typ)()
+  private def localDummyVar(typ: Type): LocalVar = localDummyVar("", typ)
+
+  private var funcs: Seq[DomainFunc] = Seq()
+  private var axioms: Seq[DomainAxiom] = Seq()
+  private var inverses = Seq.empty[DomainFunc]
+  private var domains = Seq.empty[Domain]
 
   def rewrite(exp: Exp, program: Program) : Exp = {
 
@@ -39,8 +42,10 @@ object AssumeRewriter {
     val strat = ViperStrategy.Context[Map[Resource, Seq[((Exp, Seq[Exp]), Exp)]]]({
       case (fap: FieldAccessPredicate, c) =>
         val insideWand = c.ancestorList.foldLeft[Boolean](false)((b, n) => b || n.isInstanceOf[MagicWand])
-        val dummyVar = LocalVar("dummy", Ref)()
+        val dummyVar = localDummyVar(Ref)
         val ctx = c.updateContext(c.c + (fap.loc.field -> (c.c.getOrElse(fap.loc.field, Seq()) :+ ((EqCmp(fap.loc.rcv, dummyVar)(fap.pos, fap.info, fap.errT), Seq(dummyVar)), fap.perm))))
+     // val dummyVar = localDummyVar(Ref)
+                                     // (fap.loc.field ->                                         (((EqCmp(fap.loc.rcv, dummyVar)(fap.pos, fap.info, fap.errT), Seq(dummyVar)), fap.perm)))
         if (!insideWand) {
           val cp = CurrentPerm(fap.loc)(fap.pos, fap.info, fap.errT)
           val p = generatePermUsingFunc(c.c.getOrElse(fap.loc.field, Seq()), Seq(fap.loc.rcv), fap.perm, cp, None)
@@ -50,7 +55,7 @@ object AssumeRewriter {
         }
       case (pred: PredicateAccessPredicate, c) =>
         val insideWand = c.ancestorList.foldLeft[Boolean](false)((b, n) => b || n.isInstanceOf[MagicWand])
-        val dummyVars = (LazyList.from(0) map (i => LocalVar("dummy" + i, pred.loc.loc(program).formalArgs(i).typ)())) take pred.loc.args.length
+        val dummyVars = (LazyList.from(0) map (i => localDummyVar(i, pred.loc.loc(program).formalArgs(i).typ))) take pred.loc.args.length
         val eqs = (pred.loc.args zip dummyVars) map (a => EqCmp(a._1, a._2)())
         val cond = eqs.tail.foldLeft[Exp](eqs.head)((a, e) => And(a,e)())
         val ctx = c.updateContext(c.c + (pred.loc.loc(program) -> (c.c.getOrElse(pred.loc.loc(program), Seq()) :+ ((cond, dummyVars), pred.perm))))
@@ -62,7 +67,7 @@ object AssumeRewriter {
           (pred, ctx)
         }
       case (wand: MagicWand, c) =>
-        val dummyVars = (LazyList.from(0) map (i => LocalVar("dummy" + i, wand.structure(program).subexpressionsToEvaluate(program)(i).typ)())) take wand.subexpressionsToEvaluate(program).length
+        val dummyVars = (LazyList.from(0) map (i => localDummyVar(i, wand.structure(program).subexpressionsToEvaluate(program)(i).typ))) take wand.subexpressionsToEvaluate(program).length
         val eqs = (wand.subexpressionsToEvaluate(program) zip dummyVars) map (a => EqCmp(a._1, a._2)())
         val cond = eqs.tail.foldLeft[Exp](eqs.head)((a, e) => And(a,e)())
         val ctx = c.updateContext(c.c + (wand.structure(program) -> (c.c.getOrElse(wand.structure(program), Seq()) :+ ((cond, dummyVars), FullPerm()()))))
@@ -73,13 +78,13 @@ object AssumeRewriter {
         } else {
           (wand, ctx)
         }
-      case (and: And, c) =>
-        val lupdate = update(and.left, program)
-        val newC = lupdate map (lu => {
-          val update = c.c.getOrElse(lu._1, Seq())
-          (lu._1, lu._2 ++ update)
-        })
-        (and, c.updateContext(c.c ++ newC))
+//      case (and: And, c) =>
+//        val lupdate = update(and.left, program)
+//        val newC = lupdate map (lu => {
+//          val update = c.c.getOrElse(lu._1, Seq())
+//          (lu._1, lu._2 ++ update)
+//        })
+//        (and, c.updateContext(c.c ++ newC))
       case (QuantifiedPermissionAssertion(forall, cond, acc), c) =>
         acc match {
           case fap: FieldAccessPredicate =>
@@ -126,15 +131,15 @@ object AssumeRewriter {
   def update(node: Node, program: Program): Seq[(Resource, Seq[((Exp, Seq[Exp]), Exp)])] = {
     node match {
       case fp: FieldAccessPredicate =>
-        val dummyVar = LocalVar("dummy", Ref)()
+        val dummyVar = localDummyVar(Ref)
         Seq(fp.loc.field -> Seq(((EqCmp(fp.loc.rcv, dummyVar)(fp.pos, fp.info, fp.errT), Seq(dummyVar)), fp.perm)))
       case pred: PredicateAccessPredicate =>
-        val dummyVars = (LazyList.from(0) map (i => LocalVar("dummy" + i, pred.loc.loc(program).formalArgs(i).typ)())) take pred.loc.args.length
+        val dummyVars = (LazyList.from(0) map (i => localDummyVar(i, pred.loc.loc(program).formalArgs(i).typ))) take pred.loc.args.length
         val eqs = (pred.loc.args zip dummyVars) map (a => EqCmp(a._1, a._2)())
         val cond = eqs.tail.foldLeft[Exp](eqs.head)((a, e) => And(a,e)())
         Seq(pred.loc.loc(program) -> Seq(((cond, dummyVars), pred.perm)))
       case wand: MagicWand =>
-        val dummyVars = (LazyList.from(0) map (i => LocalVar("dummy" + i, wand.structure(program).subexpressionsToEvaluate(program)(i).typ)())) take wand.subexpressionsToEvaluate(program).length
+        val dummyVars = (LazyList.from(0) map (i => localDummyVar(i, wand.structure(program).subexpressionsToEvaluate(program)(i).typ))) take wand.subexpressionsToEvaluate(program).length
         val eqs = (wand.subexpressionsToEvaluate(program) zip dummyVars) map (a => EqCmp(a._1, a._2)())
         val cond = eqs.tail.foldLeft[Exp](eqs.head)((a, e) => And(a,e)())
         Seq(wand.structure(program) -> Seq(((cond, dummyVars), FullPerm()())))
@@ -200,25 +205,35 @@ object AssumeRewriter {
 
     println(s"\n\nrcv = $rcv  [${rcv.head.pos}]")
     println("context = " + context)
+    println("contextWithoutRcv = " + contextWithoutRcv)
     println("cond = " + cond)
     println("conds = " + conds)
 
-//    if (conds.length == 1 && conds.head.isInstanceOf[TrueLit]) {
-//      return PermGeCmp(permLoc, perm)()
-//    }
+    if (context.isEmpty) {
+      assert(conds.isEmpty)
+      assert(cond.isEmpty)
 
-    val perms: Seq[Exp] = (contextWithoutRcv map (_._2)) :+ perm
+      PermGeCmp(permLoc, perm)()
+    } else {
+      val perms: Seq[Exp] = (contextWithoutRcv map (_._2)) :+ perm
 
-    if (funcs.length <= contextWithoutRcv.length-1) {
-      val (fun, ax) = generateFunc(funcs.length + 1)
-      funcs = funcs :+ fun
-      axioms = axioms :+ ax
+      if (funcs.length <= contextWithoutRcv.length-1) {
+        val (fun, ax) = generateFunc(funcs.length + 1)
+        println(s"added fun ${fun.name}")
+        funcs = funcs :+ fun
+        axioms = axioms :+ ax
+      }
+
+      println(s"funcs [#${funcs.length}] = ")
+      funcs foreach (f => println(s"  $f"))
+      println("axioms = ")
+      axioms foreach (a => println(s"  $a"))
+
+      val func = funcs(contextWithoutRcv.length-1)
+      val funcApp = DomainFuncApp(func, conds ++ perms, Map[TypeVar, Type]())()
+
+      PermGeCmp(permLoc, funcApp)()
     }
-
-    val func = funcs(contextWithoutRcv.length-1)
-    val funcApp = DomainFuncApp(func, conds ++ perms, Map[TypeVar, Type]())()
-
-    PermGeCmp(permLoc, funcApp)()
   }
 
   def split(exp: Exp): Seq[Exp] = {
