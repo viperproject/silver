@@ -1,0 +1,36 @@
+// predicate AWOne(sender: Int)
+
+// method test_AWOne(last: Int) {
+  // inhale forall s: Int :: {AWOne(s)} s <= last ==> AWOne(s)
+
+  // assert perm(AWOne(last + 1)) == none
+// }
+
+predicate AWTwo(sender: Int, amount: Int)
+
+method test_AWTwo(last: Int) {
+  inhale forall s: Int, a: Int :: {AWTwo(s, a)} s <= last ==> AWTwo(s, a)
+
+  assert perm(AWTwo(last + 1, 0)) == none
+}
+
+// function isInt(i: Int ) : Bool {true}
+
+// method test_AWTwo_2(last: Int) {
+  // inhale forall s: Int, a: Int :: {AWTwo(s, a)} s <= last && isInt(a) ==> AWTwo(s, a)
+
+  // assert perm(AWTwo(last + 1, 0)) == none
+// }
+
+// method test_AWTwo_3(last: Int) {
+  // inhale forall s: Int, a: Int :: {AWTwo(s, a)} s <= last ==> AWTwo(s, a)
+
+  // assert perm(AWTwo(last, 0)) == write
+// }
+
+// method test_AWTwo_4(last: Int) {
+  // inhale forall s: Int, a: Int :: {AWTwo(s, a)} s <= last ==> AWTwo(s, a)
+
+  // //:: ExpectedOutput(assert.failed:assertion.false)
+  // assert perm(AWTwo(last - 1, 0)) == none
+// }

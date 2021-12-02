@@ -1,0 +1,28 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <decreases/int.vpr>
+
+function fun1(x: Int, y: Int): Int
+//:: ExpectedOutput(consistency.error)
+decreases x
+decreases y if x <= 0
+{
+  x == 0 ? 0 : fun1(x-1, y-1) + 1
+}
+
+
+method m(x: Int, y: Int)
+    //:: ExpectedOutput(consistency.error)
+    decreases x
+    decreases y if x <= 0
+{
+    var z: Int := x
+    while (z >= 0)
+    //:: ExpectedOutput(consistency.error)
+       decreases z
+       decreases -z if z <= 0
+    {
+        z := z-1
+    }
+}

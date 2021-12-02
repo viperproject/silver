@@ -1,0 +1,18 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import "list.vpr"
+import "account.vpr"
+
+/****************************************
+ * Client
+ ****************************************/
+
+method demo(a: Ref, l: Ref)
+  requires acc(account(a)) && acc(list(l))
+{
+  var tmp: Int
+  tmp := length(l)
+  deposit(a, 200)
+  assert tmp == length(l)
+}

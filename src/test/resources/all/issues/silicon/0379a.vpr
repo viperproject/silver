@@ -1,0 +1,28 @@
+field f$m2: Ref
+
+field f$m5: Ref
+
+field val_int: Int
+
+field val_ref: Ref
+
+function f(_pure_1: Ref): Bool
+  requires acc(P(_pure_1), read$())
+{
+  ((unfolding acc(P(_pure_1), read$()) in
+   (unfolding acc(u32(_pure_1.f$m2), read$()) in _pure_1.f$m2.val_int)) >= 0 ||
+   (unfolding acc(P(_pure_1), read$()) in (unfolding acc(u32(_pure_1.f$m2), read$()) in _pure_1.f$m2.val_int)) % 2 == 0 ?
+   (unfolding acc(P(_pure_1), read$()) in (unfolding acc(u32(_pure_1.f$m2), read$()) in _pure_1.f$m2.val_int)) % 2 :
+   0) == 0
+}
+
+function read$(): Perm
+  ensures none < result
+
+predicate P(self: Ref) {
+  acc(self.f$m2, write) && acc(u32(self.f$m2), write) && acc(self.f$m5, write) && acc(u32(self.f$m5), write)
+}
+
+predicate u32(self: Ref) {
+  acc(self.val_int, write) && 0 <= self.val_int
+}

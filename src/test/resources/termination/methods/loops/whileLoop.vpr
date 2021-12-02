@@ -1,0 +1,172 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+import <decreases/int.vpr>
+
+method m(x: Int)
+    decreases x
+{
+    var y: Int := x
+    while(y >= 0)
+        decreases y
+        invariant y <= x
+    {
+        y := y - 1
+        m(y)
+    }
+}
+
+method m_e(x: Int)
+    decreases x
+{
+    var y: Int := x
+    while(y >= 0)
+    //:: ExpectedOutput(termination.failed:tuple.false)
+        decreases y
+    {
+        y := y - 1
+        y := y + 1
+    }
+}
+
+method m_e2(x: Int)
+    decreases x
+{
+    var y: Int := x
+    while(y >= 0)
+        decreases y
+    {
+        y := y - 1
+    //:: ExpectedOutput(termination.failed:tuple.false)
+        m_e2(y)
+    }
+}
+
+
+field v: Int
+
+method m2(r: Ref)
+    requires acc(r.v)
+    decreases r.v
+    ensures acc(r.v, write)
+    ensures r.v <= old(r.v)
+{
+    while(r.v >= 0)
+        invariant acc(r.v)
+        decreases r.v
+        invariant r.v <= old(r.v)
+    {
+        r.v := r.v - 1
+        m2(r)
+    }
+}
+
+method m2_e(r: Ref)
+    requires acc(r.v)
+    decreases r.v
+    ensures acc(r.v, write)
+    ensures r.v <= old(r.v)
+{
+    while(r.v >= 0)
+        invariant acc(r.v)
+        decreases r.v
+        invariant r.v <= old(r.v)
+    {
+        //:: ExpectedOutput(termination.failed:tuple.false)
+        m2_e(r)
+        r.v := r.v - 1
+    }
+}
+
+// nested loops
+method m3(r: Ref)
+    requires acc(r.v)
+    decreases r.v
+    ensures acc(r.v, write)
+{
+    while(r.v >= 0)
+        invariant acc(r.v)
+        decreases r.v
+        invariant r.v <= old(r.v)
+    {
+        var y: Int := r.v
+        while(y >= 0)
+            decreases y
+        {
+            y := y - 1
+        }
+
+        r.v := r.v - 1
+    }
+}
+
+method m3_e(r: Ref)
+    requires acc(r.v)
+    decreases r.v
+    ensures acc(r.v, write)
+{
+    while(r.v >= 0)
+        invariant acc(r.v)
+        decreases r.v
+        invariant r.v <= old(r.v)
+    {
+        var y: Int := r.v
+        while(y >= 0)
+        //:: ExpectedOutput(termination.failed:tuple.false)
+            decreases y
+        {
+            y := y
+        }
+
+        r.v := r.v - 1
+    }
+}
+
+// termination condition
+method m4(r: Ref)
+    requires acc(r.v)
+    decreases r.v
+    ensures acc(r.v, write)
+{
+    var y: Int := r.v
+    while(y >= 0)
+        invariant acc(r.v)
+        decreases y if y >= 0
+        invariant y <= old(r.v)
+    {
+        y := y - 1
+    }
+}
+
+method m4_e(r: Ref)
+    requires acc(r.v)
+    decreases r.v
+    ensures acc(r.v, write)
+{
+    var y: Int := r.v
+    // if y == 0 then the loop is entered but possibly does not terminate
+    //:: ExpectedOutput(termination.failed:termination.condition.false)
+    while(y >= 0)
+        invariant acc(r.v)
+        decreases y if y > 0
+        invariant y <= old(r.v)
+    {
+        y := -1
+    }
+}
+
+method m4_e2(r: Ref)
+    requires acc(r.v)
+    ensures acc(r.v, write)
+{
+    var y: Int := r.v
+    while(y >= 0)
+        invariant acc(r.v)
+    //:: ExpectedOutput(termination.failed:tuple.condition.false)
+        decreases y if y > 0
+        invariant y <= old(r.v)
+    {
+        y := y - 2
+    // if old[loopStart](y == 2) then tuple decreasing is proven but not anymore for the next iteration
+    // note that a next iteration would happen because y == 0
+    }
+}

@@ -8,7 +8,7 @@ import java.nio.file.{Path, Paths}
 
 import org.scalatest.Suite
 import viper.silver.ast.{Node, Program}
-import viper.silver.ast.utility.Rewriter.StrategyInterface
+import viper.silver.ast.utility.rewriter.StrategyInterface
 import viper.silver.frontend.{SilFrontend, SilFrontendConfig, DefaultStates}
 import viper.silver.verifier.{AbstractError, Verifier}
 
@@ -23,7 +23,7 @@ object TestHelpers {
       _state = DefaultStates.Initialized
 
       reset(silverFile)
-      runTo("Translation")
+      runTo(Translation)
 
       (_program, _errors)
     }
@@ -31,9 +31,9 @@ object TestHelpers {
 
   // From: http://biercoff.com/easily-measuring-code-execution-time-in-scala/
   def time[R](block: => R): R = {
-    val t0 = System.nanoTime()
+    // val t0 = System.nanoTime()
     val result = block    // call-by-name
-    val t1 = System.nanoTime()
+    // val t1 = System.nanoTime()
 
     // println("Elapsed time: " + (t1 - t0) + "ns")
 
@@ -47,7 +47,7 @@ object TestHelpers {
                     frontend: MockSilFrontend)
                    : Unit = {
 
-      val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
+      val fileRes = getClass.getResource(filePrefix + fileName + ".vpr")
       assert(fileRes != null, s"File $filePrefix$fileName not found")
       val file = Paths.get(fileRes.toURI)
       var targetNode: Node = null
@@ -60,7 +60,7 @@ object TestHelpers {
       }
       val res = strat.execute[Program](targetNode)
 
-      val fileRef = getClass.getResource(filePrefix + fileName + "Ref.sil")
+      val fileRef = getClass.getResource(filePrefix + fileName + "Ref.vpr")
       assert(fileRef != null, s"File $filePrefix$fileName Ref not found")
 
       val ref = Paths.get(fileRef.toURI)

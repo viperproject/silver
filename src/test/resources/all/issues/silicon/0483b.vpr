@@ -1,0 +1,28 @@
+domain Array[T] {
+	function loc(a: Array[T], i: Int): T
+}
+
+field val: Bool
+
+define read_permissions(array) (
+	forall i: Int :: {loc(array, i)}
+		0 <= i ==> acc(loc(array, i).val, 1/2)
+)
+
+function Property(a: Array[Ref], b: Array[Ref]): Bool
+	requires read_permissions(a)
+	requires read_permissions(b)
+{
+	(forall i: Int :: {loc(b, i)} 0 <= i ==> loc(b, i).val)
+}
+
+method Test(a: Array[Ref], b: Array[Ref])
+{
+	inhale read_permissions(a)
+	inhale read_permissions(b)
+
+  var tmp1: Bool := Property(a, b)
+  var tmp2: Bool := (forall i: Int :: {loc(b, i)} 0 <= i ==> loc(b, i).val)
+
+  assert tmp1 == tmp2 // Previously failed
+}

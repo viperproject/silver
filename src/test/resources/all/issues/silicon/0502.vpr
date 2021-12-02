@@ -1,0 +1,63 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+method foo0(r1: Ref, r2: Ref, s: Set[Ref])
+  requires acc(r1.f) && acc(r2.f)
+  requires forall x: Ref :: {x in s} x in s ==> acc(x.f)
+{
+  assert r1 != r2
+}
+
+method foo1(r1: Ref, r2: Ref, s: Set[Ref])
+  requires acc(r1.f) && acc(r2.f)
+  requires forall x: Ref :: {x.f} x in s ==> acc(x.f)
+{
+  assert r1 != r2
+}
+
+
+method foo2(r1: Ref, r2: Ref, s: Set[Ref])
+  requires acc(r1.f) && acc(r2.f)
+  requires forall x: Ref :: {x in s} x in s ==> acc(x.f)
+{
+  assert r1 != r2
+  r1.f := 3
+  assert r1 != r2
+}
+
+method foo3(r1: Ref, r2: Ref, s: Set[Ref])
+  requires acc(r1.f) && acc(r2.f)
+  requires forall x: Ref :: {x in s} x in s ==> acc(x.f)
+{
+  r1.f := 3
+  assert perm(r1.f) <= write
+  assert r1 != r2
+}
+
+method foo4(r1: Ref, r2: Ref, s: Set[Ref])
+ requires acc(r1.f) && acc(r2.f)
+ requires forall x: Ref :: {x in s} x in s ==> acc(x.f)
+{
+  assert true
+  r1.f := 3
+  assert r1 != r2
+}
+
+
+method foo5(r1: Ref, r2: Ref, s: Set[Ref])
+  requires acc(r1.f) && acc(r2.f)
+  requires forall x: Ref :: false ==> acc(x.f, none)
+{
+  r1.f := 3
+  assert r1 != r2
+}
+
+method foo6(r1: Ref, r2: Ref, s: Set[Ref])
+  requires acc(r1.f) && acc(r2.f)
+  requires forall x: Ref :: false ==> acc(x.f, none)
+{
+  r1.f := 3
+  assert r1 != r2
+}

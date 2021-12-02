@@ -7,7 +7,7 @@
 package viper.silver.ast.utility
 
 import viper.silver.ast._
-import viper.silver.ast.utility.Rewriter._
+import viper.silver.ast.utility.rewriter._
 
 /**
  * An implementation for simplifications on the Viper AST.
@@ -85,7 +85,7 @@ object Simplifier {
 
       case root @ Forall(_, _, BoolLit(literal)) =>
         BoolLit(literal)(root.pos, root.info)
-      case root @ Exists(_, BoolLit(literal)) =>
+      case root @ Exists(_, _, BoolLit(literal)) =>
         BoolLit(literal)(root.pos, root.info)
 
       case root @ Minus(IntLit(literal)) => IntLit(-literal)(root.pos, root.info)

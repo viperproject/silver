@@ -1,0 +1,22 @@
+field visited: Bool
+field bad_field: Bool
+
+predicate Node(node: Ref) {
+  acc(node.visited)
+  // By commenting the following the program does not verify, as expected
+  && acc(node.bad_field)
+//&& node != null
+}
+
+method foo(curr_node: Ref, all_nodes: Set[Ref])
+  requires forall n:Ref :: {n in all_nodes} n in all_nodes ==> Node(n)
+  requires curr_node in all_nodes
+{
+  unfold Node(curr_node)
+  curr_node.visited := true
+  fold Node(curr_node)
+
+  // The next assertion incorrectly claims that *all* nodes have been visited, and should thus fail.
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert forall nn:Ref :: {nn in all_nodes} nn in all_nodes ==> unfolding Node(nn) in nn.visited
+}

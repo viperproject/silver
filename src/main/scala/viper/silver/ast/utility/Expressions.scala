@@ -8,8 +8,9 @@ package viper.silver.ast.utility
 
 import scala.reflect.ClassTag
 import viper.silver.ast._
-import viper.silver.ast.utility.Rewriter.Traverse
+import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast.utility.Triggers.TriggerGeneration
+import viper.silver.utility.Sanitizer
 
 /** Utility methods for expressions. */
 object Expressions {
@@ -32,28 +33,71 @@ object Expressions {
          | _: PermExp
          | _: FuncApp
          | _: DomainFuncApp
+         | _: BackendFuncApp
          | _: LocationAccess
          | _: AbstractLocalVar
          | _: SeqExp
          | _: SetExp
          | _: MultisetExp
-         | _:ForPerm
+         | _: MapExp
+         | _: ForPerm
       => true
   }
 
-  def isHeapDependent(e: Exp, p: Program): Boolean = e existsDefined {
+  def isTopLevelHeapDependent(e: Exp, p:Program) : Boolean = e match {
     case   _: AccessPredicate
-         | _: LocationAccess
-         | _: MagicWand =>
+           | _: LocationAccess
+           | _: MagicWand => true
 
-    case fapp: FuncApp if fapp.func(p).pres.exists(isHeapDependent(_, p)) =>
+    case fapp: FuncApp if couldBeHeapDependent(fapp.func(p),p) => true
+    case _ => false
   }
+
+  def isHeapDependent(e: Exp, p: Program): Boolean = e existsDefined {
+    case ee:Exp if isTopLevelHeapDependent(ee,p) =>
+      // note: type of existsDefined doesn't guarantee we will only see Exp-typed nodes, but these are the transitive subnodes of e
+  }
+
+  def dependsOnCurrentHeap(e:Exp, p:Program, treatMagicWandStatesAsCurrentStates:Boolean = false) : Boolean = {
+    var depends = false;
+
+    def go(root: Exp, p:Program, inCurrentState:Boolean): Unit = {
+      root.visitWithContextManually[Boolean,Unit](inCurrentState)(
+        currentState => //if (depends) PartialFunction.empty // we're done
+          //else
+        {
+          case LabelledOld(ee, LabelledOld.LhsOldLabel) =>
+            if (treatMagicWandStatesAsCurrentStates)
+              go(ee,p,true)
+            else
+              () // do nothing; if we're under some kind of old expression, nothing can depend on the current state
+          case o:OldExp => // any other old expression never counts as the current state
+            if (treatMagicWandStatesAsCurrentStates) // we should recurse just in case we hit a nested old[lhs](..)
+              go(o.exp,p,false)
+            else
+              () // do nothing; if we're under some kind of old expression, nothing can depend on the current state
+          case ee:Exp => {
+            if (currentState && Expressions.isTopLevelHeapDependent(root,p)) // this also catches resources
+              depends = true // we're done
+            else
+              ee.subExps.foreach(sub => {
+                if(depends) () else go(sub,p,currentState)
+              })
+          }
+        }
+      )
+    }
+    go(e,p,true)
+    depends
+  }
+
+  def couldBeHeapDependent(f: Function, p:Program) : Boolean = f.pres.exists(isHeapDependent(_, p))
 
   def asBooleanExp(e: Exp): Exp = {
     e.transform({
       case _: AccessPredicate | _: MagicWand => TrueLit()()
       case fa@Forall(vs,ts,body) => Forall(vs,ts,asBooleanExp(body))(fa.pos,fa.info)
-      case Unfolding(predicate, exp) => asBooleanExp(exp)
+      case Unfolding(_, exp) => asBooleanExp(exp)
       case Applying(_, exp) => asBooleanExp(exp)
     })
   }
@@ -71,21 +115,21 @@ object Expressions {
   }
 
   // collects the free variables in an expression
-  def freeVariables(e: Exp) : Set[AbstractLocalVar] = freeVariablesExcluding(e, Set())
+  def freeVariables(e: Exp): Set[AbstractLocalVar] = freeVariablesExcluding(e, Set[AbstractLocalVar]())
+
+  // collects the free variables in an expression, *excluding* a given sequence of variables to ignore
+  def freeVariablesExcluding(e: Exp, toIgnore: Seq[AbstractLocalVar]): Set[AbstractLocalVar] =
+    freeVariablesExcluding(e, toIgnore.toSet)
 
   // collects the free variables in an expression, *excluding* a given set of variables to ignore
-  def freeVariablesExcluding(e:Exp, toIgnore:Set[AbstractLocalVar]) : Set[AbstractLocalVar] =
-  {
+  def freeVariablesExcluding(e: Exp, toIgnore: Set[AbstractLocalVar]): Set[AbstractLocalVar] = {
     e.shallowCollect{
-      case Let(binding,exp,body) =>
+      case Let(binding, exp, body) =>
         freeVariablesExcluding(exp, toIgnore) union freeVariablesExcluding(body, toIgnore + binding.localVar)
-      case Forall(boundVars,triggers,body) => {
-        val ignoring = toIgnore union (boundVars map (_.localVar)).toSet
-        triggers.flatMap(t => t.exps.flatMap(freeVariablesExcluding(_, ignoring))).toSet union freeVariablesExcluding(body, ignoring)
-      }
-      case Exists(boundVars,body) =>
-        freeVariablesExcluding(body,toIgnore union (boundVars map (_.localVar)).toSet)
-      case v@AbstractLocalVar(name) if !toIgnore.contains(v) =>
+      case q: QuantifiedExp =>
+        val ignoring = toIgnore union (q.variables map (_.localVar)).toSet
+        q.subExps.flatMap(freeVariablesExcluding(_, ignoring))
+      case v@AbstractLocalVar(_) if !toIgnore.contains(v) =>
         Seq(v)
     }.flatten.toSet
   }
@@ -114,28 +158,18 @@ object Expressions {
   def instantiateVariables[E <: Exp]
                           (exp: E, variables: Seq[AbstractLocalVar], values: Seq[Exp])
                           : E = {
+    assert(variables.size == values.size, "The amount of values must match the amount of variables they are replacing")
 
-    val argNames = (variables map (_.name)).zipWithIndex
-
-    def actualArg(formalArg: String): Option[Exp] = {
-      argNames.find(x => x._1 == formalArg) map {
-        case (_, idx) => values(idx)
-      }
-    }
-
-    val res = exp.transform {
-      case AbstractLocalVar(name) if actualArg(name).isDefined => actualArg(name).get
-    }
-    res
+    Sanitizer.replaceFreeVariablesInExpression(exp, variables.map(_.name).zip(values).toMap, Set())
   }
 
   /* See http://stackoverflow.com/a/4982668 for why the implicit is here. */
-  def instantiateVariables[E <: Exp]
-                          (exp: E, variables: Seq[LocalVarDecl], values: Seq[Exp])
-                          (implicit di: DummyImplicit)
-                          : E =
+  def instantiateVariables[E <: Exp](exp: E, variables: Seq[LocalVarDecl], values: Seq[Exp], scope: Set[String])
+                                    (implicit di: DummyImplicit): E = {
+    assert(variables.size == values.size, "The amount of values must match the amount of variables they are replacing")
 
-    instantiateVariables(exp, variables map (_.localVar), values)
+    Sanitizer.replaceFreeVariablesInExpression(exp, variables.map(_.localVar.name).zip(values).toMap, scope)
+  }
 
   def subExps(e: Exp) = e.subnodes collect {
     case e: Exp => e

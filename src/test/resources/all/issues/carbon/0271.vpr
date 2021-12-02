@@ -1,0 +1,55 @@
+predicate P(self: Ref)
+
+function foo(s: Seq[Ref]): Bool 
+    requires forall i: Int :: { s[i] } 0 <= i && i < |s| ==> P(s[i])
+{
+    true
+}
+
+method clientFoo(s: Seq[Ref]) {
+    inhale forall i: Int :: { s[i] } 0 <= i && i < |s| ==> P(s[i])
+    inhale foo(s)
+}
+
+field elem: Int
+field next: Ref
+field elem2: Int
+field next2: Ref
+
+predicate someList(this: Ref, i: Int)
+{
+    true
+}
+
+predicate otherList(this: Ref)
+
+// non-recursive function with multiple predicate accesses in the precondition
+// + at least one predicate access involving bound variables
+function someFun(l:Ref) : Int
+  requires list(l)&&(acc(l.elem))&&(forall i: Int :: someList(l, i))&&otherList(l)
+{ 
+  1+l.elem
+}
+
+predicate list(this: Ref) {
+  acc(this.elem) && acc(this.next) &&
+  (this.next != null ==> list(this.next))
+}
+
+predicate list2(this: Ref) {
+  acc(this.elem2) && acc(this.next2) &&
+  (this.next2 != null ==> list2(this.next2))
+}
+
+// recursive function with multiple predicate unfoldings surrounding recursive
+// call + at least one predicate access involving bound variables
+
+//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
+function listLength(l1:Ref, l2: Ref, k: Int) : Int
+  requires list(l1) && list2(l2)
+  ensures  result > 0
+{ 
+  (unfolding list(l1) in l1.next == null ? 1 : 1 +listLength(l1.next, l2, k)) +
+  (let i == (k) in unfolding someList(l1, i) in listLength(l1, l2, k-1)) +
+  (unfolding list2(l2) in l2.next2 == null ? 1 : 1 +listLength(l1, l2.next2, k)) 
+}

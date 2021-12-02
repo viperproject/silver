@@ -4,12 +4,14 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
+import org.scalatest.funsuite.AnyFunSuite
+
 import scala.language.implicitConversions
-import org.scalatest.{Matchers, FunSuite}
+import org.scalatest.matchers.should.Matchers
 import viper.silver.ast._
 import viper.silver.ast.utility.Simplifier._
 
-class SimplifierTests extends FunSuite with Matchers {
+class SimplifierTests extends AnyFunSuite with Matchers {
   test("div") {
     simplify(Div(0, 0)()) should be(Div(0, 0)())
     simplify(Div(8, 2)()) should be(4: IntLit)

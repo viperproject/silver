@@ -10,14 +10,14 @@ import viper.silver.ast.MagicWandStructure.MagicWandStructure
 import viper.silver.ast.pretty._
 import viper.silver.ast.utility._
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
-import viper.silver.ast.utility.Rewriter.{StrategyBuilder, Traverse}
-import viper.silver.parser.FastParser
-import viper.silver.verifier.ConsistencyError
+import viper.silver.ast.utility.rewriter.{StrategyBuilder, Traverse}
+import viper.silver.verifier.{ConsistencyError, VerificationResult}
 
 /** Expressions. */
 sealed trait Exp extends Hashable with Typed with Positioned with Infoed with TransformableErrors with PrettyExpression {
   lazy val isPure = Expressions.isPure(this)
   def isHeapDependent(p: Program) = Expressions.isHeapDependent(this, p)
+  def isTopLevelHeapDependent(p: Program) = Expressions.isTopLevelHeapDependent(this, p)
 
   /**
    * Returns a representation of this expression as it looks when it is used as a proof obligation, i.e. all
@@ -117,7 +117,7 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 
   override val typ: Wand.type = Wand
 
-  // maybe rename this sometime
+  //maybe rename this sometime
   def subexpressionsToEvaluate(p: Program): Seq[Exp] = {
     /* The code collects expressions that can/are to be evaluated in a fixed state, i.e.
      * a state that is known when this method is called.
@@ -133,20 +133,19 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 
     def go(root: Exp, boundVariables: Set[LocalVar]): Unit = {
       root.visitWithContextManually(boundVariables)(boundVariables => {
-        case LabelledOld(_, FastParser.LHS_OLD_LABEL) => /* Don't descend further */
-
-        case Let(v, e, body) => go(body.replace(v.localVar, e), boundVariables)
-
-        case old: OldExp if !boundVariables.exists(old.contains)=>
-          collectedExpressions :+= old
+        case Let(v, e, body) =>
+          {
+            go(e,boundVariables);
+            go(body, boundVariables ++ Set(v.localVar))
+            //go(body.replace(v.localVar, e), boundVariables) //AS: I don't think this would do the right think w.r.t. let around old
+          }
 
         case quant: QuantifiedExp =>
           val newContext = boundVariables ++ quant.variables.map(_.localVar)
 
-          quant.getChildren.collect { case e: Exp => e }
-                           .foreach(go(_, newContext))
+          quant.children.collect { case e: Exp => e } .foreach(go(_, newContext))
 
-        case e: Exp if !e.isHeapDependent(p) && !boundVariables.exists(e.contains) =>
+        case e: Exp if !Expressions.dependsOnCurrentHeap(e,p,true) && !boundVariables.exists(e.contains) =>
           collectedExpressions :+= e
       })
     }
@@ -176,7 +175,6 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
      * semantic comparison of their arguments (the values that go into the wands' holes) then
      * ensures that the wands are actually (i.e. semantically) equivalent.
      */
-
     val subexpressionsToEvaluate = this.subexpressionsToEvaluate(p)
 
     type Bindings = Map[String, Int]
@@ -202,10 +200,10 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
         decl.copy(name(decl.typ, bindings(decl.name)))(decl.pos, decl.info, decl.errT))
     }
 
-    StrategyBuilder.Context[Node, Bindings](
+    val structure = StrategyBuilder.Context[Node, Bindings](
       {
-        case (exp: Exp, _) if subexpressionsToEvaluate.contains(exp) =>
-          LocalVar(exp.typ.toString())(exp.typ)
+        case (exp: Exp, c) if subexpressionsToEvaluate.contains(exp) =>
+          (LocalVar(exp.typ.toString(),exp.typ)(), c)
 
         case (quant: QuantifiedExp, context) =>
           /* NOTE: This case, i.e. the transformation case, is reached before the
@@ -216,18 +214,18 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
           val bindings = extendBindings(context.c, quant.variables)
           val variables = renameDecls(quant.variables, bindings)
 
-          quant.withVariables(variables)
+          (quant.withVariables(variables), context.updateContext(extendBindings(context.c, quant.variables)))
 
         case (lv: LocalVar, context) =>
           context.c.get(lv.name) match {
-            case None => lv
-            case Some(index) => lv.copy(name(lv.typ, index))(lv.typ, lv.pos, lv.info, lv.errT)
+            case None => (lv, context)
+            case Some(index) => (lv.copy(name(lv.typ, index), lv.typ)(lv.pos, lv.info, lv.errT), context)
           }
       },
       Bindings.empty,
-      { case (quant: QuantifiedExp, bindings) => extendBindings(bindings, quant.variables) },
       Traverse.TopDown
     ).execute[this.type](this)
+    structure
   }
 
   override def isValid : Boolean = this match {
@@ -351,51 +349,50 @@ case class PermGeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 // --- Function application (domain and normal)
 
 /** Function application. */
-case class FuncApp(funcname: String, args: Seq[Exp])(val pos: Position, val info: Info, override val typ : Type, override val formalArgs: Seq[LocalVarDecl], val errT: ErrorTrafo) extends FuncLikeApp with PossibleTrigger {
-  override lazy val check : Seq[ConsistencyError] =
-    args.flatMap(Consistency.checkPure) ++
-    (if(!Consistency.areAssignable(args, formalArgs))
-      Seq(ConsistencyError(s"Function $funcname with formal arguments $formalArgs cannot be applied to provided arguments $args.", args.head.pos)) else Seq())
+case class FuncApp(funcname: String, args: Seq[Exp])(val pos: Position, val info: Info, override val typ : Type, val errT: ErrorTrafo) extends FuncLikeApp with PossibleTrigger {
+  override lazy val check : Seq[ConsistencyError] = args.flatMap(Consistency.checkPure)
 
   def func : (Program => Function) = (p) => p.findFunction(funcname)
   def getArgs = args
-  def withArgs(newArgs: Seq[Exp]) = FuncApp(funcname, newArgs)(pos, info, typ, formalArgs, errT)
+  def withArgs(newArgs: Seq[Exp]) = FuncApp(funcname, newArgs)(pos, info, typ, errT)
   def asManifestation = this
 }
 // allows a FuncApp to be created directly from a Function node (but only stores its name)
 object FuncApp {
-  def apply(func: Function, args: Seq[Exp])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos) : FuncApp = FuncApp(func.name, args)(pos,info,func.typ,func.formalArgs, errT)
+  def apply(func: Function, args: Seq[Exp])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos) : FuncApp = FuncApp(func.name, args)(pos, info, func.typ, errT)
 }
 
 /** User-defined domain function application. */
 case class DomainFuncApp(funcname: String, args: Seq[Exp], typVarMap: Map[TypeVar, Type])
-                        (val pos: Position, val info: Info, typPassed: => Type, formalArgsPassed: => Seq[LocalVarDecl],val domainName:String, val errT: ErrorTrafo)
+                        (val pos: Position, val info: Info, override val typ: Type, val domainName:String, val errT: ErrorTrafo)
   extends AbstractDomainFuncApp with PossibleTrigger {
-  override lazy val check : Seq[ConsistencyError] =
-    args.flatMap(Consistency.checkPure) ++
-    (if(!Consistency.areAssignable(args, formalArgs))
-      Seq(ConsistencyError(s"Function $funcname with formal arguments $formalArgs cannot be applied to provided arguments $args.", args.head.pos)) else Seq())
+  override lazy val check : Seq[ConsistencyError] = args.flatMap(Consistency.checkPure)
 
-  def typ = typPassed
-  def formalArgs = formalArgsPassed
   def func = (p:Program) => p.findDomainFunction(funcname)
   def getArgs = args
-  def withArgs(newArgs: Seq[Exp]) = DomainFuncApp(funcname,newArgs,typVarMap)(pos,info,typ,formalArgs,domainName, errT)
+  def withArgs(newArgs: Seq[Exp]) = DomainFuncApp(funcname,newArgs,typVarMap)(pos,info,typ,domainName, errT)
   def asManifestation = this
 
   //Strangely, the copy method is not a member of the DomainFuncApp case class,
   //therefore, We need this method that does the copying manually
-  def copy(funcname: String = this.funcname, args: Seq[Exp] = this.args, typVarMap: Map[TypeVar, Type] = this.typVarMap): (Position, Info, => Type, => Seq[LocalVarDecl], String, ErrorTrafo) => DomainFuncApp ={
+  def copy(funcname: String = this.funcname, args: Seq[Exp] = this.args, typVarMap: Map[TypeVar, Type] = this.typVarMap): (Position, Info, Type, String, ErrorTrafo) => DomainFuncApp ={
     DomainFuncApp(this.funcname,args,typVarMap)
   }
 }
 object DomainFuncApp {
   def apply(func : DomainFunc, args: Seq[Exp], typVarMap: Map[TypeVar, Type])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos) : DomainFuncApp =
-    DomainFuncApp(func.name,args,typVarMap)(pos, info, func.typ.substitute(typVarMap), func.formalArgs map {
-    fa =>
-      // substitute parameter types
-      LocalVarDecl(fa.name, fa.typ.substitute(typVarMap))(fa.pos)
-  },func.domainName, errT)
+    DomainFuncApp(func.name,args,typVarMap)(pos, info, func.typ.substitute(typVarMap), func.domainName, errT)
+}
+
+// --- References to backend (i.e., SMTLIB or Boogie 'builtin') functions
+
+case class BackendFuncApp(backendFunc: BackendFunc, args: Seq[Exp])
+                         (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
+  extends AbstractDomainFuncApp {
+  override lazy val check : Seq[ConsistencyError] = args.flatMap(Consistency.checkPure)
+  override def func = (p: Program) => backendFunc
+  def funcname = backendFunc.name
+  override def typ = backendFunc.typ
 }
 
 // --- Field and predicate accesses
@@ -437,9 +434,9 @@ case class PredicateAccess(args: Seq[Exp], predicateName: String)
   lazy val typ = Bool
 
   /** The body of the predicate with the arguments instantiated correctly. */
-  def predicateBody(program : Program) = {
+  def predicateBody(program : Program, scope: Set[String]) = {
     val predicate = program.findPredicate(predicateName)
-    predicate.body map (Expressions.instantiateVariables(_, predicate.formalArgs, args))
+    predicate.body map (Expressions.instantiateVariables(_, predicate.formalArgs, args, scope))
   }
 }
 
@@ -491,11 +488,24 @@ case class LabelledOld(exp: Exp, oldLabel: String)(val pos: Position = NoPositio
       Consistency.checkPure(exp)
 }
 
+case object LabelledOld {
+  val LhsOldLabel = "lhs"
+}
+
 // --- Other expressions
 
 case class Let(variable: LocalVarDecl, exp: Exp, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp with Scope {
-  override lazy val check : Seq[ConsistencyError] =
-    if(!(exp.typ isSubtype variable.typ)) Seq(ConsistencyError( s"Let-bound variable ${variable.name} is of type ${variable.typ}, but bound expression is of type ${exp.typ}", exp.pos)) else Seq()
+  override lazy val check : Seq[ConsistencyError] = {
+    var errors = Seq.empty[ConsistencyError]
+
+    if(!(exp.typ isSubtype variable.typ))
+      errors ++= Seq(ConsistencyError( s"Let-bound variable ${variable.name} is of type ${variable.typ}, but bound expression is of type ${exp.typ}", exp.pos))
+
+    if (!exp.isPure)
+      errors ++= Seq(ConsistencyError(s"Let expression '${exp}' is not pure", exp.pos))
+
+    errors
+  }
   val typ = body.typ
   val scopedDecls: Seq[Declaration] = Seq(variable)
 }
@@ -536,7 +546,8 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
   override lazy val check : Seq[ConsistencyError] =
     (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Body of universal quantifier must be of Bool type, but found ${exp.typ}", exp.pos)) else Seq()) ++
     Consistency.checkAllVarsMentionedInTriggers(variables, triggers) ++
-    checkNoNestedQuantsForQuantPermissions
+    checkNoNestedQuantsForQuantPermissions ++
+    checkQuantifiedPermission
 
   /** checks against nested quantification for quantified permissions */
   lazy val checkNoNestedQuantsForQuantPermissions : Seq[ConsistencyError] = {
@@ -545,6 +556,35 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
       case Some((_, exp, _)) => if(exp.existsDefined({case _: Forall => }) && !exp.isPure)
         Seq(ConsistencyError("Nested quantifiers are not allowed for quantified permissions.", exp.pos)) else Seq()
     }
+  }
+
+  lazy val checkQuantifiedPermission: Seq[ConsistencyError] = {
+    case class InUnfolding(inside: Boolean)
+    var accessPredicateInside: Boolean = false
+
+    StrategyBuilder.ContextVisitor[Node, InUnfolding]({
+      case (_: AccessPredicate, c) if !c.c.inside =>
+        accessPredicateInside = true
+        c
+
+      case (_: Unfolding, c) =>
+        c.updateContext(InUnfolding(true))
+
+      case (_, c) =>
+        c
+    }, InUnfolding(false)).execute(exp)
+
+    if (accessPredicateInside) {
+      exp match {
+        case Implies(_, _) | AccessPredicate(_, _) =>
+          Seq()
+
+        case _ =>
+          Seq(ConsistencyError("Quantified permissions must have an implication as expression, with the access predicate in its right-hand side.", exp.pos))
+      }
+    }
+    else
+      Seq()
   }
   /** Returns an identical forall quantification that has some automatically generated triggers
     * if necessary and possible.
@@ -569,9 +609,27 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
 }
 
 /** Existential quantification. */
-case class Exists(variables: Seq[LocalVarDecl], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends QuantifiedExp {
+case class Exists(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends QuantifiedExp {
   override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(exp) ++
     (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Body of existential quantifier must be of Bool type, but found ${exp.typ}", exp.pos)) else Seq())
+
+  /** Returns an identical forall quantification that has some automatically generated triggers
+    * if necessary and possible.
+    */
+  lazy val autoTrigger: Exists = {
+    if (triggers.isEmpty) {
+      Expressions.generateTriggerSet(this) match {
+        case Some((vars, triggerSets)) =>
+          Exists(vars, triggerSets.map(set => Trigger(set.exps)()), exp)(pos, MakeInfoPair(AutoTriggered,info))
+        case None =>
+          /* Couldn't generate triggers */
+          this
+      }
+    } else {
+      // triggers already present
+      this
+    }
+  }
 
   def withVariables(variables: Seq[LocalVarDecl]): Exists =
     copy(variables)(this.pos, this.info, this.errT)
@@ -619,13 +677,13 @@ object AbstractLocalVar {
 }
 
 /** A normal local variable. */
-case class LocalVar(name: String)(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractLocalVar with Lhs {
+case class LocalVar(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractLocalVar with Lhs {
   override lazy val check : Seq[ConsistencyError] =
     if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Local var name must be valid identifier.", pos)) else Seq()
 }
 
 /** A special local variable for the result of a function. */
-case class Result()(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractLocalVar {
+case class Result(typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractLocalVar {
   lazy val name = "result"
 }
 
@@ -904,6 +962,167 @@ case class AnySetCardinality(s: Exp)(val pos: Position = NoPosition, val info: I
   def withArgs(newArgs: Seq[Exp]) = AnySetCardinality(newArgs.head)(pos, info, errT)
 }
 
+// --- Mathematical maps
+
+/**
+  * Marker trait for all map-related expressions.
+  * Does not imply that the type of the expression is `MapType`.
+  */
+sealed trait MapExp extends Exp with PossibleTrigger
+
+/**
+  * The empty map with keys of type `keyType` and values of type `valueType`.
+  */
+case class EmptyMap(keyType: Type, valueType: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends MapExp {
+  lazy val typ = MapType(keyType, valueType)
+  def getArgs : Seq[Exp] = Seq()
+  def withArgs(newArgs: Seq[Exp]) : MapExp = this
+}
+
+/**
+  * An explicit, non-empty map defined by the collection `elems`
+  * of key-value pairs (that is, `Maplet`s).
+  */
+case class ExplicitMap(elems: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends MapExp {
+  lazy val pairs : Seq[Maplet] = elems.collect { case p : Maplet => p }
+  lazy val keyType : Type = pairs.head.key.typ
+  lazy val valueType : Type = pairs.head.value.typ
+  lazy val typ: MapType = MapType(keyType, valueType)
+
+  override lazy val check : Seq[ConsistencyError] =
+    (if (elems.isEmpty) Seq(ConsistencyError("Explicit map must be non-empty.", pos)) else Seq()) ++
+      (if (elems.length != pairs.length) Seq(ConsistencyError("All elements of a map must be key-value pairs.", pos)) else Seq()) ++
+      (if (!pairs.tail.forall(e => e.key.typ == pairs.head.key.typ)) Seq(ConsistencyError("All keys within the map must have same type.", pairs.head.key.pos)) else Seq()) ++
+      (if (!pairs.tail.forall(e => e.value.typ == pairs.head.value.typ)) Seq(ConsistencyError("All values within the map must have same type.", pairs.head.value.pos)) else Seq()) ++
+      elems.flatMap(Consistency.checkPure)
+
+  def getArgs : Seq[Exp] = elems
+  def withArgs(newArgs: Seq[Exp]) : MapExp = ExplicitMap(newArgs)(pos, info, errT)
+
+  /**
+    * Desugars this explicit map into a nested sequence of
+    * map updates, started from an empty map.
+    */
+  lazy val desugared : MapExp = pairs.foldLeft[MapExp](EmptyMap(keyType, valueType)(pos, info, errT)) {
+    case (map, Maplet(key, value)) => MapUpdate(map, key, value)(pos, info, errT)
+  }
+}
+
+/**
+  * A single map entry as a key-value pair.
+  * Such a key-value pair is also considered to be
+  * a singleton map, i.e., a maplet.
+  */
+case class Maplet(key : Exp, value : Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends MapExp {
+  override def getArgs: Seq[Exp] = Seq(key, value)
+  override def withArgs(args: Seq[Exp]): PossibleTrigger = Maplet(args.head, args(1))(pos, info, errT)
+  override def typ: MapType = MapType(key.typ, value.typ)
+
+  /** Desugars this key-value pair into a map update, with an empty map as base. */
+  lazy val desugared : MapExp = MapUpdate(EmptyMap(key.typ, value.typ)(pos, info, errT), key, value)(pos, info, errT)
+}
+
+/**
+  * The same map as `base`, but with `key` mapping to `value`.
+  */
+case class MapUpdate(base: Exp, key: Exp, value: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends MapExp {
+  lazy val typ : Type = base.typ
+
+  override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(value) ++ (base.typ match {
+    case MapType(keyType, valueType) =>
+      (if (!(key.typ isSubtype keyType)) Seq(ConsistencyError(s"Expected the key to be of type $keyType, but found ${key.typ}", key.pos)) else Seq()) ++
+        (if (!(value.typ isSubtype valueType)) Seq(ConsistencyError(s"Expected the value to be of type $valueType, but found ${value.typ}", value.pos)) else Seq())
+    case t => Seq(ConsistencyError(s"Expected map type but found $t", base.pos))
+  })
+
+  def getArgs : Seq[Exp] = Seq(base, key, value)
+  def withArgs(newArgs: Seq[Exp]) : MapExp = MapUpdate(newArgs.head, newArgs(1), newArgs(2))(pos, info, errT)
+}
+
+/**
+  * Lookup of the value within the map `base` at the given `key`.
+  */
+case class MapLookup(base : Exp, key : Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends MapExp {
+  lazy val typ : Type = base.typ.asInstanceOf[MapType].valueType
+
+  override lazy val check : Seq[ConsistencyError] = base.typ match {
+    case MapType(keyType, _) =>
+      if (!(key.typ isSubtype keyType)) Seq(ConsistencyError(s"Expected the key to be of type $keyType, but found ${key.typ}", key.pos)) else Seq()
+    case t => Seq(ConsistencyError(s"Expected map type but found $t", base.pos))
+  }
+
+  def getArgs : Seq[Exp] = Seq(base, key)
+  def withArgs(newArgs: Seq[Exp]) : MapExp = MapLookup(newArgs.head, newArgs(1))(pos, info, errT)
+}
+
+/**
+  * Determines whether `key` is mapped by (contained in) the given map `base`.
+  */
+case class MapContains(key : Exp, base : Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends MapExp with PrettyBinaryExpression {
+  lazy val typ : Type = Bool
+  lazy val priority : Int = 7
+  lazy val fixity : Fixity = Infix(LeftAssociative)
+  lazy val left : PrettyExpression = key
+  lazy val right : PrettyExpression = base
+  lazy val op : String = "in"
+
+  override lazy val check : Seq[ConsistencyError] = base.typ match {
+    case MapType(keyType, _) =>
+      if (!(key.typ isSubtype keyType)) Seq(ConsistencyError(s"Expected the key to be of type $keyType, but found ${key.typ}", key.pos)) else Seq()
+    case t => Seq(ConsistencyError(s"Expected map type but found $t", base.pos))
+  }
+
+  def getArgs : Seq[Exp] = Seq(key, base)
+  def withArgs(newArgs: Seq[Exp]) : MapExp = MapContains(newArgs.head, newArgs(1))(pos, info, errT)
+
+  /**
+    * Desugars the current expression into the set expression '`key` in domain(`base`)'.
+    */
+  lazy val desugared : SetExp = AnySetContains(key, MapDomain(base)(base.pos, base.info, base.errT))(pos, info, errT)
+}
+
+/**
+  * The number of keys mapped by the given map `base`.
+  */
+case class MapCardinality(base : Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends MapExp {
+  lazy val typ : Type = Int
+
+  override lazy val check : Seq[ConsistencyError] =
+    if (!base.typ.isInstanceOf[MapType]) Seq(ConsistencyError(s"Expected map type but found ${base.typ}", base.pos)) else Seq()
+
+  def getArgs : Seq[Exp] = Seq(base)
+  def withArgs(newArgs: Seq[Exp]) : MapExp = MapCardinality(newArgs.head)(pos, info, errT)
+}
+
+/**
+  * The domain of the given map `base`; that is,
+  * the set of all keys containing a mapping in `base`.
+  */
+case class MapDomain(base : Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AnySetExp {
+  lazy val typ : Type = SetType(base.typ.asInstanceOf[MapType].keyType)
+
+  override lazy val check : Seq[ConsistencyError] =
+    if (!base.typ.isInstanceOf[MapType]) Seq(ConsistencyError(s"Expected map type but found ${base.typ}", base.pos)) else Seq()
+
+  def getArgs : Seq[Exp] = Seq(base)
+  def withArgs(newArgs: Seq[Exp]) : SetExp = MapDomain(newArgs.head)(pos, info, errT)
+}
+
+/**
+  * The range (or image) of the given map `base`; that is,
+  * the set of all values to which a mapping is contained in `base`.
+  */
+case class MapRange(base : Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AnySetExp {
+  lazy val typ : Type = SetType(base.typ.asInstanceOf[MapType].valueType)
+
+  override lazy val check : Seq[ConsistencyError] =
+    if (!base.typ.isInstanceOf[MapType]) Seq(ConsistencyError(s"Expected map type but found ${base.typ}", base.pos)) else Seq()
+
+  def getArgs : Seq[Exp] = Seq(base)
+  def withArgs(newArgs: Seq[Exp]) : SetExp = MapRange(newArgs.head)(pos, info, errT)
+}
+
+
 // --- Common functionality
 
 /** Common super trait for all kinds of literals. */
@@ -926,9 +1145,10 @@ sealed trait PossibleTrigger extends Exp {
 sealed trait ForbiddenInTrigger extends Exp
 
 /** Common ancestor of Domain Function applications and Function applications. */
-sealed trait FuncLikeApp extends Exp with Call {
+sealed trait FuncLikeApp extends Exp {
   def func: Program => FuncLike
   def callee = funcname
+  def args: Seq[Exp]
   def funcname: String
 }
 object FuncLikeApp {
@@ -1018,6 +1238,7 @@ trait ExtensionExp extends Exp {
   def extensionIsPure: Boolean
   def extensionSubnodes: Seq[Node]
   def typ: Type
+  def verifyExtExp(): VerificationResult
   /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
     * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression.*/
   def prettyPrint: PrettyPrintPrimitives#Cont

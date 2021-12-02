@@ -25,11 +25,11 @@ object Triggers {
     protected def Trigger_exps(t: Trigger) = t.exps
 
     protected def Trigger(exps: Seq[Exp]) = viper.silver.ast.Trigger(exps)()
-    protected def Var(id: String, typ: Type) = LocalVar(id)(typ)
+    protected def Var(id: String, typ: Type) = LocalVar(id, typ)()
 
     /* True iff the given node is a possible trigger */
     protected def isPossibleTrigger(e: Exp): Boolean = (customIsPossibleTrigger orElse {
-      case p: PossibleTrigger => true
+      case _: PossibleTrigger => true
       case _ => false
     }: PartialFunction[Exp, Boolean])(e)
 
@@ -43,20 +43,20 @@ object Triggers {
     protected def withArgs(e: Exp, args: Seq[Exp]): Exp = e match {
       case pt: PossibleTrigger => pt.withArgs(args)
       case fa: FieldAccess => fa.withArgs(args)
-      case other => sys.error(s"Unexpected expression $e")
+      case _ => sys.error(s"Unexpected expression $e")
     }
 
     protected def getArgs(e: Exp): Seq[Exp] = e match {
       case pt: PossibleTrigger => pt.getArgs
       case fa: FieldAccess => fa.getArgs
-      case other => sys.error(s"Unexpected expression $e")
+      case _ => sys.error(s"Unexpected expression $e")
     }
   }
 
   /** Attention: The axiom rewriter is *not* thread-safe, because it makes use of the
     * [[TriggerGeneration]], which is not thread-safe.
     */
-  object AxiomRewriter extends GenericAxiomRewriter[Type, Exp, LocalVar, Forall, EqCmp, And, Implies, Add, Sub,
+  object AxiomRewriter extends GenericAxiomRewriter[Type, Exp, LocalVar, QuantifiedExp, EqCmp, And, Implies, Add, Sub,
                                                     Trigger] {
 
     private var nextUniqueId = 0
@@ -80,11 +80,15 @@ object Triggers {
     protected def Var_id(v: LocalVar) = v.name
 
     protected def Quantification_triggers(q: Forall) = q.triggers
-    protected def Quantification_vars(q: Forall) = q.variables.map(_.localVar)
-    protected def Quantification_body(q: Forall) = q.exp
+    protected def Quantification_vars(q: QuantifiedExp) = q.variables.map(_.localVar)
+    protected def Quantification_body(q: QuantifiedExp) = q.exp
 
-    protected def Quantification_copy(q: Forall, vars: Seq[LocalVar], body: Exp, triggers: Seq[Trigger]) =
-      q.copy(variables = vars.map(v => LocalVarDecl(v.name, v.typ)(v.pos, v.info, v.errT)), exp = body, triggers = triggers)(q.pos, q.info, q.errT)
+    protected def Quantification_copy(q: QuantifiedExp, vars: Seq[LocalVar], body: Exp, triggers: Seq[Trigger]) = q match {
+      case f: Forall => f.copy(variables = vars.map(v => LocalVarDecl(v.name, v.typ)(v.pos, v.info, v.errT)), exp = body, triggers = triggers)(q.pos, q.info, q.errT)
+      case e: Exists => e.copy(variables = vars.map(v => LocalVarDecl(v.name, v.typ)(v.pos, v.info, v.errT)), exp = body, triggers = triggers)(q.pos, q.info, q.errT)
+      case _ => sys.error(s"Unexpected expression $q")
+    }
+
 
     protected def Trigger_exps(t: Trigger) = t.exps
     protected def Trigger(exps: Seq[Exp]) = ast.Trigger(exps)()
@@ -100,12 +104,12 @@ object Triggers {
 
     protected def fresh(name: String, typ: Type) = {
       nextUniqueId += 1
-      LocalVar(s"__rw_$name$nextUniqueId")(typ)
+      LocalVar(s"__rw_$name$nextUniqueId", typ)()
     }
 
-    protected def log(message: String) {}
-    protected def log(key: String, item: Any) {}
-    protected def log(key: String, items: Iterable[Any]) {}
+    protected def log(message: String): Unit = {}
+    protected def log(key: String, item: Any): Unit = {}
+    protected def log(key: String, items: Iterable[Any]): Unit = {}
   }
 
   object SimpleArithmeticSolver extends GenericArithmeticSolver[Type, Exp, LocalVar, Add, Sub] {

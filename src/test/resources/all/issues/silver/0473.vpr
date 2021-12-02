@@ -1,0 +1,21 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+domain Tree[T] {
+    /* Constructors */
+    function Leaf(): Tree[T]
+    function Node(left: Tree[T]): Tree[T]
+
+
+    /* Destructors */
+    function left(t: Tree[T]): Tree[T]
+}
+
+domain Test[T] {
+  function add(left: T, right: T): T
+}
+
+domain DuplicateTest[T] {
+  //:: ExpectedOutput(consistency.error)
+  function add_wrong(left: T, left: T): T
+}

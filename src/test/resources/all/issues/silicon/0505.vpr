@@ -1,0 +1,17 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Ref
+field g: Int
+
+method foo(r: Ref, set: Set[Ref])
+  requires forall x: Ref :: { x.f } x in set ==> acc(x.f, 1/3)
+  requires forall x: Ref :: { x.f.g } x in set ==> acc(x.f.g, 2/3)
+{
+  var new_set: Set[Ref]
+  new_set := set union Set(r)
+  inhale acc(r.f, 1/3)
+  inhale acc(r.f.g, 2/3)
+  assert forall x: Ref :: { x.f } x in new_set ==> acc(x.f, 1/3)
+  assert forall x: Ref :: { x.f.g } x in new_set ==> acc(x.f.g, 2/3)
+}

@@ -6,25 +6,24 @@
 
 package viper.silver.frontend
 
-import viper.silver.ast.SourcePosition
 import viper.silver.ast.utility.Consistency
-import viper.silver.FastMessaging
-import viper.silver.ast._
+import viper.silver.ast.{SourcePosition, _}
 import viper.silver.parser._
 import viper.silver.plugin.SilverPluginManager
 import viper.silver.plugin.SilverPluginManager.PluginException
 import viper.silver.reporter._
 import viper.silver.verifier._
-import fastparse.all.{Parsed, ParserInput}
-import fastparse.all
+import fastparse.Parsed
 import java.nio.file.{Path, Paths}
-
+import viper.silver.FastMessaging
 
 /**
  * Common functionality to implement a command-line verifier for Viper.  This trait
  * provides code to invoke the parser, parse common command-line options and print
  * error messages in a user-friendly fashion.
  */
+case class MissingDependencyException(msg: String) extends Exception
+
 trait SilFrontend extends DefaultFrontend {
 
   /**
@@ -77,7 +76,21 @@ trait SilFrontend extends DefaultFrontend {
   protected var _config: SilFrontendConfig = _
   def config: SilFrontendConfig = _config
 
-  protected var _plugins: SilverPluginManager = SilverPluginManager()
+  /**
+   * Default plugins are always activated and are run as last plugins.
+   * All default plugins can be excluded from the plugins by providing the --disableDefaultPlugins flag
+   */
+  private val defaultPlugins: Seq[String] = Seq(
+    "viper.silver.plugin.standard.termination.TerminationPlugin",
+    "viper.silver.plugin.standard.predicateinstance.PredicateInstancePlugin"
+  )
+
+
+  protected var _plugins: SilverPluginManager = SilverPluginManager(defaultPlugins match {
+    case Seq() => None
+    case s => Some(s.mkString(":"))
+  })(reporter.reporter, logger, _config)
+
   def plugins: SilverPluginManager = _plugins
 
   protected var _startTime: Long = _
@@ -85,7 +98,7 @@ trait SilFrontend extends DefaultFrontend {
 
   def getTime: Long = System.currentTimeMillis() - _startTime
 
-  def resetMessages() {
+  def resetMessages(): Unit = {
     Consistency.resetMessages()
   }
 
@@ -95,7 +108,7 @@ trait SilFrontend extends DefaultFrontend {
 
   def prepare(args: Seq[String]): Boolean = {
 
-    reporter report CopyrightReport(s"${_ver.signature}\n")//${_ver.copyright}") // we agreed on 11/03/19 to drop the copyright
+    reporter report CopyrightReport(_ver.signature)//${_ver.copyright}") // we agreed on 11/03/19 to drop the copyright
 
     /* Parse command line arguments and populate _config */
     parseCommandLine(args)
@@ -119,6 +132,12 @@ trait SilFrontend extends DefaultFrontend {
     if (_config.dependencies()) {
       reporter report ExternalDependenciesReport(_ver.dependencies)
     }
+
+    // FIXME The error transformer function may not be immutable with current design:
+    // FIXME  `reporter` is a field of trait Frontend, whereas the plugin manager
+    // FIXME  stored in `_plugins` is only initialized here, in SilFrontend.
+    // FIXME  Consider refactoring this part. --- ATG 2019
+    reporter.transform = _plugins.mapVerificationResult
     true
   }
 
@@ -127,7 +146,7 @@ trait SilFrontend extends DefaultFrontend {
    * the Viper program to the verifier.  The resulting error messages (if any) will be
    * shown in a user-friendly fashion.
    */
-  def execute(args: Seq[String]) {
+  def execute(args: Seq[String]): Unit = {
     setStartTime()
 
     /* Create the verifier */
@@ -149,18 +168,28 @@ trait SilFrontend extends DefaultFrontend {
     }
 
     // Parse, type check, translate and verify
-    run()
-
-    finish()
+    try {
+      runAllPhases()
+      finish()
+    }
+    catch {
+        case MissingDependencyException(msg) =>
+          println("Missing dependency exception: " + msg)
+          reporter report MissingDependencyReport(msg)
+    }
   }
-
 
   override def reset(input: Path): Unit = {
     super.reset(input)
 
     if(_config != null) {
-      // reset error messages of plugins
-      _plugins = SilverPluginManager(_config.plugin.toOption)(reporter, logger, _config)
+
+      // concat defined plugins and default plugins
+      val plugins: Option[String] = {
+        val list = _config.plugin.toOption ++ defaultPlugins
+        if (list.isEmpty) { None } else { Some(list.mkString(":")) }
+      }
+      _plugins = SilverPluginManager(plugins)(reporter.reporter, logger, _config)
     }
   }
 
@@ -193,7 +222,7 @@ trait SilFrontend extends DefaultFrontend {
     }
   }
 
-  protected def parseCommandLine(args: Seq[String]) {
+  protected def parseCommandLine(args: Seq[String]): Unit = {
     _config = configureVerifier(args)
   }
 
@@ -203,16 +232,18 @@ trait SilFrontend extends DefaultFrontend {
       case Some(inputPlugin) =>
         val result = FastParser.parse(inputPlugin, file, Some(_plugins))
           result match {
-            case Parsed.Success(e@ PProgram(_, _, _, _, _, _, _, err_list), _) =>
+            case Parsed.Success(e@ PProgram(_, _, _, _, _, _, _, _, err_list), _) =>
               if (err_list.isEmpty || err_list.forall(p => p.isInstanceOf[ParseWarning])) {
                 reporter report WarningsDuringParsing(err_list)
                 Succ({e.initProperties(); e})
               }
               else Fail(err_list)
             case fail @ Parsed.Failure(_, index, extra) =>
-              val msg = all.ParseError(fail.asInstanceOf[Parsed.Failure]).getMessage()
-              val (line, col) = LineCol(extra.input.asInstanceOf[ParserInput], index)
+              val msg = fail.trace().longAggregateMsg
+              val (line, col) = LineCol(index)
               Fail(List(ParseError(s"Expected $msg", SourcePosition(file, line, col))))
+            //? val pos = extra.input.prettyIndex(index).split(":").map(_.toInt)
+              //? Fail(List(ParseError(s"Expected $msg", SourcePosition(file, pos(0), pos(1)))))
             case error: ParseError => Fail(List(error))
           }
 
@@ -224,17 +255,18 @@ trait SilFrontend extends DefaultFrontend {
     _plugins.beforeResolve(input) match {
       case Some(inputPlugin) =>
         val r = Resolver(inputPlugin)
-        r.run match {
+        val analysisResult = r.run
+        val warnings = for (m <- FastMessaging.sortmessages(r.messages) if !m.error) yield {
+          TypecheckerWarning(m.label, m.pos)
+        }
+        if (warnings.nonEmpty)
+          reporter report WarningsDuringTypechecking(warnings)
+        analysisResult match {
           case Some(modifiedInput) =>
             Succ(modifiedInput)
           case None =>
-            val errors = for (m <- FastMessaging.sortmessages(r.messages)) yield {
-              TypecheckerError(m.label, m.pos match {
-                case fp: FilePosition =>
-                  SourcePosition(fp.file, m.pos.line, m.pos.column)
-                case _ =>
-                  SourcePosition(_inputFile.get, m.pos.line, m.pos.column)
-              })
+            val errors = for (m <- FastMessaging.sortmessages(r.messages) if m.error) yield {
+              TypecheckerError(m.label, m.pos)
             }
             Fail(errors)
         }
@@ -248,17 +280,12 @@ trait SilFrontend extends DefaultFrontend {
     _plugins.beforeTranslate(input) match {
       case Some(modifiedInputPlugin) =>
         Translator(modifiedInputPlugin).translate match {
-          case Some(program) => Succ(program)
+          case Some(program) =>
+            Succ(program)
 
           case None => // then there are translation messages
             Fail(FastMessaging.sortmessages(Consistency.messages) map (m => {
-              TypecheckerError(
-                m.label, m.pos match {
-                  case fp: FilePosition =>
-                    SourcePosition(fp.file, m.pos.line, m.pos.column)
-                  case _ =>
-                    SourcePosition(_inputFile.get, m.pos.line, m.pos.column)
-                })
+              TypecheckerError(m.label, m.pos)
             }))
         }
 
@@ -276,7 +303,7 @@ trait SilFrontend extends DefaultFrontend {
             else inputPlugin.methods map (_.name)
 
           val methods = inputPlugin.methods filter (m => verifyMethods.contains(m.name))
-          val program = Program(inputPlugin.domains, inputPlugin.fields, inputPlugin.functions, inputPlugin.predicates, methods)(inputPlugin.pos, inputPlugin.info)
+          val program = Program(inputPlugin.domains, inputPlugin.fields, inputPlugin.functions, inputPlugin.predicates, methods, inputPlugin.extensions)(inputPlugin.pos, inputPlugin.info)
 
           _plugins.beforeVerify(program) match {
             case Some(programPlugin) => Succ(programPlugin)
@@ -293,6 +320,4 @@ trait SilFrontend extends DefaultFrontend {
     else
       Fail(errors)
   }
-
-  override def mapVerificationResult(in: VerificationResult): VerificationResult = _plugins.mapVerificationResult(in)
 }

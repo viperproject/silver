@@ -1,0 +1,17 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+method deAlias(x: Ref, y: Ref, k: Perm)
+  requires k >= none
+  requires acc(x.f, k) && acc(y.f, k)
+  ensures x == y ==> acc(x.f, 2 * k)
+  ensures x != y ==> acc(x.f, k) && acc(y.f, k)
+{}
+
+method deAlias2(x: Ref, y: Ref, k: Perm)
+  requires k >= none
+  requires acc(x.f, k) && acc(y.f, k)
+  ensures x == y ? acc(x.f, 2 * k) : acc(x.f, k) && acc(y.f, k)
+{}

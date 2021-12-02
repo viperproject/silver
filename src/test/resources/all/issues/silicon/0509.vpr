@@ -1,0 +1,45 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field v: Ref
+
+predicate VecI32(x:Ref)
+
+function len(x:Ref) : Int
+  requires acc(VecI32(x),1/2)
+  ensures result >= 0
+
+function lookup(self:Ref, index:Int) : Int
+  requires acc(VecI32(self)) && 0 <= index && index < len(self)
+
+method store(self:Ref, index:Int, value:Int)
+  requires VecI32(self) && 0 <=index && index < len(self)
+  ensures VecI32(self) && len(self) == old(len(self))
+  ensures lookup(self, index) == value
+  ensures forall i:Int :: {lookup(self,i)} (0 <= i && i < len(self) && i != index) ==>
+    lookup(self, i) == old(lookup(self,i))
+
+method merge_sort_part(arr: Ref, from: Int, until: Int)
+  requires VecI32(arr) && 0 <= from && from <= until && until <= len(arr)
+{
+  assume (until - from > 1)
+
+  var mid : Int := from + (until - from) / 2;
+  var left_copy : Ref
+  var index : Int := from; // index into arr (actual array)
+  var left_index : Int := 0; // index into copy
+  var right_index : Int := mid; // index into arr (actual array)
+
+  inhale acc(VecI32(left_copy))
+  inhale  forall i:Int, j:Int :: {lookup(arr,i),lookup(arr,j)}(right_index<=i && i<j && j<until) ==> lookup(arr,i) <= lookup(arr,j)
+
+  assume left_index < len(left_copy)
+  // passes initially, also if assert below is commented out, but not after commented back in...
+  assert forall i:Int, j:Int :: {lookup(arr,i),lookup(arr,j)}(right_index<=i && i<j && j<until) ==> lookup(arr,i) <= lookup(arr,j)
+  var left_value : Int := lookup(left_copy,left_index);
+  //assert index < right_index // sanity check: passes
+  store(arr,index, left_value);
+
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/509/)
+  assert forall i:Int, j:Int :: {lookup(arr,i),lookup(arr,j)}(right_index<=i && i<j && j<until) ==> lookup(arr,i) <= lookup(arr,j)
+}

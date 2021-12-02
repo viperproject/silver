@@ -2,15 +2,16 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (c) 2011-2019 ETH Zurich.
+// Copyright (c) 2011-2021 ETH Zurich.
 
 import java.nio.file.Paths
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast.{LocalVar, Perm, Program}
 import viper.silver.frontend.{SilFrontend, SilFrontendConfig}
 import viper.silver.parser.{PIdnDef, PPredicate, PProgram}
 import viper.silver.plugin.{SilverPlugin, SilverPluginManager}
+import viper.silver.reporter.{Reporter, StdIOReporter}
 import viper.silver.verifier.errors.Internal
 import viper.silver.verifier.reasons.FeatureUnsupported
 import viper.silver.verifier._
@@ -71,7 +72,6 @@ class TestPluginAllCalled extends SilverPlugin with TestPlugin {
   var translate = false
   var filter = false
   var verify = false
-  var mapping = false
   var finish = false
 
   override def beforeParse(input: String, isImported: Boolean): String = {
@@ -103,19 +103,13 @@ class TestPluginAllCalled extends SilverPlugin with TestPlugin {
     input
   }
 
-  override def mapVerificationResult(input: VerificationResult): VerificationResult = {
-    assert(parse && resolve && translate && filter && verify)
-    mapping = true
-    input
-  }
-
   override def beforeFinish(input: VerificationResult): VerificationResult = {
-    assert(parse && resolve && translate && filter && verify && mapping)
+    assert(parse && resolve && translate && filter && verify)
     finish = true
     input
   }
 
-  override def test(): Boolean = parse && resolve && translate && filter && verify && mapping && finish
+  override def test(): Boolean = parse && resolve && translate && filter && verify && finish
 }
 
 class TestPluginAddPredicate extends SilverPlugin {
@@ -127,10 +121,11 @@ class TestPluginAddPredicate extends SilverPlugin {
       input.domains,
       input.fields,
       input.functions,
-      input.predicates :+ PPredicate(PIdnDef("testPredicate"), Seq(), None),
+      input.predicates :+ PPredicate(PIdnDef("testPredicate")(), Seq(), None)(),
       input.methods,
+      input.extensions,
       input.errors
-    )
+    )()
   }
 
   /** Called after methods are filtered but before the verification by the backend happens.
@@ -144,18 +139,21 @@ class TestPluginAddPredicate extends SilverPlugin {
   }
 }
 
+// ATG: After introducing `PluginAwareReporter` this test became rather trivial.
 class TestPluginMapErrors extends SilverPlugin with TestPlugin with FakeResult {
 
-  var error1: Internal = Internal(FeatureUnsupported(LocalVar("test1")(Perm), "Test1"))
-  var error2: Internal = Internal(FeatureUnsupported(LocalVar("test2")(Perm), "Test2"))
+  var error1: Internal = Internal(FeatureUnsupported(LocalVar("test1", Perm)(), "Test1"))
+  var error2: Internal = Internal(FeatureUnsupported(LocalVar("test2", Perm)(), "Test2"))
   var finish = false
 
   override def mapVerificationResult(input: VerificationResult): VerificationResult = {
     input match {
       case Success =>
+//        println(">>> detected VerificationResult is Success")
         assert(false)
         input
       case Failure(errors) =>
+//        println(s">>> detected VerificationResult is Failure: ${errors.toString()}")
         assert(errors.contains(error1))
         Failure(Seq(error2))
     }
@@ -163,9 +161,12 @@ class TestPluginMapErrors extends SilverPlugin with TestPlugin with FakeResult {
 
   override def beforeFinish(input: VerificationResult): VerificationResult = {
     finish = true
-    input match {
-      case Success => assert(false)
+    mapVerificationResult(input) match {
+      case Success =>
+//        println("]]] detected VerificationResult is Success")
+        assert(false)
       case Failure(errors) =>
+//        println(s"]]] detected VerificationResult is Failure: ${errors.toString()}")
         assert(!errors.contains(error1))
         assert(errors.contains(error2))
     }
@@ -184,7 +185,7 @@ class TestPluginMapVsFinish extends SilverPlugin with TestPlugin {
   var finish = false
 
   override def beforeResolve(input: PProgram): PProgram = {
-    error = Internal(FeatureUnsupported(LocalVar("test")(Perm), "Test"))
+    error = Internal(FeatureUnsupported(LocalVar("test", Perm)(), "Test"))
     reportError(error)
     input
   }
@@ -212,8 +213,8 @@ class TestPluginMapVsFinish extends SilverPlugin with TestPlugin {
   override def test(): Boolean = !mapping && finish
 }
 
-class PluginTests extends FunSuite {
-  val inputfile = "plugintests/plugininput.sil"
+class PluginTests extends AnyFunSuite {
+  val inputfile = "plugintests/plugininput.vpr"
   val plugins = Seq(
     "TestPluginImport",
     "TestPluginReportError",
@@ -222,6 +223,9 @@ class PluginTests extends FunSuite {
     "TestPluginMapErrors",
     "TestPluginMapVsFinish"
   )
+
+  // number of plugins running by default
+  val defaultPlugins = 2
 
   var result: VerificationResult = Success
 
@@ -237,7 +241,7 @@ class PluginTests extends FunSuite {
       case _ => Success
     }
     frontend.execute(Seq("--plugin", plugin, file.toString))
-    assert(frontend.plugins.plugins.size == 1)
+    assert(frontend.plugins.plugins.size == 1 + defaultPlugins)
     frontend.plugins.plugins.foreach {
       case p: TestPlugin => assert(p.test(), p.getClass.getName)
       case _ =>
@@ -273,7 +277,7 @@ class PluginTests extends FunSuite {
 
     override def buildVersion: String = "2.71"
 
-    override def copyright: String = "(c) Copyright ETH Zurich 2012 - 2018"
+    override def copyright: String = "(c) Copyright ETH Zurich 2012 - 2021"
 
     override def debugInfo(info: Seq[(String, Any)]): Unit = {}
 
@@ -290,6 +294,8 @@ class PluginTests extends FunSuite {
     }
 
     override def stop(): Unit = {}
+
+    override def reporter: Reporter = StdIOReporter()
   }
 
   class MockPluginConfig(args: Seq[String]) extends SilFrontendConfig(args, "MockPluginVerifier"){

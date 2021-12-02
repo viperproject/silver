@@ -1,0 +1,26 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+domain $T$_ {
+
+  function testf(self: $T$_): Int
+
+}
+
+domain $S$_ {
+
+  function testfs(self: $S$_): Int
+
+}
+
+domain $T0$_ {
+
+  function testf0(self: $T0$_): Int
+
+}
+
+domain $T1$_ {
+
+  function testf1(self: $T1$_): Int
+
+}

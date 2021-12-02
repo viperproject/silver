@@ -2,10 +2,11 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (c) 2011-2019 ETH Zurich.
+// Copyright (c) 2011-2021 ETH Zurich.
 
 package viper.silver.reporter
 
+import viper.silver.reporter.BackendSubProcessStages.BackendSubProcessStage
 import viper.silver.verifier._
 
 /**
@@ -16,12 +17,42 @@ import viper.silver.verifier._
   *
   */
 sealed trait Message {
-  override def toString: String = s"generic_message"
+  override def toString: String = "generic_message"
   val name: String
 }
 
+/**
+ * Since AST construction is conceptually independent from verification,
+ * e.g. in ViperCoreServer, it might be convenient to use a separate sub-hierarcy of messages
+ * for purposes related to AST generation. Currently, messages such as [[WarningsDuringParsing]]
+ * are used.
+ *
+ * These messages already have their JSON marshallers defined in
+ * viper/server/frontends/http/jsonWriters/ViperIDEProtocol.scala
+ *
+ * ATG 2020
+ */
+sealed trait AstConstructionResultMessage extends Message {
+  override val name: String = "ast_construction_result"
+  def astConstructionTime: Time
+}
+
+case class AstConstructionSuccessMessage(astConstructionTime: Time)
+  extends AstConstructionResultMessage {
+  override def toString: String =
+    s"ast_construction_success(time=${astConstructionTime.toString})"
+}
+
+case class AstConstructionFailureMessage(astConstructionTime: Time, result: Failure)
+  extends AstConstructionResultMessage {
+  override def toString: String =
+    s"ast_construction_failure(" +
+    s"time=${astConstructionTime.toString}, " +
+    s"result=${result.toString})"
+}
+
 sealed trait VerificationResultMessage extends Message {
-  override val name: String = s"verification_result"
+  override val name: String = "verification_result"
   def result: VerificationResult
   val verifier: String
 }
@@ -36,8 +67,10 @@ object VerificationResultMessage {
   : VerificationResultMessage = {
 
     result match {
-      case Success => OverallSuccessMessage(verifier, verificationTime)
-      case failure: Failure => OverallFailureMessage(verifier, verificationTime, failure)
+      case Success => 
+        OverallSuccessMessage(verifier, verificationTime)
+      case failure: Failure => 
+        OverallFailureMessage(verifier, verificationTime, failure)
     }
   }
 
@@ -46,22 +79,52 @@ object VerificationResultMessage {
     *  if `result` is [[Success]] then an [[EntitySuccessMessage]] is created, otherwise (if `result`
     *  is a [[Failure]]) a [[EntityFailureMessage]] is created.
     */
-  def apply(verifier: String, entity: Entity, verificationTime: Time, result: VerificationResult)
+  def apply(verifier: String, entity: Entity, verificationTime: Time,
+            result: VerificationResult)
   : VerificationResultMessage = {
 
     result match {
-      case Success => EntitySuccessMessage(verifier, entity, verificationTime)
-      case failure: Failure => EntityFailureMessage(verifier, entity, verificationTime, failure)
+      case Success => 
+        EntitySuccessMessage(verifier, entity, verificationTime)
+      case failure: Failure => 
+        EntityFailureMessage(verifier, entity, verificationTime, failure)
+    }
+  }
+
+  def apply(verifier: String, entity: Entity, verificationTime: Time, 
+            result: VerificationResult, cached: Boolean)
+  : VerificationResultMessage = {
+
+    result match {
+      case Success => 
+        EntitySuccessMessage(verifier, entity, verificationTime, cached)
+      case failure: Failure => 
+        EntityFailureMessage(verifier, entity, verificationTime, failure, cached)
     }
   }
 }
 
-// Overall results concern results for the entire program (e.g. those presently produced by the Carbon backend)
+trait CachedEntityMessage extends VerificationResultMessage
+
+object CachedEntityMessage {
+
+  def apply(verifier: String, entity: Entity, result: VerificationResult)
+  : VerificationResultMessage =
+    result match {
+      case Success => 
+        EntitySuccessMessage(verifier, entity, 0L.asInstanceOf[Time], cached = true)
+      case failure: Failure =>
+        EntityFailureMessage(verifier, entity, 0L.asInstanceOf[Time], failure, cached = true)
+    }
+}
+
+// Overall results concern results for the entire program (e.g. those presently 
+// produced by the Carbon backend)
 case class OverallSuccessMessage(verifier: String, verificationTime: Time)
   extends VerificationResultMessage {
 
   override def toString: String = s"overall_success_message(" +
-    s"verifier=${verifier}, time=${verificationTime.toString()})"
+    s"verifier=${verifier}, time=${verificationTime.toString})"
 
   val result: VerificationResult = Success
 }
@@ -70,113 +133,147 @@ case class OverallFailureMessage(verifier: String, verificationTime: Time, resul
   extends VerificationResultMessage {
 
   override def toString: String = s"overall_failure_message(" +
-    s"verifier=${verifier}, time=${verificationTime.toString()}, result=${result.toString()})"
+    s"verifier=${verifier}, time=${verificationTime.toString}, result=${result.toString})"
 }
 
-// Entity results concern results for specific program entities (these are presently produced by the Silicon backend)
-case class EntitySuccessMessage(verifier: String, concerning: Entity, verificationTime: Time)
-    extends VerificationResultMessage {
+// Entity results concern results for specific program entities (these are presently 
+// produced by the Silicon backend)
+case class EntitySuccessMessage(verifier: String, concerning: Entity, 
+                                verificationTime: Time, cached: Boolean = false)
+  extends VerificationResultMessage {
 
-  override def toString: String = s"entry_success_message(" +
-    s"verifier=${verifier}, " +
-    s"concerning=${concerning.toString()}, time=${verificationTime.toString()})"
+  override def toString: String = s"entity_success_message(" +
+    s"verifier=$verifier, " +
+    s"concerning=${print(concerning)}, time=${verificationTime.toString}, cached=$cached)"
 
-  val result: VerificationResult = Success
+ val result: VerificationResult = Success
 }
 
-case class EntityFailureMessage(verifier: String, concerning: Entity, verificationTime: Time, result: Failure)
-    extends VerificationResultMessage {
+case class EntityFailureMessage(verifier: String, concerning: Entity, 
+                                verificationTime: Time, result: Failure, cached: Boolean = false)
+  extends VerificationResultMessage {
 
-  override def toString: String = s"entry_failure_message(" +
-    s"verifier=${verifier}, concerning=${concerning.toString()}, " +
-    s"time=${verificationTime.toString()}, result=${result.toString()})"
+  override def toString: String = s"entity_failure_message(" +
+      s"verifier=$verifier, concerning=${print(concerning)}, " +
+      s"time=${verificationTime.toString}, result=${result.toString}, cached=$cached)"
 }
 
-case class StatisticsReport(nOfMethods: Int, nOfFunctions: Int, nOfPredicates: Int, nOfDomains: Int, nOfFields: Int)
-    extends Message {
+case class StatisticsReport(nOfMethods: Int, nOfFunctions: Int, nOfPredicates: Int, 
+                            nOfDomains: Int, nOfFields: Int)
+  extends Message {
 
-  override def toString: String = s"statistics_report(" +
-    s"nom=${nOfMethods.toString()}, nofu=${nOfFunctions.toString()}, nop=${nOfPredicates.toString()}, " +
-    s"nod=${nOfDomains.toString()}, nofi=${nOfFields.toString()})"
+  override lazy val toString: String = s"statistics_report(" +
+    s"nom=${nOfMethods.toString}, nofu=${nOfFunctions.toString}, nop=${nOfPredicates.toString}, " +
+    s"nod=${nOfDomains.toString}, nofi=${nOfFields.toString})"
 
-  override val name = s"statistics"
+  override val name = "statistics"
 }
 
 case class ProgramOutlineReport(members: List[Entity]) extends Message {
 
-  override def toString: String = s"program_outline_report(members=${members.toString()})"
-  override val name: String = s"program_outline"
+  override lazy val toString: String = s"program_outline_report(members=${members.map(print)})"
+  override val name: String = "program_outline"
 }
 
 case class ProgramDefinitionsReport(definitions: List[Definition]) extends Message {
 
-  override def toString: String = s"program_definitions_report(definitions=${definitions.toString()}"
-  override val name: String = s"program_definitions"
+  override lazy val toString: String = s"program_definitions_report(definitions=${definitions.toString}"
+  override val name: String = "program_definitions"
 }
 
-// TODO: design the infrastructure for reporting Symbolic Execution info with variable level of detail.
-case class SymbExLogReport(entity: Entity, timestamp: Time, stuff: Option[Any])
-    extends Message {
+// TODO: Variable level of detail?
+case class ExecutionTraceReport(memberTraces: Seq[Any],
+                                axioms: List[Any],
+                                functionPostAxioms: List[Any]
+                               ) extends Message {
 
-  override def toString: String = s"symbolic_execution_logger_report(" +
-    s"entity=${entity.toString()}, " +
-    s"timestamp=${timestamp.toString()}, stuff=${stuff.toString()})"
+  override def toString: String =
+    s"""symbolic_execution_logger_report(
+       |  members=${(memberTraces map {m => m.toString}).mkString("[", ",", "]")},
+       |  axioms=${axioms.toString}
+       |  functionPostAxioms=${functionPostAxioms.toString}
+       |)""".stripMargin
 
-  override val name: String = s"symbolic_execution_logger_report"
+  override val name: String = "symbolic_execution_logger_report"
 }
 
 case class ExceptionReport(e: java.lang.Throwable) extends Message {
 
-  override def toString: String = s"exception_report(e=${e.toString()})"
-  override val name: String = s"exception_report"
+  override def toString: String = s"exception_report(e=${e.toString})"
+  override val name: String = "exception_report"
 }
 
-case class InvalidArgumentsReport(tool_signature: String, errors: List[AbstractError]) extends Message {
+case class InvalidArgumentsReport(tool_signature: String, errors: List[AbstractError])
+  extends Message {
 
-  override def toString: String = s"invalid_args_report(tool_signature=${tool_signature.toString()}, errors=[${errors.mkString(",")}])"
-  override val name: String = s"invalid_args_report"
+  override lazy val toString: String =
+    s"invalid_args_report(tool_signature=${tool_signature}, errors=[${errors.mkString(",")}])"
+  override val name: String = "invalid_args_report"
+}
+
+object BackendSubProcessStages extends Enumeration {
+  type BackendSubProcessStage = Value
+  val BeforeInputSent         = Value(1, "before_input_sent")
+  val AfterInputSent          = Value(2, "after_input_sent")
+  val OnOutput                = Value(3, "on_output")
+  val OnError                 = Value(4, "on_error")
+  val BeforeTermination       = Value(5, "before_termination")
+  val OnExit                  = Value(6, "on_exit")
+  val AfterTermination        = Value(7, "after_termination")
+}
+
+case class BackendSubProcessReport(tool_signature: String, process_exe: String,
+                                   phase: BackendSubProcessStage, pid_maybe: Option[Long] = None) extends Message {
+
+  override lazy val toString: String =
+    s"backend_sub_process_report(tool_signature=${tool_signature}, process_exe=${process_exe}, " +
+    s"phase=${phase.toString}, pid=${pid_maybe match {
+      case Some(pid) => pid.toString
+      case None => "<not provided>"
+    }})"
+
+  override val name: String = "backend_sub_process_report"
 }
 
 case class ExternalDependenciesReport(deps: Seq[Dependency]) extends Message {
 
-  override def toString: String = s"external_dependencies_report(deps=[${deps.mkString(",")}])"
-  override val name: String = s"external_dependencies_report"
+  override lazy val toString: String = s"external_dependencies_report(deps=[${deps.mkString(",")}])"
+  override val name: String = "external_dependencies_report"
 }
 
 case class WarningsDuringParsing(warnings: Seq[ParseReport]) extends Message {
-  override def toString: String = s"warnings_during_parsing(warnings=${warnings.toString})"
-  override val name: String = s"warnings_during_parsing"
+  override lazy val toString: String = s"warnings_during_parsing(warnings=${warnings.toString})"
+  override val name: String = "warnings_during_parsing"
 }
 
-/**
-  * Simple messages contain just one text field.
-  */
+case class WarningsDuringTypechecking(warnings: Seq[TypecheckerWarning]) extends Message {
+  override lazy val toString: String = s"warnings_during_typechecking(warnings=${warnings.toString})"
+  override val name: String = "warnings_during_typechecking"
+}
 
 abstract class SimpleMessage(val text: String) extends Message {
-  override val name: String = s"simple_message"
+  override lazy val toString: String = s"$name(text=$text)"
+  override val name: String = "simple_message"
 }
 
 case class ConfigurationConfirmation(override val text: String) extends SimpleMessage(text) {
-  override def toString: String = s"configuration_confirmation(text=${text.toString()})"
-  override val name: String = s"configuration_confirmation"
+  override val name: String = "configuration_confirmation"
 }
 
 case class InternalWarningMessage(override val text: String) extends SimpleMessage(text) {
-
-  override def toString: String = s"internal_warning_message(text=${text.toString()})"
-  override val name: String = s"internal_warning_message"
+  override val name: String = "internal_warning_message"
 }
 
 case class CopyrightReport(override val text: String) extends SimpleMessage(text) {
+  override val name: String = "copyright_report"
+}
 
-  override def toString: String = s"copyright_report(text=${text.toString()})"
-  override val name: String = s"copyright_report"
+case class MissingDependencyReport(override val text: String) extends SimpleMessage(text) {
+  override val name = "missing_dependency_report"
 }
 
 // FIXME: for debug purposes only: a pong message can be reported to indicate
 // FIXME: that the verification backend is alive.
 case class PongMessage(override val text: String) extends SimpleMessage(text) {
-
-  override def toString: String = s"dbg__pong(text=$text)"
-  override val name: String = s"dbg__pong"
+  override val name: String = "dbg__pong"
 }

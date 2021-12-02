@@ -4,10 +4,11 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-import org.scalatest._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast._
 
-class MethodDependencyTests extends FunSuite with Matchers {
+class MethodDependencyTests extends AnyFunSuite with Matchers {
 
 
   /** Testing dependency analysis for caching for the following Viper program:
@@ -93,34 +94,34 @@ class MethodDependencyTests extends FunSuite with Matchers {
   val fun1: Function = Function("fun1", Seq(), Bool, Seq(), Seq(), None)()
   val fun2: Function = Function("fun2", Seq(), Bool, Seq(), Seq(), None)()
   val fun3: Function = Function("fun3", Seq(), Bool, Seq(), Seq(), None)()
-  val fun4: Function = Function("fun4", Seq(LocalVarDecl("x", Ref)()), Bool, Seq(FieldAccessPredicate(FieldAccess(LocalVar("x")(Ref), Field("f4", Bool)())(),FullPerm()())()), Seq(), None)()
+  val fun4: Function = Function("fun4", Seq(LocalVarDecl("x", Ref)()), Bool, Seq(FieldAccessPredicate(FieldAccess(LocalVar("x", Ref)(), Field("f4", Bool)())(),FullPerm()())()), Seq(), None)()
   val p0: Predicate = Predicate("p0", Seq(), None)()
   val p1: Predicate = Predicate("p1", Seq(), None)()
   val p2: Predicate = Predicate("p2", Seq(), None)()
   val p3: Predicate = Predicate("p3", Seq(), None)()
-  val p4: Predicate = Predicate("p4", Seq(LocalVarDecl("x", Ref)()), Some(FuncApp(fun4, Seq(LocalVar("x")(Ref)))()))()
+  val p4: Predicate = Predicate("p4", Seq(LocalVarDecl("x", Ref)()), Some(FuncApp(fun4, Seq(LocalVar("x", Ref)()))()))()
   val m1: Method = Method("m1", Seq(), Seq(), Seq(), Seq(), Some(Seqn(Seq(), Seq())()))()
-  val m0: Method = Method("m0", Seq(LocalVarDecl("x", Ref)()), Seq(), Seq(PredicateAccessPredicate(PredicateAccess(Seq(LocalVar("x")(Ref)), p4.name)(), FullPerm()())()), Seq(), Some(Seqn(Seq(MethodCall(m1,Seq(),Seq())()), Seq())()))()
+  val m0: Method = Method("m0", Seq(LocalVarDecl("x", Ref)()), Seq(), Seq(PredicateAccessPredicate(PredicateAccess(Seq(LocalVar("x", Ref)()), p4.name)(), FullPerm()())()), Seq(), Some(Seqn(Seq(MethodCall(m1,Seq(),Seq())()), Seq())()))()
   val test: Method = Method("test",
     Seq(LocalVarDecl("x", Ref)()),
     Seq(),
     // preconditions:
-    Seq(And(FieldAccessPredicate(FieldAccess(LocalVar("x")(Ref), f0)(), FullPerm()())(), And(FuncApp(fun0, Seq())(), PredicateAccessPredicate(PredicateAccess(Seq(), p0.name)(), FullPerm()())())())()),
+    Seq(And(FieldAccessPredicate(FieldAccess(LocalVar("x", Ref)(), f0)(), FullPerm()())(), And(FuncApp(fun0, Seq())(), PredicateAccessPredicate(PredicateAccess(Seq(), p0.name)(), FullPerm()())())())()),
     // postconditions:
-    Seq(And(FieldAccessPredicate(FieldAccess(LocalVar("x")(Ref), f1)(), FullPerm()())(), And(FuncApp(fun1, Seq())(), PredicateAccessPredicate(PredicateAccess(Seq(), p1.name)(), FullPerm()())())())()),
+    Seq(And(FieldAccessPredicate(FieldAccess(LocalVar("x", Ref)(), f1)(), FullPerm()())(), And(FuncApp(fun1, Seq())(), PredicateAccessPredicate(PredicateAccess(Seq(), p1.name)(), FullPerm()())())())()),
     // body of the method:
     Some(Seqn(Seq(
       Unfold(PredicateAccessPredicate(PredicateAccess(Seq(), p2.name)(), FullPerm()())())(),
-      While(TrueLit()(), Seq(FieldAccess(LocalVar("x")(Ref), f2)()), Seqn(Seq(
+      While(TrueLit()(), Seq(FieldAccess(LocalVar("x", Ref)(), f2)()), Seqn(Seq(
         // body of the outer loop
         While(TrueLit()(), Seq(FuncApp(fun2, Seq())()), Seqn(Seq(
           // body of the inner loop
-          MethodCall(m0, Seq(LocalVar("x")(Ref)), Seq())()
+          MethodCall(m0, Seq(LocalVar("x", Ref)()), Seq())()
         ), Seq())())()
       ), Seq())())()
     ), Seq())()))()
 
-  val p: Program = Program(Seq(D0), Seq(f0, f1, f2, f3, f4), Seq(fun0, fun1, fun2, fun3, fun4), Seq(p0, p1, p2, p3, p4), Seq(m0, m1, test))()
+  val p: Program = Program(Seq(D0), Seq(f0, f1, f2, f3, f4), Seq(fun0, fun1, fun2, fun3, fun4), Seq(p0, p1, p2, p3, p4), Seq(m0, m1, test), Seq())()
 
 //  println(p)
 
@@ -215,17 +216,17 @@ class MethodDependencyTests extends FunSuite with Matchers {
   val mrec_a: Method = Method("mrec_a", Seq(), Seq(), Seq(), Seq( PredicateAccess(Seq(), "prec_b")() ), Some( Seqn( Seq( MethodCall("mrec_b", Seq(), Seq())(NoPosition, NoInfo, NoTrafos) ), Seq() )() ))()
   val mrec_b: Method = Method("mrec_b", Seq(), Seq(), Seq(), Seq(),                                     Some( Seqn( Seq( MethodCall("mrec_a", Seq(), Seq())(NoPosition, NoInfo, NoTrafos) ), Seq() )() ))()
 
-  val frec_a: Function = Function("frec_a", Seq(), Bool, Seq(FuncApp("frec_b", Seq())(NoPosition, NoInfo, Bool, Seq(), NoTrafos)), Seq(), None)()
-  val frec_b: Function = Function("frec_b", Seq(), Bool, Seq(), Seq(), Some( FuncApp("frec_a", Seq())(NoPosition, NoInfo, Bool, Seq(), NoTrafos) ))()
+  val frec_a: Function = Function("frec_a", Seq(), Bool, Seq(FuncApp("frec_b", Seq())(NoPosition, NoInfo, Bool, NoTrafos)), Seq(), None)()
+  val frec_b: Function = Function("frec_b", Seq(), Bool, Seq(), Seq(), Some( FuncApp("frec_a", Seq())(NoPosition, NoInfo, Bool, NoTrafos) ))()
 
   val test_rec: Method = Method("test_rec", Seq(), Seq(),
-    Seq(FuncApp("frec_a", Seq())(NoPosition, NoInfo, Bool, Seq(), NoTrafos)),
+    Seq(FuncApp("frec_a", Seq())(NoPosition, NoInfo, Bool, NoTrafos)),
     Seq(),
     Some( Seqn( Seq(
       MethodCall("mrec_a",   Seq(), Seq())(NoPosition, NoInfo, NoTrafos),
       MethodCall("test_rec", Seq(), Seq())(NoPosition, NoInfo, NoTrafos)), Seq() )() ))()
 
-  val rec_p: Program = Program(Seq(), Seq(), Seq(frec_a, frec_b), Seq(prec_a, prec_b), Seq(mrec_a, mrec_b, test_rec))()
+  val rec_p: Program = Program(Seq(), Seq(), Seq(frec_a, frec_b), Seq(prec_a, prec_b), Seq(mrec_a, mrec_b, test_rec), Seq())()
 
   val expected_rec_deps = List(test_rec,  frec_a, frec_b, mrec_a.posts.last, prec_a, prec_b)
   val unexpected_rec_deps = List(mrec_a, mrec_b)
@@ -252,7 +253,7 @@ class MethodDependencyTests extends FunSuite with Matchers {
       computed_rec_deps.size should be (expected_rec_deps.size)
 
     } catch {
-      case e: StackOverflowError =>
+      case _: StackOverflowError =>
         fail(s"mutual recursion is not properly handled by the method dependency analysis.")
     }
   }

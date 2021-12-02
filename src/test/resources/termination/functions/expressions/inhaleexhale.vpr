@@ -1,0 +1,14 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+import <decreases/int.vpr>
+
+function f(x:Int): Bool
+  requires [x >= 0, x < 0]
+  requires [g(true), g(false)] // g(false) is only called in the context of x<0 (i.e. non-termination)
+  decreases x if x >= 0
+{
+    true
+}
+
+function g(b: Bool): Bool
+    decreases _ if b

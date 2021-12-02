@@ -59,13 +59,10 @@ abstract class GenericAxiomRewriter[Type <: AnyRef,
 
   protected def fresh(name: String, typ: Type): Var
 
-  @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
   protected def log(message: String): Unit
 
-  @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
   protected def log(key: String, item: Any): Unit
 
-  @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
   protected def log(key: String, items: Iterable[Any]): Unit
 
   /*
@@ -237,7 +234,7 @@ abstract class GenericAxiomRewriter[Type <: AnyRef,
      */
 
     val unusedQVars =
-      solved.flatMap{case (qvar, entries) =>
+      solved.flatMap{case (qvar, _) =>
         if (rewrittenTriggerSets.exists(_.exps.exists(Exp_contains(_, `qvar`)))) None
         else Some(qvar)}
 

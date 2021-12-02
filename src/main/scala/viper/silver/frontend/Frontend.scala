@@ -13,12 +13,10 @@ import ch.qos.logback.classic.Logger
 
 import scala.io.Source
 import viper.silver.ast._
-import viper.silver.reporter.{Reporter, StdIOReporter}
+import viper.silver.plugin.PluginAwareReporter
+import viper.silver.reporter.StdIOReporter
 import viper.silver.verifier._
 
-
-/** Represents one phase of a frontend */
-case class Phase(name: String, action: () => Unit)
 
 /** A translator for some programming language that produces a Viper program (which then in turn can be verified using a
   * Viper verifier).
@@ -27,18 +25,18 @@ case class Phase(name: String, action: () => Unit)
 trait Frontend {
 
   /** Initialize this translator with a given verifier. Only meant to be called once. */
-  protected def init(verifier: Verifier)
+  protected def init(verifier: Verifier): Unit
 
   /**
     * Reset the translator, and set the input program. Can be called many times to verify multiple programs
     * using the same verifier.
     */
-  def reset(input: Seq[Path])
+  def reset(input: Seq[Path]): Unit
 
   /**
     * Reset any messages recorded internally (errors from previous program translations, etc.)
     */
-  def resetMessages()
+  def resetMessages(): Unit
 
   /**
     * Reporter is the message interface which enables (potentially dynamic) feedback from the backend.
@@ -49,35 +47,56 @@ trait Frontend {
     *
     * @see <a href="https://bitbucket.org/viperproject/viperserver/src">ViperServer</a> for more details.
     */
-  val reporter: Reporter = StdIOReporter()
+  val reporter: PluginAwareReporter = PluginAwareReporter(StdIOReporter())
 
-  /**
-    * Run the verification on the input and return the result.  This is equivalent to calling all the phases and then
-    * returning result.
-    */
-  def run(): VerificationResult = {
-    phases.foreach(_.action())
-    result
-  }
+  /** Represents a phase of the frontend */
+  case class Phase(name: String, f: () => Unit)
 
-  private def isValidPhase(phaseName: String) =
-    if (!phases.exists(_.name == phaseName))
-      sys.error(s"Phase $phaseName does not exist")
-
-  def runOnly(phaseName: String) = {
-    isValidPhase(phaseName)
-    val index = phases.indexWhere(_.name == phaseName)
-    phases(index).action()
-  }
-
-  def runTo(phaseName: String) = {
-    isValidPhase(phaseName)
-    val index = phases.indexWhere(_.name == phaseName) + 1
-    phases.slice(0, index).foreach(_.action())
-  }
-
-  /** The phases of this frontend which have to be executed in the order given by the list. */
+  /** Phases of the frontend which executes sequentially. */
   val phases: Seq[Phase]
+
+  /** Execute all phases of the frontend sequentially. */
+  def runAllPhases(): Unit = {
+    phases.foreach(ph => {
+      logger.trace(s"Frontend: running phase ${ph.name}")
+      ph.f()
+    })
+  }
+
+  /** Executes only the specified phase of the frontend. The specified phase must a phase of the frontend.
+    * Prerequisites must be met, like running previous phases successfully.
+    * @param phase Phase to run. */
+  def runOnly(phase: Phase): Unit = {
+    assertPhase(phase)
+    phase.f()
+  }
+
+  /** Executes each phase of the frontend, from the specified phase up to the last one. The specified phase must be a
+    * phase of the frontend. Prerequisites must be met, like running phases prior to the specified one successfully.
+    * @param phase First phase that will run. */
+  def runFrom(phase: Phase): Unit = {
+    runRange(phase, phases.last)
+  }
+
+  /** Executes each phase of the frontend, from the first phase up to the specified one. The specified phase must be a
+    * phase of the frontend.
+    * @param phase Last phase that will run. */
+  def runTo(phase: Phase): Unit = {
+    runRange(phases.head, phase)
+  }
+
+  /** Executes each phase in the range specified by a pair of phases. Both phases must be phases of the frontend.
+    * Prerequisites must be met, like running phases prior to 'from' phase successfully.
+    * @param from First phase from range that will run.
+    * @param to   Last phase of range that will run. */
+  def runRange(from: Phase, to: Phase): Unit = {
+    assertPhase(from)
+    assertPhase(to)
+    phases.slice(phases.indexOf(from), phases.indexOf(to) + 1).foreach(_.f())
+  }
+
+  private def assertPhase(phase: Phase): Unit =
+    assert(phases.contains(phase), s"The phase ${phase.name} is not one of the phases of the frontend")
 
   /**
     * The result of the verification attempt (only available after parse, typecheck, translate and
@@ -85,38 +104,40 @@ trait Frontend {
     */
   def result: VerificationResult
 
-  /* ATG: the following field is used in ViperServer and shoudl stay public for now. */
+  /* ATG: the following field is used in ViperServer and should stay public for now. */
   val logger = LoggerFactory.getLogger(getClass.getName).asInstanceOf[Logger]
 }
 
 trait DefaultPhases extends Frontend {
 
-  val phases = Seq(Phase("Parsing",           parsing _),
-                   Phase("Semantic Analysis", semanticAnalysis _),
-                   Phase("Translation",       translation _),
-                   Phase("Consistency Check", consistencyCheck _),
-                   Phase("Verification",      verification _))
+  val Parsing          = Phase("Parsing",           parsing _)
+  val SemanticAnalysis = Phase("Semantic Analysis", semanticAnalysis _)
+  val Translation      = Phase("Translation",       translation _)
+  val ConsistencyCheck = Phase("Consistency Check", consistencyCheck _)
+  val Verification     = Phase("Verification",      verification _)
+
+  val phases = Seq(Parsing, SemanticAnalysis, Translation, ConsistencyCheck, Verification)
 
   /** Parse the program. */
-  def parsing()
+  def parsing(): Unit
 
   /** Perform semantic analysis in the program, such as type, names and scope checking. */
-  def semanticAnalysis()
+  def semanticAnalysis(): Unit
 
   /** Translate the program to Viper. */
-  def translation()
+  def translation(): Unit
 
   /** Perform a consistency check in Viper AST. */
-  def consistencyCheck()
+  def consistencyCheck(): Unit
 
   /** Verify the Viper program using a verifier. */
-  def verification()
+  def verification(): Unit
 }
 
 trait SingleFileFrontend {
-  def reset(file: Path)
+  def reset(file: Path): Unit
 
-  def reset(files: Seq[Path]) {
+  def reset(files: Seq[Path]): Unit = {
     files match {
       case f :: Nil => reset(f)
       case _ => sys.error("This frontend can only handle single files.")
@@ -159,7 +180,13 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
 
   def semanticAnalysisResult: SemanticAnalysisResult = _semanticAnalysisResult.get
 
-  def translationResult: Program = _program.get
+  def translationResult: Program = _program match {
+    case Some(p) => p
+    case None =>
+      val msg = "cannot extract translationResult: program is undefined"
+      logger.error(msg)
+      throw new NoSuchElementException(msg)
+  }
 
   def state = _state
   def errors = _errors
@@ -167,12 +194,12 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
 
   def getVerificationResult: Option[VerificationResult] = _verificationResult
 
-  override def init(verifier: Verifier) {
+  override def init(verifier: Verifier): Unit = {
     _state = DefaultStates.Initialized
     _verifier = Some(verifier)
   }
 
-  override def reset(input: Path) {
+  override def reset(input: Path): Unit = {
     if (state < DefaultStates.Initialized) sys.error("The translator has not been initialized.")
     _state = DefaultStates.InputSet
     _inputFile = Some(input)
@@ -184,8 +211,6 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
     _program = None
     resetMessages()
   }
-
-  protected def mapVerificationResult(in: VerificationResult): VerificationResult
 
   protected def doParsing(input: String): Result[ParsingResult]
 
@@ -239,13 +264,14 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
 
   override def verification() = {
     if (state == DefaultStates.ConsistencyCheck && _errors.isEmpty) {
-      _verificationResult = Some(mapVerificationResult(_verifier.get.verify(_program.get)))
+      _verificationResult = Some(_verifier.get.verify(_program.get))
       assert(_verificationResult.isDefined)
       _state = DefaultStates.Verification
     }
   }
 
   override def result: VerificationResult = {
+
     if (_errors.isEmpty) {
       require(state >= DefaultStates.Verification)
       _verificationResult.get
@@ -257,5 +283,6 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
 }
 
 object DefaultStates extends Enumeration {
+  type DefaultStates = Value
   val Initial, Initialized, InputSet, Parsing, SemanticAnalysis, Translation, ConsistencyCheck, Verification = Value
 }

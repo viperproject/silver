@@ -1,0 +1,18 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <decreases/all.vpr>
+
+
+function f_ie(b: Bool): Bool
+    decreases [true, true] ? b : b
+{
+    b ? f_ie(!b) : b
+}
+
+function f_ie_e(x: Int): Int
+    //:: ExpectedOutput(consistency.error)
+    decreases false ? [true, true] : [false, true]
+{
+    f_ie_e(x)
+}

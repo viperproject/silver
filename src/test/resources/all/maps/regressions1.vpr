@@ -1,0 +1,44 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field val : Int
+
+method test1(m : Map[Int, Ref], x : Int)
+  requires x in m
+{
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
+  assert 0 < m[x].val
+}
+
+method test2(m : Map[Int, Map[Int, Bool]])
+  requires forall i : Int :: { i in m } 0 <= i && i < 4 <==> i in m
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert domain(m) == Set(0, 1, 2) || !(3 in m)
+}
+
+method test3()
+{
+  var m : Map[Int, Bool] := Map(6 := false, 2 := false)
+  
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert 4 in m || true in range(m)
+}
+
+method test4()
+{
+  var m : Map[Int, Int] := Map()
+  
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert |m| != 0
+}
+
+method test5()
+{
+  var m : Map[Int, Int] := Map(3 := 9)
+  
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert m[3 := 5] == Map(3 := 9)
+}
+
+

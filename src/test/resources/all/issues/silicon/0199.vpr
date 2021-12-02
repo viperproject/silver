@@ -1,0 +1,32 @@
+field f: Int
+
+method test01(x: Ref, b: Bool) {
+  inhale acc(x.f,2/4)
+
+  package acc(x.f,2/4) && b
+    --*
+  (acc(x.f, 1/4) && acc(x.f, (b ? 2/4: 1/4)) )
+
+  exhale acc(x.f,1/4)
+}
+
+method test02(x: Ref) {
+  inhale acc(x.f,2/4)
+
+  package acc(x.f,2/4) && x.f > 0
+    --*
+  (acc(x.f, 1/4) && acc(x.f, (x.f > 0 ? 2/4: 1/4)) )
+
+  exhale acc(x.f,1/4)
+}
+
+method test03(x: Ref ) {
+  inhale acc(x.f,2/4)
+
+  package
+    acc(x.f, 2/4) && x.f > 0
+      --*
+    acc(x.f, 1/4) && (x.f > 0 ? acc(x.f, 2/4) : acc(x.f, 1/4))
+
+  exhale acc(x.f,1/4)
+}

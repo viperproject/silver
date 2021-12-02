@@ -5,11 +5,12 @@
 // Copyright (c) 2011-2019 ETH Zurich.
 
 import java.nio.file.Paths
+
 import TestHelpers.MockSilFrontend
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast._
 
-class ParseTreeTests extends FunSuite {
+class ParseTreeTests extends AnyFunSuite {
   test("MacroExpansion") {
     val filePrefix = "transformations/Macros/Expansion/"
     val files = Seq("simple", "simple2", "simpleExp", "simpleArgs", "simpleArgs2", "simpleArgsExp", "simpleMethod", "simpleMethodExp")
@@ -17,7 +18,7 @@ class ParseTreeTests extends FunSuite {
     val frontend = new MockSilFrontend
 
     files foreach(fileName =>
-      parseAndCompare(filePrefix + fileName + ".sil", filePrefix + fileName + "Ref" + ".sil", frontend))
+      parseAndCompare(filePrefix + fileName + ".vpr", filePrefix + fileName + "Ref" + ".vpr", frontend))
   }
 
   test("HygienicMacros") {
@@ -27,14 +28,14 @@ class ParseTreeTests extends FunSuite {
     val frontend = new MockSilFrontend
 
     files foreach (fileName =>
-      parseAndCompare(filePrefix + fileName + ".sil", filePrefix + fileName + "Ref" + ".sil", frontend))
+      parseAndCompare(filePrefix + fileName + ".vpr", filePrefix + fileName + "Ref" + ".vpr", frontend))
   }
 
   test("Positions and Paths") {
     val filePrefix = "transformations/Imports/"
     val files = Seq("simpleRef", "simple_other")
 
-    val paths: Seq[String] = files.map { f => filePrefix + f + ".sil" }
+    val paths: Seq[String] = files.map { f => filePrefix + f + ".vpr" }
 
     val fileResA = getClass.getResource(paths.head)
     assert(fileResA != null, s"File ${paths.head} not found")
@@ -57,9 +58,7 @@ class ParseTreeTests extends FunSuite {
                   prog_b.members.foreach(m_2 =>
                     m_2.pos match {
                       case p_2: AbstractSourcePosition =>
-                        //FIXME: the paths must actually be different.
-                        //FIXME: this test will fail once someone fixes Silver's #224.
-                        assert(p_1.file.toUri.compareTo(p_2.file.toUri) == 0,
+                        assert(p_1.file.toUri.compareTo(p_2.file.toUri) != 0,
                                s"""Given that there are no import statements in the programs:
                                  | Prog A: ${fileResA.toURI}
                                  | Prog B: ${fileResB.toURI}
@@ -90,7 +89,7 @@ class ParseTreeTests extends FunSuite {
     val frontend = new MockSilFrontend
 
     files foreach (fileName =>
-      parseAndCompare(filePrefix + fileName + ".sil", filePrefix + fileName + "Ref" + ".sil", frontend))
+      parseAndCompare(filePrefix + fileName + ".vpr", filePrefix + fileName + "Ref" + ".vpr", frontend))
   }
 
   private def parseAndCompare(testFile: String, refFile: String, frontend: MockSilFrontend): Unit = {

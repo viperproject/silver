@@ -9,8 +9,8 @@ package viper.silver.ast
 import viper.silver.ast.pretty.{Fixity, Infix, LeftAssociative, NonAssociative, Prefix, RightAssociative}
 import utility.{Consistency, DomainInstances, Nodes, Types, Visitor}
 import viper.silver.ast.MagicWandStructure.MagicWandStructure
-import viper.silver.cfg.silver.CfgGenerator
-import viper.silver.parser.FastParser
+import viper.silver.ast.utility.rewriter.StrategyBuilder
+import viper.silver.cfg.silver.{CfgGenerator, SilverCfg}
 import viper.silver.verifier.ConsistencyError
 import viper.silver.utility.{CacheHelper, DependencyAware}
 
@@ -18,13 +18,12 @@ import scala.collection.immutable
 import scala.reflect.ClassTag
 
 /** A Silver program. */
-case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])
-                  (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
+case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method], extensions: Seq[ExtensionMember])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
   extends Node with DependencyAware with Positioned with Infoed with Scope with TransformableErrors {
 
   val scopedDecls: Seq[Declaration] =
-    domains ++ fields ++ functions ++ predicates ++ methods ++
-    domains.flatMap(d => {d.axioms ++ d.functions})
+    domains ++ fields ++ functions ++ predicates ++ methods ++ extensions ++
+    domains.flatMap(d => {(d.axioms.filter(_.isInstanceOf[NamedDomainAxiom])).asInstanceOf[Seq[NamedDomainAxiom]] ++ d.functions})
 
   lazy val magicWandStructures: Seq[MagicWandStructure] =
     this.deepCollect({
@@ -35,6 +34,9 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     Consistency.checkContextDependentConsistency(this) ++
     Consistency.checkNoFunctionRecursesViaPreconditions(this) ++
     checkMethodCallsAreValid ++
+    checkFunctionApplicationsAreValid ++
+    checkDomainFunctionApplicationsAreValid ++
+    checkAbstractPredicatesUsage ++
     checkIdentifiers
 
   /** checks that formalReturns of method calls are assignable to targets, and arguments are assignable to formalArgs */
@@ -59,6 +61,99 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     s
   })
 
+  lazy val checkAbstractPredicatesUsage: Seq[ConsistencyError] =
+    (predicates ++ functions ++ methods) flatMap checkAbstractPredicatesUsageIn
+
+  private def checkAbstractPredicatesUsageIn(node: Node): Seq[ConsistencyError] = {
+    var errors = Seq.empty[ConsistencyError]
+
+    def check(loc: PredicateAccess, pos: Position): Unit = {
+      predicates
+        .find(_.name == loc.predicateName)
+        .foreach(predicate => {
+          if (predicate.body.isEmpty)
+            errors :+= ConsistencyError(s"Cannot unfold $loc because ${loc.predicateName}  is abstract.", pos)
+        })
+    }
+
+    node.visit {
+      case fold: Fold => check(fold.acc.loc, fold.pos)
+      case unfold: Unfold => check(unfold.acc.loc, unfold.pos)
+      case unfolding: Unfolding => check(unfolding.acc.loc, unfolding.pos)
+    }
+
+    errors
+  }
+
+  /** Checks that the applied functions exists, that the arguments of function applications are assignable to
+    * formalArgs, and that the type of function applications matches with the type of the function definition.
+    **/
+  lazy val checkFunctionApplicationsAreValid: Seq[ConsistencyError] = {
+    var s = Seq.empty[ConsistencyError]
+
+    for (funcApp@FuncApp(name, args) <- this) {
+      this.findFunctionOptionally(name) match {
+        case None => // Consistency error already reported by checkIdentifiers
+        case Some(funcDef) => {
+          if (!Consistency.areAssignable(args, funcDef.formalArgs)) {
+            s :+= ConsistencyError(
+              s"Function $name with formal arguments ${funcDef.formalArgs} cannot be applied to provided arguments $args.",
+              funcApp.pos
+            )
+          }
+          if (funcApp.typ != funcDef.typ) {
+            s :+= ConsistencyError(
+              s"No matching function $name found of return type ${funcApp.typ}, instead found with return type ${funcDef.typ}.",
+              funcApp.pos
+            )
+          }
+        }
+      }
+    }
+
+    s
+  }
+
+  /** Checks that the applied domain functions exists, that the arguments of function applications are assignable to
+    * formalArgs, that the type of function applications matches with the type of the function definition and that also
+    * the name of the domain matches.
+    */
+  lazy val checkDomainFunctionApplicationsAreValid: Seq[ConsistencyError] = {
+    var s = Seq.empty[ConsistencyError]
+
+    for (funcApp@DomainFuncApp(name, args, typVarMap) <- this) {
+      this.findDomainFunctionOptionally(name) match {
+        case None => s :+= ConsistencyError(s"No domain function named $name found in the program.", funcApp.pos)
+        case Some(funcDef) => {
+          if (!Consistency.areAssignable(args, funcDef.formalArgs map {
+            fa =>
+              // substitute parameter types
+              UnnamedLocalVarDecl(fa.typ.substitute(typVarMap))(fa.pos)
+          })) {
+            s :+= ConsistencyError(
+              s"Domain function $name with formal arguments ${funcDef.formalArgs} cannot be applied to provided arguments $args.",
+              funcApp.pos
+            )
+          }
+          if (funcApp.typ != funcDef.typ.substitute(typVarMap)) {
+            s :+= ConsistencyError(
+              s"No matching domain function $name found of return type ${funcApp.typ}, instead found with return type ${funcDef.typ}.",
+              funcApp.pos
+            )
+          }
+          if (funcApp.domainName != funcDef.domainName) {
+            s :+= ConsistencyError(
+              s"No matching domain function $name found in domain ${funcApp.domainName}, instead found in domain ${funcDef.domainName}.",
+              funcApp.pos
+            )
+          }
+        }
+      }
+    }
+
+    s
+  }
+
   /** checks that all identifier declarations and uses are valid in scope**/
   lazy val checkIdentifiers: Seq[ConsistencyError] = {
 
@@ -79,7 +174,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       }
     }
     def checkNameUseLabel(name: String, n: Positioned, expected: String, declarationMap: immutable.HashMap[String, Declaration]) : Option[ConsistencyError] = {
-      if (name == FastParser.LHS_OLD_LABEL) None
+      if (name == LabelledOld.LhsOldLabel) None
       else declarationMap.get(name) match {
         case Some(d) => d match {
           case _: Label => None
@@ -94,7 +189,9 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       var s: Seq[ConsistencyError] = Seq.empty[ConsistencyError]
       //check name declarations
       currentScope.scopedDecls.foreach(l=> {
-        if(!Consistency.validUserDefinedIdentifier(l.name)) s :+= ConsistencyError(s"${l.name} is not a valid identifier.", l.pos)
+        if(!Consistency.validUserDefinedIdentifier(l.name))
+          s :+= ConsistencyError(s"${l.name} is not a valid identifier.", l.pos)
+
         declarationMap.get(l.name) match {
           case Some(_: Declaration) => s :+= ConsistencyError(s"Duplicate identifier ${l.name} found.", l.pos)
           case None => declarationMap += (l.name -> l)
@@ -102,11 +199,18 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       })
 
       //check name uses
-      Visitor.visitOpt(currentScope.asInstanceOf[Node], Nodes.subnodes){n=> {
+      Visitor.visitOpt(currentScope.asInstanceOf[Node], Nodes.subnodes){ n => {
         n match {
-          case sc: Scope => if (sc == currentScope) true else {
-            s ++= checkNamesInScope(sc, declarationMap)
-            false
+          case sc: Scope => {
+            if (sc == currentScope)
+              true
+            else {
+              n match {
+                case _: DomainFunc => s ++= checkNamesInScope(sc, immutable.HashMap.empty[String, Declaration])
+                case _ => s ++= checkNamesInScope(sc, declarationMap)
+              }
+              false
+            }
           }
           case _ =>
             val optionalError = n match {
@@ -223,7 +327,17 @@ case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], body: Option[E
       Seq(ConsistencyError("Predicates must not contain old expressions.",body.get.pos))
      else Seq()) ++
     (if (body.isDefined && !(Consistency.noPerm(body.get) && Consistency.noForPerm(body.get)))
-      Seq(ConsistencyError("perm and forperm expressions are not allowed in predicate bodies", body.get.pos)) else Seq())
+      Seq(ConsistencyError("perm and forperm expressions are not allowed in predicate bodies", body.get.pos)) else Seq()) ++
+    {
+      var errors = Seq.empty[ConsistencyError]
+      if (body.isDefined) {
+        StrategyBuilder.SlimVisitor[Node]({
+          case m: MagicWand => errors ++= Seq(ConsistencyError("Magic wands are not supported in predicates.", m.pos))
+          case _ =>
+        }).execute[Node](body.get)
+      }
+      errors
+    }
 
   val scopedDecls: Seq[Declaration] = formalArgs
   def isAbstract = body.isEmpty
@@ -290,7 +404,7 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
   /**
     * Returns a control flow graph that corresponds to this method.
     */
-  def toCfg(simplify: Boolean = true) = CfgGenerator.methodToCfg(this, simplify)
+  def toCfg(simplify: Boolean = true, detect: Boolean = true): SilverCfg = CfgGenerator.methodToCfg(this, simplify, detect)
 }
 
 object MethodWithLabelsInScope {
@@ -318,18 +432,28 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres
     posts.flatMap(p => if (!Consistency.noPermissions(p))
       Seq(ConsistencyError("Function post-conditions must not contain permissions.", p.pos)) else Seq()) ++
     (if(body.isDefined) Consistency.checkFunctionBody(body.get) else Seq()) ++
-    (if(!Consistency.noDuplicates(formalArgs)) Seq(ConsistencyError("There must be no duplicates in formal args.", pos)) else Seq())
+    (if(!Consistency.noDuplicates(formalArgs)) Seq(ConsistencyError("There must be no duplicates in formal args.", pos)) else Seq()) ++
+    {
+      var errors = Seq.empty[ConsistencyError]
+      pres.foreach(pre => {
+        StrategyBuilder.SlimVisitor[Node]({
+          case m: MagicWand => errors ++= Seq(ConsistencyError("Magic wands are not supported in function's preconditions.", m.pos))
+          case _ =>
+        }).execute[Node](pre)
+      })
+      errors
+    }
 
   val scopedDecls: Seq[Declaration] = formalArgs
   /**
    * The result variable of this function (without position or info).
    */
-  def result = Result()(typ)
+  def result = Result(typ)()
 
   /**
    * Is this function recursive?
    */
-  def isRecursive: Boolean = body exists (_ existsDefined {
+  lazy val isRecursive: Boolean = body exists (_ existsDefined {
     case FuncApp(funcname, _) if name == funcname =>
   })
 
@@ -351,21 +475,28 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres
 }
 
 
+trait AnyLocalVarDecl extends Hashable with Positioned with Infoed with Typed with TransformableErrors {
+  override def getMetadata: Seq[Any] = {
+    Seq(pos, info, errT)
+  }
+}
+
+// --- Unnamed local variable declarations
+
+case class UnnamedLocalVarDecl(typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AnyLocalVarDecl
+
+
 // --- Local variable declarations
 
 /**
  * Local variable declaration.  Note that these are not statements in the AST, but
  * rather occur as part of a method, loop, function, etc.
  */
-case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Hashable with Positioned with Infoed with Typed with Declaration with TransformableErrors {
+case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AnyLocalVarDecl with Declaration {
   /**
    * Returns a local variable with equivalent information
    */
-  lazy val localVar = LocalVar(name)(typ, pos, info, errT)
-
-  override def getMetadata:Seq[Any] = {
-    Seq(pos, info, errT)
-  }
+  lazy val localVar = LocalVar(name, typ)(pos, info, errT)
 }
 
 
@@ -395,9 +526,8 @@ case class Domain(name: String, functions: Seq[DomainFunc], axioms: Seq[DomainAx
 }
 
 /** A domain axiom. */
-case class DomainAxiom(name: String, exp: Exp)
-                      (val pos: Position = NoPosition, val info: Info = NoInfo,val domainName : String, val errT: ErrorTrafo = NoTrafos)
-  extends DomainMember {
+sealed trait DomainAxiom extends DomainMember {
+  def exp: Exp
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.noResult(exp)) Seq(ConsistencyError("Axioms can never contain result variables.", exp.pos)) else Seq()) ++
     (if(!Consistency.noOld(exp)) Seq(ConsistencyError("Axioms can never contain old expressions.", exp.pos)) else Seq()) ++
@@ -411,21 +541,27 @@ case class DomainAxiom(name: String, exp: Exp)
   val scopedDecls = Seq()
 }
 
+case class NamedDomainAxiom(name: String, exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo,val domainName : String, val errT: ErrorTrafo = NoTrafos)
+  extends DomainAxiom with Declaration
+
+case class AnonymousDomainAxiom(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val domainName : String, val errT: ErrorTrafo = NoTrafos)
+  extends DomainAxiom
+
 object Substitution{
   type Substitution = Map[TypeVar,Type]
   def toString(s : Substitution) : String = s.mkString(",")
 }
 /** Domain function which is not a binary or unary operator. */
-case class DomainFunc(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, unique: Boolean = false)
+case class DomainFunc(name: String, formalArgs: Seq[AnyLocalVarDecl], typ: Type, unique: Boolean = false)
                      (val pos: Position = NoPosition, val info: Info = NoInfo,val domainName : String, val errT: ErrorTrafo = NoTrafos)
-                      extends AbstractDomainFunc with DomainMember {
+                      extends AbstractDomainFunc with DomainMember with Declaration {
   override lazy val check : Seq[ConsistencyError] =
     if (unique && formalArgs.nonEmpty) Seq(ConsistencyError("Only constants, i.e. nullary domain functions can be unique.", pos)) else Seq()
 
   override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)
   }
-  val scopedDecls: Seq[Declaration] = formalArgs
+  val scopedDecls: Seq[Declaration] = formalArgs.filter(p => p.isInstanceOf[LocalVarDecl]).asInstanceOf[Seq[LocalVarDecl]]
 }
 
 // --- Common functionality
@@ -436,8 +572,7 @@ sealed trait Member extends Hashable with Positioned with Infoed with Scope with
 }
 
 /** Common ancestor for domain members. */
-sealed trait DomainMember extends Hashable with Positioned with Infoed with Scope with Declaration with TransformableErrors {
-  def name: String
+sealed trait DomainMember extends Hashable with Positioned with Infoed with Scope with TransformableErrors {
   def domainName : String //TODO:make names qualified
 
   /** See [[viper.silver.ast.utility.Types.freeTypeVariables]]. */
@@ -446,7 +581,7 @@ sealed trait DomainMember extends Hashable with Positioned with Infoed with Scop
 
 /** Common ancestor for things with formal arguments. */
 sealed trait Callable {
-  def formalArgs: Seq[LocalVarDecl]
+  def formalArgs: Seq[AnyLocalVarDecl]
   def name: String
 }
 
@@ -633,4 +768,15 @@ case object NotOp extends UnOp with BoolDomainFunc {
   lazy val op = "!"
   lazy val priority = 10
   lazy val fixity = Prefix
+}
+
+
+case class BackendFunc(name: String, smtName: String, override val typ: Type, override val formalArgs: Seq[LocalVarDecl])
+  extends Node with AbstractDomainFunc with BuiltinDomainFunc
+
+/**
+  * The Extension Member trait provides the way to expand the Ast to include new Top Level declarations
+  */
+trait ExtensionMember extends Member{
+  def extensionSubnodes: Seq[Node]
 }

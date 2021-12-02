@@ -6,11 +6,12 @@
 
 package viper.silver.ast
 
+import scala.collection.mutable
 import scala.reflect.ClassTag
 import pretty.FastPrettyPrinter
 import utility._
-import viper.silver.ast.utility.Rewriter.Traverse.Traverse
-import viper.silver.ast.utility.Rewriter.{Rewritable, StrategyBuilder, Traverse}
+import viper.silver.ast.utility.rewriter.Traverse.Traverse
+import viper.silver.ast.utility.rewriter.{Rewritable, StrategyBuilder, Traverse}
 import viper.silver.verifier.errors.ErrorNode
 import viper.silver.verifier.{AbstractVerificationError, ConsistencyError, ErrorReason}
 
@@ -48,7 +49,7 @@ Some design choices:
   * Note that all but Program are transitive subtypes of `Node` via `Hashable`. The reason is
   * that AST node hashes may depend on the entire program, not just their sub-AST.
   */
-trait Node extends Traversable[Node] with Rewritable {
+trait Node extends Iterable[Node] with Rewritable {
 
   /** @see [[Nodes.subnodes()]] */
   def subnodes = Nodes.subnodes(this)
@@ -61,36 +62,45 @@ trait Node extends Traversable[Node] with Rewritable {
     Visitor.reduceWithContext(this, Nodes.subnodes)(context, enter, combine)
   }
 
-  /** Applies the function `f` to the AST node, then visits all subnodes. */
-  def foreach[A](f: Node => A) = Visitor.visit(this, Nodes.subnodes) { case a: Node => f(a) }
+  /** Apply the given function to the AST node and all its subnodes. */
+  override def foreach[A](f: Node => A) = Visitor.visit(this, Nodes.subnodes) { case a: Node => f(a) }
+
+  /** Builds a new collection with all the AST nodes and returns an iterator over it. */
+  def iterator: Iterator[Node] = {
+    val elements = mutable.Queue.empty[Node]
+    for (x <- this) {
+      elements.append(x)
+    }
+    elements.iterator
+  }
 
   /** @see [[Visitor.visit()]] */
-  def visit[A](f: PartialFunction[Node, A]) {
+  def visit[A](f: PartialFunction[Node, A]): Unit = {
     Visitor.visit(this, Nodes.subnodes)(f)
   }
 
   /** @see [[Visitor.visitWithContext()]] */
-  def visitWithContext[C](c: C)(f: C => PartialFunction[Node, C]) {
+  def visitWithContext[C](c: C)(f: C => PartialFunction[Node, C]): Unit = {
     Visitor.visitWithContext(this, Nodes.subnodes, c)(f)
   }
 
   /** @see [[Visitor.visitWithContextManually()]] */
-  def visitWithContextManually[C, A](c: C)(f: C => PartialFunction[Node, A]) {
+  def visitWithContextManually[C, A](c: C)(f: C => PartialFunction[Node, A]): Unit = {
     Visitor.visitWithContextManually(this, Nodes.subnodes, c)(f)
   }
 
   /** @see [[Visitor.visit()]] */
-  def visit[A](f1: PartialFunction[Node, A], f2: PartialFunction[Node, A]) {
+  def visit[A](f1: PartialFunction[Node, A], f2: PartialFunction[Node, A]): Unit = {
     Visitor.visit(this, Nodes.subnodes, f1, f2)
   }
 
   /** @see [[Visitor.visitOpt()]] */
-  def visitOpt(f: Node => Boolean) {
+  def visitOpt(f: Node => Boolean): Unit = {
     Visitor.visitOpt(this, Nodes.subnodes)(f)
   }
 
   /** @see [[Visitor.visitOpt()]] */
-  def visitOpt[A](f1: Node => Boolean, f2: Node => A) {
+  def visitOpt[A](f1: Node => Boolean, f2: Node => A): Unit = {
     Visitor.visitOpt(this, Nodes.subnodes, f1, f2)
   }
 
@@ -115,19 +125,26 @@ trait Node extends Traversable[Node] with Rewritable {
 
   StrategyBuilder.Slim[Node](pre, recurse) execute[this.type] (this)
 
+  def transformForceCopy(pre: PartialFunction[Node, Node] = PartialFunction.empty,
+                recurse: Traverse = Traverse.Innermost)
+  : this.type =
+
+    StrategyBuilder.Slim[Node](pre, recurse).forceCopy() execute[this.type] (this)
 
   /**
     * Allows a transformation with a custom context threaded through
     *
     * @see [[viper.silver.ast.utility.ViperStrategy]] */
-  def transformWithContext[C](transformation: PartialFunction[(Node,C), Node] = PartialFunction.empty,
+  def transformWithContext[C](transformation: PartialFunction[(Node,C), (Node, C)] = PartialFunction.empty,
                              initialContext: C,
-                              updateFunc: PartialFunction[(Node, C), C] = PartialFunction.empty, // use this to update the context passed recursively down
                 recurse: Traverse = Traverse.Innermost)
   : this.type =
-    ViperStrategy.CustomContext[C](transformation, initialContext, updateFunc, recurse) execute[this.type] (this)
+    ViperStrategy.CustomContext[C](transformation, initialContext, recurse) execute[this.type] (this)
 
-
+  def transformNodeAndContext[C](transformation: PartialFunction[(Node,C), (Node, C)],
+                                 initialContext: C,
+                                 recurse: Traverse = Traverse.Innermost) : this.type =
+    StrategyBuilder.RewriteNodeAndContext[Node, C](transformation, initialContext, recurse).execute[this.type](this)
 
   def replace(original: Node, replacement: Node): this.type =
     this.transform { case `original` => replacement }
@@ -157,17 +174,6 @@ trait Node extends Traversable[Node] with Rewritable {
 
   /* To be overridden in subclasses of Node. */
   def isValid: Boolean = true
-
-  // Duplicate this node with new children
-  def duplicate(children: Seq[AnyRef]): Node = {
-    ViperStrategy.viperDuplicator(this, children, getPrettyMetadata)
-  }
-
-  // Duplicate this node with new metadata
-  def duplicateMeta(newMeta: (Position, Info, ErrorTrafo)): Node = {
-    val ch = getChildren
-    ViperStrategy.viperDuplicator(this, ch, newMeta)
-  }
 
   // Get metadata with correct types
   def getPrettyMetadata: (Position, Info, ErrorTrafo) = {
@@ -303,8 +309,17 @@ trait ErrorTrafo {
 
   def rTransformations: List[PartialFunction[ErrorReason, ErrorReason]]
 
-  def nTransformations: Option[ErrorNode] // TODO: Why is this an option and not a list? Why is it OK to drop the second such value in the + definition below (if both are defined)?
+  // The node stored bellow points to the previous node in the transformation chain. Each node in the chain has its own
+  // list of error transformations and list of reason transformations. When this chain is traversed from the last
+  // node back to the original node (head of the chain), all error and reason transformations lists are combined accordingly
+  // (check TransformableErrors trait). The head of the chain (original node) has no ErrorNode, hence the Option bellow.
+  // Notice that the nodeTrafoStrat strategy (in TransformableErrors trait) has a repetition, which allows for the full
+  // traversal of the transformation chain.
+  def nTransformations: Option[ErrorNode]
 
+  // Notice that only the RHS node transformation is considered in this combination of ErrorTrafos. This is related with
+  // the order in which a chain of node transformations is traversed and the order in which nodes are combined. Please
+  // check the comments on method 'nTransformations' for further details.
   def +(t: ErrorTrafo): Trafos = {
     Trafos(eTransformations ++ t.eTransformations, rTransformations ++ t.rTransformations, if (t.nTransformations.isDefined) t.nTransformations else nTransformations)
   }
@@ -327,6 +342,19 @@ trait Info {
       }
       case _ => None
     }
+  }
+
+  def getAllInfos[T <: Info : ClassTag]: Seq[T] =
+    this match {
+      case t: T => Seq(t)
+      case ConsInfo(head, tail) => head.getAllInfos[T] ++ tail.getAllInfos[T]
+      case _ => Seq.empty
+    }
+
+  def removeUniqueInfo[T <: Info]: Info = this match {
+    case ConsInfo(a, b) => MakeInfoPair(a.removeUniqueInfo[T], b.removeUniqueInfo[T])
+    case t: T => NoInfo
+    case info => info
   }
 }
 

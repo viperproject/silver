@@ -1,0 +1,11 @@
+function loc(a: Ref, i: Int): Ref
+
+field val: Int
+
+predicate P(s: Ref, i: Int)
+
+method foo(s: Ref)
+  requires forall i : Int :: { loc(s, i).val } P(s, i)
+
+method foo1(s: Ref)
+  requires forall i : Int :: { P(s, i) } acc(loc(s, i).val)

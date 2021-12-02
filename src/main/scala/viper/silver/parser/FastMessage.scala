@@ -6,15 +6,34 @@
 
 package viper.silver
 
-import scala.util.parsing.input.{NoPosition, Position}
+import viper.silver.ast.{HasLineColumn, SourcePosition, Position => ViperPosition}
+import viper.silver.ast.FilePosition
+import viper.silver.parser.PNode
 
-case class FastMessage (label : String, pos : Position = NoPosition) {
+import scala.util.parsing.input.Position
 
+case class FastMessage (label : String, pos : SourcePosition, error: Boolean) {
   def line : Int = pos.line
-
-
   def column : Int = pos.column
+}
 
+object FastMessage {
+  def apply(label: String, pos: Position): FastMessage = {
+    pos match {
+      case fpos: FilePosition => FastMessage(label, SourcePosition(fpos.file, pos.line, pos.column), true)
+    }
+  }
+  def apply(label: String, pos: Position, error: Boolean): FastMessage = {
+    pos match {
+      case fpos: FilePosition => FastMessage(label, SourcePosition(fpos.file, pos.line, pos.column), error)
+    }
+  }
+  def apply(label: String, pos: ViperPosition): FastMessage = {
+    pos match {
+      case spos: SourcePosition => FastMessage(label, spos, true)
+      case _ => sys.error("Unexpected position type.")
+    }
+  }
 }
 
 /**
@@ -34,11 +53,22 @@ object FastMessaging {
    /**
     * Makes a message list if cond is true. Stored with the position of the value
     */
-  def message (value : Any, msg : String, cond : Boolean = true) : Messages =
-    if (cond)
-      aMessage (FastMessage (msg, FastPositions.getStart (value)))
-    else
+  def message (value : Any, msg : String, cond : Boolean = true, error : Boolean = true) : Messages =
+    if (cond) {
+      val valuePos: SourcePosition = value.asInstanceOf[PNode].pos._1 match {
+        case slc: FilePosition => {
+          value.asInstanceOf[PNode].pos._2 match {
+            case flc: HasLineColumn => {
+              SourcePosition(slc.file, slc, flc)
+            }
+            case _ => SourcePosition(slc.file, slc.line, slc.column)
+          }
+        }
+      }
+      aMessage (FastMessage (msg, valuePos, error))
+    } else {
       noMessages
+    }
 
   /**
     * Sort the messages by position in increasing order.
@@ -47,5 +77,5 @@ object FastMessaging {
     messages.sortWith {
       case (msg1, msg2) =>
         (msg1.line < msg2.line) || ((msg1.line == msg2.line) && (msg1.column < msg2.column))
-    }
+    }.distinct
 }

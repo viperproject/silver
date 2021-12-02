@@ -1,0 +1,52 @@
+name: Scala CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: 'windows-latest'
+            java: 11
+          - os: 'ubuntu-latest'
+            java: 11
+          - os: 'macos-latest'
+            java: 11
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    # See https://github.com/olafurpg/setup-scala#configuring-windows-jobs
+    - name: Configure git
+      shell: bash
+      run: "git config --global core.autocrlf false"
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Set up Scala and JDK 1.${{ matrix.java }}
+      uses: olafurpg/setup-scala@v11
+      with:
+        # Should probably be changed to `temurin` once supported by `olafurpg/setup-scala`
+        # See https://github.com/actions/setup-java#supported-distributions
+        java-version: "adopt@1.${{ matrix.java }}"
+    - name: Compile and generate artifact files
+      shell: bash
+      run: sbt publishLocal
+    - name: Run tests
+      shell: bash
+      run: sbt -v +test
+    - name: Archive artifacts
+      if: matrix.os == 'ubuntu-latest' && matrix.java == 11
+      uses: actions/upload-artifact@v2
+      with:
+        path: |
+          build.sbt
+          project/build.properties
+          project/plugins.sbt
+          target/scala-*/silver_*-SNAPSHOT.jar
+          target/scala-*/silver_*-SNAPSHOT-tests.jar
+          target/scala-*/silver_*-SNAPSHOT-tests-sources.jar

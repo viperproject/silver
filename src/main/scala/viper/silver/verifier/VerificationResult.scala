@@ -43,15 +43,28 @@ trait AbstractError {
   def readableMessage: String
 
   /* TODO: Simply looking for pos in message is rather fragile */
-  override def toString = {
+  override def toString: String = {
     val msg = readableMessage
     val posStr = pos.toString
 
-    if (msg contains posStr) s"$msg"
-    else s"$msg ($posStr)"
+    (if (msg contains posStr) s"$msg"
+    else s"$msg ($posStr)") +
+      (if (cached) " - cached" else "")
   }
 
   val cached: Boolean = false
+
+  var scope: Option[Member] = None
+
+  /** This method could be used for implementing the scope filed via an offending node.
+    * TODO: make scope a mandatory field (do not provide a default value for it). */
+  protected def getMemberForNode(ast: Program, node: Node): Member = {
+    val members_with_this_node = ast.members.collect {
+      case m if m.deepCollect({ case n => n == node }).nonEmpty => m
+    }
+    assert(members_with_this_node.length == 1)
+    members_with_this_node.last
+  }
 }
 
 abstract class ParseReport(message: String, pos: Position) extends AbstractError
@@ -68,6 +81,13 @@ case class ParseWarning(message: String, override val pos: Position)
   extends ParseReport(message, pos) {
   def fullId = "parser.warning"
   def readableMessage = s"Parse warning: $message ($pos)"
+}
+
+/** A case class used for treating certain type checker reports as non-critical. */
+case class TypecheckerWarning(message: String, override val pos: Position)
+  extends AbstractError {
+  def fullId = "typechecker.warning"
+  def readableMessage = s"Type checker warning: $message ($pos)"
 }
 
 /** An error during consistency-checking an AST node */

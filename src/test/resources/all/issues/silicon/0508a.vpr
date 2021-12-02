@@ -1,0 +1,56 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field bool_prop: Bool
+field item: Ref
+
+domain identity_function[T] {
+  function id(v: T): T
+  axiom { forall v: T :: {id(v)} id(v) == v }
+}
+
+
+
+method test03a(trees: Set[Ref])
+  requires (forall r: Ref :: {r in trees} r in trees ==> acc(r.item, 1/2))
+  requires (forall r: Ref :: {r in trees} r in trees ==> acc(r.item.bool_prop, 1/2))
+{
+  assert forall s: Ref :: {s in trees} s in trees ==> acc(s.item.bool_prop, wildcard)
+}
+
+method test03b(trees: Set[Ref])
+  requires (forall r: Ref :: {id(r)} r in trees ==> acc(id(r).item, 1/2))
+  requires (forall r: Ref :: {id(r)} r in trees ==> acc(id(r).item.bool_prop, none))
+{
+  //:: ExpectedOutput(assert.failed:receiver.not.injective)
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
+  //:: MissingOutput(assert.failed:receiver.not.injective, /carbon/issue/361/)
+  //:: MissingOutput(assert.failed:insufficient.permission, /silicon/issue/34/)
+  assert forall s: Ref :: {id(s)} s in trees ==> acc(id(s).item.bool_prop, wildcard)
+}
+
+ method test03c(trees: Set[Ref])
+   requires (forall r: Ref :: {id(r)} r in trees ==> acc(id(r).item, 1/2))
+   requires (forall r: Ref :: {id(r)} r in trees ==> acc(id(r).item.bool_prop, 1/2))
+ {
+   assert forall s: Ref :: {id(s)} s in trees ==> acc(id(s).item.bool_prop, wildcard)
+ }
+
+
+
+method test04(trees: Set[Ref])
+  requires (forall r: Ref :: {r in trees} r in trees ==> acc(id(r).item, 1/2))
+  requires (forall r: Ref :: {r in trees} r in trees ==> acc(id(r).item.bool_prop, 1/2))
+{
+  assert forall s: Ref :: {s in trees} s in trees ==> acc(id(s).item.bool_prop, wildcard)
+}
+
+
+
+method test01(trees: Seq[Ref], g: Int)
+  requires 0 < g && |trees|==g
+  requires (forall i: Int :: {trees[i]} 0 <= i && i < g ==> acc(trees[i].item, 1/2))
+  requires (forall i: Int :: {trees[i]} 0 <= i && i < g ==> acc(trees[i].item.bool_prop, 1/2))
+{
+  assert forall j: Int :: {trees[j]} 0 <= j && j < g ==> acc(trees[j].item.bool_prop, wildcard)
+}

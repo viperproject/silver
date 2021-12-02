@@ -2,9 +2,11 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (c) 2011-2019 ETH Zurich.
+// Copyright (c) 2011-2021 ETH Zurich.
 
 package viper.silver.reporter
+
+import java.io.FileWriter
 
 trait Reporter {
   val name: String
@@ -15,6 +17,56 @@ trait Reporter {
 object NoopReporter extends Reporter {
   val name: String = "NoopReporter"
   def report(msg: Message): Unit = ()
+}
+
+case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv") extends Reporter {
+
+  def this() = this("csv_reporter", "report.csv")
+
+  val csv_file = new FileWriter(path, true)
+
+  def report(msg: Message): Unit = {
+    msg match {
+      case AstConstructionFailureMessage(time, result) =>
+        csv_file.write(s"AstConstructionFailureMessage,${time}\n")
+      case AstConstructionSuccessMessage(time) =>
+        csv_file.write(s"AstConstructionSuccessMessage,${time}\n")
+      case OverallFailureMessage(verifier, time, result) =>
+        csv_file.write(s"OverallFailureMessage,${time}\n")
+      case OverallSuccessMessage(verifier, time) =>
+        csv_file.write(s"OverallSuccessMessage,${time}\n")
+      case ExceptionReport(e) =>
+        csv_file.write(s"ExceptionReport,${e.toString}\n")
+      case ExternalDependenciesReport(deps) =>
+        deps.foreach(dep =>
+          csv_file.write(s"ExternalDependenciesReport,${dep.name} ${dep.version} located at ${dep.location}\n")
+        )
+      case WarningsDuringParsing(warnings) =>
+        warnings.foreach(report => {
+          csv_file.write(s"WarningsDuringParsing,${report}\n")
+        })
+      case WarningsDuringTypechecking(warnings) =>
+        warnings.foreach(report => {
+          csv_file.write(s"WarningsDuringTypechecking,${report}\n")
+        })
+      case InvalidArgumentsReport(tool_sig, errors) =>
+        errors.foreach(error => {
+          csv_file.write(s"WarningsDuringParsing,${error}\n")
+        })
+
+      case EntitySuccessMessage(verifier, concerning, time, cached) =>
+        csv_file.write(s"EntitySuccessMessage,${concerning.name},${time}, ${cached}\n")
+      case EntityFailureMessage(verifier, concerning, time, result, cached) =>
+        csv_file.write(s"EntityFailureMessage,${concerning.name},${time}, ${cached}\n")
+
+      case _: SimpleMessage | _: CopyrightReport | _: MissingDependencyReport | _: BackendSubProcessReport |
+           _: InternalWarningMessage | _: ConfigurationConfirmation=> // Irrelevant for reporting
+
+      case _ =>
+        println( s"Cannot properly print message of unsupported type: $msg" )
+    }
+    csv_file.flush()
+  }
 }
 
 case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = true) extends Reporter {
@@ -30,6 +82,20 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
 
   def report(msg: Message): Unit = {
     msg match {
+      case AstConstructionFailureMessage(t, res) =>
+        val num_errors = res.errors.length
+        if (!timeInfo)
+          println( s"AST construction resulted in $num_errors error${plurals(num_errors)}:" )
+        else
+          println( s"AST construction resulted in $num_errors error${plurals(num_errors)} in ${timeStr(t)}:" )
+        res.errors.zipWithIndex.foreach { case(e, n) => println( s"  [${bulletFmt(num_errors).format(n)}] ${e.readableMessage}" ) }
+
+      case AstConstructionSuccessMessage(t) =>
+        if (!timeInfo)
+          println( s"the file represents a consistent Viper program." )
+        else
+          println( s"the file represents a consistent Viper program; constructed AST in ${timeStr(t)}." )
+
       case OverallFailureMessage(v, t, res) =>
         val num_errors = res.errors.length
         if (!timeInfo)
@@ -63,15 +129,33 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
       case WarningsDuringParsing(warnings) =>
         warnings.foreach(println)
 
+      case WarningsDuringTypechecking(warnings) =>
+        warnings.foreach(println)
+
       case InvalidArgumentsReport(tool_sig, errors) =>
         errors.foreach(e => println(s"  ${e.readableMessage}"))
         println( s"Run with just --help for usage and options" )
 
+      case ExecutionTraceReport(memberTraces, axioms, functionPostAxioms) =>
+        println("Execution trace for the last run:")
+        println(s"  Members:")
+        memberTraces.foreach(t => println(s"    $t"))
+        println(s"  Axioms:")
+        axioms.foreach(t => println(s"    $t"))
+        println(s"  FunctionPostAxioms:")
+        functionPostAxioms.foreach(a => println(s"    $a"))
+
+
       case CopyrightReport(text) =>
         println( text )
 
-      case EntitySuccessMessage(_, _, _) =>    // FIXME Currently, we only print overall verification results to STDOUT.
-      case EntityFailureMessage(_, _, _, _) => // FIXME Currently, we only print overall verification results to STDOUT.
+      case BackendSubProcessReport(_, _, _, _) =>  // Not relevant to the end user
+
+      case MissingDependencyReport(text) =>
+        println( s"encountered missing dependency: $text" )
+
+      case EntitySuccessMessage(_, _, _, _) =>    // FIXME Currently, we only print overall verification results to STDOUT.
+      case EntityFailureMessage(_, _, _, _, _) => // FIXME Currently, we only print overall verification results to STDOUT.
       case ConfigurationConfirmation(_) =>     // TODO  use for progress reporting
         //println( s"Configuration confirmation: $text" )
       case InternalWarningMessage(_) =>        // TODO  use for progress reporting

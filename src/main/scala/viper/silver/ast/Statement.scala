@@ -8,7 +8,7 @@ package viper.silver.ast
 
 import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.ast.utility.{Consistency, Statements}
-import viper.silver.cfg.silver.CfgGenerator
+import viper.silver.cfg.silver.{CfgGenerator, SilverCfg}
 import viper.silver.verifier.ConsistencyError
 
 // --- Statements
@@ -17,15 +17,9 @@ import viper.silver.verifier.ConsistencyError
 sealed trait Stmt extends Hashable with Infoed with Positioned with TransformableErrors {
 
   /**
-    * Returns a list of all actual statements contained in this statement.  That
-    * is, all statements except `Seqn`, including statements in the body of loops, etc.
-    */
-  def children = Statements.children(this)
-
-  /**
     * Returns a control flow graph that corresponds to this statement.
     */
-  def toCfg(simplify: Boolean = true) = CfgGenerator.statementToCfg(this, simplify)
+  def toCfg(simplify: Boolean = true, detect: Boolean = true): SilverCfg = CfgGenerator.statementToCfg(this, simplify, detect)
 
   /**
     * Returns a list of all undeclared local variables contained in this statement and
@@ -82,17 +76,6 @@ case class FieldAssign(lhs: FieldAccess, rhs: Exp)(val pos: Position = NoPositio
     (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
     Consistency.checkPure(rhs) ++
     (if(!Consistency.isAssignable(rhs, lhs)) Seq(ConsistencyError(s"Right-hand side $rhs is not assignable to left-hand side $lhs.", lhs.pos)) else Seq())
-}
-
-/** A method/function/domain function call. - AS: this comment is misleading - the trait is currently not used for method calls below */
-trait Call {
-//  require(Consistency.areAssignable(args, formalArgs), s"$args vs $formalArgs for callee: $callee") <- this check has been moved to case classes
-
-  def callee: String
-
-  def args: Seq[Exp]
-
-  def formalArgs: Seq[LocalVarDecl] // formal arguments of the call, for type checking
 }
 
 /** A method call. */
@@ -169,31 +152,7 @@ case class Apply(exp: MagicWand)(val pos: Position = NoPosition, val info: Info 
 }
 
 /** A sequence of statements. */
-case class Seqn(ss: Seq[Stmt], scopedDecls: Seq[Declaration])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt with Scope {
-
-  // Interpret leaves of a possibly nested Seqn structure as its children
-  override lazy val getChildren: Seq[AnyRef] = {
-    def seqFlat(ss: Seq[Stmt]): (Seq[Stmt], Seq[Declaration]) = {
-      val result = ss.foldLeft((Seq.empty[Stmt], Seq.empty[Declaration]))((x: (Seq[Stmt], Seq[Declaration]), y: Stmt) => {
-        y match {
-          case elems: Seq[Stmt @unchecked] => {
-            val tmp = seqFlat(elems)
-            (x._1 ++ tmp._1, x._2 ++ tmp._2)
-          }
-          case elemS: Seqn => {
-            val tmp = seqFlat(elemS.ss)
-            (x._1 ++ tmp._1, x._2 ++ elemS.scopedDecls ++ tmp._2)
-          }
-          case elem: Stmt => (x._1 ++ Seq(elem), x._2)
-        }
-      })
-      result
-    }
-    val all = seqFlat(ss)
-    Seq(all._1, scopedDecls ++ all._2)
-  }
-
-}
+case class Seqn(ss: Seq[Stmt], scopedDecls: Seq[Declaration])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt with Scope
 
 /** An if control statement. */
 case class If(cond: Exp, thn: Seqn, els: Seqn)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
@@ -229,27 +188,6 @@ case class Label(name: String, invs: Seq[Exp])(val pos: Position = NoPosition, v
   * control flow graph are due to while loops.
   */
 case class Goto(target: String)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt
-
-/** A fresh statement assigns a fresh, dedicated symbolic permission values to
-  * each of the passed variables.
-  */
-case class Fresh(vars: Seq[LocalVar])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
-  override lazy val check : Seq[ConsistencyError] =
-    (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
-    vars.flatMap(v=>{ if(!(v isSubtype Perm)) Seq(ConsistencyError(s"Fresh statements can only be used with variables of type Perm, but found ${v.typ}.", v.pos)) else Seq()})
-}
-
-/** A constraining-block takes a sequence of permission-typed variables,
-  * each of which is marked as constrainable while executing the statements
-  * in the body of the block. Potentially constraining statements are, e.g.,
-  * exhale-statements.
-  */
-case class Constraining(vars: Seq[LocalVar], body: Seqn)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
-  extends Stmt {
-  override lazy val check : Seq[ConsistencyError] =
-    (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
-    vars.flatMap(v=>{ if(!(v isSubtype Perm)) Seq(ConsistencyError(s"Constraining statements can only be used with variables of type Perm, but found ${v.typ}.", v.pos)) else Seq()})
-}
 
 /** Local variable declaration statement.
   *

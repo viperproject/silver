@@ -6,14 +6,6 @@
 
 package viper.silver.parser
 
-import viper.silver.verifier.ParseReport
-
-/* TODO: This is basically a copy of silver.ast.utility.Transformer. Can we share code?
- *       This could be done by using tree visiting and rewriting functionality from Kiama,
-  *      or to implement something generic ourselves. Shapeless or Scala Macros might be
-  *      useful because they might help us to abstract over arity when it comes to
-  *      copying existing nodes, i.e., case classes.
- */
 object Transformer {
   /* Attention: You most likely want to call initTree on the transformed node. */
   def transform[A <: PNode](node: A,
@@ -30,110 +22,144 @@ object Transformer {
 
     def recurse(parent: PNode): PNode = {
       val newNode = parent match {
-        case PMacroRef(idnuse) => PMacroRef(go(idnuse))
+        case p@PMacroRef(idnuse) => PMacroRef(go(idnuse))(p.pos)
         case _: PIdnDef => parent
         case _: PIdnUse => parent
-        case PFormalArgDecl(idndef, typ) => PFormalArgDecl(go(idndef), go(typ))
-        case PTypeVarDecl(idndef) => PTypeVarDecl(go(idndef))
+        case p@PFormalArgDecl(idndef, typ) => PFormalArgDecl(go(idndef), go(typ))(p.pos)
+        case p@PTypeVarDecl(idndef) => PTypeVarDecl(go(idndef))(p.pos)
         case _: PPrimitiv => parent
         case pdt@PDomainType(domain, args) =>
-          val newPdt = PDomainType(go(domain), args map go)
+          val newPdt = PDomainType(go(domain), args map go)(pdt.pos)
           newPdt.kind = pdt.kind
           newPdt
+        case p@PSeqType(elementType) => PSeqType(go(elementType))(p.pos)
+        case p@PSetType(elementType) => PSetType(go(elementType))(p.pos)
+        case p@PMultisetType(elementType) => PMultisetType(go(elementType))(p.pos)
+          /* Maps:
         case PSeqType(elementType) => PSeqType(go(elementType))
         case PSetType(elementType) => PSetType(go(elementType))
         case PMultisetType(elementType) => PMultisetType(go(elementType))
+           */
+        case p@PMapType(keyType, valueType) => PMapType(go(keyType), go(valueType))(p.pos)
         case _: PUnknown => parent
         case _: PPredicateType | _: PWandType => parent
-        case PMagicWandExp(left, right) => PMagicWandExp(go(left), go(right))
-        case PBinExp(left, op, right) => PBinExp(go(left), op, go(right))
-        case PUnExp(op, exp) => PUnExp(op, go(exp))
+        case p@PMagicWandExp(left, right) => PMagicWandExp(go(left), go(right))(p.pos)
+        case p@PBinExp(left, op, right) => PBinExp(go(left), op, go(right))(p.pos)
+        case p@PUnExp(op, exp) => PUnExp(op, go(exp))(p.pos)
         case _: PIntLit => parent
         case _: PResultLit => parent
         case _: PBoolLit => parent
         case _: PNullLit => parent
-        case PFieldAccess(rcv, idnuse) => PFieldAccess(go(rcv), go(idnuse))
-        case PPredicateAccess(args, idnuse) => PPredicateAccess(args map go, go(idnuse))
-        case PCall(func, args, explicitType) =>
+        case p@PFieldAccess(rcv, idnuse) => PFieldAccess(go(rcv), go(idnuse))(p.pos)
+        case p@PPredicateAccess(args, idnuse) => PPredicateAccess(args map go, go(idnuse))(p.pos)
+        case p@PCall(func, args, explicitType) =>
           PCall(go(func), args map go, explicitType match {
             case Some(t) => Some(go(t))
             case None => None
-          })
+          })(p.pos)
 
 
-        case PUnfolding(acc, exp) => PUnfolding(go(acc), go(exp))
-        case PApplying(wand, exp) => PApplying(go(wand), go(exp))
+        case p@PUnfolding(acc, exp) => PUnfolding(go(acc), go(exp))(p.pos)
+        case p@PApplying(wand, exp) => PApplying(go(wand), go(exp))(p.pos)
 
-        case PExists(vars, exp) => PExists(vars map go, go(exp))
-        case PForall(vars, triggers, exp) => PForall(vars map go, triggers map go, go(exp))
-        case PTrigger(exp) => PTrigger(exp map go)
-        case PForPerm(vars, res, exp) => PForPerm(vars map go, go(res), go(exp))
-        case PCondExp(cond, thn, els) => PCondExp(go(cond), go(thn), go(els))
-        case PInhaleExhaleExp(in, ex) => PInhaleExhaleExp(go(in), go(ex))
-        case PCurPerm(loc) => PCurPerm(go(loc))
+        case p@PExists(vars, triggers, exp) => PExists(vars map go, triggers map go, go(exp))(p.pos)
+        case p@PForall(vars, triggers, exp) => PForall(vars map go, triggers map go, go(exp))(p.pos)
+        case p@PTrigger(exp) => PTrigger(exp map go)(p.pos)
+        case p@PForPerm(vars, res, exp) => PForPerm(vars map go, go(res), go(exp))(p.pos)
+        case p@PCondExp(cond, thn, els) => PCondExp(go(cond), go(thn), go(els))(p.pos)
+        case p@PInhaleExhaleExp(in, ex) => PInhaleExhaleExp(go(in), go(ex))(p.pos)
+        case p@PCurPerm(loc) => PCurPerm(go(loc))(p.pos)
         case _: PNoPerm => parent
         case _: PFullPerm => parent
         case _: PWildcard => parent
         case _: PEpsilon => parent
-        case PAccPred(loc, perm) => PAccPred(go(loc), go(perm))
-        case POld(e) => POld(go(e))
-        case PLabelledOld(lbl, e) => PLabelledOld(go(lbl), go(e))
-        case PEmptySeq(t) => PEmptySeq(go(t))
-        case PExplicitSeq(elems) => PExplicitSeq(elems map go)
-        case PRangeSeq(low, high) => PRangeSeq(go(low), go(high))
-        case PSeqIndex(seq, idx) => PSeqIndex(go(seq), go(idx))
-        case PSeqTake(seq, n) => PSeqTake(go(seq), go(n))
-        case PSeqDrop(seq, n) => PSeqDrop(go(seq), go(n))
-        case PSeqUpdate(seq, idx, elem) => PSeqUpdate(go(seq), go(idx), go(elem))
-        case PSize(seq) => PSize(go(seq))
-        case PEmptySet(t) => PEmptySet(go(t))
+        case p@PAccPred(loc, perm) => PAccPred(go(loc), go(perm))(p.pos)
+        case p@POld(e) => POld(go(e))(p.pos)
+        case p@PLabelledOld(lbl, e) => PLabelledOld(go(lbl), go(e))(p.pos)
+        case p@PEmptySeq(t) => PEmptySeq(go(t))(p.pos)
+        case p@PExplicitSeq(elems) => PExplicitSeq(elems map go)(p.pos)
+        case p@PRangeSeq(low, high) => PRangeSeq(go(low), go(high))(p.pos)
+        case p@PSeqIndex(seq, idx) => PSeqIndex(go(seq), go(idx))(p.pos)
+        case p@PSeqTake(seq, n) => PSeqTake(go(seq), go(n))(p.pos)
+        case p@PSeqDrop(seq, n) => PSeqDrop(go(seq), go(n))(p.pos)
+        case p@PSeqUpdate(seq, idx, elem) => PSeqUpdate(go(seq), go(idx), go(elem))(p.pos)
+        case p@PSize(seq) => PSize(go(seq))(p.pos)
+        case p@PEmptySet(t) => PEmptySet(go(t))(p.pos)
+          // MAPS:
+        //case PAccPred(loc, perm) => PAccPred(go(loc), go(perm))
+        //case POld(e) => POld(go(e))
+        //case PLabelledOld(lbl, e) => PLabelledOld(go(lbl), go(e))
+        //case PEmptySeq(t) => PEmptySeq(go(t))
+        //case PExplicitSeq(elems) => PExplicitSeq(elems map go)
+        //case PRangeSeq(low, high) => PRangeSeq(go(low), go(high))
+        case p@PLookup(seq, idx) => PLookup(go(seq), go(idx))(p.pos)
+        //case PSeqTake(seq, n) => PSeqTake(go(seq), go(n))
+        //case PSeqDrop(seq, n) => PSeqDrop(go(seq), go(n))
+        case p@PUpdate(seq, idx, elem) => PUpdate(go(seq), go(idx), go(elem))(p.pos)
+        //case PSize(seq) => PSize(go(seq))
+        //case PEmptySet(t) => PEmptySet(go(t))
         //        case _: PEmptySet => parent
-        case PExplicitSet(elems) => PExplicitSet(elems map go)
-        case PEmptyMultiset(t) => PEmptyMultiset(go(t))
+        case p@PExplicitSet(elems) => PExplicitSet(elems map go)(p.pos)
+        case p@PEmptyMultiset(t) => PEmptyMultiset(go(t))(p.pos)
         //        case _: PEmptyMultiset => parent
-        case PExplicitMultiset(elems) => PExplicitMultiset(elems map go)
+        case p@PExplicitMultiset(elems) => PExplicitMultiset(elems map go)(p.pos)
 
-        case PSeqn(ss) => PSeqn(ss map go)
-        case PFold(e) => PFold(go(e))
-        case PUnfold(e) => PUnfold(go(e))
-        case PPackageWand(e, proofScript) => PPackageWand(go(e), go(proofScript))
-        case PApplyWand(e) => PApplyWand(go(e))
-        case PExhale(e) => PExhale(go(e))
-        case PAssert(e) => PAssert(go(e))
-        case PAssume(e) => PAssume(go(e))
-        case PInhale(e) => PInhale(go(e))
+        case p@PSeqn(ss) => PSeqn(ss map go)(p.pos)
+        case p@PFold(e) => PFold(go(e))(p.pos)
+        case p@PUnfold(e) => PUnfold(go(e))(p.pos)
+        case p@PPackageWand(e, proofScript) => PPackageWand(go(e), go(proofScript))(p.pos)
+        case p@PApplyWand(e) => PApplyWand(go(e))(p.pos)
+        case p@PExhale(e) => PExhale(go(e))(p.pos)
+        case p@PAssert(e) => PAssert(go(e))(p.pos)
+        case p@PAssume(e) => PAssume(go(e))(p.pos)
+        case p@PInhale(e) => PInhale(go(e))(p.pos)
+          // MAPS:
+        //case PExplicitMultiset(elems) => PExplicitMultiset(elems map go)
+        case p@PEmptyMap(keyType, valueType) => PEmptyMap(go(keyType), go(valueType))(p.pos)
+        case p@PExplicitMap(exprs) => PExplicitMap(exprs map go)(p.pos)
+        case p@PMaplet(key, value) => PMaplet(go(key), go(value))(p.pos)
+        case p@PMapDomain(base) => PMapDomain(go(base))(p.pos)
+        case p@PMapRange(base) => PMapRange(go(base))(p.pos)
+        //case PSeqn(ss) => PSeqn(ss map go)
+        //case PFold(e) => PFold(go(e))
+        //case PUnfold(e) => PUnfold(go(e))
+        //case PPackageWand(e, proofScript) => PPackageWand(go(e), go(proofScript))
+        //case PApplyWand(e) => PApplyWand(go(e))
+        //case PExhale(e) => PExhale(go(e))
+        //case PAssert(e) => PAssert(go(e))
+        //case PAssume(e) => PAssume(go(e))
+        //case PInhale(e) => PInhale(go(e))
         case PNewStmt(target, fields) => PNewStmt(go(target), fields map (_.map(go)))
-        case PVarAssign(idnuse, rhs) => PVarAssign(go(idnuse), go(rhs))
-        case PFieldAssign(fieldAcc, rhs) => PFieldAssign(go(fieldAcc), go(rhs))
-        case PIf(cond, thn, els) => PIf(go(cond), go(thn), go(els))
-        case PWhile(cond, invs, body) => PWhile(go(cond), invs map go, go(body))
-        case PFresh(vars) => PFresh(vars map go)
-        case PConstraining(vars, stmt) => PConstraining(vars map go, go(stmt))
-        case PLocalVarDecl(idndef, typ, init) => PLocalVarDecl(go(idndef), go(typ), init map go)
-        case PMethodCall(targets, method, args) => PMethodCall(targets map go, go(method), args map go)
-        case PLabel(idndef, invs) => PLabel(go(idndef), invs map go)
-        case PGoto(target) => PGoto(go(target))
-        case PDefine(idndef, optArgs, exp) => PDefine(go(idndef), optArgs map (_ map go) , go(exp))
-        case PLet(exp, nestedScope) => PLet(go(exp), go(nestedScope))
-        case PLetNestedScope(idndef, body) => PLetNestedScope(go(idndef), go(body))
+        case p@PVarAssign(idnuse, rhs) => PVarAssign(go(idnuse), go(rhs))(p.pos)
+        case p@PFieldAssign(fieldAcc, rhs) => PFieldAssign(go(fieldAcc), go(rhs))(p.pos)
+        case p@PIf(cond, thn, els) => PIf(go(cond), go(thn), go(els))(p.pos)
+        case p@PWhile(cond, invs, body) => PWhile(go(cond), invs map go, go(body))(p.pos)
+        case p@PLocalVarDecl(idndef, typ, init) => PLocalVarDecl(go(idndef), go(typ), init map go)(p.pos)
+        case p@PMethodCall(targets, method, args) => PMethodCall(targets map go, go(method), args map go)(p.pos)
+        case p@PLabel(idndef, invs) => PLabel(go(idndef), invs map go)(p.pos)
+        case p@PGoto(target) => PGoto(go(target))(p.pos)
+        case p@PDefine(idndef, optArgs, exp) => PDefine(go(idndef), optArgs map (_ map go) , go(exp))(p.pos)
+        case p@PLet(exp, nestedScope) => PLet(go(exp), go(nestedScope))(p.pos)
+        case p@PLetNestedScope(idndef, body) => PLetNestedScope(go(idndef), go(body))(p.pos)
         case _: PSkip => parent
 
-        case PProgram(files, macros, domains, fields, functions, predicates, methods, errors) => PProgram(files, macros map go, domains map go, fields map go, functions map go, predicates map go, methods map go, errors)
-        case PLocalImport(file) => PLocalImport(file)
-        case PStandardImport(file) => PStandardImport(file)
-        case PMethod(idndef, formalArgs, formalReturns, pres, posts, body) => PMethod(go(idndef), formalArgs map go, formalReturns map go, pres map go, posts map go, body map go)
-        case PDomain(idndef, typVars, funcs, axioms) => PDomain(go(idndef), typVars map go, funcs map go, axioms map go)
-        case PField(idndef, typ) => PField(go(idndef), go(typ))
-        case PFunction(idndef, formalArgs, typ, pres, posts, body) => PFunction(go(idndef), formalArgs map go, go(typ), pres map go, posts map go, body map go)
-        case pdf@PDomainFunction(idndef, formalArgs, typ, unique) => PDomainFunction(go(idndef), formalArgs map go, go(typ), unique)(domainName = pdf.domainName)
-        case PPredicate(idndef, formalArgs, body) => PPredicate(go(idndef), formalArgs map go, body map go)
-        case pda@PAxiom(idndef, exp) => PAxiom(go(idndef), go(exp))(domainName = pda.domainName)
+        case p@PProgram(files, macros, domains, fields, functions, predicates, methods, extensions, errors) => PProgram(files, macros map go, domains map go, fields map go, functions map go, predicates map go, methods map go, extensions map go, errors)(p.pos)
+        case p@PLocalImport(file) => PLocalImport(file)(p.pos)
+        case p@PStandardImport(file) => PStandardImport(file)(p.pos)
+        case p@PMethod(idndef, formalArgs, formalReturns, pres, posts, body) => PMethod(go(idndef), formalArgs map go, formalReturns map go, pres map go, posts map go, body map go)(p.pos)
+        case p@PDomain(idndef, typVars, funcs, axioms) => PDomain(go(idndef), typVars map go, funcs map go, axioms map go)(p.pos)
+        case p@PField(idndef, typ) => PField(go(idndef), go(typ))(p.pos)
+        case p@PFunction(idndef, formalArgs, typ, pres, posts, body) => PFunction(go(idndef), formalArgs map go, go(typ), pres map go, posts map go, body map go)(p.pos)
+        case pdf@PDomainFunction(idndef, formalArgs, typ, unique) => PDomainFunction(go(idndef), formalArgs map go, go(typ), unique)(domainName = pdf.domainName)(pdf.pos)
+        case p@PPredicate(idndef, formalArgs, body) => PPredicate(go(idndef), formalArgs map go, body map go)(p.pos)
+        case pda@PAxiom(idndef, exp) => PAxiom(idndef map go, go(exp))(domainName = pda.domainName)(pda.pos)
+        case pe:PExtender => pe.transformExtension(this)
       }
 
       if (!allowChangingNodeType)
         assert(newNode.getClass == parent.getClass, "Transformer is not expected to change type of nodes.")
 
-      newNode.setPos(parent)
+      newNode
     }
 
 
@@ -148,103 +174,6 @@ object Transformer {
       beforeRecursion
     }
     post.applyOrElse(afterRecursion, identity[PNode]).asInstanceOf[A]
-  }
-
-  def parseTreeDuplicator: PartialFunction[(PNode, Seq[Any]), PNode] = {
-    case (_: PMacroRef, Seq(idndef: PIdnUse)) => PMacroRef(idndef)
-    case (p: PIdnDef, _) => p
-    case (p: PIdnUse, _) => p
-    case (_: PFormalArgDecl, Seq(idndef: PIdnDef, typ: PType)) => PFormalArgDecl(idndef, typ)
-    case (_: PTypeVarDecl, Seq(idndef: PIdnDef)) => PTypeVarDecl(idndef)
-    case (p: PPrimitiv, _) => p
-    case (_: PDomainType, Seq(domain: PIdnUse, args: Seq[PType@unchecked])) => PDomainType(domain, args)
-    case (_: PSeqType, Seq(elementType: PType)) => PSeqType(elementType)
-    case (_: PSetType, Seq(elementType: PType)) => PSetType(elementType)
-    case (_: PMultisetType, Seq(elementType: PType)) => PMultisetType(elementType)
-    case (p: PUnknown, _) => p
-    case (p: PPredicateType, _) => p
-    case (p: PWandType, _) => p
-
-    case (p: PBinExp, Seq(left: PExp, right: PExp)) => PBinExp(left, p.opName, right)
-    case (p: PMagicWandExp, Seq(left: PExp, right: PExp)) => PMagicWandExp(left, right)
-    case (p: PUnExp, Seq(exp: PExp)) => PUnExp(p.opName, exp)
-    case (_: PTrigger, Seq(exp: Seq[PExp@unchecked])) => PTrigger(exp)
-    case (p: PIntLit, _) => p
-    case (p: PResultLit, _) => p
-    case (p: PBoolLit, _) => p
-    case (p: PNullLit, _) => p
-    case (_: PFieldAccess, Seq(rcv: PExp, idnuse: PIdnUse)) => PFieldAccess(rcv, idnuse)
-    case (_: PPredicateAccess, Seq(args: Seq[PExp@unchecked], idnuse: PIdnUse)) => PPredicateAccess(args, idnuse)
-    case (_: PCall, Seq(func: PIdnUse, args: Seq[PExp@unchecked], explicitType: Option[PType@unchecked])) => PCall(func, args, explicitType)
-
-    case (_: PUnfolding, Seq(acc: PAccPred, exp: PExp)) => PUnfolding(acc, exp)
-    case (_: PApplying, Seq(wand: PExp, exp: PExp)) => PApplying(wand, exp)
-
-    case (_: PExists, Seq(vars: Seq[PFormalArgDecl@unchecked], exp: PExp)) => PExists(vars, exp)
-    case (_: PForall, Seq(vars: Seq[PFormalArgDecl@unchecked], triggers: Seq[PTrigger@unchecked], exp: PExp)) => PForall(vars, triggers, exp)
-    case (_: PForPerm, Seq(vars: Seq[PFormalArgDecl@unchecked], res: PResourceAccess, exp: PExp)) => PForPerm(vars, res, exp)
-    case (_: PCondExp, Seq(cond: PExp, thn: PExp, els: PExp)) => PCondExp(cond, thn, els)
-    case (_: PInhaleExhaleExp, Seq(in: PExp, ex: PExp)) => PInhaleExhaleExp(in, ex)
-    case (_: PCurPerm, Seq(loc: PLocationAccess)) => PCurPerm(loc)
-    case (p: PNoPerm, _) => p
-    case (p: PFullPerm, _) => p
-    case (p: PWildcard, _) => p
-    case (p: PEpsilon, _) => p
-    case (_: PAccPred, Seq(loc: PLocationAccess, perm: PExp)) => PAccPred(loc, perm)
-    case (_: POld, Seq(e: PExp)) => POld(e)
-    case (_: PLabelledOld, Seq(lbl: PIdnUse, e: PExp)) => PLabelledOld(lbl, e)
-    case (_: PEmptySeq, Seq(t: PType)) => PEmptySeq(t)
-    case (_: PExplicitSeq, Seq(elems: Seq[PExp@unchecked])) => PExplicitSeq(elems)
-    case (_: PRangeSeq, Seq(low: PExp, high: PExp)) => PRangeSeq(low, high)
-    case (_: PSeqIndex, Seq(seq: PExp, idx: PExp)) => PSeqIndex(seq, idx)
-    case (_: PSeqTake, Seq(seq: PExp, n: PExp)) => PSeqTake(seq, n)
-    case (_: PSeqDrop, Seq(seq: PExp, n: PExp)) => PSeqDrop(seq, n)
-    case (_: PSeqUpdate, Seq(seq: PExp, idx: PExp, elem: PExp)) => PSeqUpdate(seq, idx, elem)
-    case (_: PSize, Seq(seq: PExp)) => PSize(seq)
-    case (_: PEmptySet, Seq(t: PType)) => PEmptySet(t)
-    case (_: PExplicitSet, Seq(elems: Seq[PExp@unchecked])) => PExplicitSet(elems)
-    case (_: PEmptyMultiset, Seq(t: PType)) => PEmptyMultiset(t)
-    case (_: PExplicitMultiset, Seq(elems: Seq[PExp@unchecked])) => PExplicitMultiset(elems)
-
-    case (_: PSeqn, Seq(ss: Seq[PStmt@unchecked])) => PSeqn(ss)
-    case (_: PFold, Seq(e: PExp)) => PFold(e)
-    case (_: PUnfold, Seq(e: PExp)) => PUnfold(e)
-    case (_: PPackageWand, Seq(e: PExp, proofScript: PSeqn)) => PPackageWand(e, proofScript)
-    case (_: PApplyWand, Seq(e: PExp)) => PApplyWand(e)
-    case (_: PExhale, Seq(e: PExp)) => PExhale(e)
-    case (_: PAssert, Seq(e: PExp)) => PAssert(e)
-    case (_: PAssume, Seq(e: PExp)) => PAssume(e)
-    case (_: PInhale, Seq(e: PExp)) => PInhale(e)
-    case (_: PRegularNewStmt, Seq(target: PIdnUse, fields: Seq[PIdnUse@unchecked])) => PRegularNewStmt(target, fields)
-    case (_: PStarredNewStmt, Seq(target: PIdnUse)) => PStarredNewStmt(target)
-    case (_: PVarAssign, Seq(idnuse: PIdnUse, rhs: PExp)) => PVarAssign(idnuse, rhs)
-    case (_: PFieldAssign, Seq(fieldAcc: PFieldAccess, rhs: PExp)) => PFieldAssign(fieldAcc, rhs)
-    case (_: PIf, Seq(cond: PExp, thn: PSeqn, els: PSeqn)) => PIf(cond, thn, els)
-    case (_: PWhile, Seq(cond: PExp, invs: Seq[PExp@unchecked], body: PSeqn)) => PWhile(cond, invs, body)
-    case (_: PFresh, Seq(vars: Seq[PIdnUse@unchecked])) => PFresh(vars)
-    case (_: PConstraining, Seq(vars: Seq[PIdnUse@unchecked], stmt: PSeqn)) => PConstraining(vars, stmt)
-    case (_: PLocalVarDecl, Seq(idndef: PIdnDef, typ: PType, init: Option[PExp@unchecked])) => PLocalVarDecl(idndef, typ, init)
-    case (_: PMethodCall, Seq(targets: Seq[PIdnUse@unchecked], method: PIdnUse, args: Seq[PExp@unchecked])) => PMethodCall(targets, method, args)
-    case (_: PLabel, Seq(idndef: PIdnDef, invs: Seq[PExp@unchecked])) => PLabel(idndef, invs)
-    case (_: PGoto, Seq(target: PIdnUse)) => PGoto(target)
-    case (_: PDefine, Seq(idndef: PIdnDef, optArgs: Seq[PIdnDef@unchecked], exp: PExp)) => PDefine(idndef, if (optArgs.isEmpty) None else Some(optArgs), exp)
-    case (_: PLet, Seq(exp: PExp, nestedScope: PLetNestedScope)) => PLet(exp, nestedScope)
-    case (_: PLetNestedScope, Seq(idndef: PFormalArgDecl, body: PExp)) => PLetNestedScope(idndef, body)
-    case (p: PSkip, _) => p
-
-    case (p: PProgram, Seq(files: Seq[PImport@unchecked], macros: Seq[PDefine@unchecked], domains: Seq[PDomain@unchecked], fields: Seq[PField@unchecked], functions: Seq[PFunction@unchecked], predicates: Seq[PPredicate@unchecked], methods: Seq[PMethod@unchecked], errors: Seq[ParseReport@unchecked])) =>
-      PProgram(files, macros, domains, fields, functions, predicates, methods, errors)
-
-    case (p: PImport, _) => p
-    case (_: PMethod, Seq(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl@unchecked], formalReturns: Seq[PFormalArgDecl@unchecked], pres: Seq[PExp@unchecked], posts: Seq[PExp@unchecked], body: Option[PStmt@unchecked])) => PMethod(idndef, formalArgs, formalReturns, pres, posts, body)
-    case (_: PDomain, Seq(idndef: PIdnDef, typVars: Seq[PTypeVarDecl@unchecked], funcs: Seq[PDomainFunction@unchecked], axioms: Seq[PAxiom@unchecked])) => PDomain(idndef, typVars, funcs, axioms)
-    case (_: PField, Seq(idndef: PIdnDef, typ: PType)) => PField(idndef, typ)
-    case (_: PFunction, Seq(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl@unchecked], typ: PType, pres: Seq[PExp@unchecked], posts: Seq[PExp@unchecked], body: Option[PExp@unchecked])) => PFunction(idndef, formalArgs, typ, pres, posts, body)
-    case (p: PDomainFunction, Seq(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl@unchecked], typ: PType)) => PDomainFunction(idndef, formalArgs, typ, p.unique)(domainName = p.domainName)
-    case (_: PPredicate, Seq(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl@unchecked], body: Option[PExp@unchecked])) => PPredicate(idndef, formalArgs, body)
-    case (p: PAxiom, Seq(idndef: PIdnDef, exp: PExp)) => PAxiom(idndef, exp)(domainName = p.domainName)
-
-    case (p: PNode, s) => throw ParseTreeDuplicationError(p, s)
   }
 
   case class ParseTreeDuplicationError(original: PNode, newChildren: Seq[Any])

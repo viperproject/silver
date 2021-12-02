@@ -26,7 +26,7 @@ object QuantifiedPermissions {
   object QuantifiedPermissionAssertion {
     def unapply(forall: Forall): Option[(Forall, Exp, AccessPredicate)] = {
       forall match {
-        case SourceQuantifiedPermissionAssertion(`forall`, condition, res: AccessPredicate) =>
+        case SourceQuantifiedPermissionAssertion(`forall`, Implies(condition, res: AccessPredicate)) =>
           Some((forall, condition, res))
         case _ =>
           None
@@ -35,12 +35,12 @@ object QuantifiedPermissions {
   }
 
   object SourceQuantifiedPermissionAssertion {
-    def unapply(forall: Forall): Option[(Forall, Exp, Exp)] = {
+    def unapply(forall: Forall): Option[(Forall, Implies)] = {
       forall match {
-        case Forall(_, _, Implies(condition, rhs)) =>
-          Some((forall, condition, rhs))
+        case Forall(_, _, implies: Implies) =>
+          Some((forall, implies))
         case Forall(_, _, expr) =>
-          Some(forall, BoolLit(true)(forall.pos, forall.info), expr)
+          Some(forall, Implies(BoolLit(true)(forall.pos, forall.info, forall.errT), expr)(forall.pos, forall.info, forall.errT))
         case _ =>
           None
       }
@@ -100,7 +100,7 @@ object QuantifiedPermissions {
   private def quantifiedFields(toVisit: mutable.Queue[Member],
                                collected: mutable.LinkedHashSet[Field],
                                visited: mutable.Set[Member],
-                               program: Program) {
+                               program: Program): Unit = {
 
     while (toVisit.nonEmpty) {
       val root = toVisit.dequeue()
@@ -121,7 +121,7 @@ object QuantifiedPermissions {
   private def quantifiedPredicates(toVisit: mutable.Queue[Member],
                                    collected: mutable.LinkedHashSet[Predicate],
                                    visited: mutable.Set[Member],
-                                   program: Program) {
+                                   program: Program): Unit = {
 
     while (toVisit.nonEmpty) {
       val root = toVisit.dequeue()
@@ -143,7 +143,7 @@ object QuantifiedPermissions {
 
 
     source match {
-      case SourceQuantifiedPermissionAssertion(_, cond, rhs) if (!rhs.isPure) =>
+      case SourceQuantifiedPermissionAssertion(_, Implies(cond, rhs)) if (!rhs.isPure) =>
         /* Source forall denotes a quantified permission assertion that potentially
          * needs to be desugared
          */
@@ -208,7 +208,7 @@ object QuantifiedPermissions {
 
                 newForalls0 ++ newForalls1
 
-          case nested@SourceQuantifiedPermissionAssertion(_, nestedCond, nestedRhs) => // no need to check nestedRhs is pure, or else consistency check should already have failed (e.h. impure lhs of implication)
+          case nested@SourceQuantifiedPermissionAssertion(_, Implies(nestedCond, nestedRhs)) => // no need to check nestedRhs is pure, or else consistency check should already have failed (e.h. impure lhs of implication)
             /* Source forall denotes a quantified permission assertion that potentially
              * needs to be desugared
              */

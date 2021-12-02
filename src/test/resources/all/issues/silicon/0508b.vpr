@@ -1,0 +1,21 @@
+domain VCTArray[CT] {
+
+  function loc(a: VCTArray[CT], i: Int): CT
+
+}
+
+field bool_prop: Bool
+
+field item: Ref
+
+function alwaysTrue(v: Ref): Bool
+  ensures result == true
+
+method some_method(trees: VCTArray[Ref], g: Int)
+  requires 0 < g
+  requires (forall i: Int :: {loc(trees, i).item} 0 <= i && i < g ==> acc(loc(trees, i).item, wildcard))
+  requires (forall i: Int :: {loc(trees, i).item.bool_prop} 0 <= i && i < g ==> acc(loc(trees, i).item.bool_prop, wildcard))
+{
+  // assert alwaysTrue(loc(trees, 0).item)
+  assert forall j: Int :: {loc(trees, j).item.bool_prop} 0 <= j && j < g ==> acc(loc(trees, j).item.bool_prop, wildcard)
+}

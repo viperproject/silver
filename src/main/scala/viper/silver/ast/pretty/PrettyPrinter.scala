@@ -374,7 +374,7 @@ trait FastPrettyPrinterBase extends PrettyPrintPrimitives {
       dl <> space <> dr
 
     def <@> (dr: Cont) : Cont =
-      dl <> line <> dr
+      if (dl == nil) dr else dl <> line <> dr
   }
 
   def line: Cont = line(" ")
@@ -490,8 +490,8 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
 
   /** Show a program. */
   def showProgram(p: Program): Cont = {
-    val Program(domains, fields, functions, predicates, methods) = p
-    showComment(p) <>
+    val Program(domains, fields, functions, predicates, methods, _) = p
+    showComment(p) <@>
       ssep((domains ++ fields ++ functions ++ predicates ++ methods) map show, line <> line)
   }
 
@@ -500,13 +500,18 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
     val memberDoc = m match {
       case f @ DomainFunc(_, _, _, unique) =>
         if (unique) text("unique") <+> showDomainFunc(f) else showDomainFunc(f)
-      case DomainAxiom(name, exp) =>
+      case NamedDomainAxiom(name, exp) =>
         text("axiom") <+> name <+>
           braces(nest(defaultIndent,
             line <> show(exp)
           ) <> line)
+      case AnonymousDomainAxiom(exp) =>
+        text("axiom") <+>
+          braces(nest(defaultIndent,
+            line <> show(exp)
+          ) <> line)
     }
-    showComment(m) <> memberDoc
+    showComment(m) <@> memberDoc
   }
 
 
@@ -559,8 +564,9 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
           })
       case d: Domain =>
         showDomain(d)
+      case _:ExtensionMember => nil
     }
-    showComment(m) <> memberDoc
+    showComment(m) <@> memberDoc
   }
 
   /** Shows contracts and use `name` as the contract name (usually `requires` or `ensures`). */
@@ -582,12 +588,12 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
   }
 
   /** Show a list of formal arguments. */
-  def showVars(vars: Seq[LocalVarDecl]): Cont = ssep(vars map showVar, char (',') <> space)
+  def showVars(vars: Seq[AnyLocalVarDecl]): Cont = ssep(vars map showVar, char (',') <> space)
   /** Show a variable name with the type of the variable (e.g. to be used in formal argument lists). */
-  def showVar(v: LocalVarDecl): Cont = text(v.name) <> ":" <+> showType(v.typ)
-
-  /** Show field name */
-  private def showLocation(loc: Location): Cont = loc.name
+  def showVar(v: AnyLocalVarDecl): Cont = v match {
+    case l: LocalVarDecl => text(l.name) <> ":" <+> showType(l.typ)
+    case u: UnnamedLocalVarDecl => showType(u.typ)
+  }
 
   /** Show a user-defined domain. */
   def showDomain(d: Domain): Cont = {
@@ -611,13 +617,16 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       case Perm => "Perm"
       case InternalType => "InternalType"
       case Wand => "$WandType"
-      case SeqType(elemType) => text("Seq") <> "[" <> show(elemType) <> "]"
-      case SetType(elemType) => text("Set") <> "[" <> show(elemType) <> "]"
-      case MultisetType(elemType) => text("Multiset") <> "[" <> show(elemType) <> "]"
+      case SeqType(elemType) => text("Seq") <> brackets(show(elemType))
+      case SetType(elemType) => text("Set") <> brackets(show(elemType))
+      case MultisetType(elemType) => text("Multiset") <> brackets(show(elemType))
+      case MapType(keyType, valueType) => text("Map") <> brackets(show(keyType) <> "," <> show(valueType))
       case TypeVar(v) => v
       case dt@DomainType(domainName, typVarsMap) =>
         val typArgs = dt.typeParameters map (t => show(typVarsMap.getOrElse(t, t)))
         text(domainName) <> (if (typArgs.isEmpty) nil else brackets(ssep(typArgs, char (',') <> space)))
+      case BackendType(boogieName, _) if boogieName != null => boogieName
+      case BackendType(_, smtName) => smtName
     }
   }
 
@@ -644,10 +653,6 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       case Assume(e) => text("assume") <+> show(e)
       case Exhale(e) => text("exhale") <+> show(e)
       case Assert(e) => text("assert") <+> show(e)
-      case Fresh(vars) =>
-        text("fresh") <+> ssep(vars map show, char(',') <> space)
-      case Constraining(vars, body) =>
-        text("constraining") <> parens(ssep(vars map show, char(',') <> space)) <+> showBlock(body)
       case MethodCall(mname, args, targets) =>
         val call = text(mname) <> parens(ssep(args map show, char(',') <> space))
         targets match {
@@ -687,7 +692,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       case e: ExtensionStmt => e.prettyPrint
       case null => uninitialized
     }
-    showComment(stmt) <> stmtDoc
+    showComment(stmt) <@> stmtDoc
   }
 
   def showElse(els: Stmt): Cont = els match {
@@ -732,8 +737,10 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       parens(text("let") <+> text(v.name) <+> "==" <+> parens(show(exp)) <+> "in" <+> show(body))
     case CondExp(cond, thn, els) =>
       parens(show(cond) <+> "?" <+> show(thn) <+> ":" <+> show(els))
-    case Exists(v, exp) =>
-      parens(text("exists") <+> showVars(v) <+> "::" <+> show(exp))
+    case Exists(v, triggers, exp) =>
+      parens(text("exists") <+> showVars(v) <+> "::" <>
+        (if (triggers.isEmpty) nil else space <> ssep(triggers map show, space)) <+>
+        show(exp))
     case Forall(v, triggers, exp) =>
       parens(text("forall") <+> showVars(v) <+> "::" <>
         (if (triggers.isEmpty) nil else space <> ssep(triggers map show, space)) <+>
@@ -764,9 +771,14 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       text("acc") <> parens(show(loc) <> "," <+> show(perm))
     case FuncApp(funcname, args) =>
       text(funcname) <> parens(ssep(args map show, char (',') <> space))
-    case DomainFuncApp(funcname, args, _) =>
-      text(funcname) <> parens(ssep(args map show, char (',') <> space))
-
+    case dfa@DomainFuncApp(funcname, args, tvMap) =>
+      if (tvMap.nonEmpty)
+        // Type may be underconstrained, so to be safe we explicitly print out the type.
+        parens(text(funcname) <> parens(ssep(args map show, char (',') <> space)) <> char(':') <+> show(dfa.typ))
+      else
+        text(funcname) <> parens(ssep(args map show, char (',') <> space))
+    case BackendFuncApp(func, args) =>
+      text(func.name) <> parens(ssep(args map show, char(',') <> space))
     case EmptySeq(elemTyp) =>
       text("Seq[") <> showType(elemTyp) <> "]()"
     case ExplicitSeq(elems) =>
@@ -808,6 +820,25 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       parens(show(elem) <+> "in" <+> show(s))
     case AnySetCardinality(s) =>
       surround(show(s),char ('|'))
+
+    case EmptyMap(keyType, valueType) =>
+      text("Map") <> brackets(showType(keyType) <> "," <> showType(valueType)) <> "()"
+    case ExplicitMap(elems) =>
+      text("Map") <> parens(ssep(elems map show, char(',') <> space))
+    case Maplet(key, value) =>
+      text("Map") <> parens(show(key) <+> ":=" <+> show(value))
+    case MapLookup(base, key) =>
+      show(base) <> brackets(show(key))
+    case MapContains(key, base) =>
+      parens(show(key) <+> "in" <+> show(base))
+    case MapCardinality(base) =>
+      surround(show(base), char('|'))
+    case MapUpdate(base, key, value) =>
+      show(base) <> brackets(show(key) <+> ":=" <+> show(value))
+    case MapDomain(base) =>
+      text("domain") <> parens(show(base))
+    case MapRange(base) =>
+      text("range") <> parens(show(base))
 
     case null => uninitialized
     case u: PrettyUnaryExpression => showPrettyUnaryExp(u)

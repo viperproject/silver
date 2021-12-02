@@ -20,7 +20,7 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
                                        Type <: AnyRef,
                                        Exp  <: Node : ClassTag,
                                        Var <: Node : ClassTag,
-                                       Quantification <: Exp : ClassTag] extends Mutable {
+                                       Quantification <: Exp : ClassTag] {
   /* 2014-09-22 Malte: I tried to use abstract type members instead of type
    * parameters, but that resulted in the warning "The outer reference in this
    * type test cannot be checked at run time.".
@@ -30,11 +30,10 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
   val TriggerSet = GenericTriggerGenerator.TriggerSet
 
   private type PossibleTrigger = Exp
-  private type ForbiddenInTrigger = Exp
 
   /* Node */
   protected def hasSubnode(root: Node, child: Node): Boolean
-  protected def visit[A](root: Node)(f: PartialFunction[Node, A])
+  protected def visit[A](root: Node)(f: PartialFunction[Node, A]): Unit
   protected def deepCollect[A](root: Node)(f: PartialFunction[Node, A]): Seq[A]
   protected def reduceTree[A](root: Node)(f: (Node, Seq[A]) => A): A
   protected def transform[N <: Node](root: N)(f: PartialFunction[Node, Node]): N
@@ -58,10 +57,10 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
   def isForbiddenInTrigger(e: Exp): Boolean
 
   protected var customIsPossibleTrigger: PartialFunction[Exp, Boolean] = PartialFunction.empty
-  def setCustomIsPossibleTrigger(f: PartialFunction[Exp, Boolean]) { customIsPossibleTrigger = f }
+  def setCustomIsPossibleTrigger(f: PartialFunction[Exp, Boolean]): Unit = { customIsPossibleTrigger = f }
 
   protected var customIsForbiddenInTrigger: PartialFunction[Exp, Boolean] = PartialFunction.empty
-  def setCustomIsForbiddenInTrigger(f: PartialFunction[Exp, Boolean]) { customIsForbiddenInTrigger = f }
+  def setCustomIsForbiddenInTrigger(f: PartialFunction[Exp, Boolean]): Unit = { customIsForbiddenInTrigger = f }
 
   private var nextUniqueId = 0
 
@@ -75,7 +74,7 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
      * etc. This is, because it could be that only the combination of multiple
      * ei's provides enough terms to cover all quantified variables.
      */
-    toSearch.toStream.flatMap(generateTriggerSetGroup(vs, _)).headOption
+    toSearch.to(LazyList).flatMap(generateTriggerSetGroup(vs, _)).headOption
 
   def generateStrictestTriggerSet(vs: Seq[Var], toSearch: Exp): Option[(TriggerSet, Seq[Var])] =
     generateTriggerSetGroups(vs, toSearch).headOption.map { case (triggerSets, vars) =>
