@@ -1,7 +1,7 @@
 field left: Int
 field right: Int
 
-line predicate allowAccess(this: Ref)
+inline predicate allowAccess(this: Ref)
 {
 	acc(this.left) && acc(this.right)
 }

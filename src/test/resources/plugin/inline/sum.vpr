@@ -5,8 +5,8 @@ inline predicate nonZero(k: Int)
 
 
 method sum(n: Int) returns (res: Int)
+  requires nonZero(n)
   ensures  res == n * (n + 1) / 2
-  requires nonZero(n) 
 {
   // predIds = {'nonZero'}
   unfold nonZero(n)
