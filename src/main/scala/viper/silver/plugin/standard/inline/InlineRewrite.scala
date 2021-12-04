@@ -48,7 +48,8 @@ trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
         if (cond(pred.predicateName)) {
           val optPredBody = propagatePermission(pred.predicateBody(program, ctxt), perm)
           val expandedExpr = expandExpression(optPredBody.get, member, program, cond)
-          (expandedExpr, ctxt)
+          val res = And(PermGeCmp(perm, NoPerm()())(), Implies(PermGtCmp(perm, NoPerm()())(), expandedExpr)())()
+          (res, ctxt)
         } else (expr, ctxt)
       case (scope: Scope, ctxt) =>
         (scope, ctxt ++ scope.scopedDecls.map(_.name).toSet)
@@ -118,7 +119,8 @@ trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
       case (unfold@Unfold(PredicateAccessPredicate(pred, perm)), ctxt) =>
         if (cond(pred.predicateName)) {
           val optPredbody = propagatePermission(pred.predicateBody(program, ctxt), perm)
-          (Assert(optPredbody.get)(unfold.pos, unfold.info, unfold.errT), ctxt)
+          val res = And(PermGtCmp(perm, NoPerm()())(), optPredbody.get)()
+          (Assert(res)(unfold.pos, unfold.info, unfold.errT), ctxt)
         } else (unfold, ctxt)
     }, member.scopedDecls.map(_.name).toSet, Traverse.BottomUp).execute[Seqn](stmts)
   }

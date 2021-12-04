@@ -10,7 +10,7 @@ inline predicate tree(this: Ref)
 
 inline predicate list(this: Ref)
 {
-  this == null || cons(this)
+  this != null ==> cons(this)
 }
 
 inline predicate cons(this: Ref)
@@ -24,13 +24,13 @@ inline predicate all_trees(t1: Ref, t2: Ref, t3: Ref)
 }
 
 function tree_sum(this: Ref): Int
-  requires acc(tree(this), 1/2)
+  requires tree(this)
 {
   unfolding tree(this) in this.val + list_sum(this.children)
 }
 
 function list_sum(this: Ref): Int
-  requires acc(list(this), 1/2)
+  requires list(this)
 {
   unfolding list(this) in
     (this == null ? 0 :
