@@ -190,7 +190,7 @@ object CfgGenerator {
         val loopTarget = TmpLabel.generate("loop")
         val afterTarget = TmpLabel.generate("after")
         // unroll first iter
-        addStatement(ConditionalJumpStmt(cond, thnTarget, afterTarget))
+        addStatement(ConditionalJumpStmt(Not(cond)(), afterTarget, thnTarget))
         addLabel(thnTarget)
         // process loop head
         addLabel(headTarget, addEmptyStmt = false)
