@@ -32,6 +32,17 @@ trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
     )(pred.pos, pred.info, pred.errT)
   }
 
+  def unfolding_name(name: String): String = f"__unfolding_${name}__"
+
+  /**
+   * Transforms a predicate into a function that requires the predicates body and can be used in unfolding
+   */
+  def transformPredicate(pred: Predicate, program: Program, cond: String => Boolean): Function = {
+    val rewrittenBody = pred.body.map(expandExpression(_, pred, program, cond))
+    val name = unfolding_name(pred.name)
+    Function(name, pred.formalArgs, Bool, Seq(rewrittenBody.get), Seq(), Some(TrueLit()()))(pred.pos, pred.info, pred.errT)
+  }
+
   /**
     * Expands all predicates to their bodies in given expression.
     *
@@ -97,9 +108,22 @@ trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
     */
   private[this] def removeUnfoldings(expr: Exp, cond: String => Boolean): Exp = {
     ViperStrategy.Slim({
-      case unfolding@Unfolding(PredicateAccessPredicate(PredicateAccess(_, name), _), body) =>
-        if (cond(name)) body else unfolding
+      case unfolding@Unfolding(PredicateAccessPredicate(PredicateAccess(args, name), _), body) =>
+        if (cond(name)) {
+          val unfolding_check = FuncApp(unfolding_name(name), args)(unfolding.pos, unfolding.info, Bool, unfolding.errT)
+          DomainFuncApp(secondDomain.functions.head, Seq(unfolding_check, body), Map((secondDomain.typVars.head, body.typ)))(unfolding.pos, unfolding.info, unfolding.errT)
+        } else unfolding
     }, Traverse.BottomUp).execute[Exp](expr)
+  }
+
+  val secondDomain: Domain = {
+    val name = "__SECOND__"
+    val tv = TypeVar("T")
+    val args = Seq(LocalVarDecl("b", Bool)(), LocalVarDecl("t", tv)())
+    val func = DomainFunc("__second__", args, tv)(domainName = name)
+    val app = DomainFuncApp(func=func, args.map(_.localVar), Map((tv, tv)))()
+    val ax = AnonymousDomainAxiom(Forall(args, Seq(Trigger(Seq(app))()), EqCmp(app, args(1).localVar)())())(domainName = name)
+    Domain(name, Seq(func), Seq(ax), Seq(tv))()
   }
 
   /**

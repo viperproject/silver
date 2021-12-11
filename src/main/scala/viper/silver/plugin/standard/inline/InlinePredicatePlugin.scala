@@ -2,7 +2,7 @@ package viper.silver.plugin.standard.inline
 
 import fastparse.noApi
 import viper.silver.ast.utility.ViperStrategy
-import viper.silver.ast.Program
+import viper.silver.ast.{Domain, Program}
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.parser.ParserExtension
 import viper.silver.parser.FastParser._
@@ -46,24 +46,17 @@ class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate
       !loopBreakers(pred) &&
       annotatedPredIds(pred)
     }
-    // val inlinePredIds = input.extensions.collect({
-    //   case InlinePredicate(p) if p.body.isDefined => p.name
-    // }).toSet
-    // val nonrecursiveInlinePredIds = inlinePredIds.diff(recursivePredIds)
-    // val cond = { pred: String => nonrecursiveInlinePredIds(pred) }
     val rewrittenMethods = input.methods.map(rewriteMethod(_, input, cond))
     val rewrittenFunctions = input.functions.map(rewriteFunction(_, input, cond))
-    val allPredicates = input.predicates ++ input.extensions.collect {
-      case inlinedPred: InlinePredicate => inlinedPred.toPredicate
-    }
-    val rewrittenPredicates = allPredicates.collect({
-      case pred if !cond(pred.name) => rewritePredicate(pred, input, cond)
-    })
+    val (inlinePreds, otherPreds) = input.predicates.partition(p => cond(p.name))
+    val rewrittenPredicates = otherPreds.map(rewritePredicate(_, input, cond))
+    val unfolding_helpers = inlinePreds.map(transformPredicate(_, input, cond))
     ViperStrategy.Slim({
       case program: Program =>
         program.copy(
+          domains = input.domains ++ Seq(secondDomain),
           methods = rewrittenMethods,
-          functions = rewrittenFunctions,
+          functions = rewrittenFunctions ++ unfolding_helpers,
           predicates = rewrittenPredicates
         )(program.pos, program.info, program.errT)
     }).execute[Program](input)

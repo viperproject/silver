@@ -1,0 +1,55 @@
+field val: Int
+
+predicate arr(a: Seq[Ref]) {
+    (forall i: Int :: { a[i] } (0 <= i && i < |a| ==> acc(a[i].val)))
+}
+
+
+method find_min(a: Seq[Ref]) returns (res: Int)
+requires acc(arr(a), 1/2)
+requires |a| > 0
+ensures acc(arr(a), 1/2)
+ensures unfolding acc(arr(a), 1/2) in res >= 0 && res < |a| && 
+    (forall i: Int :: { a[i] } (0 <= i && i < |a| ==> (a[res].val <= a[i].val)))
+{
+    unfold acc(arr(a), 1/2)
+    res := 0
+    var i : Int := 1
+    while (i < |a|)
+    invariant i > 0
+    invariant 0 <= res && res < |a|
+    invariant (forall j: Int :: { a[j] } (0 <= j && j < |a| ==> acc(a[j].val, 1/2)))
+    invariant (forall j: Int :: { a[j] } (0 <= j && j < i && j < |a| ==> (a[res].val <= a[j].val))){
+        if (a[i].val < a[res].val) {
+            res := i
+        }
+        i := i + 1
+    }
+    assert (forall j: Int :: { a[j] } (0 <= j && j < |a| ==> (a[res].val <= a[j].val)))
+    fold acc(arr(a), 1/2)
+}
+
+method selection_sort(a: Seq[Ref]) returns ()
+requires arr(a)
+ensures arr(a)
+ensures unfolding arr(a) in
+    (forall x: Int, y: Int :: { a[x], a[y]} (0 <= x && x < y && y < |a| ==> (a[x].val <= a[y].val)))
+{
+    unfold arr(a)
+    var i: Int := 0;
+    while (i < |a|) 
+    invariant i >= 0
+    invariant (forall j: Int :: { a[j] } (0 <= j && j < |a| ==> acc(a[j].val)))
+    invariant (forall x: Int, y: Int :: { a[x], a[y]} (0 <= x && x < y && x < i && y < |a| ==> (a[x].val <= a[y].val))){
+        fold acc(arr(a[i..]), 1/2)
+        var m: Int;
+        m := find_min(a[i..])
+        m := m + i
+        unfold acc(arr(a[i..]), 1/2)
+        var t: Int := a[m].val
+        a[m].val := a[i].val
+        a[i].val := t
+        i := i + 1
+    }
+    fold arr(a)
+}
