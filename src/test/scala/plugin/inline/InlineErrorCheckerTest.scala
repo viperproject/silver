@@ -1,10 +1,9 @@
 package plugin.inline
 
-import org.scalatest.FunSuite
-import viper.silver.ast._
+import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.plugin.standard.inline.InlineErrorChecker
 
-class InlineErrorCheckerTest extends FunSuite with InlineErrorChecker with InlineTestFixture {
+class InlineErrorCheckerTest extends AnyFunSuite with InlineErrorChecker with InlineTestFixture {
 
   test("findLoopBreakers should evaluate to an empty set given an empty set of predicates") {
     val program = parse("empty")

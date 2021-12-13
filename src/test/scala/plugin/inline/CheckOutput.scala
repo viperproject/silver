@@ -1,7 +1,7 @@
 package plugin.inline{
-  import org.scalatest.FunSuite
+  import org.scalatest.funsuite.AnyFunSuite
 
-  class CheckOutput extends FunSuite with InlineTestFixture {
+  class CheckOutput extends AnyFunSuite with InlineTestFixture {
     test("CheckOutput") {
       val fileName = "aatree"
 

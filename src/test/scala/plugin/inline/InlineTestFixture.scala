@@ -1,6 +1,6 @@
 import TestHelpers.MockSilFrontend
 package plugin.inline {
-  import org.scalatest.Matchers.fail
+  import org.scalatest.matchers.should.Matchers.fail
   import viper.silver.ast._
   import viper.silver.plugin.standard.inline.InlinePredicatePlugin
 

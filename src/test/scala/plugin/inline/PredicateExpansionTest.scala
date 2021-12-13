@@ -1,10 +1,10 @@
 package plugin.inline
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast._
 import viper.silver.plugin.standard.inline.PredicateExpansion
 
-class PredicateExpansionTest extends FunSuite with PredicateExpansion {
+class PredicateExpansionTest extends AnyFunSuite with PredicateExpansion {
 
   test("propagatePermission should evaluate to None if the body of the predicate is None") {
     val maybePredBody = None

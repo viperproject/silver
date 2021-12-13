@@ -1,11 +1,11 @@
 import TestHelpers.MockSilFrontend
 package plugin.inline {
-  import org.scalatest.FunSuite
+  import org.scalatest.funsuite.AnyFunSuite
   import viper.silver.plugin.standard.inline.InlineErrorChecker
 
   import java.nio.file.Files
 
-  class StillValidatesTest extends FunSuite with InlineErrorChecker with InlineTestFixture {
+  class StillValidatesTest extends AnyFunSuite with InlineErrorChecker with InlineTestFixture {
     def testProgram(fileName: String): Unit = {
       val inlined = parse_inline(fileName).toString()
       val file = Files.createTempFile("prefix", "suffix")

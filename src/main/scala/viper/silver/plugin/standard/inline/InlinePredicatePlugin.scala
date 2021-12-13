@@ -1,30 +1,30 @@
 package viper.silver.plugin.standard.inline
 
-import fastparse.noApi
+import fastparse._
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.Program
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.parser.ParserExtension
 import viper.silver.parser.FastParser._
 import viper.silver.parser._
-import White._
 
 class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate
   with InlineRewrite
   with InlineErrorChecker {
-  import fastparse.noApi._
 
   private[this] val InlinePredicateKeyword = "inline"
 
   private var annotatedPredIds: Set[String] = Set()
 
-  lazy val inlinePredicate: noApi.P[PInlinePredicate] =
-    P(keyword(InlinePredicateKeyword) ~/ predicateDecl)
-      .map(pPred => PInlinePredicate(pPred))
+  def inlinePredicate[_: P]: P[PInlinePredicate] = FP(InlinePredicateKeyword ~/ predicateDecl).map{ case (_, p) => PInlinePredicate(p)}
+
+//  lazy val inlinePredicate: noApi.P[PInlinePredicate] =
+//    P(keyword(InlinePredicateKeyword) ~/ predicateDecl)
+//      .map(pPred => PInlinePredicate(pPred))
 
   override def beforeParse(input: String, isImported: Boolean): String = {
     ParserExtension.addNewKeywords(Set[String](InlinePredicateKeyword))
-    ParserExtension.addNewDeclAtEnd(inlinePredicate)
+    ParserExtension.addNewDeclAtEnd(inlinePredicate(_))
     input
   }
 
@@ -35,7 +35,7 @@ class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate
         this.annotatedPredIds += p.idndef.name
         p.inner
     }
-    input.copy(predicates = newPreds, extensions = otherExts)
+    input.copy(predicates = newPreds, extensions = otherExts)(pos=input.pos)
   }
 
   override def beforeVerify(input: Program): Program = {

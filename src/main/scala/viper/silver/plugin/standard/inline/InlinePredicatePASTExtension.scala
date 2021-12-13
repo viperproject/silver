@@ -1,5 +1,6 @@
 package viper.silver.plugin.standard.inline
 
+import viper.silver.ast.Position
 import viper.silver.parser._
 
 sealed trait PInlinePredicateDeclaration extends PExtender with PGlobalDeclaration {}
@@ -15,4 +16,6 @@ case class PInlinePredicate(
   }
 
   override def idndef: PIdnDef = inner.idndef
+
+  override val pos: (Position, Position) = inner.pos
 }
