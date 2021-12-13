@@ -2,7 +2,7 @@ package viper.silver.plugin.standard.inline
 
 import fastparse.noApi
 import viper.silver.ast.utility.ViperStrategy
-import viper.silver.ast.{Domain, Program}
+import viper.silver.ast.Program
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.parser.ParserExtension
 import viper.silver.parser.FastParser._
