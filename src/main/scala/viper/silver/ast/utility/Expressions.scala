@@ -33,12 +33,14 @@ object Expressions {
          | _: PermExp
          | _: FuncApp
          | _: DomainFuncApp
+         | _: BackendFuncApp
          | _: LocationAccess
          | _: AbstractLocalVar
          | _: SeqExp
          | _: SetExp
          | _: MultisetExp
-         | _:ForPerm
+         | _: MapExp
+         | _: ForPerm
       => true
   }
 
@@ -95,7 +97,7 @@ object Expressions {
     e.transform({
       case _: AccessPredicate | _: MagicWand => TrueLit()()
       case fa@Forall(vs,ts,body) => Forall(vs,ts,asBooleanExp(body))(fa.pos,fa.info)
-      case Unfolding(predicate, exp) => asBooleanExp(exp)
+      case Unfolding(_, exp) => asBooleanExp(exp)
       case Applying(_, exp) => asBooleanExp(exp)
     })
   }

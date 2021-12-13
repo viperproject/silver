@@ -29,7 +29,7 @@ object Triggers {
 
     /* True iff the given node is a possible trigger */
     protected def isPossibleTrigger(e: Exp): Boolean = (customIsPossibleTrigger orElse {
-      case p: PossibleTrigger => true
+      case _: PossibleTrigger => true
       case _ => false
     }: PartialFunction[Exp, Boolean])(e)
 
@@ -43,13 +43,13 @@ object Triggers {
     protected def withArgs(e: Exp, args: Seq[Exp]): Exp = e match {
       case pt: PossibleTrigger => pt.withArgs(args)
       case fa: FieldAccess => fa.withArgs(args)
-      case other => sys.error(s"Unexpected expression $e")
+      case _ => sys.error(s"Unexpected expression $e")
     }
 
     protected def getArgs(e: Exp): Seq[Exp] = e match {
       case pt: PossibleTrigger => pt.getArgs
       case fa: FieldAccess => fa.getArgs
-      case other => sys.error(s"Unexpected expression $e")
+      case _ => sys.error(s"Unexpected expression $e")
     }
   }
 
@@ -107,9 +107,9 @@ object Triggers {
       LocalVar(s"__rw_$name$nextUniqueId", typ)()
     }
 
-    protected def log(message: String) {}
-    protected def log(key: String, item: Any) {}
-    protected def log(key: String, items: Iterable[Any]) {}
+    protected def log(message: String): Unit = {}
+    protected def log(key: String, item: Any): Unit = {}
+    protected def log(key: String, items: Iterable[Any]): Unit = {}
   }
 
   object SimpleArithmeticSolver extends GenericArithmeticSolver[Type, Exp, LocalVar, Add, Sub] {

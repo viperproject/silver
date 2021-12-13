@@ -404,7 +404,7 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
   /**
     * Returns a control flow graph that corresponds to this method.
     */
-  def toCfg(simplify: Boolean = true): SilverCfg = CfgGenerator.methodToCfg(this, simplify)
+  def toCfg(simplify: Boolean = true, detect: Boolean = true): SilverCfg = CfgGenerator.methodToCfg(this, simplify, detect)
 }
 
 object MethodWithLabelsInScope {
@@ -769,6 +769,10 @@ case object NotOp extends UnOp with BoolDomainFunc {
   lazy val priority = 10
   lazy val fixity = Prefix
 }
+
+
+case class BackendFunc(name: String, smtName: String, override val typ: Type, override val formalArgs: Seq[LocalVarDecl])
+  extends Node with AbstractDomainFunc with BuiltinDomainFunc
 
 /**
   * The Extension Member trait provides the way to expand the Ast to include new Top Level declarations

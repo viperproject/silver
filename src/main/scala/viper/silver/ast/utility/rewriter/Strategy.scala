@@ -6,6 +6,7 @@
 
 package viper.silver.ast.utility.rewriter
 import viper.silver.ast.utility.rewriter.Traverse.Traverse
+
 import scala.collection.mutable
 import scala.reflect.runtime.{universe => reflection}
 
@@ -159,7 +160,7 @@ object StrategyBuilder {
     * Strategy that allows both node and context to be rewritten.
     *
     * @param p          Partial function that transforms input (node, context) into a new (node, context)
-    * @param default    Initial context
+    * @param context    Initial context
     * @param t          Traversal order
     * @tparam N         Common supertype of every node in the tree
     * @tparam C         Type of the context
@@ -269,6 +270,14 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
     */
   def recurseFunc(r: PartialFunction[N, Seq[AnyRef]]): Strategy[N, C] = {
     recursionFunc = r
+    this
+  }
+
+  // specifies which nodes need to be cloned even if their fields stay the same.
+  protected var shouldForceCopy: Boolean = false
+
+  def forceCopy(f: Boolean = true): Strategy[N, C] = {
+    shouldForceCopy = f
     this
   }
 
@@ -391,8 +400,6 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
       node match {
         case map: Map[_, _] => map.map(rewriteTopDown(_, context)).asInstanceOf[A]
 
-        case collection: Iterable[_] => collection.map(rewriteTopDown(_, context)).asInstanceOf[A]
-
         case Some(value) => Some(rewriteTopDown(value, context)).asInstanceOf[A]
 
         case node: N @unchecked =>
@@ -407,8 +414,10 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
             val children = n.children.map(child => if (allowedToRecurse(child)) rewriteTopDown(child, c) else child)
 
             // Adopt rewritten children
-            n.withChildren(children).asInstanceOf[A]
+            n.withChildren(children, forceRewrite = shouldForceCopy).asInstanceOf[A]
           }
+
+        case collection: Iterable[_] => collection.map(rewriteTopDown(_, context)).asInstanceOf[A]
 
         case value => value
       }
@@ -422,8 +431,6 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
       node match {
         case map: Map[_, _] => map.map(rewriteBottomUp(_, context)).asInstanceOf[A]
 
-        case collection: Iterable[_] => collection.map(rewriteBottomUp(_, context)).asInstanceOf[A]
-
         case Some(value) => Some(rewriteBottomUp(value, context)).asInstanceOf[A]
 
         case node: N @unchecked =>
@@ -434,10 +441,12 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
           val children = node.children.map(child => if (allowedToRecurse(child)) rewriteBottomUp(child, c) else child)
 
           // Adopt rewritten children
-          val n = node.withChildren(children).asInstanceOf[N]
+          val n = node.withChildren(children, forceRewrite = shouldForceCopy).asInstanceOf[N]
 
           // Rewrite node and context
           rule.execute(n, c.replaceNode(n).asInstanceOf[C])._1.asInstanceOf[A]
+
+        case collection: Iterable[_] => collection.map(rewriteBottomUp(_, context)).asInstanceOf[A]
 
         case value => value
       }
@@ -450,8 +459,6 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
     else {
       node match {
         case map: Map[_, _] => map.map(rewriteInnermost(_, context)).asInstanceOf[A]
-
-        case collection: Iterable[_] => collection.map(rewriteInnermost(_, context)).asInstanceOf[A]
 
         case Some(value) => Some(rewriteInnermost(value, context)).asInstanceOf[A]
 
@@ -467,8 +474,10 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
             val children = n.children.map(child => if (allowedToRecurse(child)) rewriteInnermost(child, c) else child)
 
             // Adopt rewritten children
-            n.withChildren(children).asInstanceOf[A]
+            n.withChildren(children, forceRewrite = shouldForceCopy).asInstanceOf[A]
           }
+
+        case collection: Iterable[_] => collection.map(rewriteInnermost(_, context)).asInstanceOf[A]
 
         case value => value
       }
@@ -484,7 +493,7 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
   * @param s2 strategy 2
   */
 class ConcatenatedStrategy[N <: Rewritable](s1: StrategyInterface[N], val s2: StrategyInterface[N]) extends StrategyInterface[N] {
-  private var strategies = mutable.ListBuffer.empty[StrategyInterface[N]]
+  private val strategies = mutable.ListBuffer.empty[StrategyInterface[N]]
 
   strategies.append(s1)
   strategies.append(s2)
@@ -908,8 +917,6 @@ class StrategyVisitor[N <: Rewritable, C <: Context[N]](val visitNode: PartialFu
       node match {
         case map: Map[_, _] => map.map(visitTopDown(_, context))
 
-        case collection: Iterable[_] => collection.map(visitTopDown(_, context))
-
         case Some(value) => Some(visitTopDown(value, context))
 
         case node: N @unchecked =>
@@ -920,6 +927,8 @@ class StrategyVisitor[N <: Rewritable, C <: Context[N]](val visitNode: PartialFu
 
           val allowedToRecurse = recursionFunc.applyOrElse(node, (_: N) => node.children).toSet
           node.children.filter(allowedToRecurse).foreach(visitTopDown(_, c))
+
+        case collection: Iterable[_] => collection.map(visitTopDown(_, context))
 
         case _ =>
       }
@@ -997,8 +1006,6 @@ class Query[N <: Rewritable, B](val getInfo: PartialFunction[N, B]) {
     node match {
       case map: Map[_, _] => accumulator(map.map(execute(_)).toSeq)
 
-      case collection: Iterable[_] => accumulator(collection.map(execute).toSeq)
-
       case Some(value) => execute(value)
 
       case n: N @unchecked =>
@@ -1012,6 +1019,8 @@ class Query[N <: Rewritable, B](val getInfo: PartialFunction[N, B]) {
         val childrenQueryRes = accumulator(n.children.filter(allowedToRecurse).map(execute))
 
         accumulator(Seq(nodeQueryRes, childrenQueryRes))
+
+      case collection: Iterable[_] => accumulator(collection.map(execute).toSeq)
 
       case _ => accumulator(Seq())
     }

@@ -1,0 +1,28 @@
+//:: IgnoreFile(/silver/issue/531/)
+
+field f: Int
+
+method test01(xs: Set[Ref])
+  requires forall x: Ref :: x in xs ==> acc(x.f)
+
+
+method test10(x: Ref, y: Ref)
+  requires acc(x.f) && acc(y.f)
+
+method test11(x: Ref, y: Ref, xs: Seq[Ref])
+  requires xs == Seq(x, y)
+  //:: ExpectedOutput(not.wellformed:receiver.not.injective)
+  requires forall i: Int :: 0 <= i && i < |xs| ==> acc(xs[i].f)
+
+
+method test02(xs: Seq[Ref], p: Perm)
+  requires none < p
+  //:: ExpectedOutput(not.wellformed:receiver.not.injective)
+  requires forall i: Int :: 0 <= i && i < |xs| ==> acc(xs[i].f, p)
+
+method test03a(xs: Seq[Ref])
+  requires forall z: Ref :: z in xs ==> acc(z.f)
+
+method test03b(xs: Seq[Ref])
+  //:: ExpectedOutput(not.wellformed:receiver.not.injective)
+  requires forall i: Int :: 0 <= i && i < |xs| ==> acc(xs[i].f)

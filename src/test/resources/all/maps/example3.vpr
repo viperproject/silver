@@ -1,0 +1,54 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+domain Test[T] {
+  function f(x : T) : Map[Set[T], T]
+  
+  axiom {
+    forall x : T, s : Set[T] :: { s in f(x) } s in f(x) <==> x in s
+  }
+  
+  axiom {
+    forall x : T, s : Set[T] :: { f(x)[s] } s in f(x) ==> f(x)[s] == x
+  }
+}
+
+method test1()
+{
+  var m : Map[Set[Int], Int] := Map(Set(5, 7) := 12)
+  var s : Set[Int] := Set(7, 5)
+  assert s == Set(5, 7)
+  assert s in m
+  assert m[s] == 12
+}
+
+method test2()
+{
+  assert Set(1, 2, 3) in f(2)
+  var s : Set[Int] := Set(1, 2, 3)
+  assert f(2)[s] == 2
+}
+
+method test3()
+{  
+  var m : Map[Int, Bool]
+  var k : Int
+  assume domain(m[4 := true]) == Set(4)
+  assert (k in domain(m) ==> k == 4)
+}
+
+method test4()
+{
+  var m : Map[Int, Bool]
+  var k : Int
+  assume m[4 := true] == Map(4 := false, 5 := true)
+  assert (k in domain(m) ==> m[k])
+}
+
+method test5()
+{
+  var m : Map[Int, Bool]
+  var k : Int
+  assume k in domain(m)
+  assert range(m) != Set()
+}

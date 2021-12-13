@@ -5,11 +5,10 @@
 // Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silver.ast
-
 import viper.silver.utility.Common.StructuralEquality
-import fastparse.all._
-import fastparse.StringReprOps
 import java.nio.file.Path
+
+import viper.silver.parser.FastParser
 
 /** A trait describing the position of occurrence of an AST node. */
 sealed trait Position
@@ -43,11 +42,25 @@ trait AbstractSourcePosition extends HasLineColumn {
   def start: HasLineColumn
   def end: Option[HasLineColumn]
 
-  lazy val line = start.line
-  lazy val column = start.column
+  lazy val line: Int = start.line
+  lazy val column: Int = start.column
 
-  override def toString =
-    s"${if(file==null || file.getFileName==null) "" else file.getFileName.toString + "@"}$line.$column"
+  private def fileComponent =
+    if (file==null || file.getFileName==null) {
+      ""
+    } else {
+      file.getFileName.toString + "@"
+    }
+
+  private def lineColComponent(lc_pos: HasLineColumn) =
+    s"${lc_pos.line}.${lc_pos.column}"
+
+  override def toString: String = end match {
+    case None =>
+      s"$fileComponent${lineColComponent(start)}"
+    case Some(end_pos) =>
+      s"$fileComponent${lineColComponent(start)}--${lineColComponent(end_pos)}"
+  }
 }
 
 object AbstractSourcePosition {
@@ -72,9 +85,19 @@ class IdentifierPosition(val file: Path, val start: HasLineColumn, val end: Opti
 }
 
 object LineCol {
-  def apply(input: ParserInput, index: Int) = {
-    val Array(line, column) = StringReprOps.prettyIndex(input, index).split(":")
-    (line.toInt, column.toInt)
+  def apply(index: Int) = {
+    // val Array(line, col) = ctx.input.prettyIndex(index).split(":").map(_.toInt)
+    val line_offset =  FastParser._line_offset
+    val result = java.util.Arrays.binarySearch(line_offset, index)
+    if (result >= 0) {
+      // Exact match
+      val line = result
+      (line + 1, index - line_offset(line) + 1)
+    } else {
+      // The binary search returned `- insertionPoint - 1`
+      val line = - result - 2
+      (line + 1, index - line_offset(line) + 1)
+    }
   }
 }
 
@@ -95,3 +118,10 @@ case class TranslatedPosition(pos: AbstractSourcePosition) extends AbstractSourc
   val end = pos.end
 }
 
+case class FilePosition(file: Path, vline: Int, col: Int) extends util.parsing.input.Position with HasLineColumn
+{
+  override lazy val line = vline
+  override lazy val column = col
+  override lazy val lineContents = toString
+  override lazy val toString = s"${file.getFileName}@$vline.$col"
+}

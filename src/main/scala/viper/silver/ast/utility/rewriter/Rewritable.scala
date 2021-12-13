@@ -6,11 +6,10 @@
 
 package viper.silver.ast.utility.rewriter
 
-import viper.silver.FastPositions
-import viper.silver.parser.{FastPositioned, PDomainFunction}
+import viper.silver.parser.PDomainFunction
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
-import viper.silver.ast.{Node, AtomicType, FuncApp, DomainFuncApp, Position, Info, ErrorTrafo}
-import viper.silver.ast.utility.ViperStrategy.forceRewrite
+import viper.silver.ast.{AtomicType, DomainFuncApp, ErrorTrafo, FuncApp, Info, Node, Position}
+
 import scala.reflect.runtime.{universe => reflection}
 
 /**
@@ -21,8 +20,8 @@ trait Rewritable extends Product {
 
   def children: Seq[Any] = productIterator.toList
 
-  def withChildren(children: Seq[Any]): this.type = {
-    if (!forceRewrite && this.children == children)
+  def withChildren(children: Seq[Any], pos: Option[(Position, Position)] = None, forceRewrite: Boolean = false): this.type = {
+    if (!forceRewrite && this.children == children && !pos.isDefined)
       this
     else {
       // Singleton objects shouldn't be rewritten, preserving their singularity
@@ -49,9 +48,10 @@ trait Rewritable extends Product {
           case df: DomainFunc => secondArgList = Seq(df.pos, df.info, df.domainName, df.errT)
           case df: DomainFuncApp => secondArgList = Seq(df.pos, df.info, df.typ, df.domainName, df.errT)
           case no: Node => secondArgList = no.getMetadata
-          case pa: PAxiom => secondArgList = Seq(pa.domainName)
-          case _: PMagicWandExp => firstArgList = Seq(children.head) ++ children.drop(2)
-          case pd: PDomainFunction => secondArgList = Seq(pd.domainName)
+          case pa: PAxiom => secondArgList = Seq(pa.domainName) ++ Seq(pos.getOrElse(pa.pos))
+          case pm: PMagicWandExp => firstArgList = Seq(children.head) ++ children.drop(2) ++ Seq(pos.getOrElse(pm.pos))
+          case pd: PDomainFunction => secondArgList = Seq(pd.domainName) ++ Seq(pos.getOrElse(pd.pos))
+          case pn: PNode => secondArgList = Seq(pos.getOrElse(pn.pos))
           case _ =>
         }
 
@@ -60,14 +60,6 @@ trait Rewritable extends Product {
         catch {
           case _: Exception if (this.isInstanceOf[PNode]) =>
             throw ParseTreeDuplicationError(this.asInstanceOf[PNode], children)
-        }
-
-        // Copy position information for PNodes, as they are stored outside of the AST
-        this match {
-          case fp: FastPositioned =>
-            FastPositions.setStart(newNode, FastPositions.getStart(fp))
-            FastPositions.setFinish(newNode, FastPositions.getFinish(fp))
-          case _ =>
         }
 
         // Copy member values, as they aren't in the parameters' list.

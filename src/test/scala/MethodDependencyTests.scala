@@ -4,10 +4,11 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-import org.scalatest._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast._
 
-class MethodDependencyTests extends FunSuite with Matchers {
+class MethodDependencyTests extends AnyFunSuite with Matchers {
 
 
   /** Testing dependency analysis for caching for the following Viper program:
@@ -252,7 +253,7 @@ class MethodDependencyTests extends FunSuite with Matchers {
       computed_rec_deps.size should be (expected_rec_deps.size)
 
     } catch {
-      case e: StackOverflowError =>
+      case _: StackOverflowError =>
         fail(s"mutual recursion is not properly handled by the method dependency analysis.")
     }
   }

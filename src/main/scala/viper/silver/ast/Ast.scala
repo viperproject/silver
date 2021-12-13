@@ -6,6 +6,7 @@
 
 package viper.silver.ast
 
+import scala.collection.mutable
 import scala.reflect.ClassTag
 import pretty.FastPrettyPrinter
 import utility._
@@ -48,7 +49,7 @@ Some design choices:
   * Note that all but Program are transitive subtypes of `Node` via `Hashable`. The reason is
   * that AST node hashes may depend on the entire program, not just their sub-AST.
   */
-trait Node extends Traversable[Node] with Rewritable {
+trait Node extends Iterable[Node] with Rewritable {
 
   /** @see [[Nodes.subnodes()]] */
   def subnodes = Nodes.subnodes(this)
@@ -61,36 +62,45 @@ trait Node extends Traversable[Node] with Rewritable {
     Visitor.reduceWithContext(this, Nodes.subnodes)(context, enter, combine)
   }
 
-  /** Applies the function `f` to the AST node, then visits all subnodes. */
-  def foreach[A](f: Node => A) = Visitor.visit(this, Nodes.subnodes) { case a: Node => f(a) }
+  /** Apply the given function to the AST node and all its subnodes. */
+  override def foreach[A](f: Node => A) = Visitor.visit(this, Nodes.subnodes) { case a: Node => f(a) }
+
+  /** Builds a new collection with all the AST nodes and returns an iterator over it. */
+  def iterator: Iterator[Node] = {
+    val elements = mutable.Queue.empty[Node]
+    for (x <- this) {
+      elements.append(x)
+    }
+    elements.iterator
+  }
 
   /** @see [[Visitor.visit()]] */
-  def visit[A](f: PartialFunction[Node, A]) {
+  def visit[A](f: PartialFunction[Node, A]): Unit = {
     Visitor.visit(this, Nodes.subnodes)(f)
   }
 
   /** @see [[Visitor.visitWithContext()]] */
-  def visitWithContext[C](c: C)(f: C => PartialFunction[Node, C]) {
+  def visitWithContext[C](c: C)(f: C => PartialFunction[Node, C]): Unit = {
     Visitor.visitWithContext(this, Nodes.subnodes, c)(f)
   }
 
   /** @see [[Visitor.visitWithContextManually()]] */
-  def visitWithContextManually[C, A](c: C)(f: C => PartialFunction[Node, A]) {
+  def visitWithContextManually[C, A](c: C)(f: C => PartialFunction[Node, A]): Unit = {
     Visitor.visitWithContextManually(this, Nodes.subnodes, c)(f)
   }
 
   /** @see [[Visitor.visit()]] */
-  def visit[A](f1: PartialFunction[Node, A], f2: PartialFunction[Node, A]) {
+  def visit[A](f1: PartialFunction[Node, A], f2: PartialFunction[Node, A]): Unit = {
     Visitor.visit(this, Nodes.subnodes, f1, f2)
   }
 
   /** @see [[Visitor.visitOpt()]] */
-  def visitOpt(f: Node => Boolean) {
+  def visitOpt(f: Node => Boolean): Unit = {
     Visitor.visitOpt(this, Nodes.subnodes)(f)
   }
 
   /** @see [[Visitor.visitOpt()]] */
-  def visitOpt[A](f1: Node => Boolean, f2: Node => A) {
+  def visitOpt[A](f1: Node => Boolean, f2: Node => A): Unit = {
     Visitor.visitOpt(this, Nodes.subnodes, f1, f2)
   }
 
@@ -115,6 +125,11 @@ trait Node extends Traversable[Node] with Rewritable {
 
   StrategyBuilder.Slim[Node](pre, recurse) execute[this.type] (this)
 
+  def transformForceCopy(pre: PartialFunction[Node, Node] = PartialFunction.empty,
+                recurse: Traverse = Traverse.Innermost)
+  : this.type =
+
+    StrategyBuilder.Slim[Node](pre, recurse).forceCopy() execute[this.type] (this)
 
   /**
     * Allows a transformation with a custom context threaded through
@@ -327,6 +342,19 @@ trait Info {
       }
       case _ => None
     }
+  }
+
+  def getAllInfos[T <: Info : ClassTag]: Seq[T] =
+    this match {
+      case t: T => Seq(t)
+      case ConsInfo(head, tail) => head.getAllInfos[T] ++ tail.getAllInfos[T]
+      case _ => Seq.empty
+    }
+
+  def removeUniqueInfo[T <: Info]: Info = this match {
+    case ConsInfo(a, b) => MakeInfoPair(a.removeUniqueInfo[T], b.removeUniqueInfo[T])
+    case t: T => NoInfo
+    case info => info
   }
 }
 

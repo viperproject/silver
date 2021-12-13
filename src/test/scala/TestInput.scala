@@ -9,7 +9,7 @@ package viper.silver.testing
 import java.nio.file.{Files, Path}
 import java.util.regex.Pattern
 import org.scalatest.Tag
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 /** Provides the name, files and tags from which to create a test. */
 trait TestInput {

@@ -123,7 +123,7 @@ case class Translator(program: PProgram) {
     *           method call no longer needs the method node, the method name (as a string)
     *           suffices
     */
-  private def translateMemberSignature(p: PMember) {
+  private def translateMemberSignature(p: PMember): Unit = {
     val pos = p
     val name = p.idndef.name
     val t = p match {
@@ -144,8 +144,7 @@ case class Translator(program: PProgram) {
   }
 
   private def translateMemberSignature(p: PExtender): Unit ={
-    val pos = p
-    val t = p match {
+    p match {
       case t: PMember =>
         val l = p.translateMemberSignature(this)
         members.put(t.idndef.name, l)
@@ -164,12 +163,11 @@ case class Translator(program: PProgram) {
   def stmt(s: PStmt): Stmt = {
     val pos = s
     s match {
-      case PVarAssign(idnuse, PCall(func, args, _)) if members(func.name).isInstanceOf[Method] =>
+      case p@PVarAssign(idnuse, PCall(func, args, _)) if members(func.name).isInstanceOf[Method] =>
         /* This is a method call that got parsed in a slightly confusing way.
          * TODO: Get rid of this case! There is a matching case in the resolver.
          */
-        val call = PMethodCall(Seq(idnuse), func, args)
-        call.setPos(s)
+        val call = PMethodCall(Seq(idnuse), func, args)(p.pos)
         stmt(call)
       case PVarAssign(idnuse, rhs) =>
         LocalVarAssign(LocalVar(idnuse.name, ttyp(idnuse.typ))(pos), exp(rhs))(pos)
@@ -200,8 +198,7 @@ case class Translator(program: PProgram) {
         Apply(exp(e).asInstanceOf[MagicWand])(pos)
       case PInhale(e) =>
         Inhale(exp(e))(pos)
-      case assume@PAssume(e) =>
-        val sub = exp(e)
+      case PAssume(e) =>
         Assume(exp(e))(pos)
       case PExhale(e) =>
         Exhale(exp(e))(pos)
@@ -324,11 +321,14 @@ case class Translator(program: PProgram) {
           case "<==>" => EqCmp(l, r)(pos)
           case "&&" => And(l, r)(pos)
           case "||" => Or(l, r)(pos)
-          case "in" =>
-            if (right.typ.isInstanceOf[PSeqType])
-              SeqContains(l, r)(pos)
-            else
-              AnySetContains(l, r)(pos)
+
+          case "in" => right.typ match {
+            case _: PSeqType => SeqContains(l, r)(pos)
+            case _: PMapType => MapContains(l, r)(pos)
+            case _: PSetType | _: PMultisetType => AnySetContains(l, r)(pos)
+            case t => sys.error(s"unexpected type $t")
+          }
+
           case "++" => SeqAppend(l, r)(pos)
           case "subset" => AnySetSubset(l, r)(pos)
           case "intersection" => AnySetIntersection(l, r)(pos)
@@ -421,7 +421,7 @@ case class Translator(program: PProgram) {
           desugaredForalls.tail.foldLeft(desugaredForalls.head: Exp)((conjuncts, forall) =>
             And(conjuncts, forall)(fa.pos, fa.info, fa.errT))
         }
-      case f@PForPerm(vars, res, e) =>
+      case PForPerm(vars, res, e) =>
         val varList = vars map liftVarDecl
         exp(res) match {
           case PredicateAccessPredicate(inner, _) => ForPerm(varList, inner, exp(e))(pos)
@@ -470,19 +470,31 @@ case class Translator(program: PProgram) {
         ExplicitSeq(elems map exp)(pos)
       case PRangeSeq(low, high) =>
         RangeSeq(exp(low), exp(high))(pos)
-      case PSeqIndex(seq, idx) =>
-        SeqIndex(exp(seq), exp(idx))(pos)
+
+      case PLookup(base, index) => base.typ match {
+        case _: PSeqType => SeqIndex(exp(base), exp(index))(pos)
+        case _: PMapType => MapLookup(exp(base), exp(index))(pos)
+        case t => sys.error(s"unexpected type $t")
+      }
+
       case PSeqTake(seq, n) =>
         SeqTake(exp(seq), exp(n))(pos)
       case PSeqDrop(seq, n) =>
         SeqDrop(exp(seq), exp(n))(pos)
-      case PSeqUpdate(seq, idx, elem) =>
-        SeqUpdate(exp(seq), exp(idx), exp(elem))(pos)
-      case PSize(s) =>
-        if (s.typ.isInstanceOf[PSeqType])
-          SeqLength(exp(s))(pos)
-        else
-          AnySetCardinality(exp(s))(pos)
+
+      case PUpdate(base, key, value) => base.typ match {
+        case _: PSeqType => SeqUpdate(exp(base), exp(key), exp(value))(pos)
+        case _: PMapType => MapUpdate(exp(base), exp(key), exp(value))(pos)
+        case t => sys.error(s"unexpected type $t")
+      }
+
+      case PSize(base) => base.typ match {
+        case _: PSeqType => SeqLength(exp(base))(pos)
+        case _: PMapType => MapCardinality(exp(base))(pos)
+        case _: PSetType | _: PMultisetType => AnySetCardinality(exp(base))(pos)
+        case t => sys.error(s"unexpected type $t")
+      }
+
       case PEmptySet(_) =>
         EmptySet(ttyp(pexp.typ.asInstanceOf[PSetType].elementType))(pos)
       case PExplicitSet(elems) =>
@@ -491,17 +503,38 @@ case class Translator(program: PProgram) {
         EmptyMultiset(ttyp(pexp.typ.asInstanceOf[PMultisetType].elementType))(pos)
       case PExplicitMultiset(elems) =>
         ExplicitMultiset(elems map exp)(pos)
+
+      case PEmptyMap(_, _) => EmptyMap(
+        ttyp(pexp.typ.asInstanceOf[PMapType].keyType),
+        ttyp(pexp.typ.asInstanceOf[PMapType].valueType)
+      )(pos)
+      case PExplicitMap(elems) =>
+        ExplicitMap(elems map exp)(pos)
+      case PMaplet(key, value) =>
+        Maplet(exp(key), exp(value))(pos)
+      case PMapDomain(base) =>
+        MapDomain(exp(base))(pos)
+      case PMapRange(base) =>
+        MapRange(exp(base))(pos)
+
       case t: PExtender => t.translateExp(this)
     }
   }
 
   /** Takes a [[viper.silver.parser.FastPositioned]] and turns it into a [[viper.silver.ast.SourcePosition]]. */
-  implicit def liftPos(pos: FastPositioned): SourcePosition = {
-    val start = LineColumnPosition(pos.start.line, pos.start.column)
-    val end = LineColumnPosition(pos.finish.line, pos.finish.column)
-    pos.start match {
-      case fp: FilePosition => SourcePosition(fp.file, start, end)
-      case NoPosition => SourcePosition(null, 0, 0)
+  implicit def liftPos(node: Where): SourcePosition = {
+    if (node.pos._1.isInstanceOf[FilePosition]) {
+      assert(node.pos._2.isInstanceOf[FilePosition])
+
+      val begin = node.pos._1.asInstanceOf[FilePosition]
+      val end = node.pos._2.asInstanceOf[FilePosition]
+
+      SourcePosition(begin.file,
+        LineColumnPosition(begin.line, begin.column),
+        LineColumnPosition(end.line, end.column))
+    }
+    else {
+      SourcePosition(null, 0, 0)
     }
   }
 
@@ -530,6 +563,8 @@ case class Translator(program: PProgram) {
       SetType(ttyp(elemType))
     case PMultisetType(elemType) =>
       MultisetType(ttyp(elemType))
+    case PMapType(keyType, valueType) =>
+      MapType(ttyp(keyType), ttyp(valueType))
     case PDomainType(name, args) =>
       members.get(name.name) match {
         case Some(d) =>

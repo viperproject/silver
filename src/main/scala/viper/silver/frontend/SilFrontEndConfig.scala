@@ -91,8 +91,9 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
   )
 
   val counterexample = opt[String]("counterexample",
-    descr="Return counterexample for errors. Pass 'native' for returning the native model from the backend " +
-      "or 'variables' for returning a model of all local Viper variables.",
+    descr="Return counterexample for errors. Pass 'native' for returning the native model from the backend, " +
+      "'variables' for returning a model of all local Viper variables, or 'mapped' (only available on Silicon) " +
+      "for returning a model with Ref variables resolved to object-like structures.",
     default = None,
     noshort = true
   )
@@ -105,8 +106,16 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     hidden = true
   )
 
+  val checkInjectivity = opt[Boolean]("checkInjectivity",
+    descr = "Enable the injectivity check when inhaling quantified permissions. " +
+      "This feature will be enabled by default in the 2022.1 Viper release.",
+    default = Some(false),
+    noshort = true,
+    hidden = false
+  )
+
   validateOpt(file, ignoreFile) {
-    case (_, Some(true)) => Right(Unit)
+    case (_, Some(true)) => Right(())
     case (Some(filepath), _) => validateFileOpt(file.name, filepath)
     case (optFile, optIgnoreFile) =>
       /* Since the file is a trailing argument and thus mandatory, this case
@@ -121,12 +130,12 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     val file = new java.io.File(filepath)
     if (!file.isFile) Left(s"Cannot find file '$filepath' from '$optionName' argument")
     else if (!file.canRead) Left(s"Cannot read from file '$filepath' from '$optionName' argument'")
-    else Right(Unit)
+    else Right(())
   }
 
   protected def validateFileOpt(option: ScallopOption[String]): Unit = {
     validateOpt(option) {
-      case None => Right(Unit)
+      case None => Right(())
       case Some(filepath) => validateFileOpt(option.name, filepath)
     }
   }

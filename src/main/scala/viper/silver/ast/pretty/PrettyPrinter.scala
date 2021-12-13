@@ -490,7 +490,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
 
   /** Show a program. */
   def showProgram(p: Program): Cont = {
-    val Program(domains, fields, functions, predicates, methods, extensions) = p
+    val Program(domains, fields, functions, predicates, methods, _) = p
     showComment(p) <@>
       ssep((domains ++ fields ++ functions ++ predicates ++ methods) map show, line <> line)
   }
@@ -564,7 +564,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
           })
       case d: Domain =>
         showDomain(d)
-      case t:ExtensionMember => nil
+      case _:ExtensionMember => nil
     }
     showComment(m) <@> memberDoc
   }
@@ -595,9 +595,6 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
     case u: UnnamedLocalVarDecl => showType(u.typ)
   }
 
-  /** Show field name */
-  private def showLocation(loc: Location): Cont = loc.name
-
   /** Show a user-defined domain. */
   def showDomain(d: Domain): Cont = {
     d match {
@@ -620,13 +617,16 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       case Perm => "Perm"
       case InternalType => "InternalType"
       case Wand => "$WandType"
-      case SeqType(elemType) => text("Seq") <> "[" <> show(elemType) <> "]"
-      case SetType(elemType) => text("Set") <> "[" <> show(elemType) <> "]"
-      case MultisetType(elemType) => text("Multiset") <> "[" <> show(elemType) <> "]"
+      case SeqType(elemType) => text("Seq") <> brackets(show(elemType))
+      case SetType(elemType) => text("Set") <> brackets(show(elemType))
+      case MultisetType(elemType) => text("Multiset") <> brackets(show(elemType))
+      case MapType(keyType, valueType) => text("Map") <> brackets(show(keyType) <> "," <> show(valueType))
       case TypeVar(v) => v
       case dt@DomainType(domainName, typVarsMap) =>
         val typArgs = dt.typeParameters map (t => show(typVarsMap.getOrElse(t, t)))
         text(domainName) <> (if (typArgs.isEmpty) nil else brackets(ssep(typArgs, char (',') <> space)))
+      case BackendType(boogieName, _) if boogieName != null => boogieName
+      case BackendType(_, smtName) => smtName
     }
   }
 
@@ -774,10 +774,11 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
     case dfa@DomainFuncApp(funcname, args, tvMap) =>
       if (tvMap.nonEmpty)
         // Type may be underconstrained, so to be safe we explicitly print out the type.
-        text(funcname) <> parens(ssep(args map show, char (',') <> space))
+        parens(text(funcname) <> parens(ssep(args map show, char (',') <> space)) <> char(':') <+> show(dfa.typ))
       else
         text(funcname) <> parens(ssep(args map show, char (',') <> space))
-
+    case BackendFuncApp(func, args) =>
+      text(func.name) <> parens(ssep(args map show, char(',') <> space))
     case EmptySeq(elemTyp) =>
       text("Seq[") <> showType(elemTyp) <> "]()"
     case ExplicitSeq(elems) =>
@@ -819,6 +820,25 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       parens(show(elem) <+> "in" <+> show(s))
     case AnySetCardinality(s) =>
       surround(show(s),char ('|'))
+
+    case EmptyMap(keyType, valueType) =>
+      text("Map") <> brackets(showType(keyType) <> "," <> showType(valueType)) <> "()"
+    case ExplicitMap(elems) =>
+      text("Map") <> parens(ssep(elems map show, char(',') <> space))
+    case Maplet(key, value) =>
+      text("Map") <> parens(show(key) <+> ":=" <+> show(value))
+    case MapLookup(base, key) =>
+      show(base) <> brackets(show(key))
+    case MapContains(key, base) =>
+      parens(show(key) <+> "in" <+> show(base))
+    case MapCardinality(base) =>
+      surround(show(base), char('|'))
+    case MapUpdate(base, key, value) =>
+      show(base) <> brackets(show(key) <+> ":=" <+> show(value))
+    case MapDomain(base) =>
+      text("domain") <> parens(show(base))
+    case MapRange(base) =>
+      text("range") <> parens(show(base))
 
     case null => uninitialized
     case u: PrettyUnaryExpression => showPrettyUnaryExp(u)

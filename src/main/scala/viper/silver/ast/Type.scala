@@ -6,7 +6,6 @@
 
 package viper.silver.ast
 
-import scala.collection.breakOut
 import utility.Types
 import viper.silver.verifier.ConsistencyError
 
@@ -125,6 +124,22 @@ sealed case class MultisetType(override val  elementType: Type) extends Collecti
 //    MultisetType(elementType.substitute(typVarsMap))
 }
 
+/** Type of maps */
+sealed case class MapType(keyType : Type, valueType : Type) extends BuiltInType with GenericType {
+  val keyTypeParameter : TypeVar = TypeVar("K")
+  val ValueTypeParameter : TypeVar = TypeVar("E")
+
+  override type MyType = MapType
+  override val genericName = "Map"
+  override val typeParameters = Seq(keyTypeParameter, ValueTypeParameter)
+  override val typVarsMap: Map[TypeVar, Type] = Map(keyTypeParameter -> keyType, ValueTypeParameter -> valueType)
+
+  override def make(s : Substitution) : MyType = MapType(
+    typVarsMap(keyTypeParameter).substitute(s),
+    typVarsMap(ValueTypeParameter).substitute(s)
+  )
+}
+
 /** Type for user-defined domains. See also the companion object below, which allows passing a
   * Domain - this should be used in general for creation (so that domainTypVars is guaranteed to
   * be set correctly)
@@ -141,7 +156,7 @@ sealed case class DomainType(domainName: String, partialTypVarsMap: Map[TypeVar,
    * `typVarsMap` thus contains a mapping for each type parameter.
    */
   val typVarsMap: Map[TypeVar, Type] =
-    typeParameters.map(tp => tp -> partialTypVarsMap.getOrElse(tp, tp))(breakOut)
+    typeParameters.map(tp => tp -> partialTypVarsMap.getOrElse(tp, tp)).to(implicitly)
 
   override lazy val check =
     if(!(typeParameters.toSet == typVarsMap.keys.toSet)) Seq(ConsistencyError(s"${typeParameters.toSet} doesn't equal ${typVarsMap.keys.toSet}", NoPosition)) else Seq()
@@ -183,6 +198,8 @@ case class TypeVar(name: String) extends Type {
 
   //def !=(other: TypeVar) = name != other
 }
+
+case class BackendType(boogieName: String, smtName: String) extends AtomicType
 
 trait ExtensionType extends Type{
   def getAstType: Type = ???

@@ -8,14 +8,14 @@ package viper.silver.cfg
 
 import java.nio.file.{Files, Path, Paths}
 
-import fastparse.core.Parsed.Success
+import fastparse._
 import viper.silver.parser.{FastParser, PProgram, Resolver, Translator}
 import viper.silver.verifier.ParseWarning
 
 import scala.io.Source
 
 object CfgTest {
-  def main(args: Array[String]): Unit = {
+  def main[_: P](args: Array[String]): Unit = {
     if (args.isEmpty) throw new RuntimeException("No input file specified")
     val path = args(0)
 
@@ -35,10 +35,10 @@ object CfgTest {
     }
   }
 
-  private def parse(input: String, file: Path): Option[PProgram] = {
+  private def parse[_: P](input: String, file: Path): Option[PProgram] = {
     val result = FastParser.parse(input, file)
     result match {
-      case Success(program@PProgram(_, _, _, _, _, _, _,_, errors), _) =>
+      case Parsed.Success(program@PProgram(_, _, _, _, _, _, _,_, errors), _) =>
         if (errors.isEmpty || errors.forall(_.isInstanceOf[ParseWarning])) Some(program)
         else None
       case _ => None

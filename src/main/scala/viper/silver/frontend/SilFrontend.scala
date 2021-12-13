@@ -13,36 +13,9 @@ import viper.silver.plugin.SilverPluginManager
 import viper.silver.plugin.SilverPluginManager.PluginException
 import viper.silver.reporter._
 import viper.silver.verifier._
-import fastparse.all.{Parsed, ParserInput}
-import fastparse.all
+import fastparse.Parsed
 import java.nio.file.{Path, Paths}
-
-//class TestPhase extends TestA {
-//  type PProgram = viper.silver.parser.PProgram
-//  type Program = viper.silver.ast.Program
-//  type Message = String
-//
-//  override def parsing(program: String): Result[PProgram] = {
-//    Success(PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq()))
-//  }
-//
-//  override def semanticAnalysis(program: PProgram): Result[PProgram] = {
-//    Success(PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq()))
-//  }
-//
-//  override def translation(program: PProgram): Result[Program] = {
-//    Success(Program(Seq(), Seq(), Seq(), Seq(), Seq())())
-//  }
-//
-//  override def consistencyCheck(program: Program): Result[Program] = {
-//    Success(Program(Seq(), Seq(), Seq(), Seq(), Seq())())
-//  }
-
-//  override def verification(program: Program): Result[Message] = {
-//    Success("Program verified correctly")
-//  }
-//}
-import viper.silver.{FastMessaging, FastPositions}
+import viper.silver.FastMessaging
 
 /**
  * Common functionality to implement a command-line verifier for Viper.  This trait
@@ -126,7 +99,7 @@ trait SilFrontend extends DefaultFrontend {
 
   def getTime: Long = System.currentTimeMillis() - _startTime
 
-  def resetMessages() {
+  def resetMessages(): Unit = {
     Consistency.resetMessages()
   }
 
@@ -174,7 +147,7 @@ trait SilFrontend extends DefaultFrontend {
    * the Viper program to the verifier.  The resulting error messages (if any) will be
    * shown in a user-friendly fashion.
    */
-  def execute(args: Seq[String]) {
+  def execute(args: Seq[String]): Unit = {
     setStartTime()
 
     /* Create the verifier */
@@ -219,8 +192,6 @@ trait SilFrontend extends DefaultFrontend {
       }
       _plugins = SilverPluginManager(plugins)(reporter.reporter, logger, _config)
     }
-
-    FastPositions.reset()
   }
 
   def setStartTime(): Unit = {
@@ -252,7 +223,7 @@ trait SilFrontend extends DefaultFrontend {
     }
   }
 
-  protected def parseCommandLine(args: Seq[String]) {
+  protected def parseCommandLine(args: Seq[String]): Unit = {
     _config = configureVerifier(args)
   }
 
@@ -269,9 +240,11 @@ trait SilFrontend extends DefaultFrontend {
               }
               else Fail(err_list)
             case fail @ Parsed.Failure(_, index, extra) =>
-              val msg = all.ParseError(fail.asInstanceOf[Parsed.Failure]).getMessage()
-              val (line, col) = LineCol(extra.input.asInstanceOf[ParserInput], index)
+              val msg = fail.trace().longAggregateMsg
+              val (line, col) = LineCol(index)
               Fail(List(ParseError(s"Expected $msg", SourcePosition(file, line, col))))
+            //? val pos = extra.input.prettyIndex(index).split(":").map(_.toInt)
+              //? Fail(List(ParseError(s"Expected $msg", SourcePosition(file, pos(0), pos(1)))))
             case error: ParseError => Fail(List(error))
           }
 

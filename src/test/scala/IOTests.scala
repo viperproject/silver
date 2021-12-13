@@ -2,18 +2,20 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (c) 2011-2019 ETH Zurich.
+// Copyright (c) 2011-2021 ETH Zurich.
 
 import java.io.File
 import java.nio.file.Paths
 
-import org.scalatest.{FunSuite, Matchers}
+import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.matchers.should.Matchers
 import viper.silver.ast.{NoPosition, Position, Program}
 import viper.silver.frontend.{SilFrontend, SilFrontendConfig}
+import viper.silver.reporter.{Reporter, StdIOReporter}
 import viper.silver.verifier.errors.ErrorNode
 import viper.silver.verifier._
 
-class IOTests extends FunSuite with Matchers {
+class IOTests extends AnyFunSuite with Matchers {
 
   val test_prefix = s"Test standard IO of SilFrontend"
 
@@ -139,7 +141,7 @@ class IOTests extends FunSuite with Matchers {
 
     override def buildVersion: String = "2.72"
 
-    override def copyright: String = "(c) Copyright ETH Zurich 2012 - 2018"
+    override def copyright: String = "(c) Copyright ETH Zurich 2012 - 2021"
 
     override def debugInfo(info: Seq[(String, Any)]): Unit = {}
 
@@ -175,6 +177,8 @@ class IOTests extends FunSuite with Matchers {
     }
 
     override def stop(): Unit = {}
+
+    override def reporter: Reporter = StdIOReporter()
   }
 
   class MockIOConfig(args: Seq[String]) extends SilFrontendConfig(args, "MockIOVerifier") {

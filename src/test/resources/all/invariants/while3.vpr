@@ -57,7 +57,7 @@ method test10() {
     b := false
   }
 
-  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/182/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/390/)
   assert false
 
   label end

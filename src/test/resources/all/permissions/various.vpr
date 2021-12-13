@@ -22,6 +22,7 @@ method t1c(r: Ref)
 }
 
 method t2(r: Ref, p: Perm) returns ()
+    requires p >= none
     requires acc(r.f, p)
 {
     t2(r, none)

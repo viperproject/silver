@@ -6,24 +6,110 @@
 
 package viper.silver.verifier
 
-import fastparse.core.Parsed
+import fastparse.Parsed
 import viper.silver.ast._
 import viper.silver.ast.pretty.FastPrettyPrinter
 import viper.silver.ast.utility.rewriter.Rewritable
 
+
+/**********************************************************************************
+  * IMPORTANT:
+  * After changing this file, please edit the corresponding JSON convertors in:
+  *  viper/server/frontends/http/jsonWriters/ViperIDEProtocol.scala
+  *  https://github.com/viperproject/viperserver
+  **********************************************************************************/
+
 sealed trait ModelEntry
-case class SingleEntry(value: String) extends ModelEntry {
+
+sealed trait ValueEntry extends ModelEntry
+
+case class ConstantEntry(value: String) extends ValueEntry {
   override def toString: String = value
 }
-case class MapEntry(options: Map[Seq[String], String], els: String) extends ModelEntry {
+
+case class ApplicationEntry(name: String, arguments: Seq[ValueEntry]) extends ValueEntry {
+  override def toString: String = s"($name ${arguments.mkString(" ")})"
+}
+
+case class MapEntry(options: Map[Seq[ValueEntry], ValueEntry], default: ValueEntry) extends ModelEntry {
   override def toString: String = {
     if (options.nonEmpty)
-      "{\n" + options.map(o => "    " + o._1.mkString(" ") + " -> " + o._2).mkString("\n") + "\n    else -> " + els +"\n}"
+      "{\n" + options.map(o => "    " + o._1.mkString(" ") + " -> " + o._2).mkString("\n") + "\n    else -> " + default +"\n}"
     else
-      "{\n    " + els +"\n}"
+      "{\n    " + default +"\n}"
+  }
+
+  /**
+   * Tries to parse this entry as a function definition, e.g.
+   * name -> {  (or
+   *                (and (= (:var 0) v1) (= (:var 1) v2))
+   *                (and (= (:var 0) v3) (= (:var 1) v4))
+   *             )
+   * }
+   * If this succeeds, converts the entry to the "normal" form
+   * name -> {
+   *   v1 v2 -> true
+   *   v3 v4 -> true
+    *  else -> false
+   * }
+   * Otherwise returns the original entry unchanged.
+   */
+  def resolveFunctionDefinition = {
+    if (options.isEmpty && default.isInstanceOf[ApplicationEntry]) {
+      parseArgConstraintDisjunction(default) match {
+        case Some(vvs) => {
+          MapEntry(vvs.map(args => args -> ConstantEntry("true")).toMap, ConstantEntry("false"))
+        }
+        case None => this
+      }
+    }else{
+      this
+    }
+  }
+
+  def parseArgConstraintDisjunction(e: ValueEntry) = e match {
+    case ApplicationEntry("or", arguments) => {
+      val args = arguments.map(parseArgConstraintConjunction)
+      if (args.forall(_.isDefined)) {
+        val values = args.map(_.get)
+        Some(values)
+      }else{
+        None
+      }
+    }
+    case _ => parseArgConstraintConjunction(e) match {
+      case Some(vs) => Some(Seq(vs))
+      case None => None
+    }
+  }
+
+  def parseArgConstraintConjunction(ae: ValueEntry) = ae match {
+    case ApplicationEntry("and", arguments) => {
+      val args = arguments.map(parseSingleArgConstraint)
+      if (args.forall(_.isDefined)) {
+        val indices = args.map(_.get._1)
+        // We expect the arguments in the order 0, 1, ..., n-1; if we get something else, reject.
+        // TODO: Find out if this order is always guaranteed,
+        if (indices != (0 until indices.size))
+          None
+        else
+          Some(args.map(_.get._2))
+      }else{
+        None
+      }
+    }
+    case _ => parseSingleArgConstraint(ae) match {
+      case Some(("0", v)) => Some(Seq(v))
+      case _ => None
+    }
+  }
+
+  def parseSingleArgConstraint(ae: ValueEntry) = ae match {
+    case ApplicationEntry("=", Seq(ApplicationEntry(":var", Seq(ConstantEntry(index))), v)) => Some(index, v)
+    case _ => None
   }
 }
-case class Model(entries: Map[String,ModelEntry]) {
+case class Model(entries: Map[String, ModelEntry]) {
   override def toString: String = entries.map(e => e._1 + " -> " + e._2).mkString("\n")
 }
 
@@ -39,19 +125,18 @@ trait CounterexampleTransformer {
 }
 
 object CounterexampleTransformer {
-  def apply(ff: Counterexample => Counterexample) = {
+  def apply(ff: Counterexample => Counterexample): CounterexampleTransformer = {
     new CounterexampleTransformer {
-      def f: (Counterexample) => Counterexample = ff
+      def f: Counterexample => Counterexample = ff
     }
   }
 }
 
 object Model {
-
   def apply(modelString: String) : Model = {
-    ModelParser.model.parse(modelString) match{
-      case Parsed.Success(m, index) => return m
-      case f@Parsed.Failure(last, index, extra) => throw new Exception(f.toString)
+    fastparse.parse(modelString, ModelParser.model(_)) match{
+      case Parsed.Success(model, _) => model
+      case failure: Parsed.Failure => throw new Exception(failure.toString)
     }
   }
 }
@@ -166,8 +251,8 @@ object errors {
     val id = "internal"
     val text = "An internal error occurred."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = Internal(offendingNode, this.reason)
-    def withReason(r: ErrorReason) = Internal(offendingNode, r)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = Internal(offendingNode, this.reason, this.cached)
+    def withReason(r: ErrorReason) = Internal(offendingNode, r, cached)
   }
   // internal errors can be created with dummy nodes
   def Internal(reason: ErrorReason) : Internal = Internal(DummyNode, reason)
@@ -178,8 +263,8 @@ object errors {
     val id = "assignment.failed"
     val text = "Assignment might fail."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = AssignmentFailed(offendingNode.asInstanceOf[AbstractAssign], this.reason)
-    def withReason(r: ErrorReason) = AssignmentFailed(offendingNode, r)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = AssignmentFailed(offendingNode.asInstanceOf[AbstractAssign], this.reason, this.cached)
+    def withReason(r: ErrorReason) = AssignmentFailed(offendingNode, r, cached)
   }
 
   def AssignmentFailed(offendingNode: AbstractAssign): PartialVerificationError =
@@ -189,8 +274,8 @@ object errors {
     val id = "call.failed"
     val text = "Method call might fail."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = CallFailed(offendingNode.asInstanceOf[MethodCall], this.reason)
-    def withReason(r: ErrorReason) = CallFailed(offendingNode, r)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = CallFailed(offendingNode.asInstanceOf[MethodCall], this.reason, this.cached)
+    def withReason(r: ErrorReason) = CallFailed(offendingNode, r, cached)
   }
 
   def CallFailed(offendingNode: MethodCall): PartialVerificationError =
@@ -200,8 +285,8 @@ object errors {
     val id = "not.wellformed"
     val text = s"Contract might not be well-formed."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = ContractNotWellformed(offendingNode.asInstanceOf[Exp], this.reason)
-    def withReason(r: ErrorReason) = ContractNotWellformed(offendingNode, r)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = ContractNotWellformed(offendingNode.asInstanceOf[Exp], this.reason, this.cached)
+    def withReason(r: ErrorReason) = ContractNotWellformed(offendingNode, r, cached)
   }
 
   def ContractNotWellformed(offendingNode: Exp): PartialVerificationError =
@@ -211,8 +296,8 @@ object errors {
     val id = "call.precondition"
     val text = s"The precondition of method ${offendingNode.methodName} might not hold."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = PreconditionInCallFalse(offendingNode.asInstanceOf[MethodCall], this.reason)
-    def withReason(r: ErrorReason) = PreconditionInCallFalse(offendingNode, r)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = PreconditionInCallFalse(offendingNode.asInstanceOf[MethodCall], this.reason, this.cached)
+    def withReason(r: ErrorReason) = PreconditionInCallFalse(offendingNode, r, cached)
   }
 
   def PreconditionInCallFalse(offendingNode: MethodCall): PartialVerificationError =
@@ -222,8 +307,8 @@ object errors {
     val id = "application.precondition"
     val text = s"Precondition of function ${offendingNode.funcname} might not hold."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = PreconditionInAppFalse(offendingNode.asInstanceOf[FuncApp], this.reason)
-    def withReason(r: ErrorReason) = PreconditionInAppFalse(offendingNode, r)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = PreconditionInAppFalse(offendingNode.asInstanceOf[FuncApp], this.reason, this.cached)
+    def withReason(r: ErrorReason) = PreconditionInAppFalse(offendingNode, r, cached)
   }
 
   case class ErrorWrapperWithExampleTransformer(wrappedError: AbstractVerificationError, transformer: CounterexampleTransformer) extends AbstractVerificationError {
@@ -250,8 +335,8 @@ object errors {
     val id = "exhale.failed"
     val text = "Exhale might fail."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = ExhaleFailed(offendingNode.asInstanceOf[Exhale], this.reason)
-    def withReason(r: ErrorReason) = ExhaleFailed(offendingNode, r)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = ExhaleFailed(offendingNode.asInstanceOf[Exhale], this.reason, this.cached)
+    def withReason(r: ErrorReason) = ExhaleFailed(offendingNode, r, cached)
   }
 
   def ExhaleFailed(offendingNode: Exhale): PartialVerificationError =
@@ -261,8 +346,8 @@ object errors {
     val id = "inhale.failed"
     val text = "Inhale might fail."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = InhaleFailed(offendingNode.asInstanceOf[Inhale], this.reason)
-    def withReason(r: ErrorReason) = InhaleFailed(offendingNode, r)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = InhaleFailed(offendingNode.asInstanceOf[Inhale], this.reason, this.cached)
+    def withReason(r: ErrorReason) = InhaleFailed(offendingNode, r, cached)
   }
 
   def InhaleFailed(offendingNode: Inhale): PartialVerificationError =
@@ -272,8 +357,8 @@ object errors {
     val id = "if.failed"
     val text = "Conditional statement might fail."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = IfFailed(offendingNode.asInstanceOf[Exp], this.reason)
-    def withReason(r: ErrorReason) = IfFailed(offendingNode, r)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = IfFailed(offendingNode.asInstanceOf[Exp], this.reason, this.cached)
+    def withReason(r: ErrorReason) = IfFailed(offendingNode, r, cached)
   }
 
   def IfFailed(offendingNode: Exp): PartialVerificationError =
@@ -283,8 +368,8 @@ object errors {
     val id = "while.failed"
     val text = "While statement might fail."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = WhileFailed(offendingNode.asInstanceOf[Exp], this.reason)
-    def withReason(r: ErrorReason) = WhileFailed(offendingNode, r)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = WhileFailed(offendingNode.asInstanceOf[Exp], this.reason, this.cached)
+    def withReason(r: ErrorReason) = WhileFailed(offendingNode, r, cached)
   }
 
   def WhileFailed(offendingNode: Exp): PartialVerificationError =
@@ -294,8 +379,8 @@ object errors {
     val id = "assert.failed"
     val text = "Assert might fail."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = AssertFailed(offendingNode.asInstanceOf[Assert], this.reason)
-    def withReason(r: ErrorReason) = AssertFailed(offendingNode, r)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = AssertFailed(offendingNode.asInstanceOf[Assert], this.reason, this.cached)
+    def withReason(r: ErrorReason) = AssertFailed(offendingNode, r, cached)
   }
 
   def AssertFailed(offendingNode: Assert): PartialVerificationError =
@@ -305,8 +390,8 @@ object errors {
     val id = "termination.failed"
     val text = s"Function ${offendingNode.name} might not terminate."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationFailed(offendingNode.asInstanceOf[Function], this.reason)
-    def withReason(r: ErrorReason) = TerminationFailed(offendingNode, r)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationFailed(offendingNode.asInstanceOf[Function], this.reason, this.cached)
+    def withReason(r: ErrorReason) = TerminationFailed(offendingNode, r, cached)
   }
 
   def TerminationFailed(offendingNode: Function): PartialVerificationError =
@@ -316,8 +401,8 @@ object errors {
     val id = "postcondition.violated"
     val text = s"Postcondition of ${member.name} might not hold."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = PostconditionViolated(offendingNode.asInstanceOf[Exp], this.member, this.reason)
-    def withReason(r: ErrorReason) = PostconditionViolated(offendingNode, member, r)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = PostconditionViolated(offendingNode.asInstanceOf[Exp], this.member, this.reason, this.cached)
+    def withReason(r: ErrorReason) = PostconditionViolated(offendingNode, member, r, cached)
   }
 
   def PostconditionViolated(offendingNode: Exp, member: Contracted): PartialVerificationError =
@@ -327,8 +412,8 @@ object errors {
     val id = "fold.failed"
     val text = s"Folding ${offendingNode.acc.loc} might fail."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = FoldFailed(offendingNode.asInstanceOf[Fold], this.reason)
-    def withReason(r: ErrorReason) = FoldFailed(offendingNode, r)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = FoldFailed(offendingNode.asInstanceOf[Fold], this.reason, this.cached)
+    def withReason(r: ErrorReason) = FoldFailed(offendingNode, r, cached)
   }
 
   def FoldFailed(offendingNode: Fold): PartialVerificationError =
@@ -338,8 +423,8 @@ object errors {
     val id = "unfold.failed"
     val text = s"Unfolding ${offendingNode.acc.loc} might fail."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = UnfoldFailed(offendingNode.asInstanceOf[Unfold], this.reason)
-    def withReason(r: ErrorReason) = UnfoldFailed(offendingNode, r)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = UnfoldFailed(offendingNode.asInstanceOf[Unfold], this.reason, this.cached)
+    def withReason(r: ErrorReason) = UnfoldFailed(offendingNode, r, cached)
   }
 
   def UnfoldFailed(offendingNode: Unfold): PartialVerificationError =
@@ -349,8 +434,8 @@ object errors {
     val id = "package.failed"
     val text = s"Packaging wand might fail."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = PackageFailed(offendingNode.asInstanceOf[Package], this.reason)
-    def withReason(r: ErrorReason) = PackageFailed(offendingNode, r)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = PackageFailed(offendingNode.asInstanceOf[Package], this.reason, this.cached)
+    def withReason(r: ErrorReason) = PackageFailed(offendingNode, r, cached)
   }
 
   def PackageFailed(offendingNode: Package): PartialVerificationError =
@@ -360,8 +445,8 @@ object errors {
     val id = "apply.failed"
     val text = s"Applying wand might fail."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = ApplyFailed(offendingNode.asInstanceOf[Apply], this.reason)
-    def withReason(r: ErrorReason) = ApplyFailed(offendingNode, r)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = ApplyFailed(offendingNode.asInstanceOf[Apply], this.reason, this.cached)
+    def withReason(r: ErrorReason) = ApplyFailed(offendingNode, r, cached)
   }
 
   def ApplyFailed(offendingNode: Apply): PartialVerificationError =
@@ -371,8 +456,8 @@ object errors {
     val id = "invariant.not.preserved"
     val text = s"Loop invariant $offendingNode might not be preserved."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = LoopInvariantNotPreserved(offendingNode.asInstanceOf[Exp], this.reason)
-    def withReason(r: ErrorReason) = LoopInvariantNotPreserved(offendingNode, r)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = LoopInvariantNotPreserved(offendingNode.asInstanceOf[Exp], this.reason, this.cached)
+    def withReason(r: ErrorReason) = LoopInvariantNotPreserved(offendingNode, r, cached)
   }
 
   def LoopInvariantNotPreserved(offendingNode: Exp): PartialVerificationError =
@@ -382,8 +467,8 @@ object errors {
     val id = "invariant.not.established"
     val text = s"Loop invariant $offendingNode might not hold on entry."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = LoopInvariantNotEstablished(offendingNode.asInstanceOf[Exp], this.reason)
-    def withReason(r: ErrorReason) = LoopInvariantNotEstablished(offendingNode, r)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = LoopInvariantNotEstablished(offendingNode.asInstanceOf[Exp], this.reason, this.cached)
+    def withReason(r: ErrorReason) = LoopInvariantNotEstablished(offendingNode, r, cached)
   }
 
   def LoopInvariantNotEstablished(offendingNode: Exp): PartialVerificationError =
@@ -393,8 +478,8 @@ object errors {
     val id = "function.not.wellformed"
     val text = s"Function might not be well-formed."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = FunctionNotWellformed(offendingNode.asInstanceOf[Function], this.reason)
-    def withReason(r: ErrorReason) = FunctionNotWellformed(offendingNode, r)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = FunctionNotWellformed(offendingNode.asInstanceOf[Function], this.reason, this.cached)
+    def withReason(r: ErrorReason) = FunctionNotWellformed(offendingNode, r, cached)
   }
 
   def FunctionNotWellformed(offendingNode: Function): PartialVerificationError =
@@ -404,8 +489,8 @@ object errors {
     val id = "predicate.not.wellformed"
     val text = s"Predicate might not be well-formed."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = PredicateNotWellformed(offendingNode.asInstanceOf[Predicate], this.reason)
-    def withReason(r: ErrorReason) = PredicateNotWellformed(offendingNode, r)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = PredicateNotWellformed(offendingNode.asInstanceOf[Predicate], this.reason, this.cached)
+    def withReason(r: ErrorReason) = PredicateNotWellformed(offendingNode, r, cached)
   }
 
   def PredicateNotWellformed(offendingNode: Predicate): PartialVerificationError =
@@ -415,8 +500,8 @@ object errors {
     val id = "wand.not.wellformed"
     val text = s"Magic wand might not be well-formed."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = MagicWandNotWellformed(offendingNode.asInstanceOf[MagicWand], this.reason)
-    def withReason(r: ErrorReason) = MagicWandNotWellformed(offendingNode, r)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = MagicWandNotWellformed(offendingNode.asInstanceOf[MagicWand], this.reason, this.cached)
+    def withReason(r: ErrorReason) = MagicWandNotWellformed(offendingNode, r, cached)
   }
 
   def MagicWandNotWellformed(offendingNode: MagicWand): PartialVerificationError =
@@ -426,8 +511,8 @@ object errors {
     val id = "letwand.failed"
     val text = s"Referencing a wand might fail."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = LetWandFailed(offendingNode.asInstanceOf[LocalVarAssign], this.reason)
-    def withReason(r: ErrorReason) = LetWandFailed(offendingNode, r)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = LetWandFailed(offendingNode.asInstanceOf[LocalVarAssign], this.reason, this.cached)
+    def withReason(r: ErrorReason) = LetWandFailed(offendingNode, r, cached)
   }
 
   def LetWandFailed(offendingNode: LocalVarAssign): PartialVerificationError =
@@ -437,8 +522,8 @@ object errors {
     val id = "heuristics.failed"
     val text = "Applying heuristics failed."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = HeuristicsFailed(offendingNode, this.reason)
-    def withReason(r: ErrorReason) = HeuristicsFailed(offendingNode, r)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = HeuristicsFailed(offendingNode, this.reason, this.cached)
+    def withReason(r: ErrorReason) = HeuristicsFailed(offendingNode, r, cached)
   }
 
   def HeuristicsFailed(offendingNode: ErrorNode): PartialVerificationError =
@@ -455,9 +540,9 @@ object errors {
     override def reason = ve.reason
 
     def withNode(offendingNode: errors.ErrorNode) =
-      VerificationErrorWithCounterexample(ve.withNode(offendingNode).asInstanceOf[AbstractVerificationError], model, symState, currentMember)
+      VerificationErrorWithCounterexample(ve.withNode(offendingNode).asInstanceOf[AbstractVerificationError], model, symState, currentMember, cached)
 
-    def withReason(r: ErrorReason) = VerificationErrorWithCounterexample(ve.withReason(r), model, symState, currentMember)
+    def withReason(r: ErrorReason) = VerificationErrorWithCounterexample(ve.withReason(r), model, symState, currentMember, cached)
   }
 }
 
@@ -573,5 +658,13 @@ object reasons {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) =
       SeqIndexExceedsLength(seq, offendingNode.asInstanceOf[Exp])
+  }
+
+  case class MapKeyNotContained(map: Exp, offendingNode: Exp) extends AbstractErrorReason {
+    val id = "map.key.contains"
+    def readableMessage = s"Map $map might not contain an entry at key $offendingNode."
+
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) =
+      MapKeyNotContained(map, offendingNode.asInstanceOf[Exp])
   }
 }

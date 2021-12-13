@@ -6,7 +6,6 @@
 
 package viper.silver.plugin.standard.predicateinstance
 
-import fastparse.noApi
 import viper.silver.ast.{Domain, DomainType, ErrTrafo, FuncApp, Function, Position, PredicateAccess, PredicateAccessPredicate, Program, WildcardPerm}
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.Traverse
@@ -15,7 +14,10 @@ import viper.silver.parser._
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier.{ConsistencyError, Failure, Success, VerificationResult}
 import viper.silver.verifier.errors.PreconditionInAppFalse
+import fastparse._
+import viper.silver.parser.FastParser.whitespace
 
+import scala.collection.immutable.ListMap
 
 class PredicateInstancePlugin  extends SilverPlugin with ParserPluginTemplate {
 
@@ -26,14 +28,11 @@ class PredicateInstancePlugin  extends SilverPlugin with ParserPluginTemplate {
 
   val PredicateInstanceDomainName = "PredicateInstance"
 
-  import White._
-  import fastparse.noApi._
-
   /**
    * Parser for declaring predicate instances.
    *
    */
-    lazy val predicateInstance: noApi.P[PPredicateInstance] = P(PredicateInstanceMarker ~/ P(predAcc)).map(p => PPredicateInstance(p.args, p.idnuse))
+  def predicateInstance[_: P]: P[PPredicateInstance] = FP(PredicateInstanceMarker ~/ P(predAcc)).map{ case (pos, p) => PPredicateInstance(p.args, p.idnuse)(pos) }
 
   /** Called before any processing happened.
    *
@@ -43,7 +42,7 @@ class PredicateInstancePlugin  extends SilverPlugin with ParserPluginTemplate {
    */
   override def beforeParse(input: String, isImported: Boolean): String = {
     // Add new keyword
-    ParserExtension.addNewExpAtStart(predicateInstance)
+    ParserExtension.addNewExpAtStart(predicateInstance(_))
     input
   }
 
@@ -56,7 +55,7 @@ class PredicateInstancePlugin  extends SilverPlugin with ParserPluginTemplate {
     val PredicateInstanceDomain: Option[Domain] =  input.domains.find(_.name == "PredicateInstance")
 
     // list of all created predicate instance functions
-    val createdPIFunctions: collection.mutable.ListMap[String, Function] = collection.mutable.ListMap[String, Function]()
+    var createdPIFunctions = ListMap[String, Function]()
 
     def getPIFunction(predicateInstance: PredicateInstance, program: Program): FuncApp = {
       createdPIFunctions.get(predicateInstance.p) match {
@@ -72,7 +71,7 @@ class PredicateInstancePlugin  extends SilverPlugin with ParserPluginTemplate {
               Seq(),
               None
             )(PredicateInstanceDomain.get.pos, PredicateInstanceDomain.get.info)
-          createdPIFunctions.update(predicateInstance.p, newPIFunction)
+          createdPIFunctions = createdPIFunctions.updated(predicateInstance.p, newPIFunction)
           FuncApp(newPIFunction, predicateInstance.args)(predicateInstance.pos, predicateInstance.info, errT)
       }
     }

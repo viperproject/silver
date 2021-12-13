@@ -5,11 +5,12 @@
 // Copyright (c) 2011-2019 ETH Zurich.
 
 import java.nio.file.Paths
+
 import TestHelpers.MockSilFrontend
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast._
 
-class ParseTreeTests extends FunSuite {
+class ParseTreeTests extends AnyFunSuite {
   test("MacroExpansion") {
     val filePrefix = "transformations/Macros/Expansion/"
     val files = Seq("simple", "simple2", "simpleExp", "simpleArgs", "simpleArgs2", "simpleArgsExp", "simpleMethod", "simpleMethodExp")
