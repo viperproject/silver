@@ -1,14 +1,19 @@
 package viper.silver.plugin.standard.inline
 
-import viper.silver.ast._
+import viper.silver.ast.{ErrTrafo, _}
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.Traverse
+import viper.silver.logger.ViperLogger
+import viper.silver.verifier.{AbstractVerificationError, ErrorMessage, ErrorReason, errors}
+import viper.silver.verifier.errors.{AssertFailed, AssignmentFailed, CallFailed, ContractNotWellformed, ExhaleFailed, FunctionNotWellformed, InhaleFailed, PreconditionInAppFalse, PredicateNotWellformed, WhileFailed}
+import viper.silver.verifier.reasons.InsufficientPermission
 
 trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
 
+  def contract_err_type(c: Exp): (ErrorReason, Boolean) => ContractNotWellformed = (r: ErrorReason, cached: Boolean) => ContractNotWellformed(c, r, cached)
   def rewriteMethod(method: Method, program: Program, cond: String => Boolean): Method = {
-    val expandedPres = method.pres.map(expandExpression(_, method, program, cond))
-    val expandedPosts = method.posts.map(expandExpression(_, method, program, cond))
+    val expandedPres = method.pres.map({c => expandExpression(c, method, program, cond, err_type = contract_err_type(c))})
+    val expandedPosts = method.posts.map({c => expandExpression(c, method, program, cond, err_type = contract_err_type(c))})
     val rewrittenBody = method.body.map(expandStatements(_, method, program, cond))
     method.copy(body = rewrittenBody,
       pres = expandedPres,
@@ -17,9 +22,10 @@ trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
   }
 
   def rewriteFunction(function: Function, program: Program, cond: String => Boolean): Function = {
-    val expandedPres = function.pres.map(expandExpression(_, function, program, cond))
-    val expandedPosts = function.posts.map(expandExpression(_, function, program, cond))
-    val rewrittenBody = function.body.map(expandExpression(_, function, program, cond))
+    val err_type = (r: ErrorReason, cached: Boolean) => FunctionNotWellformed(function, r, cached)
+    val expandedPres = function.pres.map({c => expandExpression(c, function, program, cond, contract_err_type(c))})
+    val expandedPosts = function.posts.map({c => expandExpression(c, function, program, cond, contract_err_type(c))})
+    val rewrittenBody = function.body.map((expr: Exp) => expandExpression(expr, function, program, cond, err_type))
     function.copy(body = rewrittenBody,
       pres = expandedPres,
       posts = expandedPosts
@@ -27,7 +33,8 @@ trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
   }
 
   def rewritePredicate(pred: Predicate, program: Program, cond: String => Boolean): Predicate = {
-    val rewrittenBody = pred.body.map(expandExpression(_, pred, program, cond))
+    val err_type = (r: ErrorReason, cached: Boolean) => PredicateNotWellformed(pred, r, cached)
+    val rewrittenBody = pred.body.map((expr: Exp) => expandExpression(expr, pred, program, cond, err_type))
     pred.copy(body = rewrittenBody,
     )(pred.pos, pred.info, pred.errT)
   }
@@ -38,7 +45,8 @@ trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
    * Transforms a predicate into a function that requires the predicates body and can be used in unfolding
    */
   def transformPredicate(pred: Predicate, program: Program, cond: String => Boolean): Function = {
-    val rewrittenBody = pred.body.map(expandExpression(_, pred, program, cond))
+    val err_type = (r: ErrorReason, cached: Boolean) => PredicateNotWellformed(pred, r, cached)
+    val rewrittenBody = pred.body.map((expr: Exp) => expandExpression(expr, pred, program, cond, err_type = err_type))
     val name = unfolding_name(pred.name)
     Function(name, pred.formalArgs, Bool, Seq(rewrittenBody.get), Seq(), Some(TrueLit()()))(pred.pos, pred.info, pred.errT)
   }
@@ -50,21 +58,30 @@ trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
     * @param member The member containing the expression, used to determine locally-scoped variables.
     * @param program The program containing the expression, used to expand predicates.
     * @param cond The predicate (Scala) that the predicates (Viper) must satisfy.
+    * @param err_type A function that generates a relevant error given an error unfolding
     * @return The expression with expanded predicates and the expandable precondition and postcondition predicates.
     */
-  private[this] def expandExpression(expr: Exp, member: Member, program: Program, cond: String => Boolean, decls: Set[String] = Set()): Exp = {
-    val noUnfoldingExpr = removeUnfoldings(expr, cond)
+  private def expandExpression(expr: Exp, member: Member, program: Program, cond: String => Boolean, err_type: (ErrorReason, Boolean) => AbstractVerificationError, decls: Set[String] = Set()): Exp = {
+    val noUnfoldingExpr = removeUnfoldings(expr, cond, err_type)
     ViperStrategy.CustomContext[Set[String]]({
       case (expr@PredicateAccessPredicate(pred, perm), ctxt) =>
         if (cond(pred.predicateName)) {
           val optPredBody = propagatePermission(pred.predicateBody(program, ctxt), perm)
-          val expandedExpr = expandExpression(optPredBody.get, member, program, cond)
+          val expandedExpr = expandExpression(optPredBody.get, member, program, cond, err_type)
           val res = And(PermGeCmp(perm, NoPerm()())(), Implies(PermGtCmp(perm, NoPerm()())(), expandedExpr)())()
           (res, ctxt)
         } else (expr, ctxt)
       case (scope: Scope, ctxt) =>
         (scope, ctxt ++ scope.scopedDecls.map(_.name).toSet)
     }, member.scopedDecls.map(_.name).toSet ++ decls, Traverse.TopDown).execute[Exp](noUnfoldingExpr)
+  }
+
+  case class UnknownUnfoldingError(offendingNode: Exp, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
+    val id = "unknown.unfolding.failed"
+    val text = s"Unknown unfolding error"
+
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode): ErrorMessage = UnknownUnfoldingError(offendingNode.asInstanceOf[Exp], this.reason, this.cached)
+    def withReason(r: ErrorReason): AbstractVerificationError = UnknownUnfoldingError(offendingNode, r, cached)
   }
 
   /**
@@ -82,20 +99,35 @@ trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
     val noFoldUnfoldStmts = removeFoldUnfolds(stmts, member, program, cond)
     ViperStrategy.CustomContext[Set[String]]({
       case (inhale@Inhale(expr), ctxt) =>
-        val expandedExpr = expandExpression(expr, member, program, cond, ctxt)
+        val err_type = (r: ErrorReason, cached: Boolean) => InhaleFailed(inhale, r, cached)
+        val expandedExpr = expandExpression(expr, member, program, cond, err_type, ctxt)
         (inhale.copy(expandedExpr)(pos = inhale.pos, info = inhale.info, errT = inhale.errT), ctxt)
       case (exhale@Exhale(expr), ctxt) =>
-        val expandedExpr = expandExpression(expr, member, program, cond, ctxt)
+        val err_type = (r: ErrorReason, cached: Boolean) => ExhaleFailed(exhale, r, cached)
+        val expandedExpr = expandExpression(expr, member, program, cond, err_type, ctxt)
         (exhale.copy(expandedExpr)(pos = exhale.pos, info = exhale.info, errT = exhale.errT), ctxt)
       case (assert@Assert(expr), ctxt) =>
-        val expandedExpr = expandExpression(expr, member, program, cond, ctxt)
+        val err_type = (r: ErrorReason, cached: Boolean) => AssertFailed(assert, r, cached)
+        val expandedExpr = expandExpression(expr, member, program, cond, err_type, ctxt)
         (assert.copy(expandedExpr)(pos = assert.pos, info = assert.info, errT = assert.errT), ctxt)
-      case (loop@While(_, invs, _), ctxt) =>
-        val expandedInvs = invs.map(expandExpression(_, member, program, cond, ctxt))
-        (loop.copy(invs = expandedInvs)(pos = loop.pos, info = loop.info, errT = loop.errT), ctxt)
+      case (assign: AbstractAssign, ctxt) =>
+        val err_type = (r: ErrorReason, cached: Boolean) => AssignmentFailed(assign, r, cached)
+        val expandedRhs = expandExpression(assign.rhs, member, program, cond, err_type, ctxt)
+        (AbstractAssign.apply(assign.lhs, expandedRhs)(pos = assign.pos, info = assign.info, errT = assign.errT), ctxt)
+      case (method@MethodCall(_, args, _), ctxt) =>
+        val err_type = (r: ErrorReason, cached: Boolean) => CallFailed(method, r, cached)
+        val expandedArgs = args.map(expandExpression(_, member, program, cond, err_type, ctxt))
+        (method.copy(args=expandedArgs)(pos = method.pos, info = method.info, errT = method.errT), ctxt)
+      case (loop@While(c, invs, _), ctxt) =>
+        val err_type = (r: ErrorReason, cached: Boolean) => WhileFailed(c, r, cached)
+        val expandedCond = expandExpression(c, member, program, cond, err_type)
+        val expandedInvs = invs.map(inv => expandExpression(inv, member, program, cond, contract_err_type(inv), ctxt))
+        (loop.copy(invs = expandedInvs, cond = expandedCond)(pos = loop.pos, info = loop.info, errT = loop.errT), ctxt)
       case (seqn@Seqn(_, scopedDecls), ctxt) =>
         (seqn, ctxt ++ scopedDecls.map(_.name))
-      case (expr: Exp, ctxt) => (removeUnfoldings(expr, cond), ctxt)
+      case (expr: Exp, ctxt) =>
+        val err_type = (r: ErrorReason, cached: Boolean) => UnknownUnfoldingError(expr, r, cached)
+        (removeUnfoldings(expr, cond, err_type), ctxt)
     }, stmts.scopedDecls.map(_.name).toSet, Traverse.TopDown).execute[Seqn](noFoldUnfoldStmts)
   }
 
@@ -106,11 +138,12 @@ trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
     * @param cond The condition a predicate must satisfy to be un-unfolding-ed.
     * @return The expression with unfoldings possibly substituted.
     */
-  private[this] def removeUnfoldings(expr: Exp, cond: String => Boolean): Exp = {
+  private[this] def removeUnfoldings(expr: Exp, cond: String => Boolean, err_type: (ErrorReason, Boolean) => AbstractVerificationError): Exp = {
     ViperStrategy.Slim({
-      case unfolding@Unfolding(PredicateAccessPredicate(PredicateAccess(args, name), _), body) =>
+      case unfolding@Unfolding(PredicateAccessPredicate(pred_access@PredicateAccess(args, name), _), body) =>
         if (cond(name)) {
-          val unfolding_check = FuncApp(unfolding_name(name), args)(unfolding.pos, unfolding.info, Bool, unfolding.errT)
+          val errT = ErrTrafo({case PreconditionInAppFalse(_, _, cached) => err_type(InsufficientPermission(pred_access), cached)})
+          val unfolding_check = FuncApp(unfolding_name(name), args)(unfolding.pos, unfolding.info, Bool, errT)
           DomainFuncApp(secondDomain.functions.head, Seq(unfolding_check, body), Map((secondDomain.typVars.head, body.typ)))(unfolding.pos, unfolding.info, unfolding.errT)
         } else unfolding
     }, Traverse.BottomUp).execute[Exp](expr)
