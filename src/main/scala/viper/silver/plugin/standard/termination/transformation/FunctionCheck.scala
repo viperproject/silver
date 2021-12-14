@@ -65,7 +65,7 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
         if (proofMethodBody != EmptyStmt) {
 
           val proofMethod = Method(proofMethodName, f.formalArgs, Nil, f.pres, Nil,
-            Option(Seqn(Seq(proofMethodBody), Nil)()))()
+            Option(Seqn(Seq(proofMethodBody), Nil)()))(info=f.info)
 
           Seq(proofMethod)
         } else {
@@ -99,7 +99,7 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
 
         if (proofMethodBody != EmptyStmt) {
           val proofMethod = Method(proofMethodName, f.formalArgs, Nil, f.pres, Nil,
-            Option(Seqn(Seq(proofMethodBody), Seq(resultVariable))()))()
+            Option(Seqn(Seq(proofMethodBody), Seq(resultVariable))()))(info=f.info)
 
           Seq(proofMethod)
         } else {
@@ -118,7 +118,7 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
 
         if (proofMethodBody != EmptyStmt) {
           val proofMethod = Method(proofMethodName, f.formalArgs, Nil, Nil, Nil,
-            Option(Seqn(Seq(proofMethodBody), Seq(context.conditionInEx.get))()))()
+            Option(Seqn(Seq(proofMethodBody), Seq(context.conditionInEx.get))()))(info=f.info)
 
           Seq(proofMethod)
         } else {
