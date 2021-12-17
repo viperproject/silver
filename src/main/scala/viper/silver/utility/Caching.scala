@@ -57,6 +57,7 @@ trait DependencyAware {
     *
     * This method is imprecise, but practical. Here's a list of known imprecisions:
     * - axioms are considered as global dependencies (even if they don't influence the method);
+    * - functions are considered as global dependencies (even if they don't influence the method);
     * - fields are considered as global dependencies (even if they don't influence the method);
     * - concrete predicates used abstractly (w/o unfolding) bring transitive dependencies via their body.
     *
@@ -73,7 +74,7 @@ trait DependencyAware {
   def getDependencies(p: Program, m: Method): List[Hashable] = {
     val marker: mutable.Set[Hashable] = mutable.Set.empty
     markSubAST(m, marker)
-    Seq(m) ++ p.domains ++ p.fields ++
+    Seq(m) ++ p.domains ++ p.functions ++ p.fields ++
       (m.pres ++ m.posts ++ m.body.toSeq).flatMap {
         n => n.deepCollect {
           case method_call: MethodCall =>
