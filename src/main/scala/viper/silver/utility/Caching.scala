@@ -40,7 +40,8 @@ trait DependencyAware {
             val func = p.findFunction(func_app.funcname)
             if (!marker.contains(func)) {
               markSubAST(func, marker)
-              Seq(func) ++ getDependenciesRec(p, func.pres ++ func.posts ++ extractOptionalNode(func.body), marker)
+              // `func` do not need to be returned because all functions are always considered as a dependency
+              getDependenciesRec(p, func.pres ++ func.posts ++ extractOptionalNode(func.body), marker)
             } else Nil
           case pred_access: PredicateAccess =>
             val pred = p.findPredicate(pred_access.predicateName)
@@ -84,8 +85,7 @@ trait DependencyAware {
                 method.pres ++ method.posts ++
                 getDependenciesRec(p, method.formalArgs ++ method.formalReturns ++ method.pres ++ method.posts, marker)
             } else Nil
-          case func_app: FuncApp =>
-            getDependenciesRec(p, Seq(func_app), marker)
+          // function calls do not need to be considered because all functions are always considered as a dependency
           case pred_access: PredicateAccess =>
             getDependenciesRec(p, Seq(pred_access), marker)
         } flatten
