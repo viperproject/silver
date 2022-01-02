@@ -100,23 +100,22 @@ trait TestAnnotationParser {
     }
   }
   /** Get first found annotation */
-  private def getAnnotation(annotation:String,file:Path,lineNr:Int):Option[TestAnnotation]={
-      val finders :Seq[Option[TestAnnotation]]= getFinders() map (_.apply(annotation,file,lineNr))
-      val found :Seq[TestAnnotation]= finders collect {case Some(a) => a}
+  private def getAnnotation(annotation: String, file: Path, lineNr: Int): Option[TestAnnotation] = {
+      val finders: Seq[Option[TestAnnotation]] = getAnnotationFinders map (_.apply(annotation,file,lineNr))
+      val found: Seq[TestAnnotation] = finders collect { case Some(a) => a }
       found.headOption
   }
 
   /** Get all defined annotation parsers; intended to be replaced by extending classes.
    * The order of the entries are the same as the implicit "next field ordering" from before
   */
-  def getFinders():Seq[(String,Path,Int)=>Option[TestAnnotation]]={
+  def getAnnotationFinders: Seq[(String, Path, Int) => Option[TestAnnotation]] = {
     Seq(isExpectedOutput,
         isUnexpectedOutput,
         isMissingOutput,
         isIgnoreOthers,
         isIgnoreFile,
-        isIgnoreFileList
-        )
+        isIgnoreFileList)
   }
 
   /**
@@ -157,7 +156,7 @@ trait TestAnnotationParser {
         Some(MissingOutput(OutputAnnotationId(reasonId, None), file, -1, lineNr, project, issueNr.toInt))
       case regex(keyId, _, valueId, project, issueNr) =>
         Some(MissingOutput(OutputAnnotationId(keyId, Some(valueId)), file, -1, lineNr, project, issueNr.toInt))
-      case _ =>None
+      case _ => None
     }
   }
 
@@ -175,7 +174,7 @@ trait TestAnnotationParser {
     val regex = """^IgnoreFile\(/(.*)/issue/([0-9]+)/\)$""".r
     annotation match {
       case regex(project, issueNr) => Some(IgnoreFile(file, lineNr, project, issueNr.toInt))
-      case _ =>None
+      case _ => None
     }
   }
 

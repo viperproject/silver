@@ -93,6 +93,6 @@ case class TestMissingButPresentOutputError(missingOutput: MissingOutput, output
   def message = output.toString
 }
 
-case class TestCustomError(errorMessage:String) extends TestError(TestErrorType.Custom){
+case class TestCustomError(errorMessage: String) extends TestError(TestErrorType.Custom) {
   def message = errorMessage
 }
