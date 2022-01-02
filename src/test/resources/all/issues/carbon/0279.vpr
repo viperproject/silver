@@ -1,6 +1,7 @@
-// Any copyright is dedicated to the Public Domain.
-// http://creativecommons.org/publicdomain/zero/1.0/
+// Any copyright is dedicated to the Public Domain.^M
+// http://creativecommons.org/publicdomain/zero/1.0/^M
 
+//:: IgnoreFile(/Carbon/issue/391/)
 //:: IgnoreFile(/silicon/issue/409/)
 
 predicate p()
@@ -10,3 +11,9 @@ method m1()
 
 method m2()
   requires forall i: Int :: p()
+
+method m3()
+  ensures forall i: Int :: i == 0 ==> acc(p())
+
+method m4()
+  ensures forall i: Int :: p()

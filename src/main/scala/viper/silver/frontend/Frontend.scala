@@ -57,7 +57,10 @@ trait Frontend {
 
   /** Execute all phases of the frontend sequentially. */
   def runAllPhases(): Unit = {
-    phases.foreach(_.f())
+    phases.foreach(ph => {
+      logger.trace(s"Frontend: running phase ${ph.name}")
+      ph.f()
+    })
   }
 
   /** Executes only the specified phase of the frontend. The specified phase must a phase of the frontend.
@@ -177,7 +180,13 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
 
   def semanticAnalysisResult: SemanticAnalysisResult = _semanticAnalysisResult.get
 
-  def translationResult: Program = _program.get
+  def translationResult: Program = _program match {
+    case Some(p) => p
+    case None =>
+      val msg = "cannot extract translationResult: program is undefined"
+      logger.error(msg)
+      throw new NoSuchElementException(msg)
+  }
 
   def state = _state
   def errors = _errors

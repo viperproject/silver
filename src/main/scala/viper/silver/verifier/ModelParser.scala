@@ -1,7 +1,5 @@
 package viper.silver.verifier
 
-import java.util.regex.{Matcher, Pattern}
-import scala.collection.mutable
 import fastparse._
 import viper.silver.parser.FastParser.whitespace
 
@@ -20,20 +18,22 @@ object ModelParser {
 
   def mappingContent[_: P]: P[MapEntry] = P(options | default)
 
-  def options[_: P]: P[MapEntry] = P(option.rep ~ "else" ~ "->" ~ value).map {
-    case (options, default) => MapEntry(options.toMap, default)
+  def options[_: P]: P[MapEntry] = P(option.rep ~ ("else" ~ "->" ~ value).?).map {
+    case (options, default) => MapEntry(options.toMap, default.getOrElse(UnspecifiedEntry))
   }
 
-  def option[_: P]: P[(Seq[ValueEntry], ValueEntry)] = P(value.rep(1) ~ "->" ~/ value)
+  def option[_: P]: P[(Seq[ValueEntry], ValueEntry)] = P(value.rep(1) ~ "->" ~ value)
 
   def default[_: P]: P[MapEntry] = P(value)
     .map { default => MapEntry(Map.empty, default).resolveFunctionDefinition }
 
-  def value[_: P]: P[ValueEntry] = P(let | constant | application)
+  def value[_: P]: P[ValueEntry] = P(unspecified | let | constant | application)
 
   def let[_: P]: P[ValueEntry] = {
     def substitute(entry: ValueEntry, binding: (String, ValueEntry)): ValueEntry =
       entry match {
+        case UnspecifiedEntry =>
+          UnspecifiedEntry
         case ConstantEntry(value) =>
           binding match {
             case (`value`, replacement) => replacement
@@ -53,6 +53,8 @@ object ModelParser {
   }
 
   def binding[_: P]: P[(String, ValueEntry)] = P("(" ~ idnuse ~ value ~ ")")
+
+  def unspecified[_: P]: P[ValueEntry] = P("(#unspecified)").map(_ => UnspecifiedEntry)
 
   def constant[_: P]: P[ConstantEntry] = P(idnuse).map(ConstantEntry)
 

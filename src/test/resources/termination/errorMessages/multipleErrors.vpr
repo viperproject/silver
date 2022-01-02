@@ -1,0 +1,39 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// failure filtering by Silicon should not filter out one of the failures but correctly return both errors
+
+import <decreases/int.vpr>
+import <decreases/predicate_instance.vpr>
+
+function factorialPure(n: Int): Int
+    decreases // wrong termination measure
+    requires n >= 0
+{
+    //:: ExpectedOutput(termination.failed:tuple.false)
+    n == 0 ? 1 : 1 * factorialPure(n-1)
+}
+
+
+field next: Ref
+field value: Int
+predicate list(self: Ref) {
+    acc(self.next) && acc(self.value) && (self.next != null ==> list(self.next))
+}
+
+method length(x: Ref) returns (l: Int)
+    decreases // wrong termination measure
+    requires list(x)
+    ensures  list(x)
+{
+    unfold list(x)
+    if (x.next == null) {
+        l := 1
+    } else {
+        var tmp: Int
+        //:: ExpectedOutput(termination.failed:tuple.false)
+        tmp := length(x.next)
+        l := 1 + tmp
+    }
+    fold list(x)
+}

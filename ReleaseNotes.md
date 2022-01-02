@@ -1,3 +1,43 @@
+## Release 2021.7
+#### Date 27/07/21     [Download](http://www.pm.inf.ethz.ch/research/viper/downloads.html)
+
+### Changes in Viper Language
+
+* **Breaking change**: Inhaling possibly-negative permission amounts now leads to a verification failure, whereas in previous releases it led to an inconsistent state [(Silver, 522)](https://github.com/viperproject/silver/issues/522). For example, `inhale acc(x.f, e)` for some permission expression `e` will now cause a *failure* if `e` is not known to be non-negative, rather than implicitly assuming this property.
+* **Planned future breaking change**: Currently, Viper checks the [injectivity of the receiver expression when exhaling quantified permissions](http://viper.ethz.ch/tutorial/?page=1&section=#receiver-expressions-and-injectivity), but not when inhaling quantified permissions (when this property is currently *assumed*). We [plan to change this](https://github.com/viperproject/silver/issues/531) in the January 2022 release, that is Viper will also check injectivity is known when inhaling quantified permissions. Since this is an important breaking change, we have provided access to it in *this* release but only if the `--checkInjectivity` flag is provided. This flag will be removed in the next release, and the corresponding injectivity checks will be enabled by default.
+
+### Backend-specific upgrades/changes
+
+#### Symbolic Execution Verifier (Silicon)
+* Added new option for displaying counterexamples using the `--counterexample mapped` command-line argument. This option produces pretty-printed counterexamples with heap chunks resolved to their contained fields.
+* Added a [new option](https://github.com/viperproject/silicon/blob/master/src/main/scala/Config.scala#L456) for selecting different [state consolidation modes](https://github.com/viperproject/silicon/blob/master/src/main/scala/Config.scala#L597) affecting how complete, and thus expensive, a state consolidation is [experimental]
+* Added scope-based logging of symbolic execution details ([PR #562](https://github.com/viperproject/silicon/pull/562))
+
+
+#### Verification Condition Generation Verifier (Carbon)
+
+* Fixed labelled old expressions that potentially refer to labels that have not yet been defined [(Carbon, PR 387)](https://github.com/viperproject/carbon/pull/387)
+* Added support for loops formed via gotos  [(Carbon, PR 389)](https://github.com/viperproject/carbon/pull/389)
+* Minor bug fixes ([382](https://github.com/viperproject/carbon/issues/382), [386](https://github.com/viperproject/carbon/pull/386))
+
+### Miscellaneous
+
+#### Viper-IDE & ViperServer
+* Compatibility with latest versions of Silicon and Carbon incl. latest Viper features (e.g. `Map` types and anonymous axioms).
+* Mono is no longer a requirement.
+* The JAVA installation has to be version 11 or higher and must be 64-bit.
+* The IDE now shows non-critical warning messages. 
+* Build version of Viper Tools (i.e. the dependencies) can be configured in the VSCode settings:
+  * `Stable` / `Nightly`: the latest Viper Tools in the corresponding build configuration will be used. The [Preferences](https://github.com/viperproject/viper-ide/wiki/Settings:-Preferences) specify from which URL the Viper Tools will be downloaded. The Viper Tools are not automatically updated. They only get installed when they are not present yet or when a manual update is triggered (via the command palette). The installation folder has changed for these two build versions: They always get installed to `<VSCode Installation>/User/globalStorage/viper-admin.viper` where `<VSCode Installation>` corresponds to `~/Library/Application Support/Code` (on macOS), `c:\Users\<user>\AppData\Roaming\Code` (on Windows), and `~/.config/Code` (on Linux).
+  * `Local`: uses the Viper Tools located at the path specified as `viperSettings.paths.viperToolsPath`.
+* Locating the JAVA installation has been improved. A warning appears if it cannot be uniquely identified. A fixed path to a Java installation can be provided in the settings as `viperSettings.javaSettings.javaBinary` ([more details](https://github.com/viperproject/viper-ide/wiki/Settings:-Java-Settings)).
+* Sound effects for a successful or failed verification can be enabled by setting `viperSettings.preferences.enableSoundEffects` to true.
+* Minor bug fixes ([#23](https://github.com/viperproject/viperserver/issues/23))
+
+  ---
+
+
+
 ## Release 2021.1
 #### Date 15/02/21     [Download](http://www.pm.inf.ethz.ch/research/viper/downloads.html)
 

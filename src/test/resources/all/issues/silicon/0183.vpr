@@ -3,6 +3,8 @@
 
 field v: Int
 
+//:: ExpectedOutput(predicate.not.wellformed:negative.permission)
+//:: MissingOutput(predicate.not.wellformed:negative.permission, /Carbon/issue/380/)
 predicate valid__Cell(self: Ref, rd: Perm) {
   acc(self.v, rd)
 }
@@ -13,8 +15,8 @@ method foo_ok(self: Ref)
 {}
 
 method foo_fail(self: Ref, rd: Perm)
-  requires acc(valid__Cell(self, rd), rd)
   requires none < rd && rd < write
+  requires acc(valid__Cell(self, rd), rd)
   //:: UnexpectedOutput(not.wellformed:insufficient.permission, /Silicon/issue/183/)
   //:: UnexpectedOutput(not.wellformed:insufficient.permission, /Carbon/issue/83/)
   requires (unfolding acc(valid__Cell(self, rd), rd) in self.v) == 1
@@ -29,8 +31,8 @@ method foo_fail_gist(self: Ref, rd: Perm)
 }
 
 method bar(self: Ref, rd: Perm)
-  requires acc(valid__Cell(self, rd), rd)
   requires none < rd && rd < write
+  requires acc(valid__Cell(self, rd), rd)
 {
   unfold acc(valid__Cell(self, rd), rd)
   //:: UnexpectedOutput(assert.failed:insufficient.permission, /Silicon/issue/183/)

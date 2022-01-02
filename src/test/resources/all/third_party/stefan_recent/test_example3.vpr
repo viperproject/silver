@@ -7,8 +7,10 @@ method parameters__drop(diz: Ref, current_thread_id: Int, c: Ref, p: Perm) retur
   requires diz != null
   requires current_thread_id >= 0
   requires c != null
+  requires p >= none
   requires acc(c.Counter__x, p)
   ensures c != null
+  ensures q >= none
   ensures acc(c.Counter__x, q)
   ensures q <= p
 {

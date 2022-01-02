@@ -29,6 +29,7 @@ method test01_qp_client(xs: Seq[Ref], y: Ref)
 }
 
 method test02(x: Ref, p: Perm)
+  requires p >= none
   requires acc(x.f, p)
 {
   //:: ExpectedOutput(assert.failed:assertion.false)
@@ -50,6 +51,7 @@ method test02_client(x: Ref, p: Perm)
 
  method test02_qp(xs: Seq[Ref], y: Ref, p: Perm)
    requires y in xs
+   requires p >= none
    requires forall x: Ref :: x in xs ==> acc(x.f, p)
  {
   //:: ExpectedOutput(assert.failed:assertion.false)

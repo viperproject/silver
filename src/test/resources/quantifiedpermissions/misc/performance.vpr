@@ -10,11 +10,13 @@ method init(xs: Seq[Ref])
 }
 
 method leak(xs: Seq[Ref], p: Perm)
+  requires p >= none
   requires forall i: Int :: i in [0..|xs|) ==> acc(xs[i].f, p)
 {}
 
 method split(xs: Seq[Ref], p: Perm, q: Perm)
   requires p == 2*q
+  requires p >= none
   requires forall i: Int :: i in [0..|xs|) ==> acc(xs[i].f, p)
   ensures forall i: Int :: i in [0..|xs|) ==> acc(xs[i].f, q)
   ensures forall i: Int :: i in [0..|xs|) ==> acc(xs[i].f, q)

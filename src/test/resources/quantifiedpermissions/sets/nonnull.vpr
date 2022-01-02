@@ -15,6 +15,7 @@ method test01(xs: Set[Ref], x: Ref, y: Ref)
 
 method test02(xs: Set[Ref], x: Ref, k: Perm)
   requires x in xs
+  requires k >= none
   requires forall z: Ref :: z in xs ==> acc(z.f, k)
 {
   //:: ExpectedOutput(assert.failed:assertion.false)

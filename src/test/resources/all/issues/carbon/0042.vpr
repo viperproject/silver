@@ -24,7 +24,7 @@ method test03(x: Int) {
 }
 
 predicate token(diz: Ref){
-  acc(diz.unknown_x,wildcard) && acc(diz.unknown_y,unknown(diz.unknown_x))
+  acc(diz.unknown_x,wildcard) && unknown(diz.unknown_x) >= none && acc(diz.unknown_y,unknown(diz.unknown_x))
 }
 
 method test01(diz: Ref)

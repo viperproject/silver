@@ -8,7 +8,7 @@ predicate pred1(a:Ref) {
 }
 
 predicate pred2(a:Ref, p:Perm) {
-	acc(a.f, p)
+	p >= none && acc(a.f, p)
 }
 
 method test01(x: Ref)
@@ -47,6 +47,7 @@ method test02(x: Ref, p: Perm)
 
  method test02_2(xs: Seq[Ref], y: Ref, p: Perm)
    requires y in xs
+   requires p >= none
    requires acc(pred2(y, p))
  {
    unfold pred2(y, p)
@@ -66,6 +67,7 @@ method test02_client(x: Ref, p: Perm)
 
  method test02_qp(xs: Seq[Ref], y: Ref, p: Perm)
    requires y in xs
+   requires p >= none
    requires forall x: Ref :: x in xs ==> acc(pred2(x, p))
  {
    unfold pred2(y, p)
