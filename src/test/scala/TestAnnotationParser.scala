@@ -108,9 +108,8 @@ trait TestAnnotationParser {
   }
   /** Get first found annotation */
   private def getAnnotation(annotation: String, file: Path, lineNr: Int): Option[TestAnnotation] = {
-      val finders: Seq[Option[TestAnnotation]] = getAnnotationFinders map (_.apply(annotation,file,lineNr))
-      val found: Seq[TestAnnotation] = finders collect { case Some(a) => a }
-      found.headOption
+    val annotations: Seq[TestAnnotation] = getAnnotationFinders flatMap (_.apply(annotation,file,lineNr))
+    annotations.headOption
   }
 
   /** Get all defined annotation parsers; intended to be replaced by extending classes.

@@ -45,7 +45,7 @@ object TestErrorType extends Enumeration {
         "(MissingOutput) according to the test annotations, but did occur " +
         "during testing (this might be cause by invalid test annotations)"
     case Custom =>
-      "User defined message:"
+      "User defined message(s):"
   }
 }
 
@@ -94,5 +94,5 @@ case class TestMissingButPresentOutputError(missingOutput: MissingOutput, output
 }
 
 case class TestCustomError(errorMessage: String) extends TestError(TestErrorType.Custom) {
-  def message = errorMessage
+  val message: String = errorMessage
 }
