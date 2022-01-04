@@ -129,6 +129,8 @@ case class OutputAnnotationId(keyId: String, valueId: Option[String]) {
 sealed trait LocatedAnnotation extends TestAnnotation {
   def file: Path
   def forLineNr: Int
+
+  def withForLineNr(line: Int = forLineNr): LocatedAnnotation
 }
 
 /**
@@ -161,7 +163,9 @@ case class ExpectedOutput(
     id: OutputAnnotationId,
     file: Path,
     forLineNr: Int,
-    annotationLineNr: Int) extends OutputAnnotation
+    annotationLineNr: Int) extends OutputAnnotation {
+  override def withForLineNr(line: Int = forLineNr): ExpectedOutput = ExpectedOutput(id, file, line, annotationLineNr)
+}
 
 case class UnexpectedOutput(
     id: OutputAnnotationId,
@@ -169,7 +173,9 @@ case class UnexpectedOutput(
     forLineNr: Int,
     annotationLineNr: Int,
     project: String,
-    issueNr: Int) extends OutputAnnotation with ProjectSpecificAnnotation
+    issueNr: Int) extends OutputAnnotation with ProjectSpecificAnnotation {
+  override def withForLineNr(line: Int = forLineNr): UnexpectedOutput = UnexpectedOutput(id, file, line, annotationLineNr, project, issueNr)
+}
 
 case class MissingOutput(
     id: OutputAnnotationId,
@@ -177,12 +183,16 @@ case class MissingOutput(
     forLineNr: Int,
     annotationLineNr: Int,
     project: String,
-    issueNr: Int) extends OutputAnnotation with ProjectSpecificAnnotation
+    issueNr: Int) extends OutputAnnotation with ProjectSpecificAnnotation {
+  override def withForLineNr(line: Int = forLineNr): MissingOutput = MissingOutput(id, file, line, annotationLineNr, project, issueNr)
+}
 
 case class IgnoreOthers(
     file: Path,
     forLineNr: Int,
-    annotationLineNr: Int) extends LocatedAnnotation
+    annotationLineNr: Int) extends LocatedAnnotation {
+  override def withForLineNr(line: Int = forLineNr): IgnoreOthers = IgnoreOthers(file, line, annotationLineNr)
+}
 
 case class IgnoreFile(
     file: Path,
@@ -195,3 +205,8 @@ case class IgnoreFileList(
     annotationLineNr: Int,
     project: String,
     issueNr: Int) extends ProjectSpecificAnnotation
+
+trait CustomAnnotation extends LocatedAnnotation {
+  def matches(is: AbstractOutput): Boolean
+  def notFoundError: TestError
+}
