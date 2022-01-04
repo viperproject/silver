@@ -101,10 +101,7 @@ trait TestAnnotationParser {
   private def finishAnnotations(annotations: List[TestAnnotation], forLineNr: Int): List[TestAnnotation] = {
     for (a <- annotations) yield {
       a match {
-        case ExpectedOutput(id, file, _, lineNr) => ExpectedOutput(id, file, forLineNr, lineNr)
-        case UnexpectedOutput(id, file, _, lineNr, project, issueNr) => UnexpectedOutput(id, file, forLineNr, lineNr, project, issueNr)
-        case MissingOutput(id, file, _, lineNr, project, issueNr) => MissingOutput(id, file, forLineNr, lineNr, project, issueNr)
-        case IgnoreOthers(file, _, lineNr) => IgnoreOthers(file, forLineNr, lineNr)
+        case loc: LocatedAnnotation => loc.withForLineNr(forLineNr)
         case _ => a
       }
     }
