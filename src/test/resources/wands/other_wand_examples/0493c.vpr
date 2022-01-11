@@ -1,0 +1,119 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+//:: IgnoreFile(/silver/issue/488/)
+//:: IgnoreFile(/carbon/issue/244/)
+//:: IgnoreFile(/carbon/issue/257/)
+
+field val: Int
+
+predicate two(a: Ref, i: Int) {
+  acc(a.val) && a.val == i
+}
+
+function sign_two(a: Ref, i: Int): Int
+  requires two(a, i)
+{ unfolding two(a, i) in i < 0 ? -1 : 1 }
+
+define access_vals(as) forall a: Ref :: { a.val } a in as ==> acc(a.val)
+
+define wand_val(a)
+  acc(a.val/*, 1/2*/) --* acc(a.val) // && a.val == 0
+
+define access_wand_vals(as)
+  forall a: Ref :: { wand_val(a) } a in as ==> wand_val(a)
+
+define access_twos(as, is) forall a: Ref, i: Int :: { two(a, i) } a in as && i in  is ==> two(a, i)
+
+define wand_two(a, i)
+  acc(two(a, i)/*, 1/2*/) --* two(a, i) // && sign_two(a, i) == 1
+
+define access_wand_twos(as, is)
+  forall a: Ref, i: Int :: { wand_two(a, i) } a in as && i in is ==> wand_two(a, i)
+
+function foo_wand_val(a: Ref): Int
+  //:: ExpectedOutput(consistency.error)
+  requires wand_val(a)
+
+function foo_wand_vals(as: Set[Ref]): Int
+  //:: ExpectedOutput(consistency.error)
+  requires access_wand_vals(as)
+  ensures forall a: Ref :: a in as ==> result == foo_wand_val(a)
+
+function foo_wand_two(a: Ref, i: Int): Int
+  //:: ExpectedOutput(consistency.error)
+  requires wand_two(a, i)
+
+function foo_wand_twos(as: Set[Ref], is: Set[Int]): Int
+  //:: ExpectedOutput(consistency.error)
+  requires access_wand_twos(as, is)
+  ensures forall a: Ref, i: Int :: a in as && i in is ==> result == foo_wand_two(a, i)
+
+method test_ones(as: Set[Ref]) {
+    inhale access_wand_vals(as)
+    inhale foo_wand_vals(as) == 0
+    exhale foo_wand_vals(as) == 0
+}
+
+method test_ones_2(as: Set[Ref], bs: Set[Ref]) {
+  inhale access_vals(as)
+  inhale access_wand_vals(as) && access_wand_vals(bs)
+  inhale foo_wand_vals(as) == 0
+
+  var a1: Ref
+  assume a1 in as
+  apply wand_val(a1)
+  package wand_val(a1)
+  assume foo_wand_val(a1) == 0 // See Silicon issue #496
+
+  var b1: Ref
+  assume b1 in bs
+  exhale wand_val(b1)
+  exhale access_wand_vals(bs setminus Set(b1))
+
+  exhale foo_wand_vals(as) == 0
+}
+
+method test_twos(as: Set[Ref], is: Set[Int]) {
+  inhale access_wand_twos(as, is)
+  inhale foo_wand_twos(as, is) == 0
+  exhale foo_wand_twos(as, is) == 0
+}
+
+method test_twos_2(as: Set[Ref], is: Set[Int]) {
+  inhale access_twos(as, is)
+  inhale access_wand_twos(as, is)
+  inhale foo_wand_twos(as, is) == 0
+
+  var a1: Ref; var i1: Int
+  assume a1 in as && i1 in is
+  apply wand_two(a1, i1)
+  package wand_two(a1, i1)
+  assume foo_wand_two(a1, i1) == 0 // See Silicon issue #496
+
+  exhale foo_wand_twos(as, is) == 0
+}
+
+method test_twos_3(as: Set[Ref], is: Set[Int], bs: Set[Ref], js: Set[Int]) {
+  inhale access_twos(as, is) && access_twos(bs, js)
+  inhale access_wand_twos(as, is) && access_wand_twos(bs, js)
+  inhale foo_wand_twos(as, is) == 0
+
+  var b1: Ref; var j1: Int
+  assume b1 in bs && j1 in js
+  exhale two(b1, j1)
+
+  var a1: Ref; var i1: Int
+  assume a1 in as && i1 in is
+  apply wand_two(a1, i1)
+  unfold two(a1, i1)
+  a1.val := 1 + a1.val - 1
+  fold two(a1, i1)
+  package wand_two(a1, i1)
+  assume foo_wand_two(a1, i1) == 0 // See Silicon issue #496
+
+  exhale access_wand_twos(bs setminus Set(b1), js setminus Set(j1))
+  exhale access_twos(bs setminus Set(b1), js setminus Set(j1))
+
+  exhale foo_wand_twos(as, is) == 0
+}

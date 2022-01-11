@@ -1,0 +1,15 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Ref
+
+method t01(x:Ref) {
+
+  package acc(x.f) --* acc(x.f)
+  package acc(x.f) --* acc(x.f)
+
+  exhale (acc(x.f) --* acc(x.f)) && (acc(x.f) --* acc(x.f)) //failed previously
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}

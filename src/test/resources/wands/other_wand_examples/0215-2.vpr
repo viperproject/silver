@@ -1,0 +1,28 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+field g: Int
+
+method o(r: Ref)
+    requires acc(r.f) && acc(r.g)
+    ensures P(r)
+{
+    package (acc(r.f) --* P(r)) {
+        fold P(r)
+    }
+    define macro(x) acc(x.f)
+    apply acc(r.f) --* P(r)
+}
+
+method o(r: Ref)
+    requires acc(r.f) && acc(r.g)
+    ensures P(r)
+{
+    package (acc(r.f) --* P(r)) {
+        //:: ExpectedOutput(parser.error)
+        define macro(x) acc(x.f)
+        fold P(r)
+    }
+    apply acc(r.f) --* P(r)
+}

@@ -1,0 +1,11 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+//:: IgnoreFile(/carbon/issue/203/)
+field val: Int
+
+method test()
+{
+    //:: ExpectedOutput(package.failed:insufficient.permission)
+    package true --* (forall n: Ref :: acc(n.val))
+}

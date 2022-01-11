@@ -1,0 +1,10 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+method test(x: Ref) {
+  package (false) --* true {
+      package (acc(x.f) --* false)
+  }
+}
