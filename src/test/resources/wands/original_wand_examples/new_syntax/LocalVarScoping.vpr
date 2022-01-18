@@ -1,0 +1,40 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+method test0() {
+    var i: Int := 0
+    package true --* true {
+        //:: ExpectedOutput(consistency.error)
+        i := 1
+        assert i == 1
+    }
+    assert i == 0
+}
+
+method test1() {
+    package true --* true {
+        package true --* true {
+            var i: Int := 0
+        }
+    }
+}
+
+method test2() {
+    package true --* true {
+        var i: Int
+        package true --* true {
+            //:: ExpectedOutput(consistency.error)
+            i := 0
+        }
+    }
+}
+
+method test3() {
+    var i: Int := 0
+    package true --* true {
+        if (i == 0) {
+            //:: ExpectedOutput(consistency.error)
+            i := 1
+        }
+    }
+}
