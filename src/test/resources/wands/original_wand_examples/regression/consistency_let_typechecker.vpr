@@ -1,7 +1,0 @@
-// Any copyright is dedicated to the Public Domain.
-// http://creativecommons.org/publicdomain/zero/1.0/
-
-method test01() {
-  //:: ExpectedOutput(typechecker.error)
-  assert let y == (0) in !y
-}
