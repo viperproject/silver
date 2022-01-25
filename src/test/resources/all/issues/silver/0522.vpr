@@ -34,7 +34,6 @@ method test4(x: Ref, p: Perm) {
 }
 
 //:: ExpectedOutput(predicate.not.wellformed:negative.permission)
-//:: MissingOutput(predicate.not.wellformed:negative.permission, /Carbon/issue/380/)
 predicate Q(x: Ref, p: Perm) {
   acc(x.f, p)
 }
