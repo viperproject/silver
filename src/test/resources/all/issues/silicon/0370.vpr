@@ -17,6 +17,7 @@ function getVCTOption1(x: VCTOption[Seq[Ref]]): Seq[Ref]
 method barrier_check_2(diz: Ref, current_thread_id: Int, output: VCTOption[Seq[Ref]])
 
   requires VCTNone() != output
+  requires forall i:Int, j:Int :: i >= 0 && i < |getVCTOption1(output)| && j >= 0 && j < |getVCTOption1(output)| && i != j ==> getVCTOption1(output)[i] != getVCTOption1(output)[j]
   requires (forall tid: Int :: 0 <= tid && tid < |getVCTOption1(output)| ==> acc(getVCTOption1(output)[tid].Integer__item, write))
   requires (forall tid: Int :: 0 <= tid && tid < |getVCTOption1(output)| ==> getVCTOption1(output)[tid].Integer__item == tid)
   ensures VCTNone() != output
@@ -29,6 +30,8 @@ method barrier_check_2(diz: Ref, current_thread_id: Int, output: VCTOption[Seq[R
 method barrier_check_2_essence(diz: Ref, current_thread_id: Int, output: VCTOption[Seq[Ref]])
 {
   inhale VCTNone() != output
+
+  inhale forall i:Int, j:Int :: i >= 0 && i < |getVCTOption1(output)| && j >= 0 && j < |getVCTOption1(output)| && i != j ==> getVCTOption1(output)[i] != getVCTOption1(output)[j]
 
   inhale
     forall k: Int :: {getVCTOption1(output)[k].Integer__item}

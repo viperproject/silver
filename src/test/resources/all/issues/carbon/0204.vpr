@@ -8,6 +8,7 @@ predicate Node(self: Ref) {
 }
 
 method foo(s: Seq[Ref])
+	requires forall i:Int, j:Int :: i >= 0 && i < |s| && j >= 0 && j < |s| && i != j ==> s[i] != s[j]
     ensures forall i: Int :: i >= 0 && i < |s| ==> Node(s[i]) && unfolding Node(s[i]) in s[i].val >= 0
 {
     var i: Int

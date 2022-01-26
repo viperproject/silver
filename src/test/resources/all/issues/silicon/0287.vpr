@@ -5,5 +5,6 @@ field val:Int
 
 predicate isArray(xs:Ref)
 {
+	//:: ExpectedOutput(predicate.not.wellformed:receiver.not.injective)
     forall i:Int :: acc(xs.val)
 }

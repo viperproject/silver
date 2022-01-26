@@ -6,6 +6,7 @@
 field next: Ref;
 
 method inc(list: Ref, _footprint: Seq[Ref])
+	requires forall i:Int, j:Int :: i >= 0 && i < |_footprint| && j >= 0 && j < |_footprint| && i != j ==> _footprint[i] != _footprint[j]
     requires (
         0 < |_footprint| &&
         list == _footprint[0] &&

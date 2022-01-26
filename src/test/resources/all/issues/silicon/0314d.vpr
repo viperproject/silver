@@ -5,6 +5,7 @@ field f: Int
 
 method test01(xs: Seq[Ref], p: Perm) {
   inhale none < p && p < write
+  inhale forall i:Int, j:Int :: i >= 0 && i < |xs| && j >= 0 && j < |xs| && i != j ==> xs[i] != xs[j]
   inhale forall i: Int :: {xs[i].f} 0 <= i && i < |xs| ==> acc(xs[i].f, p)
 
   var k: Int
@@ -18,6 +19,7 @@ method test01(xs: Seq[Ref], p: Perm) {
 
 method test02(xs: Seq[Ref], p: Perm) {
   inhale none < p && p < write
+  inhale forall i:Int, j:Int :: i >= 0 && i < |xs| && j >= 0 && j < |xs| && i != j ==> xs[i] != xs[j]
   inhale forall i: Int :: {xs[i]} 0 <= i && i < |xs| ==> acc(xs[i].f, p)
 
   var k: Int
