@@ -85,6 +85,7 @@ method Ref__main_resources_of_1(diz: Ref, current_thread_id: Int, tcount: Int, g
   requires |diz.Ref__b| == tcount
   requires acc(diz.Ref__c, wildcard)
   requires |diz.Ref__c| == tcount
+  requires forall i:Int, j:Int :: i >= 0 && i < |diz.Ref__a| && j >= 0 && j < |diz.Ref__a| && i != j ==> diz.Ref__a[i] != diz.Ref__a[j]
   requires (forall tid: Int :: (0 <= tid) && (tid < (tcount - 1 < gsize ? tcount - 1 : gsize)) ==> acc(diz.Ref__a[tid].Ref__Integer_value, 1 / 2))
   requires (forall tid: Int :: (0 <= tid) && (tid < (tcount - 1 < gsize ? tcount - 1 : gsize)) ==> (diz.Ref__a[tid].Ref__Integer_value == tid + 1))
   ensures tcount == gsize
@@ -116,6 +117,9 @@ method Ref__main_post_check_1(diz: Ref, current_thread_id: Int, tcount: Int, gsi
   requires |diz.Ref__b| == tcount
   requires acc(diz.Ref__c, wildcard)
   requires |diz.Ref__c| == tcount
+  requires forall i:Int, j:Int :: i >= 0 && i < |diz.Ref__a| && j >= 0 && j < |diz.Ref__a| && i != j ==> diz.Ref__a[i] != diz.Ref__a[j]
+  requires forall i:Int, j:Int :: i >= 0 && i < |diz.Ref__b| && j >= 0 && j < |diz.Ref__b| && i != j ==> diz.Ref__b[i] != diz.Ref__b[j]
+  requires forall i:Int, j:Int :: i >= 0 && i < |diz.Ref__c| && j >= 0 && j < |diz.Ref__c| && i != j ==> diz.Ref__c[i] != diz.Ref__c[j]
   requires (forall _x_tid: Int :: (0 <= _x_tid) && (_x_tid < gsize) ==> acc(diz.Ref__a[_x_tid].Ref__Integer_value, write))
   requires (forall _x_tid: Int :: (0 <= _x_tid) && (_x_tid < gsize) ==> acc(diz.Ref__b[_x_tid].Ref__Integer_value, 1 / 2))
   requires (forall _x_tid: Int :: (0 <= _x_tid) && (_x_tid < gsize) ==> acc(diz.Ref__c[_x_tid].Ref__Integer_value, write))
