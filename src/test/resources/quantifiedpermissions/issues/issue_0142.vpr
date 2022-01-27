@@ -5,11 +5,13 @@ field f: Int
 
 function fun(xs: Seq[Ref]): Int
   requires 0 < |xs|
+  requires forall i1: Int, i2: Int :: i1 in [0..|xs|) && i2 in [0..|xs|) && i1 != i2 ==> xs[i1] != xs[i2]
   requires forall i: Int :: 0 <= i && i < |xs| ==> acc(xs[i].f)
 { fun_impl(xs) }
 
 function fun_impl(xs: Seq[Ref]): Int
   requires 0 < |xs|
+  requires forall i1: Int, i2: Int :: i1 in [0..|xs|) && i2 in [0..|xs|) && i1 != i2 ==> xs[i1] != xs[i2]
   requires forall i: Int :: 0 <= i && i < |xs| ==> acc(xs[i].f)
 { xs[0].f }
 

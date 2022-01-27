@@ -31,6 +31,7 @@ method ArrayTest__m(diz: Ref, current_thread_id: Int)
   requires acc(diz.ArrayTest__x, wildcard)
   requires acc(diz.ArrayTest__twin.ArrayTest__x, wildcard)
   requires |diz.ArrayTest__x| > 10
+  requires forall i1: Int, i2: Int :: i1 in [0..|diz.ArrayTest__x|) && i2 in [0..|diz.ArrayTest__x|) && i1 != i2 ==> diz.ArrayTest__x[i1] != diz.ArrayTest__x[i2]
   requires (forall i: Int :: (0 <= i) && (i < |diz.ArrayTest__x|) ==> acc(diz.ArrayTest__x[i].Ref__Integer_value, 1 / 2))
   requires |diz.ArrayTest__twin.ArrayTest__x| > 10
   requires (forall i: Int :: (0 <= i) && (i < |diz.ArrayTest__twin.ArrayTest__x|) ==> acc(diz.ArrayTest__twin.ArrayTest__x[i].Ref__Integer_value, 1 / 2))

@@ -4,6 +4,7 @@
 field f: Int
 
 method test01(S: Seq[Ref])
+  requires forall i1: Int, i2: Int :: (i1 in [0..|S|) && i2 in [0..|S|) && i1 != i2)  ==> S[i1] != S[i2]
   requires forall i: Int :: i in [0..|S|)  ==> acc(S[i].f, wildcard)
   ensures  forall i: Int :: i in [0..|S|)  ==> acc(S[i].f, wildcard)
 {
