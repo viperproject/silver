@@ -11,10 +11,13 @@ field Integer_value: Int
 method loop_main_54(this: Ref, len: Int, ar: Seq[Ref], br: Seq[Ref], cr: Seq[Ref])
   requires 0 < len
   requires |ar| == len
+  requires forall i: Int, j: Int :: 0 <= i && i < |ar| && 0 <= j && j < |ar| && i != j ==> ar[i] != ar[j]
   requires (forall i: Int :: (i in [0..len)) ==> acc(ar[i].Integer_value, write))
   requires |br| == len
+  requires forall i: Int, j: Int :: 0 <= i && i < |br| && 0 <= j && j < |br| && i != j ==> br[i] != br[j]
   requires (forall i: Int :: (i in [0..len)) ==> acc(br[i].Integer_value, 1 / 2))
   requires |cr| == len
+  requires forall i: Int, j: Int :: 0 <= i && i < |cr| && 0 <= j && j < |cr| && i != j ==> cr[i] != cr[j]
   requires (forall i: Int :: (i in [0..len)) ==> acc(cr[i].Integer_value, write))
   ensures |ar| == len
   ensures (forall i: Int :: (i in [0..len)) ==> acc(ar[i].Integer_value, 1 / 2))
@@ -73,10 +76,13 @@ method loop_body_54(this: Ref, len: Int, ar: Seq[Ref], br: Seq[Ref], i: Int, cr:
 method zero_array(this: Ref, ar: Seq[Ref], br: Seq[Ref], cr: Seq[Ref], len: Int) returns (sys__result: Int)
   requires 0 < len
   requires |ar| == len
+  requires forall i: Int, j: Int :: 0 <= i && i < |ar| && 0 <= j && j < |ar| && i != j ==> ar[i] != ar[j]
   requires (forall i: Int :: (i in [0..len)) ==> acc(ar[i].Integer_value, write))
   requires |br| == len
+  requires forall i: Int, j: Int :: 0 <= i && i < |br| && 0 <= j && j < |br| && i != j ==> br[i] != br[j]
   requires (forall i: Int :: (i in [0..len)) ==> acc(br[i].Integer_value, 1 / 2))
   requires |cr| == len
+  requires forall i: Int, j: Int :: 0 <= i && i < |cr| && 0 <= j && j < |cr| && i != j ==> cr[i] != cr[j]
   requires (forall i: Int :: (i in [0..len)) ==> acc(cr[i].Integer_value, write))
   ensures |ar| == len
   ensures (forall i: Int :: (i in [0..len)) ==> acc(ar[i].Integer_value, write))

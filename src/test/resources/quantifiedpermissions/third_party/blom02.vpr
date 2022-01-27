@@ -31,7 +31,9 @@ function Map__indexOfLoop(diz: Ref, hash: Int, ignoreDeleted: Bool, cap: Int): I
   requires |diz.Map__keys| > 0
   requires |diz.Map__values| > 0
   requires |diz.Map__keys| == |diz.Map__values|
+  requires forall i: Int, j: Int :: 0 <= i && i < |diz.Map__keys| && 0 <= j && j < |diz.Map__keys| && i != j ==> diz.Map__keys[i] != diz.Map__keys[j]
   requires (forall i2: Int :: (i2 >= 0) && (i2 < |diz.Map__keys|) ==> acc(diz.Map__keys[i2].Ref__Integer_value, write))
+  requires forall i: Int, j: Int :: 0 <= i && i < |diz.Map__values| && 0 <= j && j < |diz.Map__values| && i != j ==> diz.Map__values[i] != diz.Map__values[j]
   requires (forall i3: Int :: (i3 >= 0) && (i3 < |diz.Map__values|) ==> acc(diz.Map__values[i3].Ref__Integer_value, write))
   /* previously offending requirement: */ 
   requires (forall i1: Int :: (i1 >= 0) && (i1 < |diz.Map__keys|) ==> (diz.Map__keys[i1].Ref__Integer_value == Map__EMPTY()) || (diz.Map__keys[i1].Ref__Integer_value == Map__DELETED()) || (diz.Map__keys[i1].Ref__Integer_value >= 0))

@@ -11,12 +11,15 @@ field Integer_value: Int
 method loop_main_54(this: Ref, len: Int, ar: Seq[Ref], br: Seq[Ref], cr: Seq[Ref])
   requires 0 < len /* Added after fixing issue #99  */
   requires |ar| == len
+  requires forall i: Int, j: Int :: (i in [0..len) && j in [0..len) && i != j) ==> ar[i] != ar[j]
   requires (forall i: Int :: (i in [0..len)) ==> acc(ar[i].Integer_value, 1 / 2))
   requires acc(ar[0].Integer_value, 1 / 2) /* Failed after fixing issue #99 */
   requires (forall i: Int :: (i in [0 + 1..|ar| - 1 + 1)) ==> acc(ar[i].Integer_value, 1 / 2))
   requires |br| == len
+  requires forall i: Int, j: Int :: (i in [0..len) && j in [0..len) && i != j) ==> br[i] != br[j]
   requires (forall i: Int :: (i in [0..len)) ==> acc(br[i].Integer_value, 1 / 2))
   requires |cr| == len
+  requires forall i: Int, j: Int :: (i in [0..len) && j in [0..len) && i != j) ==> cr[i] != cr[j]
   requires (forall i: Int :: (i in [0..len)) ==> acc(cr[i].Integer_value, write))
   ensures |ar| == len
   ensures (forall i: Int :: (i in [0..len)) ==> acc(ar[i].Integer_value, write))
@@ -72,10 +75,13 @@ method loop_body_54(this: Ref, len: Int, ar: Seq[Ref], br: Seq[Ref], i: Int, cr:
 
 method zero_array(this: Ref, ar: Seq[Ref], br: Seq[Ref], cr: Seq[Ref], len: Int) returns (sys__result: Int)
   requires |ar| == len
+  requires forall i: Int, j: Int :: i in [0..len) && j in [0..len) && i != j ==> ar[i] != ar[j]
   requires (forall i: Int :: (i in [0..len)) ==> acc(ar[i].Integer_value, write))
   requires |br| == len
+  requires forall i: Int, j: Int :: i in [0..len) && j in [0..len) && i != j ==> br[i] != br[j]
   requires (forall i: Int :: (i in [0..len)) ==> acc(br[i].Integer_value, 1 / 2))
   requires |cr| == len
+  requires forall i: Int, j: Int :: i in [0..len) && j in [0..len) && i != j ==> cr[i] != cr[j]
   requires (forall i: Int :: (i in [0..len)) ==> acc(cr[i].Integer_value, write))
   ensures |ar| == len
   ensures (forall i: Int :: (i in [0..len)) ==> acc(ar[i].Integer_value, write))
