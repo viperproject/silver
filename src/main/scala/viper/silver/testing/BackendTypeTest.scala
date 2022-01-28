@@ -1,7 +1,7 @@
 package viper.silver.testing
 
 import org.scalatest.{BeforeAndAfterAllConfigMap, ConfigMap, FunSuite, Matchers}
-import viper.silver.ast.{AnySetContains, And, Assert, BackendFuncApp, EqCmp, Exhale, Exp, Field, FieldAccess, FieldAccessPredicate, FieldAssign, Fold, FullPerm, Function, Inhale, IntLit, LocalVarAssign, LocalVarDecl, Method, Not, Predicate, PredicateAccess, PredicateAccessPredicate, Program, Ref, Result, Seqn, SetType, Stmt}
+import viper.silver.ast.{And, AnySetContains, Assert, BackendFuncApp, EqCmp, Exhale, Exp, Field, FieldAccess, FieldAccessPredicate, FieldAssign, Fold, Forall, FullPerm, Function, Implies, Inhale, IntLit, LocalVarAssign, LocalVarDecl, Method, NeCmp, Not, Predicate, PredicateAccess, PredicateAccessPredicate, Program, Ref, Result, Seqn, SetType, Stmt}
 import viper.silver.ast.utility.{BVFactory, FloatFactory, RoundingMode}
 import viper.silver.verifier.{Failure, Success, Verifier}
 import viper.silver.verifier.errors.{AssertFailed, PostconditionViolated}
@@ -38,6 +38,22 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
     val assert = Assert(element_in_param)()
     val body = if (success) Seq(getPerm, assume, assert) else Seq(getPerm, assert)
     (wrapInProgram(body, Seq(p1_decl, p2_decl), Seq(), fields = Seq(field)), assert)
+  }
+
+  def generateFloatQPTest() : Program = {
+    val rne = RoundingMode.RNE
+    val fp = FloatFactory(24, 8, rne)
+    val fld = Field("myfield", fp.typ)()
+    val setParam = LocalVarDecl("refs", SetType(Ref))()
+    val floatParam = LocalVarDecl("val", fp.typ)()
+    val x = LocalVarDecl("x", Ref)()
+    val qpBody = Implies(AnySetContains(x.localVar, setParam.localVar)(), FieldAccessPredicate(FieldAccess(x.localVar, fld)(), FullPerm()())())()
+    val qp = Forall(Seq(x), Seq(), qpBody)()
+    val inhaleQp = Inhale(qp)()
+    val fieldInfoBody = Implies(AnySetContains(x.localVar, setParam.localVar)(), NeCmp(FieldAccess(x.localVar, fld)(), floatParam.localVar)())()
+    val fieldInfoQuant = Forall(Seq(x), Seq(), fieldInfoBody)()
+    val inhaleFieldInfo = Inhale(fieldInfoQuant)()
+    wrapInProgram(Seq(inhaleQp, inhaleFieldInfo), Seq(setParam, floatParam), Seq(), Seq(fld))
   }
 
   def generateFloatOpTest(success: Boolean) : (Program, Assert) = {
@@ -231,6 +247,12 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
 
   test("fieldTypeSuccess") {
     val (prog, _) = generateFieldTypeTest(true)
+    val res  = verifier.verify(prog)
+    assert(res == Success)
+  }
+
+  test("fieldQpTest") {
+    val prog = generateFloatQPTest()
     val res  = verifier.verify(prog)
     assert(res == Success)
   }

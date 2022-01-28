@@ -7,7 +7,7 @@
 package viper.silver.frontend
 
 import collection._
-import org.rogach.scallop.{ScallopConf, ScallopOption}
+import org.rogach.scallop.{ScallopConf, ScallopOption, singleArgConverter}
 import org.rogach.scallop.exceptions.{Help, ScallopException, Version}
 
 /**
@@ -90,13 +90,18 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     hidden = false
   )
 
-  val counterexample = opt[String]("counterexample",
+  val counterexample = opt[CounterexampleModel]("counterexample",
     descr="Return counterexample for errors. Pass 'native' for returning the native model from the backend, " +
       "'variables' for returning a model of all local Viper variables, or 'mapped' (only available on Silicon) " +
       "for returning a model with Ref variables resolved to object-like structures.",
     default = None,
-    noshort = true
-  )
+    noshort = true,
+  )(singleArgConverter({
+    case "native" => NativeModel
+    case "variables" => VariablesModel
+    case "mapped" => MappedModel
+    case i => throw new IllegalArgumentException(s"Unsupported counterexample model provided. Expected 'native', 'variables' or 'mapped' but got $i")
+  }))
 
   val terminationPlugin = opt[Boolean]("disableTerminationPlugin",
     descr = "Disable the termination plugin, which adds termination checks to functions, " +
@@ -159,3 +164,8 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
             |
             |Options:""".stripMargin)
 }
+
+trait CounterexampleModel
+case object NativeModel extends CounterexampleModel
+case object VariablesModel extends CounterexampleModel
+case object MappedModel extends CounterexampleModel
