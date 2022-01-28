@@ -1,0 +1,116 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+predicate P(x: Ref, i: Int)
+
+method test00_single() {
+  var x: Ref; var i: Int
+
+  inhale acc(P(x, i), 1/2)
+  assume acc(P(x, i), 1/2)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method test00_same_tight_first() {
+  var x: Ref; var i: Int
+
+  inhale acc(P(x, i))
+  assume acc(P(x, i), 1/3) && acc(P(x, i), 2/3)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method test00_same_tight_second() {
+  var x: Ref; var i: Int
+
+  inhale acc(P(x, i))
+  assume acc(P(x, i), 2/3) && acc(P(x, i), 1/3)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method test00_same_tight_three_left_leaning() {
+  var x: Ref; var i: Int
+
+  inhale acc(P(x, i))
+  assume (acc(P(x, i), 3/6) && acc(P(x, i), 2/6)) && acc(P(x, i), 1/6)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method test00_same_tight_three_right_leaning() {
+  var x: Ref; var i: Int
+
+  inhale acc(P(x, i))
+  assume acc(P(x, i), 3/6) && (acc(P(x, i), 2/6) && acc(P(x, i), 1/6))
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+
+
+method test01_diff() {
+  var x: Ref; var i: Int
+  var y: Ref; var j: Int
+
+  inhale acc(P(x, i))
+  assume acc(P(x, i), 1/2) && acc(P(y, j), 1/2)
+  assert x == y && i == j
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method test01_same1() {
+  var x: Ref; var i: Int
+
+  inhale acc(P(x, i), 2/3)
+  assume acc(P(x, i), 2/5) && acc(P(x, i), 3/5)
+
+  assert false // due to preceding assume
+}
+
+method test01_same2() {
+  var x: Ref; var i: Int
+
+  inhale acc(P(x, i))
+  assume acc(P(x, i), 1/2) && acc(P(x, i), 1/2)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method test02() {
+  var x: Ref; var i: Int
+  var y: Ref; var j: Int
+
+  var px: Perm; assume none < px
+  var py: Perm; assume none < py
+
+  inhale acc(P(x, i), 1/10)
+  assume acc(P(x, i), px) && acc(P(y, j), py)
+
+  assert px <= 1/10
+  assert y == x && i == j
+}
+
+method test03() {
+  var x: Ref; var i: Int
+  var y: Ref; var j: Int
+  var z: Ref; var k: Int
+
+  var px: Perm; assume none < px
+  var py: Perm; assume none < py
+  var pz: Perm; assume none < pz
+
+  inhale acc(P(x, i), 1/5) && acc(P(y, j), 1/10)
+  assume acc(P(x, i), px) && acc(P(y, j), py) && acc(P(z, k), pz)
+
+  assert (z == x && k == i) || (z == y && k == j)
+
+  if (x != y) {
+    assert px <= 1/5 && py <= 1/10
+  } else {
+    assert px <= 3/10 && py <= 3/10
+  }
+}

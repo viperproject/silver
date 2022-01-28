@@ -1,0 +1,51 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+//:: IgnoreFile(/carbon/issue/255/)
+
+field f: Int
+
+predicate p(x: Ref, y: Ref, z: Ref)
+
+define WAND(x, y, z, q)
+  acc(x.f, q) && acc(y.f, q) && acc(z.f, q) --* acc(p(x, y, z), q)
+
+define CONTAINED(x, xs, y, ys, z, zs)
+  x in xs && y in ys && z in zs
+
+method m(xs: Set[Ref], ys: Set[Ref], zs: Set[Ref],
+         q: Perm,
+         xs1: Set[Ref], xs2: Set[Ref], xs3: Set[Ref], xs4: Set[Ref], xs5: Set[Ref], xs6: Set[Ref], xs7: Set[Ref],
+         xs8: Set[Ref], xs9: Set[Ref], xs10: Set[Ref], xs11: Set[Ref],
+         ys1: Set[Ref], ys2: Set[Ref], ys3: Set[Ref], ys4: Set[Ref], ys5: Set[Ref], ys6: Set[Ref], ys7: Set[Ref],
+         ys8: Set[Ref], ys9: Set[Ref], ys10: Set[Ref], ys11: Set[Ref],
+         zs1: Set[Ref], zs2: Set[Ref], zs3: Set[Ref], zs4: Set[Ref], zs5: Set[Ref], zs6: Set[Ref], zs7: Set[Ref],
+         zs8: Set[Ref], zs9: Set[Ref], zs10: Set[Ref], zs11: Set[Ref]) {
+
+  inhale none < q
+  inhale forall x: Ref, y: Ref, z: Ref :: CONTAINED(x, xs, y, ys, z, zs) ==> WAND(x, y, z, write)
+
+  assume (forall x1: Ref, y1: Ref, z1: Ref    :: {WAND(x1, y1, z1, q)}    CONTAINED(x1, xs1, y1, ys1, z1, zs1)       ==> WAND(x1, y1, z1, q))
+      && (forall x2: Ref, y2: Ref, z2: Ref    :: {WAND(x2, y2, z2, q)}    CONTAINED(x2, xs2, y2, ys2, z2, zs2)       ==> WAND(x2, y2, z2, q))
+      && (forall x3: Ref, y3: Ref, z3: Ref    :: {WAND(x3, y3, z3, q)}    CONTAINED(x3, xs3, y3, ys3, z3, zs3)       ==> WAND(x3, y3, z3, q))
+      && (forall x4: Ref, y4: Ref, z4: Ref    :: {WAND(x4, y4, z4, q)}    CONTAINED(x4, xs4, y4, ys4, z4, zs4)       ==> WAND(x4, y4, z4, q))
+      && (forall x5: Ref, y5: Ref, z5: Ref    :: {WAND(x5, y5, z5, q)}    CONTAINED(x5, xs5, y5, ys5, z5, zs5)       ==> WAND(x5, y5, z5, q))
+      && (forall x6: Ref, y6: Ref, z6: Ref    :: {WAND(x6, y6, z6, q)}    CONTAINED(x6, xs6, y6, ys6, z6, zs6)       ==> WAND(x6, y6, z6, q))
+      && (forall x7: Ref, y7: Ref, z7: Ref    :: {WAND(x7, y7, z7, q)}    CONTAINED(x7, xs7, y7, ys7, z7, zs7)       ==> WAND(x7, y7, z7, q))
+      && (forall x8: Ref, y8: Ref, z8: Ref    :: {WAND(x8, y8, z8, q)}    CONTAINED(x8, xs8, y8, ys8, z8, zs8)       ==> WAND(x8, y8, z8, q))
+      && (forall x9: Ref, y9: Ref, z9: Ref    :: {WAND(x9, y9, z9, q)}    CONTAINED(x9, xs9, y9, ys9, z9, zs9)       ==> WAND(x9, y9, z9, q))
+      && (forall x10: Ref, y10: Ref, z10: Ref :: {WAND(x10, y10, z10, q)} CONTAINED(x10, xs10, y10, ys10, z10, zs10) ==> WAND(x10, y10, z10, q))
+      && (forall x11: Ref, y11: Ref, z11: Ref :: {WAND(x11, y11, z11, q)} CONTAINED(x11, xs11, y11, ys11, z11, zs11) ==> WAND(x11, y11, z11, q))
+
+  var a: Ref
+  var b: Ref
+  var c: Ref
+
+  assume CONTAINED(a, xs1, b, ys1, c, zs1)
+  assume CONTAINED(a, xs2, b, ys2, c, zs2)
+
+  assert WAND(a, b, c, q) && WAND(a, b, c, q)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert q == write ==> false // MS: Can we expect this to hold?
+}

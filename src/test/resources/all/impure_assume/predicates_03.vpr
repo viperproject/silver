@@ -1,0 +1,37 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+predicate P(x: Ref, i: Int)
+
+method test01(x: Ref, i: Int, y: Ref, j: Int, z: Ref, k: Int, p: Perm, q: Perm)
+  requires none <= q && none <= p;
+  requires acc(P(x, i), 1/2)
+{
+  assume acc(P(y, j), p) && acc(P(z, k), q)
+
+  assert none <= p && p <= 1/2
+  assert none <= q && q <= 1/2
+  assert y == z && j == k ==> q+p <= 1/2
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert y == z ==> none <= q && q <= p
+}
+
+method test02(x: Ref, i: Int, y: Ref, j: Int, z: Ref, k: Int, b1: Bool, b2: Bool)
+  requires acc(P(x, i))
+{
+  assume (b1 ==> acc(P(y, j))) && (b2 ==> acc(P(z, k)))
+
+  assert b1 ==> y == x
+  assert b2 ==> z == x
+  assert b1 && b2 ==> false
+}
+
+method test03(x: Ref, i: Int, y: Ref, j: Int, z: Ref, k: Int, b1: Bool, b2: Bool)
+  requires acc(P(x, i))
+{
+  assume (b1 ==> acc(P(y, j))) && (b2 ==> acc(P(z, k)))
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert b2 ==> false
+}
