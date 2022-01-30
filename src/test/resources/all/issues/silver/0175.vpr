@@ -16,7 +16,9 @@ method minimal_example(xs: Seq[Ref], m: Int, n: Int)
 
 function matrix(i: Int, j: Int): Ref
 
-method test_two() {
+method test_two()
+    requires forall i1: Int, j1: Int, i2: Int, j2: Int :: {matrix(i1, j1), matrix(i2, j2)} (i1 != i2 || j1 != j2) ==> matrix(i1, j1) != matrix(i2, j2)
+{
     inhale forall i: Int :: (forall j: Int :: acc(matrix(i, j).val))
     matrix(3,4).val := 42
 }

@@ -5,6 +5,7 @@ field f: Int
 
 method test01(xs: Set[Ref], ys: Seq[Ref])
   requires forall x: Ref :: x in xs ==> acc(x.f)
+  requires forall i: Int, j: Int :: 0 <= i && i < j && j < |ys| ==> ys[i] != ys[j]
   requires forall i: Int :: i in [0..|ys|) ==> acc(ys[i].f)
 {}
 
@@ -16,15 +17,18 @@ method test01(xs: Set[Ref], ys: Seq[Ref])
 //{}
 
 method test03(xs: Seq[Ref])
+  requires forall i: Int, j: Int :: 0 <= i && i < j && j < |xs| ==> xs[i] != xs[j]
   requires forall i: Int :: 0 <= i && i < |xs| ==> acc(xs[i].f)
 {}
 
 method test04(xs: Seq[Ref], n: Int)
   requires 0 <= n && n <= |xs|
+  requires forall i: Int, j: Int :: 0 <= i && i < j && j < n ==> xs[i] != xs[j]
   requires forall i: Int :: i in [0..n) ==> acc(xs[i].f)
 {}
 
 method test05(xs: Seq[Ref])
+  requires forall i: Int, j: Int :: 0 <= i && i < j && j < |xs| ==> xs[i] != xs[j]
   requires forall i: Int :: i in [1..|xs| + 1) ==> acc(xs[i - 1].f)
 {}
 

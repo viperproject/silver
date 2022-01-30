@@ -35,6 +35,7 @@ method m04(S1: Seq[Ref], S2: Set[Ref], x: Ref)
 {}
 
 method repro(s:Seq[Ref])
+  requires forall i: Int, j: Int :: 0 <= i && i < j && j < |s| ==> s[i] != s[j]
 {
   inhale (forall x: Int :: x in [0..|s|) ==> acc(s[x].f))
   inhale (forall x: Int :: (0 <= x) && (x < |s|) ==> (s[x].f == 0))

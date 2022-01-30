@@ -1,5 +1,9 @@
 domain Array[T] {
 	function loc(a: Array[T], i: Int): T
+
+	axiom loc_inject {
+	    forall a: Array[T], i: Int, j: Int :: { loc(a, i), loc(a, j) } i >= 0 && j >= 0 && i != j ==> loc(a, i) != loc(a, j)
+    }
 }
 
 field val: Bool
