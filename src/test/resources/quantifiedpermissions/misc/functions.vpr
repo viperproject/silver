@@ -4,11 +4,13 @@
 field f: Int
 
 function fun01(xs: Seq[Ref]): Int
+  requires forall i: Int, j: Int :: i >= 0 && i < |xs| && j >= 0 && j < |xs| && i != j ==> xs[i] != xs[j]
   requires forall i: Int :: 0 <= i && i < |xs| ==> acc(xs[i].f)
   requires |xs| > 3
 { xs[0].f }
 
 method test01(xs: Seq[Ref]) {
+  inhale forall i: Int, j: Int :: i >= 0 && i < |xs| && j >= 0 && j < |xs| && i != j ==> xs[i] != xs[j]
   inhale forall i: Int :: 0 <= i && i < |xs| ==> acc(xs[i].f)
   inhale |xs| > 3
 
@@ -17,11 +19,13 @@ method test01(xs: Seq[Ref]) {
 }
 
 function fun02(xs: Seq[Ref]): Int
+  requires forall i: Int, j: Int :: i >= 0 && i < |xs| && j >= 0 && j < |xs| && i != j ==> xs[i] != xs[j]
   requires forall i: Int :: 0 <= i && i < |xs| ==> acc(xs[i].f)
   requires |xs| > 3
 { xs[0].f + xs[1].f }
 
 method test02(xs: Seq[Ref]) {
+  inhale forall i: Int, j: Int :: i >= 0 && i < |xs| && j >= 0 && j < |xs| && i != j ==> xs[i] != xs[j]
   inhale forall i: Int :: 0 <= i && i < |xs| ==> acc(xs[i].f)
   inhale |xs| > 3
 
@@ -39,6 +43,7 @@ method test02(xs: Seq[Ref]) {
 
 function fun03(xs: Seq[Ref], i: Int): Int
   requires |xs| > 6
+  requires forall k: Int, j: Int :: k >= 0 && k < |xs| && j >= 0 && j < |xs| && k != j ==> xs[k] != xs[j]
   requires forall j: Int :: 0 <= j && j < 3 ==> acc(xs[j].f)
   requires forall j: Int :: 3 <= j && j < |xs| ==> acc(xs[j].f)
   requires 0 <= i && i < |xs|
@@ -46,6 +51,7 @@ function fun03(xs: Seq[Ref], i: Int): Int
 
 method test03(xs: Seq[Ref]) {
   inhale |xs| > 6
+  inhale forall k: Int, j: Int :: k >= 0 && k < |xs| && j >= 0 && j < |xs| && k != j ==> xs[k] != xs[j]
   inhale forall j: Int :: 0 <= j && j < 3 ==> acc(xs[j].f)
   inhale forall j: Int :: 3 <= j && j < |xs| ==> acc(xs[j].f)
 
@@ -56,12 +62,14 @@ method test03(xs: Seq[Ref]) {
 predicate P02(xs: Seq[Ref], n: Int) {
      |xs| == n
   && 3 <= n
+  && (forall k: Int, j: Int :: k >= 0 && k < |xs| && j >= 0 && j < |xs| && k != j ==> xs[k] != xs[j])
   && (forall j: Int :: 0 <= j && j < 3 ==> acc(xs[j].f))
   && (forall j: Int :: 3 <= j && j < n ==> acc(xs[j].f))
 }
 
 method test06a(xs: Seq[Ref], n: Int) {
   inhale |xs| == n && 6 < n
+  inhale (forall k: Int, j: Int :: k >= 0 && k < |xs| && j >= 0 && j < |xs| && k != j ==> xs[k] != xs[j])
   inhale (forall j: Int :: 0 <= j && j < 3 ==> acc(xs[j].f))
   inhale (forall j: Int :: 3 <= j && j < n ==> acc(xs[j].f))
 
@@ -121,6 +129,7 @@ predicate P01(x: Ref, n: Int) {
      acc(x.ss)
   && |x.ss| == n
   && 3 <= n
+  && (forall k: Int, j: Int :: k >= 0 && k < |x.ss| && j >= 0 && j < |x.ss| && k != j ==> x.ss[k] != x.ss[j])
   && (forall j: Int :: 0 <= j && j < 3 ==> acc(x.ss[j].f))
   && (forall j: Int :: 3 <= j && j < n ==> acc(x.ss[j].f))
 //  && (forall j: Int :: 0 <= j && j < n - 1 ==> x.ss[j].f < x.ss[j + 1].f)
@@ -156,6 +165,7 @@ method test04(x: Ref, n: Int) {
 }
 
 function fun07(xs: Seq[Ref], j: Int): Int
+  requires forall k: Int, i: Int :: k >= 0 && k < |xs| && i >= 0 && i < |xs| && k != i ==> xs[k] != xs[i]
   requires forall i: Int :: 0 <= i && i < |xs| ==> acc(xs[i].f)
   ensures result >= 0
 {
@@ -165,12 +175,14 @@ function fun07(xs: Seq[Ref], j: Int): Int
 }
 
 function fun08(xs: Seq[Ref], i: Int): Int
+  requires forall k: Int, j: Int :: k >= 0 && k < |xs| && j >= 0 && j < |xs| && k != j ==> xs[k] != xs[j]
   requires forall j: Int :: 0 <= j && j < |xs| ==> acc(xs[j].f)
   requires 0 <= i && i < |xs|
   ensures result > xs[i].f
 { xs[i].f + 1 }
 
 method test07(xs: Seq[Ref]) {
+  inhale forall k: Int, j: Int :: k >= 0 && k < |xs| && j >= 0 && j < |xs| && k != j ==> xs[k] != xs[j]
   inhale forall i: Int :: 0 <= i && i < |xs| ==> acc(xs[i].f)
   inhale |xs| > 3
 

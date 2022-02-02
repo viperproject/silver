@@ -8,9 +8,12 @@ method init(this:Ref, i:Int)
 requires acc(this.array, write)
 ensures acc(this.array, wildcard)
 ensures |this.array| == i
+ensures forall k: Int, j: Int :: k in [0..i) && j in [0..i) && k != j ==> this.array[k] != this.array[j]
 ensures forall k:Int :: k in [0..i) ==> acc(this.array[k].value, write)
 {
-    inhale |this.array| == i && forall k:Int :: k in [0..i) ==> acc(this.array[k].value, write)
+    inhale |this.array| == i
+      && (forall k: Int, j: Int :: k in [0..i) && j in [0..i) && k != j ==> this.array[k] != this.array[j])
+      && forall k:Int :: k in [0..i) ==> acc(this.array[k].value, write)
 }
 
 method set(this:Ref, i:Int, val:Int)

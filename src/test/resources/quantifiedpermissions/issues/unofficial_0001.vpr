@@ -13,6 +13,7 @@ predicate P(x: Ref) { acc(x.f) }
 method test(x: Ref, zs: Seq[Ref]) {
   inhale acc(x.f)
   inhale 0 <= x.f && x.f < |zs|
+  assume forall i: Int, j: Int :: i >= 0 && i < |zs| && j >= 0 && j < |zs| && i != j ==> zs[i] != zs[j]
   inhale forall i: Int :: 0 <= i && i < x.f ==> acc(zs[i].g)
 
   fold acc(P(x), wildcard)
