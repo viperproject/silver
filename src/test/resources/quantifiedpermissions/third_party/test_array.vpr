@@ -6,6 +6,7 @@ field Ref__Integer_value: Int
 method array__main(diz: Ref, current_thread_id: Int, x: Seq[Ref])
   requires diz != null
   requires current_thread_id >= 0
+  requires forall j: Int, k: Int :: 0 <= j && j < |x| && 0 <= k && k < |x| && j != k ==> x[j] != x[k]
   requires (forall k: Int :: (0 <= k) && (k < |x|) ==> acc(x[k].Ref__Integer_value, write))
   ensures (forall k: Int :: (0 <= k) && (k < |x|) ==> acc(x[k].Ref__Integer_value, write))
   ensures (forall k: Int :: (0 <= k) && (k < |x|) ==> (x[k].Ref__Integer_value == 0))
