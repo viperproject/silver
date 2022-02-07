@@ -13,6 +13,7 @@ function prm(i: Int): Perm
 method test01(xs: Seq[Ref], n: Int) {
   inhale 0 <= n && n <= |xs|
 
+  inhale forall ix: Int, jx: Int :: ix >= 0 && ix < n && jx >= 0 && jx < n && ix != jx ==> rcvr(ix,ix) != rcvr(jx,jx) // x => rcvr(x,x) is injective
   inhale forall i: Int, j: Int ::
     0 <= i && i < n && j == i ==> acc(rcvr(i, j).f, prm(i))
 
@@ -27,6 +28,7 @@ method test01(xs: Seq[Ref], n: Int) {
 method test01_fail(xs: Seq[Ref], n: Int) {
   inhale 0 <= n && n <= |xs|
 
+  inhale forall ix: Int, jx: Int :: ix >= 0 && ix < n && jx >= 0 && jx < n && ix != jx ==> rcvr(ix,ix) != rcvr(jx,jx) // x => rcvr(x,x) is injective
   inhale forall i: Int, j: Int ::
     0 <= i && i < n && j == i ==> acc(rcvr(i, j).f, prm(i))
 
@@ -45,6 +47,7 @@ method test01_fail(xs: Seq[Ref], n: Int) {
 method test02(xs: Seq[Ref], n: Int) {
   inhale 0 <= n && n <= |xs|
 
+  inhale forall ix: Int, jx: Int :: ix >= 0 && ix < n && jx >= 0 && jx < n && ix != jx ==> rcvr(ix,ix+1) != rcvr(jx,jx+1) // x => rcvr(x,x+1) is injective
   inhale forall i: Int, j: Int ::
     0 <= i && i < n && j == i + 1 ==> acc(rcvr(i, j).f, prm(i))
 

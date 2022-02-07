@@ -9,11 +9,13 @@ predicate p(r:Ref, i:Int)
 { acc(r.f) && (r.f == i)}
 
 method m(xs: Seq[Ref])
+requires forall ix: Ref, jx: Ref :: ix in xs && jx in xs && ix != jx ==> e(ix) != e(jx) // e is injective
 requires forall x:Ref :: x in xs ==> acc(e(x).f)
 ensures forall x:Ref :: x in xs ==> acc(e(x).f)
 {}
 
 method m2(xs: Seq[Ref], i:Int)
+requires forall ix: Ref, jx: Ref :: ix in xs && jx in xs && ix != jx ==> e(ix) != e(jx) // e is injective
 requires forall x:Ref :: x in xs ==> acc(p(e(x), i+1))
 ensures forall x:Ref :: x in xs ==> acc(p(e(x), i+1))
 {}
