@@ -7,7 +7,9 @@ field nodes: Seq[Ref]
 
 predicate List(this: Ref)
 {
-	acc(this.nodes) && (forall i: Int :: 0 <= i && i < |this.nodes| ==> acc(this.nodes[i].val))
+	acc(this.nodes) 
+	&& (forall i: Int, j: Int :: i >= 0 && i < |this.nodes| && j >= 0 && j < |this.nodes| && i != j ==> this.nodes[i] != this.nodes[j])
+	&& (forall i: Int :: 0 <= i && i < |this.nodes| ==> acc(this.nodes[i].val))
 	 && (forall i: Int :: 0 <= i && i < |this.nodes| ==> acc(this.nodes[i].next))
 	 && (forall i: Int :: 0 <= i && i < |this.nodes| ==>
 	 	    (i < |this.nodes| - 1 ? this.nodes[i].next == this.nodes[i+1] : this.nodes[i].next == null))

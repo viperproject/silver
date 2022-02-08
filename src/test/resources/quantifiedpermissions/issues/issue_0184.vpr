@@ -34,6 +34,7 @@ method ArrayTest__m(diz: Ref, current_thread_id: Int)
   requires forall i1: Int, i2: Int :: i1 in [0..|diz.ArrayTest__x|) && i2 in [0..|diz.ArrayTest__x|) && i1 != i2 ==> diz.ArrayTest__x[i1] != diz.ArrayTest__x[i2]
   requires (forall i: Int :: (0 <= i) && (i < |diz.ArrayTest__x|) ==> acc(diz.ArrayTest__x[i].Ref__Integer_value, 1 / 2))
   requires |diz.ArrayTest__twin.ArrayTest__x| > 10
+  requires forall i: Int, j: Int :: i >= 0 && i < |diz.ArrayTest__twin.ArrayTest__x| && j >= 0 && j < |diz.ArrayTest__twin.ArrayTest__x| && i != j ==> diz.ArrayTest__twin.ArrayTest__x[i] != diz.ArrayTest__twin.ArrayTest__x[j]
   requires (forall i: Int :: (0 <= i) && (i < |diz.ArrayTest__twin.ArrayTest__x|) ==> acc(diz.ArrayTest__twin.ArrayTest__x[i].Ref__Integer_value, 1 / 2))
 {
   var tmp__2: Int

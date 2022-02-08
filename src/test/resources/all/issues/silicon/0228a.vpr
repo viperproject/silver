@@ -6,6 +6,7 @@ method ok(self$1: Ref, len: Int, rd$1: Perm) returns (res$1: Ref)
   requires len > 0
   requires acc(valid__Array(self$1), rd$1 / 2)
   requires forall j: Int :: 0 <= j && j < len ==> acc(loc(unfolding acc(valid__Array(self$1), rd$1 / 2) in self$1.Array__ptr, j).pval)
+  //:: ExpectedOutput(not.wellformed:receiver.not.injective)
   requires forall j: Int :: 0 <= j && j < len ==> acc(loc(unfolding acc(valid__Array(self$1), rd$1 / 2) in self$1.Array__ptr, j).pval.Int__v)
 {
 }
@@ -14,6 +15,7 @@ method not_ok(self$1: Ref, rd$1: Perm) returns (res$1: Ref)
   requires none < rd$1 && rd$1 < write
   requires acc(valid__Array(self$1), rd$1 / 2)
   requires forall j: Int :: 0 <= j && j < (unfolding acc(valid__Array(self$1), rd$1 / 2) in self$1.Array__len) ==> acc(loc(unfolding acc(valid__Array(self$1), rd$1 / 2) in self$1.Array__ptr, j).pval)
+  //:: ExpectedOutput(not.wellformed:receiver.not.injective)
   requires forall j: Int :: 0 <= j && j < (unfolding acc(valid__Array(self$1), rd$1 / 2) in self$1.Array__len) ==> acc(loc(unfolding acc(valid__Array(self$1), rd$1 / 2) in self$1.Array__ptr, j).pval.Int__v)
 {
 }
@@ -31,5 +33,9 @@ field Int__v: Int
 
 domain Ptr {
   function loc(a: Ptr, i: Int): Ref
+axiom loc_inject {
+   forall a: Ptr, i: Int, j: Int :: { loc(a, i), loc(a, j) } i >= 0 && j >= 0 && i != j ==> loc(a, i) != loc(a, j)
+ }
+
 }
 field pval: Ref
