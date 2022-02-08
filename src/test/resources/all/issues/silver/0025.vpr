@@ -4,12 +4,12 @@
 field f: Int
 
 method test01(this: Ref)
-  //:: ExpectedOutput(assert.failed:receiver.not.injective)
+  //:: ExpectedOutput(not.wellformed:receiver.not.injective)
   requires forall x: Int :: (x + 1 > 4 ==> x > 3)
            && acc(this.f, write)
 
 method test02(this: Ref)
-  //:: ExpectedOutput(assert.failed:receiver.not.injective)
+  //:: ExpectedOutput(not.wellformed:receiver.not.injective)
   requires forall x: Int :: (x + 1 > 4 ==> x > 3)
            && acc(this.f, write)
            && forall y:Int :: (y + 1 > 4 ==> y > 3)
