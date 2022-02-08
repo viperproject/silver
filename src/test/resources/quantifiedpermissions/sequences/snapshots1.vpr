@@ -5,11 +5,13 @@ field f: Int
 
 function fun1(xs: Seq[Ref]): Int
   requires 5 < |xs|
+  requires forall i1: Int, i2: Int :: i1 in [0..|xs|) && i2 in [0..|xs|) && i1 != i2 ==> xs[i1] != xs[i2]
   requires forall i: Int :: i in [0..|xs|) ==> acc(xs[i].f)
 { xs[0].f }
 
 method test1(xs: Seq[Ref])
   requires 5 < |xs|
+  requires forall i1: Int, i2: Int :: i1 in [0..|xs|) && i2 in [0..|xs|) && i1 != i2 ==> xs[i1] != xs[i2]
   requires forall i: Int :: i in [0..|xs|) ==> acc(xs[i].f)
 {
   var a: Int := fun1(xs)
@@ -25,7 +27,9 @@ method test1(xs: Seq[Ref])
 }
 
 predicate P(xs: Seq[Ref]) {
-  5 < |xs| && forall i: Int :: i in [0..|xs|) ==> acc(xs[i].f)
+     5 < |xs|
+  && (forall i1: Int, i2: Int :: i1 in [0..|xs|) && i2 in [0..|xs|) && i1 != i2 ==> xs[i1] != xs[i2])
+  && forall i: Int :: i in [0..|xs|) ==> acc(xs[i].f)
 }
 
 function fun2(xs: Seq[Ref]): Int
@@ -49,6 +53,7 @@ method test2(xs: Seq[Ref])
 
 method test3(xs: Seq[Ref])
   requires 5 < |xs|
+  requires forall i1: Int, i2: Int :: i1 in [0..|xs|) && i2 in [0..|xs|) && i1 != i2 ==> xs[i1] != xs[i2]
   requires forall i: Int :: i in [0..|xs|) ==> acc(xs[i].f)
 {
   fold acc(P(xs))

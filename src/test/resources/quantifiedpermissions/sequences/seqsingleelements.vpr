@@ -5,6 +5,7 @@ field value: Int
 
 method test01(S:Seq[Ref], a:Int)
   requires 0 <= a && a < |S|
+  requires forall j1: Int, j2: Int :: j1 in [0..|S|) && j2 in [0..|S|) && j1 != j2 ==> S[j1] != S[j2]
   requires forall j:Int :: j in [0..|S|) ==> acc(S[j].value, write)
   ensures forall j:Int :: j in [0..|S|) ==> acc(S[j].value, write)
   ensures S[a].value == 2
@@ -14,6 +15,7 @@ method test01(S:Seq[Ref], a:Int)
 
 method test02(S:Seq[Ref],a:Int, b:Int, c:Int)
   requires 0 <= a && a < b && b < c && c < |S|
+  requires forall j1: Int, j2: Int :: j1 in [0..|S|) && j2 in [0..|S|) && j1 != j2 ==> S[j1] != S[j2]
   requires forall j:Int :: j in [0..|S|) ==> acc(S[j].value, write)
   ensures forall j:Int :: j in [0..|S|) ==> acc(S[j].value, write)
   ensures S[a].value == 5
@@ -27,6 +29,7 @@ method test02(S:Seq[Ref],a:Int, b:Int, c:Int)
 
 method test03(S: Seq[Ref], k: Int, a: Int, b: Int)
   requires 0 <= k && k < |S| && 0 <= a && a < b && b < |S|
+  requires forall j1: Int, j2: Int :: j1 in [0..|S|) && j2 in [0..|S|) && j1 != j2 ==> S[j1] != S[j2]
   requires forall j:Int :: j in [0..|S|) ==> acc(S[j].value, write)
   ensures forall j:Int :: j in [0..|S|) ==> acc(S[j].value, write)
   ensures S[a].value == 5

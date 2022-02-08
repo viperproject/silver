@@ -34,6 +34,7 @@ method test02(xs: Seq[Ref])
 
 method test03(xs: Seq[Ref])
   requires 0 < |xs|
+  requires forall i1: Int, i2: Int :: i1 in [0..|xs|) && i2 in [0..|xs|) && i1 != i2 ==> xs[i1] != xs[i2]
   requires forall i: Int :: i in [0..|xs|) ==> acc(xs[i].f)
   requires xs[0].f == 5
 {

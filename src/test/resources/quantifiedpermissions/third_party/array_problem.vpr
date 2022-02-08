@@ -12,6 +12,7 @@ field other : Int
 
 function count(l : Seq[Ref],n:Int):Int
   requires 0 <= n && n <= |l| && (forall i:Int :: i in [0..|l|) ==> l[i]!=null )
+      && (forall i1:Int, i2:Int :: i1 in [0..|l|) && i2 in [0..|l|) && i1 != i2 ==> l[i1] != l[i2])
       && (forall i:Int :: i in [0..|l|) ==> acc(l[i].val,1/2) )
       && (n > 0 ==> l[n-1]!=null)
 {
@@ -20,8 +21,9 @@ function count(l : Seq[Ref],n:Int):Int
 
 method main(this:Ref)
   requires acc(this.ar,wildcard);
-  requires (forall i:Int :: i in [0..|this.ar|) ==> this.ar[i]!=null )
-  requires (forall i:Int :: i in [0..|this.ar|) ==> acc(this.ar[i].val,1/2) )
+  requires forall i:Int :: i in [0..|this.ar|) ==> this.ar[i]!=null
+  requires forall i1:Int, i2:Int :: i1 in [0..|this.ar|) && i2 in [0..|this.ar|) && i1 != i2 ==> this.ar[i1] != this.ar[i2]
+  requires forall i:Int :: i in [0..|this.ar|) ==> acc(this.ar[i].val,1/2)
   requires |this.ar|>10
   requires count(this.ar,|this.ar|)==4
   requires acc(this.ar[3].val,1/2)

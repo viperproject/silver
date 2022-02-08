@@ -5,6 +5,7 @@ field f: Int
 
 method test01(S:Seq[Ref], a:Int)
   requires 0 <= a && a < |S|
+  requires forall j1: Int, j2: Int :: j1 in [0..|S|) && j2 in [0..|S|) && j1 != j2 ==> S[j1] != S[j2]
   requires forall j:Int :: j in [0..|S|) ==> acc(S[j].f, write)
   requires forall j:Int :: j in [0..|S|) ==> S[j].f > 0
   ensures forall j:Int :: j in [0..|S|) ==> acc(S[j].f, write)
@@ -15,6 +16,7 @@ method test01(S:Seq[Ref], a:Int)
 
 method test02(S:Seq[Ref], a:Int)
   requires 0 <= a && a < |S|
+  requires forall j1: Int, j2: Int :: j1 in [0..|S|) && j2 in [0..|S|) && j1 != j2 ==> S[j1] != S[j2]
   requires forall j:Int :: j in [0..|S|) ==> acc(S[j].f, write)
   requires forall j:Int :: j in [0..|S|) ==> S[j].f > 0
   ensures forall j:Int :: j in [0..|S|) ==> acc(S[j].f, write)
@@ -26,6 +28,7 @@ method test02(S:Seq[Ref], a:Int)
 }
 
 method test03(S:Seq[Ref])
+  requires forall j1: Int, j2: Int :: j1 in [0..|S|) && j2 in [0..|S|) && j1 != j2 ==> S[j1] != S[j2]
   requires forall j:Int :: j in [0..|S|) ==> acc(S[j].f, write)
   requires forall j:Int :: j in [0..|S|-1) ==> S[j].f <= S[j+1].f
   ensures forall j:Int :: j in [0..|S|) ==> acc(S[j].f, write)
@@ -34,6 +37,7 @@ method test03(S:Seq[Ref])
 
 method test04(S:Seq[Ref], a:Int)
   requires 0 <= a && a < |S|
+  requires forall j1: Int, j2: Int :: j1 in [0..|S|) && j2 in [0..|S|) && j1 != j2 ==> S[j1] != S[j2]
   requires forall j:Int :: j in [0..|S|) ==> acc(S[j].f, write)
   requires forall j:Int :: j in [0..|S|-1) ==> S[j].f <= S[j+1].f
   ensures forall j:Int :: j in [0..|S|) ==> acc(S[j].f, write)
@@ -45,6 +49,7 @@ method test04(S:Seq[Ref], a:Int)
 
 method test05(S:Seq[Ref], a:Int)
   requires 0 <= a && a < |S|
+  requires forall j1: Int, j2: Int :: j1 in [0..|S|) && j2 in [0..|S|) && j1 != j2 ==> S[j1] != S[j2]
   requires forall j:Int :: j in [0..|S|) ==> acc(S[j].f, write)
 {
   exhale forall j:Int :: j in [0..|S|) ==> acc(S[j].f, write)
