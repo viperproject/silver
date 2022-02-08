@@ -1,5 +1,6 @@
 //:: IgnoreFile(/carbon/issue/294/)
-//:: IgnoreFile(/silicon/issue/294/)
+//:: IgnoreFile(/carbon/issue/401/)
+//:: IgnoreFile(/silicon/issue/595/)
 
 predicate P()
 
