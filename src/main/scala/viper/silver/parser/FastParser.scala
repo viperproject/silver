@@ -32,33 +32,15 @@ object FastParser {
       NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
   }
 
-  // As opposed to use Index ~ t ~ Index, this implementation is agnostic to white space specializations.
-  def FP[T](t: P[T])(implicit name: sourcecode.Name, ctx: P[_]): P[((FilePosition, FilePosition), T)] = {
-    t ~ Index map {
-      case (parsed: T, index) =>
 
-        // For some reason, LineCol(ctx.index) sometimes gives us the index of the _end_ of the parsed object (e.g.,
-        // for methods). So, to avoid this in the cases we care about, we check if the parsed object consists
-        // of several parts and, if it does, use the start position of the first part.
-        val startPos = if (parsed.isInstanceOf[Product] && parsed.asInstanceOf[Product].productArity > 0) {
-          val sigh = parsed.asInstanceOf[Product].productElement(0)
-          sigh match {
-            case w: Where if w.pos._1.isInstanceOf[HasLineColumn] => {
-              val lc = w.pos._1.asInstanceOf[HasLineColumn]
-              (lc.line, lc.column)
-            }
-            case (lc: HasLineColumn, _) => {
-              (lc.line, lc.column)
-            }
-            case _ => LineCol(ctx.index)
-          }
-        }else{
-          LineCol(ctx.index)
-        }
-        val finishPos = LineCol(index)
-
-        ((FilePosition(_file, startPos._1, startPos._2), FilePosition(_file, finishPos._1, finishPos._2)), parsed)
-    }
+  /**
+    * Function that wraps a parser to provide start and end positions if the wrapped parser succeeds.
+    */
+  def FP[T](t: => P[T])(implicit ctx: P[_]): P[((FilePosition, FilePosition), T)] = {
+    val startPos = LineCol(ctx.index)
+    val res = t
+    val finishPos = LineCol(ctx.index)
+    res.map({ parsed => ((FilePosition(_file, startPos._1, startPos._2), FilePosition(_file, finishPos._1, finishPos._2)), parsed) })
   }
 
   /* When importing a file from standard library, e.g. `include <inc.vpr>`, the file is expected
