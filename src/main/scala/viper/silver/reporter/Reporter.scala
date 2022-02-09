@@ -112,8 +112,10 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
 
       case ExceptionReport(e) =>
         /** Theoretically, we may encounter an exceptional message that has
-          * not yet been reported via AbortedExceptionally. */
+          * not yet been reported via AbortedExceptionally. This can happen
+          * if we encounter exeptions in e.g. the parser. */
         println( s"Verification aborted exceptionally: ${e.toString}" )
+        e.printStackTrace(System.out);
         Option(e.getCause) match {
           case Some(cause) => println( s"  Cause: ${cause.toString}" )
           case None =>

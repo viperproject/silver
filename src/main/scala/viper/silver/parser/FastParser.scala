@@ -38,7 +38,7 @@ object FastParser {
     */
   def FP[T](t: => P[T])(implicit ctx: P[_]): P[((FilePosition, FilePosition), T)] = {
     val startPos = LineCol(ctx.index)
-    val res = t
+    val res: P[T] = t
     val finishPos = LineCol(ctx.index)
     res.map({ parsed => ((FilePosition(_file, startPos._1, startPos._2), FilePosition(_file, finishPos._1, finishPos._2)), parsed) })
   }
