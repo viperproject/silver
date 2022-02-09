@@ -1,11 +1,12 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
+//:: IgnoreFile(/carbon/issue/403/)
 
 field f: Int
 
 method test01(S:Seq[Ref], a:Int)
   requires 0 <= a && a < |S|
-  requires forall j1: Int, j2: Int :: j1 in [0..|S|) && j2 in [0..|S|) && j1 != j2 ==> S[j1] != S[j2]
+  requires forall j1: Int, j2: Int :: {j1 in [0..|S|), j2 in [0..|S|) } j1 in [0..|S|) && j2 in [0..|S|) && j1 != j2 ==> S[j1] != S[j2]
   requires forall j:Int :: j in [0..|S|) ==> acc(S[j].f, write)
   requires forall j:Int :: j in [0..|S|) ==> S[j].f > 0
   ensures forall j:Int :: j in [0..|S|) ==> acc(S[j].f, write)
@@ -14,6 +15,8 @@ method test01(S:Seq[Ref], a:Int)
   S[a].f := 2
 }
 
+
+/*
 method test02(S:Seq[Ref], a:Int)
   requires 0 <= a && a < |S|
   requires forall j1: Int, j2: Int :: j1 in [0..|S|) && j2 in [0..|S|) && j1 != j2 ==> S[j1] != S[j2]
@@ -34,10 +37,11 @@ method test03(S:Seq[Ref])
   ensures forall j:Int :: j in [0..|S|) ==> acc(S[j].f, write)
   ensures forall j:Int :: j in [0..|S|-1) ==> S[j].f <= S[j+1].f
 {}
+*/
 
 method test04(S:Seq[Ref], a:Int)
   requires 0 <= a && a < |S|
-  requires forall j1: Int, j2: Int :: j1 in [0..|S|) && j2 in [0..|S|) && j1 != j2 ==> S[j1] != S[j2]
+  requires forall j1: Int, j2: Int :: {S[j1], S[j2]} j1 in [0..|S|) && j2 in [0..|S|) && j1 != j2 ==> S[j1] != S[j2]
   requires forall j:Int :: j in [0..|S|) ==> acc(S[j].f, write)
   requires forall j:Int :: j in [0..|S|-1) ==> S[j].f <= S[j+1].f
   ensures forall j:Int :: j in [0..|S|) ==> acc(S[j].f, write)
@@ -45,8 +49,10 @@ method test04(S:Seq[Ref], a:Int)
   ensures forall j:Int :: j in [0..|S|-1) ==> S[j].f <= S[j+1].f
 {
   S[a].f := 5
+  assert forall j:Int :: j in [0..|S|-1) ==> j in [0..|S|)
 }
 
+/*
 method test05(S:Seq[Ref], a:Int)
   requires 0 <= a && a < |S|
   requires forall j1: Int, j2: Int :: j1 in [0..|S|) && j2 in [0..|S|) && j1 != j2 ==> S[j1] != S[j2]
@@ -56,3 +62,4 @@ method test05(S:Seq[Ref], a:Int)
   //:: ExpectedOutput(exhale.failed:insufficient.permission)
   exhale forall j:Int :: j in [0..|S|) ==> acc(S[j].f, write)
 }
+*/

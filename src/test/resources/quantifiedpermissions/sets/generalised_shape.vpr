@@ -71,6 +71,7 @@ method test11(x1: Ref, x2: Ref, x3: Ref, x4: Ref, x5: Ref, x6: Ref)
   requires acc(x6.g) && acc(x6.g.f)
 {
   //:: ExpectedOutput(call.failed:receiver.not.injective)
+  //:: MissingOutput(call.failed:receiver.not.injective, /carbon/issue/404/)
   test10(x1, x6)
   test10(x2, x5)
   test10(x3, x4)
