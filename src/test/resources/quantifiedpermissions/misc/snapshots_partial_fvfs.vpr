@@ -5,11 +5,13 @@ field f: Int
 
 predicate P(xs: Seq[Ref]) {
      3 < |xs|
+  && (forall i: Int, j: Int :: i in [0..|xs|) && j in [0..|xs|) && i != j ==> xs[i] != xs[j])
   && forall i: Int :: 0 <= i && i < 3 ==> acc(xs[i].f)
 }
 
 method test(xs: Seq[Ref])
   requires 6 < |xs|
+  requires forall i: Int, j: Int :: i in [0..|xs|) && j in [0..|xs|) && i != j ==> xs[i] != xs[j]
   requires forall i: Int :: 0 <= i && i < 3 ==> acc(xs[i].f)
   requires forall i: Int :: 3 <= i && i < 6 ==> acc(xs[i].f)
 {

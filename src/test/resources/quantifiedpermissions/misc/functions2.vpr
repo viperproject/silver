@@ -23,13 +23,17 @@ label pre
 }
 
 function fun02(xs: Seq[Ref], ys: Seq[Ref]): Bool
+  requires forall i: Int, j: Int :: i >= 0 && i < |xs| && j >= 0 && j < |xs| && i != j ==> xs[i] != xs[j]
   requires forall i: Int :: 0 <= i && i < |xs| ==> acc(xs[i].f)
+  requires forall i: Int, j: Int :: i >= 0 && i < |ys| && j >= 0 && j < |ys| && i != j ==> ys[i] != ys[j]
   requires forall i: Int :: 0 <= i && i < |ys| ==> acc(ys[i].f)
   requires 10 < |xs| && |xs| == |ys|
 { xs[0].f == ys[0].f }
 
 method test02(xs: Seq[Ref], ys: Seq[Ref]) {
+  inhale forall i: Int, j: Int :: i >= 0 && i < |xs| && j >= 0 && j < |xs| && i != j ==> xs[i] != xs[j]
   inhale forall i: Int :: 0 <= i && i < |xs| ==> acc(xs[i].f)
+  inhale forall i: Int, j: Int :: i >= 0 && i < |ys| && j >= 0 && j < |ys| && i != j ==> ys[i] != ys[j]
   inhale forall i: Int :: 0 <= i && i < |ys| ==> acc(ys[i].f)
   inhale 10 < |xs| && |xs| == |ys|
 

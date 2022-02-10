@@ -7,6 +7,10 @@ domain VCTArray[CT] {
   axiom len_nonneg {
     (forall a: VCTArray[CT] :: { alen(a) } alen(a) >= 0)
   }
+
+  axiom loc_inject {
+    forall a: VCTArray[CT], i: Int, j: Int :: { loc(a, i), loc(a, j) } i >= 0 && j >= 0 && i < alen(a) && j < alen(a) && i != j ==> loc(a, i) != loc(a, j)
+  }
 }
 
 field Integer__item: Int

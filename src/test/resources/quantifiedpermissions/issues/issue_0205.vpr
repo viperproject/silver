@@ -49,6 +49,7 @@ method test02(xs: Seq[Ref], i1: Int, i2: Int, x: Ref)
   requires 0 <= i1 && i1 < |xs|
   requires 0 <= i2 && i2 < |xs|
   requires i1 != i2
+  requires forall j1: Int, j2: Int :: j1 in [0..|xs|) && j2 in [0..|xs|) && j1 != j2 ==> xs[j1] != xs[j2]
   requires forall j: Int :: 0 <= j && j < |xs| ==> acc(xs[j].f, write)
   requires acc(x.elems) && x.elems == xs
 {
@@ -72,6 +73,7 @@ method test03(xs: Seq[Ref], i1: Int, i2: Int, x: Ref)
   requires 0 <= i1 && i1 < |xs|
   requires 0 <= i2 && i2 < |xs|
   requires i1 != i2
+  requires forall j1: Int, j2: Int :: j1 in [0..|xs|) && j2 in [0..|xs|) && j1 != j2 ==> xs[j1] != xs[j2]
   requires forall j: Int :: 0 <= j && j < |xs| ==> acc(xs[j].f, write)
   requires acc(x.elems) && x.elems == xs
 {
@@ -91,6 +93,7 @@ method test04(xs: Seq[Ref], i1: Int, i2: Int, x: Ref)
   requires 0 <= i1 && i1 < |xs|
   requires 0 <= i2 && i2 < |xs|
   requires i1 != i2
+  requires forall j1: Int, j2: Int :: j1 in [0..|xs|) && j2 in [0..|xs|) && j1 != j2 ==> xs[j1] != xs[j2]
   requires forall j: Int :: 0 <= j && j < |xs| ==> acc(xs[j].f, write)
   requires acc(x.elems) && x.elems == xs
 {
@@ -110,6 +113,7 @@ method test05(xs: Seq[Ref], i1: Int, i2: Int, x: Ref)
   requires 0 <= i1 && i1 < |xs|
   requires 0 <= i2 && i2 < |xs|
   requires i1 != i2
+  requires forall j1: Int, j2: Int :: j1 in [0..|xs|) && j2 in [0..|xs|) && j1 != j2 ==> xs[j1] != xs[j2]
   requires forall j: Int :: 0 <= j && j < |xs| ==> acc(xs[j].f, write)
   requires acc(x.elems) && x.elems == xs
 {

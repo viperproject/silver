@@ -6,6 +6,7 @@ field f: Int
 method foo(S: Seq[Ref], start: Int, end: Int, p: Perm)
   requires 0 <= start && start <= end && end <= |S|
   requires p >= none
+  requires forall i1: Int, i2: Int :: (i1 in [start..end) && i2 in [start..end) && i1 != i2) ==> S[i1] != S[i2]
   requires (forall i:Int :: i in [start..end) ==> acc(S[i].f, p))
   ensures (forall i1:Int :: i1 in [start..end) ==> acc(S[i1].f, p))
 {}
@@ -13,6 +14,7 @@ method foo(S: Seq[Ref], start: Int, end: Int, p: Perm)
 method test1(S: Seq[Ref], start: Int, end: Int, p: Perm)
   requires 0 <= start && start <= end && end <= |S|
   requires p > none
+  requires forall i1: Int, i2: Int :: (i1 in [start..end) && i2 in [start..end) && i1 != i2) ==> S[i1] != S[i2]
   requires (forall i:Int :: i in [start..end) ==> acc(S[i].f, p))
   ensures (forall i1:Int :: i1 in [start..end) ==> acc(S[i1].f, p))
 {
@@ -24,6 +26,7 @@ method test2(S: Seq[Ref], start: Int, end: Int, p: Perm)
   requires 0 <= start && start < end && end <= |S|
   requires p >= none
 {
+  inhale forall i1: Int, i2: Int :: (i1 in [start..end) && i2 in [start..end) && i1 != i2) ==> S[i1] != S[i2]
   inhale forall i: Int :: i in [start..end) ==> acc(S[i].f, p)
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert p != none

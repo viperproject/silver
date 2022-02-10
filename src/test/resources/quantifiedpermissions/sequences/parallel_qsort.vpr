@@ -5,6 +5,7 @@ field f: Int
 
 method qsort(s: Seq[Ref], start: Int, end: Int)
   requires 0 <= start && start <= end && end <= |s|
+  requires forall i: Int, j: Int :: i in [start..end) && j in [start..end) && i != j ==> s[i] != s[j]
   requires forall i: Int :: i in [start..end) ==> acc(s[i].f, write)
   ensures forall i1: Int :: i1 in [start..end) ==> acc(s[i1].f, write)
     // sorting spec omitted

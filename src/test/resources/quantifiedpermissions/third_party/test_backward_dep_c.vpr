@@ -13,6 +13,7 @@ function sum_list(i: Int, hi: Int, ar: Seq[Int]): Int
 function sum_array(i: Int, lo: Int, hi: Int, ar: Seq[Ref]): Int
   requires (0 <= lo) && (lo <= i) && (i <= hi)
   requires hi <= |ar|
+  requires forall j: Int, k: Int :: 0 <= j && j < hi && 0 <= k && k < hi && j != k ==> ar[j] != ar[k]
   requires (forall k: Int :: (lo <= k) && (k < hi) ==> acc(ar[k].Ref__Integer_value, wildcard))
 {
   (i < hi ? ar[i].Ref__Integer_value + sum_array(i + 1, lo, hi, ar) : 0)
@@ -22,6 +23,7 @@ function sum_square(i: Int, lo: Int, hi: Int, step: Int, min: Int, max: Int, ar:
   requires (0 <= lo) && (lo <= hi) && (hi <= step) && (step > 0)
   requires (0 <= min) && (min <= i) && (i <= max)
   requires max <= |ar|
+  requires forall j: Int, k: Int :: 0 <= j && j < max && 0 <= k && k < max && j != k ==> ar[j] != ar[k]
   requires (forall k: Int :: (min <= k) && (k < max) && (lo <= k % step) && (k % step < hi) ==> acc(ar[k].Ref__Integer_value, wildcard))
 {
   (i < max ? ((lo <= i % step) && (i % step < hi) ? ar[i].Ref__Integer_value : 0) + sum_square(i + 1, lo, hi, step, min, max, ar) : 0)
@@ -31,6 +33,7 @@ function count_square(i: Int, lo: Int, hi: Int, step: Int, min: Int, max: Int, a
   requires (0 <= lo) && (lo <= hi) && (hi <= step) && (step > 0)
   requires (0 <= min) && (min <= i) && (i <= max)
   requires max <= |ar|
+  requires forall j: Int, k: Int :: 0 <= j && j < max && 0 <= k && k < max && j != k ==> ar[j] != ar[k]
   requires (forall k: Int :: (min <= k) && (k < max) && (lo <= k % step) && (k % step < hi) ==> acc(ar[k].Ref__Integer_value, wildcard))
 {
   (i < max ? ((lo <= i % step) && (i % step < hi) && (ar[i].Ref__Integer_value == v) ? 1 : 0) + count_square(i + 1, lo, hi, step, min, max, ar, v) : 0)
@@ -46,6 +49,7 @@ function count_list(i: Int, hi: Int, ar: Seq[Int], v: Int): Int
 function count_array(i: Int, hi: Int, ar: Seq[Ref], v: Int): Int
   requires (0 <= i) && (i <= hi)
   requires hi <= |ar|
+  requires forall j: Int, k: Int :: 0 <= j && j < hi && 0 <= k && k < hi && j != k ==> ar[j] != ar[k]
   requires (forall k: Int :: (0 <= k) && (k < hi) ==> acc(ar[k].Ref__Integer_value, wildcard))
 {
   (i < hi ? (ar[i].Ref__Integer_value == v ? 1 : 0) + count_array(i + 1, hi, ar, v) : 0)
@@ -55,10 +59,13 @@ method Ref__loop_main_72(diz: Ref, current_thread_id: Int, len: Int, b: Seq[Ref]
   requires diz != null
   requires current_thread_id >= 0
   requires (|a| == len) && (|b| == len) && (|c| == len)
+  requires forall j: Int, k: Int :: 0 <= j && j < len && 0 <= k && k < len && j != k ==> a[j] != a[k]
   requires (forall i: Int :: (0 <= i) && (i < len) ==> acc(a[i].Ref__Integer_value, 1 / 2))
   requires (0 <= 0) && (0 < len) ==> acc(a[0].Ref__Integer_value, 1 / 2)
   requires (forall i: Int :: (1 <= i) && (i < (len - 1 < len ? len - 1 : len) + 1) ==> acc(a[i].Ref__Integer_value, 1 / 2))
+  requires forall j: Int, k: Int :: 0 <= j && j < len && 0 <= k && k < len && j != k ==> b[j] != b[k]
   requires (forall i: Int :: (0 <= i) && (i < len) ==> acc(b[i].Ref__Integer_value, 1 / 2))
+  requires forall j: Int, k: Int :: 0 <= j && j < len && 0 <= k && k < len && j != k ==> c[j] != c[k]
   requires (forall i: Int :: (0 <= i) && (i < len) ==> acc(c[i].Ref__Integer_value, write))
   requires (forall i: Int :: (0 <= i) && (i < (len - 1 < len ? len - 1 : len)) ==> (a[i + 1].Ref__Integer_value == 0))
   requires (forall i: Int :: (0 <= i) && (i < len) ==> (b[i].Ref__Integer_value == i))
@@ -166,10 +173,13 @@ method Ref__example(diz: Ref, current_thread_id: Int, a: Seq[Ref], b: Seq[Ref], 
   requires diz != null
   requires current_thread_id >= 0
   requires |a| == len
+  requires forall j: Int, k: Int :: 0 <= j && j < len && 0 <= k && k < len && j != k ==> a[j] != a[k]
   requires (forall i: Int :: (0 <= i) && (i < len) ==> acc(a[i].Ref__Integer_value, write))
   requires |b| == len
+  requires forall j: Int, k: Int :: 0 <= j && j < len && 0 <= k && k < len && j != k ==> b[j] != b[k]
   requires (forall i: Int :: (0 <= i) && (i < len) ==> acc(b[i].Ref__Integer_value, 1 / 2))
   requires |c| == len
+  requires forall j: Int, k: Int :: 0 <= j && j < len && 0 <= k && k < len && j != k ==> c[j] != c[k]
   requires (forall i: Int :: (0 <= i) && (i < len) ==> acc(c[i].Ref__Integer_value, write))
   requires (forall tid: Int :: (0 <= tid) && (tid < len) ==> (a[tid].Ref__Integer_value == 0))
   requires (forall tid: Int :: (0 <= tid) && (tid < len) ==> (b[tid].Ref__Integer_value == tid))

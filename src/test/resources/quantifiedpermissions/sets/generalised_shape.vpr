@@ -50,7 +50,7 @@ method test10(x1: Ref, x2: Ref)
   requires acc(x1.g) && acc(x1.g.f, wildcard)
   requires acc(x2.g) && acc(x2.g.f, wildcard)
   ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g, wildcard)
-  //:: ExpectedOutput(postcondition.violated:receiver.not.injective)
+  //:: ExpectedOutput(not.wellformed:receiver.not.injective)
   ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g.f, wildcard)
 {}
 
@@ -70,6 +70,8 @@ method test11(x1: Ref, x2: Ref, x3: Ref, x4: Ref, x5: Ref, x6: Ref)
   requires acc(x5.g) && acc(x5.g.f)
   requires acc(x6.g) && acc(x6.g.f)
 {
+  //:: ExpectedOutput(call.failed:receiver.not.injective)
+  //:: MissingOutput(call.failed:receiver.not.injective, /carbon/issue/404/)
   test10(x1, x6)
   test10(x2, x5)
   test10(x3, x4)
@@ -77,6 +79,7 @@ method test11(x1: Ref, x2: Ref, x3: Ref, x4: Ref, x5: Ref, x6: Ref)
 
 method test06(xs: Set[Ref], y1: Ref, y2: Ref, y3: Ref)
   requires forall x: Ref :: x in xs ==> acc(x.g)
+  requires forall x1: Ref, x2: Ref :: x1 in xs && x2 in xs && x1 != x2 ==> x1.g != x2.g
   requires forall x: Ref :: x in xs ==> acc(x.g.f)
   requires y1 in xs && y2 in xs && y3 in xs
   requires y1 != y2
@@ -110,6 +113,9 @@ method test06(xs: Set[Ref], y1: Ref, y2: Ref, y3: Ref)
 predicate P(xs: Set[Ref], ys: Set[Ref]) {
      (forall x: Ref :: x in xs && !(x in ys) ==> acc(x.f))
   && (forall x: Ref :: x in xs && !(x in ys) && x.f != 0 ==> acc(x.g))
+  && (forall x1: Ref, x2: Ref ::
+         x1 in xs && !(x1 in ys) && x1.f != 0 && !(x1.g in xs)
+      && x2 in xs && !(x2 in ys) && x2.f != 0 && !(x2.g in xs) && x1 != x2 ==> x1.g != x2.g)
   && (forall x: Ref :: x in xs && !(x in ys) && x.f != 0 && !(x.g in xs) ==> acc(x.g.f))
 }
 

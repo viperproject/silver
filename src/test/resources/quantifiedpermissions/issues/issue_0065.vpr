@@ -6,6 +6,7 @@ field f: Int
 method m(S: Seq[Ref])
   requires |S| == 2
   requires S[0] == S[1]
+  requires forall i: Int, j: Int :: 0 <= i && i < j && j < |S| ==> S[i] != S[j]
   requires forall i: Int :: i in [0..2) ==> acc(S[i].f, 1/2)
   ensures acc(S[0].f)
 {

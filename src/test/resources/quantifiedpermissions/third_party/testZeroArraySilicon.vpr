@@ -6,6 +6,7 @@ field Ref__Integer_value: Int
 method ZeroArray__zero_array(diz: Ref, current_thread_id: Int, ar: Seq[Ref])
   requires diz != null
   requires current_thread_id >= 0
+  requires forall j: Int, k: Int :: 0 <= j && j < |ar| && 0 <= k && k < |ar| && j != k ==> ar[j] != ar[k]
   requires (forall k: Int :: (0 <= k) && (k < |ar|) ==> acc(ar[k].Ref__Integer_value, write))
   ensures (forall k: Int :: (0 <= k) && (k < |ar|) ==> acc(ar[k].Ref__Integer_value, write))
   ensures (forall k: Int :: (0 <= k) && (k < |ar|) ==> (ar[k].Ref__Integer_value == 0))

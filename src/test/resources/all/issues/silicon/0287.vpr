@@ -3,6 +3,7 @@
 
 field val:Int
 
+//:: ExpectedOutput(predicate.not.wellformed:receiver.not.injective)
 predicate isArray(xs:Ref)
 {
     forall i:Int :: acc(xs.val)

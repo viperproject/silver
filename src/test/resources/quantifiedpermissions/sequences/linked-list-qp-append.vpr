@@ -13,6 +13,7 @@ field data: Seq[Int]
 predicate List(this: Ref)
 {
 	acc(this.nodes)
+   && (forall i: Int, j: Int :: i in [0..|this.nodes|) && j in [0..|this.nodes|) && i != j ==> this.nodes[i] != this.nodes[j])
    && (forall i: Int :: 0 <= i && i < |this.nodes| ==> acc(this.nodes[i].val))
 	 && (forall i: Int :: 0 <= i && i < |this.nodes| ==> acc(this.nodes[i].next))
 	 && (forall i: Int :: {this.nodes[i].next} (0 <= i && i < |this.nodes| ==>

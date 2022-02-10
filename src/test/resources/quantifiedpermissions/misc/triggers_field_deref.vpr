@@ -140,6 +140,7 @@ method test06b(x: Ref, y: Ref) {
 }
 
 method test07a(xs: Seq[Ref]) {
+  inhale (forall i: Int, j: Int :: i in [0..|xs|) && j in [0..|xs|) && i != j ==> xs[i] != xs[j])
   inhale (forall x: Int :: x in [0..|xs|) ==> acc(xs[x].f))
 
   inhale (forall x: Int :: {xs[x].f} (0 <= x) && (x < |xs|) ==> (xs[x].f == 0))
@@ -147,6 +148,7 @@ method test07a(xs: Seq[Ref]) {
 }
 
 method test07b(xs: Seq[Ref]) {
+  inhale (forall i: Int, j: Int :: i in [0..|xs|) && j in [0..|xs|) && i != j ==> xs[i] != xs[j])
   inhale (forall x: Int :: x in [0..|xs|) ==> acc(xs[x].f))
 
   inhale (forall x: Int :: (0 <= x) && (x < |xs|) ==> (xs[x].f == 0))

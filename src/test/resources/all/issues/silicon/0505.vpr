@@ -6,6 +6,7 @@ field g: Int
 
 method foo(r: Ref, set: Set[Ref])
   requires forall x: Ref :: { x.f } x in set ==> acc(x.f, 1/3)
+  requires forall x: Ref, y: Ref :: (x in set && y in set && x != y) ==> x.f != y.f
   requires forall x: Ref :: { x.f.g } x in set ==> acc(x.f.g, 2/3)
 {
   var new_set: Set[Ref]

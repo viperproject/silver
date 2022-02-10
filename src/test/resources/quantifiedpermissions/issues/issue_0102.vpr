@@ -7,6 +7,7 @@ method test1(xs: Seq[Ref], n: Int, b: Bool)
   requires |xs| == n
   requires n > 2
 {
+  inhale forall i1: Int, i2: Int :: i1 in [0..n) && i2 in [0..n) && i1 != i2 ==> xs[i1] != xs[i2]
   inhale forall i: Int :: i in [0..n) ==> acc(xs[i].f, write)
   exhale forall i: Int :: i in [0..n) ==> acc(xs[i].f, write)
 }
@@ -15,6 +16,7 @@ method test2(xs: Seq[Ref], n: Int, b: Bool)
   requires |xs| == n
   requires n > 2
 {
+  inhale forall i1: Int, i2: Int :: i1 in [0..n) && i2 in [0..n) && i1 != i2 ==> xs[i1] != xs[i2]
   inhale forall i: Int :: i in [0..n) ==> acc(xs[i].f, write)
   exhale forall i: Int :: i in [0..n) ==> acc(xs[i].f, 1/2)
   exhale forall i: Int :: i in [0..n) ==> acc(xs[i].f, 1/2)
@@ -24,6 +26,7 @@ method test3(xs: Seq[Ref], n: Int)
   requires |xs| == n
   requires n > 2
 {
+  inhale forall i1: Int, i2: Int :: i1 in [0..n) && i2 in [0..n) && i1 != i2 ==> xs[i1] != xs[i2]
   inhale forall i: Int :: i in [0..n) ==> acc(xs[i].f, i < 2 ? write : 1/10)
   exhale forall i: Int :: i in [0..n) ==> acc(xs[i].f, i < 2 ? write : 1/10)
 
@@ -35,6 +38,7 @@ method test5(xs: Seq[Ref], n: Int, x: Ref, y: Ref)
   requires |xs| == n && n > 2
   requires xs[0] == x && xs[1] == y
   requires acc(x.f, 9/10) && acc(y.f, 9/10)
+  requires forall i1: Int, i2: Int :: i1 in [0..n) && i2 in [0..n) && i1 != i2 ==> xs[i1] != xs[i2]
   requires forall i: Int :: i in [0..n) ==> acc(xs[i].f, 1/10)
 
   ensures  forall i: Int :: i in [0..n) ==> acc(xs[i].f, i < 2 ? write : 1/10)
@@ -57,12 +61,14 @@ method test4(this: Ref, n: Int)
   requires |this.array| == n
   ensures acc(this.array, wildcard)
   ensures |this.array| == n
+  ensures forall i1: Int, i2: Int :: i1 in [0..n) && i2 in [0..n) && i1 != i2 ==> this.array[i1] != this.array[i2]
   ensures forall i:Int :: i in [0..n) ==> acc(this.array[i].value, 1/2)
   //:: ExpectedOutput(postcondition.violated:assertion.false)
   ensures false
 {
   var x: Int
 
+  inhale forall i1: Int, i2: Int :: i1 in [0..n) && i2 in [0..n) && i1 != i2 ==> this.array[i1] != this.array[i2]
   inhale forall i:Int :: i in [0..n) ==> acc(this.array[i].value, write)
 
   x := this.array[0].value

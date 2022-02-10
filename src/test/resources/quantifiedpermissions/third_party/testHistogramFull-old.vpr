@@ -15,6 +15,7 @@ function sum_list(i: Int, hi: Int, ar: Seq[Int]): Int
 function sum_array(i: Int, lo: Int, hi: Int, ar: Seq[Ref]): Int
   requires (0 <= lo) && (lo <= i) && (i <= hi)
   requires hi <= |ar|
+  requires forall k: Int, j: Int :: k >= 0 && k < |ar| && j >= 0 && j < |ar| && k != j ==> ar[k] != ar[j]
   requires (forall k: Int :: (k in [lo..hi)) ==> acc(ar[k].Ref__Integer_value, wildcard))
 {
   (i < hi ? ar[i].Ref__Integer_value + sum_array(i + 1, lo, hi, ar) : 0)
@@ -24,6 +25,7 @@ function sum_square(i: Int, lo: Int, hi: Int, step: Int, min: Int, max: Int, ar:
   requires (0 <= lo) && (lo <= hi) && (hi <= step) && (step > 0)
   requires (0 <= min) && (min <= i) && (i <= max)
   requires max <= |ar|
+  requires forall k: Int, j: Int :: k >= 0 && k < |ar| && j >= 0 && j < |ar| && k != j ==> ar[k] != ar[j]
   requires (forall k: Int :: (min <= k) && (k < max) && (lo <= k % step) && (k % step < hi) ==> acc(ar[k].Ref__Integer_value, wildcard))
 {
   (i < max ? ((lo <= i % step) && (i % step < hi) ? ar[i].Ref__Integer_value : 0) + sum_square(i + 1, lo, hi, step, min, max, ar) : 0)
@@ -33,6 +35,7 @@ function count_square(i: Int, lo: Int, hi: Int, step: Int, min: Int, max: Int, a
   requires (0 <= lo) && (lo <= hi) && (hi <= step) && (step > 0)
   requires (0 <= min) && (min <= i) && (i <= max)
   requires max <= |ar|
+  requires forall k: Int, j: Int :: k >= 0 && k < |ar| && j >= 0 && j < |ar| && k != j ==> ar[k] != ar[j]
   requires (forall k: Int :: (min <= k) && (k < max) && (lo <= k % step) && (k % step < hi) ==> acc(ar[k].Ref__Integer_value, wildcard))
 {
   (i < max ? ((lo <= i % step) && (i % step < hi) && (ar[i].Ref__Integer_value == v) ? 1 : 0) + count_square(i + 1, lo, hi, step, min, max, ar, v) : 0)
@@ -48,6 +51,7 @@ function count_list(i: Int, hi: Int, ar: Seq[Int], v: Int): Int
 function count_array(i: Int, hi: Int, ar: Seq[Ref], v: Int): Int
   requires (0 <= i) && (i <= hi)
   requires hi <= |ar|
+  requires forall k: Int, j: Int :: k >= 0 && k < |ar| && j >= 0 && j < |ar| && k != j ==> ar[k] != ar[j]
   requires (forall k: Int :: (k in [0..hi)) ==> acc(ar[k].Ref__Integer_value, wildcard))
 {
   (i < hi ? (ar[i].Ref__Integer_value == v ? 1 : 0) + count_array(i + 1, hi, ar, v) : 0)
@@ -56,6 +60,7 @@ function count_array(i: Int, hi: Int, ar: Seq[Ref], v: Int): Int
 method Ref__loop_main_93(diz: Ref, P: Int, hist: Seq[Ref])
   requires diz != null
   requires P <= |hist|
+  requires forall k: Int, j: Int :: k >= 0 && k < |hist| && j >= 0 && j < |hist| && k != j ==> hist[k] != hist[j]
   requires (forall k: Int :: (k in [0..P)) ==> acc(hist[k].Ref__Integer_value, write))
   ensures (forall k: Int :: (k in [0..P)) ==> acc(hist[k].Ref__Integer_value, write))
   ensures (forall k: Int :: (k in [0..P)) ==> (hist[k].Ref__Integer_value == 0))
@@ -81,11 +86,14 @@ method Ref__loop_main_113(diz: Ref, N: Int, M: Int, step: Int, hist: Seq[Ref], m
   requires diz != null
   requires (M > 0) && (N > 0) && (step >= N) && (P > 0)
   requires P <= |hist|
+  requires forall k: Int, j: Int :: k >= 0 && k < |hist| && j >= 0 && j < |hist| && k != j ==> hist[k] != hist[j]
   requires (forall k: Int :: (k in [0..P)) ==> acc(hist[k].Ref__Integer_value, write))
   requires N <= step
   requires M * step <= |matrix|
+  requires forall k: Int, j: Int :: k >= 0 && k < |matrix| && j >= 0 && j < |matrix| && k != j ==> matrix[k] != matrix[j]
   requires (forall j: Int :: (j in [0..M * step)) && (j % step < N) ==> acc(matrix[j].Ref__Integer_value, 1 / 4))
   requires (N <= step) && (forall k_fresh_rw_0: Int :: (k_fresh_rw_0 in [0..M * step)) && (k_fresh_rw_0 % step < N) ==> (matrix[k_fresh_rw_0].Ref__Integer_value in [0..P)))
+  requires forall k: Int, j: Int :: k >= 0 && k < |hist| && j >= 0 && j < |hist| && k != j ==> hist[k] != hist[j]
   ensures (M > 0) && (N > 0) && (step >= N) && (P > 0)
   ensures N <= step
   ensures (forall j: Int :: (j in [0..M * step)) && (j % step < N) ==> acc(matrix[j].Ref__Integer_value, 1 / 4))
@@ -101,6 +109,7 @@ method Ref__loop_body_113(diz: Ref, step: Int, j: Int, i: Int, P: Int, N: Int, M
   requires (M > 0) && (N > 0) && (step >= N) && (P > 0)
   requires (i in [0..M)) && (j in [0..N))
   requires P <= |hist|
+  requires forall k: Int, l: Int :: k >= 0 && k < |hist| && l >= 0 && l < |hist| && k != l ==> hist[k] != hist[l]
   requires (forall k: Int :: (k in [0..P)) ==> acc(hist[k].Ref__Integer_value, write))
   requires (forall k: Int :: (k in [0..P)) ==> (hist[k].Ref__Integer_value == 0))
   requires i * step + j < |matrix|
@@ -131,6 +140,7 @@ method Ref__histogram(diz: Ref, M: Int, N: Int, step: Int, matrix: Seq[Ref], P: 
   requires (M > 0) && (N > 0) && (step >= N) && (P > 0)
   requires N <= step
   requires M * step <= |matrix|
+  requires forall k: Int, j: Int :: k >= 0 && k < |matrix| && j >= 0 && j < |matrix| && k != j ==> matrix[k] != matrix[j]
   requires (forall j1: Int :: (j1 in [0..M * step)) && (j1 % step < N) ==> acc(matrix[j1].Ref__Integer_value, 1 / 2))
   requires (N <= step)
   requires forall k_fresh_rw_0: Int :: {matrix[k_fresh_rw_0]}
@@ -138,6 +148,8 @@ method Ref__histogram(diz: Ref, M: Int, N: Int, step: Int, matrix: Seq[Ref], P: 
       ==>
     (matrix[k_fresh_rw_0].Ref__Integer_value in [0..P))
   requires P <= |hist|
+  requires forall k: Int, j: Int :: k >= 0 && k < |hist| && j >= 0 && j < |hist| && k != j ==> hist[k] != hist[j]
+  requires forall k: Int, j: Int :: k >= 0 && k < |matrix| && j >= 0 && j < |matrix| && k != j ==> matrix[k] != matrix[j]
   requires (forall i1: Int :: (i1 in [0..P)) ==> acc(hist[i1].Ref__Integer_value, write))
   ensures (M > 0) && (N > 0) && (step >= N) && (P > 0)
   ensures N <= step
