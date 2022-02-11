@@ -195,8 +195,6 @@ object FastParser {
 
   def keyword[_: P](check: String) = check ~~ !identContinues
 
-  def keywordFP[_: P](check: String) = FP(keyword(check))
-
   def parens[_: P, T](p: => P[T]) = "(" ~ p ~ ")"
 
   def angles[_: P, T](p: => P[T]) = "<" ~ p ~ ">"
@@ -749,7 +747,7 @@ object FastParser {
     | mapTypedEmpty | explicitMapNonEmpty | mapDomain | mapRange
     | fapp | typedFapp | idnuse | ParserExtension.newExpAtEnd(ctx))
 
-  def result[_: P]: P[PResultLit] = keywordFP("result").map { case (pos, _) => PResultLit()(pos) }
+  def result[_: P]: P[PResultLit] = FP(keyword("result")).map { case (pos, _) => PResultLit()(pos) }
 
   def unExp[_: P]: P[PUnExp] = FP(CharIn("\\-\\!").! ~~ !" " ~~ suffixExpr).map { case (pos, (a, b)) => PUnExp(a, b)(pos) }
 
@@ -757,11 +755,11 @@ object FastParser {
 
   def integer[_: P]: P[PIntLit] = FP(strInteger.filter(s => !s.contains(' '))).map { case (pos, s) => PIntLit(BigInt(s))(pos) }
 
-  def booltrue[_: P]: P[PBoolLit] = keywordFP("true").map {case (pos, _) => PBoolLit(b = true)(pos)}
+  def booltrue[_: P]: P[PBoolLit] = FP(keyword("true")).map {case (pos, _) => PBoolLit(b = true)(pos)}
 
-  def boolfalse[_: P]: P[PBoolLit] = keywordFP("false").map{ case (pos, _) => PBoolLit(b = false)(pos) }
+  def boolfalse[_: P]: P[PBoolLit] = FP(keyword("false")).map{ case (pos, _) => PBoolLit(b = false)(pos) }
 
-  def nul[_: P]: P[PNullLit] = keywordFP("null").map { case (pos, _) => PNullLit()(pos) }
+  def nul[_: P]: P[PNullLit] = FP(keyword("null")).map { case (pos, _) => PNullLit()(pos) }
 
   def identifier[_: P]: P[Unit] = CharIn("A-Z", "a-z", "$_") ~~ CharIn("0-9", "A-Z", "a-z", "$_").repX
 
@@ -906,10 +904,10 @@ object FastParser {
   }
 
   def perm[_: P]: P[PExp] =
-    P(keywordFP("none").map{ case (pos, _) => PNoPerm()(pos)} |
-      keywordFP("wildcard").map{ case (pos, _) => PWildcard()(pos)} |
-      keywordFP("write").map{ case (pos, _) => PFullPerm()(pos)} |
-      keywordFP("epsilon").map{ case (pos, _) => PEpsilon()(pos)} |
+    P(FP(keyword("none")).map{ case (pos, _) => PNoPerm()(pos)} |
+      FP(keyword("wildcard")).map{ case (pos, _) => PWildcard()(pos)} |
+      FP(keyword("write")).map{ case (pos, _) => PFullPerm()(pos)} |
+      FP(keyword("epsilon")).map{ case (pos, _) => PEpsilon()(pos)} |
       FP("perm" ~ parens(resAcc)).map{ case (pos, r) => PCurPerm(r)(pos)})
 
   def let[_: P]: P[PExp] =
@@ -964,7 +962,7 @@ object FastParser {
    case (pos, (keyType, valueType)) => PMapType(keyType, valueType)(pos)
   }
 
-  def primitiveTyp[_: P]: P[PType] = P(keywordFP("Rational").map{ case (pos, _) => PPrimitiv("Perm")(pos)}
+  def primitiveTyp[_: P]: P[PType] = P(FP(keyword("Rational")).map{ case (pos, _) => PPrimitiv("Perm")(pos)}
     | FP((StringIn("Int", "Bool", "Perm", "Ref") ~~ !identContinues).!).map{ case (pos, name) => PPrimitiv(name)(pos)})
 /* Maps:
   lazy val primitiveTyp: P[PType] = P(keyword("Rational").map(_ => PPrimitiv("Perm"))
