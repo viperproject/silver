@@ -43,6 +43,7 @@ method test04(s: Seq[Ref], a: Int, b: Int, n: Int)
   var j: Int
 
   inhale 0 <= j && j < n
+  assert forall i: Int :: {i in [0..n)} i in [0..n) ==> exp(a, i, b) < |s|
   inhale forall i1: Int, i2: Int :: {i1 in [0..n), i2 in [0..n)} i1 in [0..n) && i2 in [0..n) && i1 != i2 ==> s[exp(a, i1, b)] != s[exp(a, i2, b)]
   inhale forall i: Int :: i in [0..n) ==> acc(s[exp(a, i, b)].f)
     /* Yields the non-null axiom
