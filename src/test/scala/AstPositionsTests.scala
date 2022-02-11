@@ -49,22 +49,23 @@ class AstPositionsTests extends AnyFunSuite {
     import viper.silver.ast._
 
     val code =
-      """field foo: Ref
-        |method sum(g: Set[Ref])
+      """field foo: Int
+        |method sum(x: Ref, g: Set[Ref])
         |  returns (res: Bool)
-        |  ensures false
+        |  ensures false && 4/x.foo > 0
         |{
         |  inhale forall r: Ref :: r in g ==> acc(r.foo)
+        |  assert acc(x.foo)
         |  var r1: Ref
         |  assume r1 in g
-        |  inhale acc(r1.foo)
         |}
         |""".stripMargin
 
     val res: Program = generateViperAst(code).get
     // Check position of field
     assert(res.fields.length === 1)
-    res.fields(0).pos match {
+    val f: Field = res.fields(0)
+    f.pos match {
       case spos: AbstractSourcePosition =>
         assert(spos.start.line === 1 && spos.end.get.line === 1)
         // Here it is unclear if we want to include the `field ` part in the pos
@@ -85,7 +86,7 @@ class AstPositionsTests extends AnyFunSuite {
         fail("methods must have start and end positions set")
     }
     // Check position of method arg
-    assert(m.formalArgs.length === 1)
+    assert(m.formalArgs.length === 2)
     val fa: LocalVarDecl = m.formalArgs(0)
     fa.pos match {
       case spos: AbstractSourcePosition => {
@@ -97,11 +98,11 @@ class AstPositionsTests extends AnyFunSuite {
     }
     // Check position of method post
     assert(m.posts.length === 1)
-    val post: Exp = m.posts(0)
+    val post: Exp = m.posts(0).asInstanceOf[BinExp].args(1);
     post.pos match {
       case spos: AbstractSourcePosition => {
         assert(spos.start.line === 4 && spos.end.get.line === 4)
-        assert(spos.start.column === 11 && spos.end.get.column === 16)
+        assert(spos.start.column === 20 && spos.end.get.column === 31)
       }
       case _ =>
         fail("method posts must have start and end positions set")
@@ -125,6 +126,16 @@ class AstPositionsTests extends AnyFunSuite {
           case spos: AbstractSourcePosition => {
             assert(spos.start.line === 6 && spos.end.get.line === 6)
             assert(spos.start.column === 3 && spos.end.get.column === 48)
+          }
+          case _ =>
+            fail("forall must have start and end positions set")
+        };
+        // Check position of assert
+        val assert_exp: Exp = block.asInstanceOf[Seqn].ss(1).asInstanceOf[Assert].exp
+        assert_exp.pos match {
+          case spos: AbstractSourcePosition => {
+            assert(spos.start.line === 7 && spos.end.get.line === 7)
+            assert(spos.start.column === 10 && spos.end.get.column === 20)
           }
           case _ =>
             fail("forall must have start and end positions set")
