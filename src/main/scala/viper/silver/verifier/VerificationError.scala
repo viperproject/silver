@@ -334,26 +334,34 @@ object errors {
   def ErrorWrapperWithExampleTransformer(pve: PartialVerificationError, transformer: CounterexampleTransformer) : PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => ErrorWrapperWithExampleTransformer(pve.f(reason).asInstanceOf[AbstractVerificationError], transformer))
 
-  case class ExhaleFailed(offendingNode: Exhale, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
+  case class ExhaleFailed(offendingNode: Exp, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "exhale.failed"
     val text = "Exhale might fail."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = ExhaleFailed(offendingNode.asInstanceOf[Exhale], this.reason, this.cached)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = ExhaleFailed(offendingNode.asInstanceOf[Exp], this.reason, this.cached)
     def withReason(r: ErrorReason) = ExhaleFailed(offendingNode, r, cached)
   }
 
+  @deprecated("Leads to innacurate position data", "11.02.2022")
   def ExhaleFailed(offendingNode: Exhale): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => ExhaleFailed(offendingNode.exp, reason))
+
+  def ExhaleFailed(offendingNode: Exp): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => ExhaleFailed(offendingNode, reason))
 
-  case class InhaleFailed(offendingNode: Inhale, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
+  case class InhaleFailed(offendingNode: Exp, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "inhale.failed"
     val text = "Inhale might fail."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = InhaleFailed(offendingNode.asInstanceOf[Inhale], this.reason, this.cached)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = InhaleFailed(offendingNode.asInstanceOf[Exp], this.reason, this.cached)
     def withReason(r: ErrorReason) = InhaleFailed(offendingNode, r, cached)
   }
 
+  @deprecated("Leads to innacurate position data", "11.02.2022")
   def InhaleFailed(offendingNode: Inhale): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => InhaleFailed(offendingNode.exp, reason))
+
+  def InhaleFailed(offendingNode: Exp): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => InhaleFailed(offendingNode, reason))
 
   case class IfFailed(offendingNode: Exp, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
@@ -378,15 +386,19 @@ object errors {
   def WhileFailed(offendingNode: Exp): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => WhileFailed(offendingNode, reason))
 
-  case class AssertFailed(offendingNode: Assert, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
+  case class AssertFailed(offendingNode: Exp, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "assert.failed"
     val text = "Assert might fail."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = AssertFailed(offendingNode.asInstanceOf[Assert], this.reason, this.cached)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = AssertFailed(offendingNode.asInstanceOf[Exp], this.reason, this.cached)
     def withReason(r: ErrorReason) = AssertFailed(offendingNode, r, cached)
   }
 
+  @deprecated("Leads to innacurate position data", "11.02.2022")
   def AssertFailed(offendingNode: Assert): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => AssertFailed(offendingNode.exp, reason))
+
+  def AssertFailed(offendingNode: Exp): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => AssertFailed(offendingNode, reason))
 
   case class TerminationFailed(offendingNode: Function, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
