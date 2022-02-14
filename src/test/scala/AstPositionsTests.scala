@@ -59,6 +59,9 @@ class AstPositionsTests extends AnyFunSuite {
         |  var r1: Ref
         |  assume r1 in g
         |}
+        |method bar(r: Ref)
+        |  requires  0  >  r . foo
+        |// Comment
         |""".stripMargin
 
     val res: Program = generateViperAst(code).get
@@ -75,7 +78,7 @@ class AstPositionsTests extends AnyFunSuite {
         fail("fields must have start and end positions set")
     }
     // Check position of method
-    assert(res.methods.length === 1)
+    assert(res.methods.length === 2)
     val m: Method = res.methods(0)
     m.pos match {
       case spos: AbstractSourcePosition => {
@@ -145,6 +148,26 @@ class AstPositionsTests extends AnyFunSuite {
       }
     } else {
       fail("Failed to check position of statements in method body due to layout change")
+    }
+    // Check position of second method
+    val m2: Method = res.methods(1);
+    m2.pos match {
+      case spos: AbstractSourcePosition => {
+        assert(spos.start.line === 11 && spos.end.get.line === 12)
+        assert(spos.start.column === 1 && spos.end.get.column === 26)
+      }
+      case _ =>
+        fail("methods must have start and end positions set")
+    }
+    // Check position of second method precond
+    val pre: Exp = m2.pres(0);
+    pre.pos match {
+      case spos: AbstractSourcePosition => {
+        assert(spos.start.line === 12 && spos.end.get.line === 12)
+        assert(spos.start.column === 13 && spos.end.get.column === 26)
+      }
+      case _ =>
+        fail("methods must have start and end positions set")
     }
   }
 }
