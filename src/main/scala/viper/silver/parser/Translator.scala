@@ -31,9 +31,11 @@ case class Translator(program: PProgram) {
 
     program match {
       case PProgram(_, _, pdomains, pfields, pfunctions, ppredicates, pmethods, pextensions, _) =>
-        (pdomains ++ pfields ++ pfunctions ++ ppredicates ++
-            pmethods ++ (pdomains flatMap (_.funcs))) foreach translateMemberSignature
+        pdomains foreach translateMemberSignature
         pextensions foreach translateMemberSignature
+
+        pdomains flatMap (_.funcs) foreach translateMemberSignature
+        (pfields ++ pfunctions ++ ppredicates ++ pmethods) foreach translateMemberSignature
 
         val extensions = pextensions map translate
         val domain = (pdomains map translate) ++ extensions filter (t => t.isInstanceOf[Domain])
