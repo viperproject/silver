@@ -18,7 +18,9 @@ case class PAdt(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], constructors: Seq[P
   override val getSubnodes: Seq[PNode] = Seq(idndef) ++ typVars ++ constructors
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
-    // TODO: Implement type checking
+    t.checkMember(this) {
+      this.constructors foreach (_.typecheck(t, n))
+    }
     None
   }
 
@@ -52,7 +54,7 @@ case class PAdtConstructor(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl])(
   override val getSubnodes: Seq[PNode] = Seq(idndef) ++ formalArgs
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
-    // TODO: Implement type checking
+    this.formalArgs foreach (a => t.check(a.typ))
     None
   }
 
@@ -153,8 +155,32 @@ case class PAdtType(adt: PIdnUse, args: Seq[PType])(val pos: (Position, Position
   override def subNodes: Seq[PType] = args
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
-    // TODO: Implement type checking
-    None
+      this match {
+        case at@PAdtType(_, _) if at.isResolved => None
+        /* Already resolved, nothing left to do */
+        case at@PAdtType(adt, args) =>
+          assert(!at.isResolved, "Only yet-unresolved adt types should be type-checked and resolved")
+
+          args foreach t.check
+
+          var x: Any = null
+
+          try {
+            x = t.names.definition(t.curMember)(adt)
+          } catch {
+            case _: Throwable =>
+          }
+
+          x match {
+            case PAdt(_, typVars, _) =>
+              t.ensure(args.length == typVars.length, this, "wrong number of type arguments")
+              at.kind = PAdtTypeKinds.Adt
+              None
+            case _ =>
+              at.kind = PAdtTypeKinds.Undeclared
+              Option(Seq(s"found undeclared type ${at.adt.name}"))
+          }
+      }
   }
 
   // TODO: Implement signature translation
