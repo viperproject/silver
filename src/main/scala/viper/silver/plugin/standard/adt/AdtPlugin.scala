@@ -7,6 +7,7 @@
 package viper.silver.plugin.standard.adt
 
 import fastparse._
+import viper.silver.ast.Program
 import viper.silver.ast.utility.rewriter.StrategyBuilder
 import viper.silver.parser.FastParser.{FP, anyFormalArgList, idndef, whitespace}
 import viper.silver.parser.{PAnyFormalArgDecl, PDomainType, PFormalArgDecl, PFunction, PIdnDef, PIdnUse, PMethod, PNode, PProgram, PTypeVarDecl, ParserExtension}
@@ -80,8 +81,8 @@ class AdtPlugin extends SilverPlugin with ParserPluginTemplate {
     newProgram
   }
 
-  override def beforeTranslate(input: PProgram): PProgram = {
-    // TODO: Finish the translation to AST nodes and remove the following statement
+  override def beforeVerify(input: Program): Program = {
+    // TODO: remove the following statement
     System.exit(-1)
     input
   }

@@ -6,7 +6,7 @@
 
 package viper.silver.plugin.standard.adt
 
-import viper.silver.ast.{Member, NoInfo, NoPosition, Position, TypeVar}
+import viper.silver.ast.{Member, NoInfo, NoPosition, Position, Type, TypeVar}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
 import viper.silver.parser.{NameAnalyser, PAnyFormalArgDecl, PExtender, PGenericType, PGlobalDeclaration, PIdentifier, PIdnDef, PIdnUse, PMember, PNode, PType, PTypeSubstitution, PTypeVarDecl, Translator, TypeChecker}
 import viper.silver.plugin.standard.adt.PAdtConstructor.findAdtConstructor
@@ -29,8 +29,15 @@ case class PAdt(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], constructors: Seq[P
   }
 
   override def translateMember(t: Translator): Member = {
+
+    // In a first step translate constructor signatures
+    constructors map ( c => {
+      val cc = c.translateMemberSignature(t)
+      t.getMembers().put(c.idndef.name, cc)
+    })
+
     val a = PAdt.findAdt(idndef, t)
-    val aa = a.copy(constructors = constructors map (c => PAdtConstructor.findAdtConstructor(c.idndef, t)))(a.pos, a.info, a.errT)
+    val aa = a.copy(constructors = constructors map (_.translateMember(t)))(a.pos, a.info, a.errT)
     t.getMembers()(a.name) = aa
     aa
   }
@@ -62,7 +69,7 @@ case class PAdtConstructor(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl])(
     AdtConstructor(idndef.name, formalArgs map t.liftAnyVarDecl)(t.liftPos(this), NoInfo, adtName.name)
   }
 
-  override def translateMember(t: Translator): Member = {
+  override def translateMember(t: Translator): AdtConstructor = {
     findAdtConstructor(idndef, t)
   }
 
@@ -183,11 +190,15 @@ case class PAdtType(adt: PIdnUse, args: Seq[PType])(val pos: (Position, Position
       }
   }
 
-  // TODO: Implement signature translation
-  override def translateMemberSignature(t: Translator): Member = ???
-
-  // TODO: Implement translation
-  override def translateMember(t: Translator): Member = ???
+  override def translateType(t: Translator): Type = {
+    t.getMembers().get(adt.name) match {
+      case Some(d) =>
+        val adt = d.asInstanceOf[Adt]
+        val typVarMapping = adt.typVars zip (args map t.ttyp)
+        AdtType(adt, typVarMapping.toMap)
+      case None => sys.error("undeclared adt type")
+    }
+  }
 }
 
 object PAdtTypeKinds {
