@@ -8,7 +8,7 @@ package viper.silver.plugin.standard.adt
 
 import fastparse._
 import viper.silver.parser.FastParser.{FP, anyFormalArgList, idndef, whitespace}
-import viper.silver.parser.{PAnyFormalArgDecl, PIdnDef, PIdnUse, PTypeVarDecl, ParserExtension}
+import viper.silver.parser.{PAnyFormalArgDecl, PIdnDef, PIdnUse, PProgram, PTypeVarDecl, ParserExtension}
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 
 
@@ -55,6 +55,12 @@ class AdtPlugin extends SilverPlugin with ParserPluginTemplate {
     // Add new declaration
     ParserExtension.addNewDeclAtEnd(adtDecl(_))
     // TODO: Add custom parsers
+    input
+  }
+
+  override def beforeTranslate(input: PProgram): PProgram = {
+    // TODO: Implement translation to AST nodes
+    System.exit(-1)
     input
   }
 
