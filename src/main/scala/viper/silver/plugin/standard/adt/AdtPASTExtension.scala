@@ -6,8 +6,8 @@
 
 package viper.silver.plugin.standard.adt
 
-import viper.silver.ast.{Member, NoInfo, Position, TypeVar}
-import viper.silver.parser.{NameAnalyser, PAnyFormalArgDecl, PExtender, PGlobalDeclaration, PIdentifier, PIdnDef, PIdnUse, PMember, PNode, PTypeVarDecl, Translator, TypeChecker}
+import viper.silver.ast.{Member, NoInfo, NoPosition, Position, TypeVar}
+import viper.silver.parser.{NameAnalyser, PAnyFormalArgDecl, PExtender, PGenericType, PGlobalDeclaration, PIdentifier, PIdnDef, PIdnUse, PMember, PNode, PType, PTypeSubstitution, PTypeVarDecl, Translator, TypeChecker}
 import viper.silver.plugin.standard.adt.PAdtConstructor.findAdtConstructor
 
 
@@ -75,3 +75,52 @@ object PAdtConstructor {
 }
 
 case class PAdtConstructor1(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl])(val pos: (Position, Position))
+
+case class PAdtType(adt: PIdnUse, args: Seq[PType])(val pos: (Position, Position)) extends PExtender with PGenericType {
+
+  var kind: PAdtTypeKinds.Kind = PAdtTypeKinds.Unresolved
+
+  override def genericName: String = adt.name
+
+  override def typeArguments: Seq[PType] = args
+
+  override def isValidOrUndeclared: Boolean = (kind==PAdtTypeKinds.Adt || isUndeclared) && args.forall(_.isValidOrUndeclared)
+
+  override def substitute(ts: PTypeSubstitution): PType = {
+    require(kind==PAdtTypeKinds.Adt || isUndeclared)
+
+    val newArgs = args map (a=>a.substitute(ts))
+    if (args==newArgs)
+      return this
+
+    val newAdtType = PAdtType(adt,newArgs)((NoPosition, NoPosition))
+    newAdtType.kind = PAdtTypeKinds.Adt
+    newAdtType
+  }
+
+  override def getSubnodes(): Seq[PNode] = Seq(adt) ++ args
+
+  def isResolved: Boolean = kind != PAdtTypeKinds.Unresolved
+
+  def isUndeclared: Boolean = kind == PAdtTypeKinds.Undeclared
+
+  override def subNodes: Seq[PType] = args
+
+  override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
+    // TODO: Implement type checking
+    None
+  }
+
+  // TODO: Implement signature translation
+  override def translateMemberSignature(t: Translator): Member = ???
+
+  // TODO: Implement translation
+  override def translateMember(t: Translator): Member = ???
+}
+
+object PAdtTypeKinds {
+  trait Kind
+  case object Unresolved extends Kind
+  case object Adt extends Kind
+  case object Undeclared extends Kind
+}
