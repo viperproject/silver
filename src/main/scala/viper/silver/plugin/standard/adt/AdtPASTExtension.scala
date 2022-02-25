@@ -7,11 +7,9 @@
 package viper.silver.plugin.standard.adt
 
 import viper.silver.ast.{Member, NoInfo, NoPosition, Position, Type, TypeVar}
-import viper.silver.parser.Transformer.ParseTreeDuplicationError
 import viper.silver.parser.{NameAnalyser, PAnyFormalArgDecl, PExtender, PGenericType, PGlobalDeclaration, PIdentifier, PIdnDef, PIdnUse, PMember, PNode, PType, PTypeSubstitution, PTypeVarDecl, Translator, TypeChecker}
 import viper.silver.plugin.standard.adt.PAdtConstructor.findAdtConstructor
 
-import scala.reflect.runtime.{universe => reflection}
 
 case class PAdt(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], constructors: Seq[PAdtConstructor])(val pos: (Position, Position)) extends PExtender with PMember with PGlobalDeclaration {
 
@@ -77,43 +75,10 @@ case class PAdtConstructor(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl])(
     if (!forceRewrite && this.children == children && pos.isEmpty)
       this
     else {
-
-      // TODO: Why can we not simplify with following code? => results in an Exception, is reflection really the only way?
-      /*
+      assert(children.length == 2, s"PAdtConstructor : expected length 2 but got ${children.length}")
       val first = children.head.asInstanceOf[PIdnDef]
-      val others = children.tail.asInstanceOf[Seq[PAnyFormalArgDecl]]
-
-
-      PAdtConstructor(first, others)(this.adtName)(pos.getOrElse(this.pos)).asInstanceOf[this.type]
-      */
-
-      // Infer constructor from type
-      val mirror = reflection.runtimeMirror(reflection.getClass.getClassLoader)
-      val instanceMirror = mirror.reflect(this)
-      val classSymbol = instanceMirror.symbol
-      val classMirror = mirror.reflectClass(classSymbol)
-      val constructorSymbol = instanceMirror.symbol.primaryConstructor.asMethod
-      val constructorMirror = classMirror.reflectConstructor(constructorSymbol)
-
-      // Add additional arguments to constructor call, besides children
-      val firstArgList = children
-      var secondArgList = Seq.empty[Any]
-
-      this match {
-        case pd: PAdtConstructor => secondArgList = Seq(pd.adtName) ++ Seq(pos.getOrElse(pd.pos))
-        case _ =>
-      }
-
-      // Call constructor
-      val newNode = try {
-        constructorMirror(firstArgList ++ secondArgList: _*)
-      }
-      catch {
-        case _: Exception if this.isInstanceOf[PNode] =>
-          throw ParseTreeDuplicationError(this.asInstanceOf[PNode], children)
-      }
-
-      newNode.asInstanceOf[this.type]
+      val second = children.tail.head.asInstanceOf[Seq[PAnyFormalArgDecl]]
+      PAdtConstructor(first, second)(this.adtName)(pos.getOrElse(this.pos)).asInstanceOf[this.type]
     }
   }
 }
