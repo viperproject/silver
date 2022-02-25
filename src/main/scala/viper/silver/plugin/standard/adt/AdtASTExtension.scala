@@ -6,6 +6,8 @@
 
 package viper.silver.plugin.standard.adt
 
+import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, braces, brackets, char, defaultIndent, line, nest, nil, parens, show, showVars, space, ssep, text}
+import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.ast.{AnyLocalVarDecl, Declaration, ErrorTrafo, ExtensionMember, ExtensionType, Info, LocalVarDecl, NoInfo, NoPosition, NoTrafos, Node, Position, Type, TypeVar}
 
 /**
@@ -20,6 +22,15 @@ case class Adt(name: String, constructors: Seq[AdtConstructor], typVars: Seq[Typ
   val scopedDecls: Seq[Declaration] = Seq()
 
   override def extensionSubnodes: Seq[Node] = constructors ++ typVars
+
+  override def prettyPrint: PrettyPrintPrimitives#Cont = {
+    text("adt") <+> name <>
+      (if (typVars.isEmpty) nil else text("[") <> ssep(typVars map show, char (',') <> space) <> "]") <+>
+      braces(nest(defaultIndent,
+        line <> line <>
+          ssep(constructors map show, line <> line)
+      ) <> line)
+  }
 }
 
 /**
@@ -39,6 +50,8 @@ case class AdtConstructor(name: String, formalArgs: Seq[AnyLocalVarDecl])
   val scopedDecls: Seq[Declaration] = formalArgs.filter(p => p.isInstanceOf[LocalVarDecl]).asInstanceOf[Seq[LocalVarDecl]]
 
   override def extensionSubnodes: Seq[Node] = formalArgs
+
+  override def prettyPrint: PrettyPrintPrimitives#Cont = text(name) <> parens(showVars(formalArgs))
 }
 
 /**
@@ -69,6 +82,11 @@ case class AdtType(adtName: String, partialTypVarsMap: Map[TypeVar, Type])
 
   /** Is this a concrete type (i.e. no uninstantiated type variables)? */
   override def isConcrete: Boolean = typVarsMap.values.forall(_.isConcrete)
+
+  override def prettyPrint: PrettyPrintPrimitives#Cont = {
+    val typArgs = typeParameters map (t => show(typVarsMap.getOrElse(t, t)))
+    text(adtName) <> (if (typArgs.isEmpty) nil else brackets(ssep(typArgs, char (',') <> space)))
+  }
 
 }
 
