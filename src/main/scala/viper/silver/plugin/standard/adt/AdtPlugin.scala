@@ -7,8 +7,9 @@
 package viper.silver.plugin.standard.adt
 
 import fastparse._
+import viper.silver.ast.utility.rewriter.StrategyBuilder
 import viper.silver.parser.FastParser.{FP, anyFormalArgList, idndef, whitespace}
-import viper.silver.parser.{PAnyFormalArgDecl, PIdnDef, PIdnUse, PProgram, PTypeVarDecl, ParserExtension}
+import viper.silver.parser.{PAnyFormalArgDecl, PDomainType, PFormalArgDecl, PFunction, PIdnDef, PIdnUse, PMethod, PNode, PProgram, PTypeVarDecl, ParserExtension}
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 
 
@@ -58,8 +59,29 @@ class AdtPlugin extends SilverPlugin with ParserPluginTemplate {
     input
   }
 
+  override def beforeResolve(input: PProgram): PProgram = {
+    // Replace PDomainType by PAdtType if a corresponding ADT exists, since they are automatically parsed as an PDomainType
+    // and there is no way to extend the parser to avoid this.
+    val declaredAdtNames = input.extensions.collect { case a: PAdt => a.idndef }.toSet
+    // TODO: With the current strategy occurrences of PDomainTypes in constructor, function and method signatures
+    //  are handled (especially they are converted to an PAdtType if there is an corresponding declaration).
+    //  Handling of AdtTypes in variable declarations, built-in type declarations, etc. must be implemented in a later step.
+    val newProgram: PProgram = StrategyBuilder.Slim[PNode]({
+      case pa@PDomainType(idnuse, args) if declaredAdtNames.exists(_.name == idnuse.name) => PAdtType(idnuse, args)(pa.pos)
+      case d => d
+    }).recurseFunc({
+      case PProgram(_, _, _, _, functions, _, methods, extensions, _) => Seq(extensions) ++ Seq(functions) ++ Seq(methods)
+      case PMethod(_, formalArgs, formalReturns, _, _, _) => Seq(formalArgs) ++ Seq(formalReturns)
+      case PFunction(_, formalArgs, typ, _, _, _) => Seq(formalArgs) ++ Seq(typ)
+      case PAdt(_, _, constructors) => Seq(constructors)
+      case PAdtConstructor(_, formalArgs) => Seq(formalArgs)
+      case PFormalArgDecl(_, typ) => Seq(typ)
+    }).execute(input)
+    newProgram
+  }
+
   override def beforeTranslate(input: PProgram): PProgram = {
-    // TODO: Implement translation to AST nodes
+    // TODO: Finish the translation to AST nodes and remove the following statement
     System.exit(-1)
     input
   }
