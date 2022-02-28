@@ -49,8 +49,8 @@ method test5() {
         (forall x: Int, y: Int :: f2(x, y) ==> (forall z: Int :: f3(x, y, z)))
     --* (forall q: Int :: f1(q))
 
-  //:: ExpectedOutput(exhale.failed:wand.not.found)
   exhale
+  //:: ExpectedOutput(exhale.failed:wand.not.found)
         (forall x: Int, y: Int :: f2(y, x) ==> (forall z: Int :: f3(x, y, z)))
     --* (forall q: Int :: f1(q))
 }
