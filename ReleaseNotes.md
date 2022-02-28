@@ -1,3 +1,35 @@
+## Release 2022.2
+
+**Date 28/02/22**
+
+### Changes in Viper Language
+
+- **Breaking change**: As mentioned in the release notes for 2021.7, starting with the 2022.2 release, Viper will check injectivity of inhaled quantified permissions by default, instead of assuming it. In the previous release, this feature was enabled with the `--checkInjectivity` flag. It is now enabled by default and can instead by disabled with the `--assumeInjectivityOnInhale` flag. This change makes the injectivity requirement consistent with other well-definedness conditions in Viper (such as ruling out potential division by zero).
+
+### Backend-specific upgrades/changes
+
+#### Symbolic Execution Verifier (Silicon)
+
+- Added new option to report multiple errors per path, potentially allowing verification to continue beyond a failing pure condition (e.g. assert statement). The command-line argument `--numberOfErrorsToReport` (by default 1, 0 indicates all errors are to be reported) controls how many errors will be reported by the verifier before it stops. ([Silicon#575](https://github.com/viperproject/silicon/pull/575))
+- Added new option to report branch conditions in errors using the command-line argument `--enableBranchconditionReporting`. When enabled, errors reported on the command line additionally show a list of conditions or their negations that were reached on the path to the error. ([Silicon#575](https://github.com/viperproject/silicon/pull/575))
+- Fixed a memory leak ([Silicon#579](https://github.com/viperproject/silicon/issues/579)).
+- When Z3 quantifier reporting is enabled (for example, by passing `--z3Args '"smt.qi.profile=true smt.qi.profile_freq=10000"'` to Silicon), its output is now recognised and printed in Silicon's output, to enable a quick check for likely matching loops. ([Silicon#587](https://github.com/viperproject/silicon/pull/587))
+- Removed magic-wand-related heuristics described in ECOOP’15 (these were not generally enabled for standard Viper input files). ([Silicon#589](https://github.com/viperproject/silicon/pull/589))
+Bug fixes. ([Silicon#582](https://github.com/viperproject/silicon/issues/582), [Silicon#583](https://github.com/viperproject/silicon/pull/583), [Silicon#584](https://github.com/viperproject/silicon/pull/584))
+
+#### Verification Condition Generation Verifier (Carbon)
+
+- Check that predicate bodies are self-framing. ([Carbon#397](https://github.com/viperproject/carbon/pull/397/))
+- Bug fixes. ([Carbon#398](https://github.com/viperproject/carbon/pull/398/))
+
+### Miscellaneous
+
+- CI workflows for Viper tools migrated to GitHub actions.
+- Silver AST can now represent all SMT-LIB bitvector functions, although these are not yet supported in the language. ([Silver#537](https://github.com/viperproject/silver/pull/537/))
+- Impure assumes rewriter fix. ([Silver#553](https://github.com/viperproject/silver/pull/553/))
+- Viper IDE cache can be stored to a file. ([ViperServer#44](https://github.com/viperproject/viperserver/pull/44/))
+- Position information fix. ([Silver#555](https://github.com/viperproject/silver/pull/555/))
+
 ## Release 2021.7
 #### Date 27/07/21     [Download](http://www.pm.inf.ethz.ch/research/viper/downloads.html)
 
