@@ -38,8 +38,8 @@ method barrier_check_2_essence(diz: Ref, current_thread_id: Int, output: VCTOpti
       0 <= k && k < |getVCTOption1(output)| ==>
         acc(getVCTOption1(output)[k].Integer__item, wildcard)
 
-  //:: ExpectedOutput(exhale.failed:assertion.false)
   exhale
+  //:: ExpectedOutput(exhale.failed:assertion.false)
     forall tid: Int, j: Int ::
       (0 <= tid && tid < |getVCTOption1(output)| &&
        0 <= j   &&   j < |getVCTOption1(output)|) ==>

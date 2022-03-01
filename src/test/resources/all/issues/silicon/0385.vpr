@@ -52,8 +52,8 @@ method testB(s: Ref, r: Ref)
   requires acc(s.flag)
   requires r.flag
 {
-  //:: ExpectedOutput(assert.failed:assertion.false)
   assert
+  //:: ExpectedOutput(assert.failed:assertion.false)
     foo_1_1(s, r) ||
     foo_1_2(s, r) ||
     foo_2_1(s, r) ||
