@@ -52,6 +52,18 @@ case class AdtConstructor(name: String, formalArgs: Seq[AnyLocalVarDecl])
   override def extensionSubnodes: Seq[Node] = formalArgs
 
   override def prettyPrint: PrettyPrintPrimitives#Cont = text(name) <> parens(showVars(formalArgs))
+
+  override def withChildren(children: Seq[Any], pos: Option[(Position, Position)], forceRewrite: Boolean): this.type = {
+    if (!forceRewrite && this.children == children && pos.isEmpty)
+      this
+    else {
+      assert(children.length == 2, s"AdtConstructor : expected length 2 but got ${children.length}")
+      val first = children.head.asInstanceOf[String]
+      val second = children.tail.head.asInstanceOf[Seq[AnyLocalVarDecl]]
+      AdtConstructor(first, second)(this.pos, this.info, this.adtName, this.errT).asInstanceOf[this.type]
+    }
+
+  }
 }
 
 /**
@@ -86,6 +98,17 @@ case class AdtType(adtName: String, partialTypVarsMap: Map[TypeVar, Type])
   override def prettyPrint: PrettyPrintPrimitives#Cont = {
     val typArgs = typeParameters map (t => show(typVarsMap.getOrElse(t, t)))
     text(adtName) <> (if (typArgs.isEmpty) nil else brackets(ssep(typArgs, char (',') <> space)))
+  }
+
+  override def withChildren(children: Seq[Any], pos: Option[(Position, Position)], forceRewrite: Boolean): this.type = {
+    if (!forceRewrite && this.children == children && pos.isEmpty)
+      this
+    else {
+      assert(children.length == 2, s"AdtType : expected length 2 but got ${children.length}")
+      val first = children.head.asInstanceOf[String]
+      val second = children.tail.head.asInstanceOf[Map[TypeVar, Type]]
+      AdtType(first, second)(this.typeParameters).asInstanceOf[this.type]
+    }
   }
 
 }
