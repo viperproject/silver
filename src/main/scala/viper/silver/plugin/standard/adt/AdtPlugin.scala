@@ -11,6 +11,7 @@ import viper.silver.ast.Program
 import viper.silver.ast.utility.rewriter.StrategyBuilder
 import viper.silver.parser.FastParser.{FP, anyFormalArgList, idndef, whitespace}
 import viper.silver.parser._
+import viper.silver.plugin.standard.adt.encoding.AdtEncoder
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 
 
@@ -72,9 +73,7 @@ class AdtPlugin extends SilverPlugin with ParserPluginTemplate {
   }
 
   override def beforeVerify(input: Program): Program = {
-    // TODO: remove the following statement
-    System.exit(-1)
-    input
+    new AdtEncoder(input).encode()
   }
 
 }
