@@ -400,6 +400,8 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
       node match {
         case map: Map[_, _] => map.map(rewriteTopDown(_, context)).asInstanceOf[A]
 
+        case (t1, t2) => (rewriteTopDown(t1, context), rewriteTopDown(t2, context)).asInstanceOf[A]
+
         case Some(value) => Some(rewriteTopDown(value, context)).asInstanceOf[A]
 
         case node: N @unchecked =>
@@ -431,6 +433,8 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
       node match {
         case map: Map[_, _] => map.map(rewriteBottomUp(_, context)).asInstanceOf[A]
 
+        case (t1, t2) => (rewriteBottomUp(t1, context), rewriteBottomUp(t2, context)).asInstanceOf[A]
+
         case Some(value) => Some(rewriteBottomUp(value, context)).asInstanceOf[A]
 
         case node: N @unchecked =>
@@ -459,6 +463,8 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
     else {
       node match {
         case map: Map[_, _] => map.map(rewriteInnermost(_, context)).asInstanceOf[A]
+
+        case (t1, t2) => (rewriteInnermost(t1, context), rewriteInnermost(t2, context)).asInstanceOf[A]
 
         case Some(value) => Some(rewriteInnermost(value, context)).asInstanceOf[A]
 
