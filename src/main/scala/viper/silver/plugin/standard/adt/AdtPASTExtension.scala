@@ -6,8 +6,8 @@
 
 package viper.silver.plugin.standard.adt
 
-import viper.silver.ast.{Member, NoInfo, NoPosition, Position, Type, TypeVar}
-import viper.silver.parser.{NameAnalyser, PAnyFormalArgDecl, PExtender, PGenericType, PGlobalDeclaration, PIdentifier, PIdnDef, PIdnUse, PMember, PNode, PType, PTypeSubstitution, PTypeVarDecl, Translator, TypeChecker}
+import viper.silver.ast._
+import viper.silver.parser._
 import viper.silver.plugin.standard.adt.PAdtConstructor.findAdtConstructor
 
 
@@ -38,6 +38,21 @@ case class PAdt(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], constructors: Seq[P
     val aa = a.copy(constructors = constructors map (_.translateMember(t)))(a.pos, a.info, a.errT)
     t.getMembers()(a.name) = aa
     aa
+  }
+
+  /**
+    * This is a helper method that creates an AdtType from the ADT's signature.
+    *
+    * @return An AdtType that corresponds to the ADTs signature
+    */
+  def getAdtType: PAdtType = {
+    val adtType = PAdtType(PIdnUse(idndef.name)(NoPosition, NoPosition), typVars map { t =>
+      val typeVar = PDomainType(PIdnUse(t.idndef.name)(NoPosition, NoPosition), Nil)(NoPosition, NoPosition)
+      typeVar.kind = PDomainTypeKinds.TypeVar
+      typeVar
+    })(NoPosition, NoPosition)
+    adtType.kind = PAdtTypeKinds.Adt
+    adtType
   }
 
 }
@@ -164,6 +179,9 @@ case class PAdtType(adt: PIdnUse, args: Seq[PType])(val pos: (Position, Position
       case None => sys.error("undeclared adt type")
     }
   }
+
+  override def toString: String = adt.name + (if (args.isEmpty) "" else s"[${args.mkString(", ")}]")
+
 }
 
 object PAdtTypeKinds {
@@ -171,4 +189,113 @@ object PAdtTypeKinds {
   case object Unresolved extends Kind
   case object Adt extends Kind
   case object Undeclared extends Kind
+}
+
+/** Common trait for ADT operator applications **/
+sealed trait PAdtOpApp extends PExtender with POpApp
+
+object PAdtOpApp {
+  /**
+    * This method mirrors the functionality in Resolver.scala that handle operation applications, except that it is
+    * adapted to work for ADT operator applications.
+    */
+  def typecheck(poa: PAdtOpApp)(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
+
+    def getFreshTypeSubstitution(tvs : Seq[PDomainType]) : PTypeRenaming =
+      PTypeVar.freshTypeSubstitutionPTVs(tvs)
+
+    // Checks that a substitution is fully reduced (idempotent)
+    def refreshWith(ts: PTypeSubstitution, rts : PTypeRenaming) : PTypeSubstitution = {
+      require(ts.isFullyReduced)
+      require(rts.isFullyReduced)
+      //      require(rts.values.forall { case pdt: PDomainType if pdt.isTypeVar => true case _ => false })
+      new PTypeSubstitution(ts map (kv => rts.rename(kv._1) -> kv._2.substitute(rts)))
+    }
+
+    var extraReturnTypeConstraint : Option[PType] = None
+
+    if (poa.typeSubstitutions.isEmpty) {
+      poa.args.foreach(t.checkInternal)
+      var nestedTypeError = !poa.args.forall(a => a.typ.isValidOrUndeclared)
+      if (!nestedTypeError) {
+        poa match {
+          case pcc@PConstructorCall(constr, args, typeAnnotated) =>
+            typeAnnotated match {
+              case Some(ta) =>
+                t.check(ta)
+                if (!ta.isValidOrUndeclared) nestedTypeError = true
+              case None =>
+            }
+
+            if (!nestedTypeError) {
+              val ad = t.names.definition(t.curMember)(constr).asInstanceOf[PAdtConstructor]
+              pcc.constructor = ad
+              t.ensure(ad.formalArgs.size == args.size, pcc, "wrong number of arguments")
+              val adt = t.names.definition(t.curMember)(ad.adtName).asInstanceOf[PAdt]
+              pcc.adt = adt
+              val fdtv = PTypeVar.freshTypeSubstitution((adt.typVars map (tv => tv.idndef.name)).distinct) //fresh domain type variables
+              pcc.adtTypeRenaming = Some(fdtv)
+              pcc._extraLocalTypeVariables = (adt.typVars map (tv => PTypeVar(tv.idndef.name))).toSet
+              extraReturnTypeConstraint = pcc.typeAnnotated
+            }
+          case _ => // TODO: Handle the remaining ADT operation applications (e.g discriminators, destructors) here
+        }
+
+        if (poa.signatures.nonEmpty && poa.args.forall(_.typeSubstitutions.nonEmpty) && !nestedTypeError) {
+          val ltr = getFreshTypeSubstitution(poa.localScope.toList) //local type renaming - fresh versions
+          val rlts = poa.signatures map (ts => refreshWith(ts, ltr)) //local substitutions refreshed
+          assert(rlts.nonEmpty)
+          val rrt: PDomainType = POpApp.pRes.substitute(ltr).asInstanceOf[PDomainType] // return type (which is a dummy type variable) replaced with fresh type
+          val flat = poa.args.indices map (i => POpApp.pArg(i).substitute(ltr)) //fresh local argument types
+          // the triples below are: (fresh argument type, argument type as used in domain of substitutions, substitutions)
+          poa.typeSubstitutions ++= t.unifySequenceWithSubstitutions(rlts, flat.indices.map(i => (flat(i), poa.args(i).typ, poa.args(i).typeSubstitutions.distinct.toSeq)) ++
+            (
+              extraReturnTypeConstraint match {
+                case None => Nil
+                case Some(t) => Seq((rrt, t, List(PTypeSubstitution.id)))
+              }
+              )
+          )
+          val ts = poa.typeSubstitutions.distinct
+          if (ts.isEmpty)
+            t.typeError(poa)
+          poa.typ = if (ts.size == 1) rrt.substitute(ts.head) else rrt
+        } else {
+          poa.typeSubstitutions.clear()
+          poa.typ = PUnknown()()
+        }
+      }
+    }
+    None
+  }
+}
+
+case class PConstructorCall(constr: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PType] = None)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PAdtOpApp with PLocationAccess {
+  override def opName: String = constr.name
+  override def idnuse: PIdnUse = constr
+
+  override def getSubnodes(): Seq[PNode] = Seq(constr) ++ args ++ (typeAnnotated match { case Some(t) => Seq(t) case None => Nil})
+
+  override def signatures: List[PTypeSubstitution] = {
+    if (adt != null && constructor != null) {
+      List(
+        new PTypeSubstitution(
+          args.indices.map(i => POpApp.pArg(i).domain.name -> constructor.formalArgs(i).typ.substitute(adtTypeRenaming.get)) :+
+            (POpApp.pRes.domain.name -> adt.getAdtType.substitute(adtTypeRenaming.get)))
+      )
+    } else List()
+  }
+
+  // Following fields are set during resolving, respectively in the typecheck method below
+  var adt: PAdt = null
+  var constructor: PAdtConstructor = null
+  var adtTypeRenaming: Option[PTypeRenaming] = None
+  var _extraLocalTypeVariables: Set[PDomainType] = Set()
+
+  override def extraLocalTypeVariables: Set[PDomainType] = _extraLocalTypeVariables
+
+  override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = PAdtOpApp.typecheck(this)(t,n)
+
+  override def translateExp(t: Translator): Exp = ??? // TODO: Implement
+
 }
