@@ -197,7 +197,7 @@ sealed trait PAdtOpApp extends PExtender with POpApp
 
 object PAdtOpApp {
   /**
-    * This method mirrors the functionality in Resolver.scala that handle operation applications, except that it is
+    * This method mirrors the functionality in Resolver.scala that handles operation applications, except that it is
     * adapted to work for ADT operator applications.
     */
   def typecheck(poa: PAdtOpApp)(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
@@ -209,7 +209,6 @@ object PAdtOpApp {
     def refreshWith(ts: PTypeSubstitution, rts : PTypeRenaming) : PTypeSubstitution = {
       require(ts.isFullyReduced)
       require(rts.isFullyReduced)
-      //      require(rts.values.forall { case pdt: PDomainType if pdt.isTypeVar => true case _ => false })
       new PTypeSubstitution(ts map (kv => rts.rename(kv._1) -> kv._2.substitute(rts)))
     }
 
@@ -292,11 +291,44 @@ case class PConstructorCall(constr: PIdnUse, args: Seq[PExp], typeAnnotated : Op
   var constructor: PAdtConstructor = null
   var adtTypeRenaming: Option[PTypeRenaming] = None
   var _extraLocalTypeVariables: Set[PDomainType] = Set()
+  var adtSubstitution: Option[PTypeSubstitution] = None
 
   override def extraLocalTypeVariables: Set[PDomainType] = _extraLocalTypeVariables
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = PAdtOpApp.typecheck(this)(t,n)
 
-  override def translateExp(t: Translator): Exp = ??? // TODO: Implement
+  override def forceSubstitution(ots: PTypeSubstitution): Unit = {
+
+    val ts = adtTypeRenaming match {
+      case Some(dtr) =>
+        val s3 = PTypeSubstitution(dtr.mm.map(kv => kv._1 -> (ots.get(kv._2) match {
+          case Some(pt) => pt
+          case None => PTypeSubstitution.defaultType
+        })))
+        assert(s3.m.keySet==dtr.mm.keySet)
+        assert(s3.m.forall(_._2.isGround))
+        adtSubstitution = Some(s3)
+        dtr.mm.values.foldLeft(ots)(
+          (tss,s)=> if (tss.contains(s)) tss else tss.add(s, PTypeSubstitution.defaultType).get)
+      case _ => ots
+    }
+    super.forceSubstitution(ts)
+  }
+
+  override def translateExp(t: Translator): Exp = {
+    val constructor = PAdtConstructor.findAdtConstructor(constr, t)
+    val actualArgs = args map t.exp
+    val so : Option[Map[TypeVar, Type]] = adtSubstitution match{
+      case Some(ps) => Some(ps.m.map(kv=>TypeVar(kv._1)->t.ttyp(kv._2)))
+      case None => None
+    }
+    so match {
+      case Some(s) =>
+        val adt = t.getMembers()(constructor.adtName).asInstanceOf[Adt]
+        assert(s.keys.toSet == adt.typVars.toSet)
+        AdtConstructorApp(constructor, actualArgs, s)(t.liftPos(this))
+      case _ => sys.error("type unification error - should report and not crash")
+    }
+  }
 
 }
