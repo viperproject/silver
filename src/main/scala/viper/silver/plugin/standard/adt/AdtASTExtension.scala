@@ -8,7 +8,7 @@ package viper.silver.plugin.standard.adt
 
 import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, braces, brackets, char, defaultIndent, line, nest, nil, parens, show, showVars, space, ssep, text}
 import viper.silver.ast.pretty.PrettyPrintPrimitives
-import viper.silver.ast.{AnyLocalVarDecl, Declaration, ErrorTrafo, ExtensionMember, ExtensionType, Info, LocalVarDecl, NoInfo, NoPosition, NoTrafos, Node, Position, Type, TypeVar}
+import viper.silver.ast._
 
 /**
   * This class represents a user-defined ADT.
@@ -34,14 +34,17 @@ case class Adt(name: String, constructors: Seq[AdtConstructor], typVars: Seq[Typ
 }
 
 /**
-  * This class represents an ADT constructor
+  * This class represents an ADT constructor. See also the companion object below, which allows passing a
+  * Adt - this should be used in general for creation (so that typ is guaranteed to
+  * be set correctly)
   *
   * @param name name of the ADT constructor
   * @param formalArgs sequence of arguments of the constructor
+  * @param typ the return type of the constructor
   * @param adtName the name corresponding of the corresponding ADT
   */
 case class AdtConstructor(name: String, formalArgs: Seq[AnyLocalVarDecl])
-                     (val pos: Position = NoPosition, val info: Info = NoInfo, val adtName : String, val errT: ErrorTrafo = NoTrafos)
+                     (val pos: Position, val info: Info, typ: AdtType, val adtName : String, val errT: ErrorTrafo)
   extends ExtensionMember {
 
   override def getMetadata:Seq[Any] = {
@@ -60,9 +63,15 @@ case class AdtConstructor(name: String, formalArgs: Seq[AnyLocalVarDecl])
       assert(children.length == 2, s"AdtConstructor : expected length 2 but got ${children.length}")
       val first = children.head.asInstanceOf[String]
       val second = children.tail.head.asInstanceOf[Seq[AnyLocalVarDecl]]
-      AdtConstructor(first, second)(this.pos, this.info, this.adtName, this.errT).asInstanceOf[this.type]
+      AdtConstructor(first, second)(this.pos, this.info, this.typ, this.adtName, this.errT).asInstanceOf[this.type]
     }
 
+  }
+}
+
+object AdtConstructor {
+  def apply(adt: Adt, name: String, formalArgs: Seq[AnyLocalVarDecl])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos): AdtConstructor = {
+    AdtConstructor(name, formalArgs)(pos, info, AdtType(adt, Map.empty), adt.name, errT)
   }
 }
 

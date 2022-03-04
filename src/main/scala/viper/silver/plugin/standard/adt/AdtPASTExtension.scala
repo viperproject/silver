@@ -79,7 +79,8 @@ case class PAdtConstructor(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl])(
   }
 
   override def translateMemberSignature(t: Translator): AdtConstructor = {
-    AdtConstructor(idndef.name, formalArgs map t.liftAnyVarDecl)(t.liftPos(this), NoInfo, adtName.name)
+    val adt = PAdt.findAdt(adtName, t)
+    AdtConstructor(adt, idndef.name, formalArgs map t.liftAnyVarDecl)(t.liftPos(this))
   }
 
   override def translateMember(t: Translator): AdtConstructor = {
