@@ -17,9 +17,18 @@ case class PAdt(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], constructors: Seq[P
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
     t.checkMember(this) {
-      this.constructors foreach (_.typecheck(t, n))
+      constructors foreach (_.typecheck(t, n))
     }
-    None
+    // Check that formalArg identifiers among all constructors are unique
+    val allFormalArgsIdentifier = constructors flatMap (_.formalArgs map {
+      case fad:PFormalArgDecl => fad.idndef.name
+      case _ => sys.error("AdtEncoder : Only PFormalArgDecl are allowed as arguments of an Adt constructor")
+    })
+    if (allFormalArgsIdentifier.distinct != allFormalArgsIdentifier) {
+      Some(Seq("duplicate argument identifier in adt constructors"))
+    } else {
+      None
+    }
   }
 
   override def translateMemberSignature(t: Translator): Adt = {
