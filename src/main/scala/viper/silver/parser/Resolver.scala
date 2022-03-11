@@ -6,11 +6,12 @@
 
 package viper.silver.parser
 
+import viper.silver.FastMessaging
+import viper.silver.ast.utility.Visitor
+import viper.silver.ast.{LabelledOld, MagicWandOp}
+
 import scala.collection.mutable
 import scala.reflect._
-import viper.silver.ast.{LabelledOld, MagicWandOp}
-import viper.silver.ast.utility.Visitor
-import viper.silver.FastMessaging
 
 /**
  * A resolver and type-checker for the intermediate Viper AST.
@@ -464,7 +465,7 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   def check(exp: PExp, expected: PType) = exp match {
-    case t: PExtender => t.typecheck(this, names).getOrElse(Nil) foreach (message =>
+    case t: PExtender => t.typecheck(this, names, expected).getOrElse(Nil) foreach (message =>
       messages ++= FastMessaging.message(t, message))
 
     case _ => checkTopTyped(exp, Some(expected))}

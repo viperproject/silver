@@ -6,13 +6,14 @@
 
 package viper.silver.parser
 
-import scala.collection.Set
-import scala.language.implicitConversions
 import viper.silver.ast.utility.Visitor
-import viper.silver.ast.{Exp, MagicWandOp, Member, NoPosition, Position, Stmt, Type}
 import viper.silver.ast.utility.rewriter.{Rewritable, StrategyBuilder}
+import viper.silver.ast.{Exp, MagicWandOp, Member, NoPosition, Position, Stmt, Type}
 import viper.silver.parser.TypeHelper._
 import viper.silver.verifier.ParseReport
+
+import scala.collection.Set
+import scala.language.implicitConversions
 
 trait Where {
   val pos: (Position, Position)
@@ -1201,7 +1202,8 @@ case class PUnknownEntity() extends PErrorEntity {
 trait PExtender extends PNode{
   def getSubnodes():Seq[PNode] = ???
   def typecheck(t: TypeChecker, n: NameAnalyser):Option[Seq[String]] = ???
-  def namecheck(n: NameAnalyser) = ???
+  def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType):Option[Seq[String]] = ???
+  def namecheck(n: NameAnalyser): Nothing = ???
   def translateMemberSignature(t: Translator): Member = ???
   def translateMember(t: Translator): Member = ???
 
