@@ -73,7 +73,7 @@ case class AdtConstructor(name: String, formalArgs: Seq[AnyLocalVarDecl])
 
 object AdtConstructor {
   def apply(adt: Adt, name: String, formalArgs: Seq[AnyLocalVarDecl])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos): AdtConstructor = {
-    AdtConstructor(name, formalArgs)(pos, info, AdtType(adt, Map.empty), adt.name, errT)
+    AdtConstructor(name, formalArgs)(pos, info, AdtType(adt, (adt.typVars zip adt.typVars).toMap), adt.name, errT)
   }
 }
 
