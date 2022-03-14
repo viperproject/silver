@@ -7,11 +7,10 @@
 package viper.silver.parser
 
 import viper.silver.FastMessaging
-import viper.silver.ast.{SourcePosition, _}
 import viper.silver.ast.utility._
+import viper.silver.ast.{SourcePosition, _}
 
 import scala.language.implicitConversions
-import scala.util.parsing.input.NoPosition
 
 /**
  * Takes an abstract syntax tree after parsing is done and translates it into
@@ -31,12 +30,24 @@ case class Translator(program: PProgram) {
 
     program match {
       case PProgram(_, _, pdomains, pfields, pfunctions, ppredicates, pmethods, pextensions, _) =>
+
+        /* [2022-03-14 Alessandro] Domain signatures need no be translated first, since signatures of other declarations
+         * like domain functions, and ordinary functions might depend on the domain signature. Especially this is the case
+         * when signatures contain user-defined domain types. The same applies for extensions since they might introduce
+         * new top-level declarations that behave similar as domains.
+         */
         pdomains foreach translateMemberSignature
         pextensions foreach translateMemberSignature
 
+        /* [2022-03-14 Alessandro] Following signatures can be translated independently of each other but must be translated
+         * after signatures of domains and extensions because of the above mentioned reasons.
+         */
         pdomains flatMap (_.funcs) foreach translateMemberSignature
         (pfields ++ pfunctions ++ ppredicates ++ pmethods) foreach translateMemberSignature
 
+        /* [2022-03-14 Alessandro] After the signatures are translated, the actual full translations can be done
+         * independently of each other.
+         */
         val extensions = pextensions map translate
         val domain = (pdomains map translate) ++ extensions filter (t => t.isInstanceOf[Domain])
         val fields = (pfields map translate) ++ extensions filter (t => t.isInstanceOf[Field])
