@@ -6,6 +6,7 @@
 
 package viper.silver.plugin.standard.adt
 
+import viper.silver.FastMessaging
 import viper.silver.ast._
 import viper.silver.parser._
 import viper.silver.plugin.standard.adt.PAdtConstructor.findAdtConstructor
@@ -272,16 +273,37 @@ object PAdtOpApp {
             }
 
             if (!nestedTypeError) {
-              val ad = t.names.definition(t.curMember)(constr).asInstanceOf[PAdtConstructor]
-              pcc.constructor = ad
-              t.ensure(ad.formalArgs.size == args.size, pcc, "wrong number of arguments")
-              val adt = t.names.definition(t.curMember)(ad.adtName).asInstanceOf[PAdt]
+              val ac = t.names.definition(t.curMember)(constr).asInstanceOf[PAdtConstructor]
+              pcc.constructor = ac
+              t.ensure(ac.formalArgs.size == args.size, pcc, "wrong number of arguments")
+              val adt = t.names.definition(t.curMember)(ac.adtName).asInstanceOf[PAdt]
               pcc.adt = adt
               val fdtv = PTypeVar.freshTypeSubstitution((adt.typVars map (tv => tv.idndef.name)).distinct) //fresh domain type variables
               pcc.adtTypeRenaming = Some(fdtv)
               pcc._extraLocalTypeVariables = (adt.typVars map (tv => PTypeVar(tv.idndef.name))).toSet
               extraReturnTypeConstraint = pcc.typeAnnotated
             }
+
+          case pdc@PDestructorCall(name, _) =>
+            pdc.args.head.typ match {
+              case at:PAdtType =>
+                val adt = t.names.definition(t.curMember)(at.adt).asInstanceOf[PAdt]
+                pdc.adt = adt
+                val matchingConstructorArgs: Seq[PFormalArgDecl] = adt.constructors flatMap (c => c.formalArgs.collect { case fad@PFormalArgDecl(idndef, _) if idndef.name == name => fad })
+                if (matchingConstructorArgs.nonEmpty) {
+                  pdc.matchingConstructorArg = matchingConstructorArgs.head
+                  val fdtv = PTypeVar.freshTypeSubstitution((adt.typVars map (tv => tv.idndef.name)).distinct) //fresh domain type variables
+                  pdc.adtTypeRenaming = Some(fdtv)
+                  pdc._extraLocalTypeVariables = (adt.typVars map (tv => PTypeVar(tv.idndef.name))).toSet
+                } else {
+                  nestedTypeError = true
+                  t.messages ++= FastMessaging.message(pdc, "no matching destructor found")
+                }
+              case _ =>
+                nestedTypeError = true
+                t.messages ++= FastMessaging.message(pdc, "expected an adt")
+            }
+
           case _ => // TODO: Handle the remaining ADT operation applications (e.g discriminators, destructors) here
         }
 
@@ -330,7 +352,7 @@ case class PConstructorCall(constr: PIdnUse, args: Seq[PExp], typeAnnotated : Op
     } else List()
   }
 
-  // Following fields is set during resolving, respectively in the typecheck method inherited from PAdtOpApp
+  // Following field is set during resolving, respectively in the typecheck method inherited from PAdtOpApp
   var constructor: PAdtConstructor = null
 
   override def translateExp(t: Translator): Exp = {
@@ -349,4 +371,37 @@ case class PConstructorCall(constr: PIdnUse, args: Seq[PExp], typeAnnotated : Op
     }
   }
 
+}
+
+case class PDestructorCall(name: String, rcv: PExp)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PAdtOpApp {
+  override def opName: String = name
+  override def args: Seq[PExp] = Seq(rcv)
+  override def getSubnodes(): Seq[PNode] = Seq(rcv)
+
+  override def signatures: List[PTypeSubstitution] = if (adt != null && matchingConstructorArg != null) {
+    assert(args.length == 1, s"PDestructorCall: Expected args to be of length 1 but was of length ${args.length}")
+    List(
+      new PTypeSubstitution(
+        args.indices.map(i => POpApp.pArg(i).domain.name -> adt.getAdtType.substitute(adtTypeRenaming.get)) :+
+          (POpApp.pRes.domain.name -> matchingConstructorArg.typ.substitute(adtTypeRenaming.get)))
+    )
+  } else List()
+
+  // Following field is set during resolving, respectively in the typecheck method inherited from PAdtOpApp
+  var matchingConstructorArg: PFormalArgDecl = null
+
+  override def translateExp(t: Translator): Exp = {
+    val actualRcv = t.exp(rcv)
+    val so : Option[Map[TypeVar, Type]] = adtSubstitution match {
+      case Some(ps) => Some(ps.m.map(kv=>TypeVar(kv._1)->t.ttyp(kv._2)))
+      case None => None
+    }
+    so match {
+      case Some(s) =>
+        val adt = t.getMembers()(this.adt.idndef.name).asInstanceOf[Adt]
+        assert(s.keys.toSet == adt.typVars.toSet)
+        AdtDestructorApp(adt, name, actualRcv, s)(t.liftPos(this))
+      case _ => sys.error("type unification error - should report and not crash")
+    }
+  }
 }
