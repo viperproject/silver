@@ -306,6 +306,11 @@ case class PConstructorCall(constr: PIdnUse, args: Seq[PExp], typeAnnotated : Op
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = PAdtOpApp.typecheck(this)(t,n)
 
+  override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = {
+    t.checkTopTyped(this, Some(expected))
+    None
+  }
+
   override def forceSubstitution(ots: PTypeSubstitution): Unit = {
 
     val ts = adtTypeRenaming match {
