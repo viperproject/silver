@@ -8,7 +8,7 @@ package viper.silver.plugin.standard.adt.encoding
 
 import viper.silver.ast._
 import viper.silver.ast.utility.rewriter.{StrategyBuilder, Traverse}
-import viper.silver.plugin.standard.adt.{Adt, AdtConstructor, AdtConstructorApp, AdtType}
+import viper.silver.plugin.standard.adt._
 
 
 /**
@@ -32,6 +32,7 @@ class AdtEncoder (val program: Program) extends AdtNameManager {
         val encodedAdtsAsDomains: Seq[Domain] = extensions collect { case a:Adt => encodeAdtAsDomain(a) }
         Program(domains ++ encodedAdtsAsDomains, fields, functions, predicates, methods, remainingExtensions)(p.pos, p.info, p.errT)
       case aca: AdtConstructorApp => encodeAdtConstructorApp(aca)
+      case ada: AdtDestructorApp => encodeAdtDestructorApp(ada)
     }, Traverse.BottomUp).execute(program)
 
     // In a second step encode all occurrences of AdtType's as DomainType's
@@ -142,6 +143,20 @@ class AdtEncoder (val program: Program) extends AdtNameManager {
           )(ac.pos, ac.info, ac.adtName, ac.errT)
         case _ => sys.error("AdtEncoder : Only LocalVarDecl are allowed as arguments of an Adt constructor")
     }
+  }
+
+  /**
+    * This methods encode an ADT destructor application as a domain function application
+    *
+    * @param ada The destructor application
+    * @return The destructor application encoded as a domain function application
+    */
+  private def encodeAdtDestructorApp(ada: AdtDestructorApp): DomainFuncApp = {
+    DomainFuncApp(
+      getDestructorName(ada.adtName, ada.name),
+      Seq(ada.rcv),
+      ada.typVarMap
+    )(ada.pos, ada.info, ada.typ, ada.adtName, ada.errT)
   }
 
   /**
