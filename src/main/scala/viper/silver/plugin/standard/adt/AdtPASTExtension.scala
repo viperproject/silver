@@ -202,7 +202,42 @@ object PAdtTypeKinds {
 }
 
 /** Common trait for ADT operator applications **/
-sealed trait PAdtOpApp extends PExtender with POpApp
+sealed trait PAdtOpApp extends PExtender with POpApp {
+
+  // Following fields are set during resolving, respectively in the typecheck method below
+  var adt: PAdt = null
+  var adtTypeRenaming: Option[PTypeRenaming] = None
+  var adtSubstitution: Option[PTypeSubstitution] = None
+  var _extraLocalTypeVariables: Set[PDomainType] = Set()
+
+  override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = PAdtOpApp.typecheck(this)(t,n)
+
+  override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = {
+    t.checkTopTyped(this, Some(expected))
+    None
+  }
+
+  override def forceSubstitution(ots: PTypeSubstitution): Unit = {
+
+    val ts = adtTypeRenaming match {
+      case Some(dtr) =>
+        val s3 = PTypeSubstitution(dtr.mm.map(kv => kv._1 -> (ots.get(kv._2) match {
+          case Some(pt) => pt
+          case None => PTypeSubstitution.defaultType
+        })))
+        assert(s3.m.keySet==dtr.mm.keySet)
+        assert(s3.m.forall(_._2.isGround))
+        adtSubstitution = Some(s3)
+        dtr.mm.values.foldLeft(ots)(
+          (tss,s)=> if (tss.contains(s)) tss else tss.add(s, PTypeSubstitution.defaultType).get)
+      case _ => ots
+    }
+    super.forceSubstitution(ts)
+  }
+
+  override def extraLocalTypeVariables: Set[PDomainType] = _extraLocalTypeVariables
+
+}
 
 object PAdtOpApp {
   /**
@@ -295,39 +330,8 @@ case class PConstructorCall(constr: PIdnUse, args: Seq[PExp], typeAnnotated : Op
     } else List()
   }
 
-  // Following fields are set during resolving, respectively in the typecheck method below
-  var adt: PAdt = null
+  // Following fields is set during resolving, respectively in the typecheck method inherited from PAdtOpApp
   var constructor: PAdtConstructor = null
-  var adtTypeRenaming: Option[PTypeRenaming] = None
-  var _extraLocalTypeVariables: Set[PDomainType] = Set()
-  var adtSubstitution: Option[PTypeSubstitution] = None
-
-  override def extraLocalTypeVariables: Set[PDomainType] = _extraLocalTypeVariables
-
-  override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = PAdtOpApp.typecheck(this)(t,n)
-
-  override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = {
-    t.checkTopTyped(this, Some(expected))
-    None
-  }
-
-  override def forceSubstitution(ots: PTypeSubstitution): Unit = {
-
-    val ts = adtTypeRenaming match {
-      case Some(dtr) =>
-        val s3 = PTypeSubstitution(dtr.mm.map(kv => kv._1 -> (ots.get(kv._2) match {
-          case Some(pt) => pt
-          case None => PTypeSubstitution.defaultType
-        })))
-        assert(s3.m.keySet==dtr.mm.keySet)
-        assert(s3.m.forall(_._2.isGround))
-        adtSubstitution = Some(s3)
-        dtr.mm.values.foldLeft(ots)(
-          (tss,s)=> if (tss.contains(s)) tss else tss.add(s, PTypeSubstitution.defaultType).get)
-      case _ => ots
-    }
-    super.forceSubstitution(ts)
-  }
 
   override def translateExp(t: Translator): Exp = {
     val constructor = PAdtConstructor.findAdtConstructor(constr, t)
