@@ -29,7 +29,7 @@ case class PDecreasesTuple(tuple: Seq[PExp], condition: Option[PExp] = None)(val
 
   override val getSubnodes: Seq[PNode] = tuple ++ condition
 
-  override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
+  override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = {
     // require condition to be of type bool
     condition.foreach(c => t.checkTopTyped(c, Some(Bool)))
     tuple.foreach(a => t.checkTopTyped(a, None))
@@ -45,7 +45,7 @@ case class PDecreasesWildcard(condition: Option[PExp] = None)(val pos: (Position
 
   override val getSubnodes: Seq[PNode] = condition.toSeq
 
-  override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
+  override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = {
     // require condition to be of type bool
     condition.foreach(c => t.checkTopTyped(c, Some(Bool)))
     None
@@ -59,7 +59,7 @@ case class PDecreasesWildcard(condition: Option[PExp] = None)(val pos: (Position
 case class PDecreasesStar()(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PDecreasesClause {
   override val getSubnodes: Seq[PNode] = Nil
 
-  override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
+  override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = {
     None
   }
 

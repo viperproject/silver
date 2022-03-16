@@ -6,11 +6,12 @@
 
 package viper.silver.parser
 
+import viper.silver.FastMessaging
+import viper.silver.ast.utility.Visitor
+import viper.silver.ast.{LabelledOld, MagicWandOp}
+
 import scala.collection.mutable
 import scala.reflect._
-import viper.silver.ast.{LabelledOld, MagicWandOp}
-import viper.silver.ast.utility.Visitor
-import viper.silver.FastMessaging
 
 /**
  * A resolver and type-checker for the intermediate Viper AST.
@@ -50,16 +51,32 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   def check(p: PProgram): Unit = {
+
+    /* [2022-03-14 Alessandro] Domain function declarations, method declarations and ordinary function declarations
+     * must be checked before their application is checked. Especially, this is because type variables in signatures
+     * must be resolved. However, the checks in the following block are independent of each other.
+     */
     p.domains foreach checkFunctions
-    p.domains foreach checkAxioms
     p.fields foreach check
     p.functions foreach checkDeclaration
     p.predicates foreach checkDeclaration
+    p.methods foreach checkDeclaration
+
+    /* [2022-03-14 Alessandro] Unfortunately, there is currently no mechanism of checking some extensions "signature" first
+     * and checking its "body" in a later step. However, there are currently no Extensions planned that would use this
+     * functionality. Hence we check all the extensions after declarations and signatures are checked. This allows
+     * extensions in which there are function, domain function and method applications.
+     */
+    p.extensions foreach checkExtension
+
+    /* [2022-03-14 Alessandro]
+     * The following block of checks must occur after declarations and signatures are checked, but the checks in the block
+     * do not depend on each other. Note that extensions are checked beforehand, which allow function and method alike extensions.
+     */
+    p.domains foreach checkAxioms
     p.functions foreach checkBody
     p.predicates foreach checkBody
-    p.methods foreach checkDeclaration
     p.methods foreach checkBody
-    p.extensions foreach checkExtension
 
 
     /* Report any domain type that couldn't be resolved */
@@ -464,7 +481,7 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   def check(exp: PExp, expected: PType) = exp match {
-    case t: PExtender => t.typecheck(this, names).getOrElse(Nil) foreach (message =>
+    case t: PExtender => t.typecheck(this, names, expected).getOrElse(Nil) foreach (message =>
       messages ++= FastMessaging.message(t, message))
 
     case _ => checkTopTyped(exp, Some(expected))}
