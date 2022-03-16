@@ -25,9 +25,14 @@ class AdtEncoder (val program: Program) extends AdtNameManager {
     */
   def encode(): Program = {
 
-    // In a first step encode all adt top level declarations
-    val encodedAdts: Seq[Domain] = program.extensions map {case a: Adt => encodeAdtAsDomain(a)}
-    val newProgram: Program = program.copy(domains = program.domains ++ encodedAdts, extensions = Seq())(program.pos, program.info, program.errT)
+    // In a first step encode all adt top level declarations and constructor calls
+    val newProgram: Program = StrategyBuilder.Slim[Node]({
+      case p@Program(domains, fields, functions, predicates, methods, extensions) =>
+        val remainingExtensions = extensions filter { case _:Adt => false; case _ => true }
+        val encodedAdtsAsDomains: Seq[Domain] = extensions collect { case a:Adt => encodeAdtAsDomain(a) }
+        Program(domains ++ encodedAdtsAsDomains, fields, functions, predicates, methods, remainingExtensions)(p.pos, p.info, p.errT)
+      case aca: AdtConstructorApp => encodeAdtConstructorApp(aca)
+    }, Traverse.BottomUp).execute(program)
 
     // In a second step encode all occurrences of AdtType's as DomainType's
     encodeAllAdtTypeAsDomainType(newProgram)
@@ -105,12 +110,12 @@ class AdtEncoder (val program: Program) extends AdtNameManager {
     * @param aca The constructor application
     * @return The constructor application encoded as a domain function application
     */
-  private def encodeAdtConstructorApp(aca: AdtConstructorApp) = {
+  private def encodeAdtConstructorApp(aca: AdtConstructorApp): DomainFuncApp = {
     DomainFuncApp(
       aca.name,
       aca.args,
       aca.typVarMap
-    )(_,_,aca.typ, aca.adtName, _)
+    )(aca.pos, aca.info, aca.typ, aca.adtName, aca.errT)
   }
 
 

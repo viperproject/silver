@@ -62,13 +62,13 @@ class AdtPlugin extends SilverPlugin with ParserPluginTemplate {
   }
 
   override def beforeResolve(input: PProgram): PProgram = {
-    // Replace PDomainType by PAdtType if a corresponding ADT exists, since they are automatically parsed as an PDomainType
-    // and there is no way to extend the parser to avoid this.
+    // Syntax of adt types and adt constructor calls can not be distinguished from ordinary viper syntax, hence we need
+    // the following transforming step before resolving.
     val declaredAdtNames = input.extensions.collect { case a: PAdt => a.idndef }.toSet
+    val declaredConstructorNames = input.extensions.collect { case a: PAdt => a.constructors.map(c => c.idndef) }.flatten.toSet
     StrategyBuilder.Slim[PNode]({
       case pa@PDomainType(idnuse, args) if declaredAdtNames.exists(_.name == idnuse.name) => PAdtType(idnuse, args)(pa.pos)
-    }).recurseFunc({
-      case d: PNode => d.children.collect {case ar: AnyRef => ar}
+      case pc@PCall(idnuse, args, typeAnnotated) if declaredConstructorNames.exists(_.name == idnuse.name) => PConstructorCall(idnuse, args, typeAnnotated)(pc.pos)
     }).execute(input)
   }
 
