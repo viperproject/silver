@@ -304,7 +304,15 @@ object PAdtOpApp {
                 t.messages ++= FastMessaging.message(pdc, "expected an adt")
             }
 
-          case _ => // TODO: Handle the remaining ADT operation applications (e.g discriminators, destructors) here
+          case pdc@PDiscriminatorCall(name, _) =>
+            val ac = t.names.definition(t.curMember)(name).asInstanceOf[PAdtConstructor]
+            val adt = t.names.definition(t.curMember)(ac.adtName).asInstanceOf[PAdt]
+            pdc.adt = adt
+            val fdtv = PTypeVar.freshTypeSubstitution((adt.typVars map (tv => tv.idndef.name)).distinct) //fresh domain type variables
+            pdc.adtTypeRenaming = Some(fdtv)
+            pdc._extraLocalTypeVariables = (adt.typVars map (tv => PTypeVar(tv.idndef.name))).toSet
+
+          case _ => sys.error("PAdtOpApp#typecheck: unexpectable type")
         }
 
         if (poa.signatures.nonEmpty && poa.args.forall(_.typeSubstitutions.nonEmpty) && !nestedTypeError) {
@@ -401,6 +409,38 @@ case class PDestructorCall(name: String, rcv: PExp)(val pos: (Position, Position
         val adt = t.getMembers()(this.adt.idndef.name).asInstanceOf[Adt]
         assert(s.keys.toSet == adt.typVars.toSet)
         AdtDestructorApp(adt, name, actualRcv, s)(t.liftPos(this))
+      case _ => sys.error("type unification error - should report and not crash")
+    }
+  }
+}
+
+case class PDiscriminatorCall(name: PIdnUse, rcv: PExp)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PAdtOpApp {
+  override def opName: String = "." + name + "?"
+
+  override def args: Seq[PExp] = Seq(rcv)
+
+  override def getSubnodes(): Seq[PNode] = Seq(name, rcv)
+
+  override def signatures: List[PTypeSubstitution] = if (adt != null) {
+    assert(args.length == 1, s"PDiscriminatorCall: Expected args to be of length 1 but was of length ${args.length}")
+    List(
+      new PTypeSubstitution(
+        args.indices.map(i => POpApp.pArg(i).domain.name -> adt.getAdtType.substitute(adtTypeRenaming.get)) :+
+          (POpApp.pRes.domain.name -> TypeHelper.Bool))
+    )
+  } else List()
+
+  override def translateExp(t: Translator): Exp = {
+    val actualRcv = t.exp(rcv)
+    val so : Option[Map[TypeVar, Type]] = adtSubstitution match {
+      case Some(ps) => Some(ps.m.map(kv=>TypeVar(kv._1)->t.ttyp(kv._2)))
+      case None => None
+    }
+    so match {
+      case Some(s) =>
+        val adt = t.getMembers()(this.adt.idndef.name).asInstanceOf[Adt]
+        assert(s.keys.toSet == adt.typVars.toSet)
+        AdtDiscriminatorApp(adt, name.name, actualRcv, s)(t.liftPos(this))
       case _ => sys.error("type unification error - should report and not crash")
     }
   }
