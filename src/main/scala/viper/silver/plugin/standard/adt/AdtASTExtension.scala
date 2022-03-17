@@ -238,4 +238,51 @@ object AdtDestructorApp {
   }
 }
 
+/**
+  * This class represents an adt discriminator application. See also the companion object below, which allows passing a
+  * Adt - this should be used in general for creation (so that adtName is guaranteed to
+  * be set correctly)
+  *
+  * @param name The name of the argument of an ADT constructor the destructor corresponds to
+  * @param rcv An expression on with the the destructor is applied
+  * @param typVarMap Maps type parameters to (possibly concrete) types. May not map all
+  *                  type parameters, may even be empty.
+  * @param adtName The corresponding ADT name
+  */
+case class AdtDiscriminatorApp(name: String, rcv: Exp, typVarMap: Map[TypeVar, Type])(val pos: Position, val info: Info, val adtName:String, val errT: ErrorTrafo) extends ExtensionExp {
+
+  override def typ: Type = Bool
+
+  override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(rcv)
+
+  override def prettyPrint: PrettyPrintPrimitives#Cont = show(rcv) <> "." <> name <> "?"
+
+  override def extensionIsPure: Boolean = true
+
+  override def extensionSubnodes: Seq[Node] = Seq(rcv) ++ typVarMap.keys ++ typVarMap.values
+
+  override def verifyExtExp(): VerificationResult = {
+    assert(assertion = false, "AdtDiscriminatorApp: verifyExtExp has not been implemented.")
+    Failure(Seq(ConsistencyError("AdtDiscriminatorApp: verifyExtExp has not been implemented.", pos)))
+  }
+
+  override def withChildren(children: Seq[Any], pos: Option[(Position, Position)], forceRewrite: Boolean): this.type = {
+    if (!forceRewrite && this.children == children && pos.isEmpty)
+      this
+    else {
+      assert(children.length == 3, s"AdtDestructorApp : expected length 3 but got ${children.length}")
+      val first = children.head.asInstanceOf[String]
+      val second = children(1).asInstanceOf[Exp]
+      val third = children(2).asInstanceOf[Map[TypeVar, Type]]
+      AdtDiscriminatorApp(first, second, third)(this.pos, this.info, this.adtName, this.errT).asInstanceOf[this.type]
+    }
+  }
+
+}
+
+object AdtDiscriminatorApp {
+  def apply(adt : Adt, name: String, rcv: Exp, typVarMap: Map[TypeVar, Type])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos) : AdtDiscriminatorApp = {
+    AdtDiscriminatorApp(name, rcv, typVarMap)(pos, info, adt.name, errT)
+  }
+}
 
