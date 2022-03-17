@@ -16,12 +16,19 @@ import viper.silver.plugin.standard.adt._
   *
   * @param program The program containing ADT AST nodes, we want to encode.
   */
-class AdtEncoder (val program: Program) extends AdtNameManager {
+class AdtEncoder(val program: Program) extends AdtNameManager {
+
+  /**
+    * This is field holding the mappings of the adt constructors tag identifier.
+    */
+  private val tagMapping: Map[String, Map[String, Int]] = (program.extensions collect {
+    case a:Adt => (a.name, a.constructors.map(_.name).sorted.zipWithIndex.toMap)
+  }).toMap
 
   /**
     * This method encodes all ADT related AST nodes to normal AST nodes.
     *
-    * @return
+    * @return The encoded program.
     */
   def encode(): Program = {
 
@@ -33,11 +40,21 @@ class AdtEncoder (val program: Program) extends AdtNameManager {
         Program(domains ++ encodedAdtsAsDomains, fields, functions, predicates, methods, remainingExtensions)(p.pos, p.info, p.errT)
       case aca: AdtConstructorApp => encodeAdtConstructorApp(aca)
       case ada: AdtDestructorApp => encodeAdtDestructorApp(ada)
+      case ada: AdtDiscriminatorApp => encodeAdtDiscriminatorApp(ada)
     }, Traverse.BottomUp).execute(program)
 
     // In a second step encode all occurrences of AdtType's as DomainType's
     encodeAllAdtTypeAsDomainType(newProgram)
   }
+
+  /**
+    * This method return the tag identifier given a adt constructor name and its correpsonding adt name
+    *
+    * @param adtName The name of the adt
+    * @param contrName The name of the adt constructor we want the tag identifier
+    * @return The queried tag identifier
+    */
+  private def getTag(adtName: String)(contrName:String) = tagMapping(adtName)(contrName)
 
   /**
     * This method takes an ADT and encodes it as a Domain. Especially it does
@@ -57,7 +74,7 @@ class AdtEncoder (val program: Program) extends AdtNameManager {
         val functions: Seq[DomainFunc] = (constructors map encodeAdtConstructorAsDomainFunc(domain)) ++
           (constructors flatMap generateDestructorDeclarations(domain)) ++ Seq(generateTagDeclaration(domain))
         val axioms = (constructors flatMap generateInjectivityAxiom(domain)) ++
-          (constructors.zipWithIndex map { case (c, i) => generateTagAxiom(domain)(c, i) }) ++ Seq(generateExclusivityAxiom(domain)(constructors))
+          (constructors map generateTagAxiom(domain)) ++ Seq(generateExclusivityAxiom(domain)(constructors))
         domain.copy(functions = functions, axioms = axioms)(adt.pos, adt.info, adt.errT)
     }
   }
@@ -157,6 +174,22 @@ class AdtEncoder (val program: Program) extends AdtNameManager {
       Seq(ada.rcv),
       ada.typVarMap
     )(ada.pos, ada.info, ada.typ, ada.adtName, ada.errT)
+  }
+
+  /**
+    * This methods encode an ADT discriminator application as an equality expression
+    *
+    * @param ada The discriminator application
+    * @return The discriminator application encoded as an equality expression
+    */
+  private def encodeAdtDiscriminatorApp(ada: AdtDiscriminatorApp): EqCmp = {
+    val tagApp = DomainFuncApp(
+      getTagName(ada.adtName),
+      Seq(ada.rcv),
+      ada.typVarMap // TODO: not sure about that
+    )(ada.pos, ada.info, Int, ada.adtName, ada.errT)
+
+    EqCmp(tagApp, IntLit(getTag(ada.adtName)(ada.name))(ada.pos, ada.info, ada.errT))(ada.pos, ada.info, ada.errT)
   }
 
   /**
@@ -283,12 +316,11 @@ class AdtEncoder (val program: Program) extends AdtNameManager {
     *
     * where i is specified by the parameter 'tag'.
     *
-    * @param domain The domain that encodes the ADT and the ADT constructor belongs to for which we want a tag axiom
+    * @param domain The domain that encodes the ADT the constructor belongs to for which we want a tag axiom
     * @param ac An ADT constructor
-    * @param tag The assigned tag
     * @return The generated tag axiom
     */
-  private def generateTagAxiom(domain:Domain)(ac: AdtConstructor, tag: Int): AnonymousDomainAxiom = {
+  private def generateTagAxiom(domain:Domain)(ac: AdtConstructor): AnonymousDomainAxiom = {
     assert(domain.name == ac.adtName, "AdtEncoder: An error in the ADT encoding occurred.")
 
     val localVarDecl = ac.formalArgs.collect {case l:LocalVarDecl => l }
@@ -315,7 +347,7 @@ class AdtEncoder (val program: Program) extends AdtNameManager {
       defaultTypeVarsFromDomain(domain) // TODO: not sure about that
     )(ac.pos, ac.info, Int, ac.adtName, ac.errT)
 
-    val right = IntLit(tag)(ac.pos, ac.info, ac.errT)
+    val right = IntLit(getTag(domain.name)(ac.name))(ac.pos, ac.info, ac.errT)
     val eq = EqCmp(tagApp, right)(ac.pos, ac.info, ac.errT)
     val forall = Forall(localVarDecl, Seq(trigger), eq)(ac.pos, ac.info, ac.errT)
 
