@@ -1,0 +1,18 @@
+// Side remark: none of these quantifiers admit any (natural) triggers
+
+predicate P()
+
+method test()
+  requires P()
+  ensures forall i: Int :: i == 0 ==> P()
+{}
+
+field f: Int
+
+method test2(x: Ref) {
+  inhale forall i: Int :: i == 0 ==> acc(x.f)
+}
+
+method test3(x: Ref) {
+  inhale forall i: Int :: i == 0 ==> true --* true
+}
