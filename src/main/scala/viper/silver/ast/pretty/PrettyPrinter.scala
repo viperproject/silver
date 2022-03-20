@@ -490,9 +490,9 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
 
   /** Show a program. */
   def showProgram(p: Program): Cont = {
-    val Program(domains, fields, functions, predicates, methods, _) = p
+    val Program(domains, fields, functions, predicates, methods, extensions) = p
     showComment(p) <@>
-      ssep((domains ++ fields ++ functions ++ predicates ++ methods) map show, line <> line)
+      ssep((domains ++ fields ++ functions ++ predicates ++ methods ++ extensions) map show, line <> line)
   }
 
   /** Show a domain member. */
@@ -564,7 +564,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
           })
       case d: Domain =>
         showDomain(d)
-      case _:ExtensionMember => nil
+      case e:ExtensionMember => e.prettyPrint
     }
     showComment(m) <@> memberDoc
   }
@@ -627,6 +627,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
         text(domainName) <> (if (typArgs.isEmpty) nil else brackets(ssep(typArgs, char (',') <> space)))
       case BackendType(boogieName, _) if boogieName != null => boogieName
       case BackendType(_, smtName) => smtName
+      case et: ExtensionType => et.prettyPrint
     }
   }
 
