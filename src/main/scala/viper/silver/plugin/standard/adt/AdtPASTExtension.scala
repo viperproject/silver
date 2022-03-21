@@ -351,7 +351,7 @@ case class PConstructorCall(constr: PIdnUse, args: Seq[PExp], typeAnnotated : Op
   override def getSubnodes(): Seq[PNode] = Seq(constr) ++ args ++ (typeAnnotated match { case Some(t) => Seq(t) case None => Nil})
 
   override def signatures: List[PTypeSubstitution] = {
-    if (adt != null && constructor != null) {
+    if (adt != null && constructor != null && constructor.formalArgs.size == args.size) {
       List(
         new PTypeSubstitution(
           args.indices.map(i => POpApp.pArg(i).domain.name -> constructor.formalArgs(i).typ.substitute(adtTypeRenaming.get)) :+
