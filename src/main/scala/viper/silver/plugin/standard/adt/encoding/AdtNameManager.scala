@@ -59,12 +59,10 @@ trait AdtNameManager {
     * @return
     */
   private def getName(trueName: String): String = {
-
-    var newName = trueName
-    if (!adtNameMappings.contains(trueName) && containsName(trueName)) {
-      newName = uniqueName(trueName)
+    if (!adtNameMappings.contains(trueName)) {
+      val newName = if (containsName(trueName)) uniqueName(trueName) else trueName
+      adtNameMappings.addOne((trueName, newName))
     }
-    adtNameMappings.addOne((trueName, newName))
     adtNameMappings(trueName)
   }
 
