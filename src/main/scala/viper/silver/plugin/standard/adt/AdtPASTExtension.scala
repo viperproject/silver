@@ -301,16 +301,21 @@ object PAdtOpApp {
                 }
               case _ =>
                 nestedTypeError = true
-                t.messages ++= FastMessaging.message(pdc, "expected an adt")
+                t.messages ++= FastMessaging.message(pdc, "expected an adt as receiver")
             }
 
           case pdc@PDiscriminatorCall(name, _) =>
-            val ac = t.names.definition(t.curMember)(name).asInstanceOf[PAdtConstructor]
-            val adt = t.names.definition(t.curMember)(ac.adtName).asInstanceOf[PAdt]
-            pdc.adt = adt
-            val fdtv = PTypeVar.freshTypeSubstitution((adt.typVars map (tv => tv.idndef.name)).distinct) //fresh domain type variables
-            pdc.adtTypeRenaming = Some(fdtv)
-            pdc._extraLocalTypeVariables = (adt.typVars map (tv => PTypeVar(tv.idndef.name))).toSet
+            t.names.definition(t.curMember)(name) match {
+              case ac: PAdtConstructor =>
+                val adt = t.names.definition(t.curMember)(ac.adtName).asInstanceOf[PAdt]
+                pdc.adt = adt
+                val fdtv = PTypeVar.freshTypeSubstitution((adt.typVars map (tv => tv.idndef.name)).distinct) //fresh domain type variables
+                pdc.adtTypeRenaming = Some(fdtv)
+                pdc._extraLocalTypeVariables = (adt.typVars map (tv => PTypeVar(tv.idndef.name))).toSet
+              case _ =>
+                nestedTypeError = true
+                t.messages ++= FastMessaging.message(pdc, "invalid adt discriminator")
+            }
 
           case _ => sys.error("PAdtOpApp#typecheck: unexpectable type")
         }
