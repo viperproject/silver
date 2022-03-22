@@ -282,7 +282,7 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     val equalities = rhss.map { rhs =>
       EqCmp(localVar, rhs)(rhs.pos, rhs.info, rhs.errT)
     }
-      .foldLeft(TrueLit()(domain.pos, domain.info, domain.errT) : Exp)({
+      .foldLeft(FalseLit()(domain.pos, domain.info, domain.errT) : Exp)({
         (acc, next) => Or(acc, next)(domain.pos, domain.info, domain.errT)
     })
 
