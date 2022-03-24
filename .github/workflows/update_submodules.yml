@@ -1,0 +1,38 @@
+name: Scala CI
+
+on:
+  push:
+    branches: [ silver-as-a-submodule ]
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - repo: 'silicon'
+          #- repo: 'carbon'
+    runs-on: ubuntu-latest
+
+    steps:
+    # Checkout the repository to the GitHub Actions runner
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        repository: viperproject/${{ matrix.repo }}
+        ref: silver-as-a-submodule
+        token: ${{ secrets.CI_TOKEN }}
+        submodules: true
+
+    # Update references
+    - name: Git Sumbodule Update
+      run: |
+        git pull --recurse-submodules
+        git submodule update --remote --recursive
+
+    - name: Commit update
+      run: |
+        git config --global user.name 'Silver Bot'
+        git config --global user.email 'bot@noreply.github.com'
+        git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/viperproject/${{ matrix.repo }}
+        git commit -am "Auto updated submodule references" && git push || echo "No changes to commit"
