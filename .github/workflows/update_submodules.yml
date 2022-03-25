@@ -3,6 +3,7 @@ name: Update Silver Submodule
 on:
   push:
     branches: [ silver-as-a-submodule ]
+  workflow_dispatch:
 
 jobs:
   test:

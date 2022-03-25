@@ -5,6 +5,7 @@ on:
     branches: [ silver-as-a-submodule ]
   pull_request:
     branches: [ silver-as-a-submodule ]
+  workflow_dispatch:
 
 jobs:
   test:
