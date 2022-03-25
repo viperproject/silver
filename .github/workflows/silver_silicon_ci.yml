@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 # `${{ secrets.PAT }}` must give access to `${{ env.fork }}/${{ matrix.repo }}`
-# for both pushes and triggering workflows.
+# for both pushes and triggering workflows (`workflow`+`repo` and `repo_hook` scopes).
 env:
   fork: JonasAlaif
   branch: silver-as-a-submodule
