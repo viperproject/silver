@@ -14,8 +14,8 @@ on:
 env:
   fork: JonasAlaif
   branch: silver-as-a-submodule
-  sha: ${{ github.event.pull_request.head.sha || github.sha }}
-  ref: ${{ github.event.pull_request.head.ref || github.ref }}
+  sha: ${{ github.event.pull_request.head.sha }}
+  ref: ${{ github.event.pull_request.head.ref }}
 
 jobs:
   test:
