@@ -11,7 +11,7 @@ jobs:
       matrix:
         include:
           - repo: 'silicon'
-          #- repo: 'carbon'
+          - repo: 'carbon'
     runs-on: ubuntu-latest
 
     steps:
@@ -24,10 +24,13 @@ jobs:
         ref: silver-as-a-submodule
         submodules: true
 
-    - name: Update submodules
+    # Update references
+    - name: Git Sumbodule Update
       run: |
-        git submodule update --remote --recursive
+        git submodule update --remote silver
 
+    - name: Commit update
+      run: |
         git config --global user.name 'Silver Bot'
         git config --global user.email 'bot@noreply.github.com'
-        git commit -am "Auto updated submodule references" && git push || echo "No changes to commit"
+        git commit -am "Update silver submodule" && git push || echo "No changes to commit"
