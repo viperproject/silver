@@ -36,8 +36,6 @@ jobs:
 
     - name: Update fork
       run: |
-        git config --global user.name 'Silver Bot'
-        git config --global user.email 'bot@noreply.github.com'
         git remote add upstream https://github.com/viperproject/${{ matrix.repo }}
         git fetch upstream ${{ env.branch }}
         git pull upstream ${{ env.branch }}
@@ -53,6 +51,8 @@ jobs:
 
     - name: Push temporary branch
       run: |
+        git config --global user.name 'Silver Bot'
+        git config --global user.email 'bot@noreply.github.com'
         git commit -am "Set silver submodule to ${{ github.sha }} [skip ci]"
         git push origin ci-test-${{ github.sha }}
 
