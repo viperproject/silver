@@ -17,7 +17,7 @@ jobs:
     steps:
     - name: Update submodules
       run: |
-        git clone --recursive https://JonasAlaif:${{ secrets.PAT }}@github.com/viperproject/${{ matrix.repo }}
+        git clone --recursive https://JonasAlaif:${{ secrets.PAT }}@github.com/viperproject/${{ matrix.repo }}.git
 
         git submodule update --remote --recursive
 
