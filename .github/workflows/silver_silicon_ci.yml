@@ -36,7 +36,7 @@ jobs:
         git push origin ci-test-$GITHUB_SHA
 
     - name: Run CI
-    - uses: convictional/trigger-workflow-and-wait@v1.6.0
+      uses: convictional/trigger-workflow-and-wait@v1.6.0
       with:
         owner: viperproject
         repo: ${{ matrix.repo }}
