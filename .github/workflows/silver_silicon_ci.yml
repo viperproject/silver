@@ -1,4 +1,4 @@
-name: Run Remote CI
+name: Run Backend CI
 
 on:
   push:
@@ -18,8 +18,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # Checkout the repository to the GitHub Actions runner
-    - name: Checkout
+    - name: Checkout backend
       uses: actions/checkout@v3
       with:
         repository: viperproject/${{ matrix.repo }}
