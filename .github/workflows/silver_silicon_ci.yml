@@ -16,6 +16,7 @@ env:
   branch: silver-as-a-submodule
   sha: ${{ github.event.pull_request.head.sha || github.sha }}
   ref: ${{ github.head_ref || github.ref }}
+  repo: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
 
 jobs:
   test:
@@ -49,7 +50,8 @@ jobs:
       run: |
         git checkout -b ci-test-${{ env.sha }}
         cd silver
-        git fetch origin ${{ env.ref }}
+        git remote add upstream https://github.com/${{ env.repo }}
+        git fetch upstream ${{ env.ref }}
         git checkout ${{ env.sha }}
         cd ..
 
