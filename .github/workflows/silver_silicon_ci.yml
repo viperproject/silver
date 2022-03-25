@@ -1,4 +1,4 @@
-name: Scala CI
+name: Run Silicon and Carbon CI
 
 on:
   push:
@@ -23,6 +23,7 @@ jobs:
       with:
         repository: viperproject/${{ matrix.repo }}
         token: ${{ secrets.PAT }}
+        ref: silver-as-a-submodule
         submodules: true
 
     # Create temporary branch
