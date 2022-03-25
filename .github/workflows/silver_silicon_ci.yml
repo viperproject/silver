@@ -14,6 +14,8 @@ on:
 env:
   fork: JonasAlaif
   branch: silver-as-a-submodule
+  sha: ${{ github.event.pull_request.head.sha || github.sha }}
+  ref: ${{ github.event.pull_request.head.ref || github.ref }}
 
 jobs:
   test:
@@ -36,6 +38,8 @@ jobs:
 
     - name: Update fork
       run: |
+        git config --global user.name 'Silver Bot'
+        git config --global user.email 'bot@noreply.github.com'
         git remote add upstream https://github.com/viperproject/${{ matrix.repo }}
         git fetch upstream ${{ env.branch }}
         git pull upstream ${{ env.branch }}
@@ -43,18 +47,16 @@ jobs:
 
     - name: Checkout current silver
       run: |
-        git checkout -b ci-test-${{ github.sha }}
+        git checkout -b ci-test-${{ env.sha }}
         cd silver
-        git fetch origin ${{ github.ref }}
-        git checkout ${{ github.sha }}
+        git fetch origin ${{ env.ref }}
+        git checkout ${{ env.sha }}
         cd ..
 
     - name: Push temporary branch
       run: |
-        git config --global user.name 'Silver Bot'
-        git config --global user.email 'bot@noreply.github.com'
-        git commit -am "Set silver submodule to ${{ github.sha }} [skip ci]"
-        git push origin ci-test-${{ github.sha }}
+        git commit -am "Set silver submodule to ${{ env.sha }} [skip ci]"
+        git push origin ci-test-${{ env.sha }}
 
     - name: Run CI
       uses: convictional/trigger-workflow-and-wait@v1.6.0
@@ -62,10 +64,10 @@ jobs:
         owner: ${{ env.fork }}
         repo: ${{ matrix.repo }}
         github_token: ${{ secrets.PAT }}
-        ref: ci-test-${{ github.sha }}
+        ref: ci-test-${{ env.sha }}
         workflow_file_name: ci.yml
 
     - name: Delete temporary branch
       if: always()
       run: |
-        git push origin --delete ci-test-${{ github.sha }}
+        git push origin --delete ci-test-${{ env.sha }}
