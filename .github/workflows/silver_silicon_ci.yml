@@ -38,8 +38,9 @@ jobs:
       run: |
         git config --global user.name 'Silver Bot'
         git config --global user.email 'bot@noreply.github.com'
-        git pull origin ${{ env.branch }}
-        git push ${{ env.fork }} ${{ env.branch }}
+        git remote add upstream https://github.com/viperproject/${{ matrix.repo }}
+        git pull upstream ${{ env.branch }}
+        git push origin ${{ env.branch }}
 
     - name: Checkout current silver
       run: |
@@ -52,7 +53,7 @@ jobs:
     - name: Push temporary branch
       run: |
         git commit -am "Set silver submodule to ${{ github.sha }} [skip ci]"
-        git push ${{ env.fork }} ci-test-${{ github.sha }}
+        git push origin ci-test-${{ github.sha }}
 
     - name: Run CI
       uses: convictional/trigger-workflow-and-wait@v1.6.0
