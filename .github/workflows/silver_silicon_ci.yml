@@ -9,7 +9,7 @@ on:
     branches: [ silver-as-a-submodule ]
   workflow_dispatch:
 
-#test
+#test2
 # `${{ secrets.PAT }}` must give access to `${{ env.fork }}/${{ matrix.repo }}`
 # for both pushes and triggering workflows (`workflow`+`repo` and `repo_hook` scopes).
 env:
