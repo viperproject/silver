@@ -33,5 +33,5 @@ jobs:
       run: |
         git config --global user.name 'Silver Bot'
         git config --global user.email 'bot@noreply.github.com'
-        git remote set-url origin https://${{ secrets.PAT }}@github.com/viperproject/${{ matrix.repo }}
+        git remote set-url origin https://JonasAlaif:${{ secrets.PAT }}@github.com/viperproject/${{ matrix.repo }}
         git commit -am "Auto updated submodule references" && git push || echo "No changes to commit"
