@@ -3,9 +3,17 @@ name: Run Backend CI
 on:
   push:
     branches: [ silver-as-a-submodule ]
-  pull_request:
+  # `pull_request_target` can be triggered by a malicious PR to Silver
+  # So we run the backend CI on a fork to ensure safety
+  pull_request_target:
     branches: [ silver-as-a-submodule ]
   workflow_dispatch:
+
+# `${{ secrets.PAT }}` must give access to `${{ env.fork }}/${{ matrix.repo }}`
+# for both pushes and triggering workflows.
+env:
+  fork: JonasAlaif
+  branch: silver-as-a-submodule
 
 jobs:
   test:
@@ -21,10 +29,17 @@ jobs:
     - name: Checkout backend
       uses: actions/checkout@v3
       with:
-        repository: viperproject/${{ matrix.repo }}
+        repository: ${{ env.fork }}/${{ matrix.repo }}
         token: ${{ secrets.PAT }}
-        ref: silver-as-a-submodule
+        ref: ${{ env.branch }}
         submodules: true
+
+    - name: Update fork
+      run: |
+        git config --global user.name 'Silver Bot'
+        git config --global user.email 'bot@noreply.github.com'
+        git pull origin ${{ env.branch }}
+        git push ${{ env.fork }} ${{ env.branch }}
 
     - name: Checkout current silver
       run: |
@@ -36,15 +51,13 @@ jobs:
 
     - name: Push temporary branch
       run: |
-        git config --global user.name 'Silver Bot'
-        git config --global user.email 'bot@noreply.github.com'
         git commit -am "Set silver submodule to ${{ github.sha }} [skip ci]"
-        git push origin ci-test-${{ github.sha }}
+        git push ${{ env.fork }} ci-test-${{ github.sha }}
 
     - name: Run CI
       uses: convictional/trigger-workflow-and-wait@v1.6.0
       with:
-        owner: viperproject
+        owner: ${{ env.fork }}
         repo: ${{ matrix.repo }}
         github_token: ${{ secrets.PAT }}
         ref: ci-test-${{ github.sha }}
