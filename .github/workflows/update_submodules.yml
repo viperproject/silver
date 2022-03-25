@@ -15,10 +15,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # Checkout the repository to the GitHub Actions runner
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        repository: viperproject/${{ matrix.repo }}
+        token: ${{ secrets.PAT }}
+        ref: silver-as-a-submodule
+        submodules: true
+
     - name: Update submodules
       run: |
-        git clone --recursive https://JonasAlaif:${{ secrets.PAT }}@github.com/viperproject/${{ matrix.repo }}.git
-
         git submodule update --remote --recursive
 
         git config --global user.name 'Silver Bot'
