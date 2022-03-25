@@ -1,0 +1,49 @@
+name: Scala CI
+
+on:
+  push:
+    branches: [ silver-as-a-submodule ]
+  pull_request:
+    branches: [ silver-as-a-submodule ]
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - repo: 'silicon'
+          - repo: 'carbon'
+    runs-on: ubuntu-latest
+
+    steps:
+    # Checkout the repository to the GitHub Actions runner
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        repository: viperproject/${{ matrix.repo }}
+        token: ${{ secrets.PAT }}
+        submodules: true
+
+    # Create temporary branch
+    - name: Checkout current silver
+      run: |
+        git checkout -b ci-test-$GITHUB_SHA
+        cd silver
+        git checkout $GITHUB_SHA
+        cd ..
+        git commit -am "Set silver submodule to $GITHUB_SHA"
+        git push origin ci-test-$GITHUB_SHA
+
+    - name: Run CI
+    - uses: convictional/trigger-workflow-and-wait@v1.6.0
+      with:
+        owner: viperproject
+        repo: ${{ matrix.repo }}
+        github_token: ${{ secrets.PAT }}
+        ref: ci-test-$GITHUB_SHA
+
+    - name: Delete temporary branch
+      if: always()
+      run: |
+        git push origin --delete ci-test-$GITHUB_SHA
