@@ -48,6 +48,7 @@ jobs:
         repo: ${{ matrix.repo }}
         github_token: ${{ secrets.PAT }}
         ref: ci-test-$GITHUB_SHA
+        workflow_file_name: ci.yml
 
     - name: Delete temporary branch
       if: always()
