@@ -28,18 +28,18 @@ jobs:
 
     - name: Checkout current silver
       run: |
-        git checkout -b ci-test-$GITHUB_SHA
+        git checkout -b ci-test-${{ github.sha }}
         cd silver
-        git fetch origin $GITHUB_REF
-        git checkout $GITHUB_SHA
+        git fetch origin ${{ github.ref }}
+        git checkout ${{ github.sha }}
         cd ..
 
     - name: Push temporary branch
       run: |
         git config --global user.name 'Silver Bot'
         git config --global user.email 'bot@noreply.github.com'
-        git commit -am "Set silver submodule to $GITHUB_SHA"
-        git push origin ci-test-$GITHUB_SHA
+        git commit -am "Set silver submodule to ${{ github.sha }}"
+        git push origin ci-test-${{ github.sha }}
 
     - name: Run CI
       uses: convictional/trigger-workflow-and-wait@v1.6.0
@@ -47,10 +47,10 @@ jobs:
         owner: viperproject
         repo: ${{ matrix.repo }}
         github_token: ${{ secrets.PAT }}
-        ref: ci-test-${{ env.GITHUB_SHA }}
+        ref: ci-test-${{ github.sha }}
         workflow_file_name: ci.yml
 
     - name: Delete temporary branch
       if: always()
       run: |
-        git push origin --delete ci-test-$GITHUB_SHA
+        git push origin --delete ci-test-${{ github.sha }}
