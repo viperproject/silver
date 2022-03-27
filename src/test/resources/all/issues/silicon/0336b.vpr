@@ -19,8 +19,8 @@ method bad(b:Set[Ref],l:Ref)
 {
   unfold uf_bank(b);
   fold uf_bank(b);
-  //:: ExpectedOutput(assert.failed:assertion.false)
   assert
+  //:: ExpectedOutput(assert.failed:assertion.false)
     let n == (unfolding uf_bank(b) in l.rank) in
     n > n
 }

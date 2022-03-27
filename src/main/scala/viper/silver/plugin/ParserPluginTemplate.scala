@@ -125,6 +125,7 @@ trait ParserPluginTemplate {
     override def name: String = ???
     override def errT: ErrorTrafo = ???
     override def info: Info = ???
+    override def prettyPrint: PrettyPrintPrimitives#Cont = ???
   }
 
   /**
