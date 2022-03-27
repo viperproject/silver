@@ -2,18 +2,18 @@ name: Run Backend CI
 
 on:
   push:
-    branches: [ silver-as-a-submodule ]
+    branches: [ master ]
   # `pull_request_target` can be triggered by a malicious PR to Silver
   # So we run the backend CI on a fork to ensure safety
   pull_request_target:
-    branches: [ silver-as-a-submodule ]
+    branches: [ master ]
   workflow_dispatch:
 
 # `${{ secrets.PAT }}` must give access to `${{ env.fork }}/${{ matrix.repo }}`
 # for both pushes and triggering workflows (`workflow`+`repo` and `repo_hook` scopes).
 env:
   fork: JonasAlaif
-  branch: silver-as-a-submodule
+  branch: master
   sha: ${{ github.event.pull_request.head.sha || github.sha }}
   ref: ${{ github.head_ref || github.ref }}
   repo: ${{ github.event.pull_request.head.repo.full_name || github.repository }}

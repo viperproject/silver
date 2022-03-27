@@ -2,7 +2,7 @@ name: Update Silver Submodule
 
 on:
   push:
-    branches: [ silver-as-a-submodule ]
+    branches: [ master ]
   workflow_dispatch:
 
 jobs:
@@ -22,7 +22,6 @@ jobs:
       with:
         repository: viperproject/${{ matrix.repo }}
         token: ${{ secrets.PAT }}
-        ref: silver-as-a-submodule
         submodules: true
 
     # Update references
