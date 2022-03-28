@@ -12,7 +12,7 @@ on:
 # `${{ secrets.PAT }}` must give access to `${{ env.fork }}/${{ matrix.repo }}`
 # for both pushes and triggering workflows (`workflow`+`repo` and `repo_hook` scopes).
 env:
-  fork: JonasAlaif
+  fork: viper-admin
   branch: master
   sha: ${{ github.event.pull_request.head.sha || github.sha }}
   ref: ${{ github.head_ref || github.ref }}
