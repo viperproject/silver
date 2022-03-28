@@ -57,7 +57,7 @@ jobs:
 
     - name: Push temporary branch
       run: |
-        git commit -am "Set silver submodule to ${{ env.sha }} [skip ci]"
+        git commit -am "Set silver submodule to ${{ env.sha }} [skip ci]" || echo "Correct Silver already checked out"
         git push origin ci-test-${{ env.sha }}
 
     - name: Run CI
