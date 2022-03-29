@@ -11,6 +11,8 @@ import viper.silver.ast._
 import viper.silver.parser._
 import viper.silver.plugin.standard.adt.PAdtConstructor.findAdtConstructor
 
+import scala.util.{Success, Try}
+
 
 case class PAdt(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], constructors: Seq[PAdtConstructor])(val pos: (Position, Position)) extends PExtender with PMember with PGlobalDeclaration {
 
@@ -85,6 +87,15 @@ case class PAdtConstructor(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl])(
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
     this.formalArgs foreach (a => t.check(a.typ))
+
+    // Check if there are name clashes for the corresponding discriminator, if so we raise a type-check error
+    Try {
+      n.definition(t.curMember)(PIdnUse("is" + idndef.name)(idndef.pos))
+    } match {
+      case Success(decl) =>
+        t.messages ++= FastMessaging.message(idndef, "corresponding adt discriminator identifier `" + decl.idndef.name + "' at " + idndef.pos._1 + " is shadowed at " + decl.idndef.pos._1)
+      case _ =>
+    }
     None
   }
 
@@ -420,7 +431,7 @@ case class PDestructorCall(name: String, rcv: PExp)(val pos: (Position, Position
 }
 
 case class PDiscriminatorCall(name: PIdnUse, rcv: PExp)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PAdtOpApp {
-  override def opName: String = "." + name + "?"
+  override def opName: String = "is" + name.name
 
   override def args: Seq[PExp] = Seq(rcv)
 

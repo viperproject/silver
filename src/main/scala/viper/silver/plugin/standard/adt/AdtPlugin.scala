@@ -53,11 +53,10 @@ class AdtPlugin extends SilverPlugin with ParserPluginTemplate {
   def adtConstructorSignature[_: P]: P[(PIdnDef, Seq[PAnyFormalArgDecl])] = P(idndef ~ "(" ~ anyFormalArgList ~ ")")
 
   override def beforeParse(input: String, isImported: Boolean): String = {
-    // Add new keyword
+    // Add new parser adt declaration keyword
     ParserExtension.addNewKeywords(Set[String](AdtKeyword))
-    // Add new declaration
+    // Add new parser for adt declaration
     ParserExtension.addNewDeclAtEnd(adtDecl(_))
-    // TODO: Add custom parsers
     input
   }
 
@@ -68,11 +67,24 @@ class AdtPlugin extends SilverPlugin with ParserPluginTemplate {
     val declaredConstructorNames = input.extensions.collect { case a: PAdt => a.constructors.map(c => c.idndef) }.flatten.toSet
     val declaredConstructorArgsNames = input.extensions.collect { case a: PAdt =>
       a.constructors flatMap ( c => c.formalArgs collect {case PFormalArgDecl(idndef, _) => idndef})}.flatten.toSet
-    StrategyBuilder.Slim[PNode]({
+    def transformStrategy[T <: PNode](input: T): T = StrategyBuilder.Slim[PNode]({
       case pa@PDomainType(idnuse, args) if declaredAdtNames.exists(_.name == idnuse.name) => PAdtType(idnuse, args)(pa.pos)
       case pc@PCall(idnuse, args, typeAnnotated) if declaredConstructorNames.exists(_.name == idnuse.name) => PConstructorCall(idnuse, args, typeAnnotated)(pc.pos)
+      // A destructor call or discriminator call might be parsed as left-hand side of a field assignment, which is illegal. Hence in this case
+      // we simply treat the calls as an ordinary field access, which results in an identifier not found error.
+      case pfa@PFieldAssign(fieldAcc, rhs) if declaredConstructorArgsNames.exists(_.name == fieldAcc.idnuse.name) ||
+        declaredConstructorNames.exists("is" + _.name == fieldAcc.idnuse.name) =>
+          PFieldAssign(PFieldAccess(transformStrategy(fieldAcc.rcv), fieldAcc.idnuse)(fieldAcc.pos), transformStrategy(rhs))(pfa.pos)
       case pfa@PFieldAccess(rcv, idnuse) if declaredConstructorArgsNames.exists(_.name == idnuse.name) => PDestructorCall(idnuse.name, rcv)(pfa.pos)
+      case pfa@PFieldAccess(rcv, idnuse) if declaredConstructorNames.exists("is" + _.name == idnuse.name) => PDiscriminatorCall(PIdnUse(idnuse.name.substring(2))(idnuse.pos), rcv)(pfa.pos)
+    }).recurseFunc({
+      // Stop the recursion if a destructor call or discriminator call is parsed as left-hand side of a field assignment
+      case PFieldAssign(fieldAcc, _) if declaredConstructorArgsNames.exists(_.name == fieldAcc.idnuse.name) ||
+        declaredConstructorNames.exists("is" + _.name == fieldAcc.idnuse.name) => Seq()
+      case n: PNode => n.children collect {case ar: AnyRef => ar}
     }).execute(input)
+
+    transformStrategy(input)
   }
 
   override def beforeVerify(input: Program): Program = {
