@@ -1,0 +1,28 @@
+adt List[T] {
+    Nil()
+    Cons(value: T, tail: List[T])
+}
+
+
+adt Tree[T] {
+    Leaf()
+    Node(value: T, left: Tree[T], right: Tree[T])
+}
+
+
+method discriminators_2()
+{   
+    var list: List[Int]
+    list := Cons(1, Nil())
+
+    //:: ExpectedOutput(typechecker.error)
+    assert list.isLeaf
+
+    //:: ExpectedOutput(typechecker.error)
+    assert list.isLeaf.isLeaf
+
+    //:: ExpectedOutput(typechecker.error)
+    assert list.tail.tail.tail.isNode
+    
+    
+}

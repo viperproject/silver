@@ -1,0 +1,25 @@
+adt List[T] {
+    Nil()
+    Cons(value: T, tail: List[T])
+}
+
+field list:List[Int]
+field condtion:Bool
+
+method adt_as_fields_1()
+{   
+    var f: Ref
+    f := new (list, condtion)
+    assert f.list.isNil || f.list.isCons
+
+
+    f.list := Cons(42, Nil())
+    assert !f.list.tail.isCons
+
+    f.list := Cons(42, Nil()).tail
+    f.condtion := Cons(42, Nil()).isCons
+
+    assert f.list == Nil()
+    assert f.condtion == true
+    
+}

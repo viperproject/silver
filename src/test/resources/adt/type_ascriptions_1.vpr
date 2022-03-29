@@ -1,0 +1,15 @@
+adt List[T] {
+    Nil()
+    Cons(value: T, tail: List[T])
+}
+
+
+method type_ascriptions_1()
+{   
+    assert (Nil(): List[Bool]) == (Nil(): List[Bool])
+
+    assert (Nil(): List[List[Int]]) == (Nil(): List[List[Int]])
+
+    // This should trigger a warning but currently there is no way of testing this
+    assert Nil() == Nil()
+}

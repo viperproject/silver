@@ -1,0 +1,31 @@
+adt List[T] {
+    Nil()
+    Cons(value: T, tail: List[T])
+}
+
+
+adt Tree[T] {
+    Leaf()
+    Node(value: T, left: Tree[T], right: Tree[T])
+}
+
+
+method destructors_5a()
+{   
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert Nil().value == 1
+}
+
+method destructors_5b()
+{   
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert Cons(1, Nil()).value == 2
+}
+
+method destructors_5c()
+{   
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert Cons(1, Cons(1, Nil())).tail == Nil()
+}
+

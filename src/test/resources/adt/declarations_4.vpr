@@ -1,0 +1,6 @@
+//:: ExpectedOutput(typechecker.error)
+adt SpecialList[T, S] {
+    SpecialNil()
+    TCons(elemT: T, tail: SpecialList[T,S])
+    SCons(elemS: S, tail: SpecialList[T,S])
+}

@@ -1,0 +1,22 @@
+adt List[T] {
+    Nil()
+    Cons(value: T, tail: List[T])
+}
+
+
+adt Tree[T] {
+    Leaf()
+    Node(value: T, left: Tree[T], right: Tree[T])
+}
+
+
+method destructors_6()
+{   
+
+    //:: ExpectedOutput(typechecker.error)
+    Nil().value := 1
+
+    var list: List[Int]
+    //:: ExpectedOutput(typechecker.error)
+    list.tail := Cons(1, Nil())
+}

@@ -1,0 +1,59 @@
+adt List {
+    Nil()
+    Cons(head: Int, tail: List)
+}
+
+method prepend(xs: List, v: Int)
+    returns (ys:List)
+    ensures ys.head == v
+    ensures ys.tail == xs
+{
+    ys := Cons(v, xs)
+}
+
+function len(xs: List): Int 
+    ensures result >= 0
+{
+    xs.isNil ? 0 : 1 + len(xs.tail)
+}
+
+
+define NO_VALUE (-1)
+
+function at(xs: List, pos: Int): Int 
+{
+  (xs.isNil || pos < 0)
+    ? NO_VALUE
+    : pos == 0
+        ? xs.head
+        : at(xs.tail, pos-1)
+}
+
+method linear_search(xs: List, key: Int)
+    returns (pos:Int)
+    requires key >= 0
+    ensures 0 <= pos && pos <= len(xs) 
+    ensures at(xs, pos) == key || pos == len(xs)
+    ensures pos == len(xs) ==> forall k:Int :: 0 <= k && k < len(xs) ==> at(xs, k) != key
+{
+    pos := 0
+    var ys : List
+    ys := xs
+
+    while (!ys.isNil && ys.head != key)
+        invariant 0 <= pos 
+        invariant pos + len(ys) == len(xs)
+        invariant ys.isNil ==> pos == len(xs)
+        invariant forall k:Int :: 0 <= k ==> at(xs, pos+k) == at(ys, k)
+        invariant forall k:Int :: 0 <= k && k < pos ==> at(xs, k) != key
+    {
+        var old_ys: List 
+        old_ys := ys
+        ys := ys.tail
+        assert forall k:Int :: 0 <= k ==> at(old_ys,k+1) == at(ys,k)
+        assert at(old_ys, 0) == at(xs, pos) // need to trigger this fact
+        pos := pos + 1
+    }
+
+    assert !ys.isNil ==> at(ys, 0) == key
+}
