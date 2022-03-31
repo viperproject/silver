@@ -35,6 +35,14 @@ trait AdtNameManager {
   private val adtNameMappings: mutable.Map[String, String] = mutable.Map()
 
   /**
+    * Following helper methods return predefined names/identifiers for the contains relation for ADTs.
+    * Note that the first two names are fixed by resources/adt/contains.vpr
+    */
+  def getContainsDomainName: String = "ContainsDomain"
+  def getContainsFunctionName: String = "contains"
+  def getContainsTransitivityDomain: String = getName("ContainsTransitivityDomain")
+
+  /**
     * This method returns the name of the destructor given the name of the ADT and the name of a constructor argument
     *
     * @param adtName The name of the ADT the destructor belongs to

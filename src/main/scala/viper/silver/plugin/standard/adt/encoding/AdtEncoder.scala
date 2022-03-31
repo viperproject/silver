@@ -10,6 +10,8 @@ import viper.silver.ast._
 import viper.silver.ast.utility.rewriter.{StrategyBuilder, Traverse}
 import viper.silver.plugin.standard.adt._
 
+import scala.annotation.tailrec
+
 
 /**
   * This class implement the encoder used to encode ADT AST nodes to ordinary AST nodes.
@@ -33,7 +35,7 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
   def encode(): Program = {
 
     // In a first step encode all adt top level declarations and constructor calls
-    val newProgram: Program = StrategyBuilder.Slim[Node]({
+    var newProgram: Program = StrategyBuilder.Slim[Node]({
       case p@Program(domains, fields, functions, predicates, methods, extensions) =>
         val remainingExtensions = extensions filter { case _:Adt => false; case _ => true }
         val encodedAdtsAsDomains: Seq[Domain] = extensions collect { case a:Adt => encodeAdtAsDomain(a) }
@@ -44,7 +46,15 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     }, Traverse.BottomUp).execute(program)
 
     // In a second step encode all occurrences of AdtType's as DomainType's
-    encodeAllAdtTypeAsDomainType(newProgram)
+    newProgram = encodeAllAdtTypeAsDomainType(newProgram)
+
+    // In a third step generate transitivity axioms if contains domain is present
+    if (withContainsDomain) {
+      val domains = newProgram.domains ++ Seq(generateContainsTransitivityDomain(newProgram))
+      newProgram = newProgram.copy(domains = domains)(newProgram.pos, newProgram.info, newProgram.errT)
+    }
+
+    newProgram
   }
 
   /**
@@ -74,7 +84,8 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
         val functions: Seq[DomainFunc] = (constructors map encodeAdtConstructorAsDomainFunc(domain)) ++
           (constructors flatMap generateDestructorDeclarations(domain)) ++ Seq(generateTagDeclaration(domain))
         val axioms = (constructors flatMap generateInjectivityAxiom(domain)) ++
-          (constructors map generateTagAxiom(domain)) ++ Seq(generateExclusivityAxiom(domain)(constructors))
+          (constructors map generateTagAxiom(domain)) ++ Seq(generateExclusivityAxiom(domain)(constructors)) ++
+          (if (withContainsDomain) constructors filter (_.formalArgs.nonEmpty) map generateContainsAxiom(domain) else Seq.empty)
         domain.copy(functions = functions, axioms = axioms)(adt.pos, adt.info, adt.errT)
     }
   }
@@ -357,6 +368,150 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
       AnonymousDomainAxiom(eq)(ac.pos, ac.info, ac.adtName, ac.errT)
     }
 
+  }
+
+  /**
+    * This is a helper method to check if the contains domain, namely
+    *
+    * domain ContainsDomain[A,B] {
+    *     function contains(a: A, b: B): Bool
+    * }
+    *
+    * was imported by import <adt/contains.vpr>.
+    *
+    * @return Return true if the contains domain is present
+    */
+  private def withContainsDomain: Boolean = program.domains.exists(_.name == getContainsDomainName)
+
+  /**
+    * This method generates the corresponding contains axiom for a ADT constructor
+    *
+    * axiom {
+    *   forall p_1: T1, ..., p_n: Tn :: {C(p_1, ..., p_n)} contains(p_1, C′) && ... && contains(p_n, C′)
+    * }
+    *
+    * where C′ =  C(p_1, ..., p_n).
+    *
+    * @param domain The domain that encodes the ADT the constructor belongs to for which we want a contains axiom
+    * @param ac An ADT constructor
+    * @return The generated contains axiom
+    */
+  private def generateContainsAxiom(domain: Domain)(ac: AdtConstructor): AnonymousDomainAxiom = {
+    assert(domain.name == ac.adtName, "AdtEncoder: An error in the ADT encoding occurred.")
+    assert(ac.formalArgs.nonEmpty, "AdtEncoder: An error in the ADT encoding occurred.")
+
+    val localVarDecl = ac.formalArgs.collect {case l:LocalVarDecl => l }
+    val localVars = ac.formalArgs.map {
+      case LocalVarDecl(name, typ) =>
+        typ match {
+          case a: AdtType => localVarTFromType(encodeAdtTypeAsDomainType(a), Some(name))(ac.pos, ac.info, ac.errT)
+          case d => localVarTFromType(d, Some(name))(ac.pos, ac.info, ac.errT)
+        }
+    }
+    assert(localVarDecl.size == localVars.size, "AdtEncoder: An error in the ADT encoding occurred.")
+
+    val constructorApp = DomainFuncApp(
+      ac.name,
+      localVars,
+      defaultTypeVarsFromDomain(domain)
+    )(ac.pos, ac.info, encodeAdtTypeAsDomainType(ac.typ), ac.adtName, ac.errT)
+
+    val trigger = Trigger(Seq(constructorApp))(ac.pos, ac.info, ac.errT)
+
+    val containsApp = (lv: LocalVar) => DomainFuncApp(
+      getContainsFunctionName,
+      Seq(lv, constructorApp),
+      Map(TypeVar("A") -> lv.typ, TypeVar("B") -> constructorApp.typ)
+    )(ac.pos, ac.info, Bool, getContainsDomainName, ac.errT)
+
+    val axiomBody = localVars.map(containsApp).foldLeft[Exp](TrueLit()(ac.pos, ac.info, ac.errT))((a, b) => And(a, b)(ac.pos, ac.info, ac.errT))
+    val forall = Forall(localVarDecl, Seq(trigger), axiomBody)(ac.pos, ac.info, ac.errT)
+
+    AnonymousDomainAxiom(forall)(ac.pos, ac.info, ac.adtName, ac.errT)
+  }
+
+  /**
+    * This method encodes the transitivity of the contains function. Namely it collects arguments types of
+    * all contains applications as tuples, computes its transitive closure and finally the corresponding axioms.
+    *
+    * This ensures that we generate one axiom which encodes the transitivity of contains for each possible
+    * triple of concrete types, which are used in calls to contains.
+    *
+    *
+    * @param program The program
+    * @return The ContainsTransitivityDomain with axioms that encode transitivity
+    */
+  private def generateContainsTransitivityDomain(program: Program): Domain = {
+
+    def addTransitive(s: Set[(Type, Type)]): Set[(Type, Type)] =
+      s ++ (for ((x1, y1) <- s; (x2, y2) <- s if y1 == x2) yield (x1, y2))
+
+    @tailrec
+    def transitiveClosure(s: Set[(Type, Type)]): Set[(Type, Type)] = {
+      val t = addTransitive(s)
+      if (t.size == s.size) s else transitiveClosure(t)
+    }
+
+    def genAxiom(a: Type, b: Type, c: Type): AnonymousDomainAxiom = {
+      val aVar = LocalVarDecl("a", a)()
+      val bVar = LocalVarDecl("b", b)()
+      val cVar = LocalVarDecl("c", c)()
+
+      def containsApp(l: Exp, r: Exp) = DomainFuncApp(
+        getContainsFunctionName,
+        Seq(l, r),
+        Map(
+          TypeVar("A") -> l.typ,
+          TypeVar("B") -> r.typ
+        )
+      )(NoPosition, NoInfo, Bool, getContainsDomainName, NoTrafos)
+
+      AnonymousDomainAxiom(
+        Forall(
+          Seq(aVar, bVar, cVar),
+          Seq(
+            Trigger(
+              Seq(
+                containsApp(aVar.localVar, bVar.localVar),
+                containsApp(bVar.localVar, cVar.localVar)
+              )
+            )()
+          ),
+          Implies(
+            And(
+              containsApp(aVar.localVar, bVar.localVar),
+              containsApp(bVar.localVar, cVar.localVar)
+            )(),
+            containsApp(aVar.localVar, cVar.localVar)
+          )()
+        )()
+      )(domainName = getContainsTransitivityDomain)
+    }
+
+    var tuples: Set[(Type, Type)] = Set.empty
+    program.visit({
+      case dfa@DomainFuncApp(funcname, args, _) if funcname == getContainsFunctionName && dfa.domainName == getContainsDomainName =>
+        assert(args.size == 2, "AdtEncoder: An error in the ADT encoding occurred.")
+        if (args.head.typ.isConcrete && args(1).typ.isConcrete) {
+          tuples += ((args.head.typ, args(1).typ))
+        }
+    })
+
+    var triples: Set[(Type, Type, Type)] = Set.empty
+    val closure = transitiveClosure(tuples)
+    for ((a,b) <- closure) {
+      for ((c,d) <- closure) {
+        if (b == c)
+          triples += ((a,b,d))
+      }
+    }
+    val axioms = triples.toSeq.map(a => genAxiom(a._1, a._2, a._3))
+
+    Domain(
+      getContainsTransitivityDomain,
+      Seq(),
+      axioms
+    )()
   }
 
   /**
