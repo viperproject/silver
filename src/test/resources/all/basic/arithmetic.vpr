@@ -46,7 +46,7 @@ method t6() {
     assert 2/3 == 3/4 // / is interpreted as Perm-typed division
 }
 
-method t6(p: Perm)
+method t7(p: Perm)
 {
     var r1 : Perm
     var r2: Perm
