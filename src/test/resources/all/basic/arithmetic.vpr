@@ -51,11 +51,19 @@ method t7(p: Perm)
     var r1 : Perm
     var r2: Perm
     var one: Perm
-    one := 1/1
-    r1 := p * one
-    r2 := p * (2/1)
+    one := (1/1)
+    r1 := p / one
+    r2 := p / (2/1)
     assert r1 == p
-    assert r2 - r1 == p
+    assert (2/1) * r2 == p
+
     //:: ExpectedOutput(assert.failed:assertion.false)
     assert r2 == p
+}
+
+method t8(p: Perm)
+{
+    var r1 : Perm
+    //:: ExpectedOutput(assignment.failed:division.by.zero)
+    r1 := (1/2) / p
 }
