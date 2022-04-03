@@ -290,9 +290,11 @@ case class Translator(program: PProgram) {
               case _ => sys.error("should not occur in type-checked program")
             }
           case "/" =>
-            assert(r.typ==Int)
             l.typ match {
-              case Perm => PermDiv(l, r)(pos)
+              case Perm => r.typ match {
+                case Int => PermDiv(l, r)(pos)
+                case Perm => PermPermDiv(l, r)(pos)
+              }
               case Int  =>
                 assert (r.typ==Int)
                 if (ttyp(pbe.typ) == Int)

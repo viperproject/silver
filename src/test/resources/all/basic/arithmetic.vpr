@@ -45,3 +45,17 @@ method t6() {
     //:: ExpectedOutput(assert.failed:assertion.false)
     assert 2/3 == 3/4 // / is interpreted as Perm-typed division
 }
+
+method t6(p: Perm)
+{
+    var r1 : Perm
+    var r2: Perm
+    var one: Perm
+    one := 1/1
+    r1 := p * one
+    r2 := p * (2/1)
+    assert r1 == p
+    assert r2 - r1 == p
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert r2 == p
+}
