@@ -27,7 +27,9 @@ object ModelParser {
 
   def option[_: P]: P[(Seq[ValueEntry], ValueEntry)] = P(value.rep(1) ~ "->" ~ value)
 
-  def default[_: P]: P[MapEntry] = P(value)
+  // depending on Z3 options, we seem to get an "else ->" before the default value
+  // or not, so we match both.
+  def default[_: P]: P[MapEntry] = P(("else" ~ "->").? ~ value)
     .map { default => MapEntry(Map.empty, default).resolveFunctionDefinition }
 
   def value[_: P]: P[ValueEntry] = P(unspecified | let | constant | application)
