@@ -7,7 +7,7 @@
 package viper.silver.plugin.standard.adt
 
 import viper.silver.ast._
-import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, braces, brackets, char, defaultIndent, line, nest, nil, parens, show, showVars, space, ssep, text}
+import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, braces, brackets, char, defaultIndent, line, nest, nil, parens, show, showType, showVars, space, ssep, text}
 import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.ast.utility.Consistency
 import viper.silver.verifier.{ConsistencyError, Failure, VerificationResult}
@@ -18,20 +18,34 @@ import viper.silver.verifier.{ConsistencyError, Failure, VerificationResult}
   * @param name name of the ADT
   * @param constructors sequence of corresponding constructors
   * @param typVars sequence of type variables (generics)
+  * @param derivingInfo a map that maps identifiers of derivable functions to a tuple containing an optional type param and a set of excluded constructor argument identifiers
   */
-case class Adt(name: String, constructors: Seq[AdtConstructor], typVars: Seq[TypeVar] = Nil)
+case class Adt(name: String, constructors: Seq[AdtConstructor], typVars: Seq[TypeVar] = Nil, derivingInfo: Map[String, (Option[Type], Set[String])] = Map.empty)
                  (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionMember {
   val scopedDecls: Seq[Declaration] = Seq()
 
-  override def extensionSubnodes: Seq[Node] = constructors ++ typVars
+  override def extensionSubnodes: Seq[Node] = constructors ++ typVars ++ derivingInfo.map(_._2._1).collect { case Some(v) => v }
 
   override def prettyPrint: PrettyPrintPrimitives#Cont = {
+
+    def showDerivingInfo(di: (String, (Option[Type], Set[String]))): PrettyPrintPrimitives#Cont = {
+      val (func, (param, blocklist)) = di
+      text(func) <> (if (param.isEmpty) nil else text("[") <> showType(param.get) <> space <> "]") <>
+        space <> (if (blocklist.isEmpty) nil else text("without") <> space <> ssep(blocklist.toSeq map text, char (',') <> space))
+    }
+
     text("adt") <+> name <>
       (if (typVars.isEmpty) nil else text("[") <> ssep(typVars map show, char (',') <> space) <> "]") <+>
       braces(nest(defaultIndent,
         line <> line <>
           ssep(constructors map show, line <> line)
-      ) <> line)
+      ) <> line) <+>
+      (if (derivingInfo.isEmpty) nil else text("derives") <+>
+        braces(nest(defaultIndent,
+          line <> line <>
+            ssep(derivingInfo.toSeq map showDerivingInfo, line <> line)
+        ) <> line)
+      )
   }
 }
 

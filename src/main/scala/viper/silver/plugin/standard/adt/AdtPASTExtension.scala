@@ -14,28 +14,48 @@ import viper.silver.plugin.standard.adt.PAdtConstructor.findAdtConstructor
 import scala.util.{Success, Try}
 
 
-case class PAdt(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], constructors: Seq[PAdtConstructor])(val pos: (Position, Position)) extends PExtender with PMember with PGlobalDeclaration {
+case class PAdt(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], constructors: Seq[PAdtConstructor], derivingInfos: Seq[PAdtDerivingInfo])(val pos: (Position, Position)) extends PExtender with PMember with PGlobalDeclaration {
 
-  override val getSubnodes: Seq[PNode] = Seq(idndef) ++ typVars ++ constructors
+  override val getSubnodes: Seq[PNode] = Seq(idndef) ++ typVars ++ constructors ++ derivingInfos
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
     t.checkMember(this) {
       constructors foreach (_.typecheck(t, n))
     }
     // Check that formalArg identifiers among all constructors are unique
-    val allFormalArgsIdentifier = constructors flatMap (_.formalArgs map {
-      case fad:PFormalArgDecl => fad.idndef.name
-      case _ => sys.error("AdtEncoder : Only PFormalArgDecl are allowed as arguments of an Adt constructor")
-    })
-    if (allFormalArgsIdentifier.distinct != allFormalArgsIdentifier) {
-      Some(Seq("duplicate argument identifier in adt constructors"))
-    } else {
-      None
+    val allFormalArgs = constructors flatMap (_.formalArgs collect { case fad:PFormalArgDecl => fad })
+    val duplicateArgs = allFormalArgs.groupBy(_.idndef.name).collect { case (_,ys) if ys.size > 1 => ys.head }.toSeq
+    t.messages ++= duplicateArgs.flatMap { arg =>
+      FastMessaging.message(arg.idndef, "Duplicate argument identifier `" + arg.idndef.name + "' among adt constructors at " + arg.idndef.pos._1)
     }
+
+    // Check validity blocklisted identifiers
+    derivingInfos.foreach { di =>
+      val diff = di.blockList.filterNot(allFormalArgs.map(fad => PIdnUse(fad.idndef.name)(fad.idndef.pos)).toSet)
+      if (diff.nonEmpty) {
+        t.messages ++= FastMessaging.message(diff.head, "Invalid identifier `" + diff.head.name + "' at " + diff.head.pos._1)
+      }
+
+    }
+    // Check duplicate deriving infos
+    val duplicateDerivingInfo = derivingInfos.groupBy(_.idnuse).collect { case (_,ys) if ys.size > 1 => ys.head }.toSeq
+    t.messages ++= duplicateDerivingInfo.flatMap { di =>
+      FastMessaging.message(di.idnuse, "Duplicate derivation of function `" + di.idnuse.name + "' at " + di.idnuse.pos._1)
+    }
+
+    derivingInfos.foreach(_.typecheck(t,n))
+
+    None
   }
 
   override def translateMemberSignature(t: Translator): Adt = {
-    Adt(idndef.name, null, typVars map (t => TypeVar(t.idndef.name)))(t.liftPos(this))
+
+    Adt(
+      idndef.name,
+      null,
+      typVars map (t => TypeVar(t.idndef.name)),
+      derivingInfos.map( a => (a.idnuse.name, (if (a.param.nonEmpty) Some(t.ttyp(a.param.get)) else None, a.blockList.map(_.name)))).toMap
+    )(t.liftPos(this))
   }
 
   override def translateMember(t: Translator): Member = {
@@ -133,6 +153,16 @@ object PAdtConstructor {
 
 case class PAdtConstructor1(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl])(val pos: (Position, Position))
 
+case class PAdtDerivingInfo(idnuse: PIdnUse, param: Option[PType], blockList: Set[PIdnUse])(val pos: (Position, Position)) extends PExtender {
+
+  override def getSubnodes():Seq[PNode] = Seq(idnuse) ++ param.toSeq
+
+  override def typecheck(t: TypeChecker, n: NameAnalyser):Option[Seq[String]] = {
+    param.foreach(t.check)
+    None
+  }
+}
+
 case class PAdtType(adt: PIdnUse, args: Seq[PType])(val pos: (Position, Position)) extends PExtender with PGenericType {
 
   var kind: PAdtTypeKinds.Kind = PAdtTypeKinds.Unresolved
@@ -181,7 +211,7 @@ case class PAdtType(adt: PIdnUse, args: Seq[PType])(val pos: (Position, Position
           }
 
           x match {
-            case PAdt(_, typVars, _) =>
+            case PAdt(_, typVars, _, _) =>
               t.ensure(args.length == typVars.length, this, "wrong number of type arguments")
               at.kind = PAdtTypeKinds.Adt
               None

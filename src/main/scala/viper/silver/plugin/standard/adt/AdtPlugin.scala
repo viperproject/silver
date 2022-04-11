@@ -9,7 +9,7 @@ package viper.silver.plugin.standard.adt
 import fastparse._
 import viper.silver.ast.Program
 import viper.silver.ast.utility.rewriter.StrategyBuilder
-import viper.silver.parser.FastParser.{FP, anyFormalArgList, idndef, whitespace}
+import viper.silver.parser.FastParser.{FP, anyFormalArgList, idndef, idnuse, typ, whitespace}
 import viper.silver.parser._
 import viper.silver.plugin.standard.adt.encoding.AdtEncoder
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
@@ -18,9 +18,20 @@ import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 class AdtPlugin extends SilverPlugin with ParserPluginTemplate {
 
   /**
-    * Keyword used to define ADT's
+    * This field is set during the beforeParse method
+    */
+  private var derivesImported: Boolean = false
+  private def setDerivesImported(input: String): Unit = "import[\\s]+<adt\\/derives\\.vpr>".r.findFirstIn(input) match {
+    case Some(_) => derivesImported = true
+    case None =>
+  }
+
+  /**
+    * Keywords used to define ADT's
     */
   private val AdtKeyword: String = "adt"
+  private val AdtDerivesKeyword: String = "derives"
+  private val AdtDerivesWithoutKeyword: String = "without"
 
   /**
     * Parser for ADT declaration.
@@ -34,15 +45,26 @@ class AdtPlugin extends SilverPlugin with ParserPluginTemplate {
     *
     */
   def adtDecl[_: P]: P[PAdt] = FP(AdtKeyword ~/ idndef ~ ("[" ~ adtTypeVarDecl.rep(sep = ",") ~ "]").? ~ "{" ~ adtConstructorDecl.rep ~
-    "}").map {
-    case (pos, (name, typparams, constructors)) =>
+    "}" ~ adtDerivingDecl.?).map {
+    case (pos, (name, typparams, constructors, dec)) =>
       PAdt(
         name,
         typparams.getOrElse(Nil),
-        constructors map (c => PAdtConstructor(c.idndef, c.formalArgs)(PIdnUse(name.name)(name.pos))(c.pos)))(pos)
+        constructors map (c => PAdtConstructor(c.idndef, c.formalArgs)(PIdnUse(name.name)(name.pos))(c.pos)),
+        dec.getOrElse(Seq.empty)
+      )(pos)
   }
 
   def adtTypeVarDecl[_: P]: P[PTypeVarDecl] = FP(idndef).map{ case (pos, i) => PTypeVarDecl(i)(pos) }
+
+  def adtDerivingDecl[_: P]: P[Seq[PAdtDerivingInfo]] = P(AdtDerivesKeyword ~/ "{" ~ adtDerivingDeclBody.rep ~ "}")
+
+  def adtDerivingDeclBody[_:P]: P[PAdtDerivingInfo] = FP(
+    idnuse ~ ("[" ~ typ ~ "]").?  ~ (AdtDerivesWithoutKeyword ~/ idnuse.rep(sep = ",")).?).map {
+      case (pos, (func, ttyp, bl)) => PAdtDerivingInfo(func, ttyp, bl.getOrElse(Seq.empty).toSet)(pos)
+  }
+
+  def adtDerivingFunc[_:P]: P[PIdnUse] = FP(StringIn("contains").!).map { case (pos, id) => PIdnUse(id)(pos) }
 
   def adtConstructorDecl[_: P]: P[PAdtConstructor1] = FP(adtConstructorSignature ~ ";".?).map {
     case (pos, cdecl) => cdecl match {
@@ -53,10 +75,13 @@ class AdtPlugin extends SilverPlugin with ParserPluginTemplate {
   def adtConstructorSignature[_: P]: P[(PIdnDef, Seq[PAnyFormalArgDecl])] = P(idndef ~ "(" ~ anyFormalArgList ~ ")")
 
   override def beforeParse(input: String, isImported: Boolean): String = {
-    // Add new parser adt declaration keyword
-    ParserExtension.addNewKeywords(Set[String](AdtKeyword))
-    // Add new parser for adt declaration
-    ParserExtension.addNewDeclAtEnd(adtDecl(_))
+    if (!isImported) {
+      // Add new parser adt declaration keyword
+      ParserExtension.addNewKeywords(Set[String](AdtKeyword))
+      // Add new parser for adt declaration
+      ParserExtension.addNewDeclAtEnd(adtDecl(_))
+    }
+    setDerivesImported(input)
     input
   }
 
@@ -68,6 +93,8 @@ class AdtPlugin extends SilverPlugin with ParserPluginTemplate {
     val declaredConstructorArgsNames = input.extensions.collect { case a: PAdt =>
       a.constructors flatMap ( c => c.formalArgs collect {case PFormalArgDecl(idndef, _) => idndef})}.flatten.toSet
     def transformStrategy[T <: PNode](input: T): T = StrategyBuilder.Slim[PNode]({
+      // If derives import is missing deriving info is ignored
+      case pa@PAdt(idndef, typVars, constructors, _) if !derivesImported => PAdt(idndef, typVars, constructors, Seq.empty)(pa.pos)
       case pa@PDomainType(idnuse, args) if declaredAdtNames.exists(_.name == idnuse.name) => PAdtType(idnuse, args)(pa.pos)
       case pc@PCall(idnuse, args, typeAnnotated) if declaredConstructorNames.exists(_.name == idnuse.name) => PConstructorCall(idnuse, args, typeAnnotated)(pc.pos)
       // A destructor call or discriminator call might be parsed as left-hand side of a field assignment, which is illegal. Hence in this case
@@ -88,7 +115,10 @@ class AdtPlugin extends SilverPlugin with ParserPluginTemplate {
   }
 
   override def beforeVerify(input: Program): Program = {
-    new AdtEncoder(input).encode()
+    println(input)
+    val newProgram = new AdtEncoder(input).encode()
+    //println(newProgram)
+    newProgram
   }
 
 }

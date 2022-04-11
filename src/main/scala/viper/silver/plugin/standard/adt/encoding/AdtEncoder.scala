@@ -48,8 +48,8 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     // In a second step encode all occurrences of AdtType's as DomainType's
     newProgram = encodeAllAdtTypeAsDomainType(newProgram)
 
-    // In a third step generate transitivity axioms if contains domain is present
-    if (withContainsDomain) {
+    // In a third step generate transitivity axioms if contains function is derived for at least one adt
+    if (containsFunctionIsDerived) {
       val domains = newProgram.domains ++ Seq(generateContainsTransitivityDomain(newProgram))
       newProgram = newProgram.copy(domains = domains)(newProgram.pos, newProgram.info, newProgram.errT)
     }
@@ -73,20 +73,22 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     *   3. Adds destructor declarations encoded as domain functions
     *   4. Adds a tag functions encoded as domain functions
     *   5. Generates corresponding axioms for injectivity, exclusivity and the tag function
+    *   6. Generates axioms for derived functions
     *
     * @param adt The ADT to encode
     * @return An the encoded ADT as a domain
     */
   private def encodeAdtAsDomain(adt: Adt): Domain = {
     adt match {
-      case Adt(name, constructors, typVars) =>
+      case Adt(name, constructors, typVars, derivingInfo) =>
         val domain = Domain(name, null, null, typVars)(adt.pos, adt.info, adt.errT)
         val functions: Seq[DomainFunc] = (constructors map encodeAdtConstructorAsDomainFunc(domain)) ++
           (constructors flatMap generateDestructorDeclarations(domain)) ++ Seq(generateTagDeclaration(domain))
         val axioms = (constructors flatMap generateInjectivityAxiom(domain)) ++
-          (constructors map generateTagAxiom(domain)) ++ Seq(generateExclusivityAxiom(domain)(constructors)) ++
-          (if (withContainsDomain) constructors filter (_.formalArgs.nonEmpty) map generateContainsAxiom(domain) else Seq.empty)
-        domain.copy(functions = functions, axioms = axioms)(adt.pos, adt.info, adt.errT)
+          (constructors map generateTagAxiom(domain)) ++ Seq(generateExclusivityAxiom(domain)(constructors))
+        val derivingAxioms =  if (derivingInfo.contains(getContainsFunctionName))
+          constructors filter (_.formalArgs.nonEmpty) map generateContainsAxiom(domain, derivingInfo(getContainsFunctionName)._2) else Seq.empty
+        domain.copy(functions = functions, axioms = axioms ++ derivingAxioms)(adt.pos, adt.info, adt.errT)
     }
   }
 
@@ -197,7 +199,7 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     val tagApp = DomainFuncApp(
       getTagName(ada.adtName),
       Seq(ada.rcv),
-      ada.typVarMap // TODO: not sure about that
+      ada.typVarMap
     )(ada.pos, ada.info, Int, ada.adtName, ada.errT)
 
     EqCmp(tagApp, IntLit(getTag(ada.adtName)(ada.name))(ada.pos, ada.info, ada.errT))(ada.pos, ada.info, ada.errT)
@@ -232,7 +234,7 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     val constructorApp = DomainFuncApp(
       ac.name,
       localVars,
-      defaultTypeVarsFromDomain(domain) // TODO: not sure about that
+      defaultTypeVarsFromDomain(domain)
     )(ac.pos, ac.info, encodeAdtTypeAsDomainType(ac.typ), ac.adtName, ac.errT)
     val trigger = Trigger(Seq(constructorApp))(ac.pos, ac.info, ac.errT)
 
@@ -240,7 +242,7 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
       val right = DomainFuncApp(
         getDestructorName(ac.adtName, lv.name),
         Seq(constructorApp),
-        defaultTypeVarsFromDomain(domain) // TODO: not sure about that
+        defaultTypeVarsFromDomain(domain)
       )(ac.pos, ac.info, lv.typ, ac.adtName, ac.errT)
       val eq = EqCmp(lv, right)(ac.pos, ac.info, ac.errT)
       val forall = Forall(localVarDecl, Seq(trigger), eq)(ac.pos, ac.info, ac.errT)
@@ -270,7 +272,7 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     val tagApp = DomainFuncApp(
       getTagName(domain.name),
       Seq(localVar),
-      (domain.typVars zip domain.typVars).toMap // TODO: not sure about that
+      (domain.typVars zip domain.typVars).toMap
     )(domain.pos, domain.info, Int, domain.name, domain.errT)
 
     var destructorCalls: Seq[DomainFuncApp] = Seq()
@@ -280,13 +282,13 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
           DomainFuncApp(
             getDestructorName(domain.name, name),
             Seq(localVar),
-            defaultTypeVarsFromDomain(domain) // TODO: not sure about that
+            defaultTypeVarsFromDomain(domain)
           )(domain.pos, domain.info, typ, domain.name, domain.errT)
       }
       DomainFuncApp(
         ac.name,
         destructorCalls,
-        defaultTypeVarsFromDomain(domain) // TODO: not sure about that
+        defaultTypeVarsFromDomain(domain)
       )(domain.pos, domain.info, ac.typ, domain.name, domain.errT)
     }
 
@@ -347,7 +349,7 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     val constructorApp = DomainFuncApp(
       ac.name,
       localVars,
-      defaultTypeVarsFromDomain(domain) // TODO: not sure about that
+      defaultTypeVarsFromDomain(domain)
     )(ac.pos, ac.info, encodeAdtTypeAsDomainType(ac.typ), ac.adtName, ac.errT)
 
     val trigger = Trigger(Seq(constructorApp))(ac.pos, ac.info, ac.errT)
@@ -355,7 +357,7 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     val tagApp = DomainFuncApp(
       getTagName(ac.adtName),
       Seq(constructorApp),
-      defaultTypeVarsFromDomain(domain) // TODO: not sure about that
+      defaultTypeVarsFromDomain(domain)
     )(ac.pos, ac.info, Int, ac.adtName, ac.errT)
 
     val right = IntLit(getTag(domain.name)(ac.name))(ac.pos, ac.info, ac.errT)
@@ -371,17 +373,11 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
   }
 
   /**
-    * This is a helper method to check if the contains domain, namely
+    * This is a helper method to check if the contains function is derived for at least one adt, namely
     *
-    * domain ContainsDomain[A,B] {
-    *     function contains(a: A, b: B): Bool
-    * }
-    *
-    * was imported by import <adt/contains.vpr>.
-    *
-    * @return Return true if the contains domain is present
+    * @return Return true if the contains function is derived for at least one adt
     */
-  private def withContainsDomain: Boolean = program.domains.exists(_.name == getContainsDomainName)
+  private def containsFunctionIsDerived: Boolean = program.extensions.exists { case a: Adt => a.derivingInfo.contains(getContainsFunctionName) }
 
   /**
     * This method generates the corresponding contains axiom for a ADT constructor
@@ -393,10 +389,11 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     * where C′ =  C(p_1, ..., p_n).
     *
     * @param domain The domain that encodes the ADT the constructor belongs to for which we want a contains axiom
+    * @param blockList A list of destructor identifiers that should not be considered for the contains relations
     * @param ac An ADT constructor
     * @return The generated contains axiom
     */
-  private def generateContainsAxiom(domain: Domain)(ac: AdtConstructor): AnonymousDomainAxiom = {
+  private def generateContainsAxiom(domain: Domain, blockList: Set[String])(ac: AdtConstructor): AnonymousDomainAxiom = {
     assert(domain.name == ac.adtName, "AdtEncoder: An error in the ADT encoding occurred.")
     assert(ac.formalArgs.nonEmpty, "AdtEncoder: An error in the ADT encoding occurred.")
 
@@ -424,7 +421,7 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
       Map(TypeVar("A") -> lv.typ, TypeVar("B") -> constructorApp.typ)
     )(ac.pos, ac.info, Bool, getContainsDomainName, ac.errT)
 
-    val axiomBody = localVars.map(containsApp).foldLeft[Exp](TrueLit()(ac.pos, ac.info, ac.errT))((a, b) => And(a, b)(ac.pos, ac.info, ac.errT))
+    val axiomBody = localVars.filter(lv => !blockList.contains(lv.name)).map(containsApp).foldLeft[Exp](TrueLit()(ac.pos, ac.info, ac.errT))((a, b) => And(a, b)(ac.pos, ac.info, ac.errT))
     val forall = Forall(localVarDecl, Seq(trigger), axiomBody)(ac.pos, ac.info, ac.errT)
 
     AnonymousDomainAxiom(forall)(ac.pos, ac.info, ac.adtName, ac.errT)
