@@ -101,7 +101,7 @@ object PAdt {
 
 }
 
-case class PAdtConstructor(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl])(val adtName: PIdnUse)(val pos: (Position, Position)) extends PExtender with PMember with PGlobalDeclaration {
+case class PAdtConstructor(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl])(val adtName: PIdnUse)(val pos: (Position, Position)) extends PExtender with PMember with PGlobalDeclaration {
 
   override val getSubnodes: Seq[PNode] = Seq(idndef) ++ formalArgs
 
@@ -121,7 +121,11 @@ case class PAdtConstructor(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl])(
 
   override def translateMemberSignature(t: Translator): AdtConstructor = {
     val adt = PAdt.findAdt(adtName, t)
-    AdtConstructor(adt, idndef.name, formalArgs map t.liftAnyVarDecl)(t.liftPos(this))
+    AdtConstructor(
+      adt,
+      idndef.name,
+      formalArgs map {arg => LocalVarDecl(arg.idndef.name, t.ttyp(arg.typ))(t.liftPos(arg.idndef)) }
+    )(t.liftPos(this))
   }
 
   override def translateMember(t: Translator): AdtConstructor = {
@@ -134,7 +138,7 @@ case class PAdtConstructor(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl])(
     else {
       assert(children.length == 2, s"PAdtConstructor : expected length 2 but got ${children.length}")
       val first = children.head.asInstanceOf[PIdnDef]
-      val second = children.tail.head.asInstanceOf[Seq[PAnyFormalArgDecl]]
+      val second = children.tail.head.asInstanceOf[Seq[PFormalArgDecl]]
       PAdtConstructor(first, second)(this.adtName)(pos.getOrElse(this.pos)).asInstanceOf[this.type]
     }
   }
@@ -151,7 +155,7 @@ object PAdtConstructor {
   def findAdtConstructor(id: PIdentifier, t: Translator): AdtConstructor = t.getMembers()(id.name).asInstanceOf[AdtConstructor]
 }
 
-case class PAdtConstructor1(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl])(val pos: (Position, Position))
+case class PAdtConstructor1(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl])(val pos: (Position, Position))
 
 case class PAdtDerivingInfo(idnuse: PIdnUse, param: Option[PType], blockList: Set[PIdnUse])(val pos: (Position, Position)) extends PExtender {
 

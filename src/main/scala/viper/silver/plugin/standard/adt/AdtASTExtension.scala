@@ -59,14 +59,14 @@ case class Adt(name: String, constructors: Seq[AdtConstructor], typVars: Seq[Typ
   * @param typ the return type of the constructor
   * @param adtName the name corresponding of the corresponding ADT
   */
-case class AdtConstructor(name: String, formalArgs: Seq[AnyLocalVarDecl])
+case class AdtConstructor(name: String, formalArgs: Seq[LocalVarDecl])
                      (val pos: Position, val info: Info, val typ: AdtType, val adtName : String, val errT: ErrorTrafo)
   extends ExtensionMember {
 
   override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)
   }
-  val scopedDecls: Seq[Declaration] = formalArgs.filter(p => p.isInstanceOf[LocalVarDecl]).asInstanceOf[Seq[LocalVarDecl]]
+  val scopedDecls: Seq[Declaration] = formalArgs
 
   override def extensionSubnodes: Seq[Node] = formalArgs
 
@@ -78,7 +78,7 @@ case class AdtConstructor(name: String, formalArgs: Seq[AnyLocalVarDecl])
     else {
       assert(children.length == 2, s"AdtConstructor : expected length 2 but got ${children.length}")
       val first = children.head.asInstanceOf[String]
-      val second = children.tail.head.asInstanceOf[Seq[AnyLocalVarDecl]]
+      val second = children.tail.head.asInstanceOf[Seq[LocalVarDecl]]
       AdtConstructor(first, second)(this.pos, this.info, this.typ, this.adtName, this.errT).asInstanceOf[this.type]
     }
 
@@ -86,7 +86,7 @@ case class AdtConstructor(name: String, formalArgs: Seq[AnyLocalVarDecl])
 }
 
 object AdtConstructor {
-  def apply(adt: Adt, name: String, formalArgs: Seq[AnyLocalVarDecl])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos): AdtConstructor = {
+  def apply(adt: Adt, name: String, formalArgs: Seq[LocalVarDecl])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos): AdtConstructor = {
     AdtConstructor(name, formalArgs)(pos, info, AdtType(adt, (adt.typVars zip adt.typVars).toMap), adt.name, errT)
   }
 }
@@ -245,9 +245,9 @@ case class AdtDestructorApp(name: String, rcv: Exp, typVarMap: Map[TypeVar, Type
 
 object AdtDestructorApp {
   def apply(adt : Adt, name: String, rcv: Exp, typVarMap: Map[TypeVar, Type])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos) : AdtDestructorApp = {
-    val matchingConstructors = adt.constructors flatMap (c => c.formalArgs.filter { case LocalVarDecl(lvName, _) => lvName == name })
+    val matchingConstructors = adt.constructors flatMap (c => c.formalArgs.filter { lv => lv.name == name })
     assert(matchingConstructors.length == 1, s"AdtDestructorApp : expected length 1 but got ${matchingConstructors.length}")
-    val typ = matchingConstructors.head.asInstanceOf[LocalVarDecl].typ
+    val typ = matchingConstructors.head.typ
     AdtDestructorApp(name, rcv, typVarMap)(pos, info, typ.substitute(typVarMap), adt.name, errT)
   }
 }

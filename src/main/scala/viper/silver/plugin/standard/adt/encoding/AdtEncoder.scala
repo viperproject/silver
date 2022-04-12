@@ -159,19 +159,17 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     */
   private def generateDestructorDeclarations(domain:Domain)(ac: AdtConstructor): Seq[DomainFunc] = {
     assert(domain.name == ac.adtName, "AdtEncoder: An error in the ADT encoding occurred.")
-    ac.formalArgs.map {
-        case LocalVarDecl(name, typ) =>
-          val args = Seq(localVarTDeclFromType(encodeAdtTypeAsDomainType(ac.typ))(ac.pos, ac.info, ac.errT))
-          val ttyp = typ match {
-            case a:AdtType => encodeAdtTypeAsDomainType(a)
-            case d => d
-          }
-          DomainFunc(
-            getDestructorName(ac.adtName, name),
-            args,
-            ttyp
-          )(ac.pos, ac.info, ac.adtName, ac.errT)
-        case _ => sys.error("AdtEncoder : Only LocalVarDecl are allowed as arguments of an Adt constructor")
+    ac.formalArgs.map { lv =>
+      val args = Seq(localVarTDeclFromType(encodeAdtTypeAsDomainType(ac.typ))(ac.pos, ac.info, ac.errT))
+      val ttyp = lv.typ match {
+        case a:AdtType => encodeAdtTypeAsDomainType(a)
+        case d => d
+      }
+      DomainFunc(
+        getDestructorName(ac.adtName, lv.name),
+        args,
+        ttyp
+      )(ac.pos, ac.info, ac.adtName, ac.errT)
     }
   }
 
@@ -222,12 +220,11 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
   private def generateInjectivityAxiom(domain: Domain)(ac: AdtConstructor): Seq[AnonymousDomainAxiom] = {
     assert(domain.name == ac.adtName, "AdtEncoder: An error in the ADT encoding occurred.")
     val localVarDecl = ac.formalArgs.collect {case l:LocalVarDecl => l }
-    val localVars = ac.formalArgs.map {
-      case LocalVarDecl(name, typ) =>
-        typ match {
-          case a: AdtType => localVarTFromType(encodeAdtTypeAsDomainType(a), Some(name))(ac.pos, ac.info, ac.errT)
-          case d => localVarTFromType(d, Some(name))(ac.pos, ac.info, ac.errT)
-        }
+    val localVars = ac.formalArgs.map { lv =>
+      lv.typ match {
+        case a: AdtType => localVarTFromType(encodeAdtTypeAsDomainType(a), Some(lv.name))(ac.pos, ac.info, ac.errT)
+        case d => localVarTFromType(d, Some(lv.name))(ac.pos, ac.info, ac.errT)
+      }
     }
     assert(localVarDecl.size == localVars.size, "AdtEncoder: An error in the ADT encoding occurred.")
 
@@ -277,13 +274,12 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
 
     var destructorCalls: Seq[DomainFuncApp] = Seq()
     val rhss = acs.map { ac =>
-      destructorCalls = ac.formalArgs.map {
-        case LocalVarDecl(name, typ) =>
-          DomainFuncApp(
-            getDestructorName(domain.name, name),
-            Seq(localVar),
-            defaultTypeVarsFromDomain(domain)
-          )(domain.pos, domain.info, typ, domain.name, domain.errT)
+      destructorCalls = ac.formalArgs.map { lv =>
+        DomainFuncApp(
+          getDestructorName(domain.name, lv.name),
+          Seq(localVar),
+          defaultTypeVarsFromDomain(domain)
+        )(domain.pos, domain.info, lv.typ, domain.name, domain.errT)
       }
       DomainFuncApp(
         ac.name,
@@ -337,12 +333,11 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     assert(domain.name == ac.adtName, "AdtEncoder: An error in the ADT encoding occurred.")
 
     val localVarDecl = ac.formalArgs.collect {case l:LocalVarDecl => l }
-    val localVars = ac.formalArgs.map {
-      case LocalVarDecl(name, typ) =>
-        typ match {
-          case a: AdtType => localVarTFromType(encodeAdtTypeAsDomainType(a), Some(name))(ac.pos, ac.info, ac.errT)
-          case d => localVarTFromType(d, Some(name))(ac.pos, ac.info, ac.errT)
-        }
+    val localVars = ac.formalArgs.map { lv =>
+      lv.typ match {
+        case a: AdtType => localVarTFromType(encodeAdtTypeAsDomainType(a), Some(lv.name))(ac.pos, ac.info, ac.errT)
+        case d => localVarTFromType(d, Some(lv.name))(ac.pos, ac.info, ac.errT)
+      }
     }
     assert(localVarDecl.size == localVars.size, "AdtEncoder: An error in the ADT encoding occurred.")
 
@@ -398,12 +393,11 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     assert(ac.formalArgs.nonEmpty, "AdtEncoder: An error in the ADT encoding occurred.")
 
     val localVarDecl = ac.formalArgs.collect {case l:LocalVarDecl => l }
-    val localVars = ac.formalArgs.map {
-      case LocalVarDecl(name, typ) =>
-        typ match {
-          case a: AdtType => localVarTFromType(encodeAdtTypeAsDomainType(a), Some(name))(ac.pos, ac.info, ac.errT)
-          case d => localVarTFromType(d, Some(name))(ac.pos, ac.info, ac.errT)
-        }
+    val localVars = ac.formalArgs.map { lv =>
+      lv.typ match {
+        case a: AdtType => localVarTFromType(encodeAdtTypeAsDomainType(a), Some(lv.name))(ac.pos, ac.info, ac.errT)
+        case d => localVarTFromType(d, Some(lv.name))(ac.pos, ac.info, ac.errT)
+      }
     }
     assert(localVarDecl.size == localVars.size, "AdtEncoder: An error in the ADT encoding occurred.")
 

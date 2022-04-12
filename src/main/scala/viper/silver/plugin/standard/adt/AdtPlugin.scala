@@ -9,7 +9,7 @@ package viper.silver.plugin.standard.adt
 import fastparse._
 import viper.silver.ast.Program
 import viper.silver.ast.utility.rewriter.StrategyBuilder
-import viper.silver.parser.FastParser.{FP, anyFormalArgList, idndef, idnuse, typ, whitespace}
+import viper.silver.parser.FastParser.{FP, formalArg, idndef, idnuse, typ, whitespace}
 import viper.silver.parser._
 import viper.silver.plugin.standard.adt.encoding.AdtEncoder
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
@@ -72,7 +72,9 @@ class AdtPlugin extends SilverPlugin with ParserPluginTemplate {
     }
   }
 
-  def adtConstructorSignature[_: P]: P[(PIdnDef, Seq[PAnyFormalArgDecl])] = P(idndef ~ "(" ~ anyFormalArgList ~ ")")
+  def adtConstructorSignature[_: P]: P[(PIdnDef, Seq[PFormalArgDecl])] = P(idndef ~ "(" ~ formalArgList ~ ")")
+
+  def formalArgList[_: P]: P[Seq[PFormalArgDecl]] = P(formalArg.rep(sep = ","))
 
   override def beforeParse(input: String, isImported: Boolean): String = {
     if (!isImported) {
