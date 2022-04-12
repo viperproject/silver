@@ -60,7 +60,7 @@ class AdtPlugin extends SilverPlugin with ParserPluginTemplate {
   def adtDerivingDecl[_: P]: P[Seq[PAdtDerivingInfo]] = P(AdtDerivesKeyword ~/ "{" ~ adtDerivingDeclBody.rep ~ "}")
 
   def adtDerivingDeclBody[_:P]: P[PAdtDerivingInfo] = FP(
-    idnuse ~ ("[" ~ typ ~ "]").?  ~ (AdtDerivesWithoutKeyword ~/ idnuse.rep(sep = ",")).?).map {
+    idnuse ~ ("[" ~ typ ~ "]").?  ~ (AdtDerivesWithoutKeyword ~/ idnuse.rep(sep = ",", min=1)).?).map {
       case (pos, (func, ttyp, bl)) => PAdtDerivingInfo(func, ttyp, bl.getOrElse(Seq.empty).toSet)(pos)
   }
 
@@ -115,10 +115,7 @@ class AdtPlugin extends SilverPlugin with ParserPluginTemplate {
   }
 
   override def beforeVerify(input: Program): Program = {
-    println(input)
-    val newProgram = new AdtEncoder(input).encode()
-    //println(newProgram)
-    newProgram
+   new AdtEncoder(input).encode()
   }
 
 }
