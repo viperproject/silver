@@ -1,0 +1,20 @@
+import <adt/derives.vpr>
+
+adt List[T] {
+    Nil()
+    Cons(value:T, tail:List[T])
+} derives { contains }
+
+adt SimpleList {
+    SimpleNil()
+    SimpleCons(value: Int, tail: SimpleList)
+} derives {
+    contains without tail
+}
+
+adt Tree3[T] {
+    Leaf3()
+    Node3(value: T, left: Tree3[T], middle: Tree3[T], right: Tree3[T])
+} derives {
+    contains without middle, right
+}
