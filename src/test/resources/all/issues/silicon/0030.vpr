@@ -9,15 +9,17 @@ function C__g(diz: Ref): Int
 
 predicate C__P(diz: Ref)
 
+/** In Viper, exhale should proceed from left to write (earlier Carbon
+used to have a multi-phase exhale that delayed the exhale of wildcards).
+Thus, exhale acc(x.f, wildcard) && acc(x.f, 1/2) is expected to fail.  */
+
 method C__main(diz: Ref)
    requires diz != null
    requires acc(C__P(diz), write)
-   //:: UnexpectedOutput(application.precondition:insufficient.permission, /Silicon/issue/30/)
+   //:: ExpectedOutput(application.precondition:insufficient.permission)
    requires C__g(diz) > 0
 {
-  //:: MissingOutput(assert.failed:assertion.false, /Silicon/issue/30/)
-  //:: ExpectedOutput(assert.failed:assertion.false)
-  assert false
+
 }
 
 method test(diz:Ref)
@@ -31,11 +33,7 @@ method test(diz:Ref)
 method C__main2(diz: Ref)
    requires diz != null
    requires acc(C__P(diz), write)
-   //:: UnexpectedOutput(application.precondition:insufficient.permission, /Silicon/issue/30/)
-   requires C__g(diz) > 0
 {
+   //:: ExpectedOutput(call.precondition:insufficient.permission)
   test(diz)
-  //:: MissingOutput(assert.failed:assertion.false, /Silicon/issue/30/)
-  //:: ExpectedOutput(assert.failed:assertion.false)
-  assert false
 }
