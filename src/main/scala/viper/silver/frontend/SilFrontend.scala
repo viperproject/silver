@@ -81,6 +81,7 @@ trait SilFrontend extends DefaultFrontend {
    * All default plugins can be excluded from the plugins by providing the --disableDefaultPlugins flag
    */
   private val defaultPlugins: Seq[String] = Seq(
+    "viper.silver.plugin.standard.adt.AdtPlugin",
     "viper.silver.plugin.standard.termination.TerminationPlugin",
     "viper.silver.plugin.standard.predicateinstance.PredicateInstancePlugin"
   )

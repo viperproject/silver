@@ -1,0 +1,27 @@
+adt List[T] {
+    Nil()
+    Cons(value: T, tail: List[T])
+}
+
+method var_decls_2a()
+{   
+    //:: ExpectedOutput(typechecker.error)
+    var list1: List[Int, Int]
+    
+    //:: ExpectedOutput(typechecker.error)
+    var list2: List
+    
+}
+
+adt SpecialList[T, S] {
+    SpecialNil()
+    TCons(elemT: T, tailT: SpecialList[T,S])
+    SCons(elemS: S, tailS: SpecialList[T,S])
+}
+
+method var_decls_2b()
+{   
+    //:: ExpectedOutput(typechecker.error)
+    var slist: SpecialList[SpecialList[SpecialList[SpecialList[Int, Int], SpecialList[Bool]], Int], SpecialList[Bool, SpecialList[SpecialList[Int, Int], SpecialList[Bool, Bool]]]]
+    
+}

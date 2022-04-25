@@ -1,0 +1,23 @@
+adt List[T] {
+    Nil()
+    Cons(value: T, tail: List[T])
+}
+
+domain DList[T] {
+    function DNil(): DList[T]
+    function DCons(value: T, tail: DList[T]): DList[T]
+}
+
+method constructors_3()
+{
+    var list1: List[Int]
+    //:: ExpectedOutput(typechecker.error)
+    list1 := Cons(1, DNil())
+
+    var list2: List[DList[Int]]
+    //:: ExpectedOutput(typechecker.error)
+    list2 := Cons(DCons(1, DNil()), Nil)
+   
+}
+
+

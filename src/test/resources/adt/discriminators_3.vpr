@@ -1,0 +1,16 @@
+adt List[T] {
+    Nil()
+    Cons(value: T, tail: List[T])
+}
+
+method discriminators_3()
+{   
+    var list: List[Int]
+    list := Cons(1, Nil())
+
+    assert list.tail.isNil ? true : false
+    assert list.tail.isNil?true:false
+
+    assert list.tail.isNil ? list.tail.isCons ? list.tail.isNil ? true : false : list.tail.isNil ? true : false : list.tail.isNil ? true : false
+    
+}
