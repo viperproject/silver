@@ -15,7 +15,11 @@ import viper.silver.plugin.standard.adt.encoding.AdtEncoder
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 
 
-class AdtPlugin extends SilverPlugin with ParserPluginTemplate {
+class AdtPlugin(reporter: viper.silver.reporter.Reporter,
+                logger: ch.qos.logback.classic.Logger,
+                config: viper.silver.frontend.SilFrontendConfig) extends SilverPlugin with ParserPluginTemplate {
+
+  private def deactivated: Boolean = config != null && config.adtPlugin.toOption.getOrElse(false)
 
   /**
     * This field is set during the beforeParse method
@@ -77,6 +81,10 @@ class AdtPlugin extends SilverPlugin with ParserPluginTemplate {
   def formalArgList[_: P]: P[Seq[PFormalArgDecl]] = P(formalArg.rep(sep = ","))
 
   override def beforeParse(input: String, isImported: Boolean): String = {
+    if (deactivated) {
+      return input
+    }
+
     if (!isImported) {
       // Add new parser adt declaration keyword
       ParserExtension.addNewKeywords(Set[String](AdtKeyword))
@@ -88,6 +96,9 @@ class AdtPlugin extends SilverPlugin with ParserPluginTemplate {
   }
 
   override def beforeResolve(input: PProgram): PProgram = {
+    if (deactivated) {
+      return input
+    }
     // Syntax of adt types, adt constructor calls and destructor calls can not be distinguished from ordinary
     // viper syntax, hence we need the following transforming step before resolving.
     val declaredAdtNames = input.extensions.collect { case a: PAdt => a.idndef }.toSet
@@ -117,7 +128,10 @@ class AdtPlugin extends SilverPlugin with ParserPluginTemplate {
   }
 
   override def beforeVerify(input: Program): Program = {
-   new AdtEncoder(input).encode()
+    if (deactivated) {
+      return input
+    }
+    new AdtEncoder(input).encode()
   }
 
 }
