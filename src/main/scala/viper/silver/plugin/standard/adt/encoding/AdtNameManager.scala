@@ -12,7 +12,6 @@ import viper.silver.ast.Program
 import scala.collection.mutable
 
 
-
 /**
   * A simple interface to transform/extend a program.
   * Contains utility functions to avoid name conflicts (e.g. when adding a new domain functions to a domain)
@@ -39,13 +38,15 @@ trait AdtNameManager {
     * Note that the first two names are fixed by resources/adt/contains.vpr
     */
   def getContainsDomainName: String = "ContainsDomain"
+
   def getContainsFunctionName: String = "contains"
+
   def getContainsTransitivityDomain: String = getName("ContainsTransitivityDomain")
 
   /**
     * This method returns the name of the destructor given the name of the ADT and the name of a constructor argument
     *
-    * @param adtName The name of the ADT the destructor belongs to
+    * @param adtName  The name of the ADT the destructor belongs to
     * @param argument The name of a constructor argument for which we want the corresponding destructor
     * @return The name of the queried constructor
     */
@@ -74,17 +75,6 @@ trait AdtNameManager {
     adtNameMappings(trueName)
   }
 
-
-  /**
-    * Checks if a name already occurs in the program.
-    *
-    * @param name to be checked
-    * @return true iff the name is used in the program.
-    */
-  private def containsName(name: String): Boolean = {
-    usedNames.contains(name)
-  }
-
   /**
     * Creates a unique name for the program and adds it to the names already used in the program.
     *
@@ -100,6 +90,16 @@ trait AdtNameManager {
     }
     usedNames.add(newName)
     newName
+  }
+
+  /**
+    * Checks if a name already occurs in the program.
+    *
+    * @param name to be checked
+    * @return true iff the name is used in the program.
+    */
+  private def containsName(name: String): Boolean = {
+    usedNames.contains(name)
   }
 
 }

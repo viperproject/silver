@@ -24,7 +24,7 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     * This is field holding the mappings of the adt constructors tag identifier.
     */
   private val tagMapping: Map[String, Map[String, Int]] = (program.extensions collect {
-    case a:Adt => (a.name, a.constructors.map(_.name).sorted.zipWithIndex.toMap)
+    case a: Adt => (a.name, a.constructors.map(_.name).sorted.zipWithIndex.toMap)
   }).toMap
 
   /**
@@ -37,8 +37,8 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     // In a first step encode all adt top level declarations and constructor calls
     var newProgram: Program = StrategyBuilder.Slim[Node]({
       case p@Program(domains, fields, functions, predicates, methods, extensions) =>
-        val remainingExtensions = extensions filter { case _:Adt => false; case _ => true }
-        val encodedAdtsAsDomains: Seq[Domain] = extensions collect { case a:Adt => encodeAdtAsDomain(a) }
+        val remainingExtensions = extensions filter { case _: Adt => false; case _ => true }
+        val encodedAdtsAsDomains: Seq[Domain] = extensions collect { case a: Adt => encodeAdtAsDomain(a) }
         Program(domains ++ encodedAdtsAsDomains, fields, functions, predicates, methods, remainingExtensions)(p.pos, p.info, p.errT)
       case aca: AdtConstructorApp => encodeAdtConstructorApp(aca)
       case ada: AdtDestructorApp => encodeAdtDestructorApp(ada)
@@ -60,11 +60,11 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
   /**
     * This method return the tag identifier given a adt constructor name and its correpsonding adt name
     *
-    * @param adtName The name of the adt
+    * @param adtName   The name of the adt
     * @param contrName The name of the adt constructor we want the tag identifier
     * @return The queried tag identifier
     */
-  private def getTag(adtName: String)(contrName:String) = tagMapping(adtName)(contrName)
+  private def getTag(adtName: String)(contrName: String) = tagMapping(adtName)(contrName)
 
   /**
     * This method takes an ADT and encodes it as a Domain. Especially it does
@@ -86,7 +86,7 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
           (constructors flatMap generateDestructorDeclarations(domain)) ++ Seq(generateTagDeclaration(domain))
         val axioms = (constructors flatMap generateInjectivityAxiom(domain)) ++
           (constructors map generateTagAxiom(domain)) ++ Seq(generateExclusivityAxiom(domain)(constructors))
-        val derivingAxioms =  if (derivingInfo.contains(getContainsFunctionName))
+        val derivingAxioms = if (derivingInfo.contains(getContainsFunctionName))
           constructors filter (_.formalArgs.nonEmpty) map generateContainsAxiom(domain, derivingInfo(getContainsFunctionName)._2) else Seq.empty
         domain.copy(functions = functions, axioms = axioms ++ derivingAxioms)(adt.pos, adt.info, adt.errT)
     }
@@ -96,29 +96,29 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     * This method creates a local variable given a type. One can specify the name of the local variable via the optional
     * argument 'name'. By default the name is 't'.
     *
-    * @param typ The type for which one wants to generate a local variable
+    * @param typ  The type for which one wants to generate a local variable
     * @param name Optional argument specifying the name og the local variable
     * @return A local variable typed as 'typ' and with name 'name', if specified
     */
-  private def localVarTFromType(typ:Type, name: Option[String] = None) = {
+  private def localVarTFromType(typ: Type, name: Option[String] = None) = {
     name match {
-      case Some(str) => LocalVar(str, typ)(_,_,_)
-      case None => LocalVar("t", typ)(_,_,_)
+      case Some(str) => LocalVar(str, typ)(_, _, _)
+      case None => LocalVar("t", typ)(_, _, _)
     }
   }
 
   /**
-    * This method creates a local variable declaration given a type. One can specify the name of the local variable via the optional
-    * argument 'name'. By default the name is 't'.
+    * This method creates a local variable declaration given a type. One can specify the name of the local variable
+    * via the optional argument 'name'. By default the name is 't'.
     *
-    * @param typ The type for which one wants to generate a local variable declaration
+    * @param typ  The type for which one wants to generate a local variable declaration
     * @param name Optional argument specifying the name og the local variable declaration
     * @return A local variable declaration typed as 'typ' and with name 'name', if specified
     */
-  private def localVarTDeclFromType(typ:Type, name: Option[String] = None) = {
+  private def localVarTDeclFromType(typ: Type, name: Option[String] = None) = {
     name match {
-      case Some(str) => LocalVarDecl(str, typ)(_,_,_)
-      case None => LocalVarDecl("t", typ)(_,_,_)
+      case Some(str) => LocalVarDecl(str, typ)(_, _, _)
+      case None => LocalVarDecl("t", typ)(_, _, _)
     }
   }
 
@@ -126,12 +126,13 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     * This method encodes an ADT constructor as a domain function
     *
     * @param domain The domain the encoded constructor belongs to
-    * @param ac The ADT constructor to encode
+    * @param ac     The ADT constructor to encode
     * @return An encoded ADT constructor as a domain function
     */
   private def encodeAdtConstructorAsDomainFunc(domain: Domain)(ac: AdtConstructor): DomainFunc = {
     ac match {
-      case AdtConstructor(name, formalArgs) => DomainFunc(name, formalArgs, encodeAdtTypeAsDomainType(ac.typ))(ac.pos, ac.info, domain.name, ac.errT)
+      case AdtConstructor(name, formalArgs) =>
+        DomainFunc(name, formalArgs, encodeAdtTypeAsDomainType(ac.typ))(ac.pos, ac.info, domain.name, ac.errT)
     }
   }
 
@@ -154,15 +155,15 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     * This method generates destructor declarations for a corresponding ADT constructor
     *
     * @param domain the domain the encoded constructor belongs to
-    * @param ac the adt constructor for which we want to generate destructor declarations
+    * @param ac     the adt constructor for which we want to generate destructor declarations
     * @return A sequence of destructor declarations, empty if constructor has no arguments
     */
-  private def generateDestructorDeclarations(domain:Domain)(ac: AdtConstructor): Seq[DomainFunc] = {
+  private def generateDestructorDeclarations(domain: Domain)(ac: AdtConstructor): Seq[DomainFunc] = {
     assert(domain.name == ac.adtName, "AdtEncoder: An error in the ADT encoding occurred.")
     ac.formalArgs.map { lv =>
       val args = Seq(localVarTDeclFromType(encodeAdtTypeAsDomainType(ac.typ))(ac.pos, ac.info, ac.errT))
       val ttyp = lv.typ match {
-        case a:AdtType => encodeAdtTypeAsDomainType(a)
+        case a: AdtType => encodeAdtTypeAsDomainType(a)
         case d => d
       }
       DomainFunc(
@@ -212,14 +213,13 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     *
     * where C is the ADT constructor, D_i the destructor for i-th argument of C
     *
-    *
     * @param domain The domain the encoded constructor belongs to
-    * @param ac The adt constructor for which we want to generate the injectivity axioms
+    * @param ac     The adt constructor for which we want to generate the injectivity axioms
     * @return A sequence of injectivity axiom
     */
   private def generateInjectivityAxiom(domain: Domain)(ac: AdtConstructor): Seq[AnonymousDomainAxiom] = {
     assert(domain.name == ac.adtName, "AdtEncoder: An error in the ADT encoding occurred.")
-    val localVarDecl = ac.formalArgs.collect {case l:LocalVarDecl => l }
+    val localVarDecl = ac.formalArgs.collect { case l: LocalVarDecl => l }
     val localVars = ac.formalArgs.map { lv =>
       lv.typ match {
         case a: AdtType => localVarTFromType(encodeAdtTypeAsDomainType(a), Some(lv.name))(ac.pos, ac.info, ac.errT)
@@ -258,7 +258,7 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     * where D_ij is the destructor of the j-th argument of constructor C_i
     *
     * @param domain The domain the encoded ADT constructors belongs to
-    * @param acs The sequence adt constructor for which we want to generate the exclusivity axioms
+    * @param acs    The sequence adt constructor for which we want to generate the exclusivity axioms
     * @return The exclusivity axiom
     */
   private def generateExclusivityAxiom(domain: Domain)(acs: Seq[AdtConstructor]): AnonymousDomainAxiom = {
@@ -291,11 +291,11 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     val equalities = rhss.map { rhs =>
       EqCmp(localVar, rhs)(rhs.pos, rhs.info, rhs.errT)
     }
-      .foldLeft(FalseLit()(domain.pos, domain.info, domain.errT) : Exp)({
+      .foldLeft(FalseLit()(domain.pos, domain.info, domain.errT): Exp)({
         (acc, next) => Or(acc, next)(domain.pos, domain.info, domain.errT)
-    })
+      })
 
-    val triggers = (Seq(tagApp) ++ destructorCalls).map { t => Trigger(Seq(t))(domain.pos, domain.info, domain.errT)}
+    val triggers = (Seq(tagApp) ++ destructorCalls).map { t => Trigger(Seq(t))(domain.pos, domain.info, domain.errT) }
 
     AnonymousDomainAxiom(
       Forall(Seq(localVarDecl), triggers, equalities)(domain.pos, domain.info, domain.errT)
@@ -326,13 +326,13 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     * where i is specified by the parameter 'tag'.
     *
     * @param domain The domain that encodes the ADT the constructor belongs to for which we want a tag axiom
-    * @param ac An ADT constructor
+    * @param ac     An ADT constructor
     * @return The generated tag axiom
     */
-  private def generateTagAxiom(domain:Domain)(ac: AdtConstructor): AnonymousDomainAxiom = {
+  private def generateTagAxiom(domain: Domain)(ac: AdtConstructor): AnonymousDomainAxiom = {
     assert(domain.name == ac.adtName, "AdtEncoder: An error in the ADT encoding occurred.")
 
-    val localVarDecl = ac.formalArgs.collect {case l:LocalVarDecl => l }
+    val localVarDecl = ac.formalArgs.collect { case l: LocalVarDecl => l }
     val localVars = ac.formalArgs.map { lv =>
       lv.typ match {
         case a: AdtType => localVarTFromType(encodeAdtTypeAsDomainType(a), Some(lv.name))(ac.pos, ac.info, ac.errT)
@@ -372,7 +372,9 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     *
     * @return Return true if the contains function is derived for at least one adt
     */
-  private def containsFunctionIsDerived: Boolean = program.extensions.exists { case a: Adt => a.derivingInfo.contains(getContainsFunctionName) }
+  private def containsFunctionIsDerived: Boolean = program.extensions.exists {
+    case a: Adt => a.derivingInfo.contains(getContainsFunctionName)
+  }
 
   /**
     * This method generates the corresponding contains axiom for a ADT constructor
@@ -383,16 +385,16 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     *
     * where C′ =  C(p_1, ..., p_n).
     *
-    * @param domain The domain that encodes the ADT the constructor belongs to for which we want a contains axiom
+    * @param domain    The domain that encodes the ADT the constructor belongs to for which we want a contains axiom
     * @param blockList A list of destructor identifiers that should not be considered for the contains relations
-    * @param ac An ADT constructor
+    * @param ac        An ADT constructor
     * @return The generated contains axiom
     */
   private def generateContainsAxiom(domain: Domain, blockList: Set[String])(ac: AdtConstructor): AnonymousDomainAxiom = {
     assert(domain.name == ac.adtName, "AdtEncoder: An error in the ADT encoding occurred.")
     assert(ac.formalArgs.nonEmpty, "AdtEncoder: An error in the ADT encoding occurred.")
 
-    val localVarDecl = ac.formalArgs.collect {case l:LocalVarDecl => l }
+    val localVarDecl = ac.formalArgs.collect { case l: LocalVarDecl => l }
     val localVars = ac.formalArgs.map { lv =>
       lv.typ match {
         case a: AdtType => localVarTFromType(encodeAdtTypeAsDomainType(a), Some(lv.name))(ac.pos, ac.info, ac.errT)
@@ -415,7 +417,11 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
       Map(TypeVar("A") -> lv.typ, TypeVar("B") -> constructorApp.typ)
     )(ac.pos, ac.info, Bool, getContainsDomainName, ac.errT)
 
-    val axiomBody = localVars.filter(lv => !blockList.contains(lv.name)).map(containsApp).foldLeft[Exp](TrueLit()(ac.pos, ac.info, ac.errT))((a, b) => And(a, b)(ac.pos, ac.info, ac.errT))
+    val axiomBody = localVars.filter(lv =>
+      !blockList.contains(lv.name))
+        .map(containsApp)
+        .foldLeft[Exp](TrueLit()(ac.pos, ac.info, ac.errT))((a, b) => And(a, b)(ac.pos, ac.info, ac.errT)
+    )
     val forall = Forall(localVarDecl, Seq(trigger), axiomBody)(ac.pos, ac.info, ac.errT)
 
     AnonymousDomainAxiom(forall)(ac.pos, ac.info, ac.adtName, ac.errT)
@@ -427,7 +433,6 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     *
     * This ensures that we generate one axiom which encodes the transitivity of contains for each possible
     * triple of concrete types, which are used in calls to contains.
-    *
     *
     * @param program The program
     * @return The ContainsTransitivityDomain with axioms that encode transitivity
@@ -490,10 +495,10 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
 
     var triples: Set[(Type, Type, Type)] = Set.empty
     val closure = transitiveClosure(tuples)
-    for ((a,b) <- closure) {
-      for ((c,d) <- closure) {
+    for ((a, b) <- closure) {
+      for ((c, d) <- closure) {
         if (b == c)
-          triples += ((a,b,d))
+          triples += ((a, b, d))
       }
     }
     val axioms = triples.toSeq.map(a => genAxiom(a._1, a._2, a._3))
@@ -524,6 +529,8 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
 
   /** Several helper methods */
   private def encodeAdtTypeAsDomainType(adtType: AdtType): DomainType = DomainType(adtType.adtName, adtType.partialTypVarsMap)(adtType.typeParameters)
-  private def domainTypeFromDomain(domain:Domain): DomainType = DomainType(domain, defaultTypeVarsFromDomain(domain))
-  private def defaultTypeVarsFromDomain(domain:Domain): Map[TypeVar, Type] = (domain.typVars zip domain.typVars).toMap
+
+  private def domainTypeFromDomain(domain: Domain): DomainType = DomainType(domain, defaultTypeVarsFromDomain(domain))
+
+  private def defaultTypeVarsFromDomain(domain: Domain): Map[TypeVar, Type] = (domain.typVars zip domain.typVars).toMap
 }

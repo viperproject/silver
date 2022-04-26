@@ -19,23 +19,40 @@ class AdtPlugin(reporter: viper.silver.reporter.Reporter,
                 logger: ch.qos.logback.classic.Logger,
                 config: viper.silver.frontend.SilFrontendConfig) extends SilverPlugin with ParserPluginTemplate {
 
-  private def deactivated: Boolean = config != null && config.adtPlugin.toOption.getOrElse(false)
-
-  /**
-    * This field is set during the beforeParse method
-    */
-  private var derivesImported: Boolean = false
-  private def setDerivesImported(input: String): Unit = "import[\\s]+<adt\\/derives\\.vpr>".r.findFirstIn(input) match {
-    case Some(_) => derivesImported = true
-    case None =>
-  }
-
   /**
     * Keywords used to define ADT's
     */
   private val AdtKeyword: String = "adt"
   private val AdtDerivesKeyword: String = "derives"
   private val AdtDerivesWithoutKeyword: String = "without"
+  /**
+    * This field is set during the beforeParse method
+    */
+  private var derivesImported: Boolean = false
+
+  def adtDerivingFunc[_: P]: P[PIdnUse] = FP(StringIn("contains").!).map { case (pos, id) => PIdnUse(id)(pos) }
+
+  override def beforeParse(input: String, isImported: Boolean): String = {
+    if (deactivated) {
+      return input
+    }
+
+    if (!isImported) {
+      // Add new parser adt declaration keyword
+      ParserExtension.addNewKeywords(Set[String](AdtKeyword))
+      // Add new parser for adt declaration
+      ParserExtension.addNewDeclAtEnd(adtDecl(_))
+    }
+    setDerivesImported(input)
+    input
+  }
+
+  private def deactivated: Boolean = config != null && config.adtPlugin.toOption.getOrElse(false)
+
+  private def setDerivesImported(input: String): Unit = "import[\\s]+<adt\\/derives\\.vpr>".r.findFirstIn(input) match {
+    case Some(_) => derivesImported = true
+    case None =>
+  }
 
   /**
     * Parser for ADT declaration.
@@ -59,16 +76,14 @@ class AdtPlugin(reporter: viper.silver.reporter.Reporter,
       )(pos)
   }
 
-  def adtTypeVarDecl[_: P]: P[PTypeVarDecl] = FP(idndef).map{ case (pos, i) => PTypeVarDecl(i)(pos) }
+  def adtTypeVarDecl[_: P]: P[PTypeVarDecl] = FP(idndef).map { case (pos, i) => PTypeVarDecl(i)(pos) }
 
   def adtDerivingDecl[_: P]: P[Seq[PAdtDerivingInfo]] = P(AdtDerivesKeyword ~/ "{" ~ adtDerivingDeclBody.rep ~ "}")
 
-  def adtDerivingDeclBody[_:P]: P[PAdtDerivingInfo] = FP(
-    idnuse ~ ("[" ~ typ ~ "]").?  ~ (AdtDerivesWithoutKeyword ~/ idnuse.rep(sep = ",", min=1)).?).map {
-      case (pos, (func, ttyp, bl)) => PAdtDerivingInfo(func, ttyp, bl.getOrElse(Seq.empty).toSet)(pos)
+  def adtDerivingDeclBody[_: P]: P[PAdtDerivingInfo] = FP(
+    idnuse ~ ("[" ~ typ ~ "]").? ~ (AdtDerivesWithoutKeyword ~/ idnuse.rep(sep = ",", min = 1)).?).map {
+    case (pos, (func, ttyp, bl)) => PAdtDerivingInfo(func, ttyp, bl.getOrElse(Seq.empty).toSet)(pos)
   }
-
-  def adtDerivingFunc[_:P]: P[PIdnUse] = FP(StringIn("contains").!).map { case (pos, id) => PIdnUse(id)(pos) }
 
   def adtConstructorDecl[_: P]: P[PAdtConstructor1] = FP(adtConstructorSignature ~ ";".?).map {
     case (pos, cdecl) => cdecl match {
@@ -80,21 +95,6 @@ class AdtPlugin(reporter: viper.silver.reporter.Reporter,
 
   def formalArgList[_: P]: P[Seq[PFormalArgDecl]] = P(formalArg.rep(sep = ","))
 
-  override def beforeParse(input: String, isImported: Boolean): String = {
-    if (deactivated) {
-      return input
-    }
-
-    if (!isImported) {
-      // Add new parser adt declaration keyword
-      ParserExtension.addNewKeywords(Set[String](AdtKeyword))
-      // Add new parser for adt declaration
-      ParserExtension.addNewDeclAtEnd(adtDecl(_))
-    }
-    setDerivesImported(input)
-    input
-  }
-
   override def beforeResolve(input: PProgram): PProgram = {
     if (deactivated) {
       return input
@@ -104,7 +104,9 @@ class AdtPlugin(reporter: viper.silver.reporter.Reporter,
     val declaredAdtNames = input.extensions.collect { case a: PAdt => a.idndef }.toSet
     val declaredConstructorNames = input.extensions.collect { case a: PAdt => a.constructors.map(c => c.idndef) }.flatten.toSet
     val declaredConstructorArgsNames = input.extensions.collect { case a: PAdt =>
-      a.constructors flatMap ( c => c.formalArgs collect {case PFormalArgDecl(idndef, _) => idndef})}.flatten.toSet
+      a.constructors flatMap (c => c.formalArgs collect { case PFormalArgDecl(idndef, _) => idndef })
+    }.flatten.toSet
+
     def transformStrategy[T <: PNode](input: T): T = StrategyBuilder.Slim[PNode]({
       // If derives import is missing deriving info is ignored
       case pa@PAdt(idndef, typVars, constructors, _) if !derivesImported => PAdt(idndef, typVars, constructors, Seq.empty)(pa.pos)
@@ -114,14 +116,14 @@ class AdtPlugin(reporter: viper.silver.reporter.Reporter,
       // we simply treat the calls as an ordinary field access, which results in an identifier not found error.
       case pfa@PFieldAssign(fieldAcc, rhs) if declaredConstructorArgsNames.exists(_.name == fieldAcc.idnuse.name) ||
         declaredConstructorNames.exists("is" + _.name == fieldAcc.idnuse.name) =>
-          PFieldAssign(PFieldAccess(transformStrategy(fieldAcc.rcv), fieldAcc.idnuse)(fieldAcc.pos), transformStrategy(rhs))(pfa.pos)
+        PFieldAssign(PFieldAccess(transformStrategy(fieldAcc.rcv), fieldAcc.idnuse)(fieldAcc.pos), transformStrategy(rhs))(pfa.pos)
       case pfa@PFieldAccess(rcv, idnuse) if declaredConstructorArgsNames.exists(_.name == idnuse.name) => PDestructorCall(idnuse.name, rcv)(pfa.pos)
       case pfa@PFieldAccess(rcv, idnuse) if declaredConstructorNames.exists("is" + _.name == idnuse.name) => PDiscriminatorCall(PIdnUse(idnuse.name.substring(2))(idnuse.pos), rcv)(pfa.pos)
     }).recurseFunc({
       // Stop the recursion if a destructor call or discriminator call is parsed as left-hand side of a field assignment
       case PFieldAssign(fieldAcc, _) if declaredConstructorArgsNames.exists(_.name == fieldAcc.idnuse.name) ||
         declaredConstructorNames.exists("is" + _.name == fieldAcc.idnuse.name) => Seq()
-      case n: PNode => n.children collect {case ar: AnyRef => ar}
+      case n: PNode => n.children collect { case ar: AnyRef => ar }
     }).execute(input)
 
     transformStrategy(input)

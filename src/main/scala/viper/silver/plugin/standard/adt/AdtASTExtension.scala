@@ -15,13 +15,13 @@ import viper.silver.verifier.{ConsistencyError, Failure, VerificationResult}
 /**
   * This class represents a user-defined ADT.
   *
-  * @param name name of the ADT
+  * @param name         name of the ADT
   * @param constructors sequence of corresponding constructors
-  * @param typVars sequence of type variables (generics)
+  * @param typVars      sequence of type variables (generics)
   * @param derivingInfo a map that maps identifiers of derivable functions to a tuple containing an optional type param and a set of excluded constructor argument identifiers
   */
 case class Adt(name: String, constructors: Seq[AdtConstructor], typVars: Seq[TypeVar] = Nil, derivingInfo: Map[String, (Option[Type], Set[String])] = Map.empty)
-                 (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionMember {
+              (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionMember {
   val scopedDecls: Seq[Declaration] = Seq()
 
   override def extensionSubnodes: Seq[Node] = constructors ++ typVars ++ derivingInfo.map(_._2._1).collect { case Some(v) => v }
@@ -31,11 +31,11 @@ case class Adt(name: String, constructors: Seq[AdtConstructor], typVars: Seq[Typ
     def showDerivingInfo(di: (String, (Option[Type], Set[String]))): PrettyPrintPrimitives#Cont = {
       val (func, (param, blocklist)) = di
       text(func) <> (if (param.isEmpty) nil else text("[") <> showType(param.get) <> space <> "]") <>
-        space <> (if (blocklist.isEmpty) nil else text("without") <> space <> ssep(blocklist.toSeq map text, char (',') <> space))
+        space <> (if (blocklist.isEmpty) nil else text("without") <> space <> ssep(blocklist.toSeq map text, char(',') <> space))
     }
 
     text("adt") <+> name <>
-      (if (typVars.isEmpty) nil else text("[") <> ssep(typVars map show, char (',') <> space) <> "]") <+>
+      (if (typVars.isEmpty) nil else text("[") <> ssep(typVars map show, char(',') <> space) <> "]") <+>
       braces(nest(defaultIndent,
         line <> line <>
           ssep(constructors map show, line <> line)
@@ -45,7 +45,7 @@ case class Adt(name: String, constructors: Seq[AdtConstructor], typVars: Seq[Typ
           line <> line <>
             ssep(derivingInfo.toSeq map showDerivingInfo, line <> line)
         ) <> line)
-      )
+        )
   }
 }
 
@@ -54,19 +54,20 @@ case class Adt(name: String, constructors: Seq[AdtConstructor], typVars: Seq[Typ
   * Adt - this should be used in general for creation (so that typ is guaranteed to
   * be set correctly)
   *
-  * @param name name of the ADT constructor
+  * @param name       name of the ADT constructor
   * @param formalArgs sequence of arguments of the constructor
-  * @param typ the return type of the constructor
-  * @param adtName the name corresponding of the corresponding ADT
+  * @param typ        the return type of the constructor
+  * @param adtName    the name corresponding of the corresponding ADT
   */
 case class AdtConstructor(name: String, formalArgs: Seq[LocalVarDecl])
-                     (val pos: Position, val info: Info, val typ: AdtType, val adtName : String, val errT: ErrorTrafo)
+                         (val pos: Position, val info: Info, val typ: AdtType, val adtName: String, val errT: ErrorTrafo)
   extends ExtensionMember {
 
-  override def getMetadata:Seq[Any] = {
+  val scopedDecls: Seq[Declaration] = formalArgs
+
+  override def getMetadata: Seq[Any] = {
     Seq(pos, info, errT)
   }
-  val scopedDecls: Seq[Declaration] = formalArgs
 
   override def extensionSubnodes: Seq[Node] = formalArgs
 
@@ -86,7 +87,8 @@ case class AdtConstructor(name: String, formalArgs: Seq[LocalVarDecl])
 }
 
 object AdtConstructor {
-  def apply(adt: Adt, name: String, formalArgs: Seq[LocalVarDecl])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos): AdtConstructor = {
+  def apply(adt: Adt, name: String, formalArgs: Seq[LocalVarDecl])
+           (pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos): AdtConstructor = {
     AdtConstructor(name, formalArgs)(pos, info, AdtType(adt, (adt.typVars zip adt.typVars).toMap), adt.name, errT)
   }
 }
@@ -96,15 +98,15 @@ object AdtConstructor {
   * Adt - this should be used in general for creation (so that typeParameters is guaranteed to
   * be set correctly)
   *
-  * @param adtName The name of the underlying adt.
+  * @param adtName           The name of the underlying adt.
   * @param partialTypVarsMap Maps type parameters to (possibly concrete) types. May not map all
   *                          type parameters, may even be empty.
-  * @param typeParameters The type variables of the ADT type.
+  * @param typeParameters    The type variables of the ADT type.
   */
 case class AdtType(adtName: String, partialTypVarsMap: Map[TypeVar, Type])
                   (val typeParameters: Seq[TypeVar]) extends ExtensionType {
 
-  override lazy val check: Seq[ConsistencyError] = if(!(typeParameters.toSet == typVarsMap.keys.toSet)) {
+  override lazy val check: Seq[ConsistencyError] = if (!(typeParameters.toSet == typVarsMap.keys.toSet)) {
     Seq(ConsistencyError(s"${typeParameters.toSet} doesn't equal ${typVarsMap.keys.toSet}", NoPosition))
   } else Seq()
 
@@ -120,8 +122,8 @@ case class AdtType(adtName: String, partialTypVarsMap: Map[TypeVar, Type])
     * occurrences of those type variables with the corresponding type.
     */
   override def substitute(newTypVarsMap: Map[TypeVar, Type]): Type = {
-    assert (typVarsMap.keys.toSet equals this.typeParameters.toSet)
-    val newTypeMap = typVarsMap.map(kv=>kv._1 -> kv._2.substitute(newTypVarsMap))
+    assert(typVarsMap.keys.toSet equals this.typeParameters.toSet)
+    val newTypeMap = typVarsMap.map(kv => kv._1 -> kv._2.substitute(newTypVarsMap))
     AdtType(adtName, newTypeMap)(typeParameters)
   }
 
@@ -130,7 +132,7 @@ case class AdtType(adtName: String, partialTypVarsMap: Map[TypeVar, Type])
 
   override def prettyPrint: PrettyPrintPrimitives#Cont = {
     val typArgs = typeParameters map (t => show(typVarsMap.getOrElse(t, t)))
-    text(adtName) <> (if (typArgs.isEmpty) nil else brackets(ssep(typArgs, char (',') <> space)))
+    text(adtName) <> (if (typArgs.isEmpty) nil else brackets(ssep(typArgs, char(',') <> space)))
   }
 
   override def withChildren(children: Seq[Any], pos: Option[(Position, Position)], forceRewrite: Boolean): this.type = {
@@ -146,7 +148,7 @@ case class AdtType(adtName: String, partialTypVarsMap: Map[TypeVar, Type])
 
 }
 
-object AdtType{
+object AdtType {
   def apply(adt: Adt, typVarsMap: Map[TypeVar, Type]): AdtType =
     AdtType(adt.name, typVarsMap)(adt.typVars)
 }
@@ -157,24 +159,24 @@ object AdtType{
   * Adt constructor - this should be used in general for creation (so that typ is guaranteed to
   * be set correctly)
   *
-  * @param name The name of the ADT constructor
-  * @param args A sequence of expressions passed as arguments to the constructor
+  * @param name      The name of the ADT constructor
+  * @param args      A sequence of expressions passed as arguments to the constructor
   * @param typVarMap Maps type parameters to (possibly concrete) types. May not map all
   *                  type parameters, may even be empty.
-  * @param typ The return type of the constructor
-  * @param adtName The corresponding ADT name
+  * @param typ       The return type of the constructor
+  * @param adtName   The corresponding ADT name
   */
 case class AdtConstructorApp(name: String, args: Seq[Exp], typVarMap: Map[TypeVar, Type])
-                        (val pos: Position, val info: Info, override val typ: Type, val adtName:String, val errT: ErrorTrafo)
+                            (val pos: Position, val info: Info, override val typ: Type, val adtName: String, val errT: ErrorTrafo)
   extends ExtensionExp {
-  override lazy val check : Seq[ConsistencyError] = args.flatMap(Consistency.checkPure)
+  override lazy val check: Seq[ConsistencyError] = args.flatMap(Consistency.checkPure)
 
   override def prettyPrint: PrettyPrintPrimitives#Cont = {
     if (typVarMap.nonEmpty)
       // Type may be under-constrained, so to be safe we explicitly print out the type.
-      parens(text(name) <> parens(ssep(args map show, char (',') <> space)) <> char(':') <+> show(typ))
+      parens(text(name) <> parens(ssep(args map show, char(',') <> space)) <> char(':') <+> show(typ))
     else
-      text(name) <> parens(ssep(args map show, char (',') <> space))
+      text(name) <> parens(ssep(args map show, char(',') <> space))
   }
 
   override def extensionIsPure: Boolean = true
@@ -198,8 +200,10 @@ case class AdtConstructorApp(name: String, args: Seq[Exp], typVarMap: Map[TypeVa
     }
   }
 }
+
 object AdtConstructorApp {
-  def apply(constructor : AdtConstructor, args: Seq[Exp], typVarMap: Map[TypeVar, Type])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos) : AdtConstructorApp =
+  def apply(constructor: AdtConstructor, args: Seq[Exp], typVarMap: Map[TypeVar, Type])
+           (pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos): AdtConstructorApp =
     AdtConstructorApp(constructor.name, args, typVarMap)(pos, info, constructor.typ.substitute(typVarMap), constructor.adtName, errT)
 }
 
@@ -208,16 +212,17 @@ object AdtConstructorApp {
   * Adt - this should be used in general for creation (so that typ is guaranteed to
   * be set correctly)
   *
-  * @param name The name of the argument of an ADT constructor the destructor corresponds to
-  * @param rcv An expression on with the the destructor is applied
+  * @param name      The name of the argument of an ADT constructor the destructor corresponds to
+  * @param rcv       An expression on with the the destructor is applied
   * @param typVarMap Maps type parameters to (possibly concrete) types. May not map all
   *                  type parameters, may even be empty.
-  * @param typ The return type of the destructor
-  * @param adtName The corresponding ADT name
+  * @param typ       The return type of the destructor
+  * @param adtName   The corresponding ADT name
   */
-case class AdtDestructorApp(name: String, rcv: Exp, typVarMap: Map[TypeVar, Type])(val pos: Position, val info: Info, override val typ: Type, val adtName:String, val errT: ErrorTrafo) extends ExtensionExp {
+case class AdtDestructorApp(name: String, rcv: Exp, typVarMap: Map[TypeVar, Type])
+                           (val pos: Position, val info: Info, override val typ: Type, val adtName: String, val errT: ErrorTrafo) extends ExtensionExp {
 
-  override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(rcv)
+  override lazy val check: Seq[ConsistencyError] = Consistency.checkPure(rcv)
 
   override def prettyPrint: PrettyPrintPrimitives#Cont = show(rcv) <> "." <> name
 
@@ -244,7 +249,8 @@ case class AdtDestructorApp(name: String, rcv: Exp, typVarMap: Map[TypeVar, Type
 }
 
 object AdtDestructorApp {
-  def apply(adt : Adt, name: String, rcv: Exp, typVarMap: Map[TypeVar, Type])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos) : AdtDestructorApp = {
+  def apply(adt: Adt, name: String, rcv: Exp, typVarMap: Map[TypeVar, Type])
+           (pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos): AdtDestructorApp = {
     val matchingConstructors = adt.constructors flatMap (c => c.formalArgs.filter { lv => lv.name == name })
     assert(matchingConstructors.length == 1, s"AdtDestructorApp : expected length 1 but got ${matchingConstructors.length}")
     val typ = matchingConstructors.head.typ
@@ -257,17 +263,18 @@ object AdtDestructorApp {
   * Adt - this should be used in general for creation (so that adtName is guaranteed to
   * be set correctly)
   *
-  * @param name The name of the argument of an ADT constructor the destructor corresponds to
-  * @param rcv An expression on with the the destructor is applied
+  * @param name      The name of the argument of an ADT constructor the destructor corresponds to
+  * @param rcv       An expression on with the the destructor is applied
   * @param typVarMap Maps type parameters to (possibly concrete) types. May not map all
   *                  type parameters, may even be empty.
-  * @param adtName The corresponding ADT name
+  * @param adtName   The corresponding ADT name
   */
-case class AdtDiscriminatorApp(name: String, rcv: Exp, typVarMap: Map[TypeVar, Type])(val pos: Position, val info: Info, val adtName:String, val errT: ErrorTrafo) extends ExtensionExp {
+case class AdtDiscriminatorApp(name: String, rcv: Exp, typVarMap: Map[TypeVar, Type])
+                              (val pos: Position, val info: Info, val adtName: String, val errT: ErrorTrafo) extends ExtensionExp {
+
+  override lazy val check: Seq[ConsistencyError] = Consistency.checkPure(rcv)
 
   override def typ: Type = Bool
-
-  override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(rcv)
 
   override def prettyPrint: PrettyPrintPrimitives#Cont = show(rcv) <> "." <> name <> "?"
 
@@ -295,7 +302,8 @@ case class AdtDiscriminatorApp(name: String, rcv: Exp, typVarMap: Map[TypeVar, T
 }
 
 object AdtDiscriminatorApp {
-  def apply(adt : Adt, name: String, rcv: Exp, typVarMap: Map[TypeVar, Type])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos) : AdtDiscriminatorApp = {
+  def apply(adt: Adt, name: String, rcv: Exp, typVarMap: Map[TypeVar, Type])
+           (pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos): AdtDiscriminatorApp = {
     AdtDiscriminatorApp(name, rcv, typVarMap)(pos, info, adt.name, errT)
   }
 }
