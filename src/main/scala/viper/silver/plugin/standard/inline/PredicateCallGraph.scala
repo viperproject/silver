@@ -2,11 +2,10 @@ package viper.silver.plugin.standard.inline
 
 import org.jgrapht.alg.connectivity.KosarajuStrongConnectivityInspector
 import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
-import viper.silver.ast.{Node, Predicate, PredicateAccess, PredicateAccessPredicate, Program}
+import viper.silver.ast.{Node, PredicateAccess, PredicateAccessPredicate, Program}
 
 import scala.annotation.tailrec
-import scala.collection.JavaConverters.{collectionAsScalaIterableConverter, setAsJavaSetConverter}
-import scala.collection.convert.ImplicitConversions.`iterable AsScalaIterable`
+import scala.jdk.CollectionConverters._
 
 object PredicateCallGraph {
   type Graph[T] = DefaultDirectedGraph[T, DefaultEdge]
@@ -31,16 +30,16 @@ object PredicateCallGraph {
   }
 
   def loopBreakers[T](graph: Graph[T]): Set[T] = {
-    val recursive = Set() ++ graph.vertexSet().filter(x => graph.containsEdge(x,x))
+    val recursive = Set() ++ graph.vertexSet().asScala.filter(x => graph.containsEdge(x,x))
     graph.removeAllVertices(recursive.asJava)
     @tailrec
     def iterate(oldLoopBreakers: Set[T], oldGraph: Graph[T]): Set[T] = {
       val stronglyConnected = new KosarajuStrongConnectivityInspector(graph)
-      val sccs = stronglyConnected.stronglyConnectedSets()
+      val sccs = stronglyConnected.stronglyConnectedSets().asScala.map(_.asScala)
       val newLoopBreakers = Set() ++ sccs.collect{
-        case scc if scc.size() > 1 => scc.maxBy(
+        case scc if scc.size > 1 => scc.maxBy(
           // Choose to avoid inlining the predicate called by the most other predicates within the scc
-          v => oldGraph.incomingEdgesOf(v).count(e => scc.contains(oldGraph.getEdgeSource(e)))
+          v => oldGraph.incomingEdgesOf(v).asScala.count(e => scc.contains(oldGraph.getEdgeSource(e)))
         )
       }
       val loopBreakers = oldLoopBreakers ++ newLoopBreakers
