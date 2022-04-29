@@ -51,14 +51,10 @@ class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate
     val (inlinePreds, otherPreds) = input.predicates.partition(p => cond(p.name))
     val rewrittenPredicates = otherPreds.map(rewritePredicate(_, input, cond))
     val unfolding_helpers = inlinePreds.map(transformPredicate(_, input, cond))
-    ViperStrategy.Slim({
-      case program: Program =>
-        program.copy(
-          domains = input.domains ++ Seq(secondDomain),
-          methods = rewrittenMethods,
-          functions = rewrittenFunctions ++ unfolding_helpers,
-          predicates = rewrittenPredicates
-        )(program.pos, program.info, program.errT)
-    }).execute[Program](input)
+    input.copy(
+      methods = rewrittenMethods,
+      functions = rewrittenFunctions ++ unfolding_helpers,
+      predicates = rewrittenPredicates
+    )(input.pos, input.info, input.errT)
   }
 }

@@ -39,7 +39,7 @@ trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
     )(pred.pos, pred.info, pred.errT)
   }
 
-  def unfolding_name(name: String): String = f"__unfolding_${name}__"
+  def unfolding_name(name: String): String = name
 
   /**
    * Transforms a predicate into a function that requires the predicates body and can be used in unfolding
@@ -153,19 +153,9 @@ trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
             case PreconditionInAppFalse(_, _, _) => err_type(InsufficientPermission(pred_access))
           })
           val unfolding_check = FuncApp(unfolding_name(name), args ++ Seq(perm))(unfolding.pos, unfolding.info, Bool, check_errT)
-          DomainFuncApp(secondDomain.functions.head, Seq(unfolding_check, body), Map((secondDomain.typVars.head, body.typ)))(unfolding.pos, unfolding.info, unfolding.errT)
+          Let(LocalVarDecl("__dummy__", Bool)(), unfolding_check, body)(unfolding.pos, unfolding.info, unfolding.errT)
         } else unfolding
     }, Traverse.BottomUp).execute[Exp](expr)
-  }
-
-  val secondDomain: Domain = {
-    val name = "__SECOND__"
-    val tv = TypeVar("T")
-    val args = Seq(LocalVarDecl("b", Bool)(), LocalVarDecl("t", tv)())
-    val func = DomainFunc("__second__", args, tv)(domainName = name)
-    val app = DomainFuncApp(func = func, args.map(_.localVar), Map((tv, tv)))()
-    val ax = AnonymousDomainAxiom(Forall(args, Seq(Trigger(Seq(app))()), EqCmp(app, args(1).localVar)())())(domainName = name)
-    Domain(name, Seq(func), Seq(ax), Seq(tv))()
   }
 
   /**
