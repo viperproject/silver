@@ -3,7 +3,7 @@ package plugin.inline{
 
   class CheckOutput extends AnyFunSuite with InlineTestFixture {
     test("CheckOutput") {
-      val fileName = "aatree"
+      val fileName = "perm_none"
 
       val res = parse_inline(fileName)
       println(res)
