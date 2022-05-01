@@ -2,6 +2,7 @@ package viper.silver.plugin.standard.inline
 
 import org.jgrapht.alg.connectivity.KosarajuStrongConnectivityInspector
 import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
+import org.jgrapht.traverse.TopologicalOrderIterator
 import viper.silver.ast.{Node, PredicateAccess, PredicateAccessPredicate, Program}
 
 import scala.annotation.tailrec
@@ -29,11 +30,11 @@ object PredicateCallGraph {
     graph
   }
 
-  def loopBreakers[T](graph: Graph[T]): Set[T] = {
+  def loopBreakers[T](graph: Graph[T]): (Set[T], Seq[T]) = {
     val recursive = Set() ++ graph.vertexSet().asScala.filter(x => graph.containsEdge(x,x))
     graph.removeAllVertices(recursive.asJava)
     @tailrec
-    def iterate(oldLoopBreakers: Set[T], oldGraph: Graph[T]): Set[T] = {
+    def iterate(oldLoopBreakers: Set[T], oldGraph: Graph[T]): (Set[T], Seq[T]) = {
       val stronglyConnected = new KosarajuStrongConnectivityInspector(graph)
       val sccs = stronglyConnected.stronglyConnectedSets().asScala.map(_.asScala)
       val newLoopBreakers = Set() ++ sccs.collect{
@@ -43,10 +44,11 @@ object PredicateCallGraph {
         )
       }
       val loopBreakers = oldLoopBreakers ++ newLoopBreakers
+      oldGraph.removeAllVertices(newLoopBreakers.asJava)
       if (loopBreakers == oldLoopBreakers) {
-        loopBreakers
+        val topo = new TopologicalOrderIterator(oldGraph).asScala.toSeq.reverse
+        (loopBreakers, topo)
       } else {
-        /*oldGraph = */ oldGraph.removeAllVertices(newLoopBreakers.asJava)
         iterate(loopBreakers, oldGraph)
       }
     }

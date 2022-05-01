@@ -1,7 +1,6 @@
 package viper.silver.plugin.standard.inline
 
 import fastparse._
-import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.Program
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.parser.ParserExtension
@@ -40,21 +39,17 @@ class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate
 
   override def beforeVerify(input: Program): Program = {
     val annotatedPredIds = this.annotatedPredIds
-    val loopBreakers = findLoopBreakers(annotatedPredIds, input)
+    val (loopBreakers, topoOrder) = findLoopBreakersTopo(annotatedPredIds, input)
     val cond = { pred: String =>
       input.findPredicate(pred).body.nonEmpty &&
       !loopBreakers(pred) &&
       annotatedPredIds(pred)
     }
-    val rewrittenMethods = input.methods.map(rewriteMethod(_, input, cond))
-    val rewrittenFunctions = input.functions.map(rewriteFunction(_, input, cond))
-    val (inlinePreds, otherPreds) = input.predicates.partition(p => cond(p.name))
-    val rewrittenPredicates = otherPreds.map(rewritePredicate(_, input, cond))
-    val unfolding_helpers = inlinePreds.map(transformPredicate(_, input, cond))
-    input.copy(
-      methods = rewrittenMethods,
-      functions = rewrittenFunctions ++ unfolding_helpers,
-      predicates = rewrittenPredicates
-    )(input.pos, input.info, input.errT)
+    val (inlinePredsUnordered, otherPreds) = input.predicates.partition(p => cond(p.name))
+    val inlinePreds = topoOrder.map(name => inlinePredsUnordered.find(_.name == name).get)
+    if(inlinePreds.isEmpty) {
+      return input
+    }
+    rewriteProgram(input.copy(predicates = otherPreds)(input.pos, input.info, input.errT), inlinePreds)
   }
 }

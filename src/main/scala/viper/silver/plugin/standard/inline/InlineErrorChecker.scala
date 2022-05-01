@@ -13,15 +13,19 @@ trait InlineErrorChecker {
     *
     * @param predicateIds the ids of the predicates we want to inline.
     * @param program the program for which we are performing predicate inlining on.
-    * @return the set of mutually-recursive predicates.
+    * @return the set of mutually-recursive predicates, and a sequence containing a topological order of the other predicates.
     */
-  def findLoopBreakers(predicateIds: Set[String], program: Program): Set[String] = {
+  def findLoopBreakersTopo(predicateIds: Set[String], program: Program): (Set[String], Seq[String]) = {
     val predicateCallGraph = PredicateCallGraph.graph(predicateIds, program)
     val loopBreakers = PredicateCallGraph.loopBreakers(predicateCallGraph)
-    if (loopBreakers.nonEmpty) {
-      prettyPrint(loopBreakers, "recursion breaking")
+    if (loopBreakers._1.nonEmpty) {
+      prettyPrint(loopBreakers._1, "recursion breaking")
     }
     loopBreakers
+  }
+
+  def findLoopBreakers(predicateIds: Set[String], program: Program): Set[String] = {
+    findLoopBreakersTopo(predicateIds, program)._1
   }
 
   private[this] def prettyPrint(preds: Set[String], errorReason: String): Unit = {

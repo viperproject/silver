@@ -3,6 +3,8 @@ package viper.silver.plugin.standard.inline
 import viper.silver.ast.{ErrTrafo, _}
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.Traverse
+import viper.silver.ast.utility.Permissions.multiplyExpByPerm
+import viper.silver.plugin.standard.inline.WrapPred._
 import viper.silver.verifier.{AbstractVerificationError, ErrorMessage, ErrorReason, errors}
 import viper.silver.verifier.errors.{AssertFailed, AssignmentFailed, CallFailed, ContractNotWellformed, ExhaleFailed, FoldFailed, FunctionNotWellformed, InhaleFailed, PreconditionInAppFalse, PredicateNotWellformed, UnfoldFailed, WhileFailed}
 import viper.silver.verifier.reasons.{AssertionFalse, InsufficientPermission, NegativePermission}
@@ -54,7 +56,6 @@ trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
     Function(name, pred.formalArgs ++ Seq(permDecl), Bool, Seq(wrapPred(expandedBody, permVar)), Seq(), Some(TrueLit()()))(pred.pos, pred.info, pred.errT)
   }
 
-  def wrapPred(expandedExpr: Exp, perm: Exp): Exp = And(PermGeCmp(perm, NoPerm()())(), Implies(PermGtCmp(perm, NoPerm()())(), expandedExpr)())()
   /**
    * Expands all predicates to their bodies in given expression.
    *
@@ -79,6 +80,30 @@ trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
         (scope, ctxt ++ scope.scopedDecls.map(_.name).toSet)
     }, member.scopedDecls.map(_.name).toSet ++ decls, Traverse.TopDown).execute[Exp](noUnfoldingExpr)
   }
+
+  def rewriteProgram(program: Program, inlinePreds: Seq[Predicate]): Program = {
+    val predMap = InlinePredicateMap()
+    val permVar = LocalVarDecl("__perm__", Perm)()
+    val strategy = ViperStrategy.CustomContext[Set[String]]({
+      case (acc@PredicateAccessPredicate(_, perm), ctxt) if predMap.shouldRewrite(acc) =>
+        (wrapPred(predMap.predicateBody(acc, ctxt), perm), ctxt)
+      case (Unfolding(acc, body), ctxt) if predMap.shouldRewrite(acc) => (predMap.assertingIn(acc, body), ctxt)
+      case (Unfold(acc@PredicateAccessPredicate(_, perm)), ctxt) if predMap.shouldRewrite(acc) =>
+        (Assert(wrapPred(predMap.predicateBody(acc, ctxt), perm))(), ctxt)
+      case (Fold(acc@PredicateAccessPredicate(_, perm)), ctxt) if predMap.shouldRewrite(acc) =>
+        (Assert(wrapPredFold(predMap.predicateBody(acc, ctxt), perm))(), ctxt)
+      case (scope: Scope, ctxt) =>
+        (scope, ctxt ++ scope.scopedDecls.map(_.name).toSet)
+    }, Set(), Traverse.TopDown)
+    for (pred <- inlinePreds) {
+      val pred2 = pred.copy(body = pred.body.map(multiplyExpByPerm(_, permVar.localVar)))(pos = pred.pos, info = pred.info, errT = pred.errT)
+      val pred3 = strategy.execute[Predicate](pred2)
+      predMap.addPredicate(pred3, permVar)
+    }
+    val prog2 = strategy.execute[Program](program)
+    prog2.copy(functions = prog2.functions ++ predMap.toUnfoldingFunctions)(prog2.pos, prog2.info, prog2.errT)
+  }
+
 
   case class UnknownUnfoldingError(offendingNode: Exp, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "unknown.unfolding.failed"
