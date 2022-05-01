@@ -96,7 +96,7 @@ trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
       case (fa@FieldAccessPredicate(loc,p), ctxt) => (FieldAccessPredicate(loc,permMul(p,permVar))(fa.pos,fa.info), ctxt)
       case (pa@PredicateAccessPredicate(loc,p), ctxt) => (PredicateAccessPredicate(loc,permMul(p,permVar))(pa.pos,pa.info), ctxt)
       case (_: MagicWand, _) => sys.error("Cannot yet permission-scale magic wands")
-    }, Set())
+    }, Set(), Traverse.Innermost)
     val strategy = ViperStrategy.CustomContext[Set[String]]({
       case (acc@PredicateAccessPredicate(_, perm), ctxt) if predMap.shouldRewrite(acc) =>
         (wrapPred(predMap.predicateBody(acc, ctxt), perm, knownPositive), ctxt)
@@ -107,10 +107,9 @@ trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
         (Assert(wrapPredFold(predMap.predicateBody(acc, ctxt), perm, knownPositive))(), ctxt)
       case (scope: Scope, ctxt) =>
         (scope, ctxt ++ scope.scopedDecls.map(_.name).toSet)
-    }, Set(), Traverse.TopDown)
+    }, Set(), Traverse.Innermost)
     for (pred <- inlinePreds) {
-      //val pred2 = (permPropagateStrategy + strategy).execute[Predicate](pred)
-      val pred2 = strategy.execute[Predicate](permPropagateStrategy.execute[Predicate](pred))
+      val pred2 = (permPropagateStrategy + strategy).execute[Predicate](pred)
       predMap.addPredicate(pred2, permDecl)
     }
     val prog2 = strategy.execute[Program](program)
