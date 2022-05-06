@@ -2,10 +2,9 @@ package viper.silver.plugin.standard.inline
 
 import fastparse._
 import viper.silver.ast.Program
-import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
-import viper.silver.parser.ParserExtension
 import viper.silver.parser.FastParser._
 import viper.silver.parser._
+import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 
 class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate
   with InlineRewrite
@@ -50,6 +49,8 @@ class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate
     if(inlinePreds.isEmpty) {
       return input
     }
-    rewriteProgram(input.copy(predicates = otherPreds)(input.pos, input.info, input.errT), inlinePreds)
+    val res = rewriteProgram(input.copy(predicates = otherPreds)(input.pos, input.info, input.errT), inlinePreds)
+    print(res)
+    res
   }
 }

@@ -1,0 +1,9 @@
+inline predicate falze()
+{
+    false
+}
+
+method test() {
+    //:: ExpectedOutput(assert.failed:insufficient.permission)
+    assert falze()
+}

@@ -1,0 +1,9 @@
+inline predicate falze()
+{
+    false
+}
+
+method test() {
+    //:: ExpectedOutput(unfold.failed:insufficient.permission)
+    unfold falze()
+}

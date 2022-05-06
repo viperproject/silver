@@ -1,12 +1,14 @@
 package viper.silver.plugin.standard.inline
 
-import viper.silver.ast.{ErrTrafo, _}
+import viper.silver.ast.utility.Permissions.multiplyExpByPerm
+import viper.silver.ast.utility.Simplifier.simplify
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.Traverse
+import viper.silver.ast.{ErrTrafo, _}
 import viper.silver.plugin.standard.inline.WrapPred._
-import viper.silver.verifier.{AbstractVerificationError, ErrorMessage, ErrorReason, errors}
-import viper.silver.verifier.errors.{AssertFailed, AssignmentFailed, CallFailed, ContractNotWellformed, ExhaleFailed, FoldFailed, FunctionNotWellformed, InhaleFailed, PreconditionInAppFalse, PredicateNotWellformed, UnfoldFailed, WhileFailed}
+import viper.silver.verifier.errors._
 import viper.silver.verifier.reasons.{AssertionFalse, InsufficientPermission, NegativePermission}
+import viper.silver.verifier.{AbstractVerificationError, ErrorMessage, ErrorReason, errors}
 
 trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
 
@@ -80,34 +82,28 @@ trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
     }, member.scopedDecls.map(_.name).toSet ++ decls, Traverse.TopDown).execute[Exp](noUnfoldingExpr)
   }
 
-  def permMul(p1: Exp, p2: Exp): Exp = {
-    p1 match {
-      case FullPerm() => p2.withMeta(p1.pos, p1.info, p1.errT)
-      case _ => PermMul(p1, p2)(p1.pos, p1.info)
-    }
-  }
-
   def rewriteProgram(program: Program, inlinePreds: Seq[Predicate]): Program = {
     val predMap = InlinePredicateMap()
     val permDecl = LocalVarDecl("__perm__", Perm)()
     val permVar = permDecl.localVar
     val knownPositive = (p: LocalVar) => p == permVar
-    val permPropagateStrategy = ViperStrategy.CustomContext[Set[String]]({
-      case (fa@FieldAccessPredicate(loc,p), ctxt) => (FieldAccessPredicate(loc,permMul(p,permVar))(fa.pos,fa.info), ctxt)
-      case (pa@PredicateAccessPredicate(loc,p), ctxt) => (PredicateAccessPredicate(loc,permMul(p,permVar))(pa.pos,pa.info), ctxt)
-      case (_: MagicWand, _) => sys.error("Cannot yet permission-scale magic wands")
-    }, Set(), Traverse.Innermost)
-    val strategy = ViperStrategy.CustomContext[Set[String]]({
-      case (acc@PredicateAccessPredicate(_, perm), ctxt) if predMap.shouldRewrite(acc) =>
+    val permPropagateStrategy = ViperStrategyCustomTraverse.CustomContextTraverse[Set[String]]({
+      case (acc: AccessPredicate, ctxt, _) => (simplify(multiplyExpByPerm(acc, permVar)), ctxt)
+    }, Set())
+    val strategy = ViperStrategyCustomTraverse.CustomContextTraverse[Set[String]]({
+      case (acc@PredicateAccessPredicate(_, perm), ctxt, _) if predMap.shouldRewrite(acc) =>
         (wrapPred(predMap.predicateBody(acc, ctxt), perm, knownPositive), ctxt)
-      case (Unfolding(acc, body), ctxt) if predMap.shouldRewrite(acc) => (predMap.assertingIn(acc, body), ctxt)
-      case (Unfold(acc@PredicateAccessPredicate(_, perm)), ctxt) if predMap.shouldRewrite(acc) =>
-        (Assert(wrapPredUnfold(predMap.predicateBody(acc, ctxt), perm, knownPositive))(), ctxt)
-      case (Fold(acc@PredicateAccessPredicate(_, perm)), ctxt) if predMap.shouldRewrite(acc) =>
-        (Assert(wrapPredFold(predMap.predicateBody(acc, ctxt), perm, knownPositive))(), ctxt)
-      case (scope: Scope, ctxt) =>
+      case (u@Unfolding(acc, body), ctxt, recur) if predMap.shouldRewrite(acc) =>
+        (predMap.assertingIn(acc, recur(body).asInstanceOf[Exp])(u.pos, u.info, u.errT), ctxt)
+      case (u@Unfold(acc@PredicateAccessPredicate(_, perm)), ctxt, _) if predMap.shouldRewrite(acc) =>
+        val errT = ErrTrafo(err => UnfoldFailed(u, err.reason))
+        (Assert(wrapPredUnfold(predMap.predicateBody(acc, ctxt), perm, knownPositive))(u.pos, u.info, errT), ctxt)
+      case (f@Fold(acc@PredicateAccessPredicate(_, perm)), ctxt, _) if predMap.shouldRewrite(acc) =>
+        val errT = ErrTrafo(err => FoldFailed(f, err.reason))
+        (Assert(wrapPredFold(predMap.predicateBodyNoErrT(acc, ctxt), perm, knownPositive))(f.pos, f.info, errT), ctxt)
+      case (scope: Scope, ctxt, _) =>
         (scope, ctxt ++ scope.scopedDecls.map(_.name).toSet)
-    }, Set(), Traverse.Innermost)
+    }, Set())
     for (pred <- inlinePreds) {
       val pred2 = (permPropagateStrategy + strategy).execute[Predicate](pred)
       predMap.addPredicate(pred2, permDecl)

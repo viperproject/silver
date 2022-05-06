@@ -1,0 +1,9 @@
+inline predicate falze()
+{
+    false
+}
+
+method test() {
+    //:: ExpectedOutput(exhale.failed:insufficient.permission)
+    exhale falze()
+}

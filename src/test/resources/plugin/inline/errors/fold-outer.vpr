@@ -1,0 +1,14 @@
+inline predicate outer()
+{
+    falze()
+}
+
+inline predicate falze()
+{
+    false
+}
+
+method test() {
+    //:: ExpectedOutput(fold.failed:insufficient.permission)
+    fold outer()
+}
