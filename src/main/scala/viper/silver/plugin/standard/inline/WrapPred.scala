@@ -14,7 +14,7 @@ object WrapPred {
   }
 
   private def checkNonNegative(perm: Exp): Exp = {
-    val errT = Trafos(Nil, List({_ => NegativePermission(perm)}), Some(perm))
+    val errT = ReTrafo{_ => NegativePermission(perm)}
     PermGeCmp(perm, NoPerm()())(errT = errT)
   }
 

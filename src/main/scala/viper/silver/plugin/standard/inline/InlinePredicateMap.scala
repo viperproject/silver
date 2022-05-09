@@ -1,7 +1,7 @@
 package viper.silver.plugin.standard.inline
 
 import viper.silver.ast.utility.Expressions
-import viper.silver.ast.{Bool, ErrorTrafo, Exp, FuncApp, Function, Info, Let, LocalVarDecl, Position, Predicate, PredicateAccessPredicate, Trafos}
+import viper.silver.ast.{Bool, ErrorTrafo, Exp, FuncApp, Function, Info, Let, LocalVarDecl, Position, Predicate, PredicateAccessPredicate, ReTrafo}
 import viper.silver.plugin.standard.inline.WrapPred._
 import viper.silver.verifier.reasons.InsufficientPermission
 
@@ -17,7 +17,7 @@ case class InlinePredicateMap(private val data: mutable.Map[String, (Seq[LocalVa
 
   def predicateBody(predAcc: PredicateAccessPredicate, scope: Set[String]): Exp = {
     val res: Exp = predicateBodyNoErrT(predAcc, scope)
-    val errT = Trafos(Nil, List({_ => InsufficientPermission(predAcc.loc)}), Some(predAcc))
+    val errT = ReTrafo{_ => InsufficientPermission(predAcc.loc)}
     res.withMeta(res.pos, res.info, errT)
   }
 
