@@ -87,6 +87,8 @@ trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
     val permDecl = LocalVarDecl("__perm__", Perm)()
     val permVar = permDecl.localVar
     val knownPositive = (p: LocalVar) => p == permVar
+    var dummyN = 0
+    val getDummyName = () => {dummyN += 1; s"__dummy__$dummyN"}
     val permPropagateStrategy = ViperStrategyCustomTraverse.CustomContextTraverse[Set[String]]({
       case (acc: AccessPredicate, ctxt, _) => (simplify(multiplyExpByPerm(acc, permVar)), ctxt)
     }, Set())
@@ -94,7 +96,7 @@ trait InlineRewrite extends PredicateExpansion with InlineErrorChecker {
       case (acc@PredicateAccessPredicate(_, perm), ctxt, _) if predMap.shouldRewrite(acc) =>
         (wrapPred(predMap.predicateBody(acc, ctxt), perm, knownPositive), ctxt)
       case (u@Unfolding(acc, body), ctxt, recur) if predMap.shouldRewrite(acc) =>
-        (predMap.assertingIn(acc, recur(body).asInstanceOf[Exp])(u.pos, u.info, u.errT), ctxt)
+        (predMap.assertingIn(acc, recur(body).asInstanceOf[Exp], getDummyName())(u.pos, u.info, u.errT), ctxt)
       case (u@Unfold(acc@PredicateAccessPredicate(_, perm)), ctxt, _) if predMap.shouldRewrite(acc) =>
         val errT = ErrTrafo(err => UnfoldFailed(u, err.reason))
         (Assert(wrapPredUnfold(predMap.predicateBody(acc, ctxt), perm, knownPositive))(u.pos, u.info, errT), ctxt)

@@ -21,9 +21,9 @@ case class InlinePredicateMap(private val data: mutable.Map[String, (Seq[LocalVa
     res.withMeta(res.pos, res.info, errT)
   }
 
-  def assertingIn(predAcc: PredicateAccessPredicate, inner: Exp)(pos: Position, info: Info, errT: ErrorTrafo): Exp = {
+  def assertingIn(predAcc: PredicateAccessPredicate, inner: Exp, dummyName: String)(pos: Position, info: Info, errT: ErrorTrafo): Exp = {
     val funcApp = FuncApp(predAcc.loc.predicateName, predAcc.loc.args.prepended(predAcc.perm))(pos, info, Bool, errT)
-    Let(LocalVarDecl("__dummy__", Bool)(), funcApp, inner)(pos, info, errT)
+    Let(LocalVarDecl(dummyName, Bool)(), funcApp, inner)(pos, info, errT)
   }
 
   def shouldRewrite(predAcc: PredicateAccessPredicate): Boolean = data.contains(predAcc.loc.predicateName)
