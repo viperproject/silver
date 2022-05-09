@@ -14,7 +14,14 @@ class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate
 
   private var annotatedPredIds: Set[String] = Set()
 
-  def inlinePredicate[_: P]: P[PInlinePredicate] = FP(InlinePredicateKeyword ~/ predicateDecl).map{ case (_, p) => PInlinePredicate(p)}
+  // like viper.silver.parser.FastParser.predicateDecl but the body can't be empty
+  def predicateDeclBody[_: P]: P[PPredicate] = FP(keyword("predicate") ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ "{" ~ exp ~ "}").map {
+    case (_, (_, _, a, b, c)) =>
+      PPredicate(a, b, Some(c))(a.pos)
+  }
+
+
+  def inlinePredicate[_: P]: P[PInlinePredicate] = FP(InlinePredicateKeyword ~/ predicateDeclBody).map{ case (_, p) => PInlinePredicate(p)}
 
 //  lazy val inlinePredicate: noApi.P[PInlinePredicate] =
 //    P(keyword(InlinePredicateKeyword) ~/ predicateDecl)
