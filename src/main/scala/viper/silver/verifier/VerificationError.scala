@@ -635,11 +635,11 @@ object reasons {
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = MagicWandChunkNotFound(offendingNode.asInstanceOf[MagicWand])
   }
 
-  case class ReceiverNotInjective(offendingNode: LocationAccess) extends AbstractErrorReason {
-    val id = "receiver.not.injective"
-    def readableMessage = s"Receiver of $offendingNode [$pos]  might not be injective."
+  case class QPAssertionNotInjective(offendingNode: ResourceAccess) extends AbstractErrorReason {
+    val id = "qp.not.injective"
+    def readableMessage = s"Quantified resource $offendingNode might not be injective."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = ReceiverNotInjective(offendingNode.asInstanceOf[LocationAccess])
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = QPAssertionNotInjective(offendingNode.asInstanceOf[ResourceAccess])
   }
 
   case class LabelledStateNotReached(offendingNode: LabelledOld) extends AbstractErrorReason {

@@ -20,7 +20,7 @@ function getptr(this: Ref): Ptr
 method not_ok(this: Ref)
   requires acc(valid(this))
   requires forall j: Int :: cond(this, j) ==> acc(loc(getptr(this), j).w)
-  //:: ExpectedOutput(not.wellformed:receiver.not.injective)
+  //:: ExpectedOutput(not.wellformed:qp.not.injective)
   requires forall j: Int :: cond(this, j) ==> acc(loc(getptr(this), j).w.w) // req3
 {
   // assert forall j: Int :: cond(this, j) ==> loc(getptr(this), j) != null // Comment req3, assert this instead
