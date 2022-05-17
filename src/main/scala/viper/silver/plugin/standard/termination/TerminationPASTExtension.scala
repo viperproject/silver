@@ -25,7 +25,7 @@ sealed trait PDecreasesClause extends PExtender with PExp {
   override def forceSubstitution(ts: PTypeSubstitution): Unit = {}
 }
 
-case class PDecreasesTuple(tuple: Seq[PExp], condition: Option[PExp] = None)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PDecreasesClause {
+case class PDecreasesTuple(tuple: Seq[PExp], condition: Option[PExp] = None)(val pos: (Position, Position)) extends PDecreasesClause {
 
   override val getSubnodes: Seq[PNode] = tuple ++ condition
 
@@ -41,7 +41,7 @@ case class PDecreasesTuple(tuple: Seq[PExp], condition: Option[PExp] = None)(val
   }
 }
 
-case class PDecreasesWildcard(condition: Option[PExp] = None)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PDecreasesClause {
+case class PDecreasesWildcard(condition: Option[PExp] = None)(val pos: (Position, Position)) extends PDecreasesClause {
 
   override val getSubnodes: Seq[PNode] = condition.toSeq
 
@@ -56,7 +56,7 @@ case class PDecreasesWildcard(condition: Option[PExp] = None)(val pos: (Position
   }
 }
 
-case class PDecreasesStar()(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PDecreasesClause {
+case class PDecreasesStar()(val pos: (Position, Position)) extends PDecreasesClause {
   override val getSubnodes: Seq[PNode] = Nil
 
   override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = {

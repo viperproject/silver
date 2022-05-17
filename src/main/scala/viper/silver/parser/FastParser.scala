@@ -145,7 +145,7 @@ object FastParser {
             j += 1
           }
         }
-      PProgram(Seq(), macros, domains, fields, functions, predicates, methods, extensions, errors)()
+      PProgram(Seq(), macros, domains, fields, functions, predicates, methods, extensions, errors)(p.pos)
     }
 
 
@@ -474,7 +474,7 @@ object FastParser {
       linearizeMethod(doExpandDefines(localMacros ++ globalMacros, methodWithoutMacros, p))
     })
 
-    PProgram(p.imports, p.macros, domains, p.fields, functions, predicates, methods, p.extensions, p.errors ++ warnings)()
+    PProgram(p.imports, p.macros, domains, p.fields, functions, predicates, methods, p.extensions, p.errors ++ warnings)(p.pos)
   }
 
 
@@ -1017,43 +1017,51 @@ object FastParser {
 
   def setTypedEmpty[_: P]: P[PExp] = collectionTypedEmpty("Set", (a, b) => PEmptySet(a)(b))
 
-  def explicitSetNonEmpty[_: P]: P[PExp] = P("Set" ~ "(" ~/ exp.rep(sep = ",", min = 1) ~ ")").map(PExplicitSet(_)())
+  def explicitSetNonEmpty[_: P]: P[PExp] = P(FP("Set" ~ "(" ~/ exp.rep(sep = ",", min = 1) ~ ")").map {
+    case (pos, exps) => PExplicitSet(exps)(pos)
+  })
 
-  def explicitMultisetNonEmpty[_: P]: P[PExp] = P("Multiset" ~ "(" ~/ exp.rep(min = 1, sep = ",") ~ ")").map(PExplicitMultiset(_)())
+  def explicitMultisetNonEmpty[_: P]: P[PExp] = P(FP("Multiset" ~ "(" ~/ exp.rep(min = 1, sep = ",") ~ ")").map {
+    case (pos, exps) => PExplicitMultiset(exps)(pos)
+  })
 
   def multiSetTypedEmpty[_: P]: P[PExp] = collectionTypedEmpty("Multiset", (a, b) => PEmptyMultiset(a)(b))
 
   def seqTypedEmpty[_: P]: P[PExp] = collectionTypedEmpty("Seq", (a, b) => PEmptySeq(a)(b))
 
-  //HEAD: def seqLength[_: P]: P[PExp] = P("|" ~ exp ~ "|").map(PSize(_)())
-  def size[_: P]: P[PExp] = P("|" ~ exp ~ "|").map(PSize(_)())
-  //MAP: lazy val size: P[PExp] = P("|" ~ exp ~ "|").map(PSize)
+  def size[_: P]: P[PExp] = P(FP("|" ~ exp ~ "|").map {
+    case (pos, e) => PSize(e)(pos)
+  })
 
-  def explicitSeqNonEmpty[_: P]: P[PExp] = P("Seq" ~ "(" ~/ exp.rep(min = 1, sep = ",") ~ ")").map(PExplicitSeq(_)())
+  def explicitSeqNonEmpty[_: P]: P[PExp] = P(FP("Seq" ~ "(" ~/ exp.rep(min = 1, sep = ",") ~ ")").map {
+    case (pos, exps) => PExplicitSeq(exps)(pos)
+  })
 
   private def collectionTypedEmpty[_: P](name: String, typeConstructor: (PType, (Position, Position)) => PExp): P[PExp] =
     FP(`name` ~ ("[" ~/ typ ~ "]").? ~ "(" ~ ")").map{ case (pos, typ) => typeConstructor(typ.getOrElse(PTypeVar("#E")), pos)}
 
   def seqRange[_: P]: P[PExp] = FP("[" ~ exp ~ ".." ~ exp ~ ")").map { case (pos, (a, b)) => PRangeSeq(a, b)(pos) }
-  // MAPS: lazy val seqRange: P[PExp] = P("[" ~ exp ~ ".." ~ exp ~ ")").map { case (a, b) => PRangeSeq(a, b) }
 
-  def mapTypedEmpty[_: P] : P[PMapLiteral] = P("Map" ~ ("[" ~/ typ ~ "," ~ typ ~ "]").? ~ "(" ~ ")").map {
-    case Some((keyType, valueType)) => PEmptyMap(keyType, valueType)()
-    case None => PEmptyMap(PTypeVar("#K"), PTypeVar("#E"))()
-  }
+  def mapTypedEmpty[_: P] : P[PMapLiteral] = P(FP("Map" ~ ("[" ~/ typ ~ "," ~ typ ~ "]").? ~ "(" ~ ")").map {
+    case (pos, Some((keyType, valueType))) => PEmptyMap(keyType, valueType)(pos)
+    case (pos, None) => PEmptyMap(PTypeVar("#K"), PTypeVar("#E"))(pos)
+  })
 
-  def maplet[_: P]: P[PMaplet] = P(exp ~ ":=" ~ exp).map {
-    case (key, value) => PMaplet(key, value)()
-  }
+  def maplet[_: P]: P[PMaplet] = P(FP(exp ~ ":=" ~ exp).map {
+    case (pos, (key, value)) => PMaplet(key, value)(pos)
+  })
 
-  // MAPS: lazy val explicitMapNonEmpty : P[PMapLiteral] = P("Map" ~ "(" ~/ maplet.rep(min = 1, sep = ",") ~ ")").map(PExplicitMap)
-  def explicitMapNonEmpty[_: P]: P[PMapLiteral] = P("Map" ~ "(" ~/ maplet.rep(sep = ",", min = 1) ~ ")").map(PExplicitMap(_)())
+  def explicitMapNonEmpty[_: P]: P[PMapLiteral] = P(FP("Map" ~ "(" ~/ maplet.rep(sep = ",", min = 1) ~ ")").map {
+    case (pos, maplets) => PExplicitMap(maplets)(pos)
+  })
 
-  //lazy val mapDomain : P[PExp] = P("domain" ~ "(" ~ exp ~ ")").map(PMapDomain)
-  def mapDomain[_: P]: P[PExp] = P("domain" ~ "(" ~ exp ~ ")").map(PMapDomain(_)())
-  //def size[_: P]: P[PExp] = P("|" ~ exp ~ "|").map(PSize(_))
+  def mapDomain[_: P]: P[PExp] = P(FP("domain" ~ "(" ~ exp ~ ")").map {
+    case (pos, e) => PMapDomain(e)(pos)
+  })
 
-  def mapRange[_: P] : P[PExp] = P("range" ~ "(" ~ exp ~ ")").map(PMapRange(_)())
+  def mapRange[_: P] : P[PExp] = P(FP("range" ~ "(" ~ exp ~ ")").map {
+    case (pos, e) => PMapRange(e)(pos)
+  })
 
   def fapp[_: P]: P[PCall] = FP(idnuse ~ parens(actualArgList)).map {
     case (pos, (func, args)) =>
@@ -1105,9 +1113,9 @@ object FastParser {
     case (pos, (cond, thn, ele)) => PSeqn(Seq(PIf(cond, thn, ele)(pos)))(pos)
   }
 
-  def els[_: P]: LW[PSeqn] = ((keyword("else") ~/ block) | FP(Pass)).lw.map {
-    case block: PSeqn => block
-    case (pos, _) => PSeqn(Nil)() }
+  def els[_: P]: LW[PSeqn] = ((keyword("else") ~/ block) | FP(Pass).map {
+    case (pos, _) => PSeqn(Nil)(pos)
+  }).lw
 
   def whle[_: P]: P[PWhile] = FP(keyword("while") ~/ "(" ~ exp ~ ")" ~ inv.rep ~ block).map {
     case (pos, (cond, invs, body)) =>
@@ -1156,8 +1164,8 @@ object FastParser {
 
   def applying[_: P]: P[PExp] = FP(keyword("applying") ~/ "(" ~ magicWandExp ~ ")" ~ "in" ~ exp).map { case (pos, (a, b)) => PApplying(a, b)(pos) }
 
-  def programDecl(implicit ctx : P[_]) : P[PProgram] = P((ParserExtension.newDeclAtStart(ctx) | preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl | ParserExtension.newDeclAtEnd(ctx)).rep).map {
-    decls => {
+  def programDecl(implicit ctx : P[_]) : P[PProgram] = P(FP((ParserExtension.newDeclAtStart(ctx) | preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl | ParserExtension.newDeclAtEnd(ctx)).rep).map {
+    case (pos, decls) => {
       PProgram(
         decls.collect { case i: PImport => i }, // Imports
         decls.collect { case d: PDefine => d }, // Macros
@@ -1168,9 +1176,9 @@ object FastParser {
         decls.collect { case m: PMethod => m }, // Methods
         decls.collect { case e: PExtender => e }, // Extensions
         Seq() // Parse Errors
-      )()
+      )(pos)
     }
-  }
+  })
 
   def preambleImport[_: P]: P[PImport] = FP(keyword("import") ~/ (
       P(quoted(relativeFilePath.!)).map{ filename => pos: (Position, Position) => PLocalImport(filename)(pos) } |

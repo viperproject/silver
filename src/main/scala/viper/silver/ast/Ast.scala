@@ -121,30 +121,37 @@ trait Node extends Iterable[Node] with Rewritable {
   /** @see [[viper.silver.ast.utility.ViperStrategy]] */
   def transform(pre: PartialFunction[Node, Node] = PartialFunction.empty,
                 recurse: Traverse = Traverse.Innermost)
-               : this.type =
+               : this.type = {
 
-  StrategyBuilder.Slim[Node](pre, recurse) execute[this.type] (this)
+    StrategyBuilder.Slim[Node](pre, recurse) execute[this.type] (this)
+  }
 
   def transformForceCopy(pre: PartialFunction[Node, Node] = PartialFunction.empty,
-                recurse: Traverse = Traverse.Innermost)
-  : this.type =
+                         recurse: Traverse = Traverse.Innermost)
+                         : this.type = {
 
     StrategyBuilder.Slim[Node](pre, recurse).forceCopy() execute[this.type] (this)
+  }
 
   /**
     * Allows a transformation with a custom context threaded through
     *
     * @see [[viper.silver.ast.utility.ViperStrategy]] */
   def transformWithContext[C](transformation: PartialFunction[(Node,C), (Node, C)] = PartialFunction.empty,
-                             initialContext: C,
-                recurse: Traverse = Traverse.Innermost)
-  : this.type =
+                              initialContext: C,
+                              recurse: Traverse = Traverse.Innermost)
+                             : this.type = {
+
     ViperStrategy.CustomContext[C](transformation, initialContext, recurse) execute[this.type] (this)
+  }
 
   def transformNodeAndContext[C](transformation: PartialFunction[(Node,C), (Node, C)],
                                  initialContext: C,
-                                 recurse: Traverse = Traverse.Innermost) : this.type =
+                                 recurse: Traverse = Traverse.Innermost)
+                                : this.type = {
+
     StrategyBuilder.RewriteNodeAndContext[Node, C](transformation, initialContext, recurse).execute[this.type](this)
+  }
 
   def replace(original: Node, replacement: Node): this.type =
     this.transform { case `original` => replacement }
@@ -155,11 +162,11 @@ trait Node extends Iterable[Node] with Rewritable {
 
   /** @see [[Visitor.deepCollect()]] */
   def deepCollect[A](f: PartialFunction[Node, A]): Seq[A] =
-  Visitor.deepCollect(Seq(this), Nodes.subnodes)(f)
+    Visitor.deepCollect(Seq(this), Nodes.subnodes)(f)
 
   /** @see [[Visitor.shallowCollect()]] */
   def shallowCollect[R](f: PartialFunction[Node, R]): Seq[R] =
-  Visitor.shallowCollect(Seq(this), Nodes.subnodes)(f)
+    Visitor.shallowCollect(Seq(this), Nodes.subnodes)(f)
 
   def contains(n: Node): Boolean = this.existsDefined {
     case `n` =>
