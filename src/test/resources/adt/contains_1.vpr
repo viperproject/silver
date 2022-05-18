@@ -1,0 +1,49 @@
+import <adt/derives.vpr>
+
+adt List[T] {
+  Nil()
+  Cons(value: T, tail: List[T])
+} derives {
+  contains
+}
+
+adt Tree[T] {
+  Leaf()
+  Node(value: T, left:Tree[T], right:Tree[T])
+} derives {
+  contains
+}
+
+
+method contains_1a() {
+
+  var a: List[Int]
+  a := Nil()
+
+  var b: List[Int]
+  b := Cons(2, Nil())
+
+  var c: List[Int]
+  c := Cons(1, Cons(2, Nil()))
+
+  assert contains(a,b)
+  assert contains(b,c)
+  assert contains(a,c)
+  assert contains(2,c)
+
+}
+
+method contains_1b() {
+
+  var list: List[Int]
+  list := Cons(42, Nil())
+
+  var tree: Tree[List[Int]]
+  tree := Node(list, Leaf(), Leaf())
+
+
+  assert contains(42, list)
+  assert contains(list, tree)
+  assert contains(42, tree)
+
+}

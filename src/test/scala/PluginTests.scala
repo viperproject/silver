@@ -227,7 +227,7 @@ class PluginTests extends AnyFunSuite {
   )
 
   // number of plugins running by default
-  val defaultPlugins = 2
+  val defaultPlugins = 3
 
   var result: VerificationResult = Success
 

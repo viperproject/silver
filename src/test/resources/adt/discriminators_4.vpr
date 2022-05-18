@@ -1,0 +1,15 @@
+adt List[T] {
+    Nil()
+    Cons(value: T, tail: List[T])
+}
+
+field this_is_a_field:Int
+
+method discriminators_4()
+{   
+    var list: List[Int]
+
+    //:: ExpectedOutput(typechecker.error)
+    assert list.this_is_a_field
+    
+}

@@ -1,0 +1,32 @@
+adt List[T] {
+    Nil()
+    Cons(value: T, tail: List[T])
+}
+
+/**
+ * Note that above ADT is by default encoded as a domain with following signatures for destructors and discriminators.
+ * Propose of defining the domain below is to check name clash handling.
+ */
+domain DList[T] {
+   
+   function get_List_value(t: DList[T]): T
+   
+   function get_List_tail(t: DList[T]): DList[T]
+   
+   function List_tag(t: DList[T]): Int
+ }
+
+method encoding_1()
+{
+  assert Cons(1, Nil()).isNil == false
+  assert Cons(1, Nil()).isCons 
+  assert Cons(1, Nil()).value == 1
+  assert Cons(1, Nil()).tail == Nil()
+
+  var dlist: DList[Int]
+  var n: Int
+  n := get_List_value(dlist)
+  dlist := get_List_tail(dlist)
+  n := List_tag(dlist)
+
+}
