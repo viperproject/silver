@@ -9,6 +9,7 @@ function idx(a: Int, b: Int, c: Ref, n: Int): Int
 method test01(xs: Seq[Ref], n: Int) {
   inhale 10 < n
   inhale n <= |xs|
+  inhale forall i1: Int, i2: Int :: i1 in [0..n) && i2 in [0..n) && i1 != i2 ==> xs[i1] != xs[i2]
   inhale forall i: Int :: 0 <= i && i < n ==> acc(xs[i].f)
 
   inhale forall i: Int, j: Int ::

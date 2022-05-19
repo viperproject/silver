@@ -8,8 +8,8 @@ package viper.silver.parser
 
 import java.net.URL
 import java.nio.file.{Files, Path, Paths}
-import viper.silver.ast.{FilePosition, HasLineColumn, LabelledOld, LineCol, NoPosition, Position, SourcePosition}
-import viper.silver.ast.utility.rewriter.{ContextA, PartialContextC, StrategyBuilder, Traverse}
+import viper.silver.ast.{FilePosition, LabelledOld, LineCol, NoPosition, Position, SourcePosition}
+import viper.silver.ast.utility.rewriter.{ContextA, PartialContextC, StrategyBuilder}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
 import viper.silver.plugin.SilverPluginManager
 import viper.silver.verifier.{ParseError, ParseWarning}
@@ -30,35 +30,6 @@ object FastParser {
     import NoWhitespace._
     implicit ctx: ParsingRun[_] =>
       NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
-  }
-
-  // As opposed to use Index ~ t ~ Index, this implementation is agnostic to white space specializations.
-  def FP[T](t: P[T])(implicit name: sourcecode.Name, ctx: P[_]): P[((FilePosition, FilePosition), T)] = {
-    t ~ Index map {
-      case (parsed: T, index) =>
-
-        // For some reason, LineCol(ctx.index) sometimes gives us the index of the _end_ of the parsed object (e.g.,
-        // for methods). So, to avoid this in the cases we care about, we check if the parsed object consists
-        // of several parts and, if it does, use the start position of the first part.
-        val startPos = if (parsed.isInstanceOf[Product] && parsed.asInstanceOf[Product].productArity > 0) {
-          val sigh = parsed.asInstanceOf[Product].productElement(0)
-          sigh match {
-            case w: Where if w.pos._1.isInstanceOf[HasLineColumn] => {
-              val lc = w.pos._1.asInstanceOf[HasLineColumn]
-              (lc.line, lc.column)
-            }
-            case (lc: HasLineColumn, _) => {
-              (lc.line, lc.column)
-            }
-            case _ => LineCol(ctx.index)
-          }
-        }else{
-          LineCol(ctx.index)
-        }
-        val finishPos = LineCol(index)
-
-        ((FilePosition(_file, startPos._1, startPos._2), FilePosition(_file, finishPos._1, finishPos._2)), parsed)
-    }
   }
 
   /* When importing a file from standard library, e.g. `include <inc.vpr>`, the file is expected
@@ -208,10 +179,52 @@ object FastParser {
     }
   }
 
-  // Actual Parser starts from here
-  def identContinues[_: P] = FP(CharIn("0-9", "A-Z", "a-z", "$_"))
+  /**
+    * Function that wraps a parser to provide start and end positions if the wrapped parser succeeds.
+    */
+  def FP[T](t: => P[T])(implicit ctx: P[_]): P[((FilePosition, FilePosition), T)] = {
+    val startPos = LineCol(ctx.index)
+    val res: P[T] = t
+    val finishPos = LineCol(ctx.index)
+    res.map({ parsed => ((FilePosition(_file, startPos._1, startPos._2), FilePosition(_file, finishPos._1, finishPos._2)), parsed) })
+  }
 
-  def keyword[_: P](check: String) = FP(check ~~ !identContinues)
+  import scala.language.implicitConversions
+  implicit def LeadingWhitespaceStr(p: String)(implicit ctx: P[Any]): LeadingWhitespace[Unit] = new LeadingWhitespace(() => P(p))
+  implicit def LeadingWhitespace[T](p: => P[T]) = new LeadingWhitespace(() => p)
+  class LeadingWhitespace[T](val p: () => P[T]) extends AnyVal {
+  /**
+    * Using `p.lw` is shorthand for `Pass ~ p` (the same parser but with possibly leading whitespace).
+    *
+    * A parser of the form `FP(p0 ~ p1.?)` or `FP(p0 ~ p2.rep)` may return an end position which
+    * includes trailing whitespaces (incl. comments, newlines) if `p1` or `p2` fail to match (the `~` does this).
+    * Instead we would like to use `FP(p0 ~~ (Pass ~ p1).?)` or `FP(p0 ~~ (Pass ~ p2).rep)`, which avoids this issue.
+    */
+    def lw(implicit ctx: P[Any]): LW[T] = new LW(() => Pass ~ p())
+    def ~~~[V, R](other: LW[V])(implicit s: Implicits.Sequencer[T, V, R], ctx: P[Any]): P[R] = (p() ~~ other.p()).asInstanceOf[P[R]]
+    def ~~~/[V, R](other: LW[V])(implicit s: Implicits.Sequencer[T, V, R], ctx: P[Any]): P[R] = (p() ~~/ other.p()).asInstanceOf[P[R]]
+  }
+  /**
+    * A parser which matches leading whitespaces. See `LeadingWhitespace.lw` for more info. Can only be operated on in
+    * restricted ways (e.g. `?`, `rep`, `|` or `map`), requiring that it is eventually appened to a normal parser (of type `P[V]`).
+    * 
+    * For example, the following two are equivalent:
+    * {{{FP("hello" ~~~ "world".lw.?)
+    * FP("hello" ~~ (Pass ~ "world").?)}}}
+    * The type system prevents one from erroneously writing:
+    * {{{FP("hello" ~ "world".lw.?)}}}
+    */
+  class LW[T](val p: () => P[T]) {
+    def ?[V](implicit optioner: Implicits.Optioner[T, V], ctx: P[Any]): LW[V] = new LW(() => p().?.asInstanceOf[P[V]])
+    def rep[V](implicit repeater: Implicits.Repeater[T, V], ctx: P[Any]): LW[V] = new LW(() => p().rep.asInstanceOf[P[V]])
+    def |[V >: T](other: LW[V])(implicit ctx: P[Any]): LW[V] = new LW(() => (p() | other.p()).asInstanceOf[P[V]])
+    def map[V](f: T => V): LW[V] = new LW(() => p().map(f))
+  }
+
+  // Actual Parser starts from here
+  def identContinues[_: P] = CharIn("0-9", "A-Z", "a-z", "$_")
+
+  def keyword[_: P](check: String) = check ~~ !identContinues
 
   def parens[_: P, T](p: => P[T]) = "(" ~ p ~ ")"
 
@@ -403,7 +416,7 @@ object FastParser {
 
     var warnings = Seq.empty[ParseWarning]
 
-    warnings = (warnings /: globalMacros)(_ ++ allParametersUsedInBody(_))
+    warnings = globalMacros.foldLeft(warnings)(_ ++ allParametersUsedInBody(_))
 
     globalMacros.foreach(allParametersUsedInBody(_))
 
@@ -449,7 +462,7 @@ object FastParser {
       // Collect local macro definitions
       val localMacros = method.deepCollect { case n: PDefine => n }
 
-      warnings = (warnings /: localMacros)(_ ++ allParametersUsedInBody(_))
+      warnings = localMacros.foldLeft(warnings)(_ ++ allParametersUsedInBody(_))
 
       // Remove local macro definitions from method
       val methodWithoutMacros =
@@ -765,7 +778,7 @@ object FastParser {
     | mapTypedEmpty | explicitMapNonEmpty | mapDomain | mapRange
     | fapp | typedFapp | idnuse | ParserExtension.newExpAtEnd(ctx))
 
-  def result[_: P]: P[PResultLit] = keyword("result").map { case (pos, _) => PResultLit()(pos) }
+  def result[_: P]: P[PResultLit] = FP(keyword("result")).map { case (pos, _) => PResultLit()(pos) }
 
   def unExp[_: P]: P[PUnExp] = FP(CharIn("\\-\\!").! ~~ !" " ~~ suffixExpr).map { case (pos, (a, b)) => PUnExp(a, b)(pos) }
 
@@ -773,11 +786,11 @@ object FastParser {
 
   def integer[_: P]: P[PIntLit] = FP(strInteger.filter(s => !s.contains(' '))).map { case (pos, s) => PIntLit(BigInt(s))(pos) }
 
-  def booltrue[_: P]: P[PBoolLit] = keyword("true").map {case (pos, _) => PBoolLit(b = true)(pos)}
+  def booltrue[_: P]: P[PBoolLit] = FP(keyword("true")).map {case (pos, _) => PBoolLit(b = true)(pos)}
 
-  def boolfalse[_: P]: P[PBoolLit] = keyword("false").map{ case (pos, _) => PBoolLit(b = false)(pos) }
+  def boolfalse[_: P]: P[PBoolLit] = FP(keyword("false")).map{ case (pos, _) => PBoolLit(b = false)(pos) }
 
-  def nul[_: P]: P[PNullLit] = keyword("null").map { case (pos, _) => PNullLit()(pos) }
+  def nul[_: P]: P[PNullLit] = FP(keyword("null")).map { case (pos, _) => PNullLit()(pos) }
 
   def identifier[_: P]: P[Unit] = CharIn("A-Z", "a-z", "$_") ~~ CharIn("0-9", "A-Z", "a-z", "$_").repX
 
@@ -785,40 +798,39 @@ object FastParser {
 
   def idnuse[_: P]: P[PIdnUse] = FP(ident).map { case (pos, id) => PIdnUse(id)(pos) }
 
-  def oldLabel[_: P]: P[PIdnUse] = FP(idnuse | LabelledOld.LhsOldLabel.!).map {
-    case (_, idnuse: PIdnUse) => idnuse
-    case (pos, LabelledOld.LhsOldLabel) => PIdnUse(LabelledOld.LhsOldLabel)(pos)
+  def oldLabel[_: P]: P[PIdnUse] = idnuse | FP(LabelledOld.LhsOldLabel.!).map {
+    case (pos, lhsOldLabel) => PIdnUse(lhsOldLabel)(pos)
   }
 
   def old[_: P]: P[PExp] = P(StringIn("old") ~ (FP(parens(exp)).map { case (pos, e) => POld(e)(pos) } | FP("[" ~ oldLabel ~ "]" ~ parens(exp)).map {
     case (pos, (a, b)) => PLabelledOld(a, b)(pos)
   }))
 
-  def magicWandExp[_: P]: P[PExp] = FP(orExp ~ (keyword("--*").! ~ exp).?).map {
+  def magicWandExp[_: P]: P[PExp] = FP(orExp ~~~ (keyword("--*").! ~ exp).lw.?).map {
     case (pos, (a, b)) => b match {
       case Some(c) => PMagicWandExp(a, c._2)(pos)
       case None => a
   }}
 
-  def realMagicWandExp[_: P]: P[PMagicWandExp] = FP(orExp ~ "--*".! ~ exp).map {
-    case (pos, (a, _, c)) => PMagicWandExp(a, c)(pos)
+  def realMagicWandExp[_: P]: P[PMagicWandExp] = FP(orExp ~ "--*" ~ exp).map {
+    case (pos, (a, b)) => PMagicWandExp(a, b)(pos)
   }
 
-  def implExp[_: P]: P[PExp] = FP(magicWandExp ~ (StringIn("==>").! ~ implExp).?).map {
+  def implExp[_: P]: P[PExp] = FP(magicWandExp ~~~ (StringIn("==>").! ~ implExp).lw.?).map {
     case (pos, (a, b)) => b match {
       case Some(c) => PBinExp(a, c._1, c._2)(pos)
       case None => a
     }
   }
 
-  def iffExp[_: P]: P[PExp] = FP(implExp ~ ("<==>".! ~ iffExp).?).map {
+  def iffExp[_: P]: P[PExp] = FP(implExp ~~~ ("<==>".! ~ iffExp).lw.?).map {
     case (pos, (a, b)) => b match {
       case Some(c) => PBinExp(a, c._1, c._2)(pos)
       case None => a
     }
   }
 
-  def iteExpr[_: P]: P[PExp] = FP(iffExp ~ ("?" ~ iteExpr ~ ":" ~ iteExpr).?).map {
+  def iteExpr[_: P]: P[PExp] = FP(iffExp ~~~ ("?" ~ iteExpr ~ ":" ~ iteExpr).lw.?).map {
     case (pos, (a, b)) => b match {
       case Some(c) => PCondExp(a, c._1, c._2)(pos)
       case None => a
@@ -848,25 +860,25 @@ object FastParser {
       FP("[" ~ exp ~ ":=" ~ exp ~ "]").map { case (pos, (i, v)) => SuffixedExpressionGenerator[PExp]((e: PExp) => PSeqUpdate(e, i, v)(pos)) })
    */
 
-  def suffixExpr[_: P]: P[PExp] = P((atom ~ suffix.rep).map { case (fac, ss) => foldPExp[PExp](fac, ss) })
+  def suffixExpr[_: P]: P[PExp] = P((atom ~~~ suffix.lw.rep).map { case (fac, ss) => foldPExp[PExp](fac, ss) })
 
-  def realSuffixExpr[_: P]: P[PExp] = P((atom ~ suffix.rep).map { case (fac, ss) => foldPExp[PExp](fac, ss) })
+  def realSuffixExpr[_: P]: P[PExp] = P((atom ~~~ suffix.lw.rep).map { case (fac, ss) => foldPExp[PExp](fac, ss) })
 
   def termOp[_: P]: P[String] = P(StringIn("*", "/", "\\", "%").!)
 
-  def term[_: P]: P[PExp] = P((suffixExpr ~ termd.rep).map { case (a, ss) => foldPExp[PExp](a, ss) })
+  def term[_: P]: P[PExp] = P((suffixExpr ~~~ termd.lw.rep).map { case (a, ss) => foldPExp[PExp](a, ss) })
 
   def termd[_: P]: P[SuffixedExpressionGenerator[PExp]] = FP(termOp ~ suffixExpr).map { case (pos, (op, id)) => SuffixedExpressionGenerator[PExp]((e: PExp) => PBinExp(e, op, id)(pos)) }
 
   def sumOp[_: P]: P[String] = P(StringIn("++", "+", "-").! | keyword("union").! | keyword("intersection").! | keyword("setminus").! | keyword("subset").!)
 
-  def sum[_: P]: P[PExp] = P((term ~ sumd.rep).map { case (a, ss) => foldPExp[PBinExp](a, ss) })
+  def sum[_: P]: P[PExp] = P((term ~~~ sumd.lw.rep).map { case (a, ss) => foldPExp[PBinExp](a, ss) })
 
   def sumd[_: P]: P[SuffixedExpressionGenerator[PBinExp]] = FP(sumOp ~ term).map { case (pos, (op, id)) => SuffixedExpressionGenerator[PBinExp]((e: PExp) => PBinExp(e, op, id)(pos)) }
 
   def cmpOp[_: P] = P(StringIn("<=", ">=", "<", ">").! | keyword("in").!)
 
-  def cmpExp[_: P]: P[PExp] = FP(sum ~ (cmpOp ~ cmpExp).?).map {
+  def cmpExp[_: P]: P[PExp] = FP(sum ~~~ (cmpOp ~ cmpExp).lw.?).map {
     case (pos, (a, b)) => b match {
       case Some(c) => PBinExp(a, c._1, c._2)(pos)
       case None => a
@@ -875,21 +887,21 @@ object FastParser {
 
   def eqOp[_: P] = P(StringIn("==", "!=").!)
 
-  def eqExp[_: P]: P[PExp] = FP(cmpExp ~ (eqOp ~ eqExp).?).map {
+  def eqExp[_: P]: P[PExp] = FP(cmpExp ~~~ (eqOp ~ eqExp).lw.?).map {
     case (pos, (a, b)) => b match {
       case Some(c) => PBinExp(a, c._1, c._2)(pos)
       case None => a
     }
   }
 
-  def andExp[_: P]: P[PExp] = FP(eqExp ~ ("&&".! ~ andExp).?).map {
-    case (_, (a, b)) => b match {
-      case Some(c) => PBinExp(a, c._1, c._2)(a.pos)
+  def andExp[_: P]: P[PExp] = FP(eqExp ~~~ ("&&".! ~ andExp).lw.?).map {
+    case (pos, (a, b)) => b match {
+      case Some(c) => PBinExp(a, c._1, c._2)(pos)
       case None => a
     }
   }
 
-  def orExp[_: P]: P[PExp] = FP(andExp ~ ("||".! ~ orExp).?).map {
+  def orExp[_: P]: P[PExp] = FP(andExp ~~~ ("||".! ~ orExp).lw.?).map {
     case (pos, (a, b)) => b match {
       case Some(c) => PBinExp(a, c._1, c._2)(pos)
       case None => a
@@ -897,7 +909,7 @@ object FastParser {
   }
 
   def accessPredImpl[_: P]: P[PAccPred] = FP(keyword("acc") ~ "(" ~ locAcc ~ ("," ~ exp).? ~ ")").map {
-    case (pos, (_, _, loc, perms)) => {
+    case (pos, (loc, perms)) => {
       PAccPred(loc, perms.getOrElse(PFullPerm()(pos)))(pos)
     }
   }
@@ -919,7 +931,7 @@ object FastParser {
   def actualArgList[_: P]: P[Seq[PExp]] = exp.rep(sep = ",")
 
   def inhaleExhale[_: P]: P[PExp] = FP("[" ~ exp ~ "," ~ exp ~ "]").map {
-    case (_, (a, b)) => PInhaleExhaleExp(a, b)(a.pos)
+    case (pos, (a, b)) => PInhaleExhaleExp(a, b)(pos)
   }
 
   def perm[_: P]: P[PExp] =
@@ -948,11 +960,11 @@ object FastParser {
     }
 
   def quant[_: P]: P[PExp] = P(FP(keyword("forall") ~ nonEmptyFormalArgList ~ "::" ~ trigger.rep ~ exp).map {
-    case (_, (pos, _, a, b, c)) =>
+    case (pos, (a, b, c)) =>
       PForall(a, b, c)(pos)
     } |
     FP(keyword("exists") ~ nonEmptyFormalArgList ~ "::" ~ trigger.rep ~ exp).map {
-      case (_, (pos, _, a, b, c)) =>
+      case (pos, (a, b, c)) =>
         PExists(a, b, c)(pos)
     })
 
@@ -969,16 +981,16 @@ object FastParser {
       PDomainType(name, Nil)(name.pos)
     }))
 
-  def seqType[_: P]: P[PType] = FP(keyword("Seq") ~ "[" ~ typ ~ "]").map{ case (pos, t) => PSeqType(t._3)(pos)}
+  def seqType[_: P]: P[PType] = FP(keyword("Seq") ~ "[" ~ typ ~ "]").map{ case (pos, t) => PSeqType(t)(pos)}
 
-  def setType[_: P]: P[PType] = FP(keyword("Set") ~ "[" ~ typ ~ "]").map{ case (pos, t) => PSetType(t._3)(pos)}
+  def setType[_: P]: P[PType] = FP(keyword("Set") ~ "[" ~ typ ~ "]").map{ case (pos, t) => PSetType(t)(pos)}
 
-  def multisetType[_: P]: P[PType] = FP(keyword("Multiset") ~ "[" ~ typ ~ "]").map{ case (pos, t) => PMultisetType(t._3)(pos)}
+  def multisetType[_: P]: P[PType] = FP(keyword("Multiset") ~ "[" ~ typ ~ "]").map{ case (pos, t) => PMultisetType(t)(pos)}
 
   //def mapType[_: P]: P[PType] = FP(keyword("Map") ~ "[" ~ typ ~ "," ~ typ ~ "]").map{ case (pos, t) => PSeqType(t._3)(pos)}
   // Maps:
-  def mapType[_: P] : P[PType] = P(keyword("Map") ~ "[" ~ typ ~ "," ~ typ ~ "]").map {
-   case (pos, _, keyType, valueType) => PMapType(keyType, valueType)(pos)
+  def mapType[_: P] : P[PType] = FP(keyword("Map") ~ "[" ~ typ ~ "," ~ typ ~ "]").map {
+   case (pos, (keyType, valueType)) => PMapType(keyType, valueType)(pos)
   }
 
   def primitiveTyp[_: P]: P[PType] = P(FP(keyword("Rational")).map{ case (pos, _) => PPrimitiv("Perm")(pos)}
@@ -993,11 +1005,11 @@ object FastParser {
   }
 
   def forperm[_: P]: P[PExp] = FP(keyword("forperm") ~ nonEmptyFormalArgList ~ "[" ~ resAcc ~ "]" ~ "::" ~ exp).map {
-    case (pos, (_, _, args, res, body)) => PForPerm(args, res, body)(pos)
+    case (pos, (args, res, body)) => PForPerm(args, res, body)(pos)
   }
 
   def unfolding[_: P]: P[PExp] = FP(keyword("unfolding") ~ predicateAccessPred ~ "in" ~ exp).map {
-    case (pos, (_, _, a, b)) => PUnfolding(a, b)(pos) }
+    case (pos, (a, b)) => PUnfolding(a, b)(pos) }
 
   def predicateAccessPred[_: P]: P[PAccPred] = P(accessPred | FP(predAcc).map {
     case (pos, loc) => PAccPred(loc, PFullPerm()(pos))(pos)
@@ -1044,8 +1056,8 @@ object FastParser {
   def mapRange[_: P] : P[PExp] = P("range" ~ "(" ~ exp ~ ")").map(PMapRange(_)())
 
   def fapp[_: P]: P[PCall] = FP(idnuse ~ parens(actualArgList)).map {
-    case (_, (func, args)) =>
-      PCall(func, args, None)(func.pos)
+    case (pos, (func, args)) =>
+      PCall(func, args, None)(pos)
   }
 
   def typedFapp[_: P]: P[PExp] = FP(parens(idnuse ~ parens(actualArgList) ~ ":" ~ typ)).map {
@@ -1072,47 +1084,44 @@ object FastParser {
 
   def unfold[_: P]: P[PUnfold] = FP("unfold" ~ predicateAccessPred).map{ case (pos, e) => PUnfold(e)(pos)}
 
-  def exhale[_: P]: P[PExhale] = FP(keyword("exhale") ~/ exp).map{ case (_, e) => PExhale(e._3)(e._1) }
+  def exhale[_: P]: P[PExhale] = FP(keyword("exhale") ~/ exp).map{ case (pos, e) => PExhale(e)(pos) }
 
-  def assertP[_: P]: P[PAssert] = FP(keyword("assert") ~/ exp).map{ case (_, e) => PAssert(e._3)(e._1) }
+  def assertP[_: P]: P[PAssert] = FP(keyword("assert") ~/ exp).map{ case (pos, e) => PAssert(e)(pos) }
 
-  def inhale[_: P]: P[PInhale] = FP(keyword("inhale") ~/ exp).map{ case (pos, e) => PInhale(e._3)(pos) }
+  def inhale[_: P]: P[PInhale] = FP(keyword("inhale") ~/ exp).map{ case (pos, e) => PInhale(e)(pos) }
 
-  def assume[_: P]: P[PAssume] = FP(keyword("assume") ~/ exp).map{ case (pos, e) => PAssume(e._3)(pos) }
+  def assume[_: P]: P[PAssume] = FP(keyword("assume") ~/ exp).map{ case (pos, e) => PAssume(e)(pos) }
 
-  def ifthnels[_: P]: P[PIf] = FP("if" ~ "(" ~ exp ~ ")" ~ block ~ elsifEls).map {
+  def ifthnels[_: P]: P[PIf] = FP("if" ~ "(" ~ exp ~ ")" ~ block ~~~ elsifEls).map {
     case (pos, (cond, thn, ele)) => PIf(cond, thn, ele)(pos)
   }
 
-  /**
-    * This parser is wrapped in another parser because otherwise the position
-    * in rules like [[block.?]] are not set properly.
-    */
-  def block[_: P]: P[PSeqn] = FP("{" ~/ stmts ~ "}").map{ case (pos, e) => PSeqn(e)(pos)}
+  // No need for `.lw` here since we have `FP("{" ~ ... ~ "}")`
+  def block[_: P]: P[PSeqn] = FP("{" ~/ (stmt ~/ ";".?).rep ~ "}").map{ case (pos, e) => PSeqn(e)(pos)}
 
-  def stmts[_: P]: P[Seq[PStmt]] = (stmt ~/ ";".?).rep
+  def elsifEls[_: P]: LW[PSeqn] = elsif.lw | els
 
-  def elsifEls[_: P]: P[PSeqn] = elsif | els
-
-  def elsif[_: P]: P[PSeqn] = FP("elseif" ~/ "(" ~ exp ~ ")" ~ block ~ elsifEls).map {
+  def elsif[_: P]: P[PSeqn] = FP("elseif" ~/ "(" ~ exp ~ ")" ~ block ~~~ elsifEls).map {
     case (pos, (cond, thn, ele)) => PSeqn(Seq(PIf(cond, thn, ele)(pos)))(pos)
   }
 
-  def els[_: P]: P[PSeqn] = FP((keyword("else") ~/ block).?).map { case (pos, block) => if (block.isDefined) block.get._3 else PSeqn(Nil)(pos)}
+  def els[_: P]: LW[PSeqn] = ((keyword("else") ~/ block) | FP(Pass)).lw.map {
+    case block: PSeqn => block
+    case (pos, _) => PSeqn(Nil)() }
 
   def whle[_: P]: P[PWhile] = FP(keyword("while") ~/ "(" ~ exp ~ ")" ~ inv.rep ~ block).map {
-    case (_, (start, _, cond, invs, body)) =>
-      PWhile(cond, invs, body)(start)
+    case (pos, (cond, invs, body)) =>
+      PWhile(cond, invs, body)(pos)
   }
 
-  def inv(implicit ctx : P[_]) : P[PExp] = P((keyword("invariant") ~ exp ~ ";".?).map(e => e._3) | ParserExtension.invSpecification(ctx))
+  def inv(implicit ctx : P[_]) : P[PExp] = P((keyword("invariant") ~ exp ~~~ ";".lw.?) | ParserExtension.invSpecification(ctx))
 
-  def varDecl[_: P]: P[PLocalVarDecl] = FP(keyword("var") ~/ idndef ~ ":" ~ typ ~ (":=" ~ exp).?).map { case (pos, (_, _, a, b, c)) => PLocalVarDecl(a, b, c)(pos) }
+  def varDecl[_: P]: P[PLocalVarDecl] = FP(keyword("var") ~/ idndef ~ ":" ~ typ ~~~ (":=" ~ exp).lw.?).map { case (pos, (a, b, c)) => PLocalVarDecl(a, b, c)(pos) }
 
   def defineDecl[_: P]: P[PDefine] = FP(keyword("define") ~/ idndef ~ ("(" ~ idndef.rep(sep = ",") ~ ")").? ~ (exp | "{" ~ (nodefinestmt ~ ";".?).rep ~ "}")).map {
-    case (_, (start, _, a, b, c)) => c match {
-      case e: PExp => PDefine(a, b, e)(start)
-      case ss: Seq[PStmt]@unchecked => PDefine(a, b, PSeqn(ss)(start))(start)
+    case (pos, (a, b, c)) => c match {
+      case e: PExp => PDefine(a, b, e)(pos)
+      case ss: Seq[PStmt]@unchecked => PDefine(a, b, PSeqn(ss)(pos))(pos)
     }
   }
 
@@ -1131,21 +1140,21 @@ object FastParser {
 
   def goto[_: P]: P[PGoto] = FP("goto" ~/ idnuse).map{ case (pos, e) => PGoto(e)(pos) }
 
-  def lbl[_: P]: P[PLabel] = FP(keyword("label") ~/ idndef ~ (keyword("invariant") ~/ exp).rep).map {
-    case (pos, (_, _, name, invs)) => PLabel(name, invs.map( e => e._3 ))(pos) }
+  def lbl[_: P]: P[PLabel] = FP(keyword("label") ~/ idndef ~~~ (keyword("invariant") ~/ exp).lw.rep).map {
+    case (pos, (name, invs)) => PLabel(name, invs)(pos) }
 
-  def packageWand[_: P]: P[PPackageWand] = FP(keyword("package") ~/ magicWandExp ~ block.?).map {
-    case (_, (start, _, wand, Some(proofScript))) =>
-      PPackageWand(wand, proofScript)(start)
-    case (_, (start, _, wand, None)) =>
-      PPackageWand(wand, PSeqn(Seq())(start))(start)
+  def packageWand[_: P]: P[PPackageWand] = FP(keyword("package") ~/ magicWandExp ~~~ block.lw.?).map {
+    case (pos, (wand, Some(proofScript))) =>
+      PPackageWand(wand, proofScript)(pos)
+    case (pos, (wand, None)) =>
+      PPackageWand(wand, PSeqn(Seq())(pos))(pos)
   }
 
   def applyWand[_: P]: P[PApplyWand] = FP(keyword("apply") ~/ magicWandExp).map {
-    case (_, p) => PApplyWand(p._3)(p._1)
+    case (pos, p) => PApplyWand(p)(pos)
   }
 
-  def applying[_: P]: P[PExp] = FP(keyword("applying") ~/ "(" ~ magicWandExp ~ ")" ~ "in" ~ exp).map { case (pos, (_, _, a, b)) => PApplying(a, b)(pos) }
+  def applying[_: P]: P[PExp] = FP(keyword("applying") ~/ "(" ~ magicWandExp ~ ")" ~ "in" ~ exp).map { case (pos, (a, b)) => PApplying(a, b)(pos) }
 
   def programDecl(implicit ctx : P[_]) : P[PProgram] = P((ParserExtension.newDeclAtStart(ctx) | preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl | ParserExtension.newDeclAtEnd(ctx)).rep).map {
     decls => {
@@ -1163,10 +1172,10 @@ object FastParser {
     }
   }
 
-  def preambleImport[_: P]: P[PImport] = P(keyword("import") ~/ (
+  def preambleImport[_: P]: P[PImport] = FP(keyword("import") ~/ (
       P(quoted(relativeFilePath.!)).map{ filename => pos: (Position, Position) => PLocalImport(filename)(pos) } |
       P(angles(relativeFilePath.!)).map{ filename => pos: (Position, Position) => PStandardImport(filename)(pos) }
-    )).map { case (pos, _, imp) => imp(pos) }
+    )).map { case (pos, imp) => imp(pos) }
 
   def relativeFilePath[_: P]: P[String] = P(CharIn("~.").?.! ~~ (CharIn("/").? ~~ CharIn(".", "A-Z", "a-z", "0-9", "_\\- \n\t")).rep(1))
 
@@ -1184,7 +1193,7 @@ object FastParser {
 
   def domainTypeVarDecl[_: P]: P[PTypeVarDecl] = FP(idndef).map{ case (pos, i) => PTypeVarDecl(i)(pos) }
 
-  def domainFunctionDecl[_: P]: P[PDomainFunction1] = FP("unique".!.? ~ domainFunctionSignature  ~ ";".?).map {
+  def domainFunctionDecl[_: P]: P[PDomainFunction1] = FP("unique".!.? ~ domainFunctionSignature ~~~ ";".lw.?).map {
     case (pos, (unique, fdecl)) => fdecl match {
       case (name, formalArgs, t) => PDomainFunction1(name, formalArgs, t, unique.isDefined)(pos)
     }
@@ -1200,35 +1209,35 @@ object FastParser {
 
   def formalArgList[_: P]: P[Seq[PFormalArgDecl]] = P(formalArg.rep(sep = ","))
 
-  def axiomDecl[_: P]: P[PAxiom1] = FP(keyword("axiom") ~ idndef.? ~ "{" ~ exp ~ "}" ~ ";".?).map { case (pos, (_, _, a, b)) => PAxiom1(a, b)(pos) }
+  def axiomDecl[_: P]: P[PAxiom1] = FP(keyword("axiom") ~ idndef.? ~ "{" ~ exp ~ "}" ~~~ ";".lw.?).map { case (pos, (a, b)) => PAxiom1(a, b)(pos) }
 
-  def fieldDecl[_: P]: P[PField] = FP(keyword("field") ~/ idndef ~ ":" ~ typ ~ ";".?).map {
-    case (pos, (start, finish, a, b)) => PField(a, b)(pos)
+  def fieldDecl[_: P]: P[PField] = FP(keyword("field") ~/ idndef ~ ":" ~ typ ~~~ ";".lw.?).map {
+    case (pos, (a, b)) => PField(a, b)(pos)
   }
 
-  def functionDecl[_: P]: P[PFunction] = FP("function" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
-    post.rep ~ ("{" ~ exp ~ "}").?).map({ case (_, (a, b, c, d, e, f)) =>
-      PFunction(a, b, c, d, e, f)(a.pos)
+  def functionDecl[_: P]: P[PFunction] = FP("function" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~~~ pre.lw.rep ~~~
+    post.lw.rep ~~~ ("{" ~ exp ~ "}").lw.?).map({ case (pos, (a, b, c, d, e, f)) =>
+      PFunction(a, b, c, d, e, f)(pos)
   })
 
 
-  def pre(implicit ctx : P[_]) : P[PExp] = P(("requires" ~/ exp ~ ";".?) | ParserExtension.preSpecification(ctx))
+  def pre(implicit ctx : P[_]) : P[PExp] = P(("requires" ~/ exp ~~~ ";".lw.?) | ParserExtension.preSpecification(ctx))
 
-  def post(implicit ctx : P[_]) : P[PExp] = P(("ensures" ~/ exp ~ ";".?) | ParserExtension.postSpecification(ctx))
+  def post(implicit ctx : P[_]) : P[PExp] = P(("ensures" ~/ exp ~~~ ";".lw.?) | ParserExtension.postSpecification(ctx))
 
   def decCl[_: P]: P[Seq[PExp]] = P(exp.rep(sep = ","))
 
-  def predicateDecl[_: P]: P[PPredicate] = FP(keyword("predicate") ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ("{" ~ exp ~ "}").?).map {
-    case (_, (_, _, a, b, c)) =>
-      PPredicate(a, b, c)(a.pos)
+  def predicateDecl[_: P]: P[PPredicate] = FP(keyword("predicate") ~/ idndef ~ "(" ~ formalArgList ~ ")" ~~~ ("{" ~ exp ~ "}").lw.?).map {
+    case (pos, (a, b, c)) =>
+      PPredicate(a, b, c)(pos)
   }
 
-  def methodDecl[_: P]: P[PMethod] = FP(methodSignature ~/ pre.rep ~ post.rep ~ block.?).map {
+  def methodDecl[_: P]: P[PMethod] = FP(methodSignature ~~~/ pre.lw.rep ~~~ post.lw.rep ~~~ block.lw.?).map {
     case (pos, (name, args, rets, pres, posts, body)) =>
       PMethod(name, args, rets.getOrElse(Nil), pres, posts, body)(pos)
   }
 
-  def methodSignature[_: P] = P("method" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ("returns" ~ "(" ~ formalArgList ~ ")").?)
+  def methodSignature[_: P] = P("method" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~~~ ("returns" ~ "(" ~ formalArgList ~ ")").lw.?)
 
   def entireProgram[_: P]: P[PProgram] = P(Start ~ programDecl ~ End)
 }

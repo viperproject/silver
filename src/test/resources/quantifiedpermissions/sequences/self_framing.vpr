@@ -4,7 +4,9 @@
 field f:Int
 
 method foo(s: Seq[Ref])
-  requires |s| > 2 && (forall i: Int :: i in [0..2) ==> acc(s[i].f, write))
+  requires |s| > 2
+  requires forall i: Int, j: Int :: i in [0..2) && j in [0..2) && i != j ==> s[i] != s[j]
+  requires forall i: Int :: i in [0..2) ==> acc(s[i].f, write)
 {
   //:: ExpectedOutput(inhale.failed:insufficient.permission)
   inhale |s| > 3 ==> s[2].f == 1
@@ -12,7 +14,9 @@ method foo(s: Seq[Ref])
 
 // Should be accepted
 method foo1(s: Seq[Ref])
-  requires |s| > 2 && (forall i1: Int :: i1 in [0..2) ==> acc(s[i1].f, write))
+  requires |s| > 2
+  requires forall i1: Int, i2: Int :: i1 in [0..2) && i2 in [0..2) && i1 != i2 ==> s[i1] != s[i2]
+  requires forall i1: Int :: i1 in [0..2) ==> acc(s[i1].f, write)
   requires s[0].f == 1
 {}
 

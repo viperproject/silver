@@ -11,12 +11,16 @@ method parallel_mergesort(a:Ref, b:Ref, start:Int, end:Int)
   requires acc(a.array, wildcard)
   requires acc(b.array, wildcard)
   requires start >= 0 && end <= |a.array| && |a.array| == |b.array|
+  requires forall i:Int, j:Int :: i in [start..end) && j in [start..end) && i != j ==> a.array[i] != a.array[j]
   requires forall i:Int :: i in [start..end) ==> acc(a.array[i].value, write)
+  requires forall i:Int, j:Int :: i in [start..end) && j in [start..end) && i != j ==> b.array[i] != b.array[j]
   requires forall i:Int :: i in [start..end) ==> acc(b.array[i].value, write)
   ensures acc(a.array, wildcard)
   ensures acc(b.array, wildcard)
   ensures start >= 0 && end <= |a.array| && |a.array| == |b.array|
+  ensures forall i:Int, j:Int :: i in [start..end) && j in [start..end) && i != j ==> a.array[i] != a.array[j]
   ensures forall i:Int :: i in [start..end) ==> acc(a.array[i].value, write)
+  ensures forall i:Int, j:Int :: i in [start..end) && j in [start..end) && i != j ==> b.array[i] != b.array[j]
   ensures forall i:Int :: i in [start..end) ==> acc(b.array[i].value, write)
   ensures a.array == old(a.array)
   ensures b.array == old(b.array)
@@ -73,13 +77,17 @@ method merge(a: Ref, b:Ref, start:Int, middle:Int, end:Int)
   requires acc(a.array, wildcard)
   requires acc(b.array, wildcard)
   requires 0 <= start && end <= |a.array| && |b.array| == |a.array| && start < middle && middle < end
+  requires forall i:Int, j:Int :: i in [start..end) && j in [start..end) && i != j ==> a.array[i] != a.array[j]
   requires forall k:Int :: k in [start..end) ==> acc(a.array[k].value, write)
+  requires forall i:Int, j:Int :: i in [start..end) && j in [start..end) && i != j ==> b.array[i] != b.array[j]
   requires forall l:Int :: l in [start..end) ==> acc(b.array[l].value, write)
   ensures acc(a.array, wildcard)
   ensures acc(b.array, wildcard)
   ensures a.array == old(a.array)
   ensures b.array == old(b.array)
+  ensures forall i:Int, j:Int :: i in [start..end) && j in [start..end) && i != j ==> a.array[i] != a.array[j]
   ensures forall i:Int :: i in [start..end) ==> acc(a.array[i].value, write)
+  ensures forall i:Int, j:Int :: i in [start..end) && j in [start..end) && i != j ==> b.array[i] != b.array[j]
   ensures forall i:Int :: i in [start..end) ==> acc(b.array[i].value, write)
 {
     var I:Int := start

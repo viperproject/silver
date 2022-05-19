@@ -1,10 +1,42 @@
+## Release 2022.2
+
+**Date 28/02/22**
+
+### Changes in Viper Language
+
+- **Breaking change**: As mentioned in the release notes for 2021.7, starting with the 2022.2 release, Viper will check injectivity of inhaled quantified permissions by default, instead of assuming it. In the previous release, this feature was enabled with the `--checkInjectivity` flag. It is now enabled by default and can instead by disabled with the `--assumeInjectivityOnInhale` flag. This change makes the injectivity requirement consistent with other well-definedness conditions in Viper (such as ruling out potential division by zero).
+
+### Backend-specific upgrades/changes
+
+#### Symbolic Execution Verifier (Silicon)
+
+- Added new option to report multiple errors per path, potentially allowing verification to continue beyond a failing pure condition (e.g. assert statement). The command-line argument `--numberOfErrorsToReport` (by default 1, 0 indicates all errors are to be reported) controls how many errors will be reported by the verifier before it stops. ([Silicon#575](https://github.com/viperproject/silicon/pull/575))
+- Added new option to report branch conditions in errors using the command-line argument `--enableBranchconditionReporting`. When enabled, errors reported on the command line additionally show a list of conditions or their negations that were reached on the path to the error. ([Silicon#575](https://github.com/viperproject/silicon/pull/575))
+- Fixed a memory leak ([Silicon#579](https://github.com/viperproject/silicon/issues/579)).
+- When Z3 quantifier reporting is enabled (for example, by passing `--z3Args '"smt.qi.profile=true smt.qi.profile_freq=10000"'` to Silicon), its output is now recognised and printed in Silicon's output, to enable a quick check for likely matching loops. ([Silicon#587](https://github.com/viperproject/silicon/pull/587))
+- Removed magic-wand-related heuristics described in ECOOP’15 (these were not generally enabled for standard Viper input files). ([Silicon#589](https://github.com/viperproject/silicon/pull/589))
+Bug fixes. ([Silicon#582](https://github.com/viperproject/silicon/issues/582), [Silicon#583](https://github.com/viperproject/silicon/pull/583), [Silicon#584](https://github.com/viperproject/silicon/pull/584))
+
+#### Verification Condition Generation Verifier (Carbon)
+
+- Check that predicate bodies are self-framing. ([Carbon#397](https://github.com/viperproject/carbon/pull/397/))
+- Bug fixes. ([Carbon#398](https://github.com/viperproject/carbon/pull/398/))
+
+### Miscellaneous
+
+- CI workflows for Viper tools migrated to GitHub actions.
+- Silver AST can now represent all SMT-LIB bitvector functions, although these are not yet supported in the language. ([Silver#537](https://github.com/viperproject/silver/pull/537/))
+- Impure assumes rewriter fix. ([Silver#553](https://github.com/viperproject/silver/pull/553/))
+- Viper IDE cache can be stored to a file. ([ViperServer#44](https://github.com/viperproject/viperserver/pull/44/))
+- Position information fix. ([Silver#555](https://github.com/viperproject/silver/pull/555/))
+
 ## Release 2021.7
 #### Date 27/07/21     [Download](http://www.pm.inf.ethz.ch/research/viper/downloads.html)
 
 ### Changes in Viper Language
 
-* **Breaking change**: Inhaling negative permission amounts now leads to a verification failure, whereas in the previous releases it was leading to an inconsistent state [(Silver, 522)](https://github.com/viperproject/silver/issues/522).
-* **Future breaking change**: Currently, Viper checks the [injectivity of the receiver expression when exhaling quantified permissions](http://viper.ethz.ch/tutorial/?page=1&section=#receiver-expressions-and-injectivity), but not when inhaling quantified permissions. We [plan to change this](https://github.com/viperproject/silver/issues/531) in the January 2022 release, that is Viper will also check the injectivity when inhaling quantified permissions. Since this is an important breaking change, this feature is only enabled in this release if the _--checkInjectivity_ flag is provided. This flag will be removed in the next release, and this injectivity check will be enabled by default.
+* **Breaking change**: Inhaling possibly-negative permission amounts now leads to a verification failure, whereas in previous releases it led to an inconsistent state [(Silver, 522)](https://github.com/viperproject/silver/issues/522). For example, `inhale acc(x.f, e)` for some permission expression `e` will now cause a *failure* if `e` is not known to be non-negative, rather than implicitly assuming this property.
+* **Planned future breaking change**: Currently, Viper checks the [injectivity of the receiver expression when exhaling quantified permissions](http://viper.ethz.ch/tutorial/?page=1&section=#receiver-expressions-and-injectivity), but not when inhaling quantified permissions (when this property is currently *assumed*). We [plan to change this](https://github.com/viperproject/silver/issues/531) in the January 2022 release, that is Viper will also check injectivity is known when inhaling quantified permissions. Since this is an important breaking change, we have provided access to it in *this* release but only if the `--checkInjectivity` flag is provided. This flag will be removed in the next release, and the corresponding injectivity checks will be enabled by default.
 
 ### Backend-specific upgrades/changes
 
@@ -25,13 +57,13 @@
 #### Viper-IDE & ViperServer
 * Compatibility with latest versions of Silicon and Carbon incl. latest Viper features (e.g. `Map` types and anonymous axioms).
 * Mono is no longer a requirement.
-* The JAVA installation has to be version 1.8 or higher and 64-bit.
+* The JAVA installation has to be version 11 or higher and must be 64-bit.
 * The IDE now shows non-critical warning messages. 
 * Build version of Viper Tools (i.e. the dependencies) can be configured in the VSCode settings:
   * `Stable` / `Nightly`: the latest Viper Tools in the corresponding build configuration will be used. The [Preferences](https://github.com/viperproject/viper-ide/wiki/Settings:-Preferences) specify from which URL the Viper Tools will be downloaded. The Viper Tools are not automatically updated. They only get installed when they are not present yet or when a manual update is triggered (via the command palette). The installation folder has changed for these two build versions: They always get installed to `<VSCode Installation>/User/globalStorage/viper-admin.viper` where `<VSCode Installation>` corresponds to `~/Library/Application Support/Code` (on macOS), `c:\Users\<user>\AppData\Roaming\Code` (on Windows), and `~/.config/Code` (on Linux).
   * `Local`: uses the Viper Tools located at the path specified as `viperSettings.paths.viperToolsPath`.
 * Locating the JAVA installation has been improved. A warning appears if it cannot be uniquely identified. A fixed path to a Java installation can be provided in the settings as `viperSettings.javaSettings.javaBinary` ([more details](https://github.com/viperproject/viper-ide/wiki/Settings:-Java-Settings)).
-* Sounds for a successful or failed verification can be enabled by setting `viperSettings.preferences.enableSoundEffects` to true.
+* Sound effects for a successful or failed verification can be enabled by setting `viperSettings.preferences.enableSoundEffects` to true.
 * Minor bug fixes ([#23](https://github.com/viperproject/viperserver/issues/23))
 
   ---

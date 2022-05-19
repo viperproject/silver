@@ -13,6 +13,7 @@ function sum_list(i: Int, hi: Int, ar: Seq[Int]): Int
 function sum_array(i: Int, lo: Int, hi: Int, ar: Seq[Ref]): Int
   requires (0 <= lo) && (lo <= i) && (i <= hi)
   requires hi <= |ar|
+  requires forall k:Int, j:Int :: k >= 0 && k < |ar| && j >= 0 && j < |ar| && k != j ==> ar[k] != ar[j]
   requires (forall k: Int :: (lo <= k) && (k < hi) ==> acc(ar[k].Ref__Integer_value, wildcard))
 {
   (i < hi ? ar[i].Ref__Integer_value + sum_array(i + 1, lo, hi, ar) : 0)
@@ -22,6 +23,7 @@ function sum_square(i: Int, lo: Int, hi: Int, step: Int, min: Int, max: Int, ar:
   requires (0 <= lo) && (lo <= hi) && (hi <= step) && (step > 0)
   requires (0 <= min) && (min <= i) && (i <= max)
   requires max <= |ar|
+  requires forall k:Int, j:Int :: k >= 0 && k < |ar| && j >= 0 && j < |ar| && k != j ==> ar[k] != ar[j]
   requires (forall k: Int :: (min <= k) && (k < max) && (lo <= k % step) && (k % step < hi) ==> acc(ar[k].Ref__Integer_value, wildcard))
 {
   (i < max ? ((lo <= i % step) && (i % step < hi) ? ar[i].Ref__Integer_value : 0) + sum_square(i + 1, lo, hi, step, min, max, ar) : 0)
@@ -31,6 +33,7 @@ function count_square(i: Int, lo: Int, hi: Int, step: Int, min: Int, max: Int, a
   requires (0 <= lo) && (lo <= hi) && (hi <= step) && (step > 0)
   requires (0 <= min) && (min <= i) && (i <= max)
   requires max <= |ar|
+  requires forall k:Int, j:Int :: k >= 0 && k < |ar| && j >= 0 && j < |ar| && k != j ==> ar[k] != ar[j]
   requires (forall k: Int :: (min <= k) && (k < max) && (lo <= k % step) && (k % step < hi) ==> acc(ar[k].Ref__Integer_value, wildcard))
 {
   (i < max ? ((lo <= i % step) && (i % step < hi) && (ar[i].Ref__Integer_value == v) ? 1 : 0) + count_square(i + 1, lo, hi, step, min, max, ar, v) : 0)
@@ -46,6 +49,7 @@ function count_list(i: Int, hi: Int, ar: Seq[Int], v: Int): Int
 function count_array(i: Int, hi: Int, ar: Seq[Ref], v: Int): Int
   requires (0 <= i) && (i <= hi)
   requires hi <= |ar|
+  requires forall k:Int, j:Int :: k >= 0 && k < |ar| && j >= 0 && j < |ar| && k != j ==> ar[k] != ar[j]
   requires (forall k: Int :: (0 <= k) && (k < hi) ==> acc(ar[k].Ref__Integer_value, wildcard))
 {
   (i < hi ? (ar[i].Ref__Integer_value == v ? 1 : 0) + count_array(i + 1, hi, ar, v) : 0)
@@ -54,6 +58,9 @@ function count_array(i: Int, hi: Int, ar: Seq[Ref], v: Int): Int
 method Ref__loop_main_45(diz: Ref, current_thread_id: Int, b: Seq[Ref], a: Seq[Ref], N: Int, c: Seq[Ref])
   requires diz != null
   requires current_thread_id >= 0
+  requires forall k:Int, j:Int :: k >= 0 && k < |a| && j >= 0 && j < |a| && k != j ==> a[k] != a[j]
+  requires forall k:Int, j:Int :: k >= 0 && k < |b| && j >= 0 && j < |b| && k != j ==> b[k] != b[j]
+  requires forall k:Int, j:Int :: k >= 0 && k < |c| && j >= 0 && j < |c| && k != j ==> c[k] != c[j]
   requires N <= |a|
   requires (forall i: Int :: (0 <= i) && (i < N) ==> acc(a[i].Ref__Integer_value, 1 / 2))
   requires N <= |b|
@@ -152,6 +159,9 @@ method Ref__resource_check_S2_S1(diz: Ref, current_thread_id: Int, b: Seq[Ref], 
 method Ref__example(diz: Ref, current_thread_id: Int, a: Seq[Ref], b: Seq[Ref], c: Seq[Ref], N: Int)
   requires diz != null
   requires current_thread_id >= 0
+  requires forall k:Int, j:Int :: k >= 0 && k < |a| && j >= 0 && j < |a| && k != j ==> a[k] != a[j]
+  requires forall k:Int, j:Int :: k >= 0 && k < |b| && j >= 0 && j < |b| && k != j ==> b[k] != b[j]
+  requires forall k:Int, j:Int :: k >= 0 && k < |c| && j >= 0 && j < |c| && k != j ==> c[k] != c[j]
   requires |a| == N
   requires (forall i: Int :: (0 <= i) && (i < N) ==> acc(a[i].Ref__Integer_value, write))
   requires |b| == N

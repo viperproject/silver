@@ -13,7 +13,9 @@ method test(x: Ref, y: Ref, b: Bool, k: Perm) {
 
 predicate Inv(r: Ref) { acc(r.f) }
 
-method test02(s: Seq[Ref], r: Ref) {
+method test02(s: Seq[Ref], r: Ref)
+  requires forall i: Int, j: Int :: { s[i], s[j] } 0 <= i && i < |s| && 0 <= j && j < |s| && i != j ==> s[i] != s[j]
+{
   inhale forall i: Int ::  {s[i]} 0 <= i && i < |s| ==> Inv(s[i])
   inhale Inv(r)
   

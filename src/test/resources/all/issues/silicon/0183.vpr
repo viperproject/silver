@@ -4,7 +4,6 @@
 field v: Int
 
 //:: ExpectedOutput(predicate.not.wellformed:negative.permission)
-//:: MissingOutput(predicate.not.wellformed:negative.permission, /Carbon/issue/380/)
 predicate valid__Cell(self: Ref, rd: Perm) {
   acc(self.v, rd)
 }

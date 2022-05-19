@@ -12,7 +12,7 @@ import org.jgrapht.alg.connectivity.GabowStrongConnectivityInspector
 import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 import org.jgrapht.traverse.TopologicalOrderIterator
 
-import scala.collection.mutable.{Set => MSet}
+import scala.collection.mutable.{Set => MSet, ListBuffer}
 import scala.jdk.CollectionConverters._
 
 /**
@@ -20,7 +20,30 @@ import scala.jdk.CollectionConverters._
  */
 object Functions {
   case class Edge[T](source: T, target: T)
+
   def allSubexpressions(func: Function): Seq[Exp] = func.pres ++ func.posts ++ func.body
+  def allSubexpressionsIncludingUnfoldings(program: Program)(func: Function): Seq[Exp] = {
+    var visitedPredicates = Set[String]()
+    var subexpressions = allSubexpressions(func)
+    var unfoldings = new ListBuffer[Unfolding]
+    unfoldings ++= (subexpressions map (e => e.deepCollect{case u@Unfolding(_, _) => u})).flatten
+    var i = 0
+    while (i < unfoldings.length){
+      val current = unfoldings(i)
+      val name = current.acc.loc.predicateName
+      if (!visitedPredicates.contains(name)){
+        visitedPredicates += name
+        val pred = program.findPredicate(name)
+        if (pred.body.isDefined) {
+          val bodyExp : Exp = pred.body.get
+          subexpressions ++= Seq(bodyExp)
+          unfoldings ++= bodyExp.deepCollect { case u@Unfolding(_, _) => u }
+        }
+      }
+      i += 1
+    }
+    subexpressions
+  }
 
   /** Returns the call graph of a given program (also considering specifications as calls).
     *
@@ -55,16 +78,23 @@ object Functions {
     *
     * Phrased differently, if a function f1 (transitively) calls another function
     * f2, then f2 will have a greater height than f1 (or the same, if f2 in turn
-    * calls f1).
+    * calls f1). If the flag considerUnfoldings is set, calls to f2 in the body of
+    * a predicate that is unfolded by f1 are also taken into account.
     */
-  def heights(program: Program): Map[Function, Int] = {
+  def heights(program: Program, considerUnfoldings: Boolean = false): Map[Function, Int] = {
     val result = collection.mutable.Map[Function, Int]()
 
     /* Compute the call-graph over all functions in the given program.
      * An edge from f1 to f2 denotes that f1 calls f2, either in the function
-     * body or in the specifications.
+     * body or in the specifications. If the flag considerUnfoldings is set,
+     * an edge can also mean that f1 unfolds a predicate in whose body f2
+     * is called.
      */
-    val callGraph = getFunctionCallgraph(program)
+    val callGraph = if (considerUnfoldings){
+      getFunctionCallgraph(program, allSubexpressionsIncludingUnfoldings(program))
+    }else{
+      getFunctionCallgraph(program, allSubexpressions)
+    }
 
 ///* debugging */
 //    val functionVNP = new org.jgrapht.ext.VertexNameProvider[Function] {

@@ -7,6 +7,7 @@ field f: Int
 
 method bfind_orig(S: Seq[Ref], x: Int, p: Perm) returns (index: Int)
   requires p > none && p < write
+  requires forall i: Int, j: Int :: i in [0..|S|) && j in [0..|S|) && i != j ==> S[i] != S[j]
   requires forall i: Int :: {S[i].f} i in [0..|S|)  ==> acc(S[i].f, p)
   requires forall i: Int :: {S[i].f} i in [0..|S|-1)  ==> S[i].f < S[i + 1].f
   ensures forall i: Int :: {S[i].f} i in [0..|S|) ==> acc(S[i].f, p)
@@ -35,6 +36,7 @@ method bfind_orig(S: Seq[Ref], x: Int, p: Perm) returns (index: Int)
 
 method bfind_fixed_ineq(S: Seq[Ref], x: Int, p: Perm) returns (index: Int)
   requires p > none && p < write
+  requires forall i: Int, j: Int :: i in [0..|S|) && j in [0..|S|) && i != j ==> S[i] != S[j]
   requires forall i: Int :: {S[i]} 0 <= i && i < |S| ==> acc(S[i].f, p)
   requires forall i: Int, j: Int :: {S[i], S[j]}
               0 <= i && i < j && j < |S| ==> S[i].f < S[j].f // [FIXED] Global inequalities
@@ -65,6 +67,7 @@ method bfind_fixed_ineq(S: Seq[Ref], x: Int, p: Perm) returns (index: Int)
  */
 method bfind_fixed_seqin(S: Seq[Ref], x: Int, p: Perm) returns (index: Int)
   requires p > none && p < write
+  requires forall i: Int, j: Int :: i in [0..|S|) && j in [0..|S|) && i != j ==> S[i] != S[j]
   requires forall i: Int :: {S[i]} i in [0..|S|) ==> acc(S[i].f, p)
   requires forall i: Int, j: Int :: {S[i], S[j]} i in [0..j) && j in [i..|S|) ==> S[i].f < S[j].f
   ensures forall i: Int :: {S[i]} i in [0..|S|) ==> acc(S[i].f, p)
@@ -94,6 +97,7 @@ method bfind_fixed_seqin(S: Seq[Ref], x: Int, p: Perm) returns (index: Int)
  */
 method bfind_fixed_seqin_heap_dep_triggers(S: Seq[Ref], x: Int, p: Perm) returns (index: Int)
   requires p > none && p < write
+  requires forall i: Int, j: Int :: i in [0..|S|) && j in [0..|S|) && i != j ==> S[i] != S[j]
   requires forall i: Int :: {S[i].f} i in [0..|S|) ==> acc(S[i].f, p)
   requires forall i: Int, j: Int :: {S[i].f, S[j].f} i in [0..j) && j in [i..|S|) ==> S[i].f < S[j].f
   ensures forall i: Int :: {S[i].f} i in [0..|S|) ==> acc(S[i].f, p)

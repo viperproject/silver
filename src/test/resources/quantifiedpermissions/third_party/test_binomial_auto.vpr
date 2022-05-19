@@ -167,6 +167,8 @@ method demo__main_resources_of_1(diz: Ref, current_thread_id: Int, tcount: Int, 
   requires acc(diz.demo__tmp, wildcard)
   requires |diz.demo__tmp| == gsize
   requires gsize > 1
+  requires forall i:Int, j:Int :: i >= 0 && i < |diz.demo__ar| && j >= 0 && j < |diz.demo__ar| && i != j ==> diz.demo__ar[i] != diz.demo__ar[j]
+  requires forall i:Int, j:Int :: i >= 0 && i < |diz.demo__tmp| && j >= 0 && j < |diz.demo__tmp| && i != j ==> diz.demo__tmp[i] != diz.demo__tmp[j]
   requires (forall tid: Int :: (0 <= tid) && (tid < gsize) ==> acc(diz.demo__ar[tid].Ref__Integer_value, write))
   requires (forall tid: Int :: (0 <= tid) && (tid < gsize) ==> acc(diz.demo__tmp[tid].Ref__Integer_value, write))
   ensures tcount == gsize
@@ -193,6 +195,8 @@ method demo__main_resources_of_2(diz: Ref, current_thread_id: Int, tcount: Int, 
   requires acc(diz.demo__tmp, wildcard)
   requires |diz.demo__tmp| == gsize
   requires gsize > 1
+  requires forall i:Int, j:Int :: i >= 0 && i < |diz.demo__ar| && j >= 0 && j < |diz.demo__ar| && i != j ==> diz.demo__ar[i] != diz.demo__ar[j]
+  requires forall i:Int, j:Int :: i >= 0 && i < |diz.demo__tmp| && j >= 0 && j < |diz.demo__tmp| && i != j ==> diz.demo__tmp[i] != diz.demo__tmp[j]
   requires (forall tid: Int :: (0 <= tid) && (tid < gsize) ==> acc(diz.demo__ar[tid].Ref__Integer_value, write))
   requires (forall tid: Int :: (0 <= tid) && (tid < gsize) ==> acc(diz.demo__tmp[tid].Ref__Integer_value, write))
   ensures tcount == gsize
@@ -221,6 +225,8 @@ method demo__main_post_check_1(diz: Ref, current_thread_id: Int, tcount: Int, gs
   requires |diz.demo__ar| == gsize
   requires acc(diz.demo__tmp, wildcard)
   requires |diz.demo__tmp| == gsize
+  requires forall i:Int, j:Int :: i >= 0 && i < |diz.demo__ar| && j >= 0 && j < |diz.demo__ar| && i != j ==> diz.demo__ar[i] != diz.demo__ar[j]
+  requires forall i:Int, j:Int :: i >= 0 && i < |diz.demo__tmp| && j >= 0 && j < |diz.demo__tmp| && i != j ==> diz.demo__tmp[i] != diz.demo__tmp[j]
   requires (forall _x_tid: Int :: (0 <= _x_tid) && (_x_tid < gsize) ==> acc(diz.demo__ar[_x_tid].Ref__Integer_value, write))
   requires (forall _x_tid: Int :: (0 <= _x_tid) && (_x_tid < gsize) ==> acc(diz.demo__tmp[_x_tid].Ref__Integer_value, write))
   requires gsize > 1
@@ -261,6 +267,8 @@ method demo__main_post_check_2(diz: Ref, current_thread_id: Int, tcount: Int, gs
   requires |diz.demo__ar| == gsize
   requires acc(diz.demo__tmp, wildcard)
   requires |diz.demo__tmp| == gsize
+  requires forall i:Int, j:Int :: i >= 0 && i < |diz.demo__ar| && j >= 0 && j < |diz.demo__ar| && i != j ==> diz.demo__ar[i] != diz.demo__ar[j]
+  requires forall i:Int, j:Int :: i >= 0 && i < |diz.demo__tmp| && j >= 0 && j < |diz.demo__tmp| && i != j ==> diz.demo__tmp[i] != diz.demo__tmp[j]
   requires (forall _x_tid: Int :: (0 <= _x_tid) && (_x_tid < gsize) ==> acc(diz.demo__ar[_x_tid].Ref__Integer_value, write))
   requires (forall _x_tid: Int :: (0 <= _x_tid) && (_x_tid < gsize) ==> acc(diz.demo__tmp[_x_tid].Ref__Integer_value, write))
   requires gsize > 1

@@ -11,6 +11,12 @@ domain Matrix {
   function loc(m: Matrix, i: Int, j: Int): Ref
   function width(m: Matrix): Int
   function height(m: Matrix): Int
+
+  axiom loc_inject {
+    forall m: Matrix, i1: Int, i2: Int, j1: Int, j2: Int :: { loc(m, i1, j1), loc(m, i2, j2) }
+		i1 >= 0 && i2 >= 0 && j1 >= 0 && j2 >= 0 && i1 < width(m) && i2 < width(m) && j1 < height(m) && j2 < height(m) && (i1 != i2 || j1 != j2) ==> loc(m, i1, j1) != loc(m, i2, j2)
+  }
+
 }
 
 field val: Int

@@ -7,6 +7,7 @@ field next: Ref
 
 method Bug(nodes: Seq[Ref]) returns ()
   requires  1 < |nodes| && !(null in nodes)
+  requires forall i1: Int, i2: Int :: i1 in [0..|nodes|) && i2 in [0..|nodes|) && i1 != i2 ==> nodes[i1] != nodes[i2]
   requires forall i: Int :: i in [0..|nodes|) ==> acc(nodes[i].next)
   requires forall i: Int :: i in [0..|nodes| - 1) ==> nodes[i].next == nodes[i+1]
 {

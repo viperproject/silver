@@ -7,8 +7,13 @@ field r: Ref
 method m1(xs: Set[Ref]) {
 
     inhale forall x: Ref :: {x.r} x in xs ==> acc(x.r)
+
+    inhale forall x: Ref, y: Ref :: {x.r, y.r} x in xs && y in xs && x != y ==> x.r != y.r
     inhale forall x: Ref :: {x.r.r} x in xs ==> acc(x.r.r)
+
     inhale forall x: Ref :: {x.r.f} x in xs ==> acc(x.r.f)
+
+    inhale forall x: Ref, y: Ref :: {x.r.r, y.r.r} x in xs && y in xs && x != y ==> x.r.r != y.r.r
     inhale forall x: Ref :: {x.r.r.f} x in xs ==> acc(x.r.r.f)
 
     var a: Ref

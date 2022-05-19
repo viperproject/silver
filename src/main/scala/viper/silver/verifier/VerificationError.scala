@@ -23,6 +23,10 @@ sealed trait ModelEntry
 
 sealed trait ValueEntry extends ModelEntry
 
+case object UnspecifiedEntry extends ValueEntry {
+  override def toString: String = "#unspecified"
+}
+
 case class ConstantEntry(value: String) extends ValueEntry {
   override def toString: String = value
 }
@@ -134,7 +138,7 @@ object CounterexampleTransformer {
 
 object Model {
   def apply(modelString: String) : Model = {
-    fastparse.parse(modelString, ModelParser.model(_)) match{
+    fastparse.parse(modelString, ModelParser.model(_)) match {
       case Parsed.Success(model, _) => model
       case failure: Parsed.Failure => throw new Exception(failure.toString)
     }
@@ -154,17 +158,16 @@ trait ErrorMessage {
 trait VerificationError extends AbstractError with ErrorMessage {
   def reason: ErrorReason
   def readableMessage(withId: Boolean = false, withPosition: Boolean = false): String
-  override def readableMessage : String = {
-    val rm : String = readableMessage(false, true)
-    if (counterexample.isDefined){
-      rm + "\n" + counterexample.get.toString
-    }else{
-      rm
-    }
-  }
+  override def readableMessage: String = readableMessage(false, true) + failureContexts.map(e => e.toString).mkString("\n")
   def loggableMessage: String = s"$fullId-$pos" + (if (cached) "-cached" else "")
   def fullId = s"$id:${reason.id}"
-  var counterexample : Option[Counterexample] = None
+  var failureContexts: Seq[FailureContext] = Seq() //TODO: make immutable
+
+}
+
+trait FailureContext {
+  def counterExample: Option[Counterexample]
+  def toString: String
 }
 
 /// used when an error/reason has no sensible node to use
@@ -230,7 +233,7 @@ abstract class AbstractVerificationError extends VerificationError {
     val reasonT = errorT.reason.offendingNode.transformReason(errorT.reason)
 
     val res = errorT.withReason(reasonT)
-    res.counterexample = counterexample
+    res.failureContexts = failureContexts
     res
   }
 
@@ -335,6 +338,7 @@ object errors {
     val id = "exhale.failed"
     val text = "Exhale might fail."
 
+    override def pos = offendingNode.exp.pos
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = ExhaleFailed(offendingNode.asInstanceOf[Exhale], this.reason, this.cached)
     def withReason(r: ErrorReason) = ExhaleFailed(offendingNode, r, cached)
   }
@@ -346,6 +350,7 @@ object errors {
     val id = "inhale.failed"
     val text = "Inhale might fail."
 
+    override def pos = offendingNode.exp.pos
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = InhaleFailed(offendingNode.asInstanceOf[Inhale], this.reason, this.cached)
     def withReason(r: ErrorReason) = InhaleFailed(offendingNode, r, cached)
   }
@@ -379,6 +384,7 @@ object errors {
     val id = "assert.failed"
     val text = "Assert might fail."
 
+    override def pos = offendingNode.exp.pos
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = AssertFailed(offendingNode.asInstanceOf[Assert], this.reason, this.cached)
     def withReason(r: ErrorReason) = AssertFailed(offendingNode, r, cached)
   }

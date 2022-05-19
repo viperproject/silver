@@ -4,7 +4,7 @@
 method test1()
 {
   var m : Map[Int, Bool] := Map()
-  assert |Map()| == 0
+  assert |Map[Int, Bool]()| == 0
   assert |m| == 0
   
   var d : Set[Int] := domain(m)
@@ -64,6 +64,7 @@ method test5(m : Map[Int, Map[Int, Bool]])
 field val : Int
 
 method test6(m : Map[Int, Ref], x : Int)
+  requires forall i: Int, j: Int :: { i in m, j in m } i in m && j in m && i != j ==> m[i] != m[j]
   requires forall k : Int :: { k in m } k in m ==> acc(m[k].val)
 {
   if (x in m)

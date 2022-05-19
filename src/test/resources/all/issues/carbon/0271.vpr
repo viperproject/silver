@@ -1,12 +1,14 @@
 predicate P(self: Ref)
 
 function foo(s: Seq[Ref]): Bool 
+	requires forall i:Int, j:Int :: i >= 0 && i < |s| && j >= 0 && j < |s| && i != j ==> s[i] != s[j]
     requires forall i: Int :: { s[i] } 0 <= i && i < |s| ==> P(s[i])
 {
     true
 }
 
 method clientFoo(s: Seq[Ref]) {
+	inhale forall i:Int, j:Int :: i >= 0 && i < |s| && j >= 0 && j < |s| && i != j ==> s[i] != s[j]
     inhale forall i: Int :: { s[i] } 0 <= i && i < |s| ==> P(s[i])
     inhale foo(s)
 }

@@ -45,8 +45,12 @@ field f:Int
   {}
 
   method m4(xs:Seq[Ref])
-  requires forall x:Ref :: x in xs ==> acc(x.f) && acc(pred2(x.f))
-  ensures forall x:Ref :: x in xs ==> acc(x.f) && acc(pred2(x.f))
+  requires forall x:Ref :: x in xs ==> acc(x.f) 
+  requires forall ix: Ref, jx: Ref :: ix in xs && jx in xs && ix != jx ==> ix.f != jx.f // xs is injective
+  requires forall x:Ref :: x in xs ==> acc(pred2(x.f))
+  ensures forall x:Ref :: x in xs ==> acc(x.f)
+  ensures forall ix: Ref, jx: Ref :: ix in xs && jx in xs && ix != jx ==> ix.f != jx.f // xs is injective
+  ensures forall x:Ref :: x in xs ==> acc(pred2(x.f))
   {}
 
   method m5(xs:Seq[Ref])

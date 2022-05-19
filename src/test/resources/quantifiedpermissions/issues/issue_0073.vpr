@@ -14,7 +14,9 @@ field f: Int
 // this test case checks the power of the axioms for count
 // (including the axioms for the empty and the single element sequence)
 method m(s: Seq[Ref])
-  requires |s|>4 && forall i:Int :: i in [0..4) ==> acc(s[i].f, 25 / 100)
+  requires |s|>4
+  requires forall i1: Int, i2: Int :: (i1 in [0..4) && i2 in [0..4) && i1 != i2) ==> s[i1] != s[i2]
+  requires forall i:Int :: i in [0..4) ==> acc(s[i].f, 25 / 100)
   requires s[0] == s[1] && s[1] == s[2] && s[2] == s[3]
 {
   assert false
@@ -26,7 +28,7 @@ method n(s: Seq[Ref])
   requires |s| > 4
   requires s[0] == s[1] && s[1] == s[2] && s[2] == s[3]
   requires acc(s[0].f, write)
-  //:: ExpectedOutput(postcondition.violated:receiver.not.injective)
+  //:: ExpectedOutput(not.wellformed:receiver.not.injective)
   ensures forall i1:Int :: i1 in [0..4) ==> acc(s[i1].f, 25 / 100)
 {
 }
@@ -35,6 +37,7 @@ method n(s: Seq[Ref])
 method n1(s: Seq[Ref])
   requires |s| > 4
   requires s[0] == s[1] && s[1] == s[2] && s[2] == s[3]
+  requires forall i1: Int, i2: Int :: (i1 in [0..2) && i2 in [0..2) && i1 != i2) ==> s[i1] != s[i2]
   requires forall i2:Int :: i2 in [0..2) ==> acc(s[i2].f, 50 / 100)
   ensures forall i3:Int :: i3 in [0..4) ==> acc(s[i3].f, 25 / 100)
 {

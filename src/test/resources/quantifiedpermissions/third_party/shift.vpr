@@ -10,6 +10,7 @@ field Integer_value: Int
 
 method test1(len: Int, ar: Seq[Ref])
   requires |ar| == len
+  requires forall i: Int, j: Int :: 0 <= i && i < |ar| && 0 <= j && j < |ar| && i != j ==> ar[i] != ar[j]
   requires (forall i: Int :: (i in [0..len)) ==> acc(ar[i].Integer_value, 1 / 2))
   requires (forall i: Int :: (0 <= i) && (i < len) ==> (ar[i].Integer_value == 0))
 {
@@ -20,6 +21,7 @@ method test1(len: Int, ar: Seq[Ref])
 
 method test2(len: Int, ar: Seq[Ref])
   requires |ar| == len
+  requires forall i: Int, j: Int :: 0 <= i && i < |ar| && 0 <= j && j < |ar| && i != j ==> ar[i] != ar[j]
   requires (forall i: Int :: (i in [0..len)) ==> acc(ar[i].Integer_value, 1 / 2))
   requires (forall i: Int :: (0 <= i) && (i < len) ==> (ar[i].Integer_value == 0))
 {

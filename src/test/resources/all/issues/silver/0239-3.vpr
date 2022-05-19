@@ -8,7 +8,8 @@ define validIndex(a, i) (
 )
 
 define HeapArray(array) (
-    forall i: Int :: { array[i] } validIndex(array, i) ==> (array[i] != null && acc(array[i].value))
+    (forall i: Int, j: Int :: { array[i], array[j] } validIndex(array, i) && validIndex(array, j) && i != j ==> array[i] != array[j]) &&
+    (forall i: Int :: { array[i] } validIndex(array, i) ==> (array[i] != null && acc(array[i].value)))
 )
 
 method foo(tree: Ref, leftArray: Seq[Ref], rightArray: Seq[Ref], array: Seq[Ref])

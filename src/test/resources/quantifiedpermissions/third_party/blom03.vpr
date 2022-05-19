@@ -8,6 +8,7 @@ field val : Int
 /* the function previously failed to verify */
 function vals(p: Perm, ar: Seq[Ref]): Seq[Int]
   requires p > none
+  requires forall i: Int, j: Int :: 0 <= i && i < |ar| && 0 <= j && j < |ar| && i != j ==> ar[i] != ar[j]
   requires (forall i: Int :: (0 <= i) && (i < |ar|) ==> acc(ar[i].val, p))
   ensures |result| == |ar|
   // :: UnexpectedOutput(not.wellformed:insufficient.permission, /carbon/issue/193/)
@@ -15,12 +16,14 @@ function vals(p: Perm, ar: Seq[Ref]): Seq[Int]
   
 method vals_meth(p: Perm, ar: Seq[Ref]) returns (res: Seq[Int])
   requires p > none
+  requires forall i: Int, j: Int :: 0 <= i && i < |ar| && 0 <= j && j < |ar| && i != j ==> ar[i] != ar[j]
   requires (forall i: Int :: (0 <= i) && (i < |ar|) ==> acc(ar[i].val, p))
   ensures |res| == |ar|
   // :: UnexpectedOutput(not.wellformed:insufficient.permission, /carbon/issue/193/)
   ensures (forall i: Int :: (0 <= i) && (i < |ar|) ==> (old(ar[i].val) == res[i]))
 
 method Problem__problem(ar: Seq[Ref])
+  requires forall i: Int, j: Int :: 0 <= i && i < |ar| && 0 <= j && j < |ar| && i != j ==> ar[i] != ar[j]
   requires (forall i: Int :: (0 <= i) && (i < |ar|) ==> acc(ar[i].val, write))
 {
   var xs : Seq[Int]

@@ -2,6 +2,9 @@ domain VCTArray[CT] {
 
   function loc(a: VCTArray[CT], i: Int): CT
 
+  axiom loc_inject {
+    forall a: VCTArray[CT], i: Int, j: Int :: { loc(a, i), loc(a, j) } i >= 0 && j >= 0 && i != j ==> loc(a, i) != loc(a, j)
+  }
 }
 
 field bool_prop: Bool
@@ -14,6 +17,7 @@ function alwaysTrue(v: Ref): Bool
 method some_method(trees: VCTArray[Ref], g: Int)
   requires 0 < g
   requires (forall i: Int :: {loc(trees, i).item} 0 <= i && i < g ==> acc(loc(trees, i).item, wildcard))
+  requires (forall i: Int, j: Int :: {loc(trees, i).item, loc(trees, j).item} 0 <= i && i < j && j < g ==> loc(trees, i).item != loc(trees, j).item)
   requires (forall i: Int :: {loc(trees, i).item.bool_prop} 0 <= i && i < g ==> acc(loc(trees, i).item.bool_prop, wildcard))
 {
   // assert alwaysTrue(loc(trees, 0).item)

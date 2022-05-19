@@ -21,6 +21,7 @@ method main_main(this: Ref, tcount: Int, gsize: Int, tid: Int, gid: Int, lid: In
   requires |this.dst| == gsize
   requires 4 <= gsize
   requires gsize % 2 == 0
+  requires forall i: Int, j: Int :: 0 <= i && i < gsize && 0 <= j && j < gsize && i != j ==> this.src[i] != this.src[j]
   requires (forall i: Int :: (i in [0..gsize)) ==> acc(this.src[i].Integer_value, 1 / gsize))
   requires acc(this.dst[tid].Integer_value, write)
   ensures 0 <= tid
@@ -34,9 +35,9 @@ method main_main(this: Ref, tcount: Int, gsize: Int, tid: Int, gid: Int, lid: In
   ensures |this.dst| == gsize
   ensures 4 <= gsize
   ensures gsize % 2 == 0
-  ensures (forall i: Int :: (i in [0..gsize)) ==> acc(this.src[i].Integer_value, 1 / gsize))
   ensures this.src == old(this.src)
   ensures this.dst == old(this.dst)
+  ensures (forall i: Int :: (i in [0..gsize)) ==> acc(this.src[i].Integer_value, 1 / gsize))
   ensures (tid == 0) ==> acc(this.dst[0].Integer_value, write)
   ensures (tid == 0 ? (forall i: Int :: (0 <= i) && (i < tcount) ==> (this.dst[0].Integer_value >= this.src[i].Integer_value)) : true)
 {
@@ -66,6 +67,7 @@ method main_main(this: Ref, tcount: Int, gsize: Int, tid: Int, gid: Int, lid: In
       invariant 4 <= gsize
       invariant gsize % 2 == 0
       invariant offset == (tid == 0 ? 0 : half)
+      invariant forall i: Int, j: Int :: 0 <= i && i < gsize && 0 <= j && j < gsize && i != j ==> this.src[i] != this.src[j]
       invariant (forall i: Int :: (i in [0..gsize)) ==> acc(this.src[i].Integer_value, 1 / gsize))
       invariant false || (__last_barrier == 0)
       invariant (__last_barrier == 1) ==> ((tid == 0) ==> acc(this.dst[0].Integer_value, write)) && ((tid == 0) ==> acc(this.dst[1].Integer_value, write))
@@ -106,6 +108,7 @@ method main_barrier(this: Ref, tcount: Int, gsize: Int, tid: Int, gid: Int, lid:
   requires |this.dst| == gsize
   requires 4 <= gsize
   requires gsize % 2 == 0
+  requires forall i: Int, j: Int :: 0 <= i && i < gsize && 0 <= j && j < gsize && i != j ==> this.src[i] != this.src[j]
   requires (forall i: Int :: (i in [0..gsize)) ==> acc(this.src[i].Integer_value, 1 / gsize))
   requires (last_barrier == 1) ==> ((tid == 0) ==> acc(this.dst[0].Integer_value, write)) && ((tid == 0) ==> acc(this.dst[1].Integer_value, write))
   requires (last_barrier == 0) ==> acc(this.dst[tid].Integer_value, write)
@@ -123,9 +126,9 @@ method main_barrier(this: Ref, tcount: Int, gsize: Int, tid: Int, gid: Int, lid:
   ensures |this.dst| == gsize
   ensures 4 <= gsize
   ensures gsize % 2 == 0
-  ensures (forall i: Int :: (i in [0..gsize)) ==> acc(this.src[i].Integer_value, 1 / gsize))
   ensures this.src == old(this.src)
   ensures this.dst == old(this.dst)
+  ensures (forall i: Int :: (i in [0..gsize)) ==> acc(this.src[i].Integer_value, 1 / gsize))
   ensures (sys__result == 1) ==> ((tid == 0) ==> acc(this.dst[0].Integer_value, write)) && ((tid == 0) ==> acc(this.dst[1].Integer_value, write))
   ensures (sys__result == 0) ==> acc(this.dst[tid].Integer_value, write)
   ensures sys__result == this_barrier
@@ -144,7 +147,9 @@ method main_resources_of_1(this: Ref, tcount: Int, gsize: Int, gid: Int, k: Int,
   requires |this.dst| == gsize
   requires 4 <= gsize
   requires gsize % 2 == 0
+  requires forall i: Int, j: Int :: 0 <= i && i < gsize && 0 <= j && j < gsize && i != j ==> this.src[i] != this.src[j]
   requires (forall i: Int :: (i in [0..gsize)) ==> acc(this.src[i].Integer_value, 1 / gsize))
+  requires forall i: Int, j: Int :: 0 <= i && i < gsize && 0 <= j && j < gsize && i != j ==> this.dst[i] != this.dst[j]
   requires (forall tid: Int :: (tid in [gid * gsize..gsize)) ==> acc(this.dst[tid].Integer_value, write))
   ensures tcount == gsize
   ensures gid == 0
@@ -154,9 +159,9 @@ method main_resources_of_1(this: Ref, tcount: Int, gsize: Int, gid: Int, k: Int,
   ensures |this.dst| == gsize
   ensures 4 <= gsize
   ensures gsize % 2 == 0
-  ensures (forall i: Int :: (i in [0..gsize)) ==> acc(this.src[i].Integer_value, 1 / gsize))
   ensures this.src == old(this.src)
   ensures this.dst == old(this.dst)
+  ensures (forall i: Int :: (i in [0..gsize)) ==> acc(this.src[i].Integer_value, 1 / gsize))
   ensures (gid * gsize <= 0) && (0 < gsize) ==> acc(this.dst[0].Integer_value, write)
   ensures (gid * gsize <= 0) && (0 < gsize) ==> acc(this.dst[1].Integer_value, write)
 {
@@ -174,7 +179,9 @@ method main_post_check_1(this: Ref, tcount: Int, gsize: Int, tid: Int, gid: Int,
   requires |this.dst| == gsize
   requires 4 <= gsize
   requires gsize % 2 == 0
+  requires forall i: Int, j: Int :: 0 <= i && i < gsize && 0 <= j && j < gsize && i != j ==> this.src[i] != this.src[j]
   requires (forall i: Int :: (i in [0..gsize)) ==> acc(this.src[i].Integer_value, 1 / gsize))
+  requires forall i: Int, j: Int :: 0 <= i && i < gsize && 0 <= j && j < gsize && i != j ==> this.dst[i] != this.dst[j]
   requires (forall _x_tid: Int :: (_x_tid in [0..gsize)) ==> acc(this.dst[_x_tid].Integer_value, write))
   requires half + half == gsize
   requires (0 <= 0) && (0 < gsize) ==> (forall i: Int :: (0 <= i) && (i < half) ==> (this.dst[0].Integer_value >= this.src[i].Integer_value))
@@ -190,9 +197,9 @@ method main_post_check_1(this: Ref, tcount: Int, gsize: Int, tid: Int, gid: Int,
   ensures |this.dst| == gsize
   ensures 4 <= gsize
   ensures gsize % 2 == 0
-  ensures (forall i: Int :: (i in [0..gsize)) ==> acc(this.src[i].Integer_value, 1 / gsize))
   ensures this.src == old(this.src)
   ensures this.dst == old(this.dst)
+  ensures (forall i: Int :: (i in [0..gsize)) ==> acc(this.src[i].Integer_value, 1 / gsize))
   ensures (tid == 0) ==> acc(this.dst[0].Integer_value, write)
   ensures (tid == 0) ==> acc(this.dst[1].Integer_value, write)
   ensures (tid == 0) ==> (forall i: Int :: (0 <= i) && (i < half) ==> (this.dst[0].Integer_value >= this.src[i].Integer_value))
