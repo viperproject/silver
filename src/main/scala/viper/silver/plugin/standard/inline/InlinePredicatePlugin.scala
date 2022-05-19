@@ -45,6 +45,9 @@ class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate
 
   override def beforeVerify(input: Program): Program = {
     val annotatedPredIds = this.annotatedPredIds
+    if(annotatedPredIds.isEmpty) {
+      return input
+    }
     val (loopBreakers, topoOrder) = findLoopBreakersTopo(annotatedPredIds, input)
     val cond = { pred: String =>
       input.findPredicate(pred).body.nonEmpty &&
@@ -53,11 +56,8 @@ class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate
     }
     val (inlinePredsUnordered, otherPreds) = input.predicates.partition(p => cond(p.name))
     val inlinePreds = topoOrder.map(name => inlinePredsUnordered.find(_.name == name).get)
-    if(inlinePreds.isEmpty) {
-      return input
-    }
-    val res = rewriteProgram(input.copy(predicates = otherPreds)(input.pos, input.info, input.errT), inlinePreds)
-    print(res)
+    val res = rewriteProgram(input.copy(predicates = otherPreds)(input.pos, input.info, input.errT), inlinePreds, assertFolds = false)
+    //print(res)
     res
   }
 }
