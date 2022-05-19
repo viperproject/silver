@@ -116,6 +116,6 @@ object CacheHelper {
     CacheHelper.buildHash(node)
   }
 
-  implicit def domainFnOrdering: Ordering[DomainFunc] = Ordering.by(_.name)
-  implicit def domainAxOrdering: Ordering[DomainAxiom] = Ordering.by(ax => FastPrettyPrinter.pretty(ax.exp))
+  implicit def domainFnOrdering: Ordering[DomainFunc] = Ordering.by(FastPrettyPrinter.pretty(_))
+  implicit def domainAxOrdering: Ordering[DomainAxiom] = Ordering.by(FastPrettyPrinter.pretty(_))
 }
