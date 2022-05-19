@@ -5,6 +5,7 @@ import viper.silver.ast.Program
 import viper.silver.parser.FastParser._
 import viper.silver.parser._
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
+import viper.silver.verifier.{AbstractVerificationError, Failure, Success, VerificationResult}
 
 class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate
   with InlineRewrite
@@ -59,5 +60,17 @@ class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate
     val res = rewriteProgram(input.copy(predicates = otherPreds)(input.pos, input.info, input.errT), inlinePreds, assertFolds = false)
     //print(res)
     res
+  }
+
+  // Transform all errors
+  override def mapVerificationResult(input: VerificationResult): VerificationResult = {
+    input match {
+      case Success => input
+      case Failure(errors) =>
+        Failure(errors.map {
+          case e: AbstractVerificationError => e.transformedError()
+          case oth => oth
+        })
+    }
   }
 }
