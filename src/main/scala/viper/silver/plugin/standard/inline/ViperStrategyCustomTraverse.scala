@@ -15,7 +15,7 @@ object ViperStrategyCustomTraverse {
 }
 
 
-// Copy of viper.silver.ast.utility.rewriter with added method
+// Copy of viper.silver.ast.utility.rewriter with added method to work around transformer being protected
 class ContextCustom[N <: Rewritable, CUSTOM](val c: CUSTOM, override protected val transformer: StrategyInterface[N]) extends SimpleContext[N](transformer) {
 
   // Perform the custom update part of the update
