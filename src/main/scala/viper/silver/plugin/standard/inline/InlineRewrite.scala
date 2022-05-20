@@ -3,7 +3,7 @@ package viper.silver.plugin.standard.inline
 import viper.silver.ast._
 import viper.silver.ast.utility.Permissions.multiplyExpByPerm
 import viper.silver.ast.utility.Simplifier.simplify
-import viper.silver.ast.utility.ViperStrategy
+import viper.silver.ast.utility.{QuantifiedPermissions, ViperStrategy}
 import viper.silver.plugin.standard.inline.WrapPred._
 import viper.silver.verifier.errors._
 
@@ -47,6 +47,16 @@ trait InlineRewrite {
         } else {
           (nop, ctxt)
         }
+      // Ugly hack needed since foralls are desugared before we get a chance to run
+      case (fa@Forall(_, _, exp), ctxt, recur) =>
+        val fa2 = fa.copy(exp = recur(exp).asInstanceOf[Exp])(fa.pos, fa.info, fa.errT)
+        val fa3 = if (fa == fa2) {
+          fa
+        } else {
+          val desugaredForalls = QuantifiedPermissions.desugarSourceQuantifiedPermissionSyntax(fa2)
+          desugaredForalls.tail.foldLeft(desugaredForalls.head: Exp)((conjuncts, forall) => And(conjuncts, forall)(fa2.pos, fa2.info, fa2.errT))
+        }
+        (fa3, ctxt)
       case (scope: Scope, ctxt, _) =>
         (scope, ctxt ++ scope.scopedDecls.map(_.name).toSet)
     }, Set())
