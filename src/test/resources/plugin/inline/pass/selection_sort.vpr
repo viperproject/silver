@@ -1,6 +1,7 @@
 field val: Int
 
-predicate arr(a: Seq[Ref]) {
+inline predicate arr(a: Seq[Ref]) {
+    (forall i: Int, j: Int :: {a[i], a[j]} (0 <= i && i < |a| && 0 <= j && j < |a| ==> a[i] != a[j])) &&
     (forall i: Int :: { a[i] } (0 <= i && i < |a| ==> acc(a[i].val)))
 }
 
