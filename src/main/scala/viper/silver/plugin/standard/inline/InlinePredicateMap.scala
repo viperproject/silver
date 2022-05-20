@@ -1,7 +1,7 @@
 package viper.silver.plugin.standard.inline
 
 import viper.silver.ast.utility.Expressions
-import viper.silver.ast.{Bool, ErrorTrafo, Exp, FuncApp, Function, Info, Let, LocalVarDecl, Position, Predicate, PredicateAccessPredicate, ReTrafo}
+import viper.silver.ast.{Bool, ErrorTrafo, Exp, FuncApp, Function, Info, Let, LocalVarDecl, Node, Position, Predicate, PredicateAccessPredicate, ReTrafo}
 import viper.silver.plugin.standard.inline.WrapPred._
 import viper.silver.verifier.reasons.InsufficientPermission
 
@@ -9,14 +9,16 @@ import scala.collection.mutable
 
 case class InlinePredicateMap(private val data: mutable.Map[String, (Seq[LocalVarDecl], Exp)] = mutable.Map()) extends AnyVal {
 
-  def predicateBodyNoErrT(predAcc: PredicateAccessPredicate, scope: Set[String]): Exp = {
+  def predicateBodyNoErrT(predAcc: PredicateAccessPredicate, scope: Set[String], recur: Node => Node): Exp = {
     val predicate = data(predAcc.loc.predicateName)
-    val res = Expressions.instantiateVariables(predicate._2, predicate._1, predAcc.loc.args.prepended(predAcc.perm), scope)
+    val args = predAcc.loc.args.prepended(predAcc.perm)
+    val args2 = args.map(recur(_).asInstanceOf[Exp])
+    val res = Expressions.instantiateVariables(predicate._2, predicate._1, args2, scope)
     res
   }
 
-  def predicateBody(predAcc: PredicateAccessPredicate, scope: Set[String]): Exp = {
-    val res: Exp = predicateBodyNoErrT(predAcc, scope)
+  def predicateBody(predAcc: PredicateAccessPredicate, scope: Set[String], recur: Node => Node): Exp = {
+    val res: Exp = predicateBodyNoErrT(predAcc, scope, recur)
     val errT = ReTrafo{_ => InsufficientPermission(predAcc.loc)}
     res.withMeta(res.pos, res.info, errT)
   }

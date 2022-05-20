@@ -17,7 +17,7 @@ class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate
 
   // like viper.silver.parser.FastParser.predicateDecl but the body can't be empty
   def predicateDeclBody[_: P]: P[PPredicate] = FP(keyword("predicate") ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ "{" ~ exp ~ "}").map {
-    case (_, (_, _, a, b, c)) =>
+    case (_, (a, b, c)) =>
       PPredicate(a, b, Some(c))(a.pos)
   }
 
@@ -57,8 +57,8 @@ class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate
     }
     val (inlinePredsUnordered, otherPreds) = input.predicates.partition(p => cond(p.name))
     val inlinePreds = topoOrder.map(name => inlinePredsUnordered.find(_.name == name).get)
-    val res = rewriteProgram(input.copy(predicates = otherPreds)(input.pos, input.info, input.errT), inlinePreds, assertFolds = false)
-    //print(res)
+    val res = rewriteProgram(input.copy(predicates = otherPreds)(input.pos, input.info, input.errT), inlinePreds, assertFolds = true)
+    print(res)
     res
   }
 
