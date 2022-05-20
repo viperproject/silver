@@ -1,7 +1,7 @@
 package viper.silver.plugin.standard.inline
 
 import viper.silver.ast.utility.Expressions
-import viper.silver.ast.{Bool, ErrorTrafo, Exp, FuncApp, Function, Info, Let, LocalVarDecl, Node, Position, Predicate, PredicateAccessPredicate, ReTrafo}
+import viper.silver.ast.{And, Bool, ErrorTrafo, Exp, FuncApp, Function, Implies, Info, Let, LocalVarDecl, Node, Position, Predicate, PredicateAccessPredicate, ReTrafo}
 import viper.silver.plugin.standard.inline.WrapPred._
 import viper.silver.verifier.reasons.InsufficientPermission
 
@@ -20,7 +20,13 @@ case class InlinePredicateMap(private val data: mutable.Map[String, (Seq[LocalVa
   def predicateBody(predAcc: PredicateAccessPredicate, scope: Set[String], recur: Node => Node): Exp = {
     val res: Exp = predicateBodyNoErrT(predAcc, scope, recur)
     val errT = ReTrafo{_ => InsufficientPermission(predAcc.loc)}
-    res.withMeta(predAcc.pos, predAcc.info, errT)
+    embedErrT(res.withMeta(predAcc.meta), errT)
+  }
+
+  def embedErrT(exp: Exp, errT: ReTrafo): Exp = exp match {
+    case And(l, r) => And(embedErrT(l, errT), embedErrT(r, errT))(exp.pos, exp.info, errT)
+    case Implies(l, r) => Implies(l, embedErrT(r, errT))(exp.pos, exp.info, errT)
+    case exp => exp.withMeta(exp.pos, exp.info, errT)
   }
 
   def assertingIn(predAcc: PredicateAccessPredicate, inner: Exp, dummyName: String)(pos: Position, info: Info, errT: ErrorTrafo): Exp = {
