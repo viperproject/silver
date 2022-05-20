@@ -20,7 +20,7 @@ case class InlinePredicateMap(private val data: mutable.Map[String, (Seq[LocalVa
   def predicateBody(predAcc: PredicateAccessPredicate, scope: Set[String], recur: Node => Node): Exp = {
     val res: Exp = predicateBodyNoErrT(predAcc, scope, recur)
     val errT = ReTrafo{_ => InsufficientPermission(predAcc.loc)}
-    res.withMeta(res.pos, res.info, errT)
+    res.withMeta(predAcc.pos, predAcc.info, errT)
   }
 
   def assertingIn(predAcc: PredicateAccessPredicate, inner: Exp, dummyName: String)(pos: Position, info: Info, errT: ErrorTrafo): Exp = {

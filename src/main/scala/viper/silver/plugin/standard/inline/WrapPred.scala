@@ -18,11 +18,11 @@ object WrapPred {
     PermGeCmp(perm, NoPerm()())(errT = errT)
   }
 
-  def wrapPred(expandedExpr: Exp, perm: Exp, knowPositive: LocalVar => Boolean = _ => false): Exp = {
+  def wrapPred(exp: Exp, perm: Exp, knowPositive: LocalVar => Boolean = _ => false): Exp = {
     if (isPositive(perm, knowPositive)) {
-      return expandedExpr
+      return exp
     }
-    And(checkNonNegative(perm), Implies(PermGtCmp(perm, NoPerm()())(), expandedExpr)(errT = expandedExpr.errT))()
+    And(checkNonNegative(perm), Implies(PermGtCmp(perm, NoPerm()())(), exp)(errT=exp.errT))(exp.pos, exp.info, exp.errT)
   }
   def wrapPredUnfold(expandedExpr: Exp, perm: Exp, knowPositive: LocalVar => Boolean = _ => false): Exp = wrapPred(expandedExpr, perm, knowPositive)
   def wrapPredFold(expandedExpr: Exp, perm: Exp, knowPositive: LocalVar => Boolean = _ => false): Exp = {
