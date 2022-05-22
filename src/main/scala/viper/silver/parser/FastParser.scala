@@ -756,7 +756,7 @@ object FastParser {
     // maps
     "Map", "range",
     // prover hint expressions
-    "unfolding", "in", "applying",
+    "unfolding", "in", "applying", "asserting",
     // old expression
     "old", "lhs",
     // other expressions
@@ -771,7 +771,7 @@ object FastParser {
 
   def atom(implicit ctx : P[_]) : P[PExp] = P(ParserExtension.newExpAtStart(ctx) | integer | booltrue | boolfalse | nul | old
     | result | unExp
-    | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | applying
+    | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | applying | asserting
     | setTypedEmpty | explicitSetNonEmpty | multiSetTypedEmpty | explicitMultisetNonEmpty | seqTypedEmpty
     // | seqLength | explicitSeqNonEmpty | seqRange | fapp | typedFapp | idnuse | ParserExtension.newExpAtEnd(ctx))
     | size | explicitSeqNonEmpty | seqRange
@@ -1155,6 +1155,8 @@ object FastParser {
   }
 
   def applying[_: P]: P[PExp] = FP(keyword("applying") ~/ "(" ~ magicWandExp ~ ")" ~ "in" ~ exp).map { case (pos, (a, b)) => PApplying(a, b)(pos) }
+
+  def asserting[_: P]: P[PExp] = FP(keyword("asserting") ~/ "(" ~ exp ~ ")" ~ "in" ~ exp).map { case (pos, (a, b)) => PAsserting(a, b)(pos) }
 
   def programDecl(implicit ctx : P[_]) : P[PProgram] = P((ParserExtension.newDeclAtStart(ctx) | preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl | ParserExtension.newDeclAtEnd(ctx)).rep).map {
     decls => {

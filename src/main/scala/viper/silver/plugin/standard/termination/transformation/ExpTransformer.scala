@@ -179,6 +179,7 @@ trait ExpTransformer extends ErrorReporter {
     case Unfolding(_, body) => Seq(body)
     case _: AccessPredicate | _: MagicWand => Nil
     case Applying(_, b) => Seq(b)
+    case Asserting(_, b) => Seq(b)
     case Forall(_, _, exp) => Seq(exp)
   }
 

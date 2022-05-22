@@ -729,6 +729,8 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       parens(text("unfolding") <+> show(acc) <+> "in" <+> show(exp))
     case Applying(wand, exp) =>
       parens(text("applying") <+> show(wand) <+> "in" <+> show(exp))
+    case Asserting(assertion, exp) =>
+      parens(text("asserting") <+> parens(show(assertion)) <+> "in" <+> show(exp))
     case Old(exp) =>
       text("old") <> parens(show(exp))
     case LabelledOld(exp,label) =>

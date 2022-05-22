@@ -203,7 +203,8 @@ object Consistency {
 
   def noGhostOperations(n: Node) = !n.existsDefined {
     case u: Unfolding if !u.isPure =>
-    case a: Applying if !a.isPure =>
+    case ap: Applying if !ap.isPure =>
+    case a: Asserting if !a.isPure =>
   }
 
   /** Returns true iff the given expression is a valid trigger. */

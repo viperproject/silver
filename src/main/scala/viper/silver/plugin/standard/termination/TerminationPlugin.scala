@@ -8,7 +8,7 @@ package viper.silver.plugin.standard.termination
 
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.{SimpleContext, Strategy, StrategyBuilder}
-import viper.silver.ast.{Applying, Assert, CondExp, CurrentPerm, Exp, Function, InhaleExhaleExp, MagicWand, Method, Node, Program, Unfolding, While}
+import viper.silver.ast.{Applying, Assert, Asserting, CondExp, CurrentPerm, Exp, Function, InhaleExhaleExp, MagicWand, Method, Node, Program, Unfolding, While}
 import viper.silver.parser.FastParser._
 import viper.silver.parser._
 import viper.silver.plugin.standard.predicateinstance.PPredicateInstance
@@ -235,6 +235,7 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
     case CondExp(_, e1, e2) => Seq(e1, e2)
     case Applying(_, exp) => Seq(exp)
     case Unfolding(_, exp) => Seq(exp)
+    case Asserting(_, exp) => Seq(exp)
     case CurrentPerm(_) => Nil
   })
 }
