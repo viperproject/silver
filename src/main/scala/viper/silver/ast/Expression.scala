@@ -460,21 +460,21 @@ case class CondExp(cond: Exp, thn: Exp, els: Exp)(val pos: Position = NoPosition
 }
 
 // --- Prover hint expressions
-
-case class Unfolding(acc: PredicateAccessPredicate, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp {
+/** Prover hint expressions. eg unfolding in */
+sealed trait HintExp extends Exp {
+  val body: Exp
   override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(body)
-  lazy val typ = body.typ
+  lazy val typ: Type = body.typ
 }
 
-case class Applying(wand: MagicWand, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp {
+case class Unfolding(acc: PredicateAccessPredicate, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends HintExp {
+}
+
+case class Applying(wand: MagicWand, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends HintExp {
   override lazy val check : Seq[ConsistencyError] = (if(!(wand isSubtype Wand)) Seq(ConsistencyError(s"Expected wand but found ${wand.typ} ($wand)", wand.pos)) else Seq()) ++ Consistency.checkPure(body)
-  lazy val typ = body.typ
 }
 
-case class Asserting(assertion: Exp, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp {
-  override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(body)
-  lazy val typ = body.typ
-}
+case class Asserting(assertion: Exp, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends HintExp {}
 
 // --- Old expressions
 
