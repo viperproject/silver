@@ -9,11 +9,7 @@ import viper.silver.verifier.errors._
 
 trait InlineRewrite {
 
-  def poly_recur[X <: Node](x: X)(implicit recur: Node => Node): X = {
-    recur(x).asInstanceOf[X]
-  }
-
-  def rewriteProgram(program: Program, inlinePreds: Seq[Predicate], assertFolds: Boolean): Program = {
+  def rewriteProgram(program: Program, inlinePreds: Seq[Predicate], assertFolds: Boolean, useAssertingIn: Boolean): Program = {
     val predMap = InlinePredicateMap()
     val permDecl = LocalVarDecl("__perm__", Perm)()
     val permVar = permDecl.localVar
@@ -27,11 +23,15 @@ trait InlineRewrite {
     val strategy = ViperStrategyCustomTraverse.CustomContextTraverse[Set[String]]({
       case (acc@PredicateAccessPredicate(_, perm), ctxt, recur) if predMap.shouldRewrite(acc) =>
         (wrapPred(predMap.predicateBody(acc, ctxt, recur), perm, knownPositive), ctxt)
-      case (u@Unfolding(acc, body), ctxt, recur) if predMap.shouldRewrite(acc) =>
-        if (assertFolds) {
-          (predMap.assertingIn(acc, recur(body).asInstanceOf[Exp], getDummyName())(u.pos, u.info, u.errT), ctxt)
+      case (u@Unfolding(acc@PredicateAccessPredicate(_, perm), body), ctxt, recur) if predMap.shouldRewrite(acc) =>
+        val rbody = recur(body).asInstanceOf[Exp]
+        if (!assertFolds) {
+          (rbody, ctxt)
+        } else if (useAssertingIn) {
+          val res = Asserting(wrapPredUnfold(predMap.predicateBody(acc, ctxt, recur), perm, knownPositive), rbody)(u.pos, u.info)
+          (res, ctxt)
         } else {
-          (recur(body).asInstanceOf[Exp], ctxt)
+          (predMap.assertingIn(acc, rbody, getDummyName())(u.pos, u.info, u.errT), ctxt)
         }
       case (u@Unfold(acc@PredicateAccessPredicate(_, perm)), ctxt, recur) if predMap.shouldRewrite(acc) =>
         val errT = ErrTrafo(err => UnfoldFailed(u, err.reason))
@@ -47,7 +47,7 @@ trait InlineRewrite {
         } else {
           (nop, ctxt)
         }
-      // Ugly hack needed since foralls are desugared before we get a chance to run
+      // Hack needed since foralls are desugared before we get a chance to run
       case (fa@Forall(_, _, exp), ctxt, recur) =>
         val fa2 = fa.copy(exp = recur(exp).asInstanceOf[Exp])(fa.pos, fa.info, fa.errT)
         val fa3 = if (fa == fa2) {
@@ -65,7 +65,7 @@ trait InlineRewrite {
       predMap.addPredicate(pred2, permDecl) // Modifies strategy so that pred can now be inlined
     }
     val prog2 = strategy.execute[Program](program)
-    if (assertFolds) {
+    if (assertFolds && !useAssertingIn) {
       prog2.copy(functions = prog2.functions ++ predMap.toUnfoldingFunctions)(prog2.pos, prog2.info, prog2.errT)
     } else {
       prog2
