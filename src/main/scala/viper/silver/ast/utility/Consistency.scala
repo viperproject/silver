@@ -202,8 +202,7 @@ object Consistency {
   }
 
   def noGhostOperations(n: Node) = !n.existsDefined {
-    case u: Unfolding if !u.isPure =>
-    case a: Applying if !a.isPure =>
+    case h: HintExp if !h.isPure =>
   }
 
   /** Returns true iff the given expression is a valid trigger. */

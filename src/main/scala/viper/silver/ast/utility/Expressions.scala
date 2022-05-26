@@ -23,8 +23,7 @@ object Expressions {
     case InhaleExhaleExp(in, ex) => isPure(in) && isPure(ex)
     case BinExp(e0, e1) => isPure(e0) && isPure(e1)
     case CondExp(cnd, thn, els) => isPure(cnd) && isPure(thn) && isPure(els)
-    case unf: Unfolding => isPure(unf.body)
-    case app: Applying => isPure(app.body)
+    case h: HintExp => isPure(h.body)
     case QuantifiedExp(_, e0) => isPure(e0)
     case Let(_, _, body) => isPure(body)
     case e: ExtensionExp => e.extensionIsPure

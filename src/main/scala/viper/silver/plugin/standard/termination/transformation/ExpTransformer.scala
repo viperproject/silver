@@ -176,9 +176,8 @@ trait ExpTransformer extends ErrorReporter {
   }
 
   private val toPureBooleanExpRecursion: PartialFunction[Node, Seq[Node]] = {
-    case Unfolding(_, body) => Seq(body)
+    case h: HintExp => Seq(h.body)
     case _: AccessPredicate | _: MagicWand => Nil
-    case Applying(_, b) => Seq(b)
     case Forall(_, _, exp) => Seq(exp)
   }
 
