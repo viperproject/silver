@@ -463,6 +463,7 @@ case class PDestructorCall(name: String, rcv: PExp)
   override def args: Seq[PExp] = Seq(rcv)
 
   override def translateExp(t: Translator): Exp = {
+    val actualRcv = t.exp(rcv)
     val so: Option[Map[TypeVar, Type]] = adtSubstitution match {
       case Some(ps) => Some(ps.m.map(kv => TypeVar(kv._1) -> t.ttyp(kv._2)))
       case None => None
@@ -471,10 +472,6 @@ case class PDestructorCall(name: String, rcv: PExp)
       case Some(s) =>
         val adt = t.getMembers()(this.adt.idndef.name).asInstanceOf[Adt]
         assert(s.keys.toSet == adt.typVars.toSet)
-        val actualRcv = rcv match {
-          case pr@PResultLit() => Result(AdtType(adt, s))(t.liftPos(pr))
-          case _ => t.exp(rcv)
-        }
         AdtDestructorApp(adt, name, actualRcv, s)(t.liftPos(this))
       case _ => sys.error("type unification error - should report and not crash")
     }
@@ -499,6 +496,7 @@ case class PDiscriminatorCall(name: PIdnUse, rcv: PExp)
   override def args: Seq[PExp] = Seq(rcv)
 
   override def translateExp(t: Translator): Exp = {
+    val actualRcv = t.exp(rcv)
     val so: Option[Map[TypeVar, Type]] = adtSubstitution match {
       case Some(ps) => Some(ps.m.map(kv => TypeVar(kv._1) -> t.ttyp(kv._2)))
       case None => None
@@ -507,34 +505,8 @@ case class PDiscriminatorCall(name: PIdnUse, rcv: PExp)
       case Some(s) =>
         val adt = t.getMembers()(this.adt.idndef.name).asInstanceOf[Adt]
         assert(s.keys.toSet == adt.typVars.toSet)
-        val actualRcv = rcv match {
-          case pr@PResultLit() => Result(AdtType(adt, s))(t.liftPos(pr))
-          case _ => t.exp(rcv)
-        }
         AdtDiscriminatorApp(adt, name.name, actualRcv, s)(t.liftPos(this))
       case _ => sys.error("type unification error - should report and not crash")
-    }
-  }
-}
-
-case class PAdtResultLit(adt: PIdnUse, args: Seq[PType])(val pos: (Position, Position)) extends PExtender with PExp {
-  // These two function must be mandatorily extended due to semantic analysis rules
-  override final val typeSubstitutions = Seq(PTypeSubstitution.id)
-  override def forceSubstitution(ts: PTypeSubstitution) = {}
-
-  override def getSubnodes(): Seq[PNode] = Seq(adt) ++ args
-
-  // The typecheck funtion for PAst node corresponding to the expression
-  override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = None
-
-  // The translator function to translate the PAst node corresponding to the Ast node
-  override def translateExp(t: Translator): Exp = {
-    t.getMembers().get(adt.name) match {
-      case Some(d) =>
-        val adt = d.asInstanceOf[Adt]
-        val typVarMapping = adt.typVars zip (args map t.ttyp)
-        Result(AdtType(adt, typVarMapping.toMap))(t.liftPos(this))
-      case None => sys.error("undeclared adt type")
     }
   }
 }

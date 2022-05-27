@@ -120,15 +120,19 @@ class AdtPlugin(reporter: viper.silver.reporter.Reporter,
       case pfa@PFieldAccess(rcv, idnuse) if declaredConstructorArgsNames.exists(_.name == idnuse.name) => PDestructorCall(idnuse.name, rcv)(pfa.pos)
       case pfa@PFieldAccess(rcv, idnuse) if declaredConstructorNames.exists("is" + _.name == idnuse.name) => PDiscriminatorCall(PIdnUse(idnuse.name.substring(2))(idnuse.pos), rcv)(pfa.pos)
       case pr@PResultLit() => {
-        var parent = pr.parent.get
-        while (!parent.isInstanceOf[PFunction] && !parent.isInstanceOf[PFieldAccess] && !parent.isInstanceOf[PDestructorCall] && !parent.isInstanceOf[PDiscriminatorCall]) {
-          if (parent == null) sys.error("cannot use 'result' outside of function")
-          parent = parent.parent.get
+        // The transformations applied to the return type of the parent `PFunction` are not known to the `PResultLit`.
+        // This is hack to make the return type known despite that, see https://github.com/viperproject/silver/issues/581.
+        var par: PNode = pr.parent.get
+        while (!par.isInstanceOf[PFunction]) {
+          if (par == null) sys.error("cannot use 'result' outside of function")
+          val nextpar = par.parent.get
+          if (nextpar.isInstanceOf[PFunction]) {
+            val func = nextpar.asInstanceOf[PFunction]
+            par.parent = Some(func.copy(typ = transformStrategy(func.typ))(func.pos))
+          }
+          par = par.parent.get
         }
-        parent match {
-          case pf@PFunction(_, _, typ@PDomainType(idnuse, args), _, _, _) if declaredAdtNames.exists(_.name == idnuse.name) => PAdtResultLit(idnuse, args)(pr.pos)
-          case _ => pr
-        }
+        pr
       }
     }).recurseFunc({
       // Stop the recursion if a destructor call or discriminator call is parsed as left-hand side of a field assignment

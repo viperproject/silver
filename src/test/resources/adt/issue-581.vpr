@@ -22,10 +22,10 @@ function inv(t: Test): Bool {
 }
 
 // FIXME: this triggers an error: [typechecker.error] expected identifier, but got PAdtConstructor(PIdnDef(A),List())
-// FIXME: see https://github.com/viperproject/silver/issues/581
+// FIXME: due to `PBinExp` losing its information about `parent`, see https://github.com/viperproject/silver/issues/581
 // function baz(): Test
 //     ensures A() == result
-//     // ensures result == A()
+//     ensures result == A()
 // {
 //     A
 // }
