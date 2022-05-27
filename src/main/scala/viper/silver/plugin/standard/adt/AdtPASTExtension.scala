@@ -463,7 +463,6 @@ case class PDestructorCall(name: String, rcv: PExp)
   override def args: Seq[PExp] = Seq(rcv)
 
   override def translateExp(t: Translator): Exp = {
-    val actualRcv = t.exp(rcv)
     val so: Option[Map[TypeVar, Type]] = adtSubstitution match {
       case Some(ps) => Some(ps.m.map(kv => TypeVar(kv._1) -> t.ttyp(kv._2)))
       case None => None
@@ -472,6 +471,10 @@ case class PDestructorCall(name: String, rcv: PExp)
       case Some(s) =>
         val adt = t.getMembers()(this.adt.idndef.name).asInstanceOf[Adt]
         assert(s.keys.toSet == adt.typVars.toSet)
+        val actualRcv = rcv match {
+          case pr@PResultLit() => Result(AdtType(adt, s))(t.liftPos(pr))
+          case _ => t.exp(rcv)
+        }
         AdtDestructorApp(adt, name, actualRcv, s)(t.liftPos(this))
       case _ => sys.error("type unification error - should report and not crash")
     }
@@ -496,7 +499,6 @@ case class PDiscriminatorCall(name: PIdnUse, rcv: PExp)
   override def args: Seq[PExp] = Seq(rcv)
 
   override def translateExp(t: Translator): Exp = {
-    val actualRcv = t.exp(rcv)
     val so: Option[Map[TypeVar, Type]] = adtSubstitution match {
       case Some(ps) => Some(ps.m.map(kv => TypeVar(kv._1) -> t.ttyp(kv._2)))
       case None => None
@@ -505,6 +507,10 @@ case class PDiscriminatorCall(name: PIdnUse, rcv: PExp)
       case Some(s) =>
         val adt = t.getMembers()(this.adt.idndef.name).asInstanceOf[Adt]
         assert(s.keys.toSet == adt.typVars.toSet)
+        val actualRcv = rcv match {
+          case pr@PResultLit() => Result(AdtType(adt, s))(t.liftPos(pr))
+          case _ => t.exp(rcv)
+        }
         AdtDiscriminatorApp(adt, name.name, actualRcv, s)(t.liftPos(this))
       case _ => sys.error("type unification error - should report and not crash")
     }

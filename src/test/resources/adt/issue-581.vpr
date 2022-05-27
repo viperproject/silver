@@ -1,0 +1,17 @@
+adt Test {
+    A()
+    B(b: Int)
+}
+
+function foo(): Test
+    ensures result.isA
+{
+    A()
+}
+
+function bar(): Test
+    ensures result.isB
+    ensures result.b == 42
+{
+    B(42)
+}
