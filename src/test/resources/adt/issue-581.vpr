@@ -12,6 +12,20 @@ function foo(): Test
 function bar(): Test
     ensures result.isB
     ensures result.b == 42
+    ensures inv(result)
 {
     B(42)
 }
+
+function inv(t: Test): Bool {
+    t.isB && t.b > 10
+}
+
+// FIXME: this triggers an error: [typechecker.error] expected identifier, but got PAdtConstructor(PIdnDef(A),List())
+// FIXME: see https://github.com/viperproject/silver/issues/581
+// function baz(): Test
+//     ensures A() == result
+//     // ensures result == A()
+// {
+//     A
+// }

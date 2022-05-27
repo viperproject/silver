@@ -516,3 +516,25 @@ case class PDiscriminatorCall(name: PIdnUse, rcv: PExp)
     }
   }
 }
+
+case class PAdtResultLit(adt: PIdnUse, args: Seq[PType])(val pos: (Position, Position)) extends PExtender with PExp {
+  // These two function must be mandatorily extended due to semantic analysis rules
+  override final val typeSubstitutions = Seq(PTypeSubstitution.id)
+  override def forceSubstitution(ts: PTypeSubstitution) = {}
+
+  override def getSubnodes(): Seq[PNode] = Seq(adt) ++ args
+
+  // The typecheck funtion for PAst node corresponding to the expression
+  override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = None
+
+  // The translator function to translate the PAst node corresponding to the Ast node
+  override def translateExp(t: Translator): Exp = {
+    t.getMembers().get(adt.name) match {
+      case Some(d) =>
+        val adt = d.asInstanceOf[Adt]
+        val typVarMapping = adt.typVars zip (args map t.ttyp)
+        Result(AdtType(adt, typVarMapping.toMap))(t.liftPos(this))
+      case None => sys.error("undeclared adt type")
+    }
+  }
+}

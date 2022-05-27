@@ -119,6 +119,17 @@ class AdtPlugin(reporter: viper.silver.reporter.Reporter,
         PFieldAssign(PFieldAccess(transformStrategy(fieldAcc.rcv), fieldAcc.idnuse)(fieldAcc.pos), transformStrategy(rhs))(pfa.pos)
       case pfa@PFieldAccess(rcv, idnuse) if declaredConstructorArgsNames.exists(_.name == idnuse.name) => PDestructorCall(idnuse.name, rcv)(pfa.pos)
       case pfa@PFieldAccess(rcv, idnuse) if declaredConstructorNames.exists("is" + _.name == idnuse.name) => PDiscriminatorCall(PIdnUse(idnuse.name.substring(2))(idnuse.pos), rcv)(pfa.pos)
+      case pr@PResultLit() => {
+        var parent = pr.parent.get
+        while (!parent.isInstanceOf[PFunction] && !parent.isInstanceOf[PFieldAccess] && !parent.isInstanceOf[PDestructorCall] && !parent.isInstanceOf[PDiscriminatorCall]) {
+          if (parent == null) sys.error("cannot use 'result' outside of function")
+          parent = parent.parent.get
+        }
+        parent match {
+          case pf@PFunction(_, _, typ@PDomainType(idnuse, args), _, _, _) if declaredAdtNames.exists(_.name == idnuse.name) => PAdtResultLit(idnuse, args)(pr.pos)
+          case _ => pr
+        }
+      }
     }).recurseFunc({
       // Stop the recursion if a destructor call or discriminator call is parsed as left-hand side of a field assignment
       case PFieldAssign(fieldAcc, _) if declaredConstructorArgsNames.exists(_.name == fieldAcc.idnuse.name) ||
