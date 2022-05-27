@@ -1,15 +1,19 @@
 package viper.silver.plugin.standard.inline
 
+import ch.qos.logback.classic.Logger
 import fastparse._
 import viper.silver.ast.Program
+import viper.silver.frontend.{DefaultIPS, InlinePredicateStrategy, SilFrontendConfig}
 import viper.silver.parser.FastParser._
 import viper.silver.parser._
-import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
+import viper.silver.plugin.{IOAwarePlugin, ParserPluginTemplate, SilverPlugin}
+import viper.silver.reporter.Reporter
 import viper.silver.verifier.{AbstractVerificationError, Failure, Success, VerificationResult}
 
-class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate
-  with InlineRewrite
-  with InlineErrorChecker {
+class InlinePredicatePlugin(val reporter: Reporter, val logger: Logger, val cmdArgs: SilFrontendConfig)
+  extends SilverPlugin with ParserPluginTemplate with IOAwarePlugin  with InlineRewrite with InlineErrorChecker {
+  val inlineLevel: Int = if (cmdArgs == null) 1 else cmdArgs.inlinePluginLevel()
+  val inlineStat: InlinePredicateStrategy = if (cmdArgs == null) DefaultIPS else cmdArgs.inlinePredicateStrategy()
 
   private[this] val InlinePredicateKeyword = "inline"
 
@@ -44,8 +48,16 @@ class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate
     input.copy(predicates = newPreds, extensions = otherExts)(pos=input.pos)
   }
 
+  def targetPredIds(input: Program): Set[String] = {
+    inlineLevel match {
+      case 0 => Set()
+      case 1 => this.annotatedPredIds
+      case 2 => input.predicates.map(_.name).toSet
+    }
+  }
+
   override def beforeVerify(input: Program): Program = {
-    val annotatedPredIds = this.annotatedPredIds
+    val annotatedPredIds = this.targetPredIds(input)
     if(annotatedPredIds.isEmpty) {
       return input
     }
@@ -57,7 +69,7 @@ class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate
     }
     val (inlinePredsUnordered, otherPreds) = input.predicates.partition(p => cond(p.name))
     val inlinePreds = topoOrder.map(name => inlinePredsUnordered.find(_.name == name).get)
-    val res = rewriteProgram(input.copy(predicates = otherPreds)(input.pos, input.info, input.errT), inlinePreds, assertFolds = true, useAssertingIn = true)
+    val res = rewriteProgram(input.copy(predicates = otherPreds)(input.pos, input.info, input.errT), inlinePreds, inlineStat)
     print(res)
     res
   }

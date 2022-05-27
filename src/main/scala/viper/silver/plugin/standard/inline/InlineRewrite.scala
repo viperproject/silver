@@ -4,12 +4,13 @@ import viper.silver.ast._
 import viper.silver.ast.utility.Permissions.multiplyExpByPerm
 import viper.silver.ast.utility.Simplifier.simplify
 import viper.silver.ast.utility.{QuantifiedPermissions, ViperStrategy}
+import viper.silver.frontend.{ApproximateIPS, AssertingIPS, DefaultIPS, InlinePredicateStrategy}
 import viper.silver.plugin.standard.inline.WrapPred._
 import viper.silver.verifier.errors._
 
 trait InlineRewrite {
 
-  def rewriteProgram(program: Program, inlinePreds: Seq[Predicate], assertFolds: Boolean, useAssertingIn: Boolean): Program = {
+  def rewriteProgram(program: Program, inlinePreds: Seq[Predicate], stat: InlinePredicateStrategy): Program = {
     val predMap = InlinePredicateMap()
     val permDecl = LocalVarDecl("__perm__", Perm)()
     val permVar = permDecl.localVar
@@ -25,9 +26,9 @@ trait InlineRewrite {
         (wrapPred(predMap.predicateBody(acc, ctxt, recur), perm, knownPositive), ctxt)
       case (u@Unfolding(acc@PredicateAccessPredicate(_, perm), body), ctxt, recur) if predMap.shouldRewrite(acc) =>
         val rbody = recur(body).asInstanceOf[Exp]
-        if (!assertFolds) {
+        if (stat == ApproximateIPS) {
           (rbody, ctxt)
-        } else if (useAssertingIn) {
+        } else if (stat == AssertingIPS) {
           val res = Asserting(wrapPredUnfold(predMap.predicateBody(acc, ctxt, recur), perm, knownPositive), rbody)(u.pos, u.info)
           (res, ctxt)
         } else {
@@ -35,14 +36,14 @@ trait InlineRewrite {
         }
       case (u@Unfold(acc@PredicateAccessPredicate(_, perm)), ctxt, recur) if predMap.shouldRewrite(acc) =>
         val errT = ErrTrafo(err => UnfoldFailed(u, err.reason))
-        if (assertFolds) {
+        if (stat != ApproximateIPS) {
           (Assert(wrapPredUnfold(predMap.predicateBody(acc, ctxt, recur), perm, knownPositive))(u.pos, u.info, errT), ctxt)
         } else {
           (nop, ctxt)
         }
       case (f@Fold(acc@PredicateAccessPredicate(_, perm)), ctxt, recur) if predMap.shouldRewrite(acc) =>
         val errT = ErrTrafo(err => FoldFailed(f, err.reason))
-        if (assertFolds) {
+        if (stat != ApproximateIPS) {
           (Assert(wrapPredFold(predMap.predicateBodyNoErrT(acc, ctxt, recur), perm, knownPositive))(f.pos, f.info, errT), ctxt)
         } else {
           (nop, ctxt)
@@ -65,7 +66,7 @@ trait InlineRewrite {
       predMap.addPredicate(pred2, permDecl) // Modifies strategy so that pred can now be inlined
     }
     val prog2 = strategy.execute[Program](program)
-    if (assertFolds && !useAssertingIn) {
+    if (stat == DefaultIPS) {
       prog2.copy(functions = prog2.functions ++ predMap.toUnfoldingFunctions)(prog2.pos, prog2.info, prog2.errT)
     } else {
       prog2

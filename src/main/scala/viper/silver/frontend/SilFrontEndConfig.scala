@@ -111,6 +111,27 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     hidden = true
   )
 
+  val inlinePluginLevel = opt[Int]("disableTerminationPlugin",
+    descr = "0 -> Don't inline any predicates, 1 -> inline annotated predicates, 2 -> inline all possible predicates",
+    default = Some(1),
+    noshort = true,
+    hidden = true,
+    //validate = x => 0 <= x && x <= 2
+  )
+
+  val inlinePredicateStrategy = opt[InlinePredicateStrategy]("counterexample",
+    descr="Strategy for converting fold/unfold/unfolding. Pass 'default' for default strategy, " +
+      "'approximate' to skip additional checks, or 'asserting'" +
+      "to encode unfolding with the asserting-in feature",
+    default = Some(DefaultIPS),
+    noshort = true,
+  )(singleArgConverter({
+    case "default" => DefaultIPS
+    case "approximate" => ApproximateIPS
+    case "asserting" => AssertingIPS
+    case i => throw new IllegalArgumentException(s"Unsupported inline predicate strategy provided. Expected 'default', 'approximate' or 'asserting' but got $i")
+  }))
+
   val assumeInjectivityOnInhale = opt[Boolean]("assumeInjectivityOnInhale",
     descr = "Assumes injectivity of the receiver expression when inhaling quantified permissions, instead of checking it.",
     default = Some(false),
@@ -168,3 +189,8 @@ trait CounterexampleModel
 case object NativeModel extends CounterexampleModel
 case object VariablesModel extends CounterexampleModel
 case object MappedModel extends CounterexampleModel
+
+trait InlinePredicateStrategy
+case object ApproximateIPS extends InlinePredicateStrategy
+case object DefaultIPS extends InlinePredicateStrategy
+case object AssertingIPS extends InlinePredicateStrategy
