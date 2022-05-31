@@ -52,7 +52,7 @@ class InlinePredicatePlugin(val reporter: Reporter, val logger: Logger, val cmdA
     inlineLevel match {
       case 0 => Set()
       case 1 => this.annotatedPredIds
-      case 2 => input.predicates.map(_.name).toSet
+      case 2 => input.predicates.filter(_.body.isDefined).map(_.name).toSet
     }
   }
 
@@ -70,7 +70,6 @@ class InlinePredicatePlugin(val reporter: Reporter, val logger: Logger, val cmdA
     val (inlinePredsUnordered, otherPreds) = input.predicates.partition(p => cond(p.name))
     val inlinePreds = topoOrder.map(name => inlinePredsUnordered.find(_.name == name).get)
     val res = rewriteProgram(input.copy(predicates = otherPreds)(input.pos, input.info, input.errT), inlinePreds, inlineStat)
-    print(res)
     res
   }
 

@@ -111,17 +111,17 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     hidden = true
   )
 
-  val inlinePluginLevel = opt[Int]("disableTerminationPlugin",
+  val inlinePluginLevel = opt[Int]("inlinePluginLevel",
     descr = "0 -> Don't inline any predicates, 1 -> inline annotated predicates, 2 -> inline all possible predicates",
     default = Some(1),
     noshort = true,
     hidden = true,
-    //validate = x => 0 <= x && x <= 2
+    validate = x => 0 <= x && x <= 2
   )
 
-  val inlinePredicateStrategy = opt[InlinePredicateStrategy]("counterexample",
+  val inlinePredicateStrategy = opt[InlinePredicateStrategy]("inlinePredicateStrategy",
     descr="Strategy for converting fold/unfold/unfolding. Pass 'default' for default strategy, " +
-      "'approximate' to skip additional checks, or 'asserting'" +
+      "'approximate' to skip additional checks, or 'asserting' " +
       "to encode unfolding with the asserting-in feature",
     default = Some(DefaultIPS),
     noshort = true,
