@@ -769,14 +769,15 @@ object FastParser {
     "unique") | ParserExtension.extendedKeywords
 
 
+  // Note that `typedFapp` is before `"(" ~ exp ~ ")"` to ensure that the latter doesn't gobble up the brackets for the former
+  // and then look like an `fapp` up untill the `: type` part, after which we need to backtrack all the way back (or error if cut)
   def atom(implicit ctx : P[_]) : P[PExp] = P(ParserExtension.newExpAtStart(ctx) | integer | booltrue | boolfalse | nul | old
-    | result | unExp
+    | result | unExp | typedFapp
     | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | applying
     | setTypedEmpty | explicitSetNonEmpty | multiSetTypedEmpty | explicitMultisetNonEmpty | seqTypedEmpty
-    // | seqLength | explicitSeqNonEmpty | seqRange | fapp | typedFapp | idnuse | ParserExtension.newExpAtEnd(ctx))
     | size | explicitSeqNonEmpty | seqRange
     | mapTypedEmpty | explicitMapNonEmpty | mapDomain | mapRange
-    | fapp | typedFapp | idnuse | ParserExtension.newExpAtEnd(ctx))
+    | fapp | idnuse | ParserExtension.newExpAtEnd(ctx))
 
   def result[_: P]: P[PResultLit] = FP(keyword("result")).map { case (pos, _) => PResultLit()(pos) }
 
@@ -862,8 +863,6 @@ object FastParser {
 
   def suffixExpr[_: P]: P[PExp] = P((atom ~~~ suffix.lw.rep).map { case (fac, ss) => foldPExp[PExp](fac, ss) })
 
-  def realSuffixExpr[_: P]: P[PExp] = P((atom ~~~ suffix.lw.rep).map { case (fac, ss) => foldPExp[PExp](fac, ss) })
-
   def termOp[_: P]: P[String] = P(StringIn("*", "/", "\\", "%").!)
 
   def term[_: P]: P[PExp] = P((suffixExpr ~~~ termd.lw.rep).map { case (a, ss) => foldPExp[PExp](a, ss) })
@@ -921,7 +920,7 @@ object FastParser {
   def locAcc[_: P]: P[PLocationAccess] = P(fieldAcc | predAcc)
 
   def fieldAcc[_: P]: P[PFieldAccess] =
-    P(NoCut(realSuffixExpr.filter(isFieldAccess)).map {
+    P(NoCut(suffixExpr.filter(isFieldAccess)).map {
       case fa: PFieldAccess => fa
       case other => sys.error(s"Unexpectedly found $other")
     })
