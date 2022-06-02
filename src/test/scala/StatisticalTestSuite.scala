@@ -1,6 +1,6 @@
 package viper.silver.testing
 
-import java.io.{BufferedWriter, File, FileWriter}
+import java.io.{BufferedWriter, File, FileNotFoundException, FileWriter}
 import java.nio.file.{Path, Paths => JPaths}
 import scala.collection.immutable
 import org.scalatest.ConfigMap
@@ -8,12 +8,15 @@ import viper.silver
 import viper.silver.utility.{Paths, TimingUtils}
 import viper.silver.verifier.{AbstractError, AbstractVerificationError, Failure, Success, Verifier}
 
+import scala.io.Source
+
 trait StatisticalTestSuite extends SilSuite {
   protected def repetitionsPropertyName: String = "STATS_REPETITIONS"
   protected def warmupLocationPropertyName: String = "STATS_WARMUP"
   protected def targetLocationPropertyName: String = "STATS_TARGET"
   protected def csvFilePropertyName: String = "STATS_CSV"
   protected def inclusionFilePropertyName: String = "STATS_INCL_FILE"
+  protected def resumablePropertyName: String = "STATS_BE_RESUMABLE"
 
   protected def repetitions: Int =
     Option(System.getProperty(repetitionsPropertyName)) match {
@@ -47,6 +50,7 @@ trait StatisticalTestSuite extends SilSuite {
 
   protected def csvFileName: Option[String] = getNonEmptyOptionalSystemProperty(csvFilePropertyName)
   protected def inclusionFileName: Option[String] = getNonEmptyOptionalSystemProperty(inclusionFilePropertyName)
+  protected def beResumable: Boolean = getNonEmptyOptionalSystemProperty(resumablePropertyName).exists(_.toBoolean)
 
   protected def verifier: Verifier
   override def verifiers = Vector(verifier)
@@ -54,6 +58,7 @@ trait StatisticalTestSuite extends SilSuite {
   private var csvFile: BufferedWriter = _
 
   private var testsToInclude: Option[Set[String]] = None
+  private var doneFiles: Set[String] = Set()
 
   override def testDirectories: Seq[String] = warmupDirName match {
     case Some(w) =>
@@ -75,11 +80,25 @@ trait StatisticalTestSuite extends SilSuite {
     super.beforeAll(configMap)
 
     csvFileName foreach (filename => {
-      csvFile = new BufferedWriter(new FileWriter(filename))
-
-      csvFile.write("File,Outputs,Mean [ms],StdDev [ms],RelStdDev [%],Best [ms],Median [ms],Worst [ms]")
-      csvFile.newLine()
-      csvFile.flush()
+      val header = "File,Outputs,Mean [ms],StdDev [ms],RelStdDev [%],Best [ms],Median [ms],Worst [ms]"
+      var needsHeader = true
+      try {
+        if (beResumable) {
+          val source = Source.fromFile(filename)
+          val lines = source.getLines()
+          needsHeader = lines.isEmpty
+          doneFiles = lines.filter(_ != header).flatMap(line => line.split(",").find(_ => true)).toSet
+          source.close()
+        }
+      } catch {
+        case _: FileNotFoundException => // If this fails since the csv doesn't exist we don't need to resume
+      }
+      csvFile = new BufferedWriter(new FileWriter(filename, beResumable))
+      if (needsHeader) {
+        csvFile.write("File,Outputs,Mean [ms],StdDev [ms],RelStdDev [%],Best [ms],Median [ms],Worst [ms]")
+        csvFile.newLine()
+        csvFile.flush()
+      }
     })
 
     inclusionFileName foreach (filename => {
@@ -121,6 +140,13 @@ trait StatisticalTestSuite extends SilSuite {
           return Seq.empty // Don't execute the current test
         }
       })
+
+      val csvName = JPaths.get(targetDirName).toAbsolutePath.relativize(input.file.toAbsolutePath).toString
+      if (doneFiles(csvName)) {
+        alert(s"Skipping $csvName (already been tested)")
+
+        return Seq.empty
+      }
 
       val phaseNames: Seq[String] = frontend(verifier, input.files).phases.map(_.name) :+ "Overall"
 
@@ -203,7 +229,7 @@ trait StatisticalTestSuite extends SilSuite {
 
         if (csvFileName.isDefined) {
           val csvRowData = Seq(
-            JPaths.get(targetDirName).toAbsolutePath.relativize(input.file.toAbsolutePath),
+            csvName,
             verResults.head.length,
             meanTimings.last, stddevTimings.last, relStddevTimings.last,
             bestRun.last, medianRun.last, worstRun.last)
@@ -227,7 +253,7 @@ trait StatisticalTestSuite extends SilSuite {
 
         if (csvFileName.isDefined) {
           val csvRowData = Seq(
-            JPaths.get(targetDirName).toAbsolutePath.relativize(input.file.toAbsolutePath),
+            csvName,
             verResults.head.length,
             meanTimings.last, stddevTimings.last, relStddevTimings.last,
             bestRun.last, medianRun.last, worstRun.last)
