@@ -156,8 +156,8 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
       case MissingDependencyReport(text) =>
         println( s"encountered missing dependency: $text" )
 
-      case EntitySuccessMessage(_, _, _, _) =>    // FIXME Currently, we only print overall verification results to STDOUT.
-      case EntityFailureMessage(_, _, _, _, _) => // FIXME Currently, we only print overall verification results to STDOUT.
+      case EntitySuccessMessage(_, _, _, _) => require(false)    // FIXME Currently, we only print overall verification results to STDOUT.
+      case EntityFailureMessage(_, _, _, _, _) => require(false) // FIXME Currently, we only print overall verification results to STDOUT.
       case ConfigurationConfirmation(_) =>     // TODO  use for progress reporting
         //println( s"Configuration confirmation: $text" )
       case InternalWarningMessage(_) =>        // TODO  use for progress reporting
