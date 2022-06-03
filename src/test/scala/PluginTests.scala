@@ -163,7 +163,7 @@ class TestPluginMapErrors extends SilverPlugin with TestPlugin with FakeResult {
 
   override def beforeFinish(input: VerificationResult): VerificationResult = {
     finish = true
-    mapVerificationResult(input) match {
+    input match {
       case Success =>
 //        println("]]] detected VerificationResult is Success")
         assert(false)
@@ -198,7 +198,7 @@ class TestPluginMapVsFinish extends SilverPlugin with TestPlugin {
   }
 
   override def mapVerificationResult(input: VerificationResult): VerificationResult = {
-    assert(false)
+    assert(!finish)
     input
   }
 
@@ -226,9 +226,6 @@ class PluginTests extends AnyFunSuite {
     "TestPluginMapVsFinish"
   )
 
-  // number of plugins running by default
-  val defaultPlugins = 3
-
   var result: VerificationResult = Success
 
   def testOne(plugin: String): Unit ={
@@ -243,7 +240,7 @@ class PluginTests extends AnyFunSuite {
       case _ => Success
     }
     frontend.execute(Seq("--plugin", plugin, file.toString))
-    assert(frontend.plugins.plugins.size == 1 + defaultPlugins)
+    assert(frontend.plugins.plugins.size == 1 + frontend.defaultPluginCount)
     frontend.plugins.plugins.foreach {
       case p: TestPlugin => assert(p.test(), p.getClass.getName)
       case _ =>
