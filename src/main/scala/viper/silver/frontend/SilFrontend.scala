@@ -83,6 +83,7 @@ trait SilFrontend extends DefaultFrontend {
   private val defaultPlugins: Seq[String] = Seq(
     "viper.silver.plugin.standard.adt.AdtPlugin",
     "viper.silver.plugin.standard.termination.TerminationPlugin",
+    "viper.silver.plugin.standard.refute.RefutePlugin",
     "viper.silver.plugin.standard.predicateinstance.PredicateInstancePlugin"
   )
   /** For testing of plugin import feature */

@@ -397,6 +397,14 @@ case object Synthesized extends Info {
   lazy val isCached = false
 }
 
+/** An `Info` instance for labelling an AST node which is expected to fail verification.
+ * This is used by Silicon to avoid stopping verification.
+*/
+class ExpectFail extends Info {
+  lazy val comment = Nil
+  lazy val isCached = false
+}
+
 /** An `Info` instance for composing multiple `Info`s together */
 case class ConsInfo(head: Info, tail: Info) extends Info {
   lazy val comment = head.comment ++ tail.comment

@@ -1,0 +1,18 @@
+method foo(x: Int) returns (r: Int)
+    requires x > 10
+{
+    refute !(x > 0)
+    //:: ExpectedOutput(refute.failed:refutation.true)
+    refute x > 0
+    refute false
+    //:: ExpectedOutput(refute.failed:refutation.true)
+    refute true
+    refute false
+    if (x > 0) {
+        r := x
+    } else {
+        //:: ExpectedOutput(refute.failed:refutation.true)
+        refute false
+        r := 0
+    }
+}
