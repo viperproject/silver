@@ -164,11 +164,11 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
      *   - Replace holes in the wand (subexpressions to evaluate) by local variables
      *     whose names are the type of the hole. E.g. "n + 1" is replaced by an
      *     artificial variable with name "int" and similarly, "n < m" by "bool".
-     *   - Quantified variables are given canonical names based on their depth/level
+     *   - Bound variables are given canonical names based on their depth/level
      *     of nesting in the overall wand. E.g. the subexpression
-     *     "(forall x, y :: b1(x, y) ==> forall z :: b2(x, y, z)) && forall x :: b3(x)"
+     *     "(forall x, y :: b1(x, y) ==> forall z :: b2(x, y, z)) && (let v == (0) in v == 0)"
      *     is transformed into
-     *     "(forall q1, q2 :: b1(q1, q2) ==> forall q3 :: b2(q1, q2, q3)) && forall q1 :: b3(q1)".
+     *     "(forall q1, q2 :: b1(q1, q2) ==> forall q3 :: b2(q1, q2, q3)) && (let q1 == (0) in q1 == 0)".
      *
      * Wands transformed in this way can be compared for equality as follows: an initial
      * syntactic comparison can be used to check if the wands match structurally, a subsequent
@@ -215,6 +215,12 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
           val variables = renameDecls(quant.variables, bindings)
 
           (quant.withVariables(variables), context.updateContext(extendBindings(context.c, quant.variables)))
+        case (let: Let, context) =>
+          val oldVars = Seq(let.variable)
+          val bindings = extendBindings(context.c, oldVars)
+          val variables = renameDecls(oldVars, bindings)
+          (Let(variables.head, let.exp, let.body)(let.pos, let.info, let.errT),
+            context.updateContext(extendBindings(context.c, oldVars)))
 
         case (lv: LocalVar, context) =>
           context.c.get(lv.name) match {
