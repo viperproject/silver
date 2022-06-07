@@ -1,0 +1,35 @@
+adt List[T] {
+    Nil()
+    Cons(value: T, tail: List[T])
+}
+
+
+method equality_2a()
+{   
+    assert Cons(1, Nil()) == Cons(1, Nil())
+
+    assert Cons(1, Cons(1, Nil())).tail == Cons(1, Nil()) 
+}
+
+method equality_2b()
+{   
+    var list1: List[Int]
+    var list2: List[Int]
+    
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert list1 == list2
+
+}
+
+method equality_2c()
+{   
+    var list1: List[Int]
+    list1 := Nil()
+    var list2: List[Int]
+    list2 := Nil()
+    
+    assert list1 == list2
+
+}
+
+

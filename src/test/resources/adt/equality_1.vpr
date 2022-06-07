@@ -1,0 +1,19 @@
+adt List[T] {
+    Nil()
+    Cons(value: T, tail: List[T])
+}
+
+method equality_1a()
+{   
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert Cons(1, Nil()) != Cons(1, Nil())
+
+}
+
+method equality_1b()
+{  
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert Cons(1, Cons(1, Nil())).tail == Nil()
+}
+
+

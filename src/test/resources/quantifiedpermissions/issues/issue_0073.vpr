@@ -28,7 +28,7 @@ method n(s: Seq[Ref])
   requires |s| > 4
   requires s[0] == s[1] && s[1] == s[2] && s[2] == s[3]
   requires acc(s[0].f, write)
-  //:: ExpectedOutput(not.wellformed:receiver.not.injective)
+  //:: ExpectedOutput(not.wellformed:qp.not.injective)
   ensures forall i1:Int :: i1 in [0..4) ==> acc(s[i1].f, 25 / 100)
 {
 }

@@ -55,6 +55,7 @@ object FastMessaging {
     */
   def message (value : Any, msg : String, cond : Boolean = true, error : Boolean = true) : Messages =
     if (cond) {
+      // Warning: Potential scala.MatchError here if position info is lost!
       val valuePos: SourcePosition = value.asInstanceOf[PNode].pos._1 match {
         case slc: FilePosition => {
           value.asInstanceOf[PNode].pos._2 match {

@@ -1,0 +1,114 @@
+adt Tree {
+    Leaf()
+    Node(v: Int, left: Tree, right: Tree)
+}
+
+/*
+ * Recursive function that computes the length of the longest path from node to a Leaf among all nodes in ts
+ * 
+ * Remarks:
+ *     - Basically Recursive Breadth-first search
+ *     - For ts == Seq(t) and t:Tree this corresponds to the height
+ */
+function height_recursive(ts: Seq[Tree]): Int
+{
+  |ts| == 0 
+    ? 0 
+    : 1 + height_recursive(children_seq(ts))
+}
+
+
+/*
+ * Function that wraps height_recursive for easy use
+ */
+function height(t: Tree): Int
+{
+  t.isLeaf 
+  ? 0
+  : height_recursive(Seq(t))
+}
+
+
+/*
+ * Function that computes the direct children of one node
+ */
+function children(t: Tree): Seq[Tree] 
+{
+  t.isLeaf || (t.isNode && t.left.isLeaf && t.right.isLeaf)
+      ? Seq()
+      : t.left.isNode && t.right.isNode
+        ? Seq(t.right) ++ Seq(t.left)
+        : t.left.isNode
+          ? Seq(t.left)
+          : Seq(t.right)
+}
+
+/*
+ * Function that computes the direct children of a list of nodes recursivley applying 
+ * the function children
+ */
+function children_seq(ts: Seq[Tree]): Seq[Tree] 
+{
+  |ts| == 0
+    ? Seq[Tree]()
+    : |ts| == 1
+      ? children(ts[0])
+      : children_seq(ts[1..]) ++ children(ts[0])
+}
+
+
+
+method computeTreeHeight(t: Tree) returns (res: Int)
+  ensures height(t) == res
+{ 
+  // logical variable for invariant of the second loop
+  var old_current: Seq[Tree]
+
+  if (t.isLeaf){
+    res := 0
+  }else{
+    var current: Seq[Tree]
+    var next: Seq[Tree]
+    current := Seq(t)
+    next := Seq[Tree]()
+    res := 0
+    
+    while (|current| > 0)
+      invariant forall i: Int :: i >= 0 && i < |current| ==> current[i].isNode
+      invariant height(t) == res + height_recursive(current)
+      
+    { 
+      res := res + 1
+      next := Seq[Tree]()
+      
+      // save current to logical variable
+      assume old_current == current
+
+      while (|current| > 0)
+        invariant forall i: Int :: i >= 0 && i < |current| ==> current[i].isNode
+        invariant forall i: Int :: i >= 0 && i < |next| ==> next[i].isNode
+        invariant children_seq(old_current) == children_seq(current) ++ next
+      { 
+        var node : Tree := current[0]
+        POP(current)
+        if (node.left.isNode){
+          PUSH(next, node.left)
+        }
+        if (node.right.isNode){
+          PUSH(next, node.right)
+        }
+        
+      }
+      current := next
+      
+    }
+  }
+}
+
+define PUSH(stck, v) {
+  stck := Seq(v) ++ stck
+}
+
+define POP(stck) {
+  stck := stck[1..]
+}

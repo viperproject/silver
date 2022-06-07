@@ -81,15 +81,18 @@ trait SilFrontend extends DefaultFrontend {
    * All default plugins can be excluded from the plugins by providing the --disableDefaultPlugins flag
    */
   private val defaultPlugins: Seq[String] = Seq(
+    "viper.silver.plugin.standard.adt.AdtPlugin",
     "viper.silver.plugin.standard.termination.TerminationPlugin",
     "viper.silver.plugin.standard.predicateinstance.PredicateInstancePlugin"
   )
+  /** For testing of plugin import feature */
+  def defaultPluginCount: Int = defaultPlugins.size
 
 
   protected var _plugins: SilverPluginManager = SilverPluginManager(defaultPlugins match {
     case Seq() => None
     case s => Some(s.mkString(":"))
-  })(reporter.reporter, logger, _config)
+  })(reporter, logger, _config)
 
   def plugins: SilverPluginManager = _plugins
 
@@ -132,12 +135,6 @@ trait SilFrontend extends DefaultFrontend {
     if (_config.dependencies()) {
       reporter report ExternalDependenciesReport(_ver.dependencies)
     }
-
-    // FIXME The error transformer function may not be immutable with current design:
-    // FIXME  `reporter` is a field of trait Frontend, whereas the plugin manager
-    // FIXME  stored in `_plugins` is only initialized here, in SilFrontend.
-    // FIXME  Consider refactoring this part. --- ATG 2019
-    reporter.transform = _plugins.mapVerificationResult
     true
   }
 
@@ -189,7 +186,7 @@ trait SilFrontend extends DefaultFrontend {
         val list = _config.plugin.toOption ++ defaultPlugins
         if (list.isEmpty) { None } else { Some(list.mkString(":")) }
       }
-      _plugins = SilverPluginManager(plugins)(reporter.reporter, logger, _config)
+      _plugins = SilverPluginManager(plugins)(reporter, logger, _config)
     }
   }
 
@@ -211,6 +208,11 @@ trait SilFrontend extends DefaultFrontend {
           case _ => verifier.name
         }
     }
+  }
+
+  override def verification() = {
+    super.verification()
+    _verificationResult = _verificationResult.map(_plugins.mapVerificationResult)
   }
 
   def finish(): Unit = {

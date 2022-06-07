@@ -111,6 +111,13 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     hidden = true
   )
 
+  val adtPlugin = opt[Boolean]("disableAdtPlugin",
+    descr = "Disable the ADT plugin, which adds support for ADTs as a built-in type.",
+    default = Some(false),
+    noshort = true,
+    hidden = true
+  )
+
   val assumeInjectivityOnInhale = opt[Boolean]("assumeInjectivityOnInhale",
     descr = "Assumes injectivity of the receiver expression when inhaling quantified permissions, instead of checking it.",
     default = Some(false),

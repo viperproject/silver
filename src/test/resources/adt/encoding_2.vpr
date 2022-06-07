@@ -1,0 +1,18 @@
+adt ADT[T] {
+    C1()
+    C2(p21: T, p22: ADT[T])
+    C3(p31: Int)
+    C4(p41: Bool, p42: ADT[T], p43:ADT[Int])
+    C5()
+    C6()
+}
+
+method encoding_2(a:ADT[Bool])
+{
+  assert a.isC1 || a.isC2 || a.isC3 || a.isC4 || a.isC5 || a.isC6 
+
+  assert a.isC1 <==> a == C1()
+  assert a.isC2 ==> a != C1()
+  assert a.isC2 <==> a == C2(a.p21, a.p22)
+
+}

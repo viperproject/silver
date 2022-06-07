@@ -1,0 +1,41 @@
+adt SimpleList {
+    SimpleNil()
+    SimpleCons(value: Int, tail: SimpleList)
+}
+
+adt List[T] {
+    Nil()
+    Cons(value: T, tail: List[T])
+}
+
+adt Tree[T] {
+    Leaf()
+    Node(value: T, left: Tree[T], right: Tree[T])
+}
+
+adt Tree3[T] {
+    Leaf3()
+    Node3(value: T, left: Tree3[T], middle: Tree3[T], right: Tree3[T])
+}
+
+adt SpecialList[T, S] {
+    SpecialNil()
+    TCons(elemT: T, tailT: SpecialList[T,S])
+    SCons(elemS: S, tailS: SpecialList[T,S])
+}
+
+adt kTree[T] {
+    kLeaf()
+    kNode(value: T, children: Seq[kTree[T]])
+}
+
+adt Mixed[T,S] {
+    Entity1(sl: SimpleList, ls: List[S], lt: List[T])
+    Entity2(t3: Tree3[T], spl1: SpecialList[T,S], spl2: SpecialList[S,T], kt: kTree[T])
+}
+
+method soundness_1()
+{   
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}

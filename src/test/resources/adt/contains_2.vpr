@@ -1,0 +1,34 @@
+import <adt/derives.vpr>
+
+adt List[T] {
+  Nil()
+  Cons(value: T, tail: List[T])
+} derives {
+  contains without value
+}
+
+method contains_2a() {
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert contains(2,Cons(2, Nil()))
+
+}
+
+method contains_2b() {
+
+  var a: List[Int]
+  a := Nil()
+
+  var b: List[Int]
+  b := Cons(2, Nil())
+
+  var c: List[Int]
+  c := Cons(1, Cons(2, Nil()))
+
+  assert contains(a,b)
+  assert contains(b,c)
+  assert contains(a,c)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert contains(2,c)
+
+}

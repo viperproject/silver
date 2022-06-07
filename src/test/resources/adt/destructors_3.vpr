@@ -1,0 +1,35 @@
+adt List[T] {
+    Nil()
+    Cons(value: T, tail: List[T])
+}
+
+
+adt Tree[T] {
+    Leaf()
+    Node(value: T, left: Tree[T], right: Tree[T])
+}
+
+domain DList[T] {
+    function DNil(): DList[T]
+    function DCons(value: T, tail: DList[T]): DList[T]
+}
+
+
+field this_is_a_field: Bool
+
+method destructor_3()
+{   
+
+    //:: ExpectedOutput(typechecker.error)
+    assert Cons(1, Nil()).this_is_a_field
+    
+    //:: ExpectedOutput(typechecker.error)
+    assert Cons(1, Nil()).right.value == Nil()
+
+    //:: ExpectedOutput(typechecker.error)
+    assert Cons(1, Nil()).right.value.left == Nil()
+
+    //:: ExpectedOutput(typechecker.error) 
+    assert DCons(1, DNil()).value == 1
+
+}

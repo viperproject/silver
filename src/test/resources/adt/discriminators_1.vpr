@@ -1,0 +1,35 @@
+adt List[T] {
+    Nil()
+    Cons(value: T, tail: List[T])
+}
+
+
+adt Tree[T] {
+    Leaf()
+    Node(value: T, left: Tree[T], right: Tree[T])
+}
+
+
+method discriminators_1a()
+{   
+    var list: List[Int]
+    list := Cons(1, Nil())
+
+    assert list.isCons
+    assert list.tail.isNil
+    assert !list.tail.isCons
+
+}
+
+method discriminators_1b()
+{   
+    var tree: Tree[Int]
+    tree := Node(42, Node(42, Leaf(), Leaf()), Node(42, Leaf(), Leaf()))
+
+    assert !tree.isLeaf
+    assert tree.left.left.isLeaf
+    assert tree.left.right.isLeaf
+    assert tree.left.isNode
+    assert !tree.right.isLeaf
+
+}
