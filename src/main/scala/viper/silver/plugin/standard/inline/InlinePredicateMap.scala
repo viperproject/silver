@@ -1,19 +1,20 @@
 package viper.silver.plugin.standard.inline
 
 import viper.silver.ast.utility.Expressions
-import viper.silver.ast.{And, Bool, ErrorTrafo, Exp, FuncApp, Function, Implies, Info, Let, LocalVarDecl, Node, Position, Predicate, PredicateAccessPredicate, ReTrafo}
+import viper.silver.ast.{And, Bool, ErrTrafo, ErrorTrafo, Exp, FuncApp, Function, Implies, Info, Let, LocalVarDecl, Node, Position, Predicate, PredicateAccessPredicate, ReTrafo}
 import viper.silver.plugin.standard.inline.WrapPred._
+import viper.silver.verifier.errors.PredicateNotWellformed
 import viper.silver.verifier.reasons.InsufficientPermission
 
 import scala.collection.mutable
 
-case class InlinePredicateMap(private val data: mutable.Map[String, (Seq[LocalVarDecl], Exp)] = mutable.Map()) extends AnyVal {
+case class InlinePredicateMap(private val data: mutable.Map[String, Predicate] = mutable.Map()) extends AnyVal {
 
   def predicateBodyNoErrT(predAcc: PredicateAccessPredicate, scope: Set[String], recur: Node => Node): Exp = {
     val predicate = data(predAcc.loc.predicateName)
     val args = predAcc.loc.args.prepended(predAcc.perm)
     val args2 = args.map(recur(_).asInstanceOf[Exp])
-    val res = Expressions.instantiateVariables(predicate._2, predicate._1, args2, scope)
+    val res = Expressions.instantiateVariables(predicate.body.get, predicate.formalArgs, args2, scope)
     res
   }
 
@@ -37,11 +38,17 @@ case class InlinePredicateMap(private val data: mutable.Map[String, (Seq[LocalVa
   def shouldRewrite(predAcc: PredicateAccessPredicate): Boolean = data.contains(predAcc.loc.predicateName)
 
   def addPredicate(pred: Predicate, permVar: LocalVarDecl): Unit = {
-    data.put(pred.name, (pred.formalArgs.prepended(permVar), pred.body.get))
+    data.put(pred.name, pred.copy(formalArgs = pred.formalArgs.prepended(permVar))(pred.pos, pred.info, pred.errT))
+  }
+
+  def unfoldingFunction(pred: Predicate, name: String, args: Seq[LocalVarDecl], pre: Exp): Function = {
+    val errT = ErrTrafo(err => PredicateNotWellformed(pred, err.reason))
+    Function(name, args, Bool, Seq(pre.withMeta(pre.pos, pre.info, errT)), Seq(), None)()
   }
 
   def toUnfoldingFunctions: Seq[Function] = {
-    data.iterator.map{case (name, (args, exp)) =>
-      Function(name, args, Bool, Seq(wrapPredUnfold(exp, args.head.localVar)), Seq(), None)()}.toSeq
+    data.iterator.map{case (_, p@Predicate(name, args, Some(exp))) =>
+      unfoldingFunction(p, name, args, wrapPredUnfold(exp, args.head.localVar))
+    }.toSeq
   }
 }
