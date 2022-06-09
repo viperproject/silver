@@ -49,7 +49,8 @@ trait InlineRewrite {
         }
       // Ugly hack needed since foralls are desugared before we get a chance to run
       case (fa@Forall(_, _, exp), ctxt, recur) =>
-        val fa2 = fa.copy(exp = recur(exp).asInstanceOf[Exp])(fa.pos, fa.info, fa.errT)
+        val faTrig = fa.autoTrigger
+        val fa2 = faTrig.copy(exp = recur(exp).asInstanceOf[Exp])(fa.pos, faTrig.info, fa.errT)
         val fa3 = if (fa == fa2) {
           fa
         } else {
