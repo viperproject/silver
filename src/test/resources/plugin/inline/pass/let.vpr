@@ -13,7 +13,7 @@ method test01(x: Int) {
   assert 2*x == let y == (x + x) in y
 }
 
-predicate P(x: Ref) { acc(x.g) && x.g == 1 }
+inline predicate P(x: Ref) { acc(x.g) && x.g == 1 }
 
 function fun01(x: Ref): Int
   requires acc(P(x), wildcard)
