@@ -24,7 +24,7 @@ trait InlineRewrite {
   }
 
   def rewriteProgram(program: Program, inlinePreds: Seq[Predicate], assertFolds: Boolean): Program = {
-    val predMap = InlinePredicateMap()
+    val predMap = InlinePredicateState()
     val permDecl = LocalVarDecl("__perm__", Perm)()
     val permVar = permDecl.localVar
     val knownPositive = (p: LocalVar) => p == permVar

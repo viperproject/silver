@@ -10,14 +10,18 @@ import viper.silver.verifier.reasons.InsufficientPermission
 
 import scala.collection.mutable
 
-case class InlinePredicateMap(private val data: mutable.Map[String, Predicate] = mutable.Map()) {
+case class InlinePredicateState(private val data: mutable.Map[String, Predicate] = mutable.Map(),
+                                private var todoMono: mutable.ArrayBuffer[String] = mutable.ArrayBuffer(),
+                                private val doneMono: mutable.Set[String] = mutable.Set()) {
 
+  // Modifies this (may add new names to todoMono and doneMono if not already done)
   val handleWildcardStrategy: Strategy[Node, SimpleContext[Node]] = ViperStrategy.Slim({
     case pm@PermMul(_, WildcardPerm()) => WildcardPerm()(pm.pos, pm.info, pm.errT)
     case PermMul(left, FullPerm()) => left
     case fa@FuncApp(_, Seq(WildcardPerm(), _ *)) => monoWildCardApp(fa)
   }, BottomUp)
 
+  // Modifies this (may add new names to todoMono and doneMono if not already done)
   def predicateBodyNoErrT(predAcc: PredicateAccessPredicate, scope: Set[String], recur: Node => Node): Exp = {
     val predicate = data(predAcc.loc.predicateName)
     val args = predAcc.loc.args.prepended(predAcc.perm)
@@ -27,9 +31,10 @@ case class InlinePredicateMap(private val data: mutable.Map[String, Predicate] =
     res2
   }
 
+  // Modifies this (may add new names to todoMono and doneMono if not already done)
   def predicateBody(predAcc: PredicateAccessPredicate, scope: Set[String], recur: Node => Node): Exp = {
     val res: Exp = predicateBodyNoErrT(predAcc, scope, recur)
-    val errT = ReTrafo{_ => InsufficientPermission(predAcc.loc)}
+    val errT = ReTrafo { _ => InsufficientPermission(predAcc.loc) }
     embedErrT(res.withMeta(predAcc.meta), errT)
   }
 
@@ -39,8 +44,16 @@ case class InlinePredicateMap(private val data: mutable.Map[String, Predicate] =
     case exp => exp.withMeta(exp.pos, exp.info, errT)
   }
 
-  def wildCardName(name: String): String = s"${name}__wildcard"
+  // Modifies this (adds name to todoMono and doneMono if not already done)
+  def wildCardName(name: String): String = {
+    if (!doneMono(name)) {
+      doneMono.add(name)
+      todoMono.addOne(name)
+    }
+    s"${name}__wildcard"
+  }
 
+  // Modifies this (adds funcApps name to todoMono and doneMono if not already done)
   def monoWildCardApp(funcApp: FuncApp): FuncApp = funcApp.args.head match {
     case WildcardPerm() => FuncApp(wildCardName(funcApp.funcname), funcApp.args.tail)(funcApp.pos, funcApp.info, funcApp.typ, funcApp.errT)
     case _ => funcApp
@@ -55,6 +68,7 @@ case class InlinePredicateMap(private val data: mutable.Map[String, Predicate] =
     func2.copy(name = wildCardName(func.name), formalArgs = func.formalArgs.tail)(func.pos, func.info, func.errT)
   }
 
+  // Modifies this (may add new names to _todo and done if not already done)
   def assertingIn(predAcc: PredicateAccessPredicate, inner: Exp, dummyName: String)(pos: Position, info: Info, errT: ErrorTrafo): Exp = {
     val funcApp = FuncApp(predAcc.loc.predicateName, predAcc.loc.args.prepended(predAcc.perm))(pos, info, Bool, errT)
     val funcApp2 = monoWildCardApp(funcApp)
@@ -63,6 +77,7 @@ case class InlinePredicateMap(private val data: mutable.Map[String, Predicate] =
 
   def shouldRewrite(predAcc: PredicateAccessPredicate): Boolean = data.contains(predAcc.loc.predicateName)
 
+  // Modifies this (adds pred to predicates)
   def addPredicate(pred: Predicate, permVar: LocalVarDecl): Unit = {
     data.put(pred.name, pred.copy(formalArgs = pred.formalArgs.prepended(permVar))(pred.pos, pred.info, pred.errT))
   }
@@ -73,9 +88,18 @@ case class InlinePredicateMap(private val data: mutable.Map[String, Predicate] =
   }
 
   def toUnfoldingFunctions: Seq[Function] = {
-    data.iterator.flatMap{case (_, p@Predicate(name, args, Some(exp))) =>
-      Seq(unfoldingFunction(p, name, args, wrapPredUnfold(exp, args.head.localVar)),
-        monoWildCard(unfoldingFunction(p, name, args, exp)))
-    }.toSeq
+    val res = mutable.ArrayBuffer.from(
+      data.iterator.map { case (_, p@Predicate(name, args, Some(exp))) =>
+        unfoldingFunction(p, name, args, wrapPredUnfold(exp, args.head.localVar))
+    })
+    while (todoMono.nonEmpty) {
+      val todo = todoMono
+      todoMono = mutable.ArrayBuffer()
+      res.addAll(todo.iterator.map(data(_) match {
+        case p@Predicate(name, args, Some(exp)) =>
+          monoWildCard(unfoldingFunction(p, name, args, exp)) // note this could add more elements to todoMono
+      }))
+    }
+    res.toSeq
   }
 }
