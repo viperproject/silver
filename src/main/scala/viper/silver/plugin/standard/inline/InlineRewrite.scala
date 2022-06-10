@@ -1,8 +1,6 @@
 package viper.silver.plugin.standard.inline
 
 import viper.silver.ast._
-import viper.silver.ast.utility.Permissions.multiplyExpByPerm
-import viper.silver.ast.utility.Simplifier.simplify
 import viper.silver.ast.utility.{QuantifiedPermissions, ViperStrategy}
 import viper.silver.plugin.standard.inline.WrapPred._
 import viper.silver.verifier.errors._
@@ -13,6 +11,18 @@ trait InlineRewrite {
     recur(x).asInstanceOf[X]
   }
 
+  def multiplyPermByPerm(p: Exp, permVar: LocalVar): Exp = p match {
+    case FullPerm() => permVar.withMeta(p.pos, p.info, p.errT)
+    case WildcardPerm() => WildcardPerm()(p.pos, p.info, p.errT)
+    case _ => PermMul(p, permVar)(p.pos, p.info, p.errT)
+  }
+
+  def multiplyExpByPerm(acc: AccessPredicate, permVar: LocalVar): AccessPredicate = acc match {
+    case fa@FieldAccessPredicate(loc,p) => FieldAccessPredicate(loc,multiplyPermByPerm(p, permVar))(fa.pos,fa.info)
+    case pa@PredicateAccessPredicate(loc,p) => PredicateAccessPredicate(loc, multiplyPermByPerm(p, permVar))(pa.pos,pa.info)
+    case _: MagicWand => sys.error("Cannot yet permission-scale magic wands")
+  }
+
   def rewriteProgram(program: Program, inlinePreds: Seq[Predicate], assertFolds: Boolean): Program = {
     val predMap = InlinePredicateMap()
     val permDecl = LocalVarDecl("__perm__", Perm)()
@@ -21,7 +31,7 @@ trait InlineRewrite {
     var dummyN = 0
     val getDummyName = () => {dummyN += 1; s"__dummy__$dummyN"}
     val permPropagateStrategy = ViperStrategy.Slim({
-      case acc: AccessPredicate => simplify(multiplyExpByPerm(acc, permVar))
+      case acc: AccessPredicate => multiplyExpByPerm(acc, permVar)
     })
     val nop = Seqn(Seq(), Seq())()
     val strategy = ViperStrategyCustomTraverse.CustomContextTraverse[Set[String]]({
