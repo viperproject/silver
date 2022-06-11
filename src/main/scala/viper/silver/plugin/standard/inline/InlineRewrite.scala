@@ -24,36 +24,33 @@ trait InlineRewrite {
   }
 
   def rewriteProgram(program: Program, inlinePreds: Seq[Predicate], assertFolds: Boolean): Program = {
-    val predMap = InlinePredicateState()
-    val permDecl = LocalVarDecl("__perm__", Perm)()
-    val permVar = permDecl.localVar
-    val knownPositive = (p: LocalVar) => p == permVar
-    var dummyN = 0
-    val getDummyName = () => {dummyN += 1; s"__dummy__$dummyN"}
+    val state = InlinePredicateState()
+    val knownPositive = (p: LocalVar) => p == state.permVar
+    val getDummyName = () => state.names.createUnique("dummy")
     val permPropagateStrategy = ViperStrategy.Slim({
-      case acc: AccessPredicate => multiplyExpByPerm(acc, permVar)
+      case acc: AccessPredicate => multiplyExpByPerm(acc, state.permVar)
     })
     val nop = Seqn(Seq(), Seq())()
     val strategy = ViperStrategyCustomTraverse.CustomContextTraverse[Set[String]]({
-      case (acc@PredicateAccessPredicate(_, perm), ctxt, recur) if predMap.shouldRewrite(acc) =>
-        (wrapPred(predMap.predicateBody(acc, ctxt, recur), perm, knownPositive), ctxt)
-      case (u@Unfolding(acc, body), ctxt, recur) if predMap.shouldRewrite(acc) =>
+      case (acc@PredicateAccessPredicate(_, perm), ctxt, recur) if state.shouldRewrite(acc) =>
+        (wrapPred(state.predicateBody(acc, ctxt, recur), perm, knownPositive), ctxt)
+      case (u@Unfolding(acc, body), ctxt, recur) if state.shouldRewrite(acc) =>
         if (assertFolds) {
-          (predMap.assertingIn(acc, recur(body).asInstanceOf[Exp], getDummyName())(u.pos, u.info, u.errT), ctxt)
+          (state.assertingIn(acc, recur(body).asInstanceOf[Exp], getDummyName())(u.pos, u.info, u.errT), ctxt)
         } else {
           (recur(body).asInstanceOf[Exp], ctxt)
         }
-      case (u@Unfold(acc@PredicateAccessPredicate(_, perm)), ctxt, recur) if predMap.shouldRewrite(acc) =>
+      case (u@Unfold(acc@PredicateAccessPredicate(_, perm)), ctxt, recur) if state.shouldRewrite(acc) =>
         val errT = ErrTrafo(err => UnfoldFailed(u, err.reason))
         if (assertFolds) {
-          (Assert(wrapPredUnfold(predMap.predicateBody(acc, ctxt, recur), perm, knownPositive))(u.pos, u.info, errT), ctxt)
+          (Assert(wrapPredUnfold(state.predicateBody(acc, ctxt, recur), perm, knownPositive))(u.pos, u.info, errT), ctxt)
         } else {
           (nop, ctxt)
         }
-      case (f@Fold(acc@PredicateAccessPredicate(_, perm)), ctxt, recur) if predMap.shouldRewrite(acc) =>
+      case (f@Fold(acc@PredicateAccessPredicate(_, perm)), ctxt, recur) if state.shouldRewrite(acc) =>
         val errT = ErrTrafo(err => FoldFailed(f, err.reason))
         if (assertFolds) {
-          (Assert(wrapPredFold(predMap.predicateBodyNoErrT(acc, ctxt, recur), perm, knownPositive))(f.pos, f.info, errT), ctxt)
+          (Assert(wrapPredFold(state.predicateBodyNoErrT(acc, ctxt, recur), perm, knownPositive))(f.pos, f.info, errT), ctxt)
         } else {
           (nop, ctxt)
         }
@@ -73,11 +70,11 @@ trait InlineRewrite {
     }, Set())
     for (pred <- inlinePreds) {
       val pred2 = strategy.execute[Predicate](permPropagateStrategy.execute(pred))
-      predMap.addPredicate(pred2, permDecl) // Modifies strategy so that pred can now be inlined
+      state.addPredicate(pred2) // Modifies strategy so that pred can now be inlined
     }
     val prog2 = strategy.execute[Program](program)
     if (assertFolds) {
-      prog2.copy(functions = prog2.functions ++ predMap.toUnfoldingFunctions)(prog2.pos, prog2.info, prog2.errT)
+      prog2.copy(functions = prog2.functions ++ state.toUnfoldingFunctions)(prog2.pos, prog2.info, prog2.errT)
     } else {
       prog2
     }

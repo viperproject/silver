@@ -3,16 +3,20 @@ package viper.silver.plugin.standard.inline
 import viper.silver.ast.utility.rewriter.Traverse.BottomUp
 import viper.silver.ast.utility.rewriter.{SimpleContext, Strategy}
 import viper.silver.ast.utility.{Expressions, ViperStrategy}
-import viper.silver.ast.{And, Bool, ErrTrafo, ErrorTrafo, Exp, FullPerm, FuncApp, Function, Implies, Info, Let, LocalVarDecl, Node, PermMul, Position, Predicate, PredicateAccessPredicate, ReTrafo, WildcardPerm}
+import viper.silver.ast.{And, Bool, ErrTrafo, ErrorTrafo, Exp, FullPerm, FuncApp, Function, Implies, Info, Let, LocalVar, LocalVarDecl, Node, Perm, PermMul, Position, Predicate, PredicateAccessPredicate, ReTrafo, WildcardPerm}
 import viper.silver.plugin.standard.inline.WrapPred._
 import viper.silver.verifier.errors.PredicateNotWellformed
 import viper.silver.verifier.reasons.InsufficientPermission
 
 import scala.collection.mutable
 
-case class InlinePredicateState(private val data: mutable.Map[String, Predicate] = mutable.Map(),
-                                private var todoMono: mutable.ArrayBuffer[String] = mutable.ArrayBuffer(),
-                                private val doneMono: mutable.Set[String] = mutable.Set()) {
+case class InlinePredicateState() {
+  private val data: mutable.Map[String, Predicate] = mutable.Map()
+  private var todoMono: mutable.ArrayBuffer[String] = mutable.ArrayBuffer()
+  private val doneMono: mutable.Map[String, String] = mutable.Map()
+  val names: PrefixNameGenerator = new PrefixNameGenerator("pi")
+  val permDecl: LocalVarDecl = LocalVarDecl(names.createUnique("perm"), Perm)()
+  def permVar: LocalVar = permDecl.localVar
 
   // Modifies this (may add new names to todoMono and doneMono if not already done)
   val handleWildcardStrategy: Strategy[Node, SimpleContext[Node]] = ViperStrategy.Slim({
@@ -46,11 +50,14 @@ case class InlinePredicateState(private val data: mutable.Map[String, Predicate]
 
   // Modifies this (adds name to todoMono and doneMono if not already done)
   def wildCardName(name: String): String = {
-    if (!doneMono(name)) {
-      doneMono.add(name)
-      todoMono.addOne(name)
+    doneMono.get(name) match {
+      case None =>
+        val res = names.createUnique(s"${name}_wildcard")
+        doneMono.put(name, res)
+        todoMono.addOne(name)
+        res
+      case Some(res) => res
     }
-    s"${name}__wildcard"
   }
 
   // Modifies this (adds funcApps name to todoMono and doneMono if not already done)
@@ -70,7 +77,8 @@ case class InlinePredicateState(private val data: mutable.Map[String, Predicate]
 
   // Modifies this (may add new names to _todo and done if not already done)
   def assertingIn(predAcc: PredicateAccessPredicate, inner: Exp, dummyName: String)(pos: Position, info: Info, errT: ErrorTrafo): Exp = {
-    val funcApp = FuncApp(predAcc.loc.predicateName, predAcc.loc.args.prepended(predAcc.perm))(pos, info, Bool, errT)
+    val name = data(predAcc.loc.predicateName).name
+    val funcApp = FuncApp(name, predAcc.loc.args.prepended(predAcc.perm))(pos, info, Bool, errT)
     val funcApp2 = monoWildCardApp(funcApp)
     Let(LocalVarDecl(dummyName, Bool)(), funcApp2, inner)(pos, info, errT)
   }
@@ -78,8 +86,8 @@ case class InlinePredicateState(private val data: mutable.Map[String, Predicate]
   def shouldRewrite(predAcc: PredicateAccessPredicate): Boolean = data.contains(predAcc.loc.predicateName)
 
   // Modifies this (adds pred to predicates)
-  def addPredicate(pred: Predicate, permVar: LocalVarDecl): Unit = {
-    data.put(pred.name, pred.copy(formalArgs = pred.formalArgs.prepended(permVar))(pred.pos, pred.info, pred.errT))
+  def addPredicate(pred: Predicate): Unit = {
+    data.put(pred.name, pred.copy(formalArgs = pred.formalArgs.prepended(permDecl))(pred.pos, pred.info, pred.errT))
   }
 
   def unfoldingFunction(pred: Predicate, name: String, args: Seq[LocalVarDecl], pre: Exp): Function = {
