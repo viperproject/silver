@@ -2,10 +2,12 @@ package viper.silver.plugin.standard.inline
 
 import viper.silver.ast._
 import viper.silver.ast.utility.{QuantifiedPermissions, ViperStrategy}
+import viper.silver.plugin.SilverPlugin
 import viper.silver.plugin.standard.inline.WrapPred._
+import viper.silver.verifier.ConsistencyError
 import viper.silver.verifier.errors._
 
-trait InlineRewrite {
+trait InlineRewrite extends SilverPlugin {
 
   def poly_recur[X <: Node](x: X)(implicit recur: Node => Node): X = {
     recur(x).asInstanceOf[X]
@@ -30,7 +32,6 @@ trait InlineRewrite {
     val permPropagateStrategy = ViperStrategy.Slim({
       case acc: AccessPredicate => multiplyExpByPerm(acc, state.permVar)
     })
-    val nop = Seqn(Seq(), Seq())()
     val strategy = ViperStrategyCustomTraverse.CustomContextTraverse[Set[String]]({
       case (acc@PredicateAccessPredicate(_, perm), ctxt, recur) if state.shouldRewrite(acc) =>
         (wrapPred(state.predicateBody(acc, ctxt, recur), perm, knownPositive), ctxt)
@@ -57,6 +58,9 @@ trait InlineRewrite {
           TrueLit()()
         }
         (Assert(trigMan.wrap(acc, res))(f.pos, f.info, errT), ctxt)
+      case (p@CurrentPerm(PredicateAccess(_, _)), ctxt, _) =>
+        reportError(ConsistencyError("Inlined predicates cannot be used in perm expressions", p.pos))
+        (p, ctxt)
       // Ugly hack needed since foralls are desugared before we get a chance to run
       case (fa@Forall(_, _, exp), ctxt, recur) =>
         val faTrig = fa.autoTrigger

@@ -1,0 +1,8 @@
+inline predicate P() {
+  true
+}
+
+method test() {
+  //:: ExpectedOutput(consistency.error)
+  assert perm(P()) == write
+}

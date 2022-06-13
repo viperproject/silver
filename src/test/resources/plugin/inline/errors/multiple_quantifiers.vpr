@@ -10,9 +10,10 @@ inline predicate P(x: Ref, y: Ref) {
 }
 
 method test04_fail(rs1: IArray[Ref], rs2: IArray[Ref]) {
+  //:: UnexpectedOutput(inhale.failed:insufficient.permission, /Carbon/issue/417/)
   inhale forall i1: Int, i2: Int ::
     0 <= i1 && i1 < len(rs1) && 0 <= i2 && i2 < len(rs2) ==> P(aloc(rs1, i1), aloc(rs2, i2))
-
+  //:: UnexpectedOutput(exhale.failed:insufficient.permission, /Carbon/issue/417/)
   exhale forall i1: Int, i2: Int ::
       0 <= i1 && i1 < len(rs1) && 0 <= i2 && i2 < len(rs2) ==> P(aloc(rs1, i1), aloc(rs2, i2))
 
