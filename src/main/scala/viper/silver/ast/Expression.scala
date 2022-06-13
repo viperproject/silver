@@ -755,35 +755,39 @@ case class SeqAppend(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 }
 
 /** Access to an element of a sequence at a given index position (starting at 0). */
-case class SeqIndex(s: Exp, idx: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp {
+case class SeqIndex(s: Exp, idx: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp with PrettyOperatorExpression {
   override lazy val check : Seq[ConsistencyError] =
     (if(!s.typ.isInstanceOf[SeqType]) Seq(ConsistencyError(s"Expected sequence type but found ${s.typ}", s.pos)) else Seq()) ++
     (if(!(idx isSubtype Int)) Seq(ConsistencyError(s"Second parameter of sequence-access expression must be Int, but found ${idx.typ}", idx.pos)) else Seq())
   lazy val typ = s.typ.asInstanceOf[SeqType].elementType
   def getArgs = Seq(s,idx)
   def withArgs(newArgs: Seq[Exp]) = SeqIndex(newArgs.head,newArgs(1))(pos, info, errT)
+  override def priority: Int = 10
+  override def fixity: Fixity = Infix(LeftAssociative)
 }
 
 /** Take the first 'n' elements of the sequence 'seq'. */
-case class SeqTake(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp {
+case class SeqTake(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp with PrettyOperatorExpression {
   override lazy val check : Seq[ConsistencyError] =
     (if(!s.typ.isInstanceOf[SeqType]) Seq(ConsistencyError(s"Expected sequence type but found ${s.typ}", s.pos)) else Seq()) ++
     (if(!(n isSubtype Int)) Seq(ConsistencyError(s"Second parameter of sequence-take expression must be Int, but found ${n.typ}", n.pos)) else Seq())
   lazy val typ = s.typ
   def getArgs = Seq(s,n)
   def withArgs(newArgs: Seq[Exp]) = SeqTake(newArgs.head,newArgs(1))(pos, info, errT)
-
+  override def priority: Int = 10
+  override def fixity: Fixity = Infix(LeftAssociative)
 }
 
 /** Drop the first 'n' elements of the sequence 'seq'. */
-case class SeqDrop(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp {
+case class SeqDrop(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp with PrettyOperatorExpression {
   override lazy val check : Seq[ConsistencyError] =
     (if(!s.typ.isInstanceOf[SeqType]) Seq(ConsistencyError(s"Expected sequence type but found ${s.typ}", s.pos)) else Seq()) ++
     (if(!(n isSubtype Int)) Seq(ConsistencyError(s"Second parameter of sequence-drop expression must be Int, but found ${n.typ}", n.pos)) else Seq())
   lazy val typ = s.typ
   def getArgs = Seq(s,n)
   def withArgs(newArgs: Seq[Exp]) = SeqDrop(newArgs.head,newArgs(1))(pos, info, errT)
-
+  override def priority: Int = 10
+  override def fixity: Fixity = Infix(LeftAssociative)
 }
 
 /** Is the element 'elem' contained in the sequence 'seq'? */

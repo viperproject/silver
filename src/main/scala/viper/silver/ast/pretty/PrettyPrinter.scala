@@ -786,10 +786,16 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       text("Seq") <> parens(ssep(elems map show, char (',') <> space))
     case RangeSeq(low, high) =>
       text("[") <> show(low) <> ".." <> show(high) <> ")"
+    case si@SeqIndex(seq: PrettyOperatorExpression, idx) =>
+      bracket(seq, si, LeftAssociative) <> brackets(show(idx))
     case SeqIndex(seq, idx) =>
       show(seq) <> brackets(show(idx))
+    case st@SeqTake(seq: PrettyOperatorExpression, n) =>
+      bracket(seq, st, LeftAssociative) <> brackets(text("..") <> show(n))
     case SeqTake(seq, n) =>
       show(seq) <> brackets(text("..") <> show(n))
+    case sd@SeqDrop(SeqTake(seq: PrettyOperatorExpression, n1), n2) =>
+      bracket(seq, sd, LeftAssociative) <> brackets(show(n2) <> ".." <> show(n1))
     case SeqDrop(SeqTake(seq, n1), n2) =>
       show(seq) <> brackets(show(n2) <> ".." <> show(n1))
     case SeqDrop(seq, n) =>
