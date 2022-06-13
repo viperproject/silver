@@ -1,0 +1,49 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+field f: Int
+
+
+inline predicate P(x: Ref, y: Ref) {
+  acc(x.f) && acc(y.f) && x.f < y.f
+}
+
+method test04_fail(rs1: IArray[Ref], rs2: IArray[Ref]) {
+  //:: UnexpectedOutput(inhale.failed:insufficient.permission, /Carbon/issue/417/)
+  inhale forall i1: Int, i2: Int ::
+    0 <= i1 && i1 < len(rs1) && 0 <= i2 && i2 < len(rs2) ==> P(aloc(rs1, i1), aloc(rs2, i2))
+  //:: UnexpectedOutput(exhale.failed:insufficient.permission, /Carbon/issue/417/)
+  exhale forall i1: Int, i2: Int ::
+      0 <= i1 && i1 < len(rs1) && 0 <= i2 && i2 < len(rs2) ==> P(aloc(rs1, i1), aloc(rs2, i2))
+
+
+
+  var k1: Int
+  var k2: Int
+  inhale 0 <= k1 && k1 < len(rs1)
+  inhale 0 <= k2 && k2 < len(rs2)
+
+  label l1
+
+  //:: ExpectedOutput(unfold.failed:insufficient.permission)
+  unfold P(aloc(rs1, k1), aloc(rs2, k2))
+
+}
+
+/* Encoding of arrays */
+domain IArray[T] {
+  function aloc(a: IArray[T], i: Int): T
+  function len(a: IArray[T]): Int
+  function first(r: T): IArray[T]
+  function second(r: T): Int
+
+  axiom array_all_diff {
+    forall a: IArray[T], i: Int :: {aloc(a, i)}
+      first(aloc(a, i)) == a && second(aloc(a, i)) == i
+  }
+
+  axiom length_nonneg {
+    forall a: IArray[T] :: len(a) >= 0
+  }
+}

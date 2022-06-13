@@ -6,6 +6,7 @@ import viper.silver.verifier.reasons.NegativePermission
 object WrapPred {
   private def isPositive(perm: Exp, knowPositive: LocalVar => Boolean): Boolean = perm match {
     case FullPerm() => true
+    case WildcardPerm() => true
     case FractionalPerm(IntLit(i1), IntLit(i2)) => i1 > 0 && i2 > 0
     case PermDiv(p, IntLit(i)) => isPositive(p, knowPositive) && i > 0
     case PermMul(p1, p2) => isPositive(p1, knowPositive) && isPositive(p2, knowPositive)
