@@ -154,9 +154,9 @@ trait ErrorMessage {
   // Should consider refactoring as a transformer, if/once we make the error message structure recursive
   def withNode(offendingNode: errors.ErrorNode = this.offendingNode) : ErrorMessage
 
-  // Check if the offendingNode contains any `ExpectFail` info tags
+  // Check if the offendingNode contains any `FailureExpectedInfo` info tags
   def isExpected: Boolean = if (!offendingNode.isInstanceOf[Infoed]) false
-    else offendingNode.asInstanceOf[Infoed].info.getUniqueInfo[ExpectFail].isDefined
+    else offendingNode.asInstanceOf[Infoed].info.getUniqueInfo[FailureExpectedInfo].isDefined
 }
 
 trait VerificationError extends AbstractError with ErrorMessage {

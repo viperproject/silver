@@ -39,7 +39,7 @@ class RefutePlugin extends SilverPlugin with ParserPluginTemplate {
    * Remove refute statements from the AST and add them as non-det asserts.
    * The ⭐ is nice since such a variable name cannot be parsed, but will it cause issues?
    */
-  override def beforeVerify(input: Program): Program = 
+  override def beforeVerify(input: Program): Program =
     ViperStrategy.Slim({
       case r@Refute(exp) => {
         this.RefuteAsserts += (r.pos -> r)

@@ -367,25 +367,25 @@ trait Info {
 
 /** A default `Info` that is empty. */
 case object NoInfo extends Info {
-  lazy val comment = Nil
-  lazy val isCached = false
+  override def comment = Nil
+  override def isCached = false
 }
 
 /** A simple `Info` that contains a list of comments. */
 case class SimpleInfo(comment: Seq[String]) extends Info {
-  lazy val isCached = false
+  override def isCached = false
 }
 
 /** An `Info` instance for labelling a quantifier as auto-triggered. */
 case object AutoTriggered extends Info {
-  lazy val comment = Nil
-  lazy val isCached = false
+  override def comment = Nil
+  override def isCached = false
 }
 
 /** An `Info` instance for labelling a pre-verified AST node (e.g., via caching). */
 case object Cached extends Info {
-  lazy val comment = Nil
-  lazy val isCached = true
+  override def comment = Nil
+  override def isCached = true
 }
 
 /** An `Info` instance for labelling a node as synthesized. A synthesized node is one that
@@ -393,22 +393,22 @@ case object Cached extends Info {
   * originate from an AST transformation.
   */
 case object Synthesized extends Info {
-  lazy val comment = Nil
-  lazy val isCached = false
+  override def comment = Nil
+  override def isCached = false
 }
 
 /** An `Info` instance for labelling an AST node which is expected to fail verification.
  * This is used by Silicon to avoid stopping verification.
 */
-class ExpectFail extends Info {
-  lazy val comment = Nil
-  lazy val isCached = false
+abstract class FailureExpectedInfo extends Info {
+  override def comment = Nil
+  override def isCached = false
 }
 
 /** An `Info` instance for composing multiple `Info`s together */
 case class ConsInfo(head: Info, tail: Info) extends Info {
-  lazy val comment = head.comment ++ tail.comment
-  lazy val isCached = head.isCached || tail.isCached
+  override def comment = head.comment ++ tail.comment
+  override def isCached = head.isCached || tail.isCached
 }
 
 /** Build a `ConsInfo` instance out of two `Info`s, unless the latter is `NoInfo` (which can be dropped) */

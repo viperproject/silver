@@ -8,11 +8,9 @@ package viper.silver.plugin.standard.refute
 
 import viper.silver.verifier._
 
-case class RefuteFailed(override val offendingNode: Refute,
-                                    override val reason: ErrorReason,
-                                    override val cached: Boolean = false) extends AbstractVerificationError {
+case class RefuteFailed(override val offendingNode: Refute, override val reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
   override val id = "refute.failed"
-  override val text = s"Refute holds in all cases or could not be reached (e.g. see Silicon `numberOfErrorsToReport`)."
+  override val text = "Refute holds in all cases or could not be reached (e.g. see Silicon `numberOfErrorsToReport`)."
 
   override def withNode(offendingNode: errors.ErrorNode = this.offendingNode): RefuteFailed =
     RefuteFailed(this.offendingNode, this.reason, this.cached)
