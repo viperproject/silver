@@ -2,7 +2,8 @@ package viper.silver.plugin.standard.inline
 
 import viper.silver.ast._
 import viper.silver.ast.utility.{QuantifiedPermissions, ViperStrategy}
-import viper.silver.frontend.InlinePredicateStrategy
+import viper.silver.frontend.{ApproximateIPS, AssertingIPS, DefaultIPS, InlinePredicateStrategy}
+import viper.silver.plugin.SilverPlugin
 import viper.silver.plugin.standard.inline.WrapPred._
 import viper.silver.verifier.ConsistencyError
 import viper.silver.verifier.errors._
@@ -25,7 +26,7 @@ trait InlineRewrite extends SilverPlugin {
     case _: MagicWand => sys.error("Cannot yet permission-scale magic wands")
   }
 
-  def rewriteProgram(program: Program, inlinePreds: Seq[Predicate], stat: InlinePredicateStrategy): Program = {
+  def rewriteProgram(program: Program, inlinePreds: Seq[Predicate], strat: InlinePredicateStrategy): Program = {
     val state = InlinePredicateState()
     val trigMan = new TriggerManager(program, inlinePreds, state.names)
     val knownPositive = (p: LocalVar) => p == state.permVar
@@ -37,17 +38,16 @@ trait InlineRewrite extends SilverPlugin {
         (wrapPred(state.predicateBody(acc, ctxt, recur), perm, knownPositive), ctxt)
       case (u@Unfolding(acc, body), ctxt, recur) if state.shouldRewrite(acc) =>
         val rbody = recur(body).asInstanceOf[Exp]
-        val res = if (stat == ApproximateIPS) {
-          rbody
-        } else if (stat == AssertingIPS) {
-          Asserting(wrapPredUnfold(predMap.predicateBody(acc, ctxt, recur), perm, knownPositive), rbody)(u.pos, u.info)
-        } else {
-          predMap.assertingIn(acc, rbody, getDummyName())(u.pos, u.info, u.errT)
+        val res = strat match {
+          case ApproximateIPS => rbody
+          case AssertingIPS =>
+            Asserting(wrapPredUnfold(state.predicateBody(acc, ctxt, recur), acc.perm, knownPositive), rbody)(u.pos, u.info)
+          case DefaultIPS => state.assertingIn(acc, rbody)(u.pos, u.info, u.errT)
         }
         (trigMan.wrap(acc, res), ctxt)
       case (u@Unfold(acc@PredicateAccessPredicate(_, perm)), ctxt, recur) if state.shouldRewrite(acc) =>
         val errT = ErrTrafo(err => UnfoldFailed(u, err.reason))
-        val res = if (stat != ApproximateIPS) {
+        val res = if (strat != ApproximateIPS) {
           wrapPredUnfold(state.predicateBody(acc, ctxt, recur), perm, knownPositive)
         } else {
           TrueLit()()
@@ -55,7 +55,7 @@ trait InlineRewrite extends SilverPlugin {
         (Assert(trigMan.wrap(acc, res))(u.pos, u.info, errT), ctxt)
       case (f@Fold(acc@PredicateAccessPredicate(_, perm)), ctxt, recur) if state.shouldRewrite(acc) =>
         val errT = ErrTrafo(err => FoldFailed(f, err.reason))
-        val res = if (stat != ApproximateIPS) {
+        val res = if (strat != ApproximateIPS) {
           wrapPredFold(state.predicateBodyNoErrT(acc, ctxt, recur), perm, knownPositive)
         } else {
           TrueLit()()
@@ -84,7 +84,7 @@ trait InlineRewrite extends SilverPlugin {
     }
     val prog2 = strategy.execute[Program](program)
     val prog3 = prog2.copy(domains = prog2.domains.prependedAll(trigMan.intoDomain()))(prog2.pos, prog2.info, prog2.errT)
-    if (stat == DefaultIPS) {
+    if (strat == DefaultIPS) {
       prog3.copy(functions = prog3.functions ++ state.toUnfoldingFunctions)(prog3.pos, prog3.info, prog3.errT)
     } else {
       prog3
