@@ -58,7 +58,7 @@ class InlinePredicatePlugin extends SilverPlugin with ParserPluginTemplate
     val (inlinePredsUnordered, otherPreds) = input.predicates.partition(p => cond(p.name))
     val inlinePreds = topoOrder.map(name => inlinePredsUnordered.find(_.name == name).get)
     val res = rewriteProgram(input.copy(predicates = otherPreds)(input.pos, input.info, input.errT), inlinePreds, assertFolds = true)
-    //print(res)
+    print(res)
     res
   }
 

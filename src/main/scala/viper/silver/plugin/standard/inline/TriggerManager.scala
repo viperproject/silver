@@ -11,12 +11,13 @@ class TriggerManager(program: Program, inlinePreds: Seq[Predicate], val names: N
     val preds = inlinePreds.iterator.map(p => (p.name, p)).toMap
     val res = mutable.Map[String, DomainFunc]()
     program.visit {
-      case t: Trigger =>
-        t.visit {
-          case p: PredicateAccess =>
-            val pred = preds(p.predicateName)
-            res.put(pred.name, DomainFunc(names.createUnique(pred.name), pred.formalArgs, Bool)(pred.pos, pred.info, domainName, pred.errT))
-        }
+      case f: Forall =>
+        f.autoTrigger.triggers.foreach(
+          _.visit {
+            case p: PredicateAccess =>
+              val pred = preds(p.predicateName)
+              res.put(pred.name, DomainFunc(names.createUnique(pred.name), pred.formalArgs, Bool)(pred.pos, pred.info, domainName, pred.errT))
+          })
     }
     res.toMap
   }
