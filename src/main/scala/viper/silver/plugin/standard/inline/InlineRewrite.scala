@@ -25,8 +25,8 @@ trait InlineRewrite {
 
   def rewriteProgram(program: Program, inlinePreds: Seq[Predicate], assertFolds: Boolean): Program = {
     val state = InlinePredicateState()
+    val trigMan = new TriggerManager(program, inlinePreds, state.names)
     val knownPositive = (p: LocalVar) => p == state.permVar
-    val getDummyName = () => state.names.createUnique("dummy")
     val permPropagateStrategy = ViperStrategy.Slim({
       case acc: AccessPredicate => multiplyExpByPerm(acc, state.permVar)
     })
@@ -35,29 +35,32 @@ trait InlineRewrite {
       case (acc@PredicateAccessPredicate(_, perm), ctxt, recur) if state.shouldRewrite(acc) =>
         (wrapPred(state.predicateBody(acc, ctxt, recur), perm, knownPositive), ctxt)
       case (u@Unfolding(acc, body), ctxt, recur) if state.shouldRewrite(acc) =>
-        if (assertFolds) {
-          (state.assertingIn(acc, recur(body).asInstanceOf[Exp], getDummyName())(u.pos, u.info, u.errT), ctxt)
+        val res = if (assertFolds) {
+          state.assertingIn(acc, recur(body).asInstanceOf[Exp])(u.pos, u.info, u.errT)
         } else {
-          (recur(body).asInstanceOf[Exp], ctxt)
+          recur(body).asInstanceOf[Exp]
         }
+        (trigMan.wrap(acc, res), ctxt)
       case (u@Unfold(acc@PredicateAccessPredicate(_, perm)), ctxt, recur) if state.shouldRewrite(acc) =>
         val errT = ErrTrafo(err => UnfoldFailed(u, err.reason))
-        if (assertFolds) {
-          (Assert(wrapPredUnfold(state.predicateBody(acc, ctxt, recur), perm, knownPositive))(u.pos, u.info, errT), ctxt)
+        val res = if (assertFolds) {
+          wrapPredUnfold(state.predicateBody(acc, ctxt, recur), perm, knownPositive)
         } else {
-          (nop, ctxt)
+          TrueLit()()
         }
+        (Assert(trigMan.wrap(acc, res))(u.pos, u.info, errT), ctxt)
       case (f@Fold(acc@PredicateAccessPredicate(_, perm)), ctxt, recur) if state.shouldRewrite(acc) =>
         val errT = ErrTrafo(err => FoldFailed(f, err.reason))
-        if (assertFolds) {
-          (Assert(wrapPredFold(state.predicateBodyNoErrT(acc, ctxt, recur), perm, knownPositive))(f.pos, f.info, errT), ctxt)
+        val res = if (assertFolds) {
+          wrapPredFold(state.predicateBodyNoErrT(acc, ctxt, recur), perm, knownPositive)
         } else {
-          (nop, ctxt)
+          TrueLit()()
         }
+        (Assert(trigMan.wrap(acc, res))(f.pos, f.info, errT), ctxt)
       // Ugly hack needed since foralls are desugared before we get a chance to run
       case (fa@Forall(_, _, exp), ctxt, recur) =>
         val faTrig = fa.autoTrigger
-        val fa2 = faTrig.copy(exp = recur(exp).asInstanceOf[Exp])(fa.pos, faTrig.info, fa.errT)
+        val fa2 = faTrig.copy(exp = recur(exp).asInstanceOf[Exp], triggers = trigMan.mapTriggers(faTrig.triggers))(fa.pos, faTrig.info, fa.errT)
         val fa3 = if (fa == fa2) {
           fa
         } else {
@@ -73,10 +76,11 @@ trait InlineRewrite {
       state.addPredicate(pred2) // Modifies strategy so that pred can now be inlined
     }
     val prog2 = strategy.execute[Program](program)
+    val prog3 = prog2.copy(domains = prog2.domains.prependedAll(trigMan.intoDomain()))(prog2.pos, prog2.info, prog2.errT)
     if (assertFolds) {
-      prog2.copy(functions = prog2.functions ++ state.toUnfoldingFunctions)(prog2.pos, prog2.info, prog2.errT)
+      prog3.copy(functions = prog3.functions ++ state.toUnfoldingFunctions)(prog3.pos, prog3.info, prog3.errT)
     } else {
-      prog2
+      prog3
     }
   }
 }

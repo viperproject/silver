@@ -76,11 +76,12 @@ case class InlinePredicateState() {
   }
 
   // Modifies this (may add new names to _todo and done if not already done)
-  def assertingIn(predAcc: PredicateAccessPredicate, inner: Exp, dummyName: String)(pos: Position, info: Info, errT: ErrorTrafo): Exp = {
+  def assertingIn(predAcc: PredicateAccessPredicate, inner: Exp)(pos: Position, info: Info, errT: ErrorTrafo): Exp = {
     val name = data(predAcc.loc.predicateName).name
     val funcApp = FuncApp(name, predAcc.loc.args.prepended(predAcc.perm))(pos, info, Bool, errT)
     val funcApp2 = monoWildCardApp(funcApp)
-    Let(LocalVarDecl(dummyName, Bool)(), funcApp2, inner)(pos, info, errT)
+    val dummy = LocalVarDecl(names.createUnique("dummy"), Bool)()
+    Let(dummy, funcApp2, inner)(pos, info, errT)
   }
 
   def shouldRewrite(predAcc: PredicateAccessPredicate): Boolean = data.contains(predAcc.loc.predicateName)

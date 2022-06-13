@@ -1,0 +1,38 @@
+inline predicate P(this: Ref) {
+  check2(this)
+}
+
+function check(x: Ref): Bool
+function check2(x: Ref): Bool
+
+method test1(this: Ref)
+requires forall x: Ref :: {P(x)} check(x)
+ensures check(this) {
+  assert unfolding acc(P(this), none) in true
+}
+
+method test2(this: Ref)
+requires forall x: Ref :: {P(x)} check(x)
+ensures check(this) {
+  unfold acc(P(this), none)
+}
+
+method test3(this: Ref)
+requires forall x: Ref :: {P(x)} check(x)
+ensures check(this) {
+  assert unfolding acc(P(this), none) in true
+}
+
+method test4(this: Ref)
+requires forall x: Ref :: {P(x)} check(x)
+requires P(this)
+ensures check(this) {
+  unfold P(this)
+}
+
+method test5(this: Ref)
+requires forall x: Ref :: {P(x)} check(x)
+requires P(this)
+ensures check(this) {
+  assert unfolding P(this) in true
+}
