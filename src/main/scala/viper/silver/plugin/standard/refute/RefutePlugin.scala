@@ -44,14 +44,14 @@ class RefutePlugin extends SilverPlugin with ParserPluginTemplate {
       case r@Refute(exp) => {
         this.RefuteAsserts += (r.pos -> r)
         Seqn(Seq(
-          If(LocalVar("⭐", Bool)(r.pos),
+          If(LocalVar(s"__plugin_refute_nondet${this.RefuteAsserts.size}", Bool)(r.pos),
             Seqn(Seq(
               Assert(exp)(r.pos, RefuteInfo),
               Inhale(BoolLit(false)(r.pos))(r.pos)
             ), Seq())(r.pos),
             Seqn(Seq(), Seq())(r.pos))(r.pos)
           ),
-          Seq(LocalVarDecl("⭐", Bool)(r.pos))
+          Seq(LocalVarDecl(s"__plugin_refute_nondet${this.RefuteAsserts.size}", Bool)(r.pos))
         )(r.pos)
       }
     }).recurseFunc({
