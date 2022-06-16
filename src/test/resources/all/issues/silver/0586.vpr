@@ -1,0 +1,24 @@
+field val: Int
+
+define NodeSeg(n) (
+    (let x == (0) in acc(n.val))
+)
+
+method test1(head: Ref)
+{
+	package (NodeSeg(head)) --* true
+	exhale (NodeSeg(head)) --* true
+}
+
+method test2(head: Ref)
+{
+	package (let x == (head) in acc(x.val)) --* true
+	exhale  (let y == (head) in acc(y.val)) --* true
+}
+
+method test3(head: Ref) {
+  package (let x == (head) in let y == (0) in acc(x.val)) --* true
+  //:: ExpectedOutput(exhale.failed:wand.not.found)
+  exhale  (let y == (0) in let x == (head) in acc(x.val)) --* true
+  /* Current wand lookup algorithm is too syntactical/structural */
+}
