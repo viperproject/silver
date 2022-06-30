@@ -1,0 +1,36 @@
+field f: Int
+
+function foo(x:Ref): Bool
+    requires acc(x.f) { x.f == x.f }
+
+method bar(y: Int)
+    requires y > 10
+{
+    var x: Ref
+    inhale acc(x.f)
+    label l
+    while (x.f > y)
+        invariant acc(x.f) && (old[l](x.f >= y) ==> x.f >= y)
+    {
+        refute x.f < y
+        x.f := x.f - 1
+        //:: ExpectedOutput(refute.failed:refutation.true)
+        refute foo(x)
+    }
+    refute x.f == y
+    
+    var z: Int
+    if (z > 10) {
+        z := z+1
+    } else {
+        z := z-1
+    }
+    if (z < -10) {
+        z := z+1
+    } else {
+        z := z-1
+    }
+    refute z == 10
+    //:: ExpectedOutput(refute.failed:refutation.true)
+    refute z < 9 || z > 10
+}
