@@ -155,8 +155,10 @@ trait ErrorMessage {
   def withNode(offendingNode: errors.ErrorNode = this.offendingNode) : ErrorMessage
 
   // Check if the offendingNode contains any `FailureExpectedInfo` info tags
-  def isExpected: Boolean = if (!offendingNode.isInstanceOf[Infoed]) false
-    else offendingNode.asInstanceOf[Infoed].info.getUniqueInfo[FailureExpectedInfo].isDefined
+  def isExpected: Boolean = offendingNode match {
+    case i: Infoed => i.info.getUniqueInfo[FailureExpectedInfo].isDefined
+    case _ => false
+  }
 }
 
 trait VerificationError extends AbstractError with ErrorMessage {

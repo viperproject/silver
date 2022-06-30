@@ -18,18 +18,18 @@ import viper.silver.verifier.errors.AssertFailed
 class RefutePlugin extends SilverPlugin with ParserPluginTemplate {
 
   /** Keyword used to define refute statements. */
-  private val RefuteKeyword: String = "refute"
+  private val refuteKeyword: String = "refute"
 
-  private var RefuteAsserts: Map[Position, Refute] = Map()
+  private var refuteAsserts: Map[Position, Refute] = Map()
 
   /** Parser for refute statements. */
   def refute[_: P]: P[PRefute] =
-    FP(keyword(RefuteKeyword) ~/ exp).map{ case (pos, e) => PRefute(e)(pos) }
+    FP(keyword(refuteKeyword) ~/ exp).map{ case (pos, e) => PRefute(e)(pos) }
 
   /** Add refute to the parser. */
   override def beforeParse(input: String, isImported: Boolean): String = {
     // Add new keyword
-    ParserExtension.addNewKeywords(Set[String](RefuteKeyword))
+    ParserExtension.addNewKeywords(Set[String](refuteKeyword))
     // Add new parser to the precondition
     ParserExtension.addNewStmtAtEnd(refute(_))
     input
@@ -42,36 +42,36 @@ class RefutePlugin extends SilverPlugin with ParserPluginTemplate {
   override def beforeVerify(input: Program): Program =
     ViperStrategy.Slim({
       case r@Refute(exp) => {
-        this.RefuteAsserts += (r.pos -> r)
+        this.refuteAsserts += (r.pos -> r)
         Seqn(Seq(
-          If(LocalVar(s"__plugin_refute_nondet${this.RefuteAsserts.size}", Bool)(r.pos),
+          If(LocalVar(s"__plugin_refute_nondet${this.refuteAsserts.size}", Bool)(r.pos),
             Seqn(Seq(
               Assert(exp)(r.pos, RefuteInfo),
               Inhale(BoolLit(false)(r.pos))(r.pos)
             ), Seq())(r.pos),
             Seqn(Seq(), Seq())(r.pos))(r.pos)
           ),
-          Seq(LocalVarDecl(s"__plugin_refute_nondet${this.RefuteAsserts.size}", Bool)(r.pos))
+          Seq(LocalVarDecl(s"__plugin_refute_nondet${this.refuteAsserts.size}", Bool)(r.pos))
         )(r.pos)
       }
     }).recurseFunc({
       case Method(_, _, _, _, _, body) => Seq(body)
     }).execute(input)
 
-  /** Remove refutation related errors and add RefuteAsserts that didn't report an error. */
+  /** Remove refutation related errors and add refuteAsserts that didn't report an error. */
   override def mapVerificationResult(input: VerificationResult): VerificationResult = {
     val errors: Seq[AbstractError] = (input match {
       case Success => Seq()
       case Failure(errors) => {
         errors.filter {
           case AssertFailed(a, _, _) if a.info == RefuteInfo => {
-            this.RefuteAsserts -= a.pos
+            this.refuteAsserts -= a.pos
             false
           }
           case _ => true
         }
       }
-    }) ++ this.RefuteAsserts.map(r => RefuteFailed(r._2, RefutationTrue(r._2.exp)))
+    }) ++ this.refuteAsserts.map(r => RefuteFailed(r._2, RefutationTrue(r._2.exp)))
     if (errors.length == 0) Success
     else Failure(errors)
   }
