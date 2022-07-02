@@ -4,5 +4,4 @@
 domain HeapVersion {}
 
 method Arc_clone(x: Ref, y: HeapVersion)
-    //:: ExpectedOutput(consistency.error)
     requires false ==> Map[Ref, HeapVersion]()[x] == y
