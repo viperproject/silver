@@ -1,0 +1,9 @@
+method m1() {
+  while (true) {
+      goto bubble
+  }
+  label bubble
+}
+
+
+method m2() { }
