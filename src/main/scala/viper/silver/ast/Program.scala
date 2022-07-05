@@ -736,15 +736,17 @@ case object PermGtOp extends RelOp(">") with PermBinOp
 case object PermGeOp extends RelOp(">=") with PermBinOp
 
 /** Boolean or. */
-case object OrOp extends BoolBinOp with BoolDomainFunc with LeftAssoc {
+case object OrOp extends BoolBinOp with BoolDomainFunc {
   lazy val op = "||"
   lazy val priority = 4
+  lazy val fixity = Infix(RightAssociative)
 }
 
 /** Boolean and. */
-case object AndOp extends BoolBinOp with BoolDomainFunc with LeftAssoc {
+case object AndOp extends BoolBinOp with BoolDomainFunc {
   lazy val op = "&&"
   lazy val priority = 5
+  lazy val fixity = Infix(RightAssociative)
 }
 
 /** Boolean implication. */

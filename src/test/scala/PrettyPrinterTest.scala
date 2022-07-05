@@ -4,10 +4,13 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
+import TestHelpers.MockSilFrontend
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 import viper.silver.ast._
 import viper.silver.ast.pretty.FastPrettyPrinter
+
+import java.io.{File, FileWriter}
 
 class PrettyPrinterTest extends AnyFunSuite with Matchers {
   test("The comment of nested Seqn-s is printed correctly") {
@@ -20,5 +23,59 @@ class PrettyPrinterTest extends AnyFunSuite with Matchers {
 
     // In particular, we don't want `printed` to end with a newline.
     assert(printed == "// " + comment)
+  }
+
+  def tt = TrueLit()()
+  def and(t: Exp, u: Exp) = And(t, u)()
+  def or(t: Exp, u: Exp) = Or(t, u)()
+
+  test("Parsing a pretty-printed 'And' expression should return the same expression") {
+    compareToParsed(and(and(tt, tt), tt))
+  }
+  test("Parsing a pretty-printed 'Or' expression should return the same expression") {
+    compareToParsed(or(or(tt, tt), tt))
+  }
+
+  private def compareToParsed(exp: Exp): Unit = {
+    compareToParsed(
+      Program(
+        Nil,
+        Nil,
+        Nil,
+        Nil,
+        List(
+          Method(
+            "test",
+            Nil,
+            Nil,
+            Nil,
+            Nil,
+            Some(
+              Seqn(
+                List(Assert(exp)()),
+                  Nil
+                )()
+              )
+            )()
+        ),
+        Nil
+      )()
+    )
+  }
+
+  private def compareToParsed(prog: Program): Unit = {
+    val frontend = new MockSilFrontend
+    val printed = FastPrettyPrinter.pretty(prog)
+    val file = File.createTempFile("parsetest", ".vpr")
+    val fw = new FileWriter(file)
+    fw.write(printed)
+    fw.close()
+
+    frontend.translate(file.toPath) match {
+      case (Some(result), _) =>
+        assert(result == prog, s"${prog} did not match ${result}")
+      case (None, errors) =>
+        sys.error("Error occurred during translating: " + errors)
+    }
   }
 }
