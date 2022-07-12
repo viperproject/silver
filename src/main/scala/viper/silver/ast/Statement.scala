@@ -197,6 +197,35 @@ case class Goto(target: String)(val pos: Position = NoPosition, val info: Info =
   */
 case class LocalVarDeclStmt(decl: LocalVarDecl)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt
 
+/** Havoc statement.
+  * Conceptually, assigns the havocked resource an arbitrary value.
+  * Technically, replaces the havocked resources snapshot with a fresh snapshot.
+  * The optional lhs provides a guard, under which the resource is havocked. For example,
+  *   havoc c ==> Pred(x)
+  * means that we only havoc Pred(x) if the condition `c` is true.
+  * The "havocall" variant of this statement allows one to havoc an unbounded number of resources
+  */
+case class Havoc(lhs: Option[Exp], exp: ResourceAccess)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
+  override lazy val check : Seq[ConsistencyError] = {
+    // Add some sanity checks, which should be guaranteed by earlier phases of the front end. These checks
+    // are similar to the ones provided by inhale and exhale statements.
+    (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
+    (if (lhs.nonEmpty && !(lhs.get isSubtype Bool)) Seq(ConsistencyError(s"Left side of havoc implication must be of type Bool, but found ${exp.typ}", exp.pos)) else Seq())
+  }
+}
+
+/** Havocall statement (see Havoc statement)
+  * Must extend Scope because it declares quantified variables.
+  */
+case class Havocall(vars: Seq[LocalVarDecl], lhs: Option[Exp], exp: ResourceAccess)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt with Scope {
+  val scopedDecls: Seq[Declaration] = vars
+
+  override lazy val check : Seq[ConsistencyError] = {
+    (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
+    (if (lhs.nonEmpty && !(lhs.get isSubtype Bool)) Seq(ConsistencyError(s"Left side of havocall implication must be of type Bool, but found ${exp.typ}", exp.pos)) else Seq())
+  }
+}
+
 
 /** Generic Statement type to use to extend the AST.
   * New statement-typed AST nodes can be defined by creating new case classes extending this trait.

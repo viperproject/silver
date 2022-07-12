@@ -9,6 +9,8 @@ package viper.silver.ast.utility
 import scala.collection.mutable
 import viper.silver.ast._
 
+import scala.+:
+
 /** Utility methods for AST nodes. */
 object Nodes {
 
@@ -66,6 +68,8 @@ object Nodes {
           case Label(_, invs) => invs
           case Goto(_) => Nil
           case LocalVarDeclStmt(decl) => Seq(decl)
+          case Havoc(lhs, e) => lhs.toSeq :+ e
+          case Havocall(vars, lhs, e) => vars ++ lhs.toSeq :+ e
           case e: ExtensionStmt => e.extensionSubnodes
         }
       case _: LocalVarDecl => Nil

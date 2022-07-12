@@ -746,7 +746,7 @@ object FastParser {
     // specifications
     "requires", "ensures", "invariant",
     // statements
-    "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "package", "apply",
+    "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "package", "apply", "havoc", "havocall",
     // control flow
     "while", "if", "elseif", "else", "goto", "label",
     // sequences
@@ -1073,11 +1073,13 @@ object FastParser {
 
   def stmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | macroassign | fieldassign | localassign | fold | unfold | exhale | assertP |
     inhale | assume | ifthnels | whle | varDecl | defineDecl | newstmt | 
-    methodCall | goto | lbl | packageWand | applyWand | macroref | block | ParserExtension.newStmtAtEnd(ctx))
+    methodCall | goto | lbl | packageWand | applyWand | macroref | block |
+    havoc | havocall | ParserExtension.newStmtAtEnd(ctx))
 
   def nodefinestmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | fieldassign | localassign | fold | unfold | exhale | assertP |
     inhale | assume | ifthnels | whle | varDecl | newstmt |
-    methodCall | goto | lbl | packageWand | applyWand | macroref | block | ParserExtension.newStmtAtEnd(ctx))
+    methodCall | goto | lbl | packageWand | applyWand | macroref | block |
+    havoc | havocall | ParserExtension.newStmtAtEnd(ctx))
 
   def macroref[_: P]: P[PMacroRef] = FP(idnuse).map { case (pos, a) => PMacroRef(a)(pos) }
 
@@ -1098,6 +1100,29 @@ object FastParser {
   def inhale[_: P]: P[PInhale] = FP(keyword("inhale") ~/ exp).map{ case (pos, e) => PInhale(e)(pos) }
 
   def assume[_: P]: P[PAssume] = FP(keyword("assume") ~/ exp).map{ case (pos, e) => PAssume(e)(pos) }
+
+  // Parsing Havoc statements
+  // Havoc statements have two forms:
+  //    1. havoc <resource>
+  //    2. havoc <exp> ==> <resource>
+  // Note that you cannot generalize (2) to something like "<exp1> ==> <exp2> ==> <resource>".
+  // We therefore forbid the lhs of (2) from being an arbitrary expression. Instead,
+  // we enforce that it's a "magicWandExp", which is one level below an implication expression
+  // in the grammar. Note that it is still possible to express "(<exp1> ==> <exp2>) ==> <resource>
+  // using parentheses.
+
+  // Havocall follows a similar pattern to havoc, but we allow quantifying over variables.
+
+  def havoc[_: P]: P[PHavoc] = FP(keyword("havoc") ~/
+    (magicWandExp ~ "==>").? ~ exp ).map{
+    case (pos, (lhs, rhs)) => PHavoc(lhs, rhs)(pos)
+  }
+
+  def havocall[_: P]: P[PHavocall] = FP(keyword("havocall") ~/
+    nonEmptyFormalArgList ~ "::" ~ (magicWandExp ~ "==>").? ~ exp).map {
+    case (pos, (a, b, c)) =>
+      PHavocall(a, b, c)(pos)
+  }
 
   def ifthnels[_: P]: P[PIf] = FP("if" ~ "(" ~ exp ~ ")" ~ block ~~~ elsifEls).map {
     case (pos, (cond, thn, ele)) => PIf(cond, thn, ele)(pos)

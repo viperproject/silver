@@ -237,9 +237,35 @@ case class Translator(program: PProgram) {
         If(exp(cond), stmt(thn).asInstanceOf[Seqn], stmt(els).asInstanceOf[Seqn])(pos)
       case PWhile(cond, invs, body) =>
         While(exp(cond), invs map exp, stmt(body).asInstanceOf[Seqn])(pos)
+      case PHavoc(lhs, e) =>
+        val (newLhs, newE) = havocStmt(lhs, e)
+        Havoc(newLhs, newE)(pos)
+      case PHavocall(vars, lhs, e) =>
+        val newVars = vars map liftVarDecl
+        val (newLhs, newE) = havocStmt(lhs, e)
+        Havocall(newVars, newLhs, newE)(pos)
       case t: PExtender =>   t.translateStmt(this)
       case _: PDefine | _: PSkip =>
         sys.error(s"Found unexpected intermediate statement $s (${s.getClass.getName}})")
+    }
+  }
+
+  def havocStmt(lhs: Option[PExp], e: PExp): (Option[Exp], ResourceAccess) = {
+    val newLhs = if (lhs.nonEmpty) Some(exp(lhs.get)) else None
+    exp(e) match {
+      case exp: FieldAccess => (newLhs, exp)
+      case PredicateAccessPredicate(loc, perm) => {
+        // Note: A Havoc stmt is internally represented as Havoc(lhs, exp) where exp is
+        // a ResourceAccess. Unfortunately, the expression `Pred(<args>)`, is translated into
+        // a PredicateAccessPredicate, i.e. a ResourceAccess combined with a permission
+        // amount. (This allows us to say `assert Pred(<args>)` instead of `assert acc(Pred(<args>, write))`.)
+        // For our purposes, we don't care about the permission amount. Therefore, we simply
+        // extract the ResourceAccess
+        assert(perm.isInstanceOf[FullPerm])
+        (newLhs, loc)
+      }
+      case exp: MagicWand => (newLhs, exp)
+      case _ => sys.error("Can't havoc this kind of expression")
     }
   }
 
