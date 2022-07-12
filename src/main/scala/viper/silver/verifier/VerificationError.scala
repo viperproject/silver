@@ -530,6 +530,31 @@ object errors {
   def LetWandFailed(offendingNode: LocalVarAssign): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => LetWandFailed(offendingNode, reason))
 
+  case class HavocFailed(offendingNode: Havoc, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
+    val id = "havoc.failed"
+    val text = "Havoc might fail."
+
+    override def pos = offendingNode.exp.pos
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = HavocFailed(offendingNode.asInstanceOf[Havoc], this.reason, this.cached)
+    def withReason(r: ErrorReason) = HavocFailed(offendingNode, r, cached)
+  }
+
+  def HavocFailed(offendingNode: Havoc): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => HavocFailed(offendingNode, reason))
+
+  case class HavocallFailed(offendingNode: Havocall, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
+    val id = "havocall.failed"
+    val text = "Havocall might fail."
+
+    override def pos = offendingNode.exp.pos
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = HavocallFailed(offendingNode.asInstanceOf[Havocall], this.reason, this.cached)
+    def withReason(r: ErrorReason) = HavocallFailed(offendingNode, r, cached)
+  }
+
+  def HavocallFailed(offendingNode: Havocall): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => HavocallFailed(offendingNode, reason))
+
+
   case class HeuristicsFailed(offendingNode: ErrorNode, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "heuristics.failed"
     val text = "Applying heuristics failed."
@@ -646,6 +671,13 @@ object reasons {
     def readableMessage = s"Quantified resource $offendingNode might not be injective."
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = QPAssertionNotInjective(offendingNode.asInstanceOf[ResourceAccess])
+  }
+
+  case class HavocallNotInjective(offendingNode: Havocall) extends AbstractErrorReason {
+    val id = "havocall.not.injective"
+    def readableMessage = s"Havocall statement $offendingNode might not be injective."
+
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = HavocallNotInjective(offendingNode.asInstanceOf[Havocall])
   }
 
   case class LabelledStateNotReached(offendingNode: LabelledOld) extends AbstractErrorReason {

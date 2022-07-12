@@ -238,9 +238,31 @@ case class Translator(program: PProgram) {
         If(exp(cond), stmt(thn).asInstanceOf[Seqn], stmt(els).asInstanceOf[Seqn])(pos)
       case PWhile(cond, invs, body) =>
         While(exp(cond), invs map exp, stmt(body).asInstanceOf[Seqn])(pos)
+      case PHavoc(lhs, e) =>
+        val (newLhs, newE) = havocStmt(lhs, e)
+        Havoc(newLhs, newE)(pos)
+      case PHavocall(vars, lhs, e) =>
+        val newVars = vars map liftVarDecl
+        val (newLhs, newE) = havocStmt(lhs, e)
+        Havocall(newVars, newLhs, newE)(pos)
       case t: PExtender =>   t.translateStmt(this)
       case _: PDefine | _: PSkip =>
         sys.error(s"Found unexpected intermediate statement $s (${s.getClass.getName}})")
+    }
+  }
+
+  def havocStmt(lhs: Option[PExp], e: PExp): (Option[Exp], ResourceAccess) = {
+    val newLhs = lhs.map(exp)
+    exp(e) match {
+      case exp: FieldAccess => (newLhs, exp)
+      case PredicateAccessPredicate(predAccess, perm) =>
+        // A PrediateAccessPredicate is a PredicateResourceAccess combined with
+        // a Permission. Havoc expects a ResourceAccess. To make types match,
+        // we must extract the PredicateResourceAccess.
+        assert(perm.isInstanceOf[FullPerm])
+        (newLhs, predAccess)
+      case exp: MagicWand => (newLhs, exp)
+      case _ => sys.error("Can't havoc this kind of expression")
     }
   }
 
