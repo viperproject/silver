@@ -15,6 +15,38 @@ object Chopper {
   /**
     * chops `choppee` into multiple Viper programs.
     *
+    * Chopping proceeds in three phases:
+    *
+    * 1) The set of 'important members' is identified.
+    *    If `isolate` is none, then the important members are all members of `choppee` that
+    *    induce a proof obligation, i.e. methods, functions, and predicates.
+    *    Otherwise, if `isolate` is not none, then the important members are all members of `choppee` that
+    *    satisfy `isolate.get`.
+    *
+    * 2) For each important member M, a separate Viper program is generated that contains
+    *    exactly the important member M together with all dependencies of the important member M that are
+    *    required to verify the important member M. The generated program is the smallest
+    *    subset of `choppee` required to verify an important member.
+    *    Direct dependencies are computed by [[Edges.dependencies]] and a reachability algorithm
+    *    is used to compute the transitive closure of the dependencies.
+    *    The dependency analysis distinguishes between method spec and method body,
+    *    predicate signatures and predicate bodies, individual domain functions, and individual domain axioms.
+    *
+    * 3) Generated programs for different important members are merged until the number of remaining programs
+    *    is <= `bound`. If `bound` is none, then the generated programs for all important members are returned.
+    *    Merging is done greedily: `penalty` defines the cost of merging two programs.
+    *    Consecutively, two programs with the lowest merging cost are merged until `bound` is satisfied
+    *    and there are no two programs with a merging cost <= 0.
+    *
+    * Note that each method body is contained in at most one of the returned Viper programs.
+    * However, functions, predicates, fields, etc may be contained in more than one of the returned Viper programs.
+    * As a consequence, error messages may have to be deduplicated when combining the error messages
+    * for all returned Viper programs. Members that are not dependencies of important nodes are not contained
+    * in any of the returned programs.
+    *
+    * The chopper does not support AST nodes introduced by Viper plugins. However, the chopper can be invoked
+    * after the AST nodes are translated through SilverPlugin.beforeVerify.
+    *
     * @param choppee Targeted program.
     * @param isolate Specifies which members of the program should be verified.
     *                If none, then all members that induce a proof obligation are verified.
@@ -34,7 +66,7 @@ object Chopper {
   }
 
   /**
-    * chops `choppee` into multiple Viper programs.
+    * chops `choppee` into multiple Viper programs and returns metrics. See [[chop]] for more details.
     *
     * @param choppee Targeted program.
     * @param isolate Specifies which members of the program should be verified.
