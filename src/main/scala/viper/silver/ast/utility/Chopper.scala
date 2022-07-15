@@ -23,10 +23,12 @@ object Chopper {
     * @param penalty Specifies penalty of merging programs.
     * @return Chopped programs.
     */
-  def chop(choppee: ast.Program)(
+  def chop(
+    choppee: ast.Program,
+  )(
     isolate: Option[ast.Member => Boolean] = None,
     bound: Option[Int] = Some(1),
-    penalty: Penalty[Vertex] = Penalty.Default
+    penalty: Penalty[Vertex] = Penalty.Default,
   ): Vector[ast.Program] = {
     chopWithMetrics(choppee)(isolate, bound, penalty)._1
   }
@@ -42,10 +44,12 @@ object Chopper {
     * @param penalty Specifies penalty of merging programs.
     * @return Chopped programs and metrics.
     */
-  def chopWithMetrics(choppee: ast.Program)(
+  def chopWithMetrics(
+    choppee: ast.Program,
+  )(
     isolate: Option[ast.Member => Boolean] = None,
     bound: Option[Int] = Some(1),
-    penalty: Penalty[Vertex] = Penalty.Default
+    penalty: Penalty[Vertex] = Penalty.Default,
   ): (Vector[ast.Program], Metrics) = {
 
     val graph = ViperGraph.toGraph(choppee, isolate)
@@ -54,11 +58,11 @@ object Chopper {
   }
 
   case class Metrics(
-                      maxNumberOfParts: Int,
-                      timeSCC: Option[BigDecimal],
-                      timeCutting: BigDecimal,
-                      timeMerging: BigDecimal,
-                    )
+    maxNumberOfParts: Int,
+    timeSCC: Option[BigDecimal],
+    timeCutting: BigDecimal,
+    timeMerging: BigDecimal,
+  )
 
   private object Cut {
 
@@ -71,9 +75,11 @@ object Chopper {
       * @param penalty Specifies penalty of merging programs.
       * @return Set of programs.
       */
-    def boundedCut[T](graph: ViperGraph)(
+    def boundedCut[T](
+      graph: ViperGraph,
+    )(
       bound: Option[Int],
-      penalty: Penalty[Vertex]
+      penalty: Penalty[Vertex],
     ): (Vector[ViperGraph.Program], Metrics) = {
       require(bound.forall(_ > 0), s"Got $bound as the size of the cut, but expected positive number")
 
@@ -156,7 +162,12 @@ object Chopper {
       * @param id    Mapping from nodes to node ids. The result is used as the index for `edges`.
       * @return Set of smallest possible programs. A program is represented as a *sorted* list of node ids.
       */
-    private def smallestCutWithoutCycles[T](N: Int, nodes: Vector[T], edges: Array[mutable.SortedSet[T]], id: T => Int): Vector[List[T]] = {
+    private def smallestCutWithoutCycles[T](
+      N: Int,
+      nodes: Vector[T],
+      edges: Array[mutable.SortedSet[T]],
+      id: T => Int,
+    ): Vector[List[T]] = {
 
       /**
         * Computes which of the nodes in `nodes` are dominating, i.e. not reached by other nodes in `nodes`,
@@ -220,7 +231,12 @@ object Chopper {
       * @param id    Mapping from nodes to node ids. The result is used as the index for `edges`.
       * @return Set of smallest possible programs. A program is represented as a *sorted* list of node ids.
       */
-    private def smallestCutWithCycles[T](N: Int, nodes: Vector[T], edges: Array[mutable.SortedSet[T]], id: T => Int): Vector[List[T]] = {
+    private def smallestCutWithCycles[T](
+      N: Int,
+      nodes: Vector[T],
+      edges: Array[mutable.SortedSet[T]],
+      id: T => Int,
+    ): Vector[List[T]] = {
 
       /**
         * Computes which of the nodes in `nodes` are dominating, i.e. not reached by other nodes in `nodes`,
@@ -275,10 +291,14 @@ object Chopper {
       * @param penalty  Specifies penalty of merging programs.
       * @return
       */
-    private def mergePrograms[T](programs: Vector[List[T]])(
+    private def mergePrograms[T](
+      programs: Vector[List[T]],
+    )(
       bound: Option[Int],
-      penalty: Penalty[T]
-    )(implicit order: Ordering[T]): Vector[List[T]] = {
+      penalty: Penalty[T],
+    )(
+      implicit order: Ordering[T],
+    ): Vector[List[T]] = {
 
       /**
         * A program is represented as a *sorted* list of node ids.
@@ -338,11 +358,24 @@ object Chopper {
     }
 
     /** Merges two programs and computes their merge penalty. A program is represented as a *sorted* list of T. */
-    private def penaltyAndMerge[T](l: List[(T, Int)], r: List[(T, Int)])(penalty: Penalty[_])
-                                  (implicit order: Ordering[T]): (Int, List[(T, Int)]) = {
+    private def penaltyAndMerge[T](
+      l: List[(T, Int)],
+      r: List[(T, Int)],
+    )(
+      penalty: Penalty[_],
+    )(
+      implicit order: Ordering[T],
+    ): (Int, List[(T, Int)]) = {
 
       @tailrec
-      def go(l: List[(T, Int)], r: List[(T, Int)], a: Int, b: Int, c: Int, acc: List[(T, Int)]): (Int, Int, Int, List[(T, Int)]) = {
+      def go(
+        l: List[(T, Int)],
+        r: List[(T, Int)],
+        a: Int,
+        b: Int,
+        c: Int,
+        acc: List[(T, Int)]
+      ): (Int, Int, Int, List[(T, Int)]) = {
         (l, r) match {
           case (xs, Nil) => (a + xs.map(_._2).sum, b, c, acc.reverse ++ xs)
           case (Nil, ys) => (a, b + ys.map(_._2).sum, c, acc.reverse ++ ys)
@@ -390,17 +423,17 @@ object Chopper {
     }
 
     case class PenaltyConfig(
-                              method: Int,
-                              methodSpec: Int,
-                              function: Int,
-                              predicate: Int,
-                              predicateSig: Int,
-                              field: Int,
-                              domainType: Int,
-                              domainFunction: Int,
-                              domainAxiom: Int,
-                              sharedThreshold: Int
-                            )
+      method: Int,
+      methodSpec: Int,
+      function: Int,
+      predicate: Int,
+      predicateSig: Int,
+      field: Int,
+      domainType: Int,
+      domainFunction: Int,
+      domainAxiom: Int,
+      sharedThreshold: Int,
+    )
 
     val defaultPenaltyConfig: PenaltyConfig = PenaltyConfig(
       method = 0, methodSpec = 0, function = 20, predicate = 10, predicateSig = 2, field = 1,
@@ -448,12 +481,12 @@ object Chopper {
     * @param toVpr          Function that takes a set of nodes and returns the corresponding Viper program.
     */
   class ViperGraph private(
-                            val numberOfNodes: Int,
-                            val importantNodes: Vector[Int],
-                            val edges: Array[mutable.SortedSet[Int]],
-                            val toVertex: Int => Vertex,
-                            private val toVpr: ViperGraph.Program => ast.Program,
-                          ) {
+    val numberOfNodes: Int,
+    val importantNodes: Vector[Int],
+    val edges: Array[mutable.SortedSet[Int]],
+    val toVertex: Int => Vertex,
+    private val toVpr: ViperGraph.Program => ast.Program,
+  ) {
     def unapply(nodes: ViperGraph.Program): Option[ast.Program] = Some(toVpr(nodes))
   }
 
@@ -465,9 +498,9 @@ object Chopper {
       * Transforms program into a graph with int nodes, which enable us to use faster algorithms.
       * */
     def toGraph(
-                 program: ast.Program,
-                 isolate: Option[ast.Member => Boolean] = None
-               ): ViperGraph = {
+      program: ast.Program,
+      isolate: Option[ast.Member => Boolean] = None,
+    ): ViperGraph = {
 
       var vertexToId = Map.empty[Vertex, Int]
       var N = 0
@@ -802,7 +835,10 @@ object Chopper {
       * _2 : Mapping from node ids to the component that the node is contained in.
       * _3 : Edges between the components in the graph. This induced graph on components is acyclic.
       * */
-    def fastCompute(N: Int, edges: Array[mutable.SortedSet[Int]]): (Vector[Component[Int]], Int => Component[Int], Array[mutable.SortedSet[Component[Int]]]) = {
+    def fastCompute(
+      N: Int,
+      edges: Array[mutable.SortedSet[Int]],
+    ): (Vector[Component[Int]], Int => Component[Int], Array[mutable.SortedSet[Component[Int]]]) = {
       val cs = fastComponents(N, edges)
 
       val idToComponent = Array.ofDim[Component[Int]](N)
@@ -859,7 +895,10 @@ object Chopper {
       * _2 : Mapping from nodes to the component that the node is contained in.
       * _3 : Edges between the components in the graph. This induced graph on components is acyclic.
       * */
-    def compute[T](nodes: Seq[T], edges: Seq[Edge[T]]): (Vector[Component[T]], Map[T, Component[T]], Seq[Edge[Component[T]]]) = {
+    def compute[T](
+      nodes: Seq[T],
+      edges: Seq[Edge[T]],
+    ): (Vector[Component[T]], Map[T, Component[T]], Seq[Edge[Component[T]]]) = {
       val cs = components(nodes, edges)
       val inv = cs.flatMap(c => c.nodes.map(_ -> c)).toMap
       val cgraph = edges.map { case (l, r) => (inv(l), inv(r)) }.filter { case (l, r) => l != r }.distinct
@@ -877,7 +916,10 @@ object Chopper {
       * _3 : Mapping from nodes to node ids.
       * _4 : Mapping from node ids to nodes.
       * */
-    private def toFastGraph[T](nodes: Seq[T], edges: Seq[Edge[T]]): (Int, Array[mutable.SortedSet[Int]], T => Int, Int => T) = {
+    private def toFastGraph[T](
+       nodes: Seq[T],
+       edges: Seq[Edge[T]]
+    ): (Int, Array[mutable.SortedSet[Int]], T => Int, Int => T) = {
       var counter = 0
       val indices = mutable.HashMap[T, Int]()
 
