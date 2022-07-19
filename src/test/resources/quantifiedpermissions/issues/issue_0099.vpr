@@ -5,6 +5,7 @@ field f: Int
 
 method test01(xs: Seq[Ref], n: Int) {
   inhale |xs| == n
+  inhale forall i1: Int, i2: Int :: i1 in [0..n) && i2 in [0..n) && i1 != i2 ==> xs[i1] != xs[i2]
   inhale forall i: Int :: i in [0..n) ==> acc(xs[i].f)
 
   //:: ExpectedOutput(assert.failed:assertion.false)
@@ -13,6 +14,7 @@ method test01(xs: Seq[Ref], n: Int) {
 
 method test02(xs: Seq[Ref], n: Int) {
   inhale |xs| == n
+  inhale forall i1: Int, i2: Int :: i1 in [0..n) && i2 in [0..n) && i1 != i2 ==> xs[i1] != xs[i2]
   inhale forall i: Int :: i in [0..n) ==> acc(xs[i].f)
 
   exhale forall i: Int :: i in [0..n) ==> acc(xs[i].f)
@@ -23,6 +25,7 @@ method test02(xs: Seq[Ref], n: Int) {
 
 method test03(xs: Seq[Ref], n: Int)
   requires |xs| == n
+  requires forall i1: Int, i2: Int :: 0 <= i1 && i1 < |xs| && 0 <= i2 && i2 < |xs| && i1 != i2 ==> xs[i1] != xs[i2]
   requires forall i: Int :: i in [0..n) ==> acc(xs[i].f)
   ensures forall i: Int :: i in [0..n) ==> acc(xs[i].f)
 
@@ -35,6 +38,7 @@ function fun01(i: Int, b: Bool): Bool
 
 method test04(xs: Seq[Ref], b: Bool) {
   inhale 10 < |xs|
+  inhale forall i1: Int, i2: Int :: 0 <= i1 && i1 < |xs| && 0 <= i2 && i2 < |xs| && i1 != i2 ==> xs[i1] != xs[i2]
   inhale forall i: Int :: 0 <= i && i < |xs| && fun01(i, b) ==> acc(xs[i].f)
 
   //:: ExpectedOutput(assert.failed:assertion.false)
@@ -43,6 +47,7 @@ method test04(xs: Seq[Ref], b: Bool) {
 
 method test05(xs: Seq[Ref], b: Bool) {
   inhale 10 < |xs|
+  inhale forall i1: Int, i2: Int :: 0 <= i1 && i1 < |xs| && 0 <= i2 && i2 < |xs| && i1 != i2 ==> xs[i1] != xs[i2]
   inhale forall i: Int :: 0 <= i && i < |xs| ==> acc(xs[i].f)
 
   exhale forall i: Int :: 0 <= i && i < |xs| && fun01(i, b) ==> acc(xs[i].f)

@@ -4,8 +4,12 @@
 field val: Int
 
 domain Array {
-    function loc(a: Array, i: Int): Ref
-    function len(a: Array): Int
+	function loc(a: Array, i: Int): Ref
+	function len(a: Array): Int
+
+	axiom loc_inject {
+		forall a: Array, i: Int, j: Int :: { loc(a, i), loc(a, j) } i >= 0 && j >= 0 && i < len(a) && j < len(a) && i != j ==> loc(a, i) != loc(a, j)
+	}
 }
 
 predicate array(a: Array) {

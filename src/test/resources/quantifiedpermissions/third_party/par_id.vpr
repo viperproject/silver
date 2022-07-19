@@ -9,6 +9,7 @@ field Integer_value: Int
 
 method loop_main_22(this: Ref, len: Int, ar: Seq[Ref])
   requires |ar| == len
+  requires forall i: Int, j: Int :: 0 <= i && i < |ar| && 0 <= j && j < |ar| && i != j ==> ar[i] != ar[j]
   requires (forall i: Int :: (i in [0..len)) ==> acc(ar[i].Integer_value, write))
   ensures |ar| == len
   ensures (forall i: Int :: (i in [0..len)) ==> acc(ar[i].Integer_value, write))
@@ -31,6 +32,7 @@ method loop_body_22(this: Ref, len: Int, ar: Seq[Ref], i: Int)
 
 method par_id(this: Ref, ar: Seq[Ref], len: Int) returns (sys__result: Int)
   requires |ar| == len
+  requires forall i: Int, j: Int :: 0 <= i && i < |ar| && 0 <= j && j < |ar| && i != j ==> ar[i] != ar[j]
   requires (forall i: Int :: (i in [0..len)) ==> acc(ar[i].Integer_value, write))
   ensures |ar| == len
   ensures (forall i: Int :: (i in [0..len)) ==> acc(ar[i].Integer_value, write))

@@ -1,0 +1,52 @@
+field p: Perm
+field f: Int
+field r: Ref
+
+predicate P(x: Ref) {
+  acc(x.p) && none < x.p
+}
+
+method test01a(x: Ref, y: Ref, z: Ref) {
+  inhale acc(x.f)
+  inhale P(x)
+  assume unfolding P(x) in acc(y.f, 1/2) && acc(z.f, x.p)
+  assert x == y && y == z
+}
+
+method test01b(x: Ref, y: Ref, z: Ref) {
+  inhale acc(x.f)
+  inhale P(x)
+  assume unfolding P(x) in acc(y.f, 1/2) && acc(z.f, x.p)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method test02a(x: Ref) {
+  inhale acc(x.r, 1/2)
+  assume let y == (x.r) in acc(y.r, 1/2)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method test02b(x: Ref) {
+  inhale acc(x.r, 1/2)
+  assume let y == (x.r) in acc(y.r, 2/3)
+  assert false
+}
+
+//// ERROR: Due to the rewriting, let-bound b will escape its scope
+//method test03(x: Ref, y: Ref, unknown: Bool) {
+//  inhale acc(x.f, 3/5)
+//  assume (let b == (unknown) in (b ==> acc(x.f, 2/5))) && acc(y.f, 1/5)
+//  //:: ExpectedOutput(assert.failed:assertion.false)
+//  assert false
+//}
+
+//// ERROR: Due to the rewriting, condition x.p escapes into acc(z.f, 2/3), but can't be accessed there.
+//method test04(x: Ref, y: Ref, z: Ref) {
+//  inhale acc(x.f)
+//  inhale P(x)
+//  assume (unfolding P(x) in (x.p != 1/2 ==> acc(y.f, 1/2))) && acc(z.f, 2/3)
+//  //:: ExpectedOutput(assert.failed:assertion.false)
+//  assert unfolding P(x) in x.p == 1/2
+//}

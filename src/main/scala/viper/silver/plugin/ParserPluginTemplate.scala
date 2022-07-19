@@ -10,7 +10,6 @@ import viper.silver.parser.{NameAnalyser, PExp, PExtender, PStmt, PTypeSubstitut
 import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.ast.{Declaration, ErrorTrafo, Exp, ExtensionExp, ExtensionMember, ExtensionStmt, Info, Member, Node, Position, Stmt, Type}
 import viper.silver.verifier.VerificationResult
-import viper.silver.ast.{Position, NoPosition}
 
 import scala.collection.Set
 
@@ -86,7 +85,7 @@ trait ParserPluginTemplate {
     */
   def extendedKeywords= Set[String]()
 
-  case class PExampleDeclaration()(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PExtender{
+  case class PExampleDeclaration()(val pos: (Position, Position)) extends PExtender{
     // The typechecker for this PAst node
     override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = ???
     // These two founction for translating PAst to Ast nodes are applicable only in the case of this class being a high level declaration
@@ -94,7 +93,7 @@ trait ParserPluginTemplate {
     override def translateMemberSignature(t: Translator): Member = super.translateMemberSignature(t)
   }
 
-  case class PExampleStmt()(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PExtender with PStmt{
+  case class PExampleStmt()(val pos: (Position, Position)) extends PExtender with PStmt{
     //The overridden typechecker for this PAst node
     override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = ???
     
@@ -102,7 +101,7 @@ trait ParserPluginTemplate {
     override def translateStmt(t: Translator): Stmt = super.translateStmt(t)
   }
 
-  case class PExampleExp()(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PExtender with PExp{
+  case class PExampleExp()(val pos: (Position, Position)) extends PExtender with PExp{
     // These two function must be mandatorily extended due to semantic analysis rules
     override def typeSubstitutions: Seq[PTypeSubstitution] = ???
     override def forceSubstitution(ts: PTypeSubstitution): Unit = ???
@@ -125,6 +124,7 @@ trait ParserPluginTemplate {
     override def name: String = ???
     override def errT: ErrorTrafo = ???
     override def info: Info = ???
+    override def prettyPrint: PrettyPrintPrimitives#Cont = ???
   }
 
   /**

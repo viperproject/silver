@@ -24,6 +24,7 @@ method test2(xs: Seq[Int], n: Int)
 method test3(xs: Seq[Ref], n: Int)
   requires 5 < n && n < |xs|
   requires xs[0] != null
+  requires forall i:Int, j:Int :: i >= 0 && i < |xs| && j >= 0 && j < |xs| && i != j ==> xs[i] != xs[j]
   requires forall i: Int :: i in [0..n) ==> acc(xs[i].f)
 {
   var y: Int := xs[3].f

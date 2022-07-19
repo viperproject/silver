@@ -4,26 +4,27 @@
 field f:Int
 
 method m(a:Ref)
-requires acc(a.f, wildcard)
-ensures acc(a.f,wildcard)
+  requires acc(a.f, wildcard)
+  ensures acc(a.f,wildcard)
 {
-    m(a)
-    assert(a.f == old(a.f))
+  m(a)
+  assert(a.f == old(a.f))
 }
 
 method m2(a:Ref)
-requires acc(a.f,write)
-ensures acc(a.f,write)
+  requires acc(a.f,write)
+  ensures acc(a.f,write)
 {
-    m2(a)
-    //:: ExpectedOutput(assert.failed:assertion.false)
-    assert(a.f == old(a.f))
+  m2(a)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert(a.f == old(a.f))
 }
 
 method m3(a:Seq[Ref])
-requires forall i:Int :: i in [0..|a|) ==> acc(a[i].f, wildcard)
-ensures forall j:Int :: j in [0..|a|) ==> acc(a[j].f, wildcard)
-ensures forall l:Int :: l in [0..|a|) ==> a[l].f == old(a[l].f)
+  requires forall i1: Int, i2: Int :: i1 in [0..|a|) && i2 in [0..|a|) && i1 != i2 ==> a[i1] != a[i2]
+  requires forall i:Int :: i in [0..|a|) ==> acc(a[i].f, wildcard)
+  ensures forall j:Int :: j in [0..|a|) ==> acc(a[j].f, wildcard)
+  ensures forall l:Int :: l in [0..|a|) ==> a[l].f == old(a[l].f)
 {
-    m3(a)
+  m3(a)
 }

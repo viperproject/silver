@@ -29,7 +29,7 @@ abstract class AnnotationBasedTestSuite extends ResourceBasedTestSuite {
    */
   def systemsUnderTest: Seq[SystemUnderTest]
 
-  def buildTestInput(file: Path, prefix: String) =
+  def buildTestInput(file: Path, prefix: String): DefaultAnnotatedTestInput =
     DefaultAnnotatedTestInput(file, prefix)
 
   /** Registers a given test input for a given system under test. */
@@ -141,12 +141,13 @@ case class OutputMatcher(
           id.matches(actual.fullId) && actual.isSameLine(file, lineNr)
         case IgnoreOthers(file, lineNr, _) =>
           actual.isSameLine(file, lineNr)
+        case c: CustomAnnotation => c.matches(actual)
       }) match {
         case Nil => None
         case l => l.find(o => o.isInstanceOf[MissingOutput]) match // prioritise missing output annotations which match
         {
           case Some(mo) => Some(mo) // this is an error - declared missing, but it happened (the fact that this is a problem is handled in the calling code)
-          case None => l.find(o => o.isInstanceOf[ExpectedOutput] || o.isInstanceOf[UnexpectedOutput]) match {
+          case None => l.find(o => o.isInstanceOf[ExpectedOutput] || o.isInstanceOf[UnexpectedOutput] || o.isInstanceOf[CustomAnnotation]) match {
             case Some(eo) =>
               remainingOutputs = remainingOutputs.diff(Seq(eo)) // note: diff removes exactly one instance
               Some(eo) // this case is OK - we matched an annotation for this output
@@ -164,7 +165,7 @@ case class OutputMatcher(
     remainingOutputs = remainingOutputs.filterNot(missingOutputs.contains)
 
     // Process remaining outputs that have not been matched
-    remainingOutputs.foreach { _ match {
+    remainingOutputs.foreach {
       case e: ExpectedOutput =>
         missingOutputs.find(_.sameSource(e)) match {
           case Some(_) => missingOutputs = missingOutputs.diff(Seq(e))
@@ -175,12 +176,17 @@ case class OutputMatcher(
       case _: IgnoreOthers =>
       case _: MissingOutput =>
         sys.error("MissingOutput should not occur here because they were previously filtered")
-    }
+      case c: CustomAnnotation =>
+        val corresponding = actualOutputs.find(_.isSameLine(c.file, c.forLineNr))
+        errors ::= (corresponding match {
+          case Some(output) => TestAdditionalOutputError(output)
+          case _ => c.notFoundError // TODO: make this carry more information
+        })
     }
 
     // Process remaining MissingOutput annotations which did not correspond to a missing output
 
-    errors.toSeq
+    errors
   }
 }
 

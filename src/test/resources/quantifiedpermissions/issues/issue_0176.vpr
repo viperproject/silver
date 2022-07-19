@@ -14,6 +14,7 @@ method main() {
   while (i < 10)
     invariant i <= 10
     invariant |v| == i
+    invariant forall i1: Int, i2: Int :: i1 in [0..i) && i2 in [0..i) && i1 != i2 ==> v[i1] != v[i2]
     invariant forall j:Int :: j in [0..i) ==> acc(v[j].val)
     invariant forall j:Int :: j in [0..i) ==> v[j].val == 1
   {

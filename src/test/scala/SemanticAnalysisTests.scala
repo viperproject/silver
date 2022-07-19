@@ -10,6 +10,7 @@ import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.frontend._
 import viper.silver.parser._
 import viper.silver.verifier.Verifier
+import viper.silver.ast.NoPosition
 
 class SemanticAnalysisTests extends AnyFunSuite {
 
@@ -25,17 +26,19 @@ class SemanticAnalysisTests extends AnyFunSuite {
   // }
 
   test("Semantic analysis in AST without shared nodes") {
-    val binExp1 = PBinExp(PIntLit(1)(), "==", PIntLit(1)())()
-    val binExp2 = PBinExp(PIntLit(1)(), "==", PIntLit(1)())()
-    val method = PMethod(PIdnDef("m")(), Seq(), Seq(), Seq(), Seq(), Some(PSeqn(Seq(PSeqn(Seq(PAssert(binExp1)(), PSeqn(Seq(PAssert(binExp2)()))()))()))()))()
-    val program = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(method), Seq(), Seq())()
+    val p = (NoPosition, NoPosition)
+    val binExp1 = PBinExp(PIntLit(1)(p), "==", PIntLit(1)(p))(p)
+    val binExp2 = PBinExp(PIntLit(1)(p), "==", PIntLit(1)(p))(p)
+    val method = PMethod(PIdnDef("m")(p), Seq(), Seq(), Seq(), Seq(), Some(PSeqn(Seq(PSeqn(Seq(PAssert(binExp1)(p), PSeqn(Seq(PAssert(binExp2)(p)))(p)))(p)))(p)))(p)
+    val program = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(method), Seq(), Seq())(p)
     assert(frontend.doSemanticAnalysis(program) === frontend.Succ(program))
   }
 
   test("Semantic analysis in AST with shared nodes") {
-    val binExp = PBinExp(PIntLit(1)(), "==", PIntLit(1)())()
-    val method = PMethod(PIdnDef("m")(), Seq(), Seq(), Seq(), Seq(), Some(PSeqn(Seq(PSeqn(Seq(PAssert(binExp)(), PSeqn(Seq(PAssert(binExp)()))()))()))()))()
-    val program = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(method), Seq(), Seq())()
+    val p = (NoPosition, NoPosition)
+    val binExp = PBinExp(PIntLit(1)(p), "==", PIntLit(1)(p))(p)
+    val method = PMethod(PIdnDef("m")(p), Seq(), Seq(), Seq(), Seq(), Some(PSeqn(Seq(PSeqn(Seq(PAssert(binExp)(p), PSeqn(Seq(PAssert(binExp)(p)))(p)))(p)))(p)))(p)
+    val program = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(method), Seq(), Seq())(p)
     assert(frontend.doSemanticAnalysis(program) === frontend.Succ(program))
   }
 }

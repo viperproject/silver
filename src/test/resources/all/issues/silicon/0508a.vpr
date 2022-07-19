@@ -13,6 +13,7 @@ domain identity_function[T] {
 
 method test03a(trees: Set[Ref])
   requires (forall r: Ref :: {r in trees} r in trees ==> acc(r.item, 1/2))
+  requires (forall s1: Ref, s2: Ref :: (s1 in trees && s2 in trees && s1 != s2) ==> s1.item != s2.item)
   requires (forall r: Ref :: {r in trees} r in trees ==> acc(r.item.bool_prop, 1/2))
 {
   assert forall s: Ref :: {s in trees} s in trees ==> acc(s.item.bool_prop, wildcard)
@@ -31,6 +32,7 @@ method test03b(trees: Set[Ref])
 
  method test03c(trees: Set[Ref])
    requires (forall r: Ref :: {id(r)} r in trees ==> acc(id(r).item, 1/2))
+   requires (forall s1: Ref, s2: Ref :: (s1 in trees && s2 in trees && id(s1) != id(s2)) ==> id(s1).item != id(s2).item)
    requires (forall r: Ref :: {id(r)} r in trees ==> acc(id(r).item.bool_prop, 1/2))
  {
    assert forall s: Ref :: {id(s)} s in trees ==> acc(id(s).item.bool_prop, wildcard)
@@ -40,6 +42,7 @@ method test03b(trees: Set[Ref])
 
 method test04(trees: Set[Ref])
   requires (forall r: Ref :: {r in trees} r in trees ==> acc(id(r).item, 1/2))
+  requires (forall s1: Ref, s2: Ref :: (s1 in trees && s2 in trees && id(s1) != id(s2)) ==> id(s1).item != id(s2).item)
   requires (forall r: Ref :: {r in trees} r in trees ==> acc(id(r).item.bool_prop, 1/2))
 {
   assert forall s: Ref :: {s in trees} s in trees ==> acc(id(s).item.bool_prop, wildcard)
@@ -49,7 +52,9 @@ method test04(trees: Set[Ref])
 
 method test01(trees: Seq[Ref], g: Int)
   requires 0 < g && |trees|==g
+  requires (forall i: Int, j: Int :: i >= 0 && i < g && j >= 0 && j < g && i != j ==> trees[i] != trees[j])
   requires (forall i: Int :: {trees[i]} 0 <= i && i < g ==> acc(trees[i].item, 1/2))
+  requires (forall i: Int, j: Int :: i >= 0 && i < g && j >= 0 && j < g && i != j ==> trees[i].item != trees[j].item)
   requires (forall i: Int :: {trees[i]} 0 <= i && i < g ==> acc(trees[i].item.bool_prop, 1/2))
 {
   assert forall j: Int :: {trees[j]} 0 <= j && j < g ==> acc(trees[j].item.bool_prop, wildcard)

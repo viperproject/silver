@@ -1,0 +1,14 @@
+method test00() {
+	assert Seq(111)[0] != Seq(222)[0]
+}
+
+method test01() {
+	assert Seq(555) != Seq(666)
+
+	//:: ExpectedOutput(assert.failed:assertion.false)
+	assert false
+}
+
+method test02() {
+	assert Seq(555, 10) != Seq(666, 10)
+}

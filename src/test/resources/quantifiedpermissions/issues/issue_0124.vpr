@@ -16,6 +16,7 @@ method test01(xs: Seq[Int], k: Int) {
 
 method test02(xs: Seq[Ref], k: Int) {
   inhale 0 <= k && k < |xs|
+  inhale forall i1: Int, i2: Int :: i1 in [0..|xs|) && i2 in [0..|xs|) && i1 != i2 ==> xs[i1] != xs[i2]
   inhale forall i: Int :: i in [0..|xs|) ==> acc(xs[i].f)
   inhale forall i: Int :: i in [0..|xs|-1) ==> xs[i].f != 0 /* Simplified w.r.t. to test01 */
 
@@ -26,6 +27,7 @@ method test02(xs: Seq[Ref], k: Int) {
 
 method test03(xs: Seq[Ref], k: Int) {
   inhale 0 <= k && k < |xs|
+  inhale forall i1: Int, i2: Int :: i1 in [0..|xs|) && i2 in [0..|xs|) && i1 != i2 ==> xs[i1] != xs[i2]
   inhale forall i: Int :: i in [0..|xs|) ==> acc(xs[i].f)
   inhale forall i: Int :: i in [0..|xs|-1) ==> xs[i].f < xs[i + 1].f
 

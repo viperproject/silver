@@ -330,6 +330,13 @@ case class PermDiv(left: Exp, right: Exp)(val pos: Position = NoPosition, val in
     (if(left.typ != Perm) Seq(ConsistencyError(s"First parameter of permission division expression must be Perm, but found ${left.typ}", left.pos)) else Seq()) ++
     (if(right.typ != Int) Seq(ConsistencyError(s"Second parameter of permission division expression must be Int, but found ${right.typ}", right.pos)) else Seq())
 }
+
+case class PermPermDiv(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(PermDivOp) with PermExp with ForbiddenInTrigger
+{
+  override lazy val check : Seq[ConsistencyError] =
+    (if(left.typ != Perm) Seq(ConsistencyError(s"First parameter of permission division expression must be Perm, but found ${left.typ}", left.pos)) else Seq()) ++
+      (if(right.typ != Perm) Seq(ConsistencyError(s"Second parameter of permission-permission division expression must be Perm, but found ${right.typ}", right.pos)) else Seq())
+}
 /** The permission currently held for a given resource. */
 case class CurrentPerm(res: ResourceAccess)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends PermExp
 

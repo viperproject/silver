@@ -503,6 +503,7 @@ object errors {
     val id = "exhale.failed"
     val text = "Exhale might fail."
 
+    override def pos = offendingNode.exp.pos
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = ExhaleFailed(offendingNode.asInstanceOf[Exhale], this.reason, this.cached)
     def withReason(r: ErrorReason) = ExhaleFailed(offendingNode, r, cached)
   }
@@ -514,6 +515,7 @@ object errors {
     val id = "inhale.failed"
     val text = "Inhale might fail."
 
+    override def pos = offendingNode.exp.pos
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = InhaleFailed(offendingNode.asInstanceOf[Inhale], this.reason, this.cached)
     def withReason(r: ErrorReason) = InhaleFailed(offendingNode, r, cached)
   }
@@ -547,6 +549,7 @@ object errors {
     val id = "assert.failed"
     val text = "Assert might fail."
 
+    override def pos = offendingNode.exp.pos
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = AssertFailed(offendingNode.asInstanceOf[Assert], this.reason, this.cached)
     def withReason(r: ErrorReason) = AssertFailed(offendingNode, r, cached)
   }

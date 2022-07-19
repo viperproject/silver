@@ -10,6 +10,7 @@ method m(S:Seq[Ref], start:Int, end:Int)
 requires start >= 0
 requires end <= |S|
 requires start <= end
+requires forall i:Int, j:Int :: i in [start..end) && j in [start..end) && i != j ==> S[i] != S[j]
 requires forall i:Int :: i in [start..end) ==> acc(S[i].f, write)
 {
     var k:Int := start + (end - start)\2
@@ -21,6 +22,7 @@ method m2(S:Seq[Ref], start:Int, end:Int)
 requires start >= 0
 requires end <= |S|
 requires start <= end
+requires forall i:Int, j:Int :: i in [start..end) && j in [start..end) && i != j ==> S[i] != S[j]
 requires forall i:Int :: i in [start..end) ==> acc(S[i].f, write)
 {
     var k:Int := start + (end - start)\3

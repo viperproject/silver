@@ -40,6 +40,7 @@ method test02() {
   var oldxs: Seq[Ref] := xs
 
   inhale 10 < |xs|
+  inhale forall i:Int, j:Int :: i >= 0 && i < |xs| && j >= 0 && j < |xs| && i != j ==> xs[i] != xs[j]
   inhale forall i: Int :: SegAcc(xs, 0, i, |xs|)
 
   package (forall i: Int :: SegAcc(xs, 0, i, |xs|)) --* (forall i: Int :: SegAcc(oldxs, 0, i, |oldxs|))

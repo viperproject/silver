@@ -6,6 +6,7 @@ field g: Int
 
 method test03(S: Set[Ref]) {
   inhale forall s: Ref :: s in S ==> acc(s.f)
+  inhale forall s1: Ref, s2: Ref :: (s1 in S && s2 in S && s1 != s2) ==> s1.f != s2.f
   inhale forall s: Ref :: s in S ==> acc(s.f.g)
   exhale forall s: Ref :: s in S ==> acc(s.f.g)
 }
@@ -28,14 +29,18 @@ method test04() {
 
 method test01(S: Set[Ref])
   requires forall s: Ref :: s in S ==> acc(s.f)
+  requires forall s1: Ref, s2: Ref :: (s1 in S && s2 in S && s1 != s2) ==> s1.f != s2.f
   requires forall s: Ref :: s in S ==> acc(s.f.g)
   ensures  forall s: Ref :: s in S ==> acc(s.f)
+  ensures forall s1: Ref, s2: Ref :: (s1 in S && s2 in S && s1 != s2) ==> s1.f != s2.f
   ensures  forall s: Ref :: s in S ==> acc(s.f.g)
 {}
 
 method test02(S: Set[Ref])
   requires forall s: Ref :: s in S ==> acc(s.f, 1/2)
+  requires forall s1: Ref, s2: Ref :: (s1 in S && s2 in S && s1 != s2) ==> s1.f != s2.f
   requires forall s: Ref :: s in S ==> acc(s.f.g, 1/2)
   ensures  forall s: Ref :: s in S ==> acc(s.f, 1/2)
+  ensures forall s1: Ref, s2: Ref :: (s1 in S && s2 in S && s1 != s2) ==> s1.f != s2.f
   ensures  forall s: Ref :: s in S ==> acc(s.f.g, 1/2)
 {}

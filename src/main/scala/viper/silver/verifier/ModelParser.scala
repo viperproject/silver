@@ -4,11 +4,12 @@ import fastparse._
 import viper.silver.parser.FastParser.whitespace
 
 object ModelParser {
-  def identifier[_: P]: P[Unit] = P(CharIn("0-9", "A-Z", "a-z", "[]\"'#++--*/:=!$_@<>.%~") ~~ CharIn("0-9", "A-Z", "a-z", "[]\"'#++--*/:=!$_@<>.%~").repX)
+  // note that the dash/minus character '-' needs to be escaped by double backslashes such that it is not interpreted as a range
+  def identifier[_: P]: P[Unit] = P(CharIn("0-9", "A-Z", "a-z", "[]\"'#+\\-*/:=!$_@<>.%~").repX(1))
 
   def idnuse[_: P]: P[String] = P(identifier).!.filter(a => a != "else" && a != "let" && a != "->")
 
-  def numeral[_: P]: P[Unit] = P(CharIn("0-9") ~~ CharIn("0-9").repX)
+  def numeral[_: P]: P[Unit] = P(CharIn("0-9").repX(1))
 
   def modelEntry[_: P]: P[(String, ModelEntry)] = P(idnuse ~ "->" ~ definition)
 
@@ -18,15 +19,17 @@ object ModelParser {
 
   def mappingContent[_: P]: P[MapEntry] = P(options | default)
 
-  def options[_: P]: P[MapEntry] = P(option.rep ~ ("else" ~ "->" ~ value).?).filter({
-    case (options, default) => options.nonEmpty || default.isDefined
-  }).map {
+  // options consists of at least one option. If there are no options but only a single default value, the `default`
+  // parser in `mappingContent` handles this case.
+  def options[_: P]: P[MapEntry] = P(option.rep(1) ~ ("else" ~ "->" ~ value).?).map {
     case (options, default) => MapEntry(options.toMap, default.getOrElse(UnspecifiedEntry))
   }
 
   def option[_: P]: P[(Seq[ValueEntry], ValueEntry)] = P(value.rep(1) ~ "->" ~ value)
 
-  def default[_: P]: P[MapEntry] = P(value)
+  // depending on Z3 options, we seem to get an "else ->" before the default value
+  // or not, so we match both.
+  def default[_: P]: P[MapEntry] = P(("else" ~ "->").? ~ value)
     .map { default => MapEntry(Map.empty, default).resolveFunctionDefinition }
 
   def value[_: P]: P[ValueEntry] = P(unspecified | let | constant | application)
@@ -66,18 +69,20 @@ object ModelParser {
     .map { case (name, arguments) => ApplicationEntry(name, arguments) }
 
   def model[_: P]: P[Model] = P(Start ~ modelEntry.rep ~ End)
-    .map { entries =>
-      val empty = Map.empty[String, ModelEntry]
-      val result = entries.foldLeft(empty) {
-        case (current, (key, entry: MapEntry)) =>
-          current.get(key) match {
-            case Some(existing: MapEntry) =>
-              val combined = MapEntry(existing.options ++ entry.options, existing.default)
-              current.updated(key, combined)
-            case _ => current.updated(key, entry)
-          }
-        case (current, (key, entry)) => current.updated(key, entry)
-      }
-      Model(result)
+    .map { entries2Model }
+
+  def entries2Model(entries: Seq[(String, ModelEntry)]): Model = {
+    val empty = Map.empty[String, ModelEntry]
+    val result = entries.foldLeft(empty) {
+      case (current, (key, entry: MapEntry)) =>
+        current.get(key) match {
+          case Some(existing: MapEntry) =>
+            val combined = MapEntry(existing.options ++ entry.options, existing.default)
+            current.updated(key, combined)
+          case _ => current.updated(key, entry)
+        }
+      case (current, (key, entry)) => current.updated(key, entry)
     }
+    Model(result)
+  }
 }

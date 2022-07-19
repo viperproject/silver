@@ -6,13 +6,14 @@
 
 package viper.silver.parser
 
-import scala.collection.Set
-import scala.language.implicitConversions
 import viper.silver.ast.utility.Visitor
-import viper.silver.ast.{Exp, MagicWandOp, Member, NoPosition, Position, Stmt, Type}
 import viper.silver.ast.utility.rewriter.{Rewritable, StrategyBuilder}
+import viper.silver.ast.{Exp, MagicWandOp, Member, NoPosition, Position, Stmt, Type}
 import viper.silver.parser.TypeHelper._
 import viper.silver.verifier.ParseReport
+
+import scala.collection.Set
+import scala.language.implicitConversions
 
 trait Where {
   val pos: (Position, Position)
@@ -145,9 +146,9 @@ trait PIdentifier {
   def name: String
 }
 
-case class PIdnDef(name: String)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PNode with PIdentifier
+case class PIdnDef(name: String)(val pos: (Position, Position)) extends PNode with PIdentifier
 
-case class PIdnUse(name: String)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PExp with PIdentifier {
+case class PIdnUse(name: String)(val pos: (Position, Position)) extends PExp with PIdentifier {
   var decl: PDeclaration = null
     /* Should be set during resolving. Intended to preserve information
      * that is needed by the translator.
@@ -162,7 +163,7 @@ case class PIdnUse(name: String)(val pos: (Position, Position) = (NoPosition, No
 
 trait PAnyFormalArgDecl extends PNode with PUnnamedTypedDeclaration
 
-case class PUnnamedFormalArgDecl(var typ: PType)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PAnyFormalArgDecl
+case class PUnnamedFormalArgDecl(var typ: PType)(val pos: (Position, Position)) extends PAnyFormalArgDecl
 
 /* Formal arguments.
  * [2014-11-13 Malte] Changed type to be a var, so that it can be updated
@@ -170,7 +171,7 @@ case class PUnnamedFormalArgDecl(var typ: PType)(val pos: (Position, Position) =
  * explicit type in the binding of the variable, i.e., "let x: T = e1 in e2",
  * would be rather cumbersome.
  */
-case class PFormalArgDecl(idndef: PIdnDef, var typ: PType)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PAnyFormalArgDecl with PTypedDeclaration with PLocalDeclaration
+case class PFormalArgDecl(idndef: PIdnDef, var typ: PType)(val pos: (Position, Position)) extends PAnyFormalArgDecl with PTypedDeclaration with PLocalDeclaration
 
 // Types
 trait PType extends PNode {
@@ -348,7 +349,7 @@ case class PWandType()(val pos: (Position, Position)) extends PInternalType {
 // typeSubstitutions are the possible substitutions used for type checking and inference
 // The argument types are unified with the (fresh versions of) types  are
 trait PExp extends PNode {
-  var typ: PType = PUnknown()((NoPosition, NoPosition))
+  var typ: PType = PUnknown()()
   def typeSubstitutions : scala.collection.Seq[PTypeSubstitution]
   def forceSubstitution(ts: PTypeSubstitution): Unit
 }
@@ -468,7 +469,7 @@ object POpApp{
   def pRes     = PTypeVar(pResS)
 }
 
-case class PCall(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PType] = None)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends POpApp with PLocationAccess
+case class PCall(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PType] = None)(val pos: (Position, Position)) extends POpApp with PLocationAccess
 {
   override val idnuse = func
   override val opName = func.name
@@ -548,6 +549,7 @@ class PBinExp(val left: PExp, val opName: String, val right: PExp)(val pos: (Pos
     case "/" => List(
       Map(POpApp.pArgS(0) -> Int, POpApp.pArgS(1) -> Int, POpApp.pResS -> Perm),
       Map(POpApp.pArgS(0) -> Perm, POpApp.pArgS(1) -> Int, POpApp.pResS -> Perm),
+      Map(POpApp.pArgS(0) -> Perm, POpApp.pArgS(1) -> Perm, POpApp.pResS -> Perm),
       Map(POpApp.pArgS(0) -> Int, POpApp.pArgS(1) -> Int, POpApp.pResS -> Int)
     )
     case "\\" | "%" => List(
@@ -613,7 +615,7 @@ class PBinExp(val left: PExp, val opName: String, val right: PExp)(val pos: (Pos
 
 object PBinExp {
 
-  def apply(left: PExp, opName: String, right: PExp)(pos: (Position, Position) = (NoPosition, NoPosition)): PBinExp =
+  def apply(left: PExp, opName: String, right: PExp)(pos: (Position, Position)): PBinExp =
     new PBinExp(left, opName, right)(pos)
 
   def unapply(arg: PBinExp): Option[(PExp, String, PExp)] = Some(arg.left, arg.opName, arg.right)
@@ -653,7 +655,7 @@ sealed trait PSimpleLiteral extends PExp {
   override final val typeSubstitutions = Seq(PTypeSubstitution.id)
   def forceSubstitution(ts: PTypeSubstitution) = {}
 }
-case class PIntLit(i: BigInt)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PSimpleLiteral{
+case class PIntLit(i: BigInt)(val pos: (Position, Position)) extends PSimpleLiteral{
   typ = Int
 }
 case class PResultLit()(val pos: (Position, Position)) extends PSimpleLiteral
@@ -726,8 +728,8 @@ sealed trait PQuantifier extends PBinder with PScope{
   def vars : Seq[PFormalArgDecl]
   def triggers : Seq[PTrigger]
 }
-case class PExists(vars: Seq[PFormalArgDecl], triggers: Seq[PTrigger], body: PExp)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PQuantifier
-case class PForall(vars: Seq[PFormalArgDecl], triggers: Seq[PTrigger], body: PExp)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PQuantifier
+case class PExists(vars: Seq[PFormalArgDecl], triggers: Seq[PTrigger], body: PExp)(val pos: (Position, Position)) extends PQuantifier
+case class PForall(vars: Seq[PFormalArgDecl], triggers: Seq[PTrigger], body: PExp)(val pos: (Position, Position)) extends PQuantifier
 
 case class PForPerm(vars: Seq[PFormalArgDecl], accessRes: PResourceAccess, body: PExp)(val pos: (Position, Position)) extends PQuantifier {
   val triggers: Seq[PTrigger] = Seq()
@@ -822,16 +824,16 @@ sealed trait PSeqLiteral extends PCollectionLiteral{
   override val opName = "Seq#Seq"
   def pCollectionType(pType:PType) = if (pType.isUnknown) PUnknown()() else PSeqType(pType)()
 }
-case class PEmptySeq(pElementType : PType)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PSeqLiteral with PEmptyCollectionLiteral
-case class PExplicitSeq(override val args: Seq[PExp])(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PSeqLiteral with PExplicitCollectionLiteral
-case class PRangeSeq(low: PExp, high: PExp)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends POpApp{
+case class PEmptySeq(pElementType : PType)(val pos: (Position, Position)) extends PSeqLiteral with PEmptyCollectionLiteral
+case class PExplicitSeq(override val args: Seq[PExp])(val pos: (Position, Position)) extends PSeqLiteral with PExplicitCollectionLiteral
+case class PRangeSeq(low: PExp, high: PExp)(val pos: (Position, Position)) extends POpApp{
   override val opName = "Seq#RangeSeq"
   override val args = Seq(low,high)
   override val signatures : List[PTypeSubstitution]= List(
     Map(POpApp.pArgS(0)->Int,POpApp.pArgS(1)->Int,POpApp.pResS->PSeqType(Int)()))
 }
 
-case class PSeqIndex(seq: PExp, idx: PExp)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends POpApp{
+case class PSeqIndex(seq: PExp, idx: PExp)(val pos: (Position, Position)) extends POpApp{
   override val opName = "Seq#At"
   override val args = Seq(seq,idx)
   override val signatures : List[PTypeSubstitution]= List(
@@ -841,7 +843,7 @@ case class PSeqIndex(seq: PExp, idx: PExp)(val pos: (Position, Position) = (NoPo
   )
 }
 
-case class PLookup(base: PExp, idx: PExp)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends POpApp {
+case class PLookup(base: PExp, idx: PExp)(val pos: (Position, Position)) extends POpApp {
   val keyType : PDomainType = POpApp.pArg(1)
 
   override val opName = "lookup"
@@ -855,7 +857,7 @@ case class PLookup(base: PExp, idx: PExp)(val pos: (Position, Position) = (NoPos
 }
 
 // Maps: case class PSeqTake(seq: PExp, n: PExp) extends POpApp{
-case class PSeqTake(seq: PExp, n: PExp)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends POpApp{
+case class PSeqTake(seq: PExp, n: PExp)(val pos: (Position, Position)) extends POpApp{
   override val opName = "Seq#Take"
   val elementType = PTypeVar("#E")
   override val extraLocalTypeVariables = Set(elementType)
@@ -867,7 +869,7 @@ case class PSeqTake(seq: PExp, n: PExp)(val pos: (Position, Position) = (NoPosit
       POpApp.pResS->PSeqType(elementType)()
   ))
 }
-case class PSeqDrop(seq: PExp, n: PExp)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends POpApp{
+case class PSeqDrop(seq: PExp, n: PExp)(val pos: (Position, Position)) extends POpApp{
   override val opName = "Seq#Drop"
   val elementType = PTypeVar("#E")
   override val extraLocalTypeVariables = Set(elementType)
@@ -880,7 +882,7 @@ case class PSeqDrop(seq: PExp, n: PExp)(val pos: (Position, Position) = (NoPosit
     ))
 }
 
-case class PSeqUpdate(seq: PExp, idx: PExp, elem: PExp)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends POpApp{
+case class PSeqUpdate(seq: PExp, idx: PExp, elem: PExp)(val pos: (Position, Position)) extends POpApp{
   override val opName = "Seq#update"
   val elementType = POpApp.pArg(2)
   override val args = Seq(seq,idx,elem)
@@ -893,7 +895,7 @@ case class PSeqUpdate(seq: PExp, idx: PExp, elem: PExp)(val pos: (Position, Posi
   override val extraLocalTypeVariables = Set(elementType)
 }
 
-case class PUpdate(base : PExp, key : PExp, value : PExp)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends POpApp {
+case class PUpdate(base : PExp, key : PExp, value : PExp)(val pos: (Position, Position)) extends POpApp {
   val keyType : PDomainType = POpApp.pArg(1)
   val elementType : PDomainType = POpApp.pArg(2)
 
@@ -908,13 +910,13 @@ case class PUpdate(base : PExp, key : PExp, value : PExp)(val pos: (Position, Po
 }
 
 /* Maps:
-case class PSize(seq: PExp)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends POpApp{
+case class PSize(seq: PExp)(val pos: (Position, Position)) extends POpApp{
   override val opName = "Seq#size"
   val elementType = PTypeVar("#E")
   override val extraLocalTypeVariables = Set(elementType)
  */
 
-case class PSize(seq: PExp)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends POpApp {
+case class PSize(seq: PExp)(val pos: (Position, Position)) extends POpApp {
   val keyType : PDomainType = PTypeVar("#K")
   val elementType : PDomainType = PTypeVar("#E")
 
@@ -938,16 +940,16 @@ sealed trait PSetLiteral extends PCollectionLiteral{
   override val opName = "Set#Set"
   def pCollectionType(pType:PType) = if (pType.isUnknown) PUnknown()() else PSetType(pType)()
 }
-case class PEmptySet(pElementType : PType)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PSetLiteral with PEmptyCollectionLiteral
-case class PExplicitSet(args: Seq[PExp])(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PSetLiteral with PExplicitCollectionLiteral
+case class PEmptySet(pElementType : PType)(val pos: (Position, Position)) extends PSetLiteral with PEmptyCollectionLiteral
+case class PExplicitSet(args: Seq[PExp])(val pos: (Position, Position)) extends PSetLiteral with PExplicitCollectionLiteral
 
 sealed trait PMultiSetLiteral extends PCollectionLiteral{
   override val opName = "Multiset#Multiset"
   def pCollectionType(pType:PType) = if (pType.isUnknown) PUnknown()() else PMultisetType(pType)()
 }
-case class PEmptyMultiset(override val pElementType  : PType)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PMultiSetLiteral with PEmptyCollectionLiteral
+case class PEmptyMultiset(override val pElementType  : PType)(val pos: (Position, Position)) extends PMultiSetLiteral with PEmptyCollectionLiteral
 
-case class PExplicitMultiset(override val args: Seq[PExp])(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PMultiSetLiteral with PExplicitCollectionLiteral
+case class PExplicitMultiset(override val args: Seq[PExp])(val pos: (Position, Position)) extends PMultiSetLiteral with PExplicitCollectionLiteral
 
 
 /* ** Maps */
@@ -963,7 +965,7 @@ sealed trait PMapLiteral extends POpApp {
     else PMapType(keyType, valueType)()
 }
 
-case class PEmptyMap(override val pKeyType : PType, override val pValueType : PType)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PMapLiteral {
+case class PEmptyMap(override val pKeyType : PType, override val pValueType : PType)(val pos: (Position, Position)) extends PMapLiteral {
   override val args = Seq()
 
   override val extraLocalTypeVariables : Set[PDomainType] =
@@ -974,7 +976,7 @@ case class PEmptyMap(override val pKeyType : PType, override val pValueType : PT
   ))
 }
 
-case class PExplicitMap(override val args : Seq[PMaplet])(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PMapLiteral {
+case class PExplicitMap(override val args : Seq[PMaplet])(val pos: (Position, Position)) extends PMapLiteral {
   override def pKeyType: PType = args.head.key.typ
   override def pValueType: PType = args.head.value.typ
 
@@ -990,7 +992,7 @@ case class PExplicitMap(override val args : Seq[PMaplet])(val pos: (Position, Po
   * A key-value pair (i.e., an entry of an `PExplicitMap`) is
   * considered to be a singleton map literal itself.
   */
-case class PMaplet(key : PExp, value : PExp)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PMapLiteral {
+case class PMaplet(key : PExp, value : PExp)(val pos: (Position, Position)) extends PMapLiteral {
   override def pKeyType: PType = key.typ
   override def pValueType: PType = value.typ
   override def args: Seq[PExp] = Seq(key, value)
@@ -1000,7 +1002,7 @@ case class PMaplet(key : PExp, value : PExp)(val pos: (Position, Position) = (No
   ))
 }
 
-case class PMapDomain(base : PExp)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends POpApp {
+case class PMapDomain(base : PExp)(val pos: (Position, Position)) extends POpApp {
   val keyType: PDomainType = PTypeVar("#K")
   val valueType: PDomainType = PTypeVar("#E")
 
@@ -1014,7 +1016,7 @@ case class PMapDomain(base : PExp)(val pos: (Position, Position) = (NoPosition, 
   ))
 }
 
-case class PMapRange(base : PExp)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends POpApp {
+case class PMapRange(base : PExp)(val pos: (Position, Position)) extends POpApp {
   val keyType: PDomainType = PTypeVar("#K")
   val valueType: PDomainType = PTypeVar("#E")
 
@@ -1045,39 +1047,39 @@ trait PStmt extends PNode {
     }
   }
 }
-case class PSeqn(ss: Seq[PStmt])(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PStmt with PScope
-case class PFold(e: PExp)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PStmt
-case class PUnfold(e: PExp)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PStmt
-case class PPackageWand(wand: PExp, proofScript: PSeqn)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PStmt
-case class PApplyWand(e: PExp)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PStmt
-case class PExhale(e: PExp)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PStmt
-case class PAssert(e: PExp)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PStmt
-case class PAssume(e: PExp)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PStmt
-case class PInhale(e: PExp)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PStmt
-case class PVarAssign(idnuse: PIdnUse, rhs: PExp)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PStmt
-case class PFieldAssign(fieldAcc: PFieldAccess, rhs: PExp)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PStmt
-case class PMacroAssign(call: PCall, exp: PExp)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PStmt
-case class PIf(cond: PExp, thn: PSeqn, els: PSeqn)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PStmt
-case class PWhile(cond: PExp, invs: Seq[PExp], body: PSeqn)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PStmt
-case class PLocalVarDecl(idndef: PIdnDef, typ: PType, init: Option[PExp])(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PStmt with PTypedDeclaration with PLocalDeclaration
-case class PGlobalVarDecl(idndef: PIdnDef, typ: PType)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PTypedDeclaration with PUniversalDeclaration
-case class PMethodCall(targets: Seq[PIdnUse], method: PIdnUse, args: Seq[PExp])(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PStmt
-case class PLabel(idndef: PIdnDef, invs: Seq[PExp])(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PStmt with PLocalDeclaration
-case class PGoto(targets: PIdnUse)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PStmt
-case class PTypeVarDecl(idndef: PIdnDef)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PLocalDeclaration
-case class PMacroRef(idnuse : PIdnUse)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PStmt
-case class PDefine(idndef: PIdnDef, parameters: Option[Seq[PIdnDef]], body: PNode)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PStmt with PLocalDeclaration
-case class PSkip()(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PStmt
+case class PSeqn(ss: Seq[PStmt])(val pos: (Position, Position)) extends PStmt with PScope
+case class PFold(e: PExp)(val pos: (Position, Position)) extends PStmt
+case class PUnfold(e: PExp)(val pos: (Position, Position)) extends PStmt
+case class PPackageWand(wand: PExp, proofScript: PSeqn)(val pos: (Position, Position)) extends PStmt
+case class PApplyWand(e: PExp)(val pos: (Position, Position)) extends PStmt
+case class PExhale(e: PExp)(val pos: (Position, Position)) extends PStmt
+case class PAssert(e: PExp)(val pos: (Position, Position)) extends PStmt
+case class PAssume(e: PExp)(val pos: (Position, Position)) extends PStmt
+case class PInhale(e: PExp)(val pos: (Position, Position)) extends PStmt
+case class PVarAssign(idnuse: PIdnUse, rhs: PExp)(val pos: (Position, Position)) extends PStmt
+case class PFieldAssign(fieldAcc: PFieldAccess, rhs: PExp)(val pos: (Position, Position)) extends PStmt
+case class PMacroAssign(call: PCall, exp: PExp)(val pos: (Position, Position)) extends PStmt
+case class PIf(cond: PExp, thn: PSeqn, els: PSeqn)(val pos: (Position, Position)) extends PStmt
+case class PWhile(cond: PExp, invs: Seq[PExp], body: PSeqn)(val pos: (Position, Position)) extends PStmt
+case class PLocalVarDecl(idndef: PIdnDef, typ: PType, init: Option[PExp])(val pos: (Position, Position)) extends PStmt with PTypedDeclaration with PLocalDeclaration
+case class PGlobalVarDecl(idndef: PIdnDef, typ: PType)(val pos: (Position, Position)) extends PTypedDeclaration with PUniversalDeclaration
+case class PMethodCall(targets: Seq[PIdnUse], method: PIdnUse, args: Seq[PExp])(val pos: (Position, Position)) extends PStmt
+case class PLabel(idndef: PIdnDef, invs: Seq[PExp])(val pos: (Position, Position)) extends PStmt with PLocalDeclaration
+case class PGoto(targets: PIdnUse)(val pos: (Position, Position)) extends PStmt
+case class PTypeVarDecl(idndef: PIdnDef)(val pos: (Position, Position)) extends PLocalDeclaration
+case class PMacroRef(idnuse : PIdnUse)(val pos: (Position, Position)) extends PStmt
+case class PDefine(idndef: PIdnDef, parameters: Option[Seq[PIdnDef]], body: PNode)(val pos: (Position, Position)) extends PStmt with PLocalDeclaration
+case class PSkip()(val pos: (Position, Position)) extends PStmt
 
 sealed trait PNewStmt extends PStmt {
   def target: PIdnUse
 }
 
 /* x := new(f1, ..., fn) */
-case class PRegularNewStmt(target: PIdnUse, fields: Seq[PIdnUse])(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PNewStmt
+case class PRegularNewStmt(target: PIdnUse, fields: Seq[PIdnUse])(val pos: (Position, Position)) extends PNewStmt
 
 /* x := new(*) */
-case class PStarredNewStmt(target: PIdnUse)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PNewStmt
+case class PStarredNewStmt(target: PIdnUse)(val pos: (Position, Position)) extends PNewStmt
 
 object PNewStmt {
   def apply(target: PIdnUse): PStarredNewStmt = PStarredNewStmt(target)(target.pos)
@@ -1143,12 +1145,12 @@ trait PAnyFunction extends PMember with PGlobalDeclaration with PTypedDeclaratio
   def formalArgs: Seq[PAnyFormalArgDecl]
   def typ: PType
 }
-case class PProgram(imports: Seq[PImport], macros: Seq[PDefine], domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod], extensions: Seq[PExtender], errors: Seq[ParseReport])(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PNode
+case class PProgram(imports: Seq[PImport], macros: Seq[PDefine], domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod], extensions: Seq[PExtender], errors: Seq[ParseReport])(val pos: (Position, Position)) extends PNode
 abstract class PImport() extends PNode
 case class PLocalImport(file: String)(val pos: (Position, Position)) extends PImport()
 case class PStandardImport(file: String)(val pos: (Position, Position)) extends PImport()
 
-case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: Option[PStmt])(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PMember with PGlobalDeclaration {
+case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: Option[PStmt])(val pos: (Position, Position)) extends PMember with PGlobalDeclaration {
   def deepCopy(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, formalReturns: Seq[PFormalArgDecl] = this.formalReturns, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, body: Option[PStmt] = this.body): PMethod = {
     StrategyBuilder.Slim[PNode]({
       case p: PMethod => PMethod(idndef, formalArgs, formalReturns, pres, posts, body)(p.pos)
@@ -1164,7 +1166,7 @@ case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalRetur
   }
 }
 case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom])(val pos: (Position, Position)) extends PMember with PGlobalDeclaration
-case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp])(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PAnyFunction {
+case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp])(val pos: (Position, Position)) extends PAnyFunction {
   def deepCopy(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, typ: PType = this.typ, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, body: Option[PExp] = this.body): PFunction = {
     StrategyBuilder.Slim[PNode]({
       case p: PFunction => PFunction(idndef, formalArgs, typ, pres, posts, body)(p.pos)
@@ -1175,7 +1177,7 @@ case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PTyp
 case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl], typ: PType, unique: Boolean)(val domainName:PIdnUse)(val pos: (Position, Position)) extends PAnyFunction
 case class PAxiom(idndef: Option[PIdnDef], exp: PExp)(val domainName:PIdnUse)(val pos: (Position, Position)) extends PScope
 case class PField(idndef: PIdnDef, typ: PType)(val pos: (Position, Position)) extends PMember with PTypedDeclaration with PGlobalDeclaration
-case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: Option[PExp])(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PMember with PTypedDeclaration with PGlobalDeclaration{
+case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: Option[PExp])(val pos: (Position, Position)) extends PMember with PTypedDeclaration with PGlobalDeclaration{
   val typ = PPredicateType()()
 }
 
@@ -1201,7 +1203,8 @@ case class PUnknownEntity() extends PErrorEntity {
 trait PExtender extends PNode{
   def getSubnodes():Seq[PNode] = ???
   def typecheck(t: TypeChecker, n: NameAnalyser):Option[Seq[String]] = ???
-  def namecheck(n: NameAnalyser) = ???
+  def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType):Option[Seq[String]] = ???
+  def namecheck(n: NameAnalyser): Nothing = ???
   def translateMemberSignature(t: Translator): Member = ???
   def translateMember(t: Translator): Member = ???
 

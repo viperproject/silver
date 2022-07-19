@@ -4,26 +4,24 @@
 field f:Int
 
 method foo(S: Seq[Ref])
+  requires forall i: Int, j: Int :: i >= 0 && i < |S| && j >= 0 && j < |S| && i != j ==> S[i] != S[j]
 {
-  //:: ExpectedOutput(exhale.failed:receiver.not.injective)
   //:: ExpectedOutput(exhale.failed:insufficient.permission)
-  //:: MissingOutput(exhale.failed:insufficient.permission, /Silicon/issue/34/)
   exhale forall i:Int :: 0 <= i && i < |S| ==> acc(S[i].f,write)
 }
 
 
 method bar(S: Seq[Ref])
+  requires forall i: Int, j: Int :: i >= 0 && i < |S| && j >= 0 && j < |S| && i != j ==> S[i] != S[j]
 {
   inhale forall r:Ref :: r in S ==> acc(r.f,1/2)
-  //:: ExpectedOutput(exhale.failed:receiver.not.injective)
   exhale forall i:Int :: 0 <= i && i < |S| ==> acc(S[i].f,1/2)
 }
 
 method test(S: Seq[Ref], x:Ref)
+  requires forall i: Int, j: Int :: i >= 0 && i < |S| && j >= 0 && j < |S| && i != j ==> S[i] != S[j]
 {
   inhale forall r:Ref :: r in S && x != r ==> acc(r.f,write)
-  //:: ExpectedOutput(exhale.failed:receiver.not.injective)
   //:: ExpectedOutput(exhale.failed:insufficient.permission)
-  //:: MissingOutput(exhale.failed:insufficient.permission, /Silicon/issue/34/)
   exhale forall i:Int :: 0 <= i && i < |S| ==> acc(S[i].f,write)
 }

@@ -1,10 +1,12 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
+//:: IgnoreFile(/carbon/issue/293/)
 
 field val: Int
 
 method minimal_example(xs: Seq[Ref], m: Int, n: Int)
   requires m*n == |xs|
+  requires forall i: Int, j: Int :: {xs[i], xs[j]} i >= 0 && i < |xs| && j >= 0 && j < |xs| && i != j ==> xs[i] != xs[j]
   //:: ExpectedOutput(not.wellformed:seq.index.length)
   requires (forall i: Int :: 0<=i && i<m ==> (forall j: Int :: (i*n)<=j && j<((i+1)*n) ==> acc(xs[j].val, 1/2)))
     /* [2018-10-10 Malte] The example appears problematic for Z3, potentially due to nonlinear
@@ -16,7 +18,9 @@ method minimal_example(xs: Seq[Ref], m: Int, n: Int)
 
 function matrix(i: Int, j: Int): Ref
 
-method test_two() {
+method test_two()
+    requires forall i1: Int, j1: Int, i2: Int, j2: Int :: {matrix(i1, j1), matrix(i2, j2)} (i1 != i2 || j1 != j2) ==> matrix(i1, j1) != matrix(i2, j2)
+{
     inhale forall i: Int :: (forall j: Int :: acc(matrix(i, j).val))
     matrix(3,4).val := 42
 }

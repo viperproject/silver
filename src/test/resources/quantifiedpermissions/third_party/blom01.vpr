@@ -16,6 +16,7 @@
 field val : Int
 
 method main (ar : Seq[Ref])
+  requires forall i: Int, j: Int :: i in [0..|ar|) && j in [0..|ar|) && i != j ==> ar[i] != ar[j]
   requires forall i : Int :: i in [0..|ar|) && i%2==0 ==> acc(ar[i].val)
   ensures  forall i : Int :: i in [0..|ar|) && i%2==0 ==> acc(ar[i].val)
 {

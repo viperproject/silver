@@ -5,6 +5,7 @@ field item: Int
 
 function seqToSeqHelper_wild(xs: Seq[Ref], i: Int): Seq[Int]
   requires 0 <= i && i <= |xs|
+  requires forall k:Int, j:Int :: k >= 0 && k < |xs| && j >= 0 && j < |xs| && k != j ==> xs[k] != xs[j]
   requires (forall j: Int :: 0 <= j && j < |xs| ==> acc(xs[j].item, wildcard))
   requires [i < |xs|, true]
 
@@ -16,6 +17,7 @@ function seqToSeqHelper_wild(xs: Seq[Ref], i: Int): Seq[Int]
 
 function seqToSeqHelper_frac(xs: Seq[Ref], i: Int): Seq[Int]
   requires 0 <= i && i <= |xs|
+  requires forall k:Int, j:Int :: k >= 0 && k < |xs| && j >= 0 && j < |xs| && k != j ==> xs[k] != xs[j]
   requires (forall j: Int :: 0 <= j && j < |xs| ==> acc(xs[j].item, 1/77))
   requires [i < |xs|, true]
 
@@ -27,6 +29,7 @@ function seqToSeqHelper_frac(xs: Seq[Ref], i: Int): Seq[Int]
 
 method method_seqToSeqHelper(xs: Seq[Ref], i: Int) returns (res: Seq[Int])
   requires 0 <= i && i <= |xs|
+  requires forall k:Int, j:Int :: k >= 0 && k < |xs| && j >= 0 && j < |xs| && k != j ==> xs[k] != xs[j]
   requires (forall j: Int :: 0 <= j && j < |xs| ==> acc(xs[j].item, wildcard))
   ensures 0 <= i && i <= |xs|
   ensures (forall j: Int :: 0 <= j && j < |xs| ==> acc(xs[j].item, wildcard))
@@ -45,6 +48,7 @@ method method_seqToSeqHelper(xs: Seq[Ref], i: Int) returns (res: Seq[Int])
 
 method method_seqToSeqHelper2(xs: Seq[Ref], i: Int) returns (res: Seq[Int])
   requires 0 <= i && i <= |xs|
+  requires forall k:Int, j:Int :: k >= 0 && k < |xs| && j >= 0 && j < |xs| && k != j ==> xs[k] != xs[j]
   requires (forall j: Int :: 0 <= j && j < |xs| ==> acc(xs[j].item, wildcard))
   ensures 0 <= i && i <= |xs|
   ensures (forall j: Int :: 0 <= j && j < |xs| ==> acc(xs[j].item, wildcard))
@@ -71,6 +75,10 @@ domain VCTArray[CT] {
 
   axiom len_nonneg {
     (forall a: VCTArray[CT] :: { alen(a) } alen(a) >= 0)
+  }
+
+  axiom loc_inject {
+	forall a: VCTArray[CT], i: Int, j: Int :: { loc(a, i), loc(a, j) } i >= 0 && j >= 0 && i < alen(a) && j < alen(a) && i != j ==> loc(a, i) != loc(a, j)
   }
 }
 

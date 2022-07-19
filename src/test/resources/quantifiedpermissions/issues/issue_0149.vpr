@@ -8,6 +8,7 @@ method test01(x1: Ref, x2: Ref)
   requires acc(x1.g) && acc(x1.g.f)
   requires acc(x2.g) && acc(x2.g.f)
   ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g)
+  ensures  x1.g != x2.g
   ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g.f) /* Failed previously */
 {
 //  assert x1 != x2       // Any of these two assert makes ...
@@ -18,6 +19,7 @@ method test02(x1: Ref, x2: Ref)
   requires acc(x1.g) && acc(x1.g.f, 2/3)
   requires acc(x2.g) && acc(x2.g.f, 2/3)
   ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g, 2/3)
+  ensures  x1.g != x2.g
   ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g.f, 2/3) /* Failed previously */
 {
 //  assert x1 != x2       // Any of these two assert makes ...
@@ -27,7 +29,9 @@ method test02(x1: Ref, x2: Ref)
 // This one works fine - in a previous version of the test the spec didn't guarantee that the sequence accesses were in range, which caused the failure.
 method test03(xs: Seq[Ref])
   requires |xs| > 1 // Important!
+  requires forall i1: Int, i2: Int :: i1 in [0..|xs|) && i2 in [0..|xs|) && i1 != i2 ==> xs[i1] != xs[i2]
   requires forall i: Int :: 0 <= i && i < |xs| ==> acc(xs[i].g, 2/3)
+  requires forall i1: Int, i2: Int :: i1 in [0..|xs|) && i2 in [0..|xs|) && i1 != i2 ==> xs[i1].g != xs[i2].g
   requires forall i: Int :: 0 <= i && i < |xs| ==> acc(xs[i].g.f)
   ensures xs[0] != xs[1]
 {
@@ -37,7 +41,9 @@ method test03(xs: Seq[Ref])
 method test04(xs: Seq[Ref], ys: Seq[Ref])
   requires |xs| > 0
   requires |ys| > 0
+  requires forall i1: Int, i2: Int :: i1 in [0..|xs|) && i2 in [0..|xs|) && i1 != i2 ==> xs[i1] != xs[i2]
   requires forall i: Int :: 0 <= i && i < |xs| ==> acc(xs[i].f, 2/3)
+  requires forall i1: Int, i2: Int :: i1 in [0..|ys|) && i2 in [0..|ys|) && i1 != i2 ==> ys[i1] != ys[i2]
   requires forall i: Int :: 0 <= i && i < |ys| ==> acc(ys[i].f, 2/3)
 {
   //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/198/)

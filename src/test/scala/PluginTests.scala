@@ -15,6 +15,7 @@ import viper.silver.reporter.{Reporter, StdIOReporter}
 import viper.silver.verifier.errors.Internal
 import viper.silver.verifier.reasons.FeatureUnsupported
 import viper.silver.verifier._
+import viper.silver.ast.NoPosition
 
 trait TestPlugin {
   def test(): Boolean = true
@@ -115,17 +116,18 @@ class TestPluginAllCalled extends SilverPlugin with TestPlugin {
 class TestPluginAddPredicate extends SilverPlugin {
 
   override def beforeResolve(input: PProgram): PProgram = {
+    val p = (NoPosition, NoPosition)
     PProgram(
       input.imports,
       input.macros,
       input.domains,
       input.fields,
       input.functions,
-      input.predicates :+ PPredicate(PIdnDef("testPredicate")(), Seq(), None)(),
+      input.predicates :+ PPredicate(PIdnDef("testPredicate")(p), Seq(), None)(p),
       input.methods,
       input.extensions,
       input.errors
-    )()
+    )(p)
   }
 
   /** Called after methods are filtered but before the verification by the backend happens.

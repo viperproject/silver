@@ -130,9 +130,10 @@ method insert(this: Ref, elem: Int) returns (j: Int)
   // shuffle the later elements forward
   while (t > j)
     invariant acc(this.elems,1/2) && acc(this.size,1/2) && acc(loc(this.elems,j).val, 1/2)
-    invariant (forall i:Int :: j < i && i <= this.size ==> acc(loc(this.elems,i).val))
     invariant j <= t && t <= this.size
     invariant this.size == old(length(this))
+    invariant -1 <= j && this.size < len(this.elems)
+    invariant (forall i:Int :: j < i && i <= this.size ==> acc(loc(this.elems,i).val))
     invariant forall i: Int :: {loc(this.elems,i)} j <= i && i <= this.size ==> (i < t ==> loc(this.elems,i).val == old(itemAt(this,i)))
     invariant forall i: Int :: {loc(this.elems,i)} j < i && i <= this.size ==> (i > t ==> loc(this.elems,i).val == old(itemAt(this,i-1)))
   {

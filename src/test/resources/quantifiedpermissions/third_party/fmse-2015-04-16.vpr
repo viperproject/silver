@@ -1,5 +1,6 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
+//:: IgnoreFile(/carbon/issue/403/)
 
 /* Provided by Stefan Blom of Univ. of Twente */
 
@@ -11,8 +12,11 @@ method Exercise4__zip(diz: Ref, a: Seq[Ref], b: Seq[Ref], res: Seq[Ref])
   requires diz != null
   requires |a| == |b|
   requires |res| == 2 * |a|
+  requires forall i: Int, j: Int :: 0 <= i && i < |a| && 0 <= j && j < |a| && i != j ==> a[i] != a[j]
   requires (forall i: Int :: (i in [0..|a|)) ==> acc(a[i].Ref__Integer_value, write))
+  requires forall i: Int, j: Int :: 0 <= i && i < |b| && 0 <= j && j < |b| && i != j ==> b[i] != b[j]
   requires (forall i: Int :: (i in [0..|b|)) ==> acc(b[i].Ref__Integer_value, write))
+  requires forall i: Int, j: Int :: 0 <= i && i < |res| && 0 <= j && j < |res| && i != j ==> res[i] != res[j]
   requires (forall i: Int :: (i in [0..|res|)) ==> acc(res[i].Ref__Integer_value, write))
   ensures |res| == 2 * |a|
   ensures |a| == |b|

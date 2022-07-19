@@ -6,7 +6,7 @@
 
 package viper.silver.ast
 
-import viper.silver.ast.pretty.{Fixity, Infix, LeftAssociative, NonAssociative, Prefix, RightAssociative}
+import viper.silver.ast.pretty.{Fixity, Infix, LeftAssociative, NonAssociative, Prefix, PrettyPrintPrimitives, RightAssociative}
 import utility.{Consistency, DomainInstances, Nodes, Types, Visitor}
 import viper.silver.ast.MagicWandStructure.MagicWandStructure
 import viper.silver.ast.utility.rewriter.StrategyBuilder
@@ -779,4 +779,5 @@ case class BackendFunc(name: String, smtName: String, override val typ: Type, ov
   */
 trait ExtensionMember extends Member{
   def extensionSubnodes: Seq[Node]
+  def prettyPrint: PrettyPrintPrimitives#Cont
 }
