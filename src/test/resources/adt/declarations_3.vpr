@@ -1,0 +1,6 @@
+adt SimpleList {
+    SimpleNil()
+    //:: ExpectedOutput(typechecker.error)
+    SimpleCons(value: Int, value: SimpleList)
+}
+

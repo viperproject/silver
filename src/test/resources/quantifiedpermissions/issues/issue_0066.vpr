@@ -21,7 +21,7 @@ method test04() {
   // inhale forall s: Ref :: s in S ==> s.f != null /* TODO: see silicon/issues/179/ */
   inhale s1.f != null && s2.f != null && s3.f != null
 
-  //:: ExpectedOutput(assert.failed:receiver.not.injective)
+  //:: ExpectedOutput(assert.failed:qp.not.injective)
   //:: MissingOutput(assert.failed:insufficient.permission, /silicon/issue/34/)
   //:: ExpectedOutput(assert.failed:insufficient.permission)
   assert forall s: Ref :: s in S ==> acc(s.f.g)

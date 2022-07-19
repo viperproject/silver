@@ -17,8 +17,8 @@ method foo(tree: Ref, leftArray: Seq[Ref], rightArray: Seq[Ref], array: Seq[Ref]
 {
     //:: ExpectedOutput(assert.failed:seq.index.length)
     //:: ExpectedOutput(assert.failed:insufficient.permission)
-    //:: ExpectedOutput(assert.failed:receiver.not.injective)
+    //:: ExpectedOutput(assert.failed:qp.not.injective)
     //:: MissingOutput(assert.failed:insufficient.permission, /silicon/issue/34/)
-    //:: MissingOutput(assert.failed:receiver.not.injective, /silicon/issue/34/)
+    //:: MissingOutput(assert.failed:qp.not.injective, /silicon/issue/34/)
     assert forall i:Int :: { array[i] } validIndex(rightArray, i - |leftArray| - 1) ==> acc(array[i].value)
 }

@@ -23,9 +23,9 @@ method test03b(trees: Set[Ref])
   requires (forall r: Ref :: {id(r)} r in trees ==> acc(id(r).item, 1/2))
   requires (forall r: Ref :: {id(r)} r in trees ==> acc(id(r).item.bool_prop, none))
 {
-  //:: ExpectedOutput(assert.failed:receiver.not.injective)
+  //:: ExpectedOutput(assert.failed:qp.not.injective)
   //:: ExpectedOutput(assert.failed:insufficient.permission)
-  //:: MissingOutput(assert.failed:receiver.not.injective, /carbon/issue/361/)
+  //:: MissingOutput(assert.failed:qp.not.injective, /carbon/issue/361/)
   //:: MissingOutput(assert.failed:insufficient.permission, /silicon/issue/34/)
   assert forall s: Ref :: {id(s)} s in trees ==> acc(id(s).item.bool_prop, wildcard)
 }

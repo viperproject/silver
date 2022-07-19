@@ -10,16 +10,12 @@ package viper.silver.frontend
 import ch.qos.logback.classic.Logger
 import viper.silver.ast.Program
 import viper.silver.logger.ViperStdOutLogger
-import viper.silver.plugin.PluginAwareReporter
 import viper.silver.reporter.{AstConstructionFailureMessage, AstConstructionSuccessMessage, Reporter}
 import viper.silver.verifier.{Failure, Success, VerificationResult, Verifier}
 
 
-class ViperAstProvider(override val reporter: PluginAwareReporter,
-                       override implicit val logger: Logger) extends SilFrontend {
-
-  def this(reporter: Reporter, logger: Logger = ViperStdOutLogger("ViperAstProvider", "INFO").get) =
-    this(PluginAwareReporter(reporter), logger)
+class ViperAstProvider(override val reporter: Reporter,
+                       override implicit val logger: Logger = ViperStdOutLogger("ViperAstProvider", "INFO").get) extends SilFrontend {
 
   class Config(args: Seq[String]) extends SilFrontendConfig(args, "ViperAstProviderConfig") {
     verify()
@@ -83,7 +79,7 @@ class ViperAstProvider(override val reporter: PluginAwareReporter,
   protected var instance: AstProvidingVerifier = _
 
   override def createVerifier(fullCmd: String): Verifier = {
-    instance = new AstProvidingVerifier(reporter.reporter)
+    instance = new AstProvidingVerifier(reporter)
     instance
   }
 

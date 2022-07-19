@@ -1,0 +1,22 @@
+adt List[T] {
+    Nil()
+    Cons(value: T, tail: List[T])
+}
+
+
+adt Tree[T] {
+    Leaf()
+    Node(value: T, left: Tree[T], right: Tree[T])
+}
+
+
+method destructors_4()
+{   
+
+    //:: ExpectedOutput(typechecker.error)
+    assert Cons(1, Nil()).dummy == 1
+
+    //:: ExpectedOutput(typechecker.error)
+    assert Cons(1, Nil()).value.right.hello.f == 1
+
+}

@@ -1,0 +1,26 @@
+adt List[T] {
+    Nil()
+    Cons(value: T, tail: List[T])
+}
+
+method constructors_2()
+{
+    var list1: List[Int]
+    //:: ExpectedOutput(typechecker.error)
+    list1 := Cons(Cons(1, Cons(1, Cons(1, Cons(1, Cons(1, Nil()))))))
+
+    var list2: List[List[Bool]]
+    //:: ExpectedOutput(typechecker.error)
+    list2 := Cons(Cons(true, Cons(true, Cons(true, Cons(true, Cons(true, Cons(true, Nil(true))))))), Nil())
+
+    var list3: List[Seq[Int]]
+    //:: ExpectedOutput(typechecker.error)
+    list3 := Cons(1, Nil())
+
+    var list4: List[Set[Int]]
+    //:: ExpectedOutput(typechecker.error)
+    list4 := Cons(Set(true, false), Nil())
+   
+}
+
+

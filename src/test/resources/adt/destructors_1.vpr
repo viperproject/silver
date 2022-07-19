@@ -1,0 +1,79 @@
+adt List[T] {
+    Nil()
+    Cons(value: T, tail: List[T])
+}
+
+
+adt Tree[T] {
+    Leaf()
+    Node(value: T, left: Tree[T], right: Tree[T])
+}
+
+
+method destructors_1()
+{   
+
+    var tree: Tree[Int]
+    tree := Node(42, Node(420, Leaf(), Leaf()), Leaf())
+
+    var left: Tree[Int]
+    left := tree.left
+    assert left == tree.left
+    assert left == Node(420, Leaf(), Leaf())
+
+    var list: List[Bool]
+    list := Cons(true, Cons(true, Cons(true, Cons(true, Cons(true, Cons(true, Nil()))))))
+
+    assert list.value
+    assert list.tail.value
+    assert !!list.tail.tail.tail.tail.tail.value
+
+    var bigTree: Tree[Bool]
+    bigTree := Node(
+        true,
+        Node(
+            true,
+            Node(
+                true,
+                Node(
+                    true,
+                    Node(
+                        true,
+                        Node(
+                            true,
+                            Node(true, Leaf(), Leaf()),
+                            Node(true,Leaf(),Leaf())),
+                        Node(true, Leaf(), Leaf())),
+                Node(true, Leaf(), Leaf())),
+            Node(true, Leaf(), Leaf())),
+            Leaf()
+        ),
+        Node(
+            false,
+            Leaf(),
+            Node(
+                false,
+                Leaf(),
+                Node(
+                    false,
+                    Leaf(),
+                    Node(
+                        false,
+                        Leaf(),
+                        Node(
+                            false,
+                            Leaf(),
+                            Node(false, Leaf(), Leaf())
+                        )
+                    )
+                )
+            )
+        )
+    )
+    assert bigTree.left.left.left.left.value
+    assert bigTree.left.left.right.value
+    assert !bigTree.right.right.value
+
+}
+
+

@@ -1,0 +1,71 @@
+domain SizeDomain[T] {
+    function size(collection:T): Int
+}
+
+domain AddDomain[T] {
+    function add(a:T, b: T): T
+
+}
+
+domain ToSeqDomain[A,B] {
+    function toSeq(collection: A): Seq[B]
+}
+
+domain IntUtility {
+    axiom {
+        forall o1:Int, o2:Int :: {add(o1,o2)} add(o1,o2) == (o1 + o2)
+    }
+}
+
+domain SetUtility[T] {
+   
+    axiom {
+        forall set: Set[T] :: { size(set) } size(set) == |set|
+    }
+    axiom {
+        forall o1:Set[T], o2:Set[T] :: {add(o1,o2)} add(o1,o2) == (o1 union o2)
+    }
+}
+
+domain SeqUtility[T] {
+    axiom {
+        forall o1:Seq[T], o2:Seq[T] :: {add(o1,o2)} add(o1,o2) == (o1 ++ o2)
+    }
+    axiom {
+        forall seq: Seq[T] :: { size(seq) } size(seq) == |seq|
+    }
+}
+
+
+adt DAG[T] {
+    Node(value: T, successor: Seq[DAG[T]])
+}
+
+domain DAGUtility[T] {
+
+    axiom {
+        forall dags:Seq[DAG[T]] :: {toSeq(dags)} toSeq(dags) == (|dags| > 0 ? toSeq(dags[0]) ++ toSeq(dags[1..]) : Seq())
+
+    }
+    axiom {
+        forall dag:DAG[T] :: {toSeq(dag)} toSeq(dag) == (|dag.successor| > 0 ? Seq(dag.value) ++ toSeq(dag.successor) : Seq(dag.value))
+    }
+}
+
+
+method client()
+{
+   var dag: DAG[Int]
+
+   dag := Node(1, Seq(
+        Node(2, Seq(Node(3, Seq()))),
+        Node(2, Seq(Node(3, Seq()))),
+        Node(2, Seq()),
+        Node(2, Seq()),
+        Node(2, Seq())
+   ))
+
+   assert toSeq(dag) == Seq(1) ++ toSeq(dag.successor)
+
+   assert toSeq(dag) == Seq(1, 2, 3, 2, 3, 2, 2, 2)
+}

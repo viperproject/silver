@@ -677,6 +677,12 @@ case class TypeChecker(names: NameAnalyser) {
               case pecl: PEmptyCollectionLiteral if !pecl.pElementType.isValidOrUndeclared =>
                 check(pecl.pElementType)
 
+              case pem: PEmptyMap if !pem.pKeyType.isValidOrUndeclared || !pem.pValueType.isValidOrUndeclared =>
+                if (!pem.pKeyType.isValidOrUndeclared)
+                  check(pem.pKeyType)
+                if (!pem.pValueType.isValidOrUndeclared)
+                  check(pem.pValueType)
+
               case _ =>
             }
 

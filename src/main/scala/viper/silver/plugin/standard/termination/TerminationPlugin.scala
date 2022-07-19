@@ -28,7 +28,7 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
   /**
    * Keyword used to define decreases clauses
    */
-  private val DecreasesKeyword: String = "decreases"
+  private val decreasesKeyword: String = "decreases"
 
   /**
    * Parser for decreases clauses with following possibilities.
@@ -40,7 +40,7 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
    * decreases *
    */
   def decreases[_: P]: P[PDecreasesClause] =
-    P(keyword(DecreasesKeyword) ~/ (decreasesWildcard | decreasesStar | decreasesTuple) ~ ";".?)
+    P(keyword(decreasesKeyword) ~/ (decreasesWildcard | decreasesStar | decreasesTuple) ~ ";".?)
   def decreasesTuple[_: P]: P[PDecreasesTuple] =
     FP(exp.rep(sep = ",") ~/ condition.?).map { case (pos, (a, c)) => PDecreasesTuple(a, c)(pos) }
   def decreasesWildcard[_: P]: P[PDecreasesWildcard] = FP("_" ~/ condition.?).map{ case (pos, c) => PDecreasesWildcard(c)(pos) }
@@ -53,7 +53,7 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
    */
   override def beforeParse(input: String, isImported: Boolean): String = {
     // Add new keyword
-    ParserExtension.addNewKeywords(Set[String](DecreasesKeyword))
+    ParserExtension.addNewKeywords(Set[String](decreasesKeyword))
     // Add new parser to the precondition
     ParserExtension.addNewPreCondition(decreases(_))
     // Add new parser to the postcondition

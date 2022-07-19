@@ -1,0 +1,17 @@
+import <adt/derives.vpr>
+
+adt SimpleList {
+    SimpleNil()
+    SimpleCons(value: Int, tail: SimpleList)
+} derives {
+    //:: ExpectedOutput(typechecker.error)
+    contains without Leaf3
+}
+
+adt Tree3[T] {
+    Leaf3()
+    Node3(value: T, left: Tree3[T], middle: Tree3[T], right: Tree3[T])
+} derives {
+    //:: ExpectedOutput(typechecker.error)
+    contains without middle, right, hello
+}

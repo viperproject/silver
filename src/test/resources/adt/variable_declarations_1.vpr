@@ -1,0 +1,34 @@
+adt List[T] {
+    Nil()
+    Cons(value: T, tail: List[T])
+}
+
+method var_decls_1a()
+{
+    var list1: List[Int]
+    var list2: List[List[Bool]]
+    var list3: List[List[List[Int]]]
+    var list4: List[List[List[List[Bool]]]]
+    
+    var list5: List[Seq[Int]]
+    var list6: List[Set[Bool]]
+    var list7: List[Map[Int, Int]]
+    var list8: List[Map[Int, List[Int]]]
+}
+
+adt SpecialList[T, S] {
+    SpecialNil()
+    TCons(elemT: T, tailT: SpecialList[T,S])
+    SCons(elemS: S, tailS: SpecialList[T,S])
+}
+
+method var_decls_1b()
+{
+    var slist1: SpecialList[Bool, List[Int]]
+    var slist2: SpecialList[Int, Seq[Int]]
+    var slist3: SpecialList[List[List[List[List[Bool]]]], List[List[List[List[Bool]]]]]
+    var slist4: SpecialList[SpecialList[SpecialList[SpecialList[Int, Int], SpecialList[Bool, Bool]], Int], SpecialList[Bool, SpecialList[SpecialList[Int, Int], SpecialList[Bool, Bool]]]]
+    
+}
+
+

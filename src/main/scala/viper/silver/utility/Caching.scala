@@ -7,9 +7,8 @@
 package viper.silver.utility
 
 import java.security.MessageDigest
-
 import viper.silver.ast.pretty.FastPrettyPrinter
-import viper.silver.ast.Node
+import viper.silver.ast.{Domain, DomainAxiom, DomainFunc, Node}
 
 import scala.collection.mutable
 import scala.language.postfixOps
@@ -106,7 +105,17 @@ object CacheHelper {
     new String(MessageDigest.getInstance("MD5").digest(s.getBytes))
   }
   def computeEntityHash(prefix: String, astNode: Node): String = {
-    val node = prefix + s"_<${astNode.getClass.toString()}>_" + FastPrettyPrinter.pretty(astNode)
+    // orders subtrees of `astNode` when their ordering does not matter, i.e. a cache entry for a
+    // similar node that just has a different ordering of its subtrees should be treated as a cache hit
+    val normalizedAstNode = astNode match {
+      case n: Domain =>
+        Domain(n.name, n.functions.sorted, n.axioms.sorted, n.typVars)(n.pos, n.info, n.errT)
+      case n => n
+    }
+    val node = prefix + s"_<${astNode.getClass.toString}>_" + FastPrettyPrinter.pretty(normalizedAstNode)
     CacheHelper.buildHash(node)
   }
+
+  implicit def domainFnOrdering: Ordering[DomainFunc] = Ordering.by(FastPrettyPrinter.pretty(_))
+  implicit def domainAxOrdering: Ordering[DomainAxiom] = Ordering.by(FastPrettyPrinter.pretty(_))
 }

@@ -35,7 +35,7 @@ method test10(xs: Seq[Ref], a: Int, b: Int, n: Int)
   requires 0 <= a && 0 <= b && 0 <= n
   requires a * (n - 1) + b <= |xs|
   //:: UnexpectedOutput(not.wellformed:seq.index.length, /silver/issue/194/)
-  //:: UnexpectedOutput(not.wellformed:receiver.not.injective, /carbon/issue/194/)
+  //:: UnexpectedOutput(not.wellformed:qp.not.injective, /carbon/issue/194/)
   // Actually /silver/issue/194
   requires forall i: Int :: i in [0..n) ==> acc(h(xs[a * i + b]))
 {}
@@ -47,7 +47,7 @@ method test11(xs: Seq[Ref], a: Int, b: Int, n: Int, ss: Set[Int])
   requires forall i: Int :: i in [0..n) ==> (a * i + b) in ss
   requires forall i: Int :: i in ss ==> 0 <= i
   //:: UnexpectedOutput(not.wellformed:seq.index.length, /silver/issue/194/)
-  //:: UnexpectedOutput(not.wellformed:receiver.not.injective, /carbon/issue/194/)
+  //:: UnexpectedOutput(not.wellformed:qp.not.injective, /carbon/issue/194/)
   // Actually /silver/issue/194
   requires forall i: Int :: i in ss ==> acc(h(xs[i]))
 {}

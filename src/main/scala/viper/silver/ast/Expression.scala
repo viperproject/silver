@@ -164,11 +164,11 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
      *   - Replace holes in the wand (subexpressions to evaluate) by local variables
      *     whose names are the type of the hole. E.g. "n + 1" is replaced by an
      *     artificial variable with name "int" and similarly, "n < m" by "bool".
-     *   - Quantified variables are given canonical names based on their depth/level
+     *   - Bound variables are given canonical names based on their depth/level
      *     of nesting in the overall wand. E.g. the subexpression
-     *     "(forall x, y :: b1(x, y) ==> forall z :: b2(x, y, z)) && forall x :: b3(x)"
+     *     "(forall x, y :: b1(x, y) ==> forall z :: b2(x, y, z)) && (let v == (0) in v == 0)"
      *     is transformed into
-     *     "(forall q1, q2 :: b1(q1, q2) ==> forall q3 :: b2(q1, q2, q3)) && forall q1 :: b3(q1)".
+     *     "(forall q1, q2 :: b1(q1, q2) ==> forall q3 :: b2(q1, q2, q3)) && (let q1 == (0) in q1 == 0)".
      *
      * Wands transformed in this way can be compared for equality as follows: an initial
      * syntactic comparison can be used to check if the wands match structurally, a subsequent
@@ -215,6 +215,12 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
           val variables = renameDecls(quant.variables, bindings)
 
           (quant.withVariables(variables), context.updateContext(extendBindings(context.c, quant.variables)))
+        case (let: Let, context) =>
+          val oldVars = Seq(let.variable)
+          val bindings = extendBindings(context.c, oldVars)
+          val variables = renameDecls(oldVars, bindings)
+          (Let(variables.head, let.exp, let.body)(let.pos, let.info, let.errT),
+            context.updateContext(extendBindings(context.c, oldVars)))
 
         case (lv: LocalVar, context) =>
           context.c.get(lv.name) match {
@@ -755,35 +761,39 @@ case class SeqAppend(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 }
 
 /** Access to an element of a sequence at a given index position (starting at 0). */
-case class SeqIndex(s: Exp, idx: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp {
+case class SeqIndex(s: Exp, idx: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp with PrettyOperatorExpression {
   override lazy val check : Seq[ConsistencyError] =
     (if(!s.typ.isInstanceOf[SeqType]) Seq(ConsistencyError(s"Expected sequence type but found ${s.typ}", s.pos)) else Seq()) ++
     (if(!(idx isSubtype Int)) Seq(ConsistencyError(s"Second parameter of sequence-access expression must be Int, but found ${idx.typ}", idx.pos)) else Seq())
   lazy val typ = s.typ.asInstanceOf[SeqType].elementType
   def getArgs = Seq(s,idx)
   def withArgs(newArgs: Seq[Exp]) = SeqIndex(newArgs.head,newArgs(1))(pos, info, errT)
+  override def priority: Int = 10
+  override def fixity: Fixity = Infix(LeftAssociative)
 }
 
 /** Take the first 'n' elements of the sequence 'seq'. */
-case class SeqTake(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp {
+case class SeqTake(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp with PrettyOperatorExpression {
   override lazy val check : Seq[ConsistencyError] =
     (if(!s.typ.isInstanceOf[SeqType]) Seq(ConsistencyError(s"Expected sequence type but found ${s.typ}", s.pos)) else Seq()) ++
     (if(!(n isSubtype Int)) Seq(ConsistencyError(s"Second parameter of sequence-take expression must be Int, but found ${n.typ}", n.pos)) else Seq())
   lazy val typ = s.typ
   def getArgs = Seq(s,n)
   def withArgs(newArgs: Seq[Exp]) = SeqTake(newArgs.head,newArgs(1))(pos, info, errT)
-
+  override def priority: Int = 10
+  override def fixity: Fixity = Infix(LeftAssociative)
 }
 
 /** Drop the first 'n' elements of the sequence 'seq'. */
-case class SeqDrop(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp {
+case class SeqDrop(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp with PrettyOperatorExpression {
   override lazy val check : Seq[ConsistencyError] =
     (if(!s.typ.isInstanceOf[SeqType]) Seq(ConsistencyError(s"Expected sequence type but found ${s.typ}", s.pos)) else Seq()) ++
     (if(!(n isSubtype Int)) Seq(ConsistencyError(s"Second parameter of sequence-drop expression must be Int, but found ${n.typ}", n.pos)) else Seq())
   lazy val typ = s.typ
   def getArgs = Seq(s,n)
   def withArgs(newArgs: Seq[Exp]) = SeqDrop(newArgs.head,newArgs(1))(pos, info, errT)
-
+  override def priority: Int = 10
+  override def fixity: Fixity = Infix(LeftAssociative)
 }
 
 /** Is the element 'elem' contained in the sequence 'seq'? */
