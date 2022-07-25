@@ -18,10 +18,10 @@ object Chopper {
     * Chopping proceeds in three phases:
     *
     * 1) The set of 'important members' is identified.
-    *    If `isolate` is none, then the important members are all members of `choppee` that
+    *    If `selection` is none, then the important members are all members of `choppee` that
     *    induce a proof obligation, i.e. methods, functions, and predicates.
-    *    Otherwise, if `isolate` is not none, then the important members are all members of `choppee` that
-    *    satisfy `isolate.get`.
+    *    Otherwise, if `selection` is not none, then the important members are all members of `choppee` that
+    *    satisfy `selection.get`.
     *
     * 2) For each important member M, a separate Viper program is generated that contains
     *    exactly the important member M together with all dependencies of the important member M that are
@@ -32,11 +32,12 @@ object Chopper {
     *    The dependency analysis distinguishes between method spec and method body,
     *    predicate signatures and predicate bodies, individual domain functions, and individual domain axioms.
     *
-    * 3) Generated programs for different important members are merged until the number of remaining programs
-    *    is <= `bound`. If `bound` is none, then the generated programs for all important members are returned.
-    *    Merging is done greedily: `penalty` defines the cost of merging two programs.
-    *    Consecutively, two programs with the lowest merging cost are merged until `bound` is satisfied
-    *    and there are no two programs with a merging cost <= 0.
+    * 3) Generated programs for different important members are merged.
+    *    Merging is done greedily: `penalty` defines the penalty of merging two programs.
+    *    Consecutively, two programs with the lowest merging penalty are merged until
+    *    (1) there are no two programs with a merging penalty <= 0 and,
+    *    (2) if `bound` is not none, the number of remaining programs is less than or equal `bound`.
+    *
     *
     * Note that each method body is contained in at most one of the returned Viper programs.
     * However, functions, predicates, fields, etc may be contained in more than one of the returned Viper programs.
@@ -48,43 +49,45 @@ object Chopper {
     * after the AST nodes are translated through SilverPlugin.beforeVerify.
     *
     * @param choppee Targeted program.
-    * @param isolate Specifies which members of the program should be verified.
+    * @param selection Specifies which members of the program should be verified.
     *                If none, then all members that induce a proof obligation are verified.
     * @param bound   Specifies upper bound on the number of returned programs.
     *                If none, then maximum number of programs is returned.
-    * @param penalty Specifies penalty of merging programs.
+    * @param penalty Specifies penalty of merging programs. Two default implementations are provided.
+    *                [[Penalty.DefaultWithoutForcedMerge]] defines that the penalty of a merge is always > 0.
     * @return Chopped programs.
     */
   def chop(
     choppee: ast.Program,
   )(
-    isolate: Option[ast.Member => Boolean] = None,
+    selection: Option[ast.Member => Boolean] = None,
     bound: Option[Int] = Some(1),
     penalty: Penalty[Vertex] = Penalty.Default,
   ): Vector[ast.Program] = {
-    chopWithMetrics(choppee)(isolate, bound, penalty)._1
+    chopWithMetrics(choppee)(selection, bound, penalty)._1
   }
 
   /**
     * chops `choppee` into multiple Viper programs and returns metrics. See [[chop]] for more details.
     *
     * @param choppee Targeted program.
-    * @param isolate Specifies which members of the program should be verified.
+    * @param selection Specifies which members of the program should be verified.
     *                If none, then all members that induce a proof obligation are verified.
     * @param bound   Specifies upper bound on the number of returned programs.
     *                If none, then maximum number of programs is returned.
-    * @param penalty Specifies penalty of merging programs.
+    * @param penalty Specifies penalty of merging programs. Two default implementations are provided.
+    *                [[Penalty.DefaultWithoutForcedMerge]] defines that the penalty of a merge is always > 0.
     * @return Chopped programs and metrics.
     */
   def chopWithMetrics(
     choppee: ast.Program,
   )(
-    isolate: Option[ast.Member => Boolean] = None,
+    selection: Option[ast.Member => Boolean] = None,
     bound: Option[Int] = Some(1),
     penalty: Penalty[Vertex] = Penalty.Default,
   ): (Vector[ast.Program], Metrics) = {
 
-    val graph = ViperGraph.toGraph(choppee, isolate)
+    val graph = ViperGraph.toGraph(choppee, selection)
     val (programs, metrics) = Cut.boundedCut(graph)(bound, penalty)
     (programs flatMap (list => graph.unapply(list)), metrics)
   }
@@ -105,6 +108,7 @@ object Chopper {
       * @param bound   Specifies upper bound on the number of returned programs.
       *                If none, then maximum number of programs is returned.
       * @param penalty Specifies penalty of merging programs.
+      * @tparam T      Node Type.
       * @return Set of programs.
       */
     def boundedCut[T](
@@ -191,8 +195,10 @@ object Chopper {
       * @param N     Number of nodes.
       * @param nodes Nodes that must be included. The vector may be unsorted and may contain duplicates.
       * @param edges Edges of the dependency graph. The graph must have no cycles.
+      *              The graph contains an edge (i,j) iff `edges(i).contains(j)`.
       * @param id    Mapping from nodes to node ids. The result is used as the index for `edges`.
-      * @return Set of smallest possible programs. A program is represented as a *sorted* list of node ids.
+      * @tparam T    Node type.
+      * @return Set of smallest possible programs. A program is represented as a *sorted* list of nodes.
       */
     private def smallestCutWithoutCycles[T](
       N: Int,
@@ -220,6 +226,9 @@ object Chopper {
       // Serves as memoization table.
       val reachableNodes = Array.ofDim[immutable.SortedSet[T]](N)
 
+      // Traverses the graph in depth-first search traversal order.
+      // Since it computes the additional information described above,
+      // it is not replaced with a call to an existing depth-first search implementation from a library.
       def dfs(start: T): Unit = {
         val stack = mutable.Stack[T](start)
         val startId = id(start)
@@ -260,8 +269,10 @@ object Chopper {
       * @param N     Number of nodes.
       * @param nodes Nodes that must be included. The vector may be unsorted and may contain duplicates.
       * @param edges Edges of the dependency graph. The graph may have cycles.
+      *              The graph contains an edge (i,j) iff `edges(i).contains(j)`.
       * @param id    Mapping from nodes to node ids. The result is used as the index for `edges`.
-      * @return Set of smallest possible programs. A program is represented as a *sorted* list of node ids.
+      * @tparam T    Node type.
+      * @return Set of smallest possible programs. A program is represented as a *sorted* list of nodes.
       */
     private def smallestCutWithCycles[T](
       N: Int,
@@ -284,6 +295,9 @@ object Chopper {
       // Stores all dependencies of a node (including itself).
       val reachableNodes = Array.ofDim[mutable.SortedSet[T]](N)
 
+      // Traverses the graph in depth-first search traversal order.
+      // Since it computes the additional information described above,
+      // it is not replaced with a call to an existing depth-first search implementation from a library.
       def dfs(start: T): Unit = {
         val stack = mutable.Stack[T](start)
         val result = mutable.SortedSet[T]()(Ordering.by(id))
@@ -317,10 +331,11 @@ object Chopper {
     /**
       * Merges set of programs into smaller set of programs bounded by `bound`.
       *
-      * @param programs Vector of programs. A program is represented as a *sorted* list of node ids.
+      * @param programs Vector of programs. A program is represented as a *sorted* list of nodes.
       * @param bound    Specifies upper bound on the number of returned programs.
       *                 If none, then maximum number of programs is returned.
       * @param penalty  Specifies penalty of merging programs.
+      * @tparam T       Node type.
       * @return
       */
     private def mergePrograms[T](
@@ -333,7 +348,7 @@ object Chopper {
     ): Vector[List[T]] = {
 
       /**
-        * A program is represented as a *sorted* list of node ids.
+        * A program is represented as a *sorted* list of nodes.
         * `sets` contains the current set of programs, where we use the keys to index the programs.
         * The code computes all combinations of merges together with their penalty and stores them in a priority queue.
         * The priority queue uses the inverted penalties as the ranking.
@@ -345,7 +360,7 @@ object Chopper {
         * 4) all combinations of the merge result and all other programs are computed and added to the queue.
         */
 
-      val start = programs.map(_.map(c => (c, penalty.price(c))))
+      val start = programs.map(_.map(c => (c, penalty.penalty(c))))
       val entries = start.zipWithIndex.map { case (p, idx) => (idx, p) }
       val sets = mutable.Map(entries: _*) // current set of programs. Keys are used as indices.
       var counter = entries.size // not used as key in map
@@ -356,8 +371,8 @@ object Chopper {
         (aIdx, a) <- entries
         (bIdx, b) <- entries
         if aIdx < bIdx
-        (price, rep) = penaltyAndMerge(a, b)(penalty)
-      } yield (price, (aIdx, bIdx), rep) // penalty, both indices, and merge result (in this order)
+        (mergePenalty, rep) = penaltyAndMerge(a, b)(penalty)
+      } yield (mergePenalty, (aIdx, bIdx), rep) // penalty, both indices, and merge result (in this order)
 
       val queue = mutable.PriorityQueue(init: _*)(Ordering.by(-_._1))
 
@@ -378,8 +393,8 @@ object Chopper {
 
           // compute new combinations of merge result with current sets of programs.
           for ((idx, rep) <- sets) {
-            val (price, newNewRep) = penaltyAndMerge(rep, newRep)(penalty)
-            queue.enqueue((price, (idx, newIdx), newNewRep))
+            val (mergePenalty, newNewRep) = penaltyAndMerge(rep, newRep)(penalty)
+            queue.enqueue((mergePenalty, (idx, newIdx), newNewRep))
           }
 
           sets.put(newIdx, newRep)
@@ -389,7 +404,11 @@ object Chopper {
       sets.values.map(_.map(_._1)).toVector
     }
 
-    /** Merges two programs and computes their merge penalty. A program is represented as a *sorted* list of T. */
+    /**
+      * Merges two programs and computes their merge penalty. A program is represented as a *sorted* list of T.
+      *
+      * @tparam T Node type.
+      * */
     private def penaltyAndMerge[T](
       l: List[(T, Int)],
       r: List[(T, Int)],
@@ -424,36 +443,67 @@ object Chopper {
     }
   }
 
+  /**
+    * Specifies the penalty of merging two programs.
+    * A program is represented as a sorted list of nodes (elements of type T).
+    *
+    * To be used by the chopper, implementations of the trait use [[Vertex]] as node type,
+    * which abstracts the smallest parts of a Viper program. See [[Vertex]] for more details.
+    *
+    * @tparam T Node type.
+    */
   trait Penalty[T] {
 
     /**
-      * Returns penalty of merging two programs X and Y.
+      * Returns the penalty of merging two programs X and Y.
       *
-      * @param lhsExclusivePrice Summed prices of components that are in X, but not in Y.
-      * @param rhsExclusivePrice Summed prices of components that are in Y, but not in X.
-      * @param sharedPrice       Summed prices of components that are in the intersection of X and Y.
+      * We restrict that the penalty of merging two programs X and Y is a function that takes
+      * the sums of penalties of the nodes: (1) only in X, (2) only in Y, and (3) in both X and Y.
+      *
+      * @param lhsExclusivePenalty Sum of the penalties of the nodes that are contained in X, but not in Y.
+      * @param rhsExclusivePenalty Sum of the penalties of the nodes that are contained in Y, but not in X.
+      * @param sharedPenalty       Sum of the penalties of the nodes that are contained in X and Y.
       * @return Penalty of merging X and Y. A merge with penalty <= 0 is always performed.
       */
-    def mergePenalty(lhsExclusivePrice: Int, rhsExclusivePrice: Int, sharedPrice: Int): Int
+    def mergePenalty(lhsExclusivePenalty: Int, rhsExclusivePenalty: Int, sharedPenalty: Int): Int
 
-    /** Returns price of a component. */
-    def price(x: T): Int
+    /** Returns penalty induced by a node `x`. */
+    def penalty(x: T): Int
 
     /** contravariant map */
-    def contravariantLift[S](f: S => T): Penalty[S] = new Penalty.SumPenalty(this, x => Some(f(x)))
-
-    def contravariantSumLift[S](f: S => Iterable[T]): Penalty[S] = new Penalty.SumPenalty(this, f)
+    final def contravariantLift[S](f: S => T): Penalty[S] = new Penalty.SumPenalty(this, x => Some(f(x)))
+    final def contravariantSumLift[S](f: S => Iterable[T]): Penalty[S] = new Penalty.SumPenalty(this, f)
   }
 
+  /**
+    * Implements default [[Penalty]] implementations, computing the penalty of merging two programs.
+    * A program is represented as a sorted list of nodes.
+    *
+    * To be used by the chopper, implementations of the trait use [[Vertex]] as node type,
+    * which abstracts the smallest parts of a Viper program. See [[Vertex]] for more details.
+    */
   object Penalty {
 
+    /** Utility class to lift penalties to different argument types. */
     private class SumPenalty[T, R](p: Penalty[R], f: T => Iterable[R]) extends Penalty[T] {
-      override def price(x: T): Int = f(x).map(p.price).sum
+      override def penalty(x: T): Int = f(x).map(p.penalty).sum
 
-      override def mergePenalty(exclusive1: Int, exclusive2: Int, shared: Int): Int =
-        p.mergePenalty(exclusive1, exclusive2, shared)
+      override def mergePenalty(lhsExclusivePenalty: Int, rhsExclusivePenalty: Int, sharedPenalty: Int): Int =
+        p.mergePenalty(lhsExclusivePenalty, rhsExclusivePenalty, sharedPenalty)
     }
 
+    /**
+      * Defines the penalty for each subtype of [[Vertex]].
+      * All instances of the same subtype of [[Vertex]] are defined to have the same penalty.
+      * Additionally, defines the [[sharedThreshold]]. See [[DefaultImpl.mergePenalty]] for more details.
+      *
+      * Intuitively, a penalty quantifies how much we want a part of a Viper program to *not* be included in programs
+      * that do not depend on it.
+      *
+      * Intuitively, [[sharedThreshold]] quantifies the desired size variance of the programs returned by the chopper.
+      * A higher value can lead to individual program being much bigger than other programs.
+      * A lower value should lead to the programs having similar sizes *if possible*.
+      */
     case class PenaltyConfig(
       method: Int,
       methodSpec: Int,
@@ -467,6 +517,13 @@ object Chopper {
       sharedThreshold: Int,
     )
 
+    /**
+      * Default penalties for each subtype of [[Vertex]].
+      * These values have been picked empirically.
+      *
+      * We deem unnecessary heap-dependent functions the most detrimental to Viper's performance.
+      * Followed by predicates with a body and domain axioms.
+      */
     val defaultPenaltyConfig: PenaltyConfig = PenaltyConfig(
       method = 0, methodSpec = 0, function = 20, predicate = 10, predicateSig = 2, field = 1,
       domainType = 1, domainFunction = 1, domainAxiom = 5,
@@ -475,7 +532,7 @@ object Chopper {
 
     class DefaultImpl(conf: PenaltyConfig) extends Penalty[Vertex] {
 
-      override def price(xs: Vertex): Int = xs match {
+      override def penalty(xs: Vertex): Int = xs match {
         case _: Vertex.Method => conf.method
         case _: Vertex.MethodSpec => conf.methodSpec
         case _: Vertex.Function => conf.function
@@ -488,16 +545,25 @@ object Chopper {
         case Vertex.Always => 0
       }
 
-      override def mergePenalty(lhsExclusivePrice: Int, rhsExclusivePrice: Int, sharedPrice: Int): Int = {
-        (lhsExclusivePrice + rhsExclusivePrice) * ((conf.sharedThreshold + sharedPrice).toFloat / conf.sharedThreshold).toInt
+      /**
+        * Returns the default penalty of merging two programs X and Y.
+        * The implementation has been picked empirically.
+        *
+        * Defines that the penalty of merging two programs X and Y is
+        * the sum of the penalties of the nodes included in either X and Y multiplied by the
+        * sum of the penalties of the nodes included in both X and Y divided by [[conf.sharedThreshold]] (rounded to the next integer).
+        */
+      override def mergePenalty(lhsExclusivePenalty: Int, rhsExclusivePenalty: Int, sharedPenalty: Int): Int = {
+        (lhsExclusivePenalty + rhsExclusivePenalty) * ((conf.sharedThreshold + sharedPenalty).toFloat / conf.sharedThreshold).toInt
       }
     }
 
     object Default extends DefaultImpl(defaultPenaltyConfig)
 
+    /** Same as [[Default]], but lifts any penalty <= 0 to 1. */
     object DefaultWithoutForcedMerge extends DefaultImpl(defaultPenaltyConfig) {
-      override def mergePenalty(lhsExclusivePrice: Int, rhsExclusivePrice: Int, sharedPrice: Int): Int =
-        Math.max(super.mergePenalty(lhsExclusivePrice, rhsExclusivePrice, sharedPrice), 1)
+      override def mergePenalty(lhsExclusivePenalty: Int, rhsExclusivePenalty: Int, sharedPenalty: Int): Int =
+        Math.max(super.mergePenalty(lhsExclusivePenalty, rhsExclusivePenalty, sharedPenalty), 1)
     }
 
   }
@@ -508,7 +574,7 @@ object Chopper {
     * @param numberOfNodes  Number of nodes.
     * @param importantNodes Important nodes, i.e. nodes that must be included in one of the chopped programs.
     *                       Vector is not sorted and may contain duplicates.
-    * @param edges          Edges of the dependency graph.
+    * @param edges          Edges of the dependency graph. The graph contains an edge (i,j) iff `edges(i).contains(j)`.
     * @param toVertex       Map from node id's to their vertex representation.
     * @param toVpr          Function that takes a set of nodes and returns the corresponding Viper program.
     */
@@ -531,7 +597,7 @@ object Chopper {
       * */
     def toGraph(
       program: ast.Program,
-      isolate: Option[ast.Member => Boolean] = None,
+      select: Option[ast.Member => Boolean] = None,
     ): ViperGraph = {
 
       var vertexToId = Map.empty[Vertex, Int]
@@ -549,7 +615,7 @@ object Chopper {
       val members = program.members.toVector
       val vertexEdges = members.flatMap(Edges.dependencies)
       val edges = vertexEdges.map { case (l, r) => (id(l), id(r)) }
-      val selector: ast.Member => Boolean = isolate.getOrElse {
+      val selector: ast.Member => Boolean = select.getOrElse {
         // Per default, the important nodes are all nodes with a proof obligation, i.e. methods, functions, and predicates.
         case _: ast.Method | _: ast.Function | _: ast.Predicate => true;
         case _ => false
@@ -581,30 +647,47 @@ object Chopper {
     }
   }
 
-  /** Abstract the smallest parts of a Viper program and provides necessary information to compute merge penalties. */
+  /**
+    * Abstract the smallest parts of a Viper program and provides necessary information to compute merge penalties.
+    * There are Vertex instances for each Viper member, except domains, which are split into domain types, functions, and axioms.
+    * Furthermore, [[Vertex.MethodSpec]] and [[Vertex.PredicateSig]] represent methods and predicates without body, respectively.
+    * */
   sealed trait Vertex
 
   object Vertex {
 
+    /** Represents a Viper method member. */
     case class Method private[Vertex](methodName: String) extends Vertex
 
+    /** Represents a Viper method member without the body. */
     case class MethodSpec(methodName: String) extends Vertex
 
+    /** Represents a Viper function member. */
     case class Function(functionName: String) extends Vertex
 
+    /** Represents a Viper predicate member. */
     case class PredicateSig(predicateName: String) extends Vertex
 
+    /** Represents a Viper predicate member without the body. */
     case class PredicateBody private[Vertex](predicateName: String) extends Vertex
 
+    /** Represents a Viper field member. */
     case class Field(fieldName: String) extends Vertex
 
+    /** Represents a Viper domain function declaration. */
     case class DomainFunction(funcName: String) extends Vertex
 
+    /** Represents a Viper domain axiom declaration. */
     case class DomainAxiom(v: ast.DomainAxiom, d: ast.Domain) extends Vertex
 
+    /** Represents a Viper domain type declaration. */
     case class DomainType(v: ast.DomainType) extends Vertex
 
-    case object Always extends Vertex // if something always has to be included, then it is a dependency of Always
+    /**
+      * Represents a dependency that must be included in all programs.
+      * If something always has to be included, then it is a dependency of Always
+      * */
+    case object Always extends Vertex
 
     // the creation of the following vertices has special cases and should not happen outside of the Vertex object
     object Method {
@@ -705,6 +788,11 @@ object Chopper {
     }
   }
 
+  /**
+    * A simple edge of a graph.
+    *
+    * @tparam T Node type.
+    */
   type Edge[T] = (T, T)
 
   object Edges {
@@ -792,8 +880,23 @@ object Chopper {
     }
   }
 
+  /**
+    * Implements Tarjan's strongly connected component algorithm.
+    * We use our own implementation instead of the jgrapht library
+    * because this implementation has been optimized
+    * for graphs with int nodes that are within a tightly bounded range.
+    *
+    * For instance, edges are represented as arrays of sorted sets,
+    * where the edge (i,j) is contained in the graph if the sorted set at index i contains j.
+    */
   object SCC {
 
+    /**
+      * Strongly connected component.
+      *
+      * @param nodes Nodes of the strongly connected component.
+      * @tparam T    Node Type.
+      */
     case class Component[T](nodes: Iterable[T]) {
       val proxy: T = nodes.head
     }
@@ -909,6 +1012,7 @@ object Chopper {
       *
       * @param nodes Nodes of the graph.
       * @param edges Edges of the graph.
+      * @tparam T    Node Type.
       * @return Vector containing the strongly connected components of the graph.
       * */
     def components[T](nodes: Seq[T], edges: Seq[Edge[T]]): Vector[Component[T]] = {
@@ -922,6 +1026,7 @@ object Chopper {
       *
       * @param nodes Nodes of the graph.
       * @param edges Edges of the graph.
+      * @tparam T    Node Type.
       * @return
       * _1 : Vector containing the strongly connected components of the graph.
       * _2 : Mapping from nodes to the component that the node is contained in.
@@ -941,10 +1046,11 @@ object Chopper {
       * Translates a graph to a graph on node ids.
       *
       * @param nodes Nodes of the graph.
-      * @param edges Edges of the graph.
+      * @param edges Edges of the graph. The graph contains an edge (i,j) iff `edges.contains((i, j))`.
+      * @tparam T    Node Type.
       * @return
       * _1 : Number of nodes in the result graph.
-      * _2 : Edges of the result graph.
+      * _2 : Edges of the result graph. The graph contains an edge (i,j) iff `result._1(i).contains(j)`.
       * _3 : Mapping from nodes to node ids.
       * _4 : Mapping from node ids to nodes.
       * */
