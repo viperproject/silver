@@ -12,7 +12,8 @@ import org.jgrapht.alg.connectivity.GabowStrongConnectivityInspector
 import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 import org.jgrapht.traverse.TopologicalOrderIterator
 
-import scala.collection.mutable.{Set => MSet, ListBuffer}
+import scala.collection.mutable
+import scala.collection.mutable.{ListBuffer, Set => MSet}
 import scala.jdk.CollectionConverters._
 
 /**
@@ -81,7 +82,7 @@ object Functions {
     * calls f1). If the flag considerUnfoldings is set, calls to f2 in the body of
     * a predicate that is unfolded by f1 are also taken into account.
     */
-  def heights(program: Program, considerUnfoldings: Boolean = false): Map[Function, Int] = {
+  def heights(program: Program, considerUnfoldings: Boolean = false): (Map[Function, Int], Seq[mutable.Set[mutable.Set[Function]]]) = {
     val result = collection.mutable.Map[Function, Int]()
 
     /* Compute the call-graph over all functions in the given program.
@@ -171,7 +172,17 @@ object Functions {
       height += 1
     }
 
-    result.toMap
+    val levels: mutable.Stack[mutable.Set[mutable.Set[Function]]] = mutable.Stack(mutable.Set())
+    for (condensation <- new TopologicalOrderIterator(condensedCallGraph).asScala.toSeq.reverseIterator) {
+      if (condensedCallGraph.outgoingEdgesOf(condensation).asScala.map(e => condensedCallGraph.getEdgeTarget(e)).intersect(levels.head).isEmpty){
+        levels.head.add(condensation)
+      }else{
+        levels.push(mutable.Set())
+        levels.head.add(condensation)
+      }
+    }
+
+    (result.toMap, levels.toSeq)
   }
 
   /**
