@@ -174,11 +174,16 @@ object Functions {
 
     val levels: mutable.Stack[mutable.Set[mutable.Set[Function]]] = mutable.Stack(mutable.Set())
     for (condensation <- new TopologicalOrderIterator(condensedCallGraph).asScala.toSeq.reverseIterator) {
-      if (condensedCallGraph.outgoingEdgesOf(condensation).asScala.map(e => condensedCallGraph.getEdgeTarget(e)).intersect(levels.head).isEmpty){
-        levels.head.add(condensation)
-      }else{
+      val targets = condensedCallGraph.outgoingEdgesOf(condensation).asScala.map(e => condensedCallGraph.getEdgeTarget(e))
+      var lowestLevel = 0
+      while (levels.size > lowestLevel && targets.intersect(levels(lowestLevel)).isEmpty){
+        lowestLevel += 1
+      }
+      if (lowestLevel == 0){
         levels.push(mutable.Set())
         levels.head.add(condensation)
+      }else{
+        levels(lowestLevel - 1).add(condensation)
       }
     }
 
