@@ -89,11 +89,12 @@ trait SilFrontend extends DefaultFrontend {
   /** For testing of plugin import feature */
   def defaultPluginCount: Int = defaultPlugins.size
 
+  protected val fp = new FastParser()
 
   protected var _plugins: SilverPluginManager = SilverPluginManager(defaultPlugins match {
     case Seq() => None
     case s => Some(s.mkString(":"))
-  })(reporter, logger, _config)
+  })(reporter, logger, _config, fp)
 
   def plugins: SilverPluginManager = _plugins
 
@@ -187,7 +188,7 @@ trait SilFrontend extends DefaultFrontend {
         val list = _config.plugin.toOption ++ defaultPlugins
         if (list.isEmpty) { None } else { Some(list.mkString(":")) }
       }
-      _plugins = SilverPluginManager(plugins)(reporter, logger, _config)
+      _plugins = SilverPluginManager(plugins)(reporter, logger, _config, fp)
     }
   }
 
@@ -233,7 +234,6 @@ trait SilFrontend extends DefaultFrontend {
     val file = _inputFile.get
     _plugins.beforeParse(input, isImported = false) match {
       case Some(inputPlugin) =>
-        val fp = new FastParser()
         val result = fp.parse(inputPlugin, file, Some(_plugins))
           result match {
             case Parsed.Success(e@ PProgram(_, _, _, _, _, _, _, _, err_list), _) =>

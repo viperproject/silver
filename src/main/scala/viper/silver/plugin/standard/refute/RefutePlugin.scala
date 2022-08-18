@@ -9,13 +9,18 @@ package viper.silver.plugin.standard.refute
 import fastparse.P
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast._
-import viper.silver.parser.FastParser.{FP, exp, keyword, whitespace}
-import viper.silver.parser.ParserExtension
+import viper.silver.parser.FastParserCompanion.whitespace
+import viper.silver.parser.{FastParser, ParserExtension}
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier._
 import viper.silver.verifier.errors.AssertFailed
 
-class RefutePlugin extends SilverPlugin with ParserPluginTemplate {
+class RefutePlugin(reporter: viper.silver.reporter.Reporter,
+                   logger: ch.qos.logback.classic.Logger,
+                   config: viper.silver.frontend.SilFrontendConfig,
+                   fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
+
+  import fp.{FP, keyword, exp}
 
   /** Keyword used to define refute statements. */
   private val refuteKeyword: String = "refute"

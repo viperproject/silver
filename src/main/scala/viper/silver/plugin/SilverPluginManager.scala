@@ -9,7 +9,7 @@ package viper.silver.plugin
 import ch.qos.logback.classic.Logger
 import viper.silver.ast._
 import viper.silver.frontend.SilFrontendConfig
-import viper.silver.parser.PProgram
+import viper.silver.parser.{FastParser, PProgram}
 import viper.silver.reporter.Reporter
 import viper.silver.verifier.{AbstractError, VerificationResult}
 
@@ -77,10 +77,10 @@ class SilverPluginManager(val plugins: Seq[SilverPlugin]) {
 object SilverPluginManager {
 
   def apply(pluginArg: Option[String])
-           (reporter: Reporter, logger: Logger, cmdArgs: SilFrontendConfig): SilverPluginManager =
+           (reporter: Reporter, logger: Logger, cmdArgs: SilFrontendConfig, fp: FastParser): SilverPluginManager =
     pluginArg match {
       case Some(plugins) =>
-        new SilverPluginManager(resolveAll(plugins)(reporter, logger, cmdArgs))
+        new SilverPluginManager(resolveAll(plugins)(reporter, logger, cmdArgs, fp))
       case None =>
         new SilverPluginManager(Seq())
     }
@@ -88,8 +88,8 @@ object SilverPluginManager {
   def apply() = new SilverPluginManager(Seq())
 
   def resolveAll(pluginArg: String)
-                (reporter: Reporter, logger: Logger, cmdArgs: SilFrontendConfig): Seq[SilverPlugin] =
-    pluginArg.split(":").toSeq.map(resolve(_, reporter, logger, cmdArgs)).filter(_.isDefined).map(_.get)
+                (reporter: Reporter, logger: Logger, cmdArgs: SilFrontendConfig, fp: FastParser): Seq[SilverPlugin] =
+    pluginArg.split(":").toSeq.map(resolve(_, reporter, logger, cmdArgs, fp)).filter(_.isDefined).map(_.get)
 
   /** Tries to create an instance of the plugin class.
     *
@@ -122,13 +122,14 @@ object SilverPluginManager {
     * @throws PluginWrongTypeException if the plugin class does not extend [[viper.silver.plugin.SilverPlugin]]
     * @throws PluginWrongArgsException if the plugin does not provide a constructor with the expected arguments.
     */
-  def resolve(clazzName: String, reporter: Reporter, logger: Logger, cmdArgs: SilFrontendConfig): Option[SilverPlugin] = {
+  def resolve(clazzName: String, reporter: Reporter, logger: Logger, cmdArgs: SilFrontendConfig, fp: FastParser): Option[SilverPlugin] = {
     val clazz = try {
       val constructor = Class.forName(clazzName).getConstructor(
         classOf[viper.silver.reporter.Reporter],
         classOf[ch.qos.logback.classic.Logger],
-        classOf[viper.silver.frontend.SilFrontendConfig])
-      Some(constructor.newInstance(reporter, logger, cmdArgs))
+        classOf[viper.silver.frontend.SilFrontendConfig],
+        classOf[viper.silver.parser.FastParser])
+      Some(constructor.newInstance(reporter, logger, cmdArgs, fp))
     } catch {
       case _: NoSuchMethodException =>
         try {
