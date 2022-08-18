@@ -23,7 +23,7 @@ class PredicateInstancePlugin(reporter: viper.silver.reporter.Reporter,
                               config: viper.silver.frontend.SilFrontendConfig,
                               fp: FastParser)  extends SilverPlugin with ParserPluginTemplate {
 
-  import fp.{FP, predAcc}
+  import fp.{FP, predAcc, ParserExtension}
 
   /**
    * Syntactic marker for predicate instances

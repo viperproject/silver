@@ -10,7 +10,7 @@ import fastparse.P
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast._
 import viper.silver.parser.FastParserCompanion.whitespace
-import viper.silver.parser.{FastParser, ParserExtension}
+import viper.silver.parser.FastParser
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier._
 import viper.silver.verifier.errors.AssertFailed
@@ -20,7 +20,7 @@ class RefutePlugin(reporter: viper.silver.reporter.Reporter,
                    config: viper.silver.frontend.SilFrontendConfig,
                    fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
 
-  import fp.{FP, keyword, exp}
+  import fp.{FP, keyword, exp, ParserExtension}
 
   /** Keyword used to define refute statements. */
   private val refuteKeyword: String = "refute"

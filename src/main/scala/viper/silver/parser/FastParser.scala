@@ -14,10 +14,11 @@ import viper.silver.ast.{FilePosition, LabelledOld, LineCol, NoPosition, Positio
 import viper.silver.ast.utility.rewriter.{ContextA, PartialContextC, StrategyBuilder}
 import viper.silver.parser.FastParserCompanion.{LW, LeadingWhitespace}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
-import viper.silver.plugin.SilverPluginManager
+import viper.silver.plugin.ParserPluginTemplate.{Extension, combine}
+import viper.silver.plugin.{ParserPluginTemplate, SilverPluginManager}
 import viper.silver.verifier.{ParseError, ParseWarning}
 
-import scala.collection.mutable
+import scala.collection.{Set, mutable}
 
 
 case class ParseException(msg: String, pos: Position) extends Exception
@@ -64,7 +65,7 @@ object FastParserCompanion {
     def map[V](f: T => V): LW[V] = new LW(() => p().map(f))
   }
 
-  lazy val keywords = Set("result",
+  lazy val basicKeywords = Set("result",
     // types
     "Int", "Perm", "Bool", "Ref", "Rational",
     // boolean constants
@@ -98,7 +99,7 @@ object FastParserCompanion {
     // permission syntax
     "acc", "wildcard", "write", "none", "epsilon", "perm",
     // modifiers
-    "unique") | ParserExtension.extendedKeywords
+    "unique")
 }
 
 class FastParser {
@@ -785,6 +786,8 @@ class FastParser {
   /** The file we are currently parsing (for creating positions later). */
   def file: Path = _file
 
+  lazy val keywords = FastParserCompanion.basicKeywords | ParserExtension.extendedKeywords
+
 
   // Note that `typedFapp` is before `"(" ~ exp ~ ")"` to ensure that the latter doesn't gobble up the brackets for the former
   // and then look like an `fapp` up untill the `: type` part, after which we need to backtrack all the way back (or error if cut)
@@ -812,7 +815,7 @@ class FastParser {
 
   def identifier[_: P]: P[Unit] = CharIn("A-Z", "a-z", "$_") ~~ CharIn("0-9", "A-Z", "a-z", "$_").repX
 
-  def ident[_: P]: P[String] = identifier.!.filter(a => !FastParserCompanion.keywords.contains(a)).opaque("invalid identifier (could be a keyword)")
+  def ident[_: P]: P[String] = identifier.!.filter(a => !keywords.contains(a)).opaque("invalid identifier (could be a keyword)")
 
   def idnuse[_: P]: P[PIdnUse] = FP(ident).map { case (pos, id) => PIdnUse(id)(pos) }
 
@@ -1264,4 +1267,132 @@ class FastParser {
   def methodSignature[_: P] = P("method" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~~~ ("returns" ~ "(" ~ formalArgList ~ ")").lw.?)
 
   def entireProgram[_: P]: P[PProgram] = P(Start ~ programDecl ~ End)
+
+
+  object ParserExtension extends ParserPluginTemplate {
+
+    import ParserPluginTemplate._
+
+    /**
+      * These private variables are the storage variables for each of the extensions.
+      * As the parser are evaluated lazily, it is possible for us to stores extra parsing sequences in these variables
+      * and after the plugins are loaded, the parsers are added to these variables and when any parser is required,
+      * can be referenced back.
+      */
+    private var _newDeclAtEnd: Option[Extension[PExtender]] = None
+    private var _newDeclAtStart: Option[Extension[PExtender]] = None
+
+    private var _newExpAtEnd: Option[Extension[PExp]] = None
+    private var _newExpAtStart: Option[Extension[PExp]] = None
+
+    private var _newStmtAtEnd: Option[Extension[PStmt]] = None
+    private var _newStmtAtStart: Option[Extension[PStmt]] = None
+
+    private var _preSpecification: Option[Extension[PExp]] = None
+    private var _postSpecification: Option[Extension[PExp]] = None
+    private var _invSpecification: Option[Extension[PExp]] = None
+
+    private var _extendedKeywords: Set[String] = Set()
+
+
+    /**
+      * For more details regarding the functionality of each of these initial parser extensions
+      * and other hooks for the parser extension, please refer to ParserPluginTemplate.scala
+      */
+    override def newDeclAtStart : Extension[PExtender] = _newDeclAtStart match {
+      case None => ParserPluginTemplate.defaultExtension
+      case Some(ext) => ext
+    }
+
+    override def newDeclAtEnd : Extension[PExtender] = _newDeclAtEnd match {
+      case None => ParserPluginTemplate.defaultExtension
+      case Some(ext) => ext
+    }
+
+    override def newStmtAtEnd : Extension[PStmt] = _newStmtAtEnd match {
+      case None => ParserPluginTemplate.defaultStmtExtension
+      case Some(ext) => ext
+    }
+
+    override def newStmtAtStart : Extension[PStmt] = _newStmtAtStart match {
+      case None => ParserPluginTemplate.defaultStmtExtension
+      case Some(ext) => ext
+    }
+
+    override def newExpAtEnd : Extension[PExp] = _newExpAtEnd match {
+      case None => ParserPluginTemplate.defaultExpExtension
+      case Some(ext) => ext
+    }
+
+    override def newExpAtStart : Extension[PExp] = _newExpAtStart match {
+      case None => ParserPluginTemplate.defaultExpExtension
+      case Some(ext) => ext
+    }
+
+    override def postSpecification : Extension[PExp] = _postSpecification match {
+      case None => ParserPluginTemplate.defaultExpExtension
+      case Some(ext) => ext
+    }
+
+    override def preSpecification : Extension[PExp] = _preSpecification match {
+      case None => ParserPluginTemplate.defaultExpExtension
+      case Some(ext) => ext
+    }
+
+    override def invSpecification : Extension[PExp] = _invSpecification match {
+      case None => ParserPluginTemplate.defaultExpExtension
+      case Some(ext) => ext
+    }
+
+    override def extendedKeywords : Set[String] = _extendedKeywords
+
+    def addNewDeclAtEnd(t: Extension[PExtender]) : Unit = _newDeclAtEnd match {
+      case None => _newDeclAtEnd = Some(t)
+      case Some(s) => _newDeclAtEnd = Some(combine(s, t))
+    }
+
+    def addNewDeclAtStart(t: Extension[PExtender]) : Unit = _newDeclAtStart match {
+      case None => _newDeclAtStart = Some(t)
+      case Some(s) => _newDeclAtStart = Some(combine(s, t))
+    }
+
+    def addNewExpAtEnd(t: Extension[PExp]) : Unit = _newExpAtEnd match {
+      case None => _newExpAtEnd = Some(t)
+      case Some(s) => _newExpAtEnd = Some(combine(s, t))
+    }
+
+    def addNewExpAtStart(t: Extension[PExp]) : Unit = _newExpAtStart match {
+      case None => _newExpAtStart = Some(t)
+      case Some(s) => _newExpAtStart = Some(combine(s, t))
+    }
+
+    def addNewStmtAtEnd(t: Extension[PStmt]) : Unit = _newStmtAtEnd match {
+      case None => _newStmtAtEnd = Some(t)
+      case Some(s) => _newStmtAtEnd = Some(combine(s, t))
+    }
+
+    def addNewStmtAtStart(t: Extension[PStmt]) : Unit = _newStmtAtStart match {
+      case None => _newStmtAtStart = Some(t)
+      case Some(s) => _newStmtAtStart = Some(combine(s, t))
+    }
+
+    def addNewPreCondition(t: Extension[PExp]) : Unit = _preSpecification match {
+      case None => _preSpecification = Some(t)
+      case Some(s) => _preSpecification = Some(combine(s, t))
+    }
+
+    def addNewPostCondition(t: Extension[PExp]) : Unit = _postSpecification match {
+      case None => _postSpecification = Some(t)
+      case Some(s) => _postSpecification = Some(combine(s, t))
+    }
+
+    def addNewInvariantCondition(t: Extension[PExp]) : Unit = _invSpecification match {
+      case None => _invSpecification = Some(t)
+      case Some(s) => _invSpecification = Some(combine(s, t))
+    }
+
+    def addNewKeywords(t : Set[String]) : Unit = {
+      _extendedKeywords ++= t
+    }
+  }
 }

@@ -20,7 +20,7 @@ class AdtPlugin(reporter: viper.silver.reporter.Reporter,
                 config: viper.silver.frontend.SilFrontendConfig,
                 fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
 
-  import fp.{FP, formalArg, idndef, idnuse, typ}
+  import fp.{FP, formalArg, idndef, idnuse, typ, ParserExtension}
 
   /**
     * Keywords used to define ADT's
