@@ -104,7 +104,7 @@ method colourings1(a: Array)
       if(oldSoln[0] == 0) {  // therefore seq is of length >= 2
         soln := oldSoln[1 := oldSoln[1]+1] // add one to initial blacks
        // assert soln[2..] == oldSoln[2..]
-        //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/380/)
+        // // UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/380/)
         assert valid(soln,n,true) 
       } else {
         soln := Seq(0,1) ++ oldSoln

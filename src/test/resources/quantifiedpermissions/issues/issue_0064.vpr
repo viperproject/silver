@@ -44,7 +44,7 @@ method test01(s:Seq[Ref])
 {
   inhale forall x: Ref :: x in s ==> acc(x.f)
   assert forall x: Ref :: x in s ==> x != null
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/64/)
+  // // UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/64/)
   // // UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/117/) // fixed with diff 8
   assert forall i: Int :: 0 <= i && i < |s| ==> s[i] != null
 }
