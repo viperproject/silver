@@ -90,7 +90,7 @@ class IdentifierPosition(val file: Path, val start: HasLineColumn, val end: Opti
 }
 
 class LineCol(fp: FastParser) {
-  def apply(index: Int): (Int, Int) = {
+  def getPos(index: Int): (Int, Int) = {
     // val Array(line, col) = ctx.input.prettyIndex(index).split(":").map(_.toInt)
     val line_offset = fp._line_offset
     val result = java.util.Arrays.binarySearch(line_offset, index)

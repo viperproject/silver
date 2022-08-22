@@ -244,7 +244,7 @@ trait SilFrontend extends DefaultFrontend {
               else Fail(err_list)
             case fail @ Parsed.Failure(_, index, extra) =>
               val msg = fail.trace().longAggregateMsg
-              val (line, col) = fp.lineCol(index)
+              val (line, col) = fp.lineCol.getPos(index)
               Fail(List(ParseError(s"Expected $msg", SourcePosition(file, line, col))))
             //? val pos = extra.input.prettyIndex(index).split(":").map(_.toInt)
               //? Fail(List(ParseError(s"Expected $msg", SourcePosition(file, pos(0), pos(1)))))

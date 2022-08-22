@@ -264,9 +264,9 @@ class FastParser {
     * Function that wraps a parser to provide start and end positions if the wrapped parser succeeds.
     */
   def FP[T](t: => P[T])(implicit ctx: P[_]): P[((FilePosition, FilePosition), T)] = {
-    val startPos = lineCol.apply(ctx.index)
+    val startPos = lineCol.getPos(ctx.index)
     val res: P[T] = t
-    val finishPos = lineCol.apply(ctx.index)
+    val finishPos = lineCol.getPos(ctx.index)
     res.map({ parsed => ((FilePosition(_file, startPos._1, startPos._2), FilePosition(_file, finishPos._1, finishPos._2)), parsed) })
   }
 
@@ -318,7 +318,7 @@ class FastParser {
       case fastparse.Parsed.Success(prog, _) => prog
       case fail @ fastparse.Parsed.Failure(_, index, _) =>
         val msg = fail.trace().longMsg
-        val (line, col) = lineCol.apply(index)
+        val (line, col) = lineCol.getPos(index)
         throw ParseException(s"Expected $msg", FilePosition(path, line, col))
     }
   }
