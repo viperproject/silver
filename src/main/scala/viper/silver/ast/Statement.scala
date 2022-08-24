@@ -198,8 +198,7 @@ case class Goto(target: String)(val pos: Position = NoPosition, val info: Info =
 case class LocalVarDeclStmt(decl: LocalVarDecl)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt
 
 /** Havoc statement.
-  * Conceptually, assigns the havocked resource an arbitrary value.
-  * Technically, replaces the havocked resources snapshot with a fresh snapshot.
+  * Replaces the havocked resources snapshot with a fresh snapshot.
   * The optional lhs provides a guard, under which the resource is havocked. For example,
   *   havoc c ==> Pred(x)
   * means that we only havoc Pred(x) if the condition `c` is true.

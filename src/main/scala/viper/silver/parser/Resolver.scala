@@ -274,7 +274,6 @@ case class TypeChecker(names: NameAnalyser) {
       case PHavoc(lhs, e) =>
         checkHavoc(stmt, lhs, e)
       case havoc@PHavocall(vars, lhs, e) =>
-        // Check the type of each of the quantified variables
         vars foreach (v => check(v.typ))
         // update the curMember, which contains quantified variable information
         val oldCurMember = curMember
@@ -296,7 +295,7 @@ case class TypeChecker(names: NameAnalyser) {
       check(lhs.get, Bool)
     }
     // Make sure that the rhs is a resource
-    val havocError = "\"Havoc statement must take a field access, predicate, or wand\")"
+    val havocError = "Havoc statement must take a field access, predicate, or wand"
     e match {
       case _: PFieldAccess => checkTopTyped(e, None)
       case pc: PCall =>

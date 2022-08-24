@@ -1111,7 +1111,7 @@ object FastParser {
   // in the grammar. Note that it is still possible to express "(<exp1> ==> <exp2>) ==> <resource>
   // using parentheses.
 
-  // Havocall follows a similar pattern to havoc, but we allow quantifying over variables.
+  // Havocall follows a similar pattern to havoc but allows quantifying over variables.
 
   def havoc[_: P]: P[PHavoc] = FP(keyword("havoc") ~/
     (magicWandExp ~ "==>").? ~ exp ).map{

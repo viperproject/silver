@@ -251,19 +251,15 @@ case class Translator(program: PProgram) {
   }
 
   def havocStmt(lhs: Option[PExp], e: PExp): (Option[Exp], ResourceAccess) = {
-    val newLhs = if (lhs.nonEmpty) Some(exp(lhs.get)) else None
+    val newLhs = lhs.map(exp)
     exp(e) match {
       case exp: FieldAccess => (newLhs, exp)
-      case PredicateAccessPredicate(loc, perm) => {
-        // Note: A Havoc stmt is internally represented as Havoc(lhs, exp) where exp is
-        // a ResourceAccess. Unfortunately, the expression `Pred(<args>)`, is translated into
-        // a PredicateAccessPredicate, i.e. a ResourceAccess combined with a permission
-        // amount. (This allows us to say `assert Pred(<args>)` instead of `assert acc(Pred(<args>, write))`.)
-        // For our purposes, we don't care about the permission amount. Therefore, we simply
-        // extract the ResourceAccess
+      case PredicateAccessPredicate(predAccess, perm) =>
+        // A PrediateAccessPredicate is a PredicateResourceAccess combined with
+        // a Permission. Havoc expects a ResourceAccess. To make types match,
+        // we must extract the PredicateResourceAccess.
         assert(perm.isInstanceOf[FullPerm])
-        (newLhs, loc)
-      }
+        (newLhs, predAccess)
       case exp: MagicWand => (newLhs, exp)
       case _ => sys.error("Can't havoc this kind of expression")
     }
