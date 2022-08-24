@@ -40,6 +40,6 @@ method test2(this: Ref)
   x.next := x
 
   //:: ExpectedOutput(application.precondition:insufficient.permission)
-  //:: IgnoreOthers
+  //:: MissingOutput(application.precondition:insufficient.permission, /Carbon/issue/272/)
   assert ((length(x)) == (length(x.next) + 1))
 }
