@@ -93,17 +93,19 @@ object SilverPluginManager {
 
   /** Tries to create an instance of the plugin class.
     *
-    * The plugin constructor is expected to take either zero or three arguments (as specified in [[viper.silver.plugin.IOAwarePlugin]]):
+    * The plugin constructor is expected to take either zero or four arguments (as specified in [[viper.silver.plugin.IOAwarePlugin]]):
     *  [[viper.silver.reporter.Reporter]],
     *  [[ch.qos.logback.classic.Logger]],
-    *  [[viper.silver.frontend.SilFrontendConfig]].
+    *  [[viper.silver.frontend.SilFrontendConfig]],
+    *  [[viper.silver.parser.FastParser]].
     *
     * Example plugin class declarations:
     * <pre>
     * class MyPlugin(val _reporter: Reporter,
     *                val _logger: Logger,
-    *                val _cmdArgs: SilFrontendConfig)
-    *                extends IOAwarePlugin(_reporter, _logger, _cmdArgs) with SilverPlugin
+    *                val _cmdArgs: SilFrontendConfig,
+    *                val _fp: FastParser)
+    *                extends IOAwarePlugin(_reporter, _logger, _cmdArgs, _fp) with SilverPlugin
     * </pre>
     * <pre>
     * class MyPlugin extends SilverPlugin
@@ -115,6 +117,7 @@ object SilverPluginManager {
     * @param reporter  The reporter to be used in the plugin.
     * @param logger    The logger to be used in the plugin.
     * @param cmdArgs   The config object to be accessible from the plugin.
+    * @param fp        The parser object to be used by the plugin.
     *
     * @return A fresh instance of the plugin class
     *
