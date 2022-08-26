@@ -1,3 +1,34 @@
+## Release 2022.7
+
+**Date 29/07/22**
+
+### Changes in Viper Language
+
+- ADT plugin added. It is enabled by default, and can be disabled with the `--disableAdtPlugin` command-line option. This plugin converts ADT (abstract datatype) declarations of the form `adt (name) { Constructor1(args) ... }` into domain types with constructors, destructors, discriminants, and corresponding axioms. More information can be found in [the tutorial](https://viper.ethz.ch/tutorial/#adt-plugin) ([Silver#574](https://github.com/viperproject/silver/pull/574))
+- Added support for a `refute (expression)` statement. This statement behaves like an assertion, except the expression is expected to be provably false. More information can be found in [the tutorial](https://viper.ethz.ch/tutorial/#assertion-checking) ([Silver#583](https://github.com/viperproject/silver/pull/583))
+- Division of two `Perm`-typed expressions is now allowed. ([Silver#572](https://github.com/viperproject/silver/pull/572))
+- Typed function application syntax (`(foo(...) : T)`) now parses properly. ([Silver#584](https://github.com/viperproject/silver/pull/584))
+
+### Backend-specific upgrades/changes
+
+#### Symbolic Execution Verifier (Silicon)
+
+- Output sent to the backend solver is now SMT-LIB 2.6 conformant. Additionally, there is experimental support for the CVC5 solver using the `--prover cvc5` command-line option. ([Silicon#609](https://github.com/viperproject/silicon/pull/609))
+- Improved counterexamples. Counterexamples are now generated for domain types as well, and are included in the output with the `--counterexample mapped` command-line option. ([Silicon#631](https://github.com/viperproject/silicon/pull/631))
+
+#### Verification Condition Generation Verifier (Carbon)
+
+- **Breaking change**: wildcard `acc` expressions in `exhale` statements are no longer reordered. Behaviour is now consistent with Silicon and all permissions in an `exhale` statement are always exhaled left to right. ([Silicon#30](https://github.com/viperproject/silicon/issues/30), [Carbon#411](https://github.com/viperproject/carbon/pull/411))
+
+### Miscellaneous
+
+- "Chopper" API is now available to front ends. This functionality allows a single Viper file to be split into multiple smaller files that can be verified separately. Dependencies between functions, methods, and predicates are correctly determined to minimise the size of the individual Viper files. ([Silver#589](https://github.com/viperproject/silver/pull/589))
+- Upgraded projects to use `sbt` version 1.6.2. ([Silicon#627](https://github.com/viperproject/silicon/pull/627), [Silver#592](https://github.com/viperproject/silver/pull/592))
+- Viper IDE uses `.vpr` as its default file extension. ([viper-ide#223](https://github.com/viperproject/viper-ide/pull/223))
+- Viper IDE now requires at least Java version 11. ([viper-ide#250](https://github.com/viperproject/viper-ide/pull/250))
+- Cache improvements. ([Silver#578](https://github.com/viperproject/silver/pull/578))
+- Various bug fixes. ([Carbon#423](https://github.com/viperproject/carbon/pull/423), [Carbon#425](https://github.com/viperproject/carbon/pull/425), [viper-ide#248](https://github.com/viperproject/viper-ide/pull/248), [Silver#496](https://github.com/viperproject/silver/issues/496), [Silver#587](https://github.com/viperproject/silver/pull/587), [Silver#590](https://github.com/viperproject/silver/pull/590))
+
 ## Release 2022.2
 
 **Date 28/02/22**
