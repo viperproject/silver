@@ -100,26 +100,23 @@ object QuantifiedPermissions {
     while (toVisit.nonEmpty) {
       val currentRoot = toVisit.dequeue()
 
-      val relevantNodes: Map[Member, Seq[Node]] = currentRoot match {
+      val relevantNodes: Seq[Node] = currentRoot match {
         case m@Method(_, _, _, pres, posts, _) if m != root =>
           // use only specification of called methods
-          Map(m -> (pres ++ posts))
-        case _ => Map(currentRoot -> Seq(currentRoot))
+          pres ++ posts
+        case _ => Seq(currentRoot)
       }
 
-      for ((member, ns) <- relevantNodes.toIndexedSeq) {
-        visited += member
+      visited += currentRoot
 
-        for (n <- ns){
-          n visit {
-            case QuantifiedPermissionAssertion(_, _, acc: FieldAccessPredicate) =>
-              collected += acc.loc.field
-            case Forall(_,triggers,_) => collected ++= triggers flatMap (_.exps) collect {case fa: FieldAccess => fa.field}
-          }
-          utility.Nodes.referencedMembers(n, program) foreach (m =>
-            if (!visited.contains(m)) toVisit += m)
-
+      for (n <- relevantNodes){
+        n visit {
+          case QuantifiedPermissionAssertion(_, _, acc: FieldAccessPredicate) =>
+            collected += acc.loc.field
+          case Forall(_,triggers,_) => collected ++= triggers flatMap (_.exps) collect {case fa: FieldAccess => fa.field}
         }
+        utility.Nodes.referencedMembers(n, program) foreach (m =>
+          if (!visited.contains(m)) toVisit += m)
       }
     }
   }
@@ -133,26 +130,24 @@ object QuantifiedPermissions {
     while (toVisit.nonEmpty) {
       val currentRoot = toVisit.dequeue()
 
-      val relevantNodes: Map[Member, Seq[Node]] = currentRoot match {
+      val relevantNodes: Seq[Node] = currentRoot match {
         case m@Method(_, _, _, pres, posts, _) if m != root =>
           // use only specification of called methods
-          Map(m -> (pres ++ posts))
-        case _ => Map(currentRoot -> Seq(currentRoot))
+          pres ++ posts
+        case _ => Seq(currentRoot)
       }
 
-      for ((member, ns) <- relevantNodes.toIndexedSeq) {
-        visited += member
+      visited += currentRoot
 
-        for (n <- ns){
-          n visit {
-            case QuantifiedPermissionAssertion(_, _, acc: PredicateAccessPredicate) =>
-              collected += program.findPredicate(acc.loc.predicateName)
-            case Forall(_,triggers,_) => collected ++= triggers flatMap (_.exps) collect {case pa: PredicateAccess => pa.loc(program)}
-          }
-          utility.Nodes.referencedMembers(n, program) foreach (m =>
-            if (!visited.contains(m)) toVisit += m)
-
+      for (n <- relevantNodes){
+        n visit {
+          case QuantifiedPermissionAssertion(_, _, acc: PredicateAccessPredicate) =>
+            collected += program.findPredicate(acc.loc.predicateName)
+          case Forall(_,triggers,_) => collected ++= triggers flatMap (_.exps) collect {case pa: PredicateAccess => pa.loc(program)}
         }
+        utility.Nodes.referencedMembers(n, program) foreach (m =>
+          if (!visited.contains(m)) toVisit += m)
+
       }
     }
   }
