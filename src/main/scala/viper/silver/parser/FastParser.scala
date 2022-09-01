@@ -9,16 +9,14 @@ package viper.silver.parser
 import java.net.URL
 import java.nio.file.{Files, Path, Paths}
 
-import fastparse.{CharsWhile, Implicits, NoTrace, NoWhitespace, P, ParsingRun, Pass, StringIn}
 import viper.silver.ast.{FilePosition, LabelledOld, LineCol, NoPosition, Position, SourcePosition}
 import viper.silver.ast.utility.rewriter.{ContextA, PartialContextC, StrategyBuilder}
 import viper.silver.parser.FastParserCompanion.{LW, LeadingWhitespace}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
-import viper.silver.plugin.ParserPluginTemplate.{Extension, combine}
 import viper.silver.plugin.{ParserPluginTemplate, SilverPluginManager}
 import viper.silver.verifier.{ParseError, ParseWarning}
 
-import scala.collection.{Set, mutable}
+import scala.collection.{Set, immutable, mutable}
 
 
 case class ParseException(msg: String, pos: Position) extends Exception
@@ -65,7 +63,7 @@ object FastParserCompanion {
     def map[V](f: T => V): LW[V] = new LW(() => p().map(f))
   }
 
-  val basicKeywords = Set("result",
+  val basicKeywords = immutable.Set("result",
     // types
     "Int", "Perm", "Bool", "Ref", "Rational",
     // boolean constants
