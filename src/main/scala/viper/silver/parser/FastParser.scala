@@ -65,7 +65,7 @@ object FastParserCompanion {
     def map[V](f: T => V): LW[V] = new LW(() => p().map(f))
   }
 
-  lazy val basicKeywords = Set("result",
+  val basicKeywords = Set("result",
     // types
     "Int", "Perm", "Bool", "Ref", "Rational",
     // boolean constants
