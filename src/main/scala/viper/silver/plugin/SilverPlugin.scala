@@ -9,20 +9,22 @@ package viper.silver.plugin
 import ch.qos.logback.classic.Logger
 import viper.silver.ast.Program
 import viper.silver.frontend.SilFrontendConfig
-import viper.silver.parser.PProgram
+import viper.silver.parser.{FastParser, PProgram}
 import viper.silver.reporter.Reporter
 import viper.silver.verifier.{AbstractError, VerificationResult}
 
 /** Implement this abstract class in order to give your plugin access to SilFrontend's IO:
   * 1. Reporter,
-  * 2. Logger, and
-  * 2. Command line arguments
+  * 2. Logger,
+  * 3. Command line arguments, and
+  * 4. Parser.
   * Has to be set as an explicit parameter for the plugin constructor.
   */
 trait IOAwarePlugin {
   val reporter: Reporter
   val logger: Logger
   val cmdArgs: SilFrontendConfig
+  val fp: FastParser
 }
 
 /** Trait to be extended by plugins. A plugin can change the current structure of the program under verification

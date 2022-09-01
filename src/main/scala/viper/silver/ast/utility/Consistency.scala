@@ -8,7 +8,7 @@ package viper.silver.ast.utility
 
 import viper.silver.ast._
 import viper.silver.ast.utility.rewriter.Traverse
-import viper.silver.parser.FastParser
+import viper.silver.parser.{FastParser, FastParserCompanion}
 import viper.silver.verifier.ConsistencyError
 import viper.silver.{FastMessage, FastMessaging}
 
@@ -29,7 +29,7 @@ object Consistency {
     recordIfNot(suspect, !property, message)
 
   /** Names that are not allowed for use in programs. */
-  def reservedNames: Seq[String] = FastParser.keywords.toSeq
+  def reservedNames: Set[String] = FastParserCompanion.basicKeywords
 
   /** Returns true iff the string `name` is a valid identifier. */
   val identFirstLetter = "[a-zA-Z$_]"

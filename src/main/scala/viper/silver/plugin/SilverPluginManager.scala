@@ -9,7 +9,7 @@ package viper.silver.plugin
 import ch.qos.logback.classic.Logger
 import viper.silver.ast._
 import viper.silver.frontend.SilFrontendConfig
-import viper.silver.parser.PProgram
+import viper.silver.parser.{FastParser, PProgram}
 import viper.silver.reporter.Reporter
 import viper.silver.verifier.{AbstractError, VerificationResult}
 
@@ -77,10 +77,10 @@ class SilverPluginManager(val plugins: Seq[SilverPlugin]) {
 object SilverPluginManager {
 
   def apply(pluginArg: Option[String])
-           (reporter: Reporter, logger: Logger, cmdArgs: SilFrontendConfig): SilverPluginManager =
+           (reporter: Reporter, logger: Logger, cmdArgs: SilFrontendConfig, fp: FastParser): SilverPluginManager =
     pluginArg match {
       case Some(plugins) =>
-        new SilverPluginManager(resolveAll(plugins)(reporter, logger, cmdArgs))
+        new SilverPluginManager(resolveAll(plugins)(reporter, logger, cmdArgs, fp))
       case None =>
         new SilverPluginManager(Seq())
     }
@@ -88,22 +88,24 @@ object SilverPluginManager {
   def apply() = new SilverPluginManager(Seq())
 
   def resolveAll(pluginArg: String)
-                (reporter: Reporter, logger: Logger, cmdArgs: SilFrontendConfig): Seq[SilverPlugin] =
-    pluginArg.split(":").toSeq.map(resolve(_, reporter, logger, cmdArgs)).filter(_.isDefined).map(_.get)
+                (reporter: Reporter, logger: Logger, cmdArgs: SilFrontendConfig, fp: FastParser): Seq[SilverPlugin] =
+    pluginArg.split(":").toSeq.map(resolve(_, reporter, logger, cmdArgs, fp)).filter(_.isDefined).map(_.get)
 
   /** Tries to create an instance of the plugin class.
     *
-    * The plugin constructor is expected to take either zero or three arguments (as specified in [[viper.silver.plugin.IOAwarePlugin]]):
+    * The plugin constructor is expected to take either zero or four arguments (as specified in [[viper.silver.plugin.IOAwarePlugin]]):
     *  [[viper.silver.reporter.Reporter]],
     *  [[ch.qos.logback.classic.Logger]],
-    *  [[viper.silver.frontend.SilFrontendConfig]].
+    *  [[viper.silver.frontend.SilFrontendConfig]],
+    *  [[viper.silver.parser.FastParser]].
     *
     * Example plugin class declarations:
     * <pre>
     * class MyPlugin(val _reporter: Reporter,
     *                val _logger: Logger,
-    *                val _cmdArgs: SilFrontendConfig)
-    *                extends IOAwarePlugin(_reporter, _logger, _cmdArgs) with SilverPlugin
+    *                val _cmdArgs: SilFrontendConfig,
+    *                val _fp: FastParser)
+    *                extends IOAwarePlugin(_reporter, _logger, _cmdArgs, _fp) with SilverPlugin
     * </pre>
     * <pre>
     * class MyPlugin extends SilverPlugin
@@ -115,6 +117,7 @@ object SilverPluginManager {
     * @param reporter  The reporter to be used in the plugin.
     * @param logger    The logger to be used in the plugin.
     * @param cmdArgs   The config object to be accessible from the plugin.
+    * @param fp        The parser object to be used by the plugin.
     *
     * @return A fresh instance of the plugin class
     *
@@ -122,13 +125,14 @@ object SilverPluginManager {
     * @throws PluginWrongTypeException if the plugin class does not extend [[viper.silver.plugin.SilverPlugin]]
     * @throws PluginWrongArgsException if the plugin does not provide a constructor with the expected arguments.
     */
-  def resolve(clazzName: String, reporter: Reporter, logger: Logger, cmdArgs: SilFrontendConfig): Option[SilverPlugin] = {
+  def resolve(clazzName: String, reporter: Reporter, logger: Logger, cmdArgs: SilFrontendConfig, fp: FastParser): Option[SilverPlugin] = {
     val clazz = try {
       val constructor = Class.forName(clazzName).getConstructor(
         classOf[viper.silver.reporter.Reporter],
         classOf[ch.qos.logback.classic.Logger],
-        classOf[viper.silver.frontend.SilFrontendConfig])
-      Some(constructor.newInstance(reporter, logger, cmdArgs))
+        classOf[viper.silver.frontend.SilFrontendConfig],
+        classOf[viper.silver.parser.FastParser])
+      Some(constructor.newInstance(reporter, logger, cmdArgs, fp))
     } catch {
       case _: NoSuchMethodException =>
         try {
