@@ -104,7 +104,7 @@ object QuantifiedPermissions {
         case m@Method(_, _, _, pres, posts, _) if m != root =>
           // use only specification of called methods
           pres ++ posts
-        case Function(_, _, _, pres, posts, _) =>
+        case f@Function(_, _, _, pres, posts, _) if f != root=>
           // use only specification of called functions
           pres ++ posts
         case _ => Seq(currentRoot)
@@ -137,7 +137,7 @@ object QuantifiedPermissions {
         case m@Method(_, _, _, pres, posts, _) if m != root =>
           // use only specification of called methods
           pres ++ posts
-        case Function(_, _, _, pres, posts, _) =>
+        case f@Function(_, _, _, pres, posts, _) if f != root =>
           // use only specification of called functions
           pres ++ posts
         case _ => Seq(currentRoot)
