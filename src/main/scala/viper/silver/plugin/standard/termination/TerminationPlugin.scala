@@ -9,7 +9,6 @@ package viper.silver.plugin.standard.termination
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.{SimpleContext, Strategy, StrategyBuilder}
 import viper.silver.ast.{Applying, Assert, CondExp, CurrentPerm, Exp, Function, InhaleExhaleExp, MagicWand, Method, Node, Program, Unfolding, While}
-import viper.silver.parser.FastParser._
 import viper.silver.parser._
 import viper.silver.plugin.standard.predicateinstance.PPredicateInstance
 import viper.silver.plugin.standard.termination.transformation.Trafo
@@ -17,11 +16,13 @@ import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier.errors.AssertFailed
 import viper.silver.verifier._
 import fastparse._
-import viper.silver.parser.FastParser.whitespace
+import viper.silver.parser.FastParserCompanion.whitespace
 
 class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
                         logger: ch.qos.logback.classic.Logger,
-                        config: viper.silver.frontend.SilFrontendConfig) extends SilverPlugin with ParserPluginTemplate {
+                        config: viper.silver.frontend.SilFrontendConfig,
+                        fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
+  import fp.{FP, keyword, exp, ParserExtension}
 
   private def deactivated: Boolean = config != null && config.terminationPlugin.toOption.getOrElse(false)
 

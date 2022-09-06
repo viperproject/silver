@@ -1,7 +1,7 @@
 package viper.silver.verifier
 
 import fastparse._
-import viper.silver.parser.FastParser.whitespace
+import viper.silver.parser.FastParserCompanion.whitespace
 
 object ModelParser {
   // note that the dash/minus character '-' needs to be escaped by double backslashes such that it is not interpreted as a range
