@@ -534,7 +534,7 @@ object errors {
     val id = "havoc.failed"
     val text = "Havoc might fail."
 
-    override def pos = offendingNode.exp.pos
+    override val pos = offendingNode.exp.pos
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = HavocFailed(offendingNode.asInstanceOf[Havoc], this.reason, this.cached)
     def withReason(r: ErrorReason) = HavocFailed(offendingNode, r, cached)
   }
@@ -546,7 +546,7 @@ object errors {
     val id = "havocall.failed"
     val text = "Havocall might fail."
 
-    override def pos = offendingNode.exp.pos
+    override val pos = offendingNode.exp.pos
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = HavocallFailed(offendingNode.asInstanceOf[Havocall], this.reason, this.cached)
     def withReason(r: ErrorReason) = HavocallFailed(offendingNode, r, cached)
   }
@@ -675,7 +675,7 @@ object reasons {
 
   case class HavocallNotInjective(offendingNode: Havocall) extends AbstractErrorReason {
     val id = "havocall.not.injective"
-    def readableMessage = s"Havocall statement $offendingNode might not be injective."
+    val readableMessage = s"Havocall statement $offendingNode might not be injective."
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = HavocallNotInjective(offendingNode.asInstanceOf[Havocall])
   }

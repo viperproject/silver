@@ -239,11 +239,11 @@ case class Translator(program: PProgram) {
       case PWhile(cond, invs, body) =>
         While(exp(cond), invs map exp, stmt(body).asInstanceOf[Seqn])(pos)
       case PHavoc(lhs, e) =>
-        val (newLhs, newE) = havocStmt(lhs, e)
+        val (newLhs, newE) = havocStmtHelper(lhs, e)
         Havoc(newLhs, newE)(pos)
       case PHavocall(vars, lhs, e) =>
         val newVars = vars map liftVarDecl
-        val (newLhs, newE) = havocStmt(lhs, e)
+        val (newLhs, newE) = havocStmtHelper(lhs, e)
         Havocall(newVars, newLhs, newE)(pos)
       case t: PExtender =>   t.translateStmt(this)
       case _: PDefine | _: PSkip =>
@@ -251,7 +251,8 @@ case class Translator(program: PProgram) {
     }
   }
 
-  def havocStmt(lhs: Option[PExp], e: PExp): (Option[Exp], ResourceAccess) = {
+  /** Helper function that translates subexpressions common to a Havoc or Havocall statement */
+  def havocStmtHelper(lhs: Option[PExp], e: PExp): (Option[Exp], ResourceAccess) = {
     val newLhs = lhs.map(exp)
     exp(e) match {
       case exp: FieldAccess => (newLhs, exp)

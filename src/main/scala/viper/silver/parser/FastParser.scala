@@ -1131,8 +1131,8 @@ class FastParser {
   // Havocall follows a similar pattern to havoc but allows quantifying over variables.
 
   def havoc[_: P]: P[PHavoc] = FP(keyword("havoc") ~/
-    (magicWandExp ~ "==>").? ~ exp ).map{
-    case (pos, (lhs, rhs)) => PHavoc(lhs, rhs)(pos)
+    (magicWandExp ~ "==>").? ~ exp ).map {
+      case (pos, (lhs, rhs)) => PHavoc(lhs, rhs)(pos)
   }
 
   def havocall[_: P]: P[PHavocall] = FP(keyword("havocall") ~/

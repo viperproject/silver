@@ -198,15 +198,15 @@ case class Goto(target: String)(val pos: Position = NoPosition, val info: Info =
 case class LocalVarDeclStmt(decl: LocalVarDecl)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt
 
 /** Havoc statement.
-  * Replaces the havocked resources snapshot with a fresh snapshot.
+  * Replaces the havocked resource's snapshot with a fresh snapshot.
   * The optional lhs provides a guard, under which the resource is havocked. For example,
   *   havoc c ==> Pred(x)
   * means that we only havoc Pred(x) if the condition `c` is true.
-  * The "havocall" variant of this statement allows one to havoc an unbounded number of resources
+  * The havocall variant of this statement allows one to havoc an unbounded number of resources
   */
 case class Havoc(lhs: Option[Exp], exp: ResourceAccess)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
-  override lazy val check : Seq[ConsistencyError] = {
-    // Add some sanity checks, which should be guaranteed by earlier phases of the front end. These checks
+  override lazy val check: Seq[ConsistencyError] = {
+    // Sanity checks of properties that should be guaranteed by earlier phases of the front end. These checks
     // are similar to the ones provided by inhale and exhale statements.
     (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
     (if (lhs.nonEmpty && !(lhs.get isSubtype Bool)) Seq(ConsistencyError(s"Left side of havoc implication must be of type Bool, but found ${exp.typ}", exp.pos)) else Seq())
