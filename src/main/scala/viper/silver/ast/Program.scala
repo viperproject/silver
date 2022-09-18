@@ -36,6 +36,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     checkMethodCallsAreValid ++
     checkFunctionApplicationsAreValid ++
     checkDomainFunctionApplicationsAreValid ++
+    checkPredicateAccessesAreValid ++
     checkAbstractPredicatesUsage ++
     checkIdentifiers
 
@@ -105,6 +106,28 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
             s :+= ConsistencyError(
               s"No matching function $name found of return type ${funcApp.typ}, instead found with return type ${funcDef.typ}.",
               funcApp.pos
+            )
+          }
+        }
+      }
+    }
+
+    s
+  }
+
+  /** Checks that the predicate access arguments are assignable to formalArgs.
+    **/
+  lazy val checkPredicateAccessesAreValid: Seq[ConsistencyError] = {
+    var s = Seq.empty[ConsistencyError]
+
+    for (predAcc@PredicateAccess(args, name) <- this) {
+      this.findPredicateOptionally(name) match {
+        case None => // Consistency error already reported by checkIdentifiers
+        case Some(predDef) => {
+          if (!Consistency.areAssignable(args, predDef.formalArgs)) {
+            s :+= ConsistencyError(
+              s"Predicate $name with formal arguments ${predDef.formalArgs} cannot be used with provided arguments $args.",
+              predAcc.pos
             )
           }
         }
@@ -263,6 +286,8 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       case None => sys.error("Function name " + name + " not found in program.")
     }
   }
+
+  def findPredicateOptionally(name: String): Option[Predicate] = this.predicates.find(_.name == name)
 
   def findPredicate(name: String): Predicate = {
     this.predicates.find(_.name == name) match {

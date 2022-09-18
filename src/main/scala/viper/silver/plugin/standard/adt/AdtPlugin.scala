@@ -9,7 +9,7 @@ package viper.silver.plugin.standard.adt
 import fastparse._
 import viper.silver.ast.Program
 import viper.silver.ast.utility.rewriter.StrategyBuilder
-import viper.silver.parser.FastParser.{FP, formalArg, idndef, idnuse, typ, whitespace}
+import viper.silver.parser.FastParserCompanion.whitespace
 import viper.silver.parser._
 import viper.silver.plugin.standard.adt.encoding.AdtEncoder
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
@@ -17,7 +17,10 @@ import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 
 class AdtPlugin(reporter: viper.silver.reporter.Reporter,
                 logger: ch.qos.logback.classic.Logger,
-                config: viper.silver.frontend.SilFrontendConfig) extends SilverPlugin with ParserPluginTemplate {
+                config: viper.silver.frontend.SilFrontendConfig,
+                fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
+
+  import fp.{FP, formalArg, idndef, idnuse, typ, ParserExtension}
 
   /**
     * Keywords used to define ADT's

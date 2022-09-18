@@ -89,11 +89,12 @@ trait SilFrontend extends DefaultFrontend {
   /** For testing of plugin import feature */
   def defaultPluginCount: Int = defaultPlugins.size
 
+  protected val fp = new FastParser()
 
   protected var _plugins: SilverPluginManager = SilverPluginManager(defaultPlugins match {
     case Seq() => None
     case s => Some(s.mkString(":"))
-  })(reporter, logger, _config)
+  })(reporter, logger, _config, fp)
 
   def plugins: SilverPluginManager = _plugins
 
@@ -187,7 +188,7 @@ trait SilFrontend extends DefaultFrontend {
         val list = _config.plugin.toOption ++ defaultPlugins
         if (list.isEmpty) { None } else { Some(list.mkString(":")) }
       }
-      _plugins = SilverPluginManager(plugins)(reporter, logger, _config)
+      _plugins = SilverPluginManager(plugins)(reporter, logger, _config, fp)
     }
   }
 
@@ -233,7 +234,7 @@ trait SilFrontend extends DefaultFrontend {
     val file = _inputFile.get
     _plugins.beforeParse(input, isImported = false) match {
       case Some(inputPlugin) =>
-        val result = FastParser.parse(inputPlugin, file, Some(_plugins))
+        val result = fp.parse(inputPlugin, file, Some(_plugins))
           result match {
             case Parsed.Success(e@ PProgram(_, _, _, _, _, _, _, _, err_list), _) =>
               if (err_list.isEmpty || err_list.forall(p => p.isInstanceOf[ParseWarning])) {
@@ -243,7 +244,7 @@ trait SilFrontend extends DefaultFrontend {
               else Fail(err_list)
             case fail @ Parsed.Failure(_, index, extra) =>
               val msg = fail.trace().longAggregateMsg
-              val (line, col) = LineCol(index)
+              val (line, col) = fp.lineCol.getPos(index)
               Fail(List(ParseError(s"Expected $msg", SourcePosition(file, line, col))))
             //? val pos = extra.input.prettyIndex(index).split(":").map(_.toInt)
               //? Fail(List(ParseError(s"Expected $msg", SourcePosition(file, pos(0), pos(1)))))

@@ -9,6 +9,7 @@ package viper.silver.parser
 import viper.silver.FastMessaging
 import viper.silver.ast.utility._
 import viper.silver.ast.{SourcePosition, _}
+import viper.silver.plugin.standard.adt.{Adt, AdtType}
 
 import scala.language.implicitConversions
 
@@ -582,12 +583,16 @@ case class Translator(program: PProgram) {
       MapType(ttyp(keyType), ttyp(valueType))
     case PDomainType(name, args) =>
       members.get(name.name) match {
-        case Some(d) =>
-          val domain = d.asInstanceOf[Domain]
+        case Some(domain: Domain) =>
           val typVarMapping = domain.typVars zip (args map ttyp)
           DomainType(domain, typVarMapping /*.filter {
             case (tv, tt) => tv!=tt //!tt.isInstanceOf[TypeVar]
           }*/.toMap)
+        case Some(adt: Adt) =>
+          val typVarMapping = adt.typVars zip (args map ttyp)
+          AdtType(adt, typVarMapping.toMap)
+        case Some(other) =>
+          sys.error(s"Did not expect member ${other}")
         case None =>
           assert(args.isEmpty)
           TypeVar(name.name) // not a domain, i.e. it must be a type variable

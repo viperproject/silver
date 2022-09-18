@@ -6,6 +6,8 @@
 
 package viper.silver.parser
 
+import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
+
 import viper.silver.ast.utility.Visitor
 import viper.silver.ast.utility.rewriter.{Rewritable, StrategyBuilder}
 import viper.silver.ast.{Exp, MagicWandOp, Member, NoPosition, Position, Stmt, Type}
@@ -264,23 +266,24 @@ object PTypeVar{
   val sep = "#"
   //TODO: do this properly
   def isFreePTVName(s : String) = s.contains(sep)
-  private var lastIndex = 0
+  private val lastIndex = new AtomicInteger(0)
   //Generate a unique fresh version of old
   def fresh(old: PDomainType) = {
     require(old.isTypeVar)
-    val freshName = getFreshName(old.domain.name)
-    lastIndex+=1
+    val ind = lastIndex.getAndIncrement()
+    val freshName = getFreshName(old.domain.name, ind)
     PTypeVar(freshName)
   }
-  private def getFreshName(name:String) = name+sep+lastIndex
+  private def getFreshName(name:String, ind: Int) = name+sep+ind
+
   def freshTypeSubstitutionPTVs(tvs : Seq[PDomainType]) : PTypeRenaming = {
     require(tvs.forall(_.isTypeVar))
     freshTypeSubstitution(tvs map (tv=>tv.domain.name))
   }
   def freshTypeSubstitution(tvns : Seq[String]) : PTypeRenaming =
     {
-      lastIndex+=1
-      new PTypeRenaming((tvns map (tv=>tv->getFreshName(tv))).toMap)
+      val ind = lastIndex.getAndIncrement()
+      new PTypeRenaming((tvns map (tv=>tv->getFreshName(tv, ind))).toMap)
     }
 }
 
@@ -1104,11 +1107,10 @@ sealed trait PScope extends PNode {
 object PScope {
   type Id = Long
 
-  private[this] var counter: Id = 0L
+  private[this] val counter = new AtomicLong(0)
 
   private def uniqueId() = {
-    val id = counter
-    counter = counter + 1
+    val id = counter.getAndIncrement()
 
     id
   }
