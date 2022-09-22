@@ -104,7 +104,7 @@ object QuantifiedPermissions {
         case m@Method(_, _, _, pres, posts, _) if m != root =>
           // use only specification of called methods
           pres ++ posts
-        case f@Function(_, _, _, pres, posts, _) if f != root=>
+        case f@Function(_, _, _, pres, posts, _) if false && f != root=>
           // use only specification of called functions
           pres ++ posts
         case _ => Seq(currentRoot)
@@ -137,7 +137,7 @@ object QuantifiedPermissions {
         case m@Method(_, _, _, pres, posts, _) if m != root =>
           // use only specification of called methods
           pres ++ posts
-        case f@Function(_, _, _, pres, posts, _) if f != root =>
+        case f@Function(_, _, _, pres, posts, _) if false && f != root =>
           // use only specification of called functions
           pres ++ posts
         case _ => Seq(currentRoot)
@@ -244,6 +244,19 @@ object QuantifiedPermissions {
 
             desugarSourceQuantifiedPermissionSyntax(Forall(vars ++ nestedVars, combinedTriggers, Implies(newCond, nestedRhs)(rhs.pos, rhs.info, rhs.errT))(source.pos,MakeInfoPair(source.info, nested.info),MakeTrafoPair(source.errT,nested.errT)))
 
+          case lt@Let(v, e, bod) => {
+            val forallWithoutLet = Forall(vars, triggers, Implies(cond, bod)(rhs.pos, rhs.info))(source.pos, source.info)
+            // desugar the let-body
+            val desugaredWithoutLet = desugarSourceQuantifiedPermissionSyntax(forallWithoutLet)
+            desugaredWithoutLet.map{
+              case SourceQuantifiedPermissionAssertion(iqp, Implies(icond, irhs)) if (!irhs.isPure) =>
+                // Since the rhs cannot be a let-binding, we expand the let-expression
+                Forall(iqp.variables, iqp.triggers.map(t => t.replace(v.localVar, e)), Implies(icond, irhs.replace(v.localVar, e))(iqp.pos, iqp.info))(iqp.pos, iqp.info)
+              case iforall@Forall(ivars, itriggers, ibod) =>
+                // For all pure parts of the quantifier, we just re-wrap the body into a let.
+                Forall(ivars, itriggers, Let(v, e, ibod)(lt.pos, lt.info))(iforall.pos, iforall.info)
+            }
+          }
           case _ =>
             /* RHS does not need to be desugared (any further) */
             Seq(source)
