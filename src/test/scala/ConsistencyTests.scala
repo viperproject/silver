@@ -127,6 +127,13 @@ class ConsistencyTests extends AnyFunSuite with Matchers {
         body          = None
       )()
 
+    val pred =
+      Predicate(
+        name          = "P",
+        formalArgs    = Seq(LocalVarDecl("x", Int)()),
+        body          = None
+      )()
+
     val callerIntVarDecl = LocalVarDecl("intRes", Int)()
     val callerIntVar = LocalVar("intRes", Int)()
     val callerBoolVarDecl = LocalVarDecl("boolRes", Bool)()
@@ -147,23 +154,35 @@ class ConsistencyTests extends AnyFunSuite with Matchers {
         Seq()
       )()
 
+    val callerPosts =
+      Seq(
+        // Wrong: zero arguments
+        PredicateAccessPredicate(PredicateAccess(Seq(), "P")(), FullPerm()())(),
+        // Wrong: wrong argument type
+        PredicateAccessPredicate(PredicateAccess(Seq(callerBoolVar), "P")(), FullPerm()())(),
+        // Correct
+        PredicateAccessPredicate(PredicateAccess(Seq(callerIntVar), "P")(), FullPerm()())()
+      )
+
     val caller =
       Method(
         name          = "caller",
         formalArgs    = Seq(),
         formalReturns = Seq(callerIntVarDecl, callerBoolVarDecl),
         pres          = Seq(),
-        posts         = Seq(),
+        posts         = callerPosts,
         body          = Some(callerBody)
       )()
 
     val program =
-      Program(domains    = Seq(), fields     = Seq(), functions  = Seq(func), predicates = Seq(), methods    = Seq(caller), extensions = Seq())()
+      Program(domains    = Seq(), fields     = Seq(), functions  = Seq(func), predicates = Seq(pred), methods    = Seq(caller), extensions = Seq())()
 
     program.checkTransitively shouldBe Seq(
       ConsistencyError("Function f with formal arguments List(x: Int) cannot be applied to provided arguments List().", NoPosition),
       ConsistencyError("No matching function f found of return type Bool, instead found with return type Int.", NoPosition),
       ConsistencyError("Function f with formal arguments List(x: Int) cannot be applied to provided arguments List(boolRes).", NoPosition),
+      ConsistencyError("Predicate P with formal arguments List(x: Int) cannot be used with provided arguments List().", NoPosition),
+      ConsistencyError("Predicate P with formal arguments List(x: Int) cannot be used with provided arguments List(boolRes).", NoPosition),
       ConsistencyError("No matching identifier g found of type Function.", NoPosition)
     )
   }

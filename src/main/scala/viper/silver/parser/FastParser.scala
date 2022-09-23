@@ -8,13 +8,15 @@ package viper.silver.parser
 
 import java.net.URL
 import java.nio.file.{Files, Path, Paths}
+
 import viper.silver.ast.{FilePosition, LabelledOld, LineCol, NoPosition, Position, SourcePosition}
 import viper.silver.ast.utility.rewriter.{ContextA, PartialContextC, StrategyBuilder}
+import viper.silver.parser.FastParserCompanion.{LW, LeadingWhitespace}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
-import viper.silver.plugin.SilverPluginManager
+import viper.silver.plugin.{ParserPluginTemplate, SilverPluginManager}
 import viper.silver.verifier.{ParseError, ParseWarning}
 
-import scala.collection.mutable
+import scala.collection.{Set, immutable, mutable}
 
 
 case class ParseException(msg: String, pos: Position) extends Exception
@@ -23,7 +25,7 @@ case class SuffixedExpressionGenerator[E <: PExp](func: PExp => E) extends (PExp
   override def apply(v1: PExp): E = func(v1)
 }
 
-object FastParser {
+object FastParserCompanion {
   import fastparse._
 
   implicit val whitespace = {
@@ -31,6 +33,83 @@ object FastParser {
     implicit ctx: ParsingRun[_] =>
       NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
   }
+
+  class LeadingWhitespace[T](val p: () => P[T]) extends AnyVal {
+    /**
+      * Using `p.lw` is shorthand for `Pass ~ p` (the same parser but with possibly leading whitespace).
+      *
+      * A parser of the form `FP(p0 ~ p1.?)` or `FP(p0 ~ p2.rep)` may return an end position which
+      * includes trailing whitespaces (incl. comments, newlines) if `p1` or `p2` fail to match (the `~` does this).
+      * Instead we would like to use `FP(p0 ~~ (Pass ~ p1).?)` or `FP(p0 ~~ (Pass ~ p2).rep)`, which avoids this issue.
+      */
+    def lw(implicit ctx: P[Any]): LW[T] = new LW(() => Pass ~ p())
+    def ~~~[V, R](other: LW[V])(implicit s: Implicits.Sequencer[T, V, R], ctx: P[Any]): P[R] = (p() ~~ other.p()).asInstanceOf[P[R]]
+    def ~~~/[V, R](other: LW[V])(implicit s: Implicits.Sequencer[T, V, R], ctx: P[Any]): P[R] = (p() ~~/ other.p()).asInstanceOf[P[R]]
+  }
+  /**
+    * A parser which matches leading whitespaces. See `LeadingWhitespace.lw` for more info. Can only be operated on in
+    * restricted ways (e.g. `?`, `rep`, `|` or `map`), requiring that it is eventually appened to a normal parser (of type `P[V]`).
+    *
+    * For example, the following two are equivalent:
+    * {{{FP("hello" ~~~ "world".lw.?)
+    * FP("hello" ~~ (Pass ~ "world").?)}}}
+    * The type system prevents one from erroneously writing:
+    * {{{FP("hello" ~ "world".lw.?)}}}
+    */
+  class LW[T](val p: () => P[T]) {
+    def ?[V](implicit optioner: Implicits.Optioner[T, V], ctx: P[Any]): LW[V] = new LW(() => p().?.asInstanceOf[P[V]])
+    def rep[V](implicit repeater: Implicits.Repeater[T, V], ctx: P[Any]): LW[V] = new LW(() => p().rep.asInstanceOf[P[V]])
+    def |[V >: T](other: LW[V])(implicit ctx: P[Any]): LW[V] = new LW(() => (p() | other.p()).asInstanceOf[P[V]])
+    def map[V](f: T => V): LW[V] = new LW(() => p().map(f))
+  }
+
+  val basicKeywords = immutable.Set("result",
+    // types
+    "Int", "Perm", "Bool", "Ref", "Rational",
+    // boolean constants
+    "true", "false",
+    // null
+    "null",
+    // preamble importing
+    "import",
+    // declaration keywords
+    "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "field", "define",
+    // specifications
+    "requires", "ensures", "invariant",
+    // statements
+    "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "package", "apply",
+    // control flow
+    "while", "if", "elseif", "else", "goto", "label",
+    // sequences
+    "Seq",
+    // sets and multisets
+    "Set", "Multiset", "union", "intersection", "setminus", "subset",
+    // maps
+    "Map", "range",
+    // prover hint expressions
+    "unfolding", "in", "applying",
+    // old expression
+    "old", "lhs",
+    // other expressions
+    "let",
+    // quantification
+    "forall", "exists", "forperm",
+    // permission syntax
+    "acc", "wildcard", "write", "none", "epsilon", "perm",
+    // modifiers
+    "unique")
+}
+
+class FastParser {
+  import fastparse._
+
+  implicit val whitespace = {
+    import NoWhitespace._
+    implicit ctx: ParsingRun[_] =>
+      NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
+  }
+
+  val lineCol = new LineCol(this)
 
   /* When importing a file from standard library, e.g. `include <inc.vpr>`, the file is expected
    * to be located in `resources/${standard_import_directory}`, e.g. `resources/import/inv.vpr`.
@@ -183,43 +262,16 @@ object FastParser {
     * Function that wraps a parser to provide start and end positions if the wrapped parser succeeds.
     */
   def FP[T](t: => P[T])(implicit ctx: P[_]): P[((FilePosition, FilePosition), T)] = {
-    val startPos = LineCol(ctx.index)
+    val startPos = lineCol.getPos(ctx.index)
     val res: P[T] = t
-    val finishPos = LineCol(ctx.index)
+    val finishPos = lineCol.getPos(ctx.index)
     res.map({ parsed => ((FilePosition(_file, startPos._1, startPos._2), FilePosition(_file, finishPos._1, finishPos._2)), parsed) })
   }
 
   import scala.language.implicitConversions
   implicit def LeadingWhitespaceStr(p: String)(implicit ctx: P[Any]): LeadingWhitespace[Unit] = new LeadingWhitespace(() => P(p))
   implicit def LeadingWhitespace[T](p: => P[T]) = new LeadingWhitespace(() => p)
-  class LeadingWhitespace[T](val p: () => P[T]) extends AnyVal {
-  /**
-    * Using `p.lw` is shorthand for `Pass ~ p` (the same parser but with possibly leading whitespace).
-    *
-    * A parser of the form `FP(p0 ~ p1.?)` or `FP(p0 ~ p2.rep)` may return an end position which
-    * includes trailing whitespaces (incl. comments, newlines) if `p1` or `p2` fail to match (the `~` does this).
-    * Instead we would like to use `FP(p0 ~~ (Pass ~ p1).?)` or `FP(p0 ~~ (Pass ~ p2).rep)`, which avoids this issue.
-    */
-    def lw(implicit ctx: P[Any]): LW[T] = new LW(() => Pass ~ p())
-    def ~~~[V, R](other: LW[V])(implicit s: Implicits.Sequencer[T, V, R], ctx: P[Any]): P[R] = (p() ~~ other.p()).asInstanceOf[P[R]]
-    def ~~~/[V, R](other: LW[V])(implicit s: Implicits.Sequencer[T, V, R], ctx: P[Any]): P[R] = (p() ~~/ other.p()).asInstanceOf[P[R]]
-  }
-  /**
-    * A parser which matches leading whitespaces. See `LeadingWhitespace.lw` for more info. Can only be operated on in
-    * restricted ways (e.g. `?`, `rep`, `|` or `map`), requiring that it is eventually appened to a normal parser (of type `P[V]`).
-    * 
-    * For example, the following two are equivalent:
-    * {{{FP("hello" ~~~ "world".lw.?)
-    * FP("hello" ~~ (Pass ~ "world").?)}}}
-    * The type system prevents one from erroneously writing:
-    * {{{FP("hello" ~ "world".lw.?)}}}
-    */
-  class LW[T](val p: () => P[T]) {
-    def ?[V](implicit optioner: Implicits.Optioner[T, V], ctx: P[Any]): LW[V] = new LW(() => p().?.asInstanceOf[P[V]])
-    def rep[V](implicit repeater: Implicits.Repeater[T, V], ctx: P[Any]): LW[V] = new LW(() => p().rep.asInstanceOf[P[V]])
-    def |[V >: T](other: LW[V])(implicit ctx: P[Any]): LW[V] = new LW(() => (p() | other.p()).asInstanceOf[P[V]])
-    def map[V](f: T => V): LW[V] = new LW(() => p().map(f))
-  }
+
 
   // Actual Parser starts from here
   def identContinues[_: P] = CharIn("0-9", "A-Z", "a-z", "$_")
@@ -264,7 +316,7 @@ object FastParser {
       case fastparse.Parsed.Success(prog, _) => prog
       case fail @ fastparse.Parsed.Failure(_, index, _) =>
         val msg = fail.trace().longMsg
-        val (line, col) = LineCol(index)
+        val (line, col) = lineCol.getPos(index)
         throw ParseException(s"Expected $msg", FilePosition(path, line, col))
     }
   }
@@ -732,41 +784,7 @@ object FastParser {
   /** The file we are currently parsing (for creating positions later). */
   def file: Path = _file
 
-  lazy val keywords = Set("result",
-    // types
-    "Int", "Perm", "Bool", "Ref", "Rational",
-    // boolean constants
-    "true", "false",
-    // null
-    "null",
-    // preamble importing
-    "import",
-    // declaration keywords
-    "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "field", "define",
-    // specifications
-    "requires", "ensures", "invariant",
-    // statements
-    "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "package", "apply",
-    // control flow
-    "while", "if", "elseif", "else", "goto", "label",
-    // sequences
-    "Seq",
-    // sets and multisets
-    "Set", "Multiset", "union", "intersection", "setminus", "subset",
-    // maps
-    "Map", "range",
-    // prover hint expressions
-    "unfolding", "in", "applying",
-    // old expression
-    "old", "lhs",
-    // other expressions
-    "let",
-    // quantification
-    "forall", "exists", "forperm",
-    // permission syntax
-    "acc", "wildcard", "write", "none", "epsilon", "perm",
-    // modifiers
-    "unique") | ParserExtension.extendedKeywords
+  lazy val keywords = FastParserCompanion.basicKeywords | ParserExtension.extendedKeywords
 
 
   // Note that `typedFapp` is before `"(" ~ exp ~ ")"` to ensure that the latter doesn't gobble up the brackets for the former
@@ -1247,4 +1265,132 @@ object FastParser {
   def methodSignature[_: P] = P("method" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~~~ ("returns" ~ "(" ~ formalArgList ~ ")").lw.?)
 
   def entireProgram[_: P]: P[PProgram] = P(Start ~ programDecl ~ End)
+
+
+  object ParserExtension extends ParserPluginTemplate {
+
+    import ParserPluginTemplate._
+
+    /**
+      * These private variables are the storage variables for each of the extensions.
+      * As the parser are evaluated lazily, it is possible for us to stores extra parsing sequences in these variables
+      * and after the plugins are loaded, the parsers are added to these variables and when any parser is required,
+      * can be referenced back.
+      */
+    private var _newDeclAtEnd: Option[Extension[PExtender]] = None
+    private var _newDeclAtStart: Option[Extension[PExtender]] = None
+
+    private var _newExpAtEnd: Option[Extension[PExp]] = None
+    private var _newExpAtStart: Option[Extension[PExp]] = None
+
+    private var _newStmtAtEnd: Option[Extension[PStmt]] = None
+    private var _newStmtAtStart: Option[Extension[PStmt]] = None
+
+    private var _preSpecification: Option[Extension[PExp]] = None
+    private var _postSpecification: Option[Extension[PExp]] = None
+    private var _invSpecification: Option[Extension[PExp]] = None
+
+    private var _extendedKeywords: Set[String] = Set()
+
+
+    /**
+      * For more details regarding the functionality of each of these initial parser extensions
+      * and other hooks for the parser extension, please refer to ParserPluginTemplate.scala
+      */
+    override def newDeclAtStart : Extension[PExtender] = _newDeclAtStart match {
+      case None => ParserPluginTemplate.defaultExtension
+      case Some(ext) => ext
+    }
+
+    override def newDeclAtEnd : Extension[PExtender] = _newDeclAtEnd match {
+      case None => ParserPluginTemplate.defaultExtension
+      case Some(ext) => ext
+    }
+
+    override def newStmtAtEnd : Extension[PStmt] = _newStmtAtEnd match {
+      case None => ParserPluginTemplate.defaultStmtExtension
+      case Some(ext) => ext
+    }
+
+    override def newStmtAtStart : Extension[PStmt] = _newStmtAtStart match {
+      case None => ParserPluginTemplate.defaultStmtExtension
+      case Some(ext) => ext
+    }
+
+    override def newExpAtEnd : Extension[PExp] = _newExpAtEnd match {
+      case None => ParserPluginTemplate.defaultExpExtension
+      case Some(ext) => ext
+    }
+
+    override def newExpAtStart : Extension[PExp] = _newExpAtStart match {
+      case None => ParserPluginTemplate.defaultExpExtension
+      case Some(ext) => ext
+    }
+
+    override def postSpecification : Extension[PExp] = _postSpecification match {
+      case None => ParserPluginTemplate.defaultExpExtension
+      case Some(ext) => ext
+    }
+
+    override def preSpecification : Extension[PExp] = _preSpecification match {
+      case None => ParserPluginTemplate.defaultExpExtension
+      case Some(ext) => ext
+    }
+
+    override def invSpecification : Extension[PExp] = _invSpecification match {
+      case None => ParserPluginTemplate.defaultExpExtension
+      case Some(ext) => ext
+    }
+
+    override def extendedKeywords : Set[String] = _extendedKeywords
+
+    def addNewDeclAtEnd(t: Extension[PExtender]) : Unit = _newDeclAtEnd match {
+      case None => _newDeclAtEnd = Some(t)
+      case Some(s) => _newDeclAtEnd = Some(combine(s, t))
+    }
+
+    def addNewDeclAtStart(t: Extension[PExtender]) : Unit = _newDeclAtStart match {
+      case None => _newDeclAtStart = Some(t)
+      case Some(s) => _newDeclAtStart = Some(combine(s, t))
+    }
+
+    def addNewExpAtEnd(t: Extension[PExp]) : Unit = _newExpAtEnd match {
+      case None => _newExpAtEnd = Some(t)
+      case Some(s) => _newExpAtEnd = Some(combine(s, t))
+    }
+
+    def addNewExpAtStart(t: Extension[PExp]) : Unit = _newExpAtStart match {
+      case None => _newExpAtStart = Some(t)
+      case Some(s) => _newExpAtStart = Some(combine(s, t))
+    }
+
+    def addNewStmtAtEnd(t: Extension[PStmt]) : Unit = _newStmtAtEnd match {
+      case None => _newStmtAtEnd = Some(t)
+      case Some(s) => _newStmtAtEnd = Some(combine(s, t))
+    }
+
+    def addNewStmtAtStart(t: Extension[PStmt]) : Unit = _newStmtAtStart match {
+      case None => _newStmtAtStart = Some(t)
+      case Some(s) => _newStmtAtStart = Some(combine(s, t))
+    }
+
+    def addNewPreCondition(t: Extension[PExp]) : Unit = _preSpecification match {
+      case None => _preSpecification = Some(t)
+      case Some(s) => _preSpecification = Some(combine(s, t))
+    }
+
+    def addNewPostCondition(t: Extension[PExp]) : Unit = _postSpecification match {
+      case None => _postSpecification = Some(t)
+      case Some(s) => _postSpecification = Some(combine(s, t))
+    }
+
+    def addNewInvariantCondition(t: Extension[PExp]) : Unit = _invSpecification match {
+      case None => _invSpecification = Some(t)
+      case Some(s) => _invSpecification = Some(combine(s, t))
+    }
+
+    def addNewKeywords(t : Set[String]) : Unit = {
+      _extendedKeywords ++= t
+    }
+  }
 }

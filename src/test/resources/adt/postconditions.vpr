@@ -1,0 +1,23 @@
+adt Wrap {
+  WrappedInt(
+    data: Int
+  )
+}
+
+function wrap(
+  data: Int
+): Wrap
+  ensures result.data == data
+
+function wrapNot(
+  data: Int
+): Wrap
+  ensures result.data != data
+
+method wrapTest() {
+  var x: Wrap := wrap(1)
+  assert(x.data == 1)
+  var y: Wrap := wrapNot(1)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert(y.data == 1)
+}

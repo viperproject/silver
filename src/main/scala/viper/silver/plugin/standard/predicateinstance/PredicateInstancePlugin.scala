@@ -9,17 +9,21 @@ package viper.silver.plugin.standard.predicateinstance
 import viper.silver.ast.{Domain, DomainType, ErrTrafo, FuncApp, Function, Position, PredicateAccess, PredicateAccessPredicate, Program, WildcardPerm}
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.Traverse
-import viper.silver.parser.FastParser._
 import viper.silver.parser._
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier.{ConsistencyError, Failure, Success, VerificationResult}
 import viper.silver.verifier.errors.PreconditionInAppFalse
 import fastparse._
-import viper.silver.parser.FastParser.whitespace
+import viper.silver.parser.FastParserCompanion.whitespace
 
 import scala.collection.immutable.ListMap
 
-class PredicateInstancePlugin  extends SilverPlugin with ParserPluginTemplate {
+class PredicateInstancePlugin(reporter: viper.silver.reporter.Reporter,
+                              logger: ch.qos.logback.classic.Logger,
+                              config: viper.silver.frontend.SilFrontendConfig,
+                              fp: FastParser)  extends SilverPlugin with ParserPluginTemplate {
+
+  import fp.{FP, predAcc, ParserExtension}
 
   /**
    * Syntactic marker for predicate instances
