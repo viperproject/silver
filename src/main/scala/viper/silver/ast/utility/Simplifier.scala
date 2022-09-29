@@ -22,7 +22,7 @@ object Simplifier {
    */
   def simplify(expression: Exp): Exp = {
     /* Always simplify children first, then treat parent. */
-    StrategyBuilder.Slim[Node]({
+    val result = StrategyBuilder.Slim[Node]({
       case root @ Not(BoolLit(literal)) =>
         BoolLit(!literal)(root.pos, root.info)
       case Not(Not(single)) => single
@@ -113,6 +113,8 @@ object Simplifier {
       case root @ Mod(IntLit(left), IntLit(right)) if right != bigIntZero =>
         IntLit((right.abs + (left % right)) % right.abs)(root.pos, root.info)
     }, Traverse.BottomUp) execute[Exp](expression)
+    println(s"$expression -> $result")
+    result
   }
 
   private val bigIntZero = BigInt(0)
