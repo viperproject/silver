@@ -12,6 +12,15 @@ import viper.silver.ast._
 import viper.silver.ast.utility.Simplifier._
 
 class SimplifierTests extends AnyFunSuite with Matchers {
+  test("eq") {
+    val seq = LocalVar("someSeq", SeqType(Bool))()
+    val seqIndex = SeqIndex(
+      seq,
+      IntLit(1)()
+    )()
+    simplify(EqCmp(seqIndex, seqIndex)()) should be(EqCmp(seqIndex, seqIndex)())
+    simplify(EqCmp(seq, seq)()) should be(TrueLit()())
+  }
   test("div") {
     simplify(Div(0, 0)()) should be(Div(0, 0)())
     simplify(Div(8, 2)()) should be(4: IntLit)

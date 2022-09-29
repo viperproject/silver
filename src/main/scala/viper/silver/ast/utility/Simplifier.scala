@@ -14,36 +14,45 @@ import viper.silver.ast.utility.rewriter._
  */
 object Simplifier {
 
+  def guaranteedToBeWellFormed(exp: Exp): Boolean = {
+    exp match {
+      case _: Mod | _: Div | _: FuncApp | _: MapLookup | _: SeqIndex => false
+      case _ => exp.subExps.forall(guaranteedToBeWellFormed)
+    }
+  }
+
   /**
-   * Simplify `expression`, in particular by making use of literals. For
-   * example, `!true` is replaced by `false`. Division and modulo with divisor
-   * 0 are not treated. Note that an expression with non-terminating evaluation due to endless recursion
-   * might be transformed to terminating expression.
-   */
+    * Simplify `expression`, in particular by making use of literals. For
+    * example, `!true` is replaced by `false`.
+    * The simplifier will not simplify parts of expressions that may not be well-defined.
+    * For example the expression `s[1] == s[1]` will not be simplified to `true`, because `s[1]` may not be defined.
+    * Note that an expression with non-terminating evaluation due to endless recursion
+    * might be transformed to terminating expression.
+    */
   def simplify(expression: Exp): Exp = {
     /* Always simplify children first, then treat parent. */
-    val result = StrategyBuilder.Slim[Node]({
+    StrategyBuilder.Slim[Node]({
       case root @ Not(BoolLit(literal)) =>
         BoolLit(!literal)(root.pos, root.info)
       case Not(Not(single)) => single
 
       case And(TrueLit(), right) => right
       case And(left, TrueLit()) => left
-      case root @ And(FalseLit(), _) => FalseLit()(root.pos, root.info)
-      case root @ And(_, FalseLit()) => FalseLit()(root.pos, root.info)
+      case root @ And(FalseLit(), exp) if guaranteedToBeWellFormed(exp) => FalseLit()(root.pos, root.info)
+      case root @ And(exp, FalseLit()) if guaranteedToBeWellFormed(exp) => FalseLit()(root.pos, root.info)
 
       case Or(FalseLit(), right) => right
       case Or(left, FalseLit()) => left
-      case root @ Or(TrueLit(), _) => TrueLit()(root.pos, root.info)
-      case root @ Or(_, TrueLit()) => TrueLit()(root.pos, root.info)
+      case root @ Or(TrueLit(), exp) if guaranteedToBeWellFormed(exp) => TrueLit()(root.pos, root.info)
+      case root @ Or(exp, TrueLit()) if guaranteedToBeWellFormed(exp) => TrueLit()(root.pos, root.info)
 
-      case root @ Implies(FalseLit(), _) => TrueLit()(root.pos, root.info)
-      case root @ Implies(_, TrueLit()) => TrueLit()(root.pos, root.info)
+      case root @ Implies(FalseLit(), exp) if guaranteedToBeWellFormed(exp) => TrueLit()(root.pos, root.info)
+      case root @ Implies(exp, TrueLit()) if guaranteedToBeWellFormed(exp) => TrueLit()(root.pos, root.info)
       case root @ Implies(TrueLit(), FalseLit()) =>
         FalseLit()(root.pos, root.info)
       case Implies(TrueLit(), consequent) => consequent
 
-      case root @ EqCmp(left, right) if left == right => TrueLit()(root.pos, root.info)
+      case root @ EqCmp(left, right) if left == right && guaranteedToBeWellFormed(left) => TrueLit()(root.pos, root.info)
       case root @ EqCmp(BoolLit(left), BoolLit(right)) =>
         BoolLit(left == right)(root.pos, root.info)
       case root @ EqCmp(FalseLit(), right) => Not(right)(root.pos, root.info)
@@ -67,10 +76,8 @@ object Simplifier {
 
       case CondExp(TrueLit(), ifTrue, _) => ifTrue
       case CondExp(FalseLit(), _, ifFalse) => ifFalse
-      case root @ CondExp(_, FalseLit(), FalseLit()) =>
-        FalseLit()(root.pos, root.info)
-      case root @ CondExp(_, TrueLit(), TrueLit()) =>
-        TrueLit()(root.pos, root.info)
+      case CondExp(cond, ifTrue, ifFalse) if ifTrue == ifFalse && guaranteedToBeWellFormed(cond) =>
+        ifTrue
       case root @ CondExp(condition, FalseLit(), TrueLit()) =>
         Not(condition)(root.pos, root.info)
       case CondExp(condition, TrueLit(), FalseLit()) => condition
@@ -113,8 +120,6 @@ object Simplifier {
       case root @ Mod(IntLit(left), IntLit(right)) if right != bigIntZero =>
         IntLit((right.abs + (left % right)) % right.abs)(root.pos, root.info)
     }, Traverse.BottomUp) execute[Exp](expression)
-    println(s"$expression -> $result")
-    result
   }
 
   private val bigIntZero = BigInt(0)
