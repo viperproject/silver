@@ -66,6 +66,8 @@ object Nodes {
           case Label(_, invs) => invs
           case Goto(_) => Nil
           case LocalVarDeclStmt(decl) => Seq(decl)
+          case Quasihavoc(lhs, e) => lhs.toSeq :+ e
+          case Quasihavocall(vars, lhs, e) => vars ++ lhs.toSeq :+ e
           case e: ExtensionStmt => e.extensionSubnodes
         }
       case _: LocalVarDecl => Nil
