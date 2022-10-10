@@ -228,8 +228,8 @@ object CfgGenerator {
            _: Assert |
            _: LocalVarDeclStmt |
            _: Assume |
-           _: Havoc |
-           _: Havocall =>
+           _: Quasihavoc |
+           _: Quasihavocall =>
         // handle regular, non-control statements
         addStatement(WrappedStmt(stmt))
       case _: ExtensionStmt =>

@@ -271,9 +271,9 @@ case class TypeChecker(names: NameAnalyser) {
       case _: PDefine =>
         /* Should have been removed right after parsing */
         sys.error(s"Unexpected node $stmt found")
-      case PHavoc(lhs, e) =>
+      case PQuasihavoc(lhs, e) =>
         checkHavoc(stmt, lhs, e)
-      case havoc@PHavocall(vars, lhs, e) =>
+      case havoc@PQuasihavocall(vars, lhs, e) =>
         vars foreach (v => check(v.typ))
         // update the curMember, which contains quantified variable information
         val oldCurMember = curMember

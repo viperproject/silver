@@ -77,7 +77,7 @@ object FastParserCompanion {
     // specifications
     "requires", "ensures", "invariant",
     // statements
-    "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "package", "apply", "havoc", "havocall",
+    "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "package", "apply", "quasihavoc", "quasihavocall",
     // control flow
     "while", "if", "elseif", "else", "goto", "label",
     // sequences
@@ -1091,12 +1091,12 @@ class FastParser {
   def stmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | macroassign | fieldassign | localassign | fold | unfold | exhale | assertP |
     inhale | assume | ifthnels | whle | varDecl | defineDecl | newstmt | 
     methodCall | goto | lbl | packageWand | applyWand | macroref | block |
-    havoc | havocall | ParserExtension.newStmtAtEnd(ctx))
+    quasihavoc | quasihavocall | ParserExtension.newStmtAtEnd(ctx))
 
   def nodefinestmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | fieldassign | localassign | fold | unfold | exhale | assertP |
     inhale | assume | ifthnels | whle | varDecl | newstmt |
     methodCall | goto | lbl | packageWand | applyWand | macroref | block |
-    havoc | havocall | ParserExtension.newStmtAtEnd(ctx))
+    quasihavoc | quasihavocall | ParserExtension.newStmtAtEnd(ctx))
 
   def macroref[_: P]: P[PMacroRef] = FP(idnuse).map { case (pos, a) => PMacroRef(a)(pos) }
 
@@ -1130,14 +1130,14 @@ class FastParser {
 
   // Havocall follows a similar pattern to havoc but allows quantifying over variables.
 
-  def havoc[_: P]: P[PHavoc] = FP(keyword("havoc") ~/
+  def quasihavoc[_: P]: P[PQuasihavoc] = FP(keyword("quasihavoc") ~/
     (magicWandExp ~ "==>").? ~ exp ).map {
-      case (pos, (lhs, rhs)) => PHavoc(lhs, rhs)(pos)
+      case (pos, (lhs, rhs)) => PQuasihavoc(lhs, rhs)(pos)
   }
 
-  def havocall[_: P]: P[PHavocall] = FP(keyword("havocall") ~/
+  def quasihavocall[_: P]: P[PQuasihavocall] = FP(keyword("quasihavocall") ~/
     nonEmptyFormalArgList ~ "::" ~ (magicWandExp ~ "==>").? ~ exp).map {
-    case (pos, (vars, lhs, rhs)) => PHavocall(vars, lhs, rhs)(pos)
+    case (pos, (vars, lhs, rhs)) => PQuasihavocall(vars, lhs, rhs)(pos)
   }
 
   def ifthnels[_: P]: P[PIf] = FP("if" ~ "(" ~ exp ~ ")" ~ block ~~~ elsifEls).map {
