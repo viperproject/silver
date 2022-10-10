@@ -113,6 +113,8 @@ object Transformer {
         case p@PAssert(e) => PAssert(go(e))(p.pos)
         case p@PAssume(e) => PAssume(go(e))(p.pos)
         case p@PInhale(e) => PInhale(go(e))(p.pos)
+        case p@PHavoc(lhs, e) => PHavoc(lhs map go, go(e))(p.pos)
+        case p@PHavocall(vars, lhs, e) => PHavocall(vars map go, lhs map go, go(e))(p.pos)
           // MAPS:
         //case PExplicitMultiset(elems) => PExplicitMultiset(elems map go)
         case p@PEmptyMap(keyType, valueType) => PEmptyMap(go(keyType), go(valueType))(p.pos)
