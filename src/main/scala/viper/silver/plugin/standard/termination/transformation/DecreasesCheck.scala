@@ -47,9 +47,8 @@ trait DecreasesCheck extends ProgramManager with ErrorReporter {
     // true literal, their respective disjuncts are simplified or even removed. This ensures that trivial assertions
     // like "assert true" and "assert !true || true" are kept to a minimum.
     (rCondition, gCondition) match {
-      case (_: TrueLit, _: TrueLit) => EmptyStmt
+      case (_, _: TrueLit) => EmptyStmt
       case (_: TrueLit, _) => Assert(gCondition)(errT = errTrafo)
-      case (_, _: TrueLit) => Assert(Not(rCondition)(errT = reTrafo))(errT = errTrafo)
       case (_, _) => Assert(Or(Not(rCondition)(errT = reTrafo), gCondition)(errT = reTrafo))(errT = errTrafo)
     }
   }
