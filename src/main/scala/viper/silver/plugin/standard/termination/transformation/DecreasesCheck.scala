@@ -48,7 +48,10 @@ trait DecreasesCheck extends ProgramManager with ErrorReporter {
     // like "assert true" and "assert !true || true" are kept to a minimum.
     (rCondition, gCondition) match {
       case (_, _: TrueLit) => EmptyStmt
-      case (_: TrueLit, _) => Assert(gCondition)(errT = errTrafo)
+      case (_: TrueLit, _) =>
+        // gCondition must use reTrafo to produce precise error messages
+        val (pos, info, _) = gCondition.meta
+        Assert(gCondition.withMeta(pos, info, reTrafo))(errT = errTrafo)
       case (_, _) => Assert(Or(Not(rCondition)(errT = reTrafo), gCondition)(errT = reTrafo))(errT = errTrafo)
     }
   }
