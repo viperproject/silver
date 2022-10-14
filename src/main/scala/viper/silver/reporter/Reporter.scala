@@ -27,13 +27,13 @@ case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv
 
   def report(msg: Message): Unit = {
     msg match {
-      case AstConstructionFailureMessage(time, result) =>
+      case AstConstructionFailureMessage(time, _) =>
         csv_file.write(s"AstConstructionFailureMessage,${time}\n")
       case AstConstructionSuccessMessage(time) =>
         csv_file.write(s"AstConstructionSuccessMessage,${time}\n")
-      case OverallFailureMessage(verifier, time, result) =>
+      case OverallFailureMessage(_, time, _) =>
         csv_file.write(s"OverallFailureMessage,${time}\n")
-      case OverallSuccessMessage(verifier, time) =>
+      case OverallSuccessMessage(_, time) =>
         csv_file.write(s"OverallSuccessMessage,${time}\n")
       case ExceptionReport(e) =>
         csv_file.write(s"ExceptionReport,${e.toString}\n")
@@ -49,14 +49,14 @@ case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv
         warnings.foreach(report => {
           csv_file.write(s"WarningsDuringTypechecking,${report}\n")
         })
-      case InvalidArgumentsReport(tool_sig, errors) =>
+      case InvalidArgumentsReport(_, errors) =>
         errors.foreach(error => {
           csv_file.write(s"WarningsDuringParsing,${error}\n")
         })
 
-      case EntitySuccessMessage(verifier, concerning, time, cached) =>
+      case EntitySuccessMessage(_, concerning, time, cached) =>
         csv_file.write(s"EntitySuccessMessage,${concerning.name},${time}, ${cached}\n")
-      case EntityFailureMessage(verifier, concerning, time, result, cached) =>
+      case EntityFailureMessage(_, concerning, time, _, cached) =>
         csv_file.write(s"EntityFailureMessage,${concerning.name},${time}, ${cached}\n")
 
       case _: SimpleMessage | _: CopyrightReport | _: MissingDependencyReport | _: BackendSubProcessReport |
@@ -134,7 +134,7 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
       case WarningsDuringTypechecking(warnings) =>
         warnings.foreach(println)
 
-      case InvalidArgumentsReport(tool_sig, errors) =>
+      case InvalidArgumentsReport(_, errors) =>
         errors.foreach(e => println(s"  ${e.readableMessage}"))
         println( s"Run with just --help for usage and options" )
 
@@ -163,7 +163,7 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
         //println( s"Configuration confirmation: $text" )
       case InternalWarningMessage(_) =>        // TODO  use for progress reporting
         //println( s"Internal warning: $text" )
-      case sm:SimpleMessage =>
+      case _:SimpleMessage =>
         //println( sm.text )
       case _ =>
         println( s"Cannot properly print message of unsupported type: $msg" )

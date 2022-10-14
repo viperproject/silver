@@ -218,7 +218,7 @@ object PartialVerificationError { // Note: the apply method is used here to inst
 }
 
 case object NullPartialVerificationError extends PartialVerificationError {
-  def f = x => null
+  def f = _ => null
 }
 
 abstract class AbstractVerificationError extends VerificationError {

@@ -389,7 +389,7 @@ case class DomainFuncApp(funcname: String, args: Seq[Exp], typVarMap: Map[TypeVa
   //Strangely, the copy method is not a member of the DomainFuncApp case class,
   //therefore, We need this method that does the copying manually
   def copy(funcname: String = this.funcname, args: Seq[Exp] = this.args, typVarMap: Map[TypeVar, Type] = this.typVarMap): (Position, Info, Type, String, ErrorTrafo) => DomainFuncApp ={
-    DomainFuncApp(this.funcname,args,typVarMap)
+    DomainFuncApp(funcname,args,typVarMap)
   }
 }
 object DomainFuncApp {
@@ -403,7 +403,7 @@ case class BackendFuncApp(backendFunc: BackendFunc, args: Seq[Exp])
                          (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
   extends AbstractDomainFuncApp {
   override lazy val check : Seq[ConsistencyError] = args.flatMap(Consistency.checkPure)
-  override def func = (p: Program) => backendFunc
+  override def func = (_: Program) => backendFunc
   def funcname = backendFunc.name
   override def typ = backendFunc.typ
 }
