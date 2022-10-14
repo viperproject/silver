@@ -185,7 +185,7 @@ object ViperStrategy {
               newMetaData._3
             }
           }
-          now
+          now.withMeta(newMetaData._1, newMetaData._2, newNodeTrafo)
         } else {
           now
         }
