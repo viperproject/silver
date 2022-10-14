@@ -528,7 +528,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       case Method(name, formalArgs, formalReturns, pres, posts, body) =>
         group(text("method") <+> name <> nest(defaultIndent, parens(showVars(formalArgs))) <> {
           if (formalReturns.isEmpty) nil
-          else nest(defaultIndent, nil <@> "returns" <+> parens(showVars(formalReturns)))
+          else nest(defaultIndent, line <> "returns" <+> parens(showVars(formalReturns)))
         }) <>
           nest(defaultIndent,
             showContracts("requires", pres) <>
