@@ -360,7 +360,7 @@ trait Info {
 
   def removeUniqueInfo[T <: Info]: Info = this match {
     case ConsInfo(a, b) => MakeInfoPair(a.removeUniqueInfo[T], b.removeUniqueInfo[T])
-    case t: T => NoInfo
+    case _: T => NoInfo
     case info => info
   }
 }

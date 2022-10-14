@@ -221,12 +221,12 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
 
   val verifier : Verifier
 
-  override def beforeAll(configMap: ConfigMap) {
+  override def beforeAll(configMap: ConfigMap): Unit = {
     verifier.parseCommandLine(Seq("dummy.vpr"))
     verifier.start()
   }
 
-  override def afterAll(configMap: ConfigMap) {
+  override def afterAll(configMap: ConfigMap): Unit = {
     verifier.stop()
   }
 
