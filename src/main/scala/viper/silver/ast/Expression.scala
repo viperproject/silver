@@ -475,6 +475,7 @@ case class CondExp(cond: Exp, thn: Exp, els: Exp)(val pos: Position = NoPosition
 // --- Prover hint expressions
 
 case class Unfolding(acc: PredicateAccessPredicate, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp {
+  override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(body)
   lazy val typ = body.typ
 }
 
