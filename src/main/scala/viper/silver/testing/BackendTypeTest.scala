@@ -1,12 +1,14 @@
 package viper.silver.testing
 
-import org.scalatest.{BeforeAndAfterAllConfigMap, ConfigMap, FunSuite, Matchers}
+import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.{BeforeAndAfterAllConfigMap, ConfigMap}
 import viper.silver.ast.{And, AnySetContains, Assert, BackendFuncApp, EqCmp, Exhale, Exp, Field, FieldAccess, FieldAccessPredicate, FieldAssign, Fold, Forall, FullPerm, Function, Implies, Inhale, IntLit, LocalVarAssign, LocalVarDecl, Method, NeCmp, Not, Predicate, PredicateAccess, PredicateAccessPredicate, Program, Ref, Result, Seqn, SetType, Stmt}
 import viper.silver.ast.utility.{BVFactory, FloatFactory, RoundingMode}
 import viper.silver.verifier.{Failure, Success, Verifier}
 import viper.silver.verifier.errors.{AssertFailed, PostconditionViolated}
 
-trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfigMap {
+trait BackendTypeTest extends AnyFunSuite with Matchers with BeforeAndAfterAllConfigMap {
 
   def generateTypeCombinationTest(success: Boolean) : (Program, Assert) = {
     val t = if (success) BVFactory(23).typ else FloatFactory(23, 11, RoundingMode.RNE).typ

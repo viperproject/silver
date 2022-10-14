@@ -14,9 +14,10 @@ import viper.silver.parser._
 import viper.silver.plugin.standard.adt.encoding.AdtEncoder
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 
+import scala.annotation.unused
 
-class AdtPlugin(reporter: viper.silver.reporter.Reporter,
-                logger: ch.qos.logback.classic.Logger,
+class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
+                @unused logger: ch.qos.logback.classic.Logger,
                 config: viper.silver.frontend.SilFrontendConfig,
                 fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
 
