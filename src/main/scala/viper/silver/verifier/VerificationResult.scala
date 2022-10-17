@@ -8,6 +8,8 @@ package viper.silver.verifier
 
 import viper.silver.ast._
 
+import scala.annotation.unused
+
 /** Describes the outcome of a verification attempt of a Viper program.
 
   */
@@ -67,7 +69,7 @@ trait AbstractError {
   }
 }
 
-abstract class ParseReport(message: String, pos: Position) extends AbstractError
+abstract class ParseReport(@unused message: String, @unused pos: Position) extends AbstractError
 
 /** A parser error. */
 case class ParseError(message: String, override val pos: Position)

@@ -8,7 +8,7 @@ package viper.silver.ast.utility
 
 import viper.silver.ast._
 import viper.silver.ast.utility.rewriter.Traverse
-import viper.silver.parser.{FastParser, FastParserCompanion}
+import viper.silver.parser.FastParserCompanion
 import viper.silver.verifier.ConsistencyError
 import viper.silver.{FastMessage, FastMessaging}
 

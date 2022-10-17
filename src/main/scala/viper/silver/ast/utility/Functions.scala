@@ -25,7 +25,7 @@ object Functions {
   def allSubexpressionsIncludingUnfoldings(program: Program)(func: Function): Seq[Exp] = {
     var visitedPredicates = Set[String]()
     var subexpressions = allSubexpressions(func)
-    var unfoldings = new ListBuffer[Unfolding]
+    val unfoldings = new ListBuffer[Unfolding]
     unfoldings ++= (subexpressions map (e => e.deepCollect{case u@Unfolding(_, _) => u})).flatten
     var i = 0
     while (i < unfoldings.length){

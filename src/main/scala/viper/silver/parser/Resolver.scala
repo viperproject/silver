@@ -488,7 +488,7 @@ case class TypeChecker(names: NameAnalyser) {
 
   def checkTopTyped(exp: PExp, oexpected: Option[PType]): Unit =
   {
-    check(exp, PTypeSubstitution.id)
+    checkInternal(exp)
     if (exp.typ.isValidOrUndeclared && exp.typeSubstitutions.nonEmpty) {
       val etss = oexpected match {
         case Some(expected) if expected.isValidOrUndeclared => exp.typeSubstitutions.flatMap(_.add(exp.typ, expected))
@@ -508,12 +508,7 @@ case class TypeChecker(names: NameAnalyser) {
     }
   }
 
-  def checkInternal(exp: PExp): Unit =
-  {
-    check(exp,PTypeSubstitution.id)
-  }
-
-  def check(exp: PExp, s: PTypeSubstitution) : Unit = {
+  def checkInternal(exp: PExp) : Unit = {
     /**
      * Set the type of 'exp', and check that the actual type is allowed by one of the expected types.
      */

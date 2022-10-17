@@ -13,6 +13,8 @@ import viper.silver.parser.{FastParser, PProgram}
 import viper.silver.reporter.Reporter
 import viper.silver.verifier.{AbstractError, VerificationResult}
 
+import scala.annotation.unused
+
 /** Implement this abstract class in order to give your plugin access to SilFrontend's IO:
   * 1. Reporter,
   * 2. Logger,
@@ -41,7 +43,7 @@ trait SilverPlugin {
     * @param isImported Whether the current input is an imported file or the main file
     * @return Modified source code
     */
-  def beforeParse(input: String, isImported: Boolean): String = input
+  def beforeParse(input: String, @unused isImported: Boolean): String = input
 
   /** Called after parse AST has been constructed but before identifiers are resolved and the program is type checked.
     *
