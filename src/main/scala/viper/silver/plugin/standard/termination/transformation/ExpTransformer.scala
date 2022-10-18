@@ -75,6 +75,29 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
           Seqn(Seq(right), Nil)()
       }
       Seqn(Seq(left, rightSCE), Nil)()
+    case (ase: AnySetExp, c) => ase match {
+      case AnySetCardinality(s) => Seqn(Seq(transformExp(s, c)), Nil)(ase.pos)
+      case AnySetUnion(l, r) => Seqn(Seq(transformExp(l, c), transformExp(r, c)), Nil)(ase.pos)
+      case AnySetIntersection(l, r) => Seqn(Seq(transformExp(l, c), transformExp(r, c)), Nil)(ase.pos)
+      case AnySetSubset(l ,r) => Seqn(Seq(transformExp(l, c), transformExp(r, c)), Nil)(ase.pos)
+      case AnySetMinus(l, r) => Seqn(Seq(transformExp(l, c), transformExp(r, c)), Nil)(ase.pos)
+      case AnySetContains(elem, s) => Seqn(Seq(transformExp(elem, c), transformExp(s, c)), Nil)(ase.pos)
+      case MapDomain(base) => Seqn(Seq(transformExp(base, c)), Nil)(ase.pos)
+      case MapRange(base) => Seqn(Seq(transformExp(base, c)), Nil)(ase.pos)
+      case unsupportedExp => transformUnknownExp(unsupportedExp, c)
+    }
+    case (st: SetExp, c) => st match {
+      // note that AnySetExp are handled above
+      case ExplicitSet(elems) => Seqn(elems.map(transformExp(_, c)), Nil)(st.pos)
+      case EmptySet(_) => EmptyStmt
+      case unsupportedExp => transformUnknownExp(unsupportedExp, c)
+    }
+    case (ms: MultisetExp, c) => ms match {
+      // note that AnySetExp are handled above
+      case EmptyMultiset(_) => EmptyStmt
+      case ExplicitMultiset(elems) => Seqn(elems.map(transformExp(_, c)), Nil)(ms.pos)
+      case unsupportedExp => transformUnknownExp(unsupportedExp, c)
+    }
     case (sq: SeqExp, c) => sq match {
       case ExplicitSeq(elems) =>
         Seqn(elems.map(transformExp(_, c)), Nil)(sq.pos)
@@ -104,7 +127,6 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
         Seqn(Seq(transformExp(s, c)), Nil)(sq.pos)
       case EmptySeq(_) => EmptyStmt
       case unsupportedExp => transformUnknownExp(unsupportedExp, c)
-        EmptyStmt
     }
     case (mp: MapExp, c) => mp match {
       case EmptyMap(_, _) => EmptyStmt
@@ -115,12 +137,6 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
       case MapLookup(base, key) => Seqn(Seq(transformExp(base, c), transformExp(key, c)), Nil)(mp.pos)
       case MapUpdate(base, key, value) => Seqn(Seq(transformExp(base, c), transformExp(key, c), transformExp(value, c)), Nil)(mp.pos)
     }
-    case (st: ExplicitSet, c) =>
-      Seqn(st.elems.map(transformExp(_, c)), Nil)(st.pos)
-    case (mst: ExplicitMultiset, c) =>
-      Seqn(mst.elems.map(transformExp(_, c)), Nil)(mst.pos)
-    case (md: MapDomain, c) => Seqn(Seq(transformExp(md.base, c)), Nil)(md.pos)
-    case (mr: MapRange, c) => Seqn(Seq(transformExp(mr.base, c)), Nil)(mr.pos)
     case (u: UnExp, c) => transformExp(u.exp, c)
     case (_: Literal, _) => EmptyStmt
     case (_: AbstractLocalVar, _) => EmptyStmt
