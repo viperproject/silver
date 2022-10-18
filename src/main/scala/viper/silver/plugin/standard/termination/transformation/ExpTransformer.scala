@@ -6,7 +6,7 @@
 
 package viper.silver.plugin.standard.termination.transformation
 
-import viper.silver.ast.{Exp, Stmt, _}
+import viper.silver.ast.{And, Exp, Stmt, _}
 import viper.silver.ast.utility.Statements.EmptyStmt
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.{ContextCustom, RepeatedStrategy, Strategy, Traverse}
@@ -15,7 +15,7 @@ import viper.silver.ast.utility.rewriter.{ContextCustom, RepeatedStrategy, Strat
  * A basic interface which helps to rewrite an expression (e.g. a function body) into a stmt (e.g. for a method body).
  * Some default transformations are already implemented.
  */
-trait ExpTransformer extends ErrorReporter {
+trait ExpTransformer extends ProgramManager with ErrorReporter {
 
   /**
    * Transforms an expression into a statement.
@@ -125,6 +125,8 @@ trait ExpTransformer extends ErrorReporter {
     case (_: Literal, _) => EmptyStmt
     case (_: AbstractLocalVar, _) => EmptyStmt
     case (_: AbstractConcretePerm, _) => EmptyStmt
+    case (_: WildcardPerm, _) => EmptyStmt
+    case (_: EpsilonPerm, _) => EmptyStmt
     case (_: LocationAccess, _) => EmptyStmt
 
     case (ap: AccessPredicate, c) =>
@@ -133,6 +135,22 @@ trait ExpTransformer extends ErrorReporter {
       val inhale = Inhale(ap)(ap.pos)
 
       Seqn(Seq(check, inhale), Nil)()
+    case (fa: Forall, c) =>
+      val declMapping = fa.variables.map(decl => decl -> uniqueName(decl.name))
+      val freshDecls = declMapping.map {
+        case (oldDecl, freshName) => LocalVarDecl(freshName, oldDecl.typ)(oldDecl.pos, oldDecl.info, oldDecl.errT)
+      }
+      val transformedExp = fa.exp.transform({
+        case v@LocalVar(name, typ) => declMapping
+          // check whether the local variable is in the map of variables that should be replaced:
+          .collectFirst { case (decl, freshName) if decl.name == name => freshName }
+          // replace it by a new local variable:
+          .map(freshName => LocalVar(freshName, typ)(v.pos, v.info, v.errT))
+          // keep the variable unchanged if no replacement should happen:
+          .getOrElse(v)
+      }, Traverse.TopDown)
+      val expressionStmt = transformExp(transformedExp, c)
+      Seqn(Seq(expressionStmt), freshDecls)(fa.pos)
     case (fa: FuncLikeApp, c) =>
       val argStmts = fa.args.map(transformExp(_, c))
       Seqn(argStmts, Nil)()
@@ -209,6 +227,9 @@ trait ExpTransformer extends ErrorReporter {
       If(Not(c)(c.pos), els, EmptyStmt)(i.pos, i.info, i.errT)
     case i@If(c1, Seqn(Seq(If(c2, thn, EmptyStmt)), Nil), EmptyStmt) => // combine nested if clauses
       If(And(c1, c2)(), thn, EmptyStmt)(i.pos, i.info, i.errT)
+    case If(TrueLit(), thn, _) => thn // remove trivial If conditions (in particular effective together with the next 2 simplifications)
+    case And(TrueLit(), rhs) => rhs // simplify conjunctions
+    case And(lhs, TrueLit()) => lhs // simplify conjunctions
   }, Traverse.BottomUp)
     .repeat
 }
