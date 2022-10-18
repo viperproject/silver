@@ -179,13 +179,13 @@ object ViperStrategy {
               Trafos(
                 newMetaData._3.eTransformations,
                 newMetaData._3.rTransformations,
-                newMetaData._3.nTransformations.orElse(Some(n.asInstanceOf[ErrorNode])))
+                newMetaData._3.nTransformations.orElse(Some(n)))
             } else {
               /* Keep already attached transformations (if any) */
               newMetaData._3
             }
           }
-          now
+          now.withMeta(newMetaData._1, newMetaData._2, newNodeTrafo)
         } else {
           now
         }

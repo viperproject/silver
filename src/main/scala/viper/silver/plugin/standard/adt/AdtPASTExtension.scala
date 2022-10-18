@@ -11,6 +11,7 @@ import viper.silver.ast._
 import viper.silver.parser._
 import viper.silver.plugin.standard.adt.PAdtConstructor.findAdtConstructor
 
+import scala.annotation.unused
 import scala.util.{Success, Try}
 
 
@@ -296,7 +297,7 @@ object PAdtOpApp {
     * This method mirrors the functionality in Resolver.scala that handles operation applications, except that it is
     * adapted to work for ADT operator applications.
     */
-  def typecheck(poa: PAdtOpApp)(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
+  def typecheck(poa: PAdtOpApp)(t: TypeChecker, @unused n: NameAnalyser): Option[Seq[String]] = {
 
     def getFreshTypeSubstitution(tvs: Seq[PDomainType]): PTypeRenaming =
       PTypeVar.freshTypeSubstitutionPTVs(tvs)
