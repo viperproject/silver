@@ -47,6 +47,13 @@ sealed trait Exp extends Hashable with Typed with Positioned with Infoed with Tr
    */
  // lazy val proofObligations = Expressions.proofObligations(this)
 
+  override def toString() = {
+   // Carbon relies on expression pretty-printing resulting in a string without line breaks,
+   // so for the special case of directly converting an expression to a string,, we remove all line breaks
+   // the pretty printer might have inserted.
+   super.toString.replaceAll("\n", " ")
+ }
+
 }
 
 // --- Simple integer and boolean expressions (binary and unary operations, literals)
