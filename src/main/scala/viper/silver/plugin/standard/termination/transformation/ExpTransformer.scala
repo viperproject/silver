@@ -152,21 +152,19 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
 
       Seqn(Seq(check, inhale), Nil)()
     case (fa: Forall, c) =>
-      val declMapping = fa.variables.map(decl => decl -> uniqueName(decl.name))
-      val freshDecls = declMapping.map {
-        case (oldDecl, freshName) => LocalVarDecl(freshName, oldDecl.typ)(oldDecl.pos, oldDecl.info, oldDecl.errT)
-      }
-      val transformedExp = fa.exp.transform({
-        case v@LocalVar(name, typ) => declMapping
-          // check whether the local variable is in the map of variables that should be replaced:
-          .collectFirst { case (decl, freshName) if decl.name == name => freshName }
-          // replace it by a new local variable:
-          .map(freshName => LocalVar(freshName, typ)(v.pos, v.info, v.errT))
-          // keep the variable unchanged if no replacement should happen:
-          .getOrElse(v)
-      }, Traverse.TopDown)
+      // we turn the quantified variables into local variables with arbitrary value and show that the expression holds
+      // for arbitrary values, which is similar to a forall introduction
+      val (freshDecls, transformedExp) = substituteWithFreshVars(fa.variables, fa.exp)
       val expressionStmt = transformExp(transformedExp, c)
-      Seqn(Seq(expressionStmt), freshDecls)(fa.pos)
+      Seqn(Seq(expressionStmt), freshDecls)(fa.pos, fa.info, fa.errT)
+    case (ex: Exists, c) =>
+      // we perform existential elimination by retrieving witnesses for the quantified variables
+      val (freshDecls, transformedExp) = substituteWithFreshVars(ex.variables, ex.exp)
+      // we can't use an assume statement at this point because the `assume`s have already been rewritten
+      // furthermore, Viper only allows pure existentially quantified expressions
+      val inhaleWitnesses = Inhale(transformedExp)(ex.pos, ex.info, ex.errT)
+      val expressionStmt = transformExp(transformedExp, c)
+      Seqn(Seq(inhaleWitnesses, expressionStmt), freshDecls)(ex.pos, ex.info, ex.errT)
     case (fa: FuncLikeApp, c) =>
       val argStmts = fa.args.map(transformExp(_, c))
       Seqn(argStmts, Nil)()
@@ -214,6 +212,27 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
     case _: AccessPredicate | _: MagicWand => Nil
     case Applying(_, b) => Seq(b)
     case Forall(_, _, exp) => Seq(exp)
+  }
+
+  /**
+    * Turns `vars` into new local variable declarations with a unique name and replaces their occurrences in `exp`.
+    * The new local variables declarations and the transformed expression are returned
+    */
+  protected def substituteWithFreshVars(vars: Seq[LocalVarDecl], exp: Exp): (Seq[LocalVarDecl], Exp) = {
+    val declMapping = vars.map(decl => decl -> uniqueName(decl.name))
+    val freshDecls = declMapping.map {
+      case (oldDecl, freshName) => LocalVarDecl(freshName, oldDecl.typ)(oldDecl.pos, oldDecl.info, oldDecl.errT)
+    }
+    val transformedExp = exp.transform({
+      case v@LocalVar(name, typ) => declMapping
+        // check whether the local variable is in the map of variables that should be replaced:
+        .collectFirst { case (decl, freshName) if decl.name == name => freshName }
+        // replace it by a new local variable:
+        .map(freshName => LocalVar(freshName, typ)(v.pos, v.info, v.errT))
+        // keep the variable unchanged if no replacement should happen:
+        .getOrElse(v)
+    }, Traverse.TopDown)
+    (freshDecls, transformedExp)
   }
 
 
