@@ -256,4 +256,19 @@ class ConsistencyTests extends AnyFunSuite with Matchers {
       ConsistencyError("Quantified permissions must have an implication as expression, with the access predicate in its right-hand side.", NoPosition)
     )
   }
+
+  test("Testing if Forall AST nodes have at least one quantified variable, and all variables are mentioned in the trigger.") {
+
+    val f = Function("f", Seq(LocalVarDecl("i", Int)()), Int, Seq(), Seq(), None)()
+    val forallNoVar = Forall(Seq(), Seq(), TrueLit()())()
+    val forallUnusedVar = Forall(Seq(LocalVarDecl("i", Int)()), Seq(Trigger(Seq(FuncApp(f, Seq(IntLit(0)()))()))()), TrueLit()())()
+
+    forallNoVar.checkTransitively shouldBe Seq(
+      ConsistencyError("Quantifier must have at least one quantified variable.", NoPosition)
+    )
+
+    forallUnusedVar.checkTransitively shouldBe Seq(
+      ConsistencyError("Variable i is not mentioned in one or more triggers.", NoPosition)
+    )
+  }
 }

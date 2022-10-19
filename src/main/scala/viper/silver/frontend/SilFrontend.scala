@@ -242,7 +242,7 @@ trait SilFrontend extends DefaultFrontend {
                 Succ({e.initProperties(); e})
               }
               else Fail(err_list)
-            case fail @ Parsed.Failure(_, index, extra) =>
+            case fail @ Parsed.Failure(_, index, _) =>
               val msg = fail.trace().longAggregateMsg
               val (line, col) = fp.lineCol.getPos(index)
               Fail(List(ParseError(s"Expected $msg", SourcePosition(file, line, col))))

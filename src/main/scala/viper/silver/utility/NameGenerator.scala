@@ -210,7 +210,7 @@ trait DefaultNameGenerator extends NameGenerator {
             builder.append(replaceableLetters(c))
           }
       }
-      var res = builder.result
+      var res = builder.result()
       while (reservedNames.contains(res)) {
         res = defaultIdent + res
       }

@@ -18,8 +18,10 @@ import viper.silver.verifier._
 import fastparse._
 import viper.silver.parser.FastParserCompanion.whitespace
 
-class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
-                        logger: ch.qos.logback.classic.Logger,
+import scala.annotation.unused
+
+class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
+                        @unused logger: ch.qos.logback.classic.Logger,
                         config: viper.silver.frontend.SilFrontendConfig,
                         fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
   import fp.{FP, keyword, exp, ParserExtension}
