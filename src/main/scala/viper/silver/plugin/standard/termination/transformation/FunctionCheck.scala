@@ -9,7 +9,7 @@ package viper.silver.plugin.standard.termination.transformation
 import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 import viper.silver.ast.utility.Statements.EmptyStmt
 import viper.silver.ast.utility.rewriter.Traverse
-import viper.silver.ast.utility.ViperStrategy
+import viper.silver.ast.utility.{Simplifier, ViperStrategy}
 import viper.silver.ast.{And, Bool, ErrTrafo, Exp, FalseLit, FuncApp, Function, LocalVarDecl, Method, Node, NodeTrafo, Old, Result, Seqn, Stmt}
 import viper.silver.plugin.standard.termination.{DecreasesSpecification, FunctionTerminationError}
 import viper.silver.verifier.errors.AssertFailed
@@ -53,7 +53,7 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
         val context = FContext(f)
 
         val proofMethodBody: Stmt = {
-          val stmt: Stmt = simplifyStmts.execute(transformExp(f.body.get, context))
+          val stmt: Stmt = Simplifier.simplify(transformExp(f.body.get, context))
           if (requireNestedInfo) {
             addNestedPredicateInformation.execute(stmt)
           } else {
@@ -88,7 +88,7 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
           .reduce((e, p) => And(e, p)())
 
         val proofMethodBody: Stmt = {
-          val stmt: Stmt = simplifyStmts.execute(transformExp(posts, context))
+          val stmt: Stmt = Simplifier.simplify(transformExp(posts, context))
           if (requireNestedInfo) {
             addNestedPredicateInformation.execute(stmt)
           } else {
@@ -113,7 +113,7 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
         // concatenate all pres
         val pres = f.pres.reduce((e, p) => And(e, p)())
 
-        val proofMethodBody: Stmt = simplifyStmts.execute(transformExp(pres, context))
+        val proofMethodBody: Stmt = Simplifier.simplify(transformExp(pres, context))
 
         if (proofMethodBody != EmptyStmt) {
           val proofMethod = Method(proofMethodName, f.formalArgs, Nil, Nil, Nil,
