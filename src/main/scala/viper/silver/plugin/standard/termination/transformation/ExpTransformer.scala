@@ -6,10 +6,11 @@
 
 package viper.silver.plugin.standard.termination.transformation
 
-import viper.silver.ast.{And, Exp, Stmt, _}
+import viper.silver.ast.{And, AnySetExp, Exp, Stmt, _}
 import viper.silver.ast.utility.Statements.EmptyStmt
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.{ContextCustom, RepeatedStrategy, Strategy, Traverse}
+import viper.silver.verifier.ConsistencyError
 
 /**
  * A basic interface which helps to rewrite an expression (e.g. a function body) into a stmt (e.g. for a method body).
@@ -22,8 +23,8 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
    *
    * @return a statement representing the expression.
    */
-  def transformExp: PartialFunction[(Exp, ExpressionContext), Stmt] = {
-    case (CondExp(cond, thn, els), c) =>
+  def transformExp(e: Exp, c: ExpressionContext): Stmt = e match {
+    case CondExp(cond, thn, els) =>
       val condStmt = transformExp(cond, c)
       val thnStmt = transformExp(thn, c)
       val elsStmt = transformExp(els, c)
@@ -32,7 +33,7 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
 
       val stmts = Seq(condStmt, ifStmt)
       Seqn(stmts, Nil)()
-    case (Unfolding(acc, unfBody), c) =>
+    case Unfolding(acc, unfBody) =>
       val permCheck = transformExp(acc.perm, c)
       val unfoldBody = transformExp(unfBody, c)
       // only unfold and fold if body contains something
@@ -40,7 +41,15 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
 
       val stmts = Seq(permCheck, unfold, unfoldBody, fold)
       Seqn(stmts, Nil)()
-    case (inex: InhaleExhaleExp, c) =>
+    case Applying(wand, body) =>
+      // note that this case is untested -- it's not possible to write a function with an `applying` expression
+      val nonDetVarDecl = LocalVarDecl(uniqueName("b"), Bool)(e.pos, e.info, e.errT)
+      val bodyStmt = transformExp(body, c)
+      val killBranchStmt = Inhale(FalseLit()(e.pos, e.info, e.errT))(e.pos, e.info, e.errT)
+      val thnStmt = Seqn(Seq(Apply(wand)(e.pos, e.info, e.errT), bodyStmt, killBranchStmt), Nil)()
+      val ifStmt = If(nonDetVarDecl.localVar, thnStmt, EmptyStmt)(e.pos, e.info, e.errT)
+      Seqn(Seq(ifStmt), Seq(nonDetVarDecl))(e.pos, e.info, e.errT)
+    case inex: InhaleExhaleExp =>
       val inhaleStmt = transformExp(inex.in, c)
       val exhaleStmt = transformExp(inex.ex, c)
 
@@ -48,7 +57,7 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
         case Some(conditionVar) => If(conditionVar.localVar, Seqn(Seq(inhaleStmt), Nil)(), Seqn(Seq(exhaleStmt), Nil)())()
         case None => Seqn(Seq(inhaleStmt, exhaleStmt), Nil)()
       }
-    case (letExp: Let, c) =>
+    case letExp: Let =>
       val expressionStmt = transformExp(letExp.exp, c)
       val localVarDecl = letExp.variable
 
@@ -58,7 +67,7 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
 
       Seqn(Seq(expressionStmt, inhaleEq, bodyStmt), Seq(localVarDecl))()
 
-    case (b: BinExp, c) =>
+    case b: BinExp =>
       val left = transformExp(b.left, c)
       val right = transformExp(b.right, c)
 
@@ -75,112 +84,90 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
           Seqn(Seq(right), Nil)()
       }
       Seqn(Seq(left, rightSCE), Nil)()
-    case (ase: AnySetExp, c) => ase match {
-      case AnySetCardinality(s) => Seqn(Seq(transformExp(s, c)), Nil)(ase.pos)
-      case AnySetUnion(l, r) => Seqn(Seq(transformExp(l, c), transformExp(r, c)), Nil)(ase.pos)
-      case AnySetIntersection(l, r) => Seqn(Seq(transformExp(l, c), transformExp(r, c)), Nil)(ase.pos)
-      case AnySetSubset(l ,r) => Seqn(Seq(transformExp(l, c), transformExp(r, c)), Nil)(ase.pos)
-      case AnySetMinus(l, r) => Seqn(Seq(transformExp(l, c), transformExp(r, c)), Nil)(ase.pos)
-      case AnySetContains(elem, s) => Seqn(Seq(transformExp(elem, c), transformExp(s, c)), Nil)(ase.pos)
+    case ase: AnySetExp => ase match {
+      case exp: AnySetUnExp => Seqn(Seq(transformExp(exp.exp, c)), Nil)(ase.pos)
+      case exp: AnySetBinExp => Seqn(Seq(transformExp(exp.left, c), transformExp(exp.right, c)), Nil)(ase.pos)
       case MapDomain(base) => Seqn(Seq(transformExp(base, c)), Nil)(ase.pos)
       case MapRange(base) => Seqn(Seq(transformExp(base, c)), Nil)(ase.pos)
-      case unsupportedExp => transformUnknownExp(unsupportedExp, c)
     }
-    case (st: SetExp, c) => st match {
-      // note that AnySetExp are handled above
-      case ExplicitSet(elems) => Seqn(elems.map(transformExp(_, c)), Nil)(st.pos)
-      case EmptySet(_) => EmptyStmt
-      case unsupportedExp => transformUnknownExp(unsupportedExp, c)
-    }
-    case (ms: MultisetExp, c) => ms match {
-      // note that AnySetExp are handled above
-      case EmptyMultiset(_) => EmptyStmt
-      case ExplicitMultiset(elems) => Seqn(elems.map(transformExp(_, c)), Nil)(ms.pos)
-      case unsupportedExp => transformUnknownExp(unsupportedExp, c)
-    }
-    case (sq: SeqExp, c) => sq match {
-      case ExplicitSeq(elems) =>
-        Seqn(elems.map(transformExp(_, c)), Nil)(sq.pos)
-      case RangeSeq(low, high) =>
-        Seqn(Seq(transformExp(low, c),
-          transformExp(high, c)), Nil)(sq.pos)
-      case SeqAppend(left, right) =>
-        Seqn(Seq(transformExp(left, c),
-          transformExp(right, c)), Nil)(sq.pos)
-      case SeqIndex(s, idx) =>
-        Seqn(Seq(transformExp(s, c),
-          transformExp(idx, c)), Nil)(sq.pos)
-      case SeqTake(s, n) =>
-        Seqn(Seq(transformExp(s, c),
-          transformExp(n, c)), Nil)(sq.pos)
-      case SeqDrop(s, n) =>
-        Seqn(Seq(transformExp(s, c),
-          transformExp(n, c)), Nil)(sq.pos)
-      case SeqContains(elem, s) =>
-        Seqn(Seq(transformExp(elem, c),
-          transformExp(s, c)), Nil)(sq.pos)
-      case SeqUpdate(s, idx, elem) =>
-        Seqn(Seq(transformExp(s, c),
-          transformExp(idx, c),
-          transformExp(elem, c)), Nil)(sq.pos)
-      case SeqLength(s) =>
-        Seqn(Seq(transformExp(s, c)), Nil)(sq.pos)
-      case EmptySeq(_) => EmptyStmt
-      case unsupportedExp => transformUnknownExp(unsupportedExp, c)
-    }
-    case (mp: MapExp, c) => mp match {
-      case EmptyMap(_, _) => EmptyStmt
-      case ExplicitMap(elems) => Seqn(elems.map(transformExp(_, c)), Nil)(mp.pos)
-      case Maplet(key, value) => Seqn(Seq(transformExp(key, c), transformExp(value, c)), Nil)(mp.pos)
-      case MapCardinality(base) => Seqn(Seq(transformExp(base, c)), Nil)(mp.pos)
-      case MapContains(key, base) => Seqn(Seq(transformExp(key, c), transformExp(base, c)), Nil)(mp.pos)
-      case MapLookup(base, key) => Seqn(Seq(transformExp(base, c), transformExp(key, c)), Nil)(mp.pos)
-      case MapUpdate(base, key, value) => Seqn(Seq(transformExp(base, c), transformExp(key, c), transformExp(value, c)), Nil)(mp.pos)
-    }
-    case (u: UnExp, c) => transformExp(u.exp, c)
-    case (_: Literal, _) => EmptyStmt
-    case (_: AbstractLocalVar, _) => EmptyStmt
-    case (_: AbstractConcretePerm, _) => EmptyStmt
-    case (_: WildcardPerm, _) => EmptyStmt
-    case (_: EpsilonPerm, _) => EmptyStmt
-    case (_: LocationAccess, _) => EmptyStmt
+    // remaining `SetExp`:
+    case EmptySet(_) => EmptyStmt
+    case e@ExplicitSet(elems) => Seqn(elems.map(transformExp(_, c)), Nil)(e.pos)
+    // remaining `MultisetExp`:
+    case EmptyMultiset(_) => EmptyStmt
+    case e@ExplicitMultiset(elems) => Seqn(elems.map(transformExp(_, c)), Nil)(e.pos)
+    // remaining `SeqExp`:
+    case EmptySeq(_) => EmptyStmt
+    case e@ExplicitSeq(elems) => Seqn(elems.map(transformExp(_, c)), Nil)(e.pos)
+    case e@RangeSeq(low, high) => Seqn(Seq(transformExp(low, c), transformExp(high, c)), Nil)(e.pos)
+    case e@SeqAppend(left, right) => Seqn(Seq(transformExp(left, c), transformExp(right, c)), Nil)(e.pos)
+    case e@SeqIndex(s, idx) => Seqn(Seq(transformExp(s, c), transformExp(idx, c)), Nil)(e.pos)
+    case e@SeqTake(s, n) => Seqn(Seq(transformExp(s, c), transformExp(n, c)), Nil)(e.pos)
+    case e@SeqDrop(s, n) => Seqn(Seq(transformExp(s, c), transformExp(n, c)), Nil)(e.pos)
+    case e@SeqContains(elem, s) => Seqn(Seq(transformExp(elem, c), transformExp(s, c)), Nil)(e.pos)
+    case e@SeqUpdate(s, idx, elem) => Seqn(Seq(transformExp(s, c), transformExp(idx, c), transformExp(elem, c)), Nil)(e.pos)
+    case e@SeqLength(s) => Seqn(Seq(transformExp(s, c)), Nil)(e.pos)
+    // remaining `MapExp`:
+    case EmptyMap(_, _) => EmptyStmt
+    case e@ExplicitMap(elems) => Seqn(elems.map(transformExp(_, c)), Nil)(e.pos)
+    case e@Maplet(key, value) => Seqn(Seq(transformExp(key, c), transformExp(value, c)), Nil)(e.pos)
+    case e@MapCardinality(base) => Seqn(Seq(transformExp(base, c)), Nil)(e.pos)
+    case e@MapContains(key, base) => Seqn(Seq(transformExp(key, c), transformExp(base, c)), Nil)(e.pos)
+    case e@MapLookup(base, key) => Seqn(Seq(transformExp(base, c), transformExp(key, c)), Nil)(e.pos)
+    case e@MapUpdate(base, key, value) => Seqn(Seq(transformExp(base, c), transformExp(key, c), transformExp(value, c)), Nil)(e.pos)
 
-    case (ap: AccessPredicate, c) =>
+    case u: UnExp => transformExp(u.exp, c)
+    case _: Literal => EmptyStmt
+    case _: AbstractLocalVar => EmptyStmt
+    case _: AbstractConcretePerm => EmptyStmt
+    case _: WildcardPerm => EmptyStmt
+    case _: EpsilonPerm => EmptyStmt
+    case _: CurrentPerm => EmptyStmt
+    case _: LocationAccess => EmptyStmt
+
+    case ap: AccessPredicate =>
       val check = transformExp(ap.perm, c)
-
       val inhale = Inhale(ap)(ap.pos)
-
       Seqn(Seq(check, inhale), Nil)()
-    case (fa: Forall, c) =>
+    case fa: Forall =>
       // we turn the quantified variables into local variables with arbitrary value and show that the expression holds
       // for arbitrary values, which is similar to a forall introduction
-      val (freshDecls, transformedExp) = substituteWithFreshVars(fa.variables, fa.exp)
+      val (freshDecls, transformedExp, _) = substituteWithFreshVars(fa.variables, fa.exp)
       val expressionStmt = transformExp(transformedExp, c)
       Seqn(Seq(expressionStmt), freshDecls)(fa.pos, fa.info, fa.errT)
-    case (ex: Exists, c) =>
+    case fp: ForPerm =>
+      // let's pick arbitrary values for the quantified variables and check the body given that the current heap has
+      // sufficient permissions
+      val (freshDecls, transformedExp, varMapping) = substituteWithFreshVars(fp.variables, fp.exp)
+      val transformedRes = substituteVars(varMapping, fp.resource)
+      val expressionStmt = transformExp(transformedExp, c)
+      val killBranchStmt = Inhale(FalseLit()(e.pos, e.info, e.errT))(e.pos, e.info, e.errT)
+      val thnStmt = Seqn(Seq(expressionStmt, killBranchStmt), Nil)(e.pos, e.info, e.errT)
+      val ifCond = GtCmp(CurrentPerm(transformedRes)(e.pos, e.info, e.errT), NoPerm()(e.pos, e.info, e.errT))(e.pos, e.info, e.errT)
+      val ifStmt = If(ifCond, thnStmt, EmptyStmt)(e.pos, e.info, e.errT)
+      Seqn(Seq(ifStmt), freshDecls)(e.pos, e.info, e.errT)
+    case ex: Exists =>
       // we perform existential elimination by retrieving witnesses for the quantified variables
-      val (freshDecls, transformedExp) = substituteWithFreshVars(ex.variables, ex.exp)
+      val (freshDecls, transformedExp, _) = substituteWithFreshVars(ex.variables, ex.exp)
       // we can't use an assume statement at this point because the `assume`s have already been rewritten
       // furthermore, Viper only allows pure existentially quantified expressions
       val inhaleWitnesses = Inhale(transformedExp)(ex.pos, ex.info, ex.errT)
       val expressionStmt = transformExp(transformedExp, c)
       Seqn(Seq(inhaleWitnesses, expressionStmt), freshDecls)(ex.pos, ex.info, ex.errT)
-    case (fa: FuncLikeApp, c) =>
+    case fa: FuncLikeApp =>
       val argStmts = fa.args.map(transformExp(_, c))
       Seqn(argStmts, Nil)()
-    case (unknownExp, c) =>
-      transformUnknownExp(unknownExp, c)
+    case e: ExtensionExp => reportUnsupportedExp(e)
   }
 
   /**
-   * Expression transformer if no default is defined.
-   * Calls transformExp on all subExps of e.
-   * To change or extend the default transformer for unknown expressions
-   * override this method (and possibly combine it with super.transformUnknownExp).
-   */
-  def transformUnknownExp(e: Exp, c: ExpressionContext): Stmt = {
-    val sub = e.subExps.map(transformExp(_, c))
-    Seqn(sub, Nil)()
+    * Issues a consistency error for unsupported expressions.
+    *
+    * @param unsupportedExp to be reported.
+    */
+  def reportUnsupportedExp(unsupportedExp: Exp): Stmt = {
+    reportError(ConsistencyError("Unsupported expression detected: " + unsupportedExp + ", " + unsupportedExp.getClass, unsupportedExp.pos))
+    EmptyStmt
   }
 
   /**
@@ -218,13 +205,18 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
     * Turns `vars` into new local variable declarations with a unique name and replaces their occurrences in `exp`.
     * The new local variables declarations and the transformed expression are returned
     */
-  protected def substituteWithFreshVars(vars: Seq[LocalVarDecl], exp: Exp): (Seq[LocalVarDecl], Exp) = {
+  protected def substituteWithFreshVars(vars: Seq[LocalVarDecl], exp: Exp): (Seq[LocalVarDecl], Exp, Seq[(LocalVarDecl, String)]) = {
     val declMapping = vars.map(decl => decl -> uniqueName(decl.name))
     val freshDecls = declMapping.map {
       case (oldDecl, freshName) => LocalVarDecl(freshName, oldDecl.typ)(oldDecl.pos, oldDecl.info, oldDecl.errT)
     }
-    val transformedExp = exp.transform({
-      case v@LocalVar(name, typ) => declMapping
+    val transformedExp = substituteVars(declMapping, exp)
+    (freshDecls, transformedExp, declMapping)
+  }
+
+  protected def substituteVars[T <: Node](varMapping: Seq[(LocalVarDecl, String)], n: T): T = {
+    n.transform({
+      case v@LocalVar(name, typ) => varMapping
         // check whether the local variable is in the map of variables that should be replaced:
         .collectFirst { case (decl, freshName) if decl.name == name => freshName }
         // replace it by a new local variable:
@@ -232,9 +224,7 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
         // keep the variable unchanged if no replacement should happen:
         .getOrElse(v)
     }, Traverse.TopDown)
-    (freshDecls, transformedExp)
   }
-
 
   /**
    * The simplifyStmts Strategy can be used to simplify statements
