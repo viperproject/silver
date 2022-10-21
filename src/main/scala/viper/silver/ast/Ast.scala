@@ -358,9 +358,9 @@ trait Info {
       case _ => Seq.empty
     }
 
-  def removeUniqueInfo[T <: Info]: Info = this match {
+  def removeUniqueInfo[T <: Info : ClassTag]: Info = this match {
     case ConsInfo(a, b) => MakeInfoPair(a.removeUniqueInfo[T], b.removeUniqueInfo[T])
-    case t: T => NoInfo
+    case _: T => NoInfo
     case info => info
   }
 }

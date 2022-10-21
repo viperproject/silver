@@ -1,0 +1,14 @@
+domain Either[T, V] {
+  function left(t: T): Either[T, V]
+  function right(v: V): Either[T, V]
+}
+
+method client(s: Seq[Int])
+{
+  var x: Either[Seq[Int], Ref]
+  // okay
+  x := (left(s): Either[Seq[Int], Ref])
+  x := (left(Seq[Int]()))
+  // parse error
+  x := (left(Seq[Int]()): Either[Seq[Int], Ref])
+}

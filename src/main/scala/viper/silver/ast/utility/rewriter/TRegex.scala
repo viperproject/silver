@@ -6,6 +6,7 @@
 
 package viper.silver.ast.utility.rewriter
 
+import scala.annotation.unused
 import scala.reflect.runtime.{universe => reflection}
 
 /*
@@ -140,10 +141,10 @@ class NMatch[N <: Rewritable : TypeTag](val pred: N => Boolean, val rewrite: Boo
 
   /**
     * Provide information about the actions that occur if node n matches on this matcher
-    * @param n node used for traversion
-    * @return list of traversion infos
+    * @param n node used for traversal
+    * @return list of traversal infos
     */
-  def getTransitionInfo(n: Rewritable): Seq[TransitionInfo] = if (rewrite) Seq(MarkedForRewrite()) else Seq.empty[TransitionInfo]
+  def getTransitionInfo(@unused n: Rewritable): Seq[TransitionInfo] = if (rewrite) Seq(MarkedForRewrite()) else Seq.empty[TransitionInfo]
 
 }
 

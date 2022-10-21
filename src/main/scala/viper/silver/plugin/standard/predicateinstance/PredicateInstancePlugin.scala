@@ -16,11 +16,12 @@ import viper.silver.verifier.errors.PreconditionInAppFalse
 import fastparse._
 import viper.silver.parser.FastParserCompanion.whitespace
 
+import scala.annotation.unused
 import scala.collection.immutable.ListMap
 
-class PredicateInstancePlugin(reporter: viper.silver.reporter.Reporter,
-                              logger: ch.qos.logback.classic.Logger,
-                              config: viper.silver.frontend.SilFrontendConfig,
+class PredicateInstancePlugin(@unused reporter: viper.silver.reporter.Reporter,
+                              @unused logger: ch.qos.logback.classic.Logger,
+                              @unused config: viper.silver.frontend.SilFrontendConfig,
                               fp: FastParser)  extends SilverPlugin with ParserPluginTemplate {
 
   import fp.{FP, predAcc, ParserExtension}
