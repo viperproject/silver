@@ -62,7 +62,45 @@ object QuantifiedPermissions {
 
     toVisit ++= Nodes.referencedMembers(root, program)
 
-    quantifiedFields(toVisit, root, collected, visited, program)
+    def findQFields(n: Node): Unit = {
+      n visit {
+        case QuantifiedPermissionAssertion(_, _, acc: FieldAccessPredicate) =>
+          collected += acc.loc.field
+        case Forall(_, triggers, _) => collected ++= triggers flatMap (_.exps) collect { case fa: FieldAccess => fa.field }
+      }
+    }
+
+    collectInDependencies(toVisit, root, findQFields, visited, program)
+
+    collected
+  }
+
+  def resourceTriggers(root: Member, program: Program): collection.Set[Resource] = {
+    val collected = mutable.LinkedHashSet[Resource]()
+    val visited = mutable.Set[Member]()
+    val toVisit = mutable.Queue[Member]()
+
+    toVisit += root
+
+    toVisit ++= Nodes.referencedMembers(root, program)
+
+    def extractResources(triggers: Seq[Trigger]): Unit = {
+      triggers.foreach(t => t.exps.foreach(e => e match {
+        case r: ResourceAccess => collected += r.res(program)
+        case _ =>
+      }))
+    }
+
+    def findResourceTriggers(n: Node): Unit = {
+      n visit {
+        case Forall(_, triggers, _) =>
+          extractResources(triggers)
+        case Exists(_, triggers, _) =>
+          extractResources(triggers)
+      }
+    }
+
+    collectInDependencies(toVisit, root, findResourceTriggers, visited, program)
 
     collected
   }
@@ -79,7 +117,15 @@ object QuantifiedPermissions {
 
     toVisit ++= Nodes.referencedMembers(root, program)
 
-    quantifiedPredicates(toVisit, root, collected, visited, program)
+    def findQPredicates(n: Node): Unit = {
+      n visit {
+        case QuantifiedPermissionAssertion(_, _, acc: PredicateAccessPredicate) =>
+          collected += program.findPredicate(acc.loc.predicateName)
+        case Forall(_, triggers, _) => collected ++= triggers flatMap (_.exps) collect { case pa: PredicateAccess => pa.loc(program) }
+      }
+    }
+
+    collectInDependencies(toVisit, root, findQPredicates, visited, program)
 
     collected
   }
@@ -91,44 +137,11 @@ object QuantifiedPermissions {
     } toSet) flatten
   }
 
-  private def quantifiedFields(toVisit: mutable.Queue[Member],
-                               root: Member,
-                               collected: mutable.LinkedHashSet[Field],
-                               visited: mutable.Set[Member],
-                               program: Program): Unit = {
-
-    while (toVisit.nonEmpty) {
-      val currentRoot = toVisit.dequeue()
-
-      val relevantNodes: Seq[Node] = currentRoot match {
-        case m@Method(_, _, _, pres, posts, _) if m != root =>
-          // use only specification of called methods
-          pres ++ posts
-        case f@Function(_, _, _, pres, posts, _) if f != root=>
-          // use only specification of called functions
-          pres ++ posts
-        case _ => Seq(currentRoot)
-      }
-
-      visited += currentRoot
-
-      for (n <- relevantNodes){
-        n visit {
-          case QuantifiedPermissionAssertion(_, _, acc: FieldAccessPredicate) =>
-            collected += acc.loc.field
-          case Forall(_,triggers,_) => collected ++= triggers flatMap (_.exps) collect {case fa: FieldAccess => fa.field}
-        }
-        utility.Nodes.referencedMembers(n, program) foreach (m =>
-          if (!visited.contains(m)) toVisit += m)
-      }
-    }
-  }
-
-  private def quantifiedPredicates(toVisit: mutable.Queue[Member],
-                                   root: Member,
-                                   collected: mutable.LinkedHashSet[Predicate],
-                                   visited: mutable.Set[Member],
-                                   program: Program): Unit = {
+  private def collectInDependencies(toVisit: mutable.Queue[Member],
+                                    root: Member,
+                                    collect: Node => Unit,
+                                    visited: mutable.Set[Member],
+                                    program: Program): Unit = {
 
     while (toVisit.nonEmpty) {
       val currentRoot = toVisit.dequeue()
@@ -146,11 +159,7 @@ object QuantifiedPermissions {
       visited += currentRoot
 
       for (n <- relevantNodes){
-        n visit {
-          case QuantifiedPermissionAssertion(_, _, acc: PredicateAccessPredicate) =>
-            collected += program.findPredicate(acc.loc.predicateName)
-          case Forall(_,triggers,_) => collected ++= triggers flatMap (_.exps) collect {case pa: PredicateAccess => pa.loc(program)}
-        }
+        collect(n)
         utility.Nodes.referencedMembers(n, program) foreach (m =>
           if (!visited.contains(m)) toVisit += m)
 
