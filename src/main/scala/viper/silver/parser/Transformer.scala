@@ -61,7 +61,7 @@ object Transformer {
 
         case p@PUnfolding(acc, exp) => PUnfolding(go(acc), go(exp))(p.pos)
         case p@PApplying(wand, exp) => PApplying(go(wand), go(exp))(p.pos)
-        case p@PAsserting(assertion, exp) => PApplying(go(assertion), go(exp))(p.pos)
+        case p@PAsserting(assertion, exp) => PAsserting(go(assertion), go(exp))(p.pos)
 
         case p@PExists(vars, triggers, exp) => PExists(vars map go, triggers map go, go(exp))(p.pos)
         case p@PForall(vars, triggers, exp) => PForall(vars map go, triggers map go, go(exp))(p.pos)
