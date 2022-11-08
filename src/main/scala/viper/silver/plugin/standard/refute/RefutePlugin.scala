@@ -15,9 +15,11 @@ import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier._
 import viper.silver.verifier.errors.AssertFailed
 
-class RefutePlugin(reporter: viper.silver.reporter.Reporter,
-                   logger: ch.qos.logback.classic.Logger,
-                   config: viper.silver.frontend.SilFrontendConfig,
+import scala.annotation.unused
+
+class RefutePlugin(@unused reporter: viper.silver.reporter.Reporter,
+                   @unused logger: ch.qos.logback.classic.Logger,
+                   @unused config: viper.silver.frontend.SilFrontendConfig,
                    fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
 
   import fp.{FP, keyword, exp, ParserExtension}

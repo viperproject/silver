@@ -1,0 +1,17 @@
+method test(n: Int, d: Int) returns (q: Int, r: Int)
+	requires n >= 0 && d > 0;
+	ensures n == q * d + r && r >= 0 && r < d;
+{
+	r := n;
+	q := 0;
+
+	while(r >= 0)
+		invariant r >= - d && n == q * d + r;
+	{
+		r := r - d;
+		q := q + 1;
+	}
+
+	r := r + d;
+	q := q - 1;
+}

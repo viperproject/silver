@@ -805,11 +805,11 @@ class FastParser {
 
   def result[_: P]: P[PResultLit] = FP(keyword("result")).map { case (pos, _) => PResultLit()(pos) }
 
-  def unExp[_: P]: P[PUnExp] = FP(CharIn("\\-\\!").! ~~ !" " ~~ suffixExpr).map { case (pos, (a, b)) => PUnExp(a, b)(pos) }
+  def unExp[_: P]: P[PUnExp] = FP(CharIn("\\-\\!").! ~ suffixExpr).map { case (pos, (a, b)) => PUnExp(a, b)(pos) }
 
   def strInteger[_: P]: P[String] = P(CharIn("0-9").rep(1)).!
 
-  def integer[_: P]: P[PIntLit] = FP(strInteger.filter(s => !s.contains(' '))).map { case (pos, s) => PIntLit(BigInt(s))(pos) }
+  def integer[_: P]: P[PIntLit] = FP(strInteger.filter(s => s.matches("\\S+"))).map { case (pos, s) => PIntLit(BigInt(s))(pos) }
 
   def booltrue[_: P]: P[PBoolLit] = FP(keyword("true")).map {case (pos, _) => PBoolLit(b = true)(pos)}
 
@@ -1040,11 +1040,11 @@ class FastParser {
 
   def setTypedEmpty[_: P]: P[PExp] = collectionTypedEmpty("Set", (a, b) => PEmptySet(a)(b))
 
-  def explicitSetNonEmpty[_: P]: P[PExp] = P(FP("Set" ~ "(" ~/ exp.rep(sep = ",", min = 1) ~ ")").map {
+  def explicitSetNonEmpty[_: P]: P[PExp] = P(FP("Set" ~ "(" ~ exp.rep(sep = ",", min = 1) ~ ")").map {
     case (pos, exps) => PExplicitSet(exps)(pos)
   })
 
-  def explicitMultisetNonEmpty[_: P]: P[PExp] = P(FP("Multiset" ~ "(" ~/ exp.rep(min = 1, sep = ",") ~ ")").map {
+  def explicitMultisetNonEmpty[_: P]: P[PExp] = P(FP("Multiset" ~ "(" ~ exp.rep(min = 1, sep = ",") ~ ")").map {
     case (pos, exps) => PExplicitMultiset(exps)(pos)
   })
 
@@ -1056,16 +1056,16 @@ class FastParser {
     case (pos, e) => PSize(e)(pos)
   })
 
-  def explicitSeqNonEmpty[_: P]: P[PExp] = P(FP("Seq" ~ "(" ~/ exp.rep(min = 1, sep = ",") ~ ")").map {
+  def explicitSeqNonEmpty[_: P]: P[PExp] = P(FP("Seq" ~ "(" ~ exp.rep(min = 1, sep = ",") ~ ")").map {
     case (pos, exps) => PExplicitSeq(exps)(pos)
   })
 
   private def collectionTypedEmpty[_: P](name: String, typeConstructor: (PType, (Position, Position)) => PExp): P[PExp] =
-    FP(`name` ~ ("[" ~/ typ ~ "]").? ~ "(" ~ ")").map{ case (pos, typ) => typeConstructor(typ.getOrElse(PTypeVar("#E")), pos)}
+    FP(`name` ~ ("[" ~ typ ~ "]").? ~ "(" ~ ")").map{ case (pos, typ) => typeConstructor(typ.getOrElse(PTypeVar("#E")), pos)}
 
   def seqRange[_: P]: P[PExp] = FP("[" ~ exp ~ ".." ~ exp ~ ")").map { case (pos, (a, b)) => PRangeSeq(a, b)(pos) }
 
-  def mapTypedEmpty[_: P] : P[PMapLiteral] = P(FP("Map" ~ ("[" ~/ typ ~ "," ~ typ ~ "]").? ~ "(" ~ ")").map {
+  def mapTypedEmpty[_: P] : P[PMapLiteral] = P(FP("Map" ~ ("[" ~ typ ~ "," ~ typ ~ "]").? ~ "(" ~ ")").map {
     case (pos, Some((keyType, valueType))) => PEmptyMap(keyType, valueType)(pos)
     case (pos, None) => PEmptyMap(PTypeVar("#K"), PTypeVar("#E"))(pos)
   })
@@ -1074,7 +1074,7 @@ class FastParser {
     case (pos, (key, value)) => PMaplet(key, value)(pos)
   })
 
-  def explicitMapNonEmpty[_: P]: P[PMapLiteral] = P(FP("Map" ~ "(" ~/ maplet.rep(sep = ",", min = 1) ~ ")").map {
+  def explicitMapNonEmpty[_: P]: P[PMapLiteral] = P(FP("Map" ~ "(" ~ maplet.rep(sep = ",", min = 1) ~ ")").map {
     case (pos, maplets) => PExplicitMap(maplets)(pos)
   })
 
