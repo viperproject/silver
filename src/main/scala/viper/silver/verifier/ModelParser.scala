@@ -1,17 +1,23 @@
 package viper.silver.verifier
 
 import fastparse._
-import viper.silver.parser.FastParserCompanion.whitespace
-
 object ModelParser {
+  def modelEntry[_: P]: P[(String, ModelEntry)] = {
+    implicit val ws = viper.silver.parser.FastParserCompanion.whitespaceWithoutNewlineOrComments
+    P(idnuse ~ "->" ~ definition.?).map {
+      case (i, Some(e)) => (i, e)
+      case (i, None) => (i, UnspecifiedEntry)
+    }
+  }
+
+  import viper.silver.parser.FastParserCompanion.whitespace
+
   // note that the dash/minus character '-' needs to be escaped by double backslashes such that it is not interpreted as a range
   def identifier[_: P]: P[Unit] = P(CharIn("0-9", "A-Z", "a-z", "[]\"'#+\\-*/:=!$_@<>.%~").repX(1))
 
   def idnuse[_: P]: P[String] = P(identifier).!.filter(a => a != "else" && a != "let" && a != "->")
 
   def numeral[_: P]: P[Unit] = P(CharIn("0-9").repX(1))
-
-  def modelEntry[_: P]: P[(String, ModelEntry)] = P(idnuse ~ "->" ~ definition)
 
   def definition[_: P]: P[ModelEntry] = P(mapping | value)
 
