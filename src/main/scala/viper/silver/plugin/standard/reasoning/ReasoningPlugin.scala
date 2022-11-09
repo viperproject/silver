@@ -47,11 +47,11 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
   override def beforeVerify(input: Program): Program = {
     scala.Console.println("entered beforeVerify: "+ input.info.toString)
     ViperStrategy.Slim({
-      case e@ExistentialElim(v, exp) => { // e = ExistentialElim(vardecl, exp)
+      case e@ExistentialElim(v, trigs, exp) => { // e = ExistentialElim(vardecl, exp)
         Seqn(
           Seq(
             // version with local var decl
-            Assert(Exists(v, Seq(), exp)(e.pos, ReasoningInfo))(e.pos))
+            Assert(Exists(v, trigs, exp)(e.pos, ReasoningInfo))(e.pos))
 
             // version without local var decl
             //Assert(Exists(v.map{case (id,typ) => LocalVarDecl(id,typ)(exp.pos)}, Seq(), exp)(e.pos, ReasoningInfo))(e.pos))
