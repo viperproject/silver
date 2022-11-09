@@ -31,13 +31,3 @@ case class ExistentialElim(varList: Seq[LocalVarDecl], trigs: Seq[Trigger], exp:
   override val extensionSubnodes: Seq[Node] = Seq(exp)
 
 }
-/*
-case class ExistentialElim(vardecl:Arg, exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionStmt {
-  override lazy val prettyPrint: PrettyPrintPrimitives#Cont = {
-    text("obtain") <+> showVars(Seq(vardecl))
-    text("where") <+> toParenDoc(exp)
-  }
-
-  override val extensionSubnodes: Seq[Node] = Seq(exp)
-}
-*/

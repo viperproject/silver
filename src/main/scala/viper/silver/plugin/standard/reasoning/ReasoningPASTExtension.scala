@@ -7,6 +7,7 @@ import viper.silver.parser.{NameAnalyser, PExp, PExtender, PIdnDef, PLocalVarDec
 //case class PExistentialElim(varList: Seq[(PIdnDef, PType)], e: PExp)(val pos: (Position, Position)) extends PExtender with PStmt {
 
 // version without local var decl in out obtain statement
+
 case class PExistentialElim(varList: Seq[(String, PType)], trig: Seq[PTrigger], e: PExp)(val pos: (Position, Position)) extends PExtender with PStmt {
   override val getSubnodes: Seq[PNode] = {
     trig ++ Seq(e)
@@ -51,13 +52,18 @@ case class PExistentialElim(varList: Seq[PLocalVarDecl], e: PExp)(val pos: (Posi
 
   override def translateStmt(t: Translator): Stmt = {
     scala.Console.println("entered translateStmt!")
-    ExistentialElim(varList.map { case variable => LocalVarDecl(variable.idndef.name, t.ttyp(variable.typ))(t.liftPos(variable)) }, t.exp(e))(t.liftPos(e))
+    ExistentialElim(varList.map { case variable => LocalVarDecl(variable.idndef.name, t.ttyp(variable.typ))(t.liftPos(variable)) }, Seq(Trigger(Seq())(t.liftPos(e))), t.exp(e))(t.liftPos(e))
   }
 
-  //override def translateStmt(t: Translator): Stmt = ExistentialElim(varList.map{ case (id, typ) => LocalVarDecl(id.name, t.ttyp(typ))(t.liftPos(id))} ,t.exp(e))(t.liftPos(this))
-  //LocalVarDecl(varList.name, t.ttyp(typ))(t.liftPos(id))
 }
- */
+*/
+
+
+
+
+
+
+
 /*
 case class PExistentialElim(lvd:PFormalArgDecl, e: PExp)(val pos: (Position, Position)) extends PExtender with PStmt {
   override val getSubnodes: Seq[PNode] = Seq(e)
