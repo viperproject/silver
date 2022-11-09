@@ -5,30 +5,21 @@ import <decreases/declaration.vpr>
 
 field f: Int
 
-predicate foo(x: Ref)
-{
-    acc(x.f) && x.f == 42
-}
-
 function test(x: Ref): Bool
     decreases
-    requires foo(x)
-{
     //:: ExpectedOutput(termination.failed:termination.condition.false)
-    unfolding foo(x) in nonTerminating(x)
+    requires forall x2: Ref :: x == x2 ==> acc(x2.f) && nonTerminating(x2)
+{
+    true
 }
 
 function test2(x: Ref): Bool
     decreases
-    requires foo(x)
+    // this is fine because `nonTerminating(x2)` is not reachable
+    requires forall x2: Ref :: x == x2 ==> false && nonTerminating(x2)
 {
-    unfolding foo(x) in partiallyTerminating(x)
+    true
 }
 
 function nonTerminating(x: Ref): Bool
-    decreases *
-
-function partiallyTerminating(x: Ref): Bool
-    requires acc(x.f, wildcard)
-    decreases if x.f == 42
     decreases *

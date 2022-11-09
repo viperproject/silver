@@ -4,31 +4,22 @@
 import <decreases/declaration.vpr>
 
 field f: Int
+field g: Int
 
-predicate foo(x: Ref)
-{
-    acc(x.f) && x.f == 42
-}
-
-function test(x: Ref): Bool
+function test1(x: Ref): Bool
     decreases
-    requires foo(x)
+    requires acc(x.f) && acc(x.g)
 {
     //:: ExpectedOutput(termination.failed:termination.condition.false)
-    unfolding foo(x) in nonTerminating(x)
+    nonTerminating(x)
 }
 
 function test2(x: Ref): Bool
     decreases
-    requires foo(x)
+    requires acc(x.f) && acc(x.f) && acc(x.g)
 {
-    unfolding foo(x) in partiallyTerminating(x)
+    nonTerminating(x)
 }
 
 function nonTerminating(x: Ref): Bool
-    decreases *
-
-function partiallyTerminating(x: Ref): Bool
-    requires acc(x.f, wildcard)
-    decreases if x.f == 42
     decreases *
