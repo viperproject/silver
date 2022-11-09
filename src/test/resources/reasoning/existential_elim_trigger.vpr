@@ -1,0 +1,13 @@
+function geq(x:Int, y:Int) : Bool
+{
+    x>=y
+}
+
+method ex1()
+{
+    var x: Int
+    var y: Int
+    assert geq(3, 0)
+    obtain x:Int, y:Int where {geq(x,y)} geq(x,y)
+    assert x>=y
+}

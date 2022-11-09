@@ -1,0 +1,8 @@
+method ex1() 
+{
+    var x :Int
+    obtain x:Int, y:Int where 2==2
+    x:=2
+
+
+}

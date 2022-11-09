@@ -868,6 +868,9 @@ case class NameAnalyser() {
                   case Some(_: PErrorEntity) =>
                   case None =>
                     getMap(d).put(d.idndef.name, d)
+                    scala.Console.println("Line 871: " + d.idndef.name)
+                    scala.Console.println("getMap(d) = " + getMap(d).mkString)
+
                 }
             }
           case _ =>
@@ -984,6 +987,7 @@ case class NameAnalyser() {
   }
 
   def run(p: PProgram): Boolean = {
+    scala.Console.println("in Resolver line 988")
     check(p, None)
     messages.isEmpty || messages.forall(m => !m.error)
   }
