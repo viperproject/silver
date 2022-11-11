@@ -1,3 +1,5 @@
+//:: IgnoreFile(/carbon/issue/438/)
+
 // same as wand4, except we quasihavoc only if x != y, so this
 // test should succeed
 

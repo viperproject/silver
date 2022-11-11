@@ -1,3 +1,5 @@
+//:: IgnoreFile(/carbon/issue/438/)
+
 field f: Int
 
 // We have an arbitrary element in s. It is changed by the quasihavocall

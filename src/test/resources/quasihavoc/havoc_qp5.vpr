@@ -17,6 +17,7 @@ method foo(x: Ref, y: Ref, s: Seq[Ref], t: Seq[Ref])
     quasihavoc Pair(x, y)
     unfold Pair(x, y)
 
+    //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/248/)
     assert forall i: Int :: 1 <= i && i < |s| ==>
             unfolding Pair(s[i], t[i]) in s[i].f == i
     

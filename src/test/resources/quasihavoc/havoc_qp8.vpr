@@ -1,3 +1,5 @@
+//:: IgnoreFile(/carbon/issue/438/)
+
 // Quantified permission with a magic wand, where we apply it step-by-step.
 // We quasihavoc each individual wand before we apply.
 

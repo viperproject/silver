@@ -1,3 +1,5 @@
+//:: IgnoreFile(/carbon/issue/438/)
+
 field f: Int
 
 // sets s and t are seperate. quasihavocking t should not affect s

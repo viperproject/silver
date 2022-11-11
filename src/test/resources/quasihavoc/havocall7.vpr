@@ -1,3 +1,5 @@
+//:: IgnoreFile(/carbon/issue/438/)
+
 field f: Int
 predicate Pred(x: Ref, y: Ref) {
     acc(x.f) && acc(y.f) && x.f == y.f
