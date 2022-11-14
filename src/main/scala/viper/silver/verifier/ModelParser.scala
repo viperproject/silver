@@ -2,6 +2,7 @@ package viper.silver.verifier
 
 import fastparse._
 object ModelParser {
+  
   def modelEntry[_: P]: P[(String, ModelEntry)] = {
     // Do not allow newlines between "->" and the definition.
     // Otherwise, if there is no definition, we could parse the id in the next line as the value here.
