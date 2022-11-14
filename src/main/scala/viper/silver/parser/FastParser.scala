@@ -28,6 +28,12 @@ case class SuffixedExpressionGenerator[E <: PExp](func: PExp => E) extends (PExp
 object FastParserCompanion {
   import fastparse._
 
+  val whitespaceWithoutNewlineOrComments = {
+    import NoWhitespace._
+    implicit ctx: ParsingRun[_] =>
+      NoTrace((" " | "\t").rep)
+  }
+
   implicit val whitespace = {
     import NoWhitespace._
     implicit ctx: ParsingRun[_] =>
