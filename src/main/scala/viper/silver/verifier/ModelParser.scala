@@ -3,6 +3,8 @@ package viper.silver.verifier
 import fastparse._
 object ModelParser {
   def modelEntry[_: P]: P[(String, ModelEntry)] = {
+    // Do not allow newlines between "->" and the definition.
+    // Otherwise, if there is no definition, we could parse the id in the next line as the value here.
     implicit val ws = viper.silver.parser.FastParserCompanion.whitespaceWithoutNewlineOrComments
     P(idnuse ~ "->" ~ definition.?).map {
       case (i, Some(e)) => (i, e)
@@ -10,6 +12,7 @@ object ModelParser {
     }
   }
 
+  // Late import s.t. we can unambiguously use a different whitespace definition in the modelEntry rule above.
   import viper.silver.parser.FastParserCompanion.whitespace
 
   // note that the dash/minus character '-' needs to be escaped by double backslashes such that it is not interpreted as a range
