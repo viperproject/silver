@@ -164,7 +164,13 @@ trait ErrorMessage {
 trait VerificationError extends AbstractError with ErrorMessage {
   def reason: ErrorReason
   def readableMessage(withId: Boolean = false, withPosition: Boolean = false): String
-  override def readableMessage: String = readableMessage(false, true) + failureContexts.map(e => e.toString).mkString("\n")
+  override def readableMessage: String = {
+    val msg = readableMessage(false, true)
+    if (failureContexts.isEmpty)
+      msg
+    else
+      msg + "\n" + failureContexts.map(e => e.toString).mkString("\n")
+  }
   def loggableMessage: String = s"$fullId-$pos" + (if (cached) "-cached" else "")
   def fullId = s"$id:${reason.id}"
   var failureContexts: Seq[FailureContext] = Seq() //TODO: make immutable
