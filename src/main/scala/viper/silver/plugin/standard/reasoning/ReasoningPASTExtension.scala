@@ -1,72 +1,42 @@
 package viper.silver.plugin.standard.reasoning
 
-import viper.silver.ast.{LocalVarDecl, Position, Stmt, Trigger}
+import viper.silver.ast.{LocalVarDecl, Position, Seqn, Stmt, Trigger}
 import viper.silver.parser.TypeHelper.Bool
-import viper.silver.parser.{NameAnalyser, PExp, PExtender, PIdnDef, PLocalVarDecl, PNode, PStmt, PTrigger, PType, Translator, TypeChecker}
+import viper.silver.parser.{NameAnalyser, PExp, PExtender, PLocalVarDecl, PNode, PSeqn, PStmt, PTrigger, Translator, TypeChecker}
 
-//case class PExistentialElim(varList: Seq[(PIdnDef, PType)], e: PExp)(val pos: (Position, Position)) extends PExtender with PStmt {
-
-// version without local var decl in out obtain statement
-
-case class PExistentialElim(varList: Seq[(String, PType)], trig: Seq[PTrigger], e: PExp)(val pos: (Position, Position)) extends PExtender with PStmt {
+case class PExistentialElim(varList: Seq[PLocalVarDecl], trig: Seq[PTrigger], e: PExp)(val pos: (Position, Position)) extends PExtender with PStmt {
   override val getSubnodes: Seq[PNode] = {
-    trig ++ Seq(e)
+    varList ++ trig ++ Seq(e)
   }
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
     varList foreach (v => {
-      scala.Console.println("local var name = " + v._1)
-      t.check(PLocalVarDecl(PIdnDef(v._1)(e.pos),v._2, None)(e.pos))
+      t.check(v.typ)
     })
-    trig.foreach (trigger => trigger.exp.map{ trigexpr => t.check(trigexpr,Bool)})
-
-
+    trig foreach (_.exp foreach (tpe=>t.checkTopTyped(tpe,None)))
     t.check(e, Bool)
     None
   }
 
   override def translateStmt(t: Translator): Stmt = {
-    scala.Console.println("entered translateStmt!")
-    ExistentialElim(varList.map{case (id, typ) => LocalVarDecl(id, t.ttyp(typ))(t.liftPos(e))}, trig.map{case t1 => Trigger(t1.exp.map{ t2 => t.exp(t2)})(t.liftPos(e))}, t.exp(e))(t.liftPos(e))
+    ExistentialElim(varList.map { case variable => LocalVarDecl(variable.idndef.name, t.ttyp(variable.typ))(t.liftPos(variable)) }, trig.map{case t1 => Trigger(t1.exp.map{ t2 => t.exp(t2)})(t.liftPos(t1))}, t.exp(e))(t.liftPos(e))
   }
+
 }
-
-
-// version with local var decl in our obtain statement
-/*
-case class PExistentialElim(varList: Seq[PLocalVarDecl], e: PExp)(val pos: (Position, Position)) extends PExtender with PStmt {
-  override val getSubnodes: Seq[PNode] = {
-    //varList ++ Seq(e)
-    varList ++ Seq(e)
-  }
+case class PUniversalIntro(varList: Seq[PLocalVarDecl], triggers: Seq[PTrigger], e1: PExp, e2: PExp, block: PSeqn)(val pos: (Position, Position)) extends PExtender with PStmt {
+  override val getSubnodes: Seq[PNode] = varList ++ triggers ++ Seq(e1) ++ Seq(e2) ++ Seq(block)
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
-    varList foreach (v => scala.Console.println("local var name = " + v.idndef.name))
-    varList foreach {
-      //v => n.namesInScope(v, Some(this))
-      v => t.check(v)
-    }
-    t.check(e, Bool)
+    varList foreach (v => t.check(v.typ))
+    triggers foreach (_.exp foreach (tpe=>t.checkTopTyped(tpe,None)))
+    t.check(e1, Bool)
+    t.check(e2, Bool)
+    t.check(block)
     None
   }
 
   override def translateStmt(t: Translator): Stmt = {
-    scala.Console.println("entered translateStmt!")
-    ExistentialElim(varList.map { case variable => LocalVarDecl(variable.idndef.name, t.ttyp(variable.typ))(t.liftPos(variable)) }, Seq(Trigger(Seq())(t.liftPos(e))), t.exp(e))(t.liftPos(e))
+    UniversalIntro(varList.map { case variable => LocalVarDecl(variable.idndef.name, t.ttyp(variable.typ))(t.liftPos(variable))}, triggers.map{case t1 => Trigger(t1.exp.map{ t2 => t.exp(t2)})(t.liftPos(t1))}, t.exp(e1), t.exp(e2), Seqn(block.ss.map{blstmt => t.stmt(blstmt)}, Seq())(t.liftPos(block)))(t.liftPos(e1))
   }
 
 }
-*/
-
-
-
-
-
-
-
-/*
-case class PExistentialElim(lvd:PFormalArgDecl, e: PExp)(val pos: (Position, Position)) extends PExtender with PStmt {
-  override val getSubnodes: Seq[PNode] = Seq(e)
-
-}
-*/

@@ -16,6 +16,7 @@ import viper.silver.verifier._
 import fastparse.Parsed
 import java.nio.file.{Path, Paths}
 import viper.silver.FastMessaging
+import viper.silver.ast.pretty.FastPrettyPrinter
 
 /**
  * Common functionality to implement a command-line verifier for Viper.  This trait
@@ -321,8 +322,14 @@ trait SilFrontend extends DefaultFrontend {
     }
 
     val errors = input.checkTransitively
-    if (errors.isEmpty)
-      filter(input)
+    if (errors.isEmpty) {
+      val prog = filter(input)
+      prog match {
+        case Succ(p) => println(FastPrettyPrinter.pretty(p))
+        case _ =>
+      }
+      prog
+    }
     else
       Fail(errors)
   }

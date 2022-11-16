@@ -184,8 +184,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       declarationMap.get(name) match {
         case Some(d: LocalVarDecl) => if(d.typ == n.typ) None else Some(ConsistencyError(s"No matching local variable $name found with type ${n.typ}, instead found ${d.typ}.", n.pos))
         case Some(d) => Some(ConsistencyError(s"No matching local variable $name found with type ${n.typ}, instead found other identifier of type ${d.getClass.getSimpleName}.", n.pos))
-        case None => scala.Console.println("in checkLocalVarUse declarationMap = " + declarationMap.mkString)
-          Some(ConsistencyError(s"Local variable $name not found.", n.pos))
+        case None => Some(ConsistencyError(s"Local variable $name not found.", n.pos))
       }
     }
     def checkNameUse[T](name: String, n: Positioned, expected: String, declarationMap: immutable.HashMap[String, Declaration])(implicit tag: ClassTag[T]) : Option[ConsistencyError] = {

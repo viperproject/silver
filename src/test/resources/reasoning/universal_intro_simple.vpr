@@ -1,0 +1,7 @@
+method ex1()
+{
+    var y: Int
+    prove forall x:Int {x>0} assuming x>0 implies x>1 {
+        x:=x+1
+    }
+}

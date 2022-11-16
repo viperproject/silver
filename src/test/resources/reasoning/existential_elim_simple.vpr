@@ -1,8 +1,10 @@
-method ex1() 
+function eq(x: Int, y: Int): Bool {
+    x == y
+}
+
+method ex1()
+    requires exists x: Int :: { eq(x, 42) } eq(x, 42)
 {
-    var x :Int
-    obtain x:Int, y:Int where 2==2
-    x:=2
-
-
+    obtain x:Int where eq(x, 42)
+    assert x == 42
 }

@@ -1,0 +1,9 @@
+
+field f: Int
+
+method ex2()
+{
+    obtain x: Ref where {x.f} acc(x.f)
+    //assert exists x: Ref :: acc(x.f)
+    //:: ExpectedOutput(consistency.error)
+}
