@@ -152,7 +152,13 @@ case class Apply(exp: MagicWand)(val pos: Position = NoPosition, val info: Info 
 }
 
 /** A sequence of statements. */
-case class Seqn(ss: Seq[Stmt], scopedDecls: Seq[Declaration])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt with Scope
+case class Seqn(ss: Seq[Stmt], scopedSeqnDeclarations: Seq[Declaration])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt with Scope {
+  /** scoped declarations of extended statements (contributed by plugins) as well as the declarations of the sequence itself */
+  override lazy val scopedDecls: Seq[Declaration] = scopedSeqnDeclarations ++ ss.flatMap {
+    case es: ExtensionStmt => es.declarationsInParentScope
+    case _ => Seq.empty
+  }
+}
 
 /** An if control statement. */
 case class If(cond: Exp, thn: Seqn, els: Seqn)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
@@ -205,4 +211,6 @@ case class LocalVarDeclStmt(decl: LocalVarDecl)(val pos: Position = NoPosition, 
 trait ExtensionStmt extends Stmt {
   def extensionSubnodes: Seq[Node]
   def prettyPrint: PrettyPrintPrimitives#Cont
+  /** declarations contributed by this statement that should be added to the parent scope */
+  def declarationsInParentScope: Seq[Declaration] = Seq.empty
 }

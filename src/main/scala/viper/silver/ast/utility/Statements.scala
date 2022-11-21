@@ -55,9 +55,9 @@ object Statements {
       case QuantifiedExp(variables, _) =>
         // add quantified variables
         decls ++ variables
-      case Seqn(_, scoped) =>
+      case s: Seqn =>
         // add variables defined in scope
-        decls ++ scoped.collect { case variable: LocalVarDecl => variable }
+        decls ++ s.scopedDecls.collect { case variable: LocalVarDecl => variable }
       case _ =>
         decls
     }
