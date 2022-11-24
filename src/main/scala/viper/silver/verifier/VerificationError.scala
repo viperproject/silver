@@ -8,7 +8,6 @@ package viper.silver.verifier
 
 import fastparse.Parsed
 import viper.silver.ast._
-import viper.silver.ast.pretty.FastPrettyPrinter
 import viper.silver.ast.utility.rewriter.Rewritable
 
 
@@ -628,7 +627,7 @@ object reasons {
 
   case class InsufficientPermission(offendingNode: LocationAccess) extends AbstractErrorReason {
     val id = "insufficient.permission"
-    def readableMessage = s"There might be insufficient permission to access " + FastPrettyPrinter.pretty(offendingNode)
+    def readableMessage = s"There might be insufficient permission to access $offendingNode"
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = InsufficientPermission(offendingNode.asInstanceOf[LocationAccess])
   }
