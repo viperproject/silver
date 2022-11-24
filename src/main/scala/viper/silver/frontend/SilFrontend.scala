@@ -318,7 +318,7 @@ trait SilFrontend extends DefaultFrontend {
       }
     }
 
-    val errors = input.checkTransitively
+    val errors = Seq() // input.checkTransitively
     if (errors.isEmpty)
       filter(input)
     else
