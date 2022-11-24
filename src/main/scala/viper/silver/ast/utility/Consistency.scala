@@ -198,6 +198,13 @@ object Consistency {
         }
       })
     })
+    for (t <- triggers) {
+      for (e <- t.exps) {
+        if (!variables.exists(v => e.contains(v.localVar))) {
+          s :+= ConsistencyError(s"Trigger expression $e does not contain any quantified variable.", e.pos)
+        }
+      }
+    }
     s
   }
 

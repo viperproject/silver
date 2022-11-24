@@ -72,7 +72,7 @@ method getMin(t: BST) returns (min: Int)
     invariant !isNull(currentNode)
     invariant t == currentNode || value(currentNode) < value(t)
     invariant t != currentNode && !isNull(left(t)) ==> isParent(left(t), currentNode)
-    invariant forall pc: BST :: {value(pc), value(currentNode)}
+    invariant forall pc: BST :: {value(pc)}
       !isNull(pc) && isParent(pc, currentNode) ==> value(pc) >= value(currentNode)
   {
     currentNode := left(currentNode)
