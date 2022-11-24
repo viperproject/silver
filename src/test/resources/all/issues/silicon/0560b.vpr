@@ -86,12 +86,16 @@ method computeTreeHeight(t: Tree) returns (res: Int)
     res := 0
 
     while (|current| > 0)
+      //:: MissingOutput(invariant.not.preserved:assertion.false, /silicon/issue/34/)
+      //:: ExpectedOutput(invariant.not.preserved:assertion.false)
       invariant |current| == 0 ==> res == height(t)
     {
       res := res + 1
       next := Seq[Tree]()
 
       while (|current| > 0)
+        //:: MissingOutput(invariant.not.preserved:assertion.false, /silicon/issue/34/)
+        //:: ExpectedOutput(invariant.not.preserved:assertion.false)
         //:: ExpectedOutput(invariant.not.established:assertion.false)
         invariant forall i: Int :: i >= 0 && i < |current| &&
           (forall k: Int :: k >= 0 && k < |current| &&

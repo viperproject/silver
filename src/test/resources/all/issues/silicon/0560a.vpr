@@ -84,7 +84,11 @@ ensures res == height(t)
     res := 0
 
     while (|current| > 0)
-    invariant forall  x:Int :: (x >= 0 && x < |current|) ==> isNode(current[x]) //guarantees height relation between iterations
+    //:: MissingOutput(invariant.not.preserved:assertion.false, /silicon/issue/34/)
+    //:: ExpectedOutput(invariant.not.preserved:assertion.false)
+    invariant forall  x:Int :: (x >= 0 && x < |current|) ==> isNode(current[x])
+    //:: MissingOutput(invariant.not.preserved:assertion.false, /silicon/issue/34/)
+    //:: ExpectedOutput(invariant.not.preserved:assertion.false)
     invariant forall  x:Int :: ((x >= 0 && x < |current|) && (forall  y:Int :: (y >= 0 && y < |current|) ==> height(current[x]) >= height(current[y])))
               ==> height(t) == res + height(current[x]) //res == height(t) - (height of biggest subtree)
     invariant (|current| == 0) ==> height(t) == res //needed for the final stretch
@@ -96,7 +100,11 @@ ensures res == height(t)
 
       while (|current| > 0)
       invariant forall  x:Int :: (x >= 0 && x < |current|) ==> isNode(current[x])
+      //:: MissingOutput(invariant.not.preserved:assertion.false, /silicon/issue/34/)
+      //:: ExpectedOutput(invariant.not.preserved:assertion.false)
       invariant (|current| == 0 && |next| == 0 ) ==> height(t) == res
+      //:: MissingOutput(invariant.not.preserved:assertion.false, /silicon/issue/34/)
+      //:: ExpectedOutput(invariant.not.preserved:assertion.false)
       invariant forall  x:Int :: ((x >= 0 && x < |old_current|) && height(t) == res + height(old_current[x]) - 1) ==> (
         (forall  k:Int :: ((k >= 0 && k < |old_current|) ==> !isNode(getLeft(old_current[k])) && !isNode(getRight(old_current[k])))) ||
         (|current| > 0 && (forall  z:Int :: ((z >= 0 && z < |current|) && forall  y:Int :: (y >= 0 && y < |current|) ==> height(current[z]) >= height(current[y]))
