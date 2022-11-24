@@ -51,6 +51,7 @@ method treeTest()
 method cloneTree(this: Ref) returns (res: Ref)
   requires acc(tree(this), 1/2)
   ensures acc(tree(this), 1/2) && tree(res)
+  //:: ExpectedOutput(postcondition.violated:assertion.false)
   ensures (unfolding acc(tree(this), 1/2) in
           unfolding acc(tree(res), write) in  // change write to 1/2 and assert false fails
           ((this.next_child == res.next_child) && (this.next_sibling == res.next_sibling)))   // this postcondition doesn't hold in the else-case, but still verifies

@@ -92,6 +92,7 @@ method computeTreeHeight(t: Tree) returns (res: Int)
       next := Seq[Tree]()
 
       while (|current| > 0)
+        //:: ExpectedOutput(invariant.not.established:assertion.false)
         invariant forall i: Int :: i >= 0 && i < |current| &&
           (forall k: Int :: k >= 0 && k < |current| &&
             height(current[i]) > height(current[k])) &&
@@ -104,8 +105,6 @@ method computeTreeHeight(t: Tree) returns (res: Int)
         POP(current)
         if (isNode(getLeft(node))){
           PUSH(next, getLeft(node))
-          //:: ExpectedOutput(assert.failed:assertion.false)
-          assert false
         }
         if (isNode(getRight(node))){
           PUSH(next, getRight(node))
