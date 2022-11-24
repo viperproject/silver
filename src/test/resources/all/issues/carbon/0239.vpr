@@ -12,6 +12,6 @@ method m(x:Ref)
      //:: ExpectedOutput(assignment.failed:insufficient.permission)
      x.val := 42
      //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)
-     //:: ExpectedOutput(carbon)(assert.failed:assertion.false)
+     //:: ExpectedOutput(assert.failed:assertion.false)
      assert false
   }
