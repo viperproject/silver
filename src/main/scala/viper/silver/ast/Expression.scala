@@ -49,9 +49,9 @@ sealed trait Exp extends Hashable with Typed with Positioned with Infoed with Tr
 
   override def toString() = {
    // Carbon relies on expression pretty-printing resulting in a string without line breaks,
-   // so for the special case of directly converting an expression to a string,, we remove all line breaks
+   // so for the special case of directly converting an expression to a string, we remove all line breaks
    // the pretty printer might have inserted.
-   super.toString.replaceAll("\n", " ")
+   super.toString.replaceAll("\n\\s*", " ")
  }
 
 }

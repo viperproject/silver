@@ -1,0 +1,32 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+domain array {
+  function loc(a: array, i: Int): Ref
+  function len(a: array): Int
+  function loc_inv_1(loc: Ref): array
+  function loc_inv_2(loc: Ref): Int
+
+  axiom {
+    (forall a: array, i: Int :: { loc(a, i) } loc_inv_1(loc(a, i)) == a && loc_inv_2(loc(a, i)) == i)
+  }
+
+  axiom {
+    (forall a: array :: { len(a) } len(a) >= 0)
+  }
+}
+
+field int: Int
+
+function correctness_upto(parent: array, left: array, root: Int): Bool
+  requires (forall i: Int :: 0 <= i && i < len(left) ==> acc(loc(left, i).int, 1/2))
+  requires (forall i: Int :: 0 <= i && i < len(parent) ==> acc(loc(parent, i).int, 1/2))
+  requires correctness_invar(left)
+{
+  (forall i: Int :: { loc(parent, i).int } 0 <= i && i < len(parent) ==> loc(parent, i).int == 0) &&
+  (forall i: Int :: { loc(parent, i).int } 0 <= i && i < len(parent) ==> loc(parent, i).int == 0)
+}
+
+function correctness_invar(left: array): Bool
+  requires (forall i: Int :: { loc(left, i).int } (0 <= i && i < len(left)) ==> acc(loc(left, i).int, 1/2))
+{ true }
