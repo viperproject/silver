@@ -9,9 +9,9 @@ function bool2Ref(b: Bool) : Ref
 method m(x:Ref)
   requires forall b:Bool :: acc(bool2Ref(b).val)
   {
-     //:: MissingOutput(assignment.failed:insufficient.permission, /silicon/issue/342/) 
      //:: ExpectedOutput(assignment.failed:insufficient.permission)
      x.val := 42
+     //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)
      //:: ExpectedOutput(assert.failed:assertion.false)
      assert false
   }
