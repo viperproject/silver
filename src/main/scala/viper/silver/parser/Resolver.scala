@@ -870,6 +870,22 @@ case class NameAnalyser() {
                     getMap(d).put(d.idndef.name, d)
                 }
             }
+          case i@PIdnUse(name) =>
+            // look up in both maps (if we are not in a method currently, we look in the same map twice, but that is ok)
+            getCurrentMap.getOrElse(name, globalDeclarationMap.getOrElse(name, PUnknownEntity())) match {
+              case PUnknownEntity() =>
+                // domain types can also be type variables, which need not be declared
+                // goto and state labels may exist out of scope (but must exist in method, this is checked in final AST in checkIdentifiers)
+                if (i.parent.isDefined) {
+                  val parent = i.parent.get
+                  if (!parent.isInstanceOf[PDomainType] && !parent.isInstanceOf[PGoto] &&
+                    !(parent.isInstanceOf[PLabelledOld] && i == parent.asInstanceOf[PLabelledOld].label) &&
+                    !(name == LabelledOld.LhsOldLabel && parent.isInstanceOf[PLabelledOld])) {
+                    messages ++= FastMessaging.message(i, s"identifier $name not (yet) defined.")
+                  }
+                }
+              case _ =>
+            }
           case _ =>
         }
 
@@ -892,6 +908,7 @@ case class NameAnalyser() {
         n match {
           case _: PDeclaration => true
           case _: PScope => true
+          case _: PIdnUse => true
           case _ => target.isDefined
         }
       }
@@ -946,6 +963,7 @@ case class NameAnalyser() {
     n.visit(nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor)
     clearUniversalDeclarationsMap()
     /* Check all identifier uses. */
+    /*
     n.visit({
       case m: PScope =>
         scopeStack.push(curMember)
@@ -980,7 +998,7 @@ case class NameAnalyser() {
       case _: PScope =>
         curMember = scopeStack.pop()
       case _ =>
-    })
+    })*/
   }
 
   def run(p: PProgram): Boolean = {
