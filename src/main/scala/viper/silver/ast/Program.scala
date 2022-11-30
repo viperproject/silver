@@ -484,6 +484,8 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres
 
   def isAbstract = body.isEmpty
 
+  lazy val isPure = pres.forall(_.isPure)
+
   override def isValid : Boolean /* Option[Message] */ = this match {
     case _ if (for (e <- pres ++ posts) yield e.contains[MagicWand]).contains(true) => false
     case _ if (for (e <- body)           yield e.contains[MagicWand]).contains(true) => false
