@@ -7,7 +7,6 @@
 package viper.silver.parser
 
 import viper.silver.FastMessaging
-import viper.silver.ast.utility.Visitor
 import viper.silver.ast.{LabelledOld, MagicWandOp}
 
 import scala.collection.mutable
@@ -850,6 +849,8 @@ case class NameAnalyser() {
 
     val scopeStack = mutable.Stack[PScope]()
 
+    var globalDeclarationsFound = false
+
     val nodeDownNameCollectorVisitor = new PartialFunction[PNode,Unit] {
       def apply(n:PNode) = {
         if (n == target.orNull)
@@ -857,6 +858,8 @@ case class NameAnalyser() {
         n match {
           case d: PDeclaration =>
             getMap(d).get(d.idndef.name) match {
+              case Some(_: PMember) if globalDeclarationsFound =>
+                // expected, do nothing.
               case Some(e: PDeclaration) =>
                 messages ++= FastMessaging.message(e.idndef, "Duplicate identifier `" + e.idndef.name + "' at " + e.idndef.pos._1 + " and at " + d.idndef.pos._1)
               case Some(_: PErrorEntity) =>
@@ -881,7 +884,7 @@ case class NameAnalyser() {
                   if (!parent.isInstanceOf[PDomainType] && !parent.isInstanceOf[PGoto] &&
                     !(parent.isInstanceOf[PLabelledOld] && i == parent.asInstanceOf[PLabelledOld].label) &&
                     !(name == LabelledOld.LhsOldLabel && parent.isInstanceOf[PLabelledOld])) {
-                    messages ++= FastMessaging.message(i, s"identifier $name not (yet) defined.")
+                    messages ++= FastMessaging.message(i, s"identifier $name not defined.")
                   }
                 }
               case _ =>
@@ -930,75 +933,32 @@ case class NameAnalyser() {
       }
     }
 
-    def containsSubnodeBefore(container: PNode, toFind: PNode, before: PNode) : Boolean = {
-      var beforeFound = false
-      val pred = new PartialFunction[PNode, PNode] {
-        def isDefinedAt(node: PNode): Boolean = {
-          if (!beforeFound){
-            if (node eq before){
-              beforeFound = true
-            }
-          }
-          (node eq toFind) && node != container && !beforeFound
+    n match {
+      case prog: PProgram =>
+        // find all global names first
+        for (d <- prog.domains) {
+          nodeDownNameCollectorVisitor(d)
+          d.funcs.foreach(f => {nodeDownNameCollectorVisitor(f); nodeUpNameCollectorVisitor(f)})
+          nodeUpNameCollectorVisitor(d)
         }
+        prog.fields.foreach(f => f.visit(nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor))
+        prog.functions.foreach(f => {nodeDownNameCollectorVisitor(f); nodeUpNameCollectorVisitor(f)})
+        prog.predicates.foreach(f => {nodeDownNameCollectorVisitor(f); nodeUpNameCollectorVisitor(f)})
+        prog.methods.foreach(m => {nodeDownNameCollectorVisitor(m); nodeUpNameCollectorVisitor(m)})
+        prog.extensions.foreach(e => e.visit(nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor))
 
-        def apply(node: PNode) = node
-      }
-      Visitor.existsDefined(container, Nodes.subnodes)(pred)
+        globalDeclarationsFound = true
+        // now completely walk through all axioms, functions, predicates, and methods
+        prog.domains.foreach(d => d.visit(nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor))
+        prog.functions.foreach(f => f.visit(nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor))
+        prog.predicates.foreach(f => f.visit(nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor))
+        prog.methods.foreach(m => m.visit(nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor))
+
+      case _ =>
+        // find all declarations
+        n.visit(nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor)
     }
-
-    def getContainingMethod(node : PNode) : Option[PMethod] = {
-      node match {
-        case null => None
-        case method : PMethod => Some(method)
-        case nonMethod =>
-          nonMethod.parent match {
-            case Some(parentNode) => getContainingMethod(parentNode)
-            case None => None
-          }
-      }
-    }
-
-    // find all declarations
-    n.visit(nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor)
     clearUniversalDeclarationsMap()
-    /* Check all identifier uses. */
-    /*
-    n.visit({
-      case m: PScope =>
-        scopeStack.push(curMember)
-        curMember = m
-      case i@PIdnUse(name) =>
-        // look up in both maps (if we are not in a method currently, we look in the same map twice, but that is ok)
-        getCurrentMap.getOrElse(name, globalDeclarationMap.getOrElse(name, PUnknownEntity())) match {
-          case PUnknownEntity() =>
-            // domain types can also be type variables, which need not be declared
-            // goto and state labels may exist out of scope (but must exist in method, this is checked in final AST in checkIdentifiers)
-            if (i.parent.isDefined) {
-              val parent = i.parent.get
-              if (!parent.isInstanceOf[PDomainType] && !parent.isInstanceOf[PGoto] &&
-              !(parent.isInstanceOf[PLabelledOld] && i==parent.asInstanceOf[PLabelledOld].label) &&
-              !(name == LabelledOld.LhsOldLabel && parent.isInstanceOf[PLabelledOld])) {
-                messages ++= FastMessaging.message(i, s"identifier $name not defined.")
-              }
-            }
-          case localVar : PLocalVarDecl =>
-            getContainingMethod(localVar) match {
-              case Some(PMethod(_, _, _, _, _, Some(actualBody))) =>
-                // Variables must not be used before they are declared
-                if (containsSubnodeBefore(actualBody, i, localVar)){
-                  messages ++= FastMessaging.message(i, s"local variable $name cannot be accessed before it is declared.")
-                }
-              case _ =>
-            }
-          case _ =>
-        }
-      case _ =>
-    }, {
-      case _: PScope =>
-        curMember = scopeStack.pop()
-      case _ =>
-    })*/
   }
 
   def run(p: PProgram): Boolean = {
