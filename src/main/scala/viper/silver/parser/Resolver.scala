@@ -849,8 +849,6 @@ case class NameAnalyser() {
 
     val scopeStack = mutable.Stack[PScope]()
 
-    var globalDeclarationsFound = false
-
     val nodeDownNameCollectorVisitor = new PartialFunction[PNode,Unit] {
       def apply(n:PNode) = {
         if (n == target.orNull)
@@ -858,8 +856,9 @@ case class NameAnalyser() {
         n match {
           case d: PDeclaration =>
             getMap(d).get(d.idndef.name) match {
-              case Some(_: PMember) if globalDeclarationsFound =>
-                // expected, do nothing.
+              case Some(m: PMember) if d eq m =>
+                // We re-encountered a member we already looked at in the previous run.
+                // This is expected, nothing to do.
               case Some(e: PDeclaration) =>
                 messages ++= FastMessaging.message(e.idndef, "Duplicate identifier `" + e.idndef.name + "' at " + e.idndef.pos._1 + " and at " + d.idndef.pos._1)
               case Some(_: PErrorEntity) =>
@@ -947,7 +946,6 @@ case class NameAnalyser() {
         prog.methods.foreach(m => {nodeDownNameCollectorVisitor(m); nodeUpNameCollectorVisitor(m)})
         prog.extensions.foreach(e => e.visit(nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor))
 
-        globalDeclarationsFound = true
         // now completely walk through all axioms, functions, predicates, and methods
         prog.domains.foreach(d => d.visit(nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor))
         prog.functions.foreach(f => f.visit(nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor))
