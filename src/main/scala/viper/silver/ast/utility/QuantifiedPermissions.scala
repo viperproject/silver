@@ -85,6 +85,21 @@ object QuantifiedPermissions {
     collected
   }
 
+  def quantifiedPermissionAssertions(root: Member, program: Program): collection.Set[Forall] = {
+    val collected = mutable.LinkedHashSet[Forall]()
+
+    def findQPs(n: Node): Unit = {
+      n visit {
+        case qpa@QuantifiedPermissionAssertion(_, _, _) =>
+          collected += qpa.asInstanceOf[Forall]
+      }
+    }
+
+    collectInDependencies(root, findQPs, program)
+
+    collected
+  }
+
   def resourceTriggers(root: Member, program: Program): collection.Set[Resource] = {
     val collected = mutable.LinkedHashSet[Resource]()
 
