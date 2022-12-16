@@ -10,6 +10,7 @@ import scala.language.implicitConversions
 import scala.collection.immutable.Queue
 import scala.collection.immutable.Queue.{empty => emptyDq}
 import viper.silver.ast._
+import viper.silver.verifier.DummyNode
 
 import scala.annotation.tailrec
 
@@ -486,6 +487,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
     case Trigger(exps) =>
       text("{") <+> ssep(exps map show, group(char (',') <> line)) <+> "}"
     case null => uninitialized
+    case DummyNode => text("DummyNode")
   }
 
   /** Show a program. */
