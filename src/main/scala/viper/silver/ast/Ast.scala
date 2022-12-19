@@ -382,6 +382,12 @@ case object AutoTriggered extends Info {
   override val isCached = false
 }
 
+/** An `Info` for specifying the weight of a quantifier in the SMT encoding. */
+case class WeightedQuantifier(weight: Int) extends Info {
+  override val comment = Nil
+  override val isCached = false
+}
+
 /** An `Info` instance for labelling a pre-verified AST node (e.g., via caching). */
 case object Cached extends Info {
   override val comment = Nil

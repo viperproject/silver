@@ -437,8 +437,8 @@ object MethodWithLabelsInScope {
                  (pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos): Method = {
     val newBody = body match {
       case Some(actualBody) =>
-        val newScopedDecls = actualBody.scopedDecls ++ actualBody.deepCollect({case l: Label => l})
-        Some(actualBody.copy(scopedDecls = newScopedDecls)(actualBody.pos, actualBody.info, actualBody.errT))
+        val newScopedDecls = actualBody.scopedSeqnDeclarations ++ actualBody.deepCollect({case l: Label => l})
+        Some(actualBody.copy(scopedSeqnDeclarations = newScopedDecls)(actualBody.pos, actualBody.info, actualBody.errT))
       case _ => body
     }
     Method(name, formalArgs, formalReturns, pres, posts, newBody)(pos, info, errT)
@@ -483,6 +483,8 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres
   })
 
   def isAbstract = body.isEmpty
+
+  lazy val isPure = pres.forall(_.isPure)
 
   override def isValid : Boolean /* Option[Message] */ = this match {
     case _ if (for (e <- pres ++ posts) yield e.contains[MagicWand]).contains(true) => false
