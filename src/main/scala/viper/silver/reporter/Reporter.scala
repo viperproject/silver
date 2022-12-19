@@ -7,6 +7,7 @@
 package viper.silver.reporter
 
 import java.io.FileWriter
+import scala.collection.mutable._
 
 trait Reporter {
   val name: String
@@ -62,6 +63,10 @@ case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv
       case _: SimpleMessage | _: CopyrightReport | _: MissingDependencyReport | _: BackendSubProcessReport |
            _: InternalWarningMessage | _: ConfigurationConfirmation=> // Irrelevant for reporting
 
+      case QuantifierInstantiationsMessage(quantifier, instantiations, max_gen, max_cost) =>
+        csv_file.write(s"quantifier_instantiations_message(" +
+          s"quantifier=${quantifier}, instantiations=${instantiations.toString}," +
+          s"max_gen=${max_gen}, max_cost=${max_cost})\n")
       case _ =>
         println( s"Cannot properly print message of unsupported type: $msg" )
     }
@@ -70,7 +75,7 @@ case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv
 }
 
 case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = true) extends Reporter {
-  
+
   var counter = 0
 
   // includes the unit name (e.g., seconds, sec, or s).
@@ -165,6 +170,7 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
         //println( s"Internal warning: $text" )
       case _:SimpleMessage =>
         //println( sm.text )
+      case QuantifierInstantiationsMessage(_, _, _, _) => // too verbose, do not print
       case _ =>
         println( s"Cannot properly print message of unsupported type: $msg" )
     }
@@ -172,3 +178,20 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
   }
 }
 
+case class PollingReporter(name: String = "polling_reporter", pass_through_reporter: Reporter) extends Reporter {
+  // this reporter stores the messages it receives and reports them upon
+  var messages: Queue[Message] = Queue()
+
+  def report(msg: Message): Unit = this.synchronized {
+    messages = messages.enqueue(msg)
+    pass_through_reporter.report(msg)
+  }
+
+  def getNewMessage(): Message = this.synchronized {
+    return messages.dequeue()
+  }
+
+  def hasNewMessage(): Boolean = this.synchronized {
+    messages.length > 0
+  }
+}

@@ -269,11 +269,19 @@ case class CopyrightReport(override val text: String) extends SimpleMessage(text
 }
 
 case class MissingDependencyReport(override val text: String) extends SimpleMessage(text) {
-  override val name = "missing_dependency_report"
+  override val name: String = "missing_dependency_report"
 }
 
 // FIXME: for debug purposes only: a pong message can be reported to indicate
 // FIXME: that the verification backend is alive.
 case class PongMessage(override val text: String) extends SimpleMessage(text) {
   override val name: String = "dbg__pong"
+}
+
+case class QuantifierInstantiationsMessage(quantifier: String, instantiations: Int,
+                                           max_gen: Int, max_cost: Int) extends Message {
+  override lazy val toString: String = s"quantifier_instantiations_message(" +
+    s"quantifier=${quantifier}, instantiations=${instantiations.toString}," +
+    s"max_gen=${max_gen}, max_cost=${max_cost})"
+  override val name: String = "quantifier_instantiations_message"
 }
