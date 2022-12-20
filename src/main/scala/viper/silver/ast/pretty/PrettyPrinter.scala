@@ -500,7 +500,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
   /** Show a domain member. */
   def showDomainMember(m: DomainMember): Cont = {
     val memberDoc = m match {
-      case f @ DomainFunc(_, _, _, unique) =>
+      case f @ DomainFunc(_, _, _, unique, _) =>
         if (unique) text("unique") <+> showDomainFunc(f) else showDomainFunc(f)
       case NamedDomainAxiom(name, exp) =>
         text("axiom") <+> name <+>
@@ -518,8 +518,8 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
 
 
   def showDomainFunc(f: DomainFunc) = {
-    val DomainFunc(name, formalArgs, typ, _) = f
-    text("function") <+> name <> parens(showVars(formalArgs)) <> ":" <+> show(typ)
+    val DomainFunc(name, formalArgs, typ, _, interpretation) = f
+    text("function") <+> name <> parens(showVars(formalArgs)) <> ":" <+> show(typ) <+> (if (interpretation.isDefined) text("interpretation") <+> s""""${interpretation.get}"""" else nil)
   }
 
   /** Show a program member. */
@@ -600,9 +600,10 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
   /** Show a user-defined domain. */
   def showDomain(d: Domain): Cont = {
     d match {
-      case Domain(name, functions, axioms, typVars) =>
+      case Domain(name, functions, axioms, typVars, interpretations) =>
         text("domain") <+> name <>
           (if (typVars.isEmpty) nil else text("[") <> ssep(typVars map show, char (',') <> space) <> "]") <+>
+          (if (interpretations.isEmpty) nil else text("interpretation") <+> parens(ssep(interpretations.get.toSeq.map(i => text(i._1) <> ":" <+> i._2), char (',') <> space))) <+>
           braces(nest(defaultIndent,
             line <> line <>
               ssep((functions ++ axioms) map show, line <> line)
@@ -627,8 +628,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       case dt@DomainType(domainName, typVarsMap) =>
         val typArgs = dt.typeParameters map (t => show(typVarsMap.getOrElse(t, t)))
         text(domainName) <> (if (typArgs.isEmpty) nil else brackets(ssep(typArgs, char (',') <> space)))
-      case BackendType(boogieName, _) if boogieName != null => boogieName
-      case BackendType(_, smtName) => smtName
+      case BackendType(viperName, _) => viperName
       case et: ExtensionType => et.prettyPrint
     }
   }
@@ -781,8 +781,8 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
         parens(text(funcname) <> parens(ssep(args map show, group(char (',') <> line))) <> char(':') <+> show(dfa.typ))
       else
         text(funcname) <> parens(ssep(args map show, group(char (',') <> line)))
-    case BackendFuncApp(func, args) =>
-      text(func.name) <> parens(ssep(args map show, group(char(',') <> line)))
+    case BackendFuncApp(funcName, args) =>
+      text(funcName) <> parens(ssep(args map show, group(char(',') <> line)))
     case EmptySeq(elemTyp) =>
       text("Seq[") <> showType(elemTyp) <> "]()"
     case ExplicitSeq(elems) =>

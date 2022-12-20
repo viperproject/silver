@@ -93,10 +93,10 @@ case class Translator(program: PProgram) {
   }
 
   private def translate(d: PDomain): Domain = d match {
-    case PDomain(name, _, functions, axioms) =>
+    case PDomain(name, _, functions, axioms, interpretation) =>
       val d = findDomain(name)
       val dd = d.copy(functions = functions map (f => findDomainFunction(f.idndef)),
-        axioms = axioms map translate)(d.pos, d.info, d.errT)
+        axioms = axioms map translate, interpretations = interpretation)(d.pos, d.info, d.errT)
       members(d.name) = dd
       dd
   }
@@ -145,10 +145,10 @@ case class Translator(program: PProgram) {
         Field(name, ttyp(typ))(pos)
       case PFunction(_, formalArgs, typ, _, _, _) =>
         Function(name, formalArgs map liftVarDecl, ttyp(typ), null, null, null)(pos)
-      case pdf@ PDomainFunction(_, args, typ, unique) =>
-        DomainFunc(name, args map liftAnyVarDecl, ttyp(typ), unique)(pos,NoInfo,pdf.domainName.name)
-      case PDomain(_, typVars, _, _) =>
-        Domain(name, null, null, typVars map (t => TypeVar(t.idndef.name)))(pos)
+      case pdf@ PDomainFunction(_, args, typ, unique, interp) =>
+        DomainFunc(name, args map liftAnyVarDecl, ttyp(typ), unique, interp)(pos,NoInfo,pdf.domainName.name)
+      case PDomain(_, typVars, _, _, interp) =>
+        Domain(name, null, null, typVars map (t => TypeVar(t.idndef.name)), interp)(pos)
       case PPredicate(_, formalArgs, _) =>
         Predicate(name, formalArgs map liftVarDecl, null)(pos)
       case PMethod(_, formalArgs, formalReturns, _, _, _) =>
@@ -387,7 +387,7 @@ case class Translator(program: PProgram) {
       case pfa@PCall(func, args, _) =>
         members(func.name) match {
           case f: Function => FuncApp(f, args map exp)(pos)
-          case f @ DomainFunc(_, _, _, _) =>
+          case f @ DomainFunc(_, _, _, _, _) =>
             val actualArgs = args map exp
             /* TODO: Not used - problem?*/
             type TypeSubstitution = Map[TypeVar, Type]
@@ -401,7 +401,10 @@ case class Translator(program: PProgram) {
                 assert(s.keys.toSet.subsetOf(d.typVars.toSet))
                 val sp = s //completeWithDefault(d.typVars,s)
                 assert(sp.keys.toSet == d.typVars.toSet)
-                DomainFuncApp(f, actualArgs, sp)(pos)
+                if (f.interpretation.isDefined)
+                  BackendFuncApp(f, actualArgs)(pos)
+                else
+                  DomainFuncApp(f, actualArgs, sp)(pos)
               case _ => sys.error("type unification error - should report and not crash")
             }
           case _: Predicate =>
@@ -584,10 +587,14 @@ case class Translator(program: PProgram) {
     case PDomainType(name, args) =>
       members.get(name.name) match {
         case Some(domain: Domain) =>
-          val typVarMapping = domain.typVars zip (args map ttyp)
-          DomainType(domain, typVarMapping /*.filter {
+          if (domain.interpretations.isDefined) {
+            BackendType(domain.name, domain.interpretations.get)
+          } else {
+            val typVarMapping = domain.typVars zip (args map ttyp)
+            DomainType(domain, typVarMapping /*.filter {
             case (tv, tt) => tv!=tt //!tt.isInstanceOf[TypeVar]
           }*/.toMap)
+          }
         case Some(adt: Adt) =>
           val typVarMapping = adt.typVars zip (args map ttyp)
           AdtType(adt, typVarMapping.toMap)

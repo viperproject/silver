@@ -21,6 +21,8 @@ trait BackendTypeTest extends AnyFunSuite with Matchers with BeforeAndAfterAllCo
     val assume = Inhale(element_in_param)()
     val assert = Assert(element_in_param)()
     val body = if (success) Seq(assume, assert) else Seq(assert)
+    val res = wrapInProgram(body, Seq(p1_decl, p2_decl), Seq())
+    println(res)
     (wrapInProgram(body, Seq(p1_decl, p2_decl), Seq()), assert)
   }
 
@@ -106,6 +108,8 @@ trait BackendTypeTest extends AnyFunSuite with Matchers with BeforeAndAfterAllCo
     val equality_max = BackendFuncApp(fp_eq, Seq(max, second_float))()
     val equality = And(equality_min, equality_max)()
     val assert = Assert(if (success) equality else Not(equality)())()
+    val res = wrapInProgram(Seq(assert), Seq(), Seq())
+    println(res)
     (wrapInProgram(Seq(assert), Seq(), Seq()), assert)
   }
 
@@ -134,6 +138,7 @@ trait BackendTypeTest extends AnyFunSuite with Matchers with BeforeAndAfterAllCo
 
     val fun = Function("test", Seq(), fp.typ, Seq(), Seq(equality), Some(addition))()
     val program = Program(Seq(), Seq(), Seq(fun), Seq(), Seq(), Seq())()
+    println(program)
     (program, fun, equality)
   }
 
