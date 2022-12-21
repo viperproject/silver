@@ -62,8 +62,10 @@ case class Translator(program: PProgram) {
                 functions.asInstanceOf[Seq[Function]], predicates.asInstanceOf[Seq[Predicate]], methods.asInstanceOf[Seq[Method]],
                     (extensions filter (t => t.isInstanceOf[ExtensionMember])).asInstanceOf[Seq[ExtensionMember]])(program))
 
-        finalProgram.deepCollect {case fp: ForPerm => Consistency.checkForPermArguments(fp, finalProgram)}
-        finalProgram.deepCollect {case trig: Trigger => Consistency.checkTriggers(trig, finalProgram)}
+        finalProgram.deepCollect {
+          case fp: ForPerm => Consistency.checkForPermArguments(fp, finalProgram)
+          case trig: Trigger => Consistency.checkTriggers(trig, finalProgram)
+        }
 
         if (Consistency.messages.isEmpty) Some(finalProgram) // all error messages generated during translation should be Consistency messages
         else None

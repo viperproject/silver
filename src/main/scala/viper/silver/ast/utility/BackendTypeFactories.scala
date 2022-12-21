@@ -1,6 +1,6 @@
 package viper.silver.ast.utility
 
-import viper.silver.ast.{Bool, Int, LocalVarDecl, BackendFunc, BackendType}
+import viper.silver.ast.{BackendFunc, BackendType, Bool, Domain, DomainFunc, Int, LocalVarDecl}
 
 /**
   * A factory for fixed-size bitvectors that offers convenient access to bitvector types, as well as
@@ -8,8 +8,11 @@ import viper.silver.ast.{Bool, Int, LocalVarDecl, BackendFunc, BackendType}
   * to integers.
   */
 case class BVFactory(size: Int) {
-  lazy val typ = BackendType(name, Map("Boogie" -> s"bv${size}", "SMTLIB" -> s"(_ BitVec ${size})"))
+  lazy val interpretations = Map("Boogie" -> s"bv${size}", "SMTLIB" -> s"(_ BitVec ${size})")
+  lazy val typ = BackendType(name, interpretations)
   lazy val name = s"BitVectorDomain${size}"
+
+  def constructDomain(functions: Seq[DomainFunc]) = Domain(name, functions, Seq(), Seq(), Some(interpretations))()
 
   /**
    * bit vector bitwise xor
@@ -107,9 +110,11 @@ import RoundingMode._
   * bitvectors of size exp + mant.
   */
 case class FloatFactory(mant: Int, exp: Int, roundingMode: RoundingMode) {
-
-  lazy val typ = BackendType(name, Map("Boogie" -> s"float${mant}e${exp}", "SMTLIB" -> s"(_ FloatingPoint ${exp} ${mant})"))
+  lazy val interpretations = Map("Boogie" -> s"float${mant}e${exp}", "SMTLIB" -> s"(_ FloatingPoint ${exp} ${mant})")
+  lazy val typ = BackendType(name, interpretations)
   lazy val name = s"FloatDomain${mant}e${exp}"
+
+  def constructDomain(functions: Seq[DomainFunc]) = Domain(name, functions, Seq(), Seq(), Some(interpretations))()
 
   def neg(name: String) = BackendFunc(name, "fp.neg", name, typ, Seq(LocalVarDecl("x", typ)()))()
   def abs(name: String) = BackendFunc(name, "fp.abs", name, typ, Seq(LocalVarDecl("x", typ)()))()

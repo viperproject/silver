@@ -603,7 +603,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       case Domain(name, functions, axioms, typVars, interpretations) =>
         text("domain") <+> name <>
           (if (typVars.isEmpty) nil else text("[") <> ssep(typVars map show, char (',') <> space) <> "]") <+>
-          (if (interpretations.isEmpty) nil else text("interpretation") <+> parens(ssep(interpretations.get.toSeq.map(i => text(i._1) <> ":" <+> i._2), char (',') <> space))) <+>
+          (if (interpretations.isEmpty) nil else text("interpretation") <+> parens(ssep(interpretations.get.toSeq.map(i => text(i._1) <> ":" <+> s""""${i._2}""""), char (',') <> space))) <+>
           braces(nest(defaultIndent,
             line <> line <>
               ssep((functions ++ axioms) map show, line <> line)

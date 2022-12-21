@@ -1,0 +1,7 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+//:: ExpectedOutput(consistency.error)
+domain myBV interpretation (FantasyBackend: "(_ BitVec 32)", DoesntExist: "bv32") {
+  function toBV32(i: Int): myBV interpretation "(_ int2bv 32)"
+}

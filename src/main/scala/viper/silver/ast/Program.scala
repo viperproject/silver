@@ -533,6 +533,9 @@ case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition,
 case class Domain(name: String, functions: Seq[DomainFunc], axioms: Seq[DomainAxiom], typVars: Seq[TypeVar] = Nil, interpretations: Option[Map[String, String]] = None)
                  (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Member with Positioned with Infoed with TransformableErrors {
 
+  override lazy val check : Seq[ConsistencyError] =
+    if (typVars.nonEmpty && interpretations.nonEmpty) Seq(ConsistencyError("Interpreted domains cannot have type arguments.", pos)) else Seq()
+
   val scopedDecls = Seq()
   override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)
