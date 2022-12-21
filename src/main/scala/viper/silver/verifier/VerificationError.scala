@@ -535,6 +535,31 @@ object errors {
   def LetWandFailed(offendingNode: LocalVarAssign): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => LetWandFailed(offendingNode, reason))
 
+  case class QuasihavocFailed(offendingNode: Quasihavoc, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
+    val id = "quasihavoc.failed"
+    val text = "Quasihavoc might fail."
+
+    override val pos = offendingNode.exp.pos
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = QuasihavocFailed(offendingNode.asInstanceOf[Quasihavoc], this.reason, this.cached)
+    def withReason(r: ErrorReason) = QuasihavocFailed(offendingNode, r, cached)
+  }
+
+  def QuasihavocFailed(offendingNode: Quasihavoc): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => QuasihavocFailed(offendingNode, reason))
+
+  case class HavocallFailed(offendingNode: Quasihavocall, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
+    val id = "quasihavocall.failed"
+    val text = "Quasihavocall might fail."
+
+    override val pos = offendingNode.exp.pos
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = HavocallFailed(offendingNode.asInstanceOf[Quasihavocall], this.reason, this.cached)
+    def withReason(r: ErrorReason) = HavocallFailed(offendingNode, r, cached)
+  }
+
+  def HavocallFailed(offendingNode: Quasihavocall): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => HavocallFailed(offendingNode, reason))
+
+
   case class HeuristicsFailed(offendingNode: ErrorNode, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "heuristics.failed"
     val text = "Applying heuristics failed."
@@ -651,6 +676,13 @@ object reasons {
     def readableMessage = s"Quantified resource $offendingNode might not be injective."
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = QPAssertionNotInjective(offendingNode.asInstanceOf[ResourceAccess])
+  }
+
+  case class QuasihavocallNotInjective(offendingNode: Quasihavocall) extends AbstractErrorReason {
+    val id = "quasihavocall.not.injective"
+    val readableMessage = s"Quasihavocall statement $offendingNode might not be injective."
+
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = QuasihavocallNotInjective(offendingNode.asInstanceOf[Quasihavocall])
   }
 
   case class LabelledStateNotReached(offendingNode: LabelledOld) extends AbstractErrorReason {

@@ -1,0 +1,23 @@
+//:: IgnoreFile(/silver/issue/624/)
+
+field f: Int
+
+// quasihavoc a reference that we only have half of a permission to. Despite this, we
+// can still assert about it
+
+predicate p(y: Ref) {acc(y.f, 1/2) && y.f == 3}
+method foo2(x: Ref)
+    requires acc(x.f) && x.f == 3
+{
+    fold p(x)
+    // Half of x.f is available, the other half is wrapped in the predicate
+
+    quasihavoc x.f
+
+    /* In the snapshot-based approach, this quasihavoc destroys the information about our heap chunk, which 
+     * leads to the assertion failing. In the knownfolded approach, the information about x.f
+     * is preserved, which leads to the assertion verifying. This discrepancy is the
+     * reason why this file is currently ignored in both backends for the test suites.
+     */
+    assert x.f == 3
+}

@@ -692,6 +692,15 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
         text("goto") <+> target
       case LocalVarDeclStmt(decl) =>
         text("var") <+> showVar(decl)
+      case Quasihavoc(lhs, exp) =>
+        text("quasihavoc") <+>
+        (if (lhs.nonEmpty) show(lhs.get) <+> "==>" <> space else nil) <>
+        show(exp)
+      case Quasihavocall(vars, lhs, exp) =>
+        text("quasihavocall") <+>
+        ssep(vars map show, char(',') <> space) <+> "::" <+>
+        (if (lhs.nonEmpty) show(lhs.get) <+> "==>" <> space else nil) <>
+        show(exp)
       case e: ExtensionStmt => e.prettyPrint
       case null => uninitialized
     }
