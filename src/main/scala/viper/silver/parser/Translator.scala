@@ -171,7 +171,7 @@ case class Translator(program: PProgram) {
   private def findFunction(id: PIdentifier) = members(id.name).asInstanceOf[Function]
   private def findDomainFunction(id: PIdentifier) = members(id.name).asInstanceOf[DomainFunc]
   private def findPredicate(id: PIdentifier) = members(id.name).asInstanceOf[Predicate]
-  private def findMethod(id: PIdentifier) = members(id.name).asInstanceOf[Method]
+  def findMethod(id: PIdentifier) = members(id.name).asInstanceOf[Method]
 
   /** Takes a `PStmt` and turns it into a `Stmt`. */
   def stmt(s: PStmt): Stmt = {

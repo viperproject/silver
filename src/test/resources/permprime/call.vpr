@@ -1,0 +1,8 @@
+method go() {
+
+}
+
+method client() {
+  call go()
+}
+
