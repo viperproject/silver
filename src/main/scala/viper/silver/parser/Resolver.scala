@@ -270,9 +270,41 @@ case class TypeChecker(names: NameAnalyser) {
       case _: PDefine =>
         /* Should have been removed right after parsing */
         sys.error(s"Unexpected node $stmt found")
+      case PQuasihavoc(lhs, e) =>
+        checkHavoc(stmt, lhs, e)
+      case havoc@PQuasihavocall(vars, lhs, e) =>
+        vars foreach (v => check(v.typ))
+        // update the curMember, which contains quantified variable information
+        val oldCurMember = curMember
+        curMember = havoc
+        // Actually type check the havoc
+        checkHavoc(stmt, lhs, e)
+        // restore the previous curMember
+        curMember = oldCurMember
+
       case t:PExtender => t.typecheck(this, names).getOrElse(Nil) foreach(message =>
                               messages ++= FastMessaging.message(t, message))
       case _: PSkip =>
+    }
+  }
+
+  def checkHavoc(stmt: PStmt, lhs: Option[PExp], e: PExp): Unit = {
+    // If there is a condition, make sure that it is a Bool
+    if (lhs.nonEmpty) {
+      check(lhs.get, Bool)
+    }
+    // Make sure that the rhs is a resource
+    val havocError = "Havoc statement must take a field access, predicate, or wand"
+    e match {
+      case _: PFieldAccess => checkTopTyped(e, None)
+      case pc: PCall =>
+        check(e, Bool)
+        // make sure that this is in fact a predicate
+        if (pc.extfunction == null) {
+          messages ++= FastMessaging.message(stmt, havocError)
+        }
+      case _: PMagicWandExp => check(e, Bool)
+      case _ => messages ++= FastMessaging.message(stmt, havocError)
     }
   }
 

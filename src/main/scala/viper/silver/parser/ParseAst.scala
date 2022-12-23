@@ -1073,6 +1073,8 @@ case class PTypeVarDecl(idndef: PIdnDef)(val pos: (Position, Position)) extends 
 case class PMacroRef(idnuse : PIdnUse)(val pos: (Position, Position)) extends PStmt
 case class PDefine(idndef: PIdnDef, parameters: Option[Seq[PIdnDef]], body: PNode)(val pos: (Position, Position)) extends PStmt with PLocalDeclaration
 case class PSkip()(val pos: (Position, Position)) extends PStmt
+case class PQuasihavoc(lhs: Option[PExp], e: PExp)(val pos: (Position, Position)) extends PStmt
+case class PQuasihavocall(vars: Seq[PFormalArgDecl], lhs: Option[PExp], e: PExp)(val pos: (Position, Position)) extends PStmt with PScope
 
 sealed trait PNewStmt extends PStmt {
   def target: PIdnUse
@@ -1326,6 +1328,8 @@ object Nodes {
       case PAxiom(idndef, exp) => (if (idndef.isDefined) Seq(idndef.get) else Nil) ++ Seq(exp)
       case PTypeVarDecl(name) => Seq(name)
       case PDefine(idndef, optArgs, body) => Seq(idndef) ++ optArgs.getOrElse(Nil) ++ Seq(body)
+      case PQuasihavoc(lhs, e) => lhs.toSeq :+ e
+      case PQuasihavocall(vars, lhs, e) => vars ++ lhs.toSeq :+ e
       case t : PExtender => t.getSubnodes()
       case _: PSkip => Nil
       case _: PUnnamedFormalArgDecl => Nil

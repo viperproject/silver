@@ -83,7 +83,7 @@ object FastParserCompanion {
     // specifications
     "requires", "ensures", "invariant",
     // statements
-    "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "package", "apply",
+    "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "package", "apply", "quasihavoc", "quasihavocall",
     // control flow
     "while", "if", "elseif", "else", "goto", "label",
     // sequences
@@ -792,7 +792,6 @@ class FastParser {
 
   lazy val keywords = FastParserCompanion.basicKeywords | ParserExtension.extendedKeywords
 
-
   // Note that `typedFapp` is before `"(" ~ exp ~ ")"` to ensure that the latter doesn't gobble up the brackets for the former
   // and then look like an `fapp` up untill the `: type` part, after which we need to backtrack all the way back (or error if cut)
   def atom(implicit ctx : P[_]) : P[PExp] = P(ParserExtension.newExpAtStart(ctx) | integer | booltrue | boolfalse | nul | old
@@ -1097,11 +1096,13 @@ class FastParser {
 
   def stmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | macroassign | fieldassign | localassign | fold | unfold | exhale | assertP |
     inhale | assume | ifthnels | whle | varDecl | defineDecl | newstmt | 
-    methodCall | goto | lbl | packageWand | applyWand | macroref | block | ParserExtension.newStmtAtEnd(ctx))
+    methodCall | goto | lbl | packageWand | applyWand | macroref | block |
+    quasihavoc | quasihavocall | ParserExtension.newStmtAtEnd(ctx))
 
   def nodefinestmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | fieldassign | localassign | fold | unfold | exhale | assertP |
     inhale | assume | ifthnels | whle | varDecl | newstmt |
-    methodCall | goto | lbl | packageWand | applyWand | macroref | block | ParserExtension.newStmtAtEnd(ctx))
+    methodCall | goto | lbl | packageWand | applyWand | macroref | block |
+    quasihavoc | quasihavocall | ParserExtension.newStmtAtEnd(ctx))
 
   def macroref[_: P]: P[PMacroRef] = FP(idnuse).map { case (pos, a) => PMacroRef(a)(pos) }
 
@@ -1122,6 +1123,28 @@ class FastParser {
   def inhale[_: P]: P[PInhale] = FP(keyword("inhale") ~/ exp).map{ case (pos, e) => PInhale(e)(pos) }
 
   def assume[_: P]: P[PAssume] = FP(keyword("assume") ~/ exp).map{ case (pos, e) => PAssume(e)(pos) }
+
+  // Parsing Havoc statements
+  // Havoc statements have two forms:
+  //    1. havoc <resource>
+  //    2. havoc <exp> ==> <resource>
+  // Note that you cannot generalize (2) to something like "<exp1> ==> <exp2> ==> <resource>".
+  // We therefore forbid the lhs of (2) from being an arbitrary expression. Instead,
+  // we enforce that it's a "magicWandExp", which is one level below an implication expression
+  // in the grammar. Note that it is still possible to express "(<exp1> ==> <exp2>) ==> <resource>
+  // using parentheses.
+
+  // Havocall follows a similar pattern to havoc but allows quantifying over variables.
+
+  def quasihavoc[_: P]: P[PQuasihavoc] = FP(keyword("quasihavoc") ~/
+    (magicWandExp ~ "==>").? ~ exp ).map {
+      case (pos, (lhs, rhs)) => PQuasihavoc(lhs, rhs)(pos)
+  }
+
+  def quasihavocall[_: P]: P[PQuasihavocall] = FP(keyword("quasihavocall") ~/
+    nonEmptyFormalArgList ~ "::" ~ (magicWandExp ~ "==>").? ~ exp).map {
+    case (pos, (vars, lhs, rhs)) => PQuasihavocall(vars, lhs, rhs)(pos)
+  }
 
   def ifthnels[_: P]: P[PIf] = FP("if" ~ "(" ~ exp ~ ")" ~ block ~~~ elsifEls).map {
     case (pos, (cond, thn, ele)) => PIf(cond, thn, ele)(pos)
