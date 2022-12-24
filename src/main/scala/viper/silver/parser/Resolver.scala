@@ -401,7 +401,7 @@ case class TypeChecker(names: NameAnalyser) {
         }
 
         x match {
-          case PDomain(_, typVars, _, _) =>
+          case PDomain(_, typVars, _, _, _) =>
             ensure(args.length == typVars.length, typ, "wrong number of type arguments")
             dt.kind = PDomainTypeKinds.Domain
           case PTypeVarDecl(_) =>
@@ -639,7 +639,7 @@ case class TypeChecker(names: NameAnalyser) {
                           if (inAxiomScope(Some(pfa)))
                             issueError(func, func.name + " is not a domain function")
 
-                        case pdf@PDomainFunction(_, _, _, _) =>
+                        case pdf@PDomainFunction(_, _, _, _, _) =>
                           val domain = names.definition(curMember)(pdf.domainName).asInstanceOf[PDomain]
                           val fdtv = PTypeVar.freshTypeSubstitution((domain.typVars map (tv => tv.idndef.name)).distinct) //fresh domain type variables
                           pfa.domainTypeRenaming = Some(fdtv)

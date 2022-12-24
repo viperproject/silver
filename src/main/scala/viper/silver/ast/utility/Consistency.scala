@@ -111,6 +111,18 @@ object Consistency {
       !found
   }
 
+  def checkBackendTypes(p: Program, backendName: String): Seq[ConsistencyError] = {
+    var result: List[ConsistencyError] = Nil
+    for (domain <- p.domains) {
+      if (domain.interpretations.isDefined) {
+        if (!domain.interpretations.get.contains(backendName)) {
+          result = ConsistencyError(s"Domain ${domain.name} has no interpretation for backend ${backendName}.", domain.pos) :: result
+        }
+      }
+    }
+    result
+  }
+
   /** Convenience methods to treat null values as some other default values (e.g treat null as empty List) */
   def nullValue[T](a: T, b: T) = if (a != null) a else b
 

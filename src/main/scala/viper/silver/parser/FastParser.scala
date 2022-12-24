@@ -79,7 +79,7 @@ object FastParserCompanion {
     // preamble importing
     "import",
     // declaration keywords
-    "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "field", "define",
+    "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "field", "define", "interpretation",
     // specifications
     "requires", "ensures", "invariant",
     // statements
@@ -1233,23 +1233,26 @@ class FastParser {
 
   def relativeFilePath[_: P]: P[String] = P(CharIn("~.").?.! ~~ (CharIn("/").? ~~ CharIn(".", "A-Z", "a-z", "0-9", "_\\- \n\t")).rep(1))
 
-  def domainDecl[_: P]: P[PDomain] = FP("domain" ~/ idndef ~ ("[" ~ domainTypeVarDecl.rep(sep = ",") ~ "]").? ~ "{" ~ (domainFunctionDecl | axiomDecl).rep ~
+  def anyString[_: P]: P[String] = P(CharIn("A-Z", "a-z", "0-9", "()._ ").rep(1).!)
+
+  def domainDecl[_: P]: P[PDomain] = FP("domain" ~/ idndef ~ ("[" ~ domainTypeVarDecl.rep(sep = ",") ~ "]").? ~ ("interpretation" ~ parens((ident ~ ":" ~ quoted(anyString.!)).rep(sep = ","))).? ~ "{" ~ (domainFunctionDecl | axiomDecl).rep ~
     "}").map {
-    case (pos, (name, typparams, members)) =>
+    case (pos, (name, typparams, interpretations, members)) =>
       val funcs = members collect { case m: PDomainFunction1 => m }
       val axioms = members collect { case m: PAxiom1 => m }
       PDomain(
         name,
         typparams.getOrElse(Nil),
-        funcs map (f => PDomainFunction(f.idndef, f.formalArgs, f.typ, f.unique)(PIdnUse(name.name)(name.pos))(f.pos)),
-        axioms map (a => PAxiom(a.idndef, a.exp)(PIdnUse(name.name)(name.pos))(a.pos)))(pos)
+        funcs map (f => PDomainFunction(f.idndef, f.formalArgs, f.typ, f.unique, f.interpretation)(PIdnUse(name.name)(name.pos))(f.pos)),
+        axioms map (a => PAxiom(a.idndef, a.exp)(PIdnUse(name.name)(name.pos))(a.pos)),
+        interpretations.map(i => i.toMap))(pos)
   }
 
   def domainTypeVarDecl[_: P]: P[PTypeVarDecl] = FP(idndef).map{ case (pos, i) => PTypeVarDecl(i)(pos) }
 
-  def domainFunctionDecl[_: P]: P[PDomainFunction1] = FP("unique".!.? ~ domainFunctionSignature ~~~ ";".lw.?).map {
-    case (pos, (unique, fdecl)) => fdecl match {
-      case (name, formalArgs, t) => PDomainFunction1(name, formalArgs, t, unique.isDefined)(pos)
+  def domainFunctionDecl[_: P]: P[PDomainFunction1] = FP("unique".!.? ~ domainFunctionSignature ~ ("interpretation" ~ quoted(anyString.!)).? ~~~ ";".lw.?).map {
+    case (pos, (unique, fdecl, interpretation)) => fdecl match {
+      case (name, formalArgs, t) => PDomainFunction1(name, formalArgs, t, unique.isDefined, interpretation)(pos)
     }
   }
 

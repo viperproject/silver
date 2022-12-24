@@ -1,0 +1,60 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+domain myBV interpretation (SMTLIB: "(_ BitVec 32)", Boogie: "bv32") {
+  function toBV32(i: Int): myBV interpretation "(_ int2bv 32)"
+}
+
+domain myFloat interpretation (Boogie: "float24e8", SMTLIB: "(_ FloatingPoint 8 24)") {
+  function tofp(bv: myBV): myFloat interpretation "(_ to_fp 8 24)"
+  function fp_eq(myFloat, myFloat): Bool interpretation "fp.eq"
+
+  function fp_min(f1: myFloat, f2: myFloat): myFloat interpretation "fp.min"
+  function fp_max(f1: myFloat, f2: myFloat): myFloat interpretation "fp.max"
+  function add(d1: myFloat, f2: myFloat): myFloat interpretation "fp.add RNE"
+  function gt(myFloat, myFloat): Bool interpretation "fp.gt"
+}
+
+field ff: myFloat
+
+
+method test()
+{
+  var tmp: myBV
+  tmp := toBV32(1081081856)
+  var r: Ref
+  r := new(ff)
+  r.ff := tofp(toBV32(1103888384))
+  var fs : Seq[myFloat]
+  fs := Seq(tofp(toBV32(1081081856)))
+  assert fp_eq(fp_min(tofp(tmp), r.ff), fs[0]) &&
+    fp_eq(fp_max(tofp(toBV32(1081081856)), tofp(toBV32(1103888384))), tofp(toBV32(1103888384)))
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert fp_eq(fp_min(tofp(tmp), r.ff), fs[0]) &&
+    fp_eq(fp_max(tofp(toBV32(1081081856)), tofp(toBV32(1103888384))), tofp(toBV32(110388838)))
+}
+
+
+method testOp()
+{
+    var first: myFloat
+    var second: myFloat
+    var res: myFloat
+    var zero: myFloat
+
+    first := tofp(toBV32(1081081856))
+    second := tofp(toBV32(1103888384))
+    res := tofp(toBV32(1105854464))
+
+    zero := tofp(toBV32(0))
+    var addition: myFloat
+    addition := add(first, second)
+    var result_addition: myFloat
+    result_addition := add(res, zero)
+
+    assert addition == result_addition
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert gt(addition, result_addition)
+}

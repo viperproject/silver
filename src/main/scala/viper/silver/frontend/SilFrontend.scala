@@ -89,6 +89,9 @@ trait SilFrontend extends DefaultFrontend {
   /** For testing of plugin import feature */
   def defaultPluginCount: Int = defaultPlugins.size
 
+  /** Name of the expected format for backend types. Examples: "Boogie", "SMTLIB". */
+  def backendTypeFormat: Option[String] = None
+
   protected val fp = new FastParser()
 
   protected var _plugins: SilverPluginManager = SilverPluginManager(defaultPlugins match {
@@ -318,7 +321,9 @@ trait SilFrontend extends DefaultFrontend {
       }
     }
 
-    val errors = input.checkTransitively
+    var errors = input.checkTransitively
+    if (backendTypeFormat.isDefined)
+      errors = errors ++ Consistency.checkBackendTypes(input, backendTypeFormat.get)
     if (errors.isEmpty)
       filter(input)
     else
