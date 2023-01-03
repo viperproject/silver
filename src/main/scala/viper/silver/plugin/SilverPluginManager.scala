@@ -10,7 +10,7 @@ import ch.qos.logback.classic.Logger
 import viper.silver.ast._
 import viper.silver.frontend.SilFrontendConfig
 import viper.silver.parser.{FastParser, PProgram}
-import viper.silver.reporter.Reporter
+import viper.silver.reporter.{Entity, Reporter}
 import viper.silver.verifier.{AbstractError, VerificationResult}
 
 /** Manage the loaded plugins and execute them during the different hooks (see [[viper.silver.plugin.SilverPlugin]]).
@@ -53,6 +53,9 @@ class SilverPluginManager(val plugins: Seq[SilverPlugin]) {
 
   def beforeVerify(input: Program): Option[Program] =
     foldWithError(input)((inp, plugin) => plugin.beforeVerify(inp))
+
+  def mapEntityVerificationResult(entity: Entity, input: VerificationResult): VerificationResult =
+    plugins.foldLeft(input)((inp, plugin) => plugin.mapEntityVerificationResult(entity, inp))
 
   def mapVerificationResult(input: VerificationResult): VerificationResult =
     plugins.foldLeft(input)((inp, plugin) => plugin.mapVerificationResult(inp))

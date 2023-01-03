@@ -15,6 +15,7 @@ import viper.silver.verifier.{ConsistencyError, Failure, Success, VerificationRe
 import viper.silver.verifier.errors.PreconditionInAppFalse
 import fastparse._
 import viper.silver.parser.FastParserCompanion.whitespace
+import viper.silver.reporter.Entity
 
 import scala.annotation.unused
 import scala.collection.immutable.ListMap
@@ -95,10 +96,16 @@ class PredicateInstancePlugin(@unused reporter: viper.silver.reporter.Reporter,
     newProgram
   }
 
+  override def mapEntityVerificationResult(entity: Entity, input: VerificationResult): VerificationResult =
+    translateVerificationResult(input)
+
   /**
    * Initiate the error transformer for possibly predicate instances related errors
    */
-  override def mapVerificationResult(input: VerificationResult): VerificationResult = {
+  override def mapVerificationResult(input: VerificationResult): VerificationResult =
+    translateVerificationResult(input)
+
+  private def translateVerificationResult(input: VerificationResult): VerificationResult = {
     input match {
       case Success => input
       case Failure(errors) =>

@@ -10,7 +10,7 @@ import ch.qos.logback.classic.Logger
 import viper.silver.ast.Program
 import viper.silver.frontend.SilFrontendConfig
 import viper.silver.parser.{FastParser, PProgram}
-import viper.silver.reporter.Reporter
+import viper.silver.reporter.{Entity, Reporter}
 import viper.silver.verifier.{AbstractError, VerificationResult}
 
 import scala.annotation.unused
@@ -73,6 +73,15 @@ trait SilverPlugin {
     * @return Modified AST
     */
   def beforeVerify(input: Program) : Program = input
+
+  /** Called after the verification of an entity. Error transformation should happen here.
+    * This will only be called if verification took place.
+    *
+    * @param entity Entity to which `input` belongs
+    * @param input Result of verification
+    * @return Modified result
+    */
+  def mapEntityVerificationResult(entity: Entity, input: VerificationResult): VerificationResult = input
 
   /** Called after the verification. Error transformation should happen here.
     * This will only be called if verification took place.
