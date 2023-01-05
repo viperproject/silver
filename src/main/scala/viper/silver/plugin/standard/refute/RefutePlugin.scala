@@ -81,15 +81,19 @@ class RefutePlugin(@unused reporter: viper.silver.reporter.Reporter,
     val (refutesForWhichErrorOccurred, otherErrors) = input match {
       case Success => (Seq.empty, Seq.empty)
       case Failure(errors) => errors.partitionMap {
-        case AssertFailed(NodeWithInfo(RefuteInfo(r)), _, _) => Left(r)
+        case AssertFailed(NodeWithInfo(RefuteInfo(r)), _, _) => Left((r, r.pos))
         case err => Right(err)
       }
     }
     val refutesContainedInNode = n.collect {
-      case NodeWithInfo(RefuteInfo(r)) => r
+      case NodeWithInfo(RefuteInfo(r)) => (r, r.pos)
     }
+    // note that we include positional information in `refutesForWhichErrorOccurred` and `refutesContainedInNode` such
+    // that we do not miss errors just because the same refute statement occurs multiple times
     val refutesForWhichNoErrorOccurred = refutesContainedInNode.filterNot(refutesForWhichErrorOccurred.contains(_))
-    val missingErrorsInNode = refutesForWhichNoErrorOccurred.map(refute => RefuteFailed(refute, RefutationTrue(refute.exp)))
+    val missingErrorsInNode = refutesForWhichNoErrorOccurred.map{
+      case (refute, _) => RefuteFailed(refute, RefutationTrue(refute.exp))
+    }
 
     val errors = otherErrors ++ missingErrorsInNode
     if (errors.isEmpty) Success
