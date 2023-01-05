@@ -128,7 +128,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
   /**
     * Call the error transformation on possibly termination related errors.
     */
-  override def mapVerificationResult(input: VerificationResult): VerificationResult =
+  override def mapVerificationResult(@unused program: Program, input: VerificationResult): VerificationResult =
     translateVerificationResult(input)
 
   private def translateVerificationResult(input: VerificationResult): VerificationResult = {

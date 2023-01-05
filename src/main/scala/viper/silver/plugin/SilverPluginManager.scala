@@ -57,8 +57,8 @@ class SilverPluginManager(val plugins: Seq[SilverPlugin]) {
   def mapEntityVerificationResult(entity: Entity, input: VerificationResult): VerificationResult =
     plugins.foldLeft(input)((inp, plugin) => plugin.mapEntityVerificationResult(entity, inp))
 
-  def mapVerificationResult(input: VerificationResult): VerificationResult =
-    plugins.foldLeft(input)((inp, plugin) => plugin.mapVerificationResult(inp))
+  def mapVerificationResult(program: Program, input: VerificationResult): VerificationResult =
+    plugins.foldLeft(input)((inp, plugin) => plugin.mapVerificationResult(program, inp))
 
   def beforeFinish(input: VerificationResult): VerificationResult =
     plugins.foldLeft(input)((inp, plugin) => plugin.beforeFinish(inp))

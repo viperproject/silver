@@ -66,10 +66,11 @@ class PluginTemplate extends SilverPlugin {
     /** Called after the verification. Error transformation should happen here.
       * This will only be called if verification took place.
       *
+      * @param program Viper AST
       * @param input Result of verification
       * @return Modified result
       */
-    override def mapVerificationResult(input: VerificationResult): VerificationResult = ???
+    override def mapVerificationResult(program: Program, input: VerificationResult): VerificationResult = ???
 
     /** Called after the verification just before the result is printed. Will not be called in tests.
       * This will also be called even if verification did not take place (i.e. an error during parsing/translation occurred).

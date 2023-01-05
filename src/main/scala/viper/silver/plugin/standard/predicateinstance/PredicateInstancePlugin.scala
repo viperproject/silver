@@ -102,7 +102,7 @@ class PredicateInstancePlugin(@unused reporter: viper.silver.reporter.Reporter,
   /**
    * Initiate the error transformer for possibly predicate instances related errors
    */
-  override def mapVerificationResult(input: VerificationResult): VerificationResult =
+  override def mapVerificationResult(@unused program: Program, input: VerificationResult): VerificationResult =
     translateVerificationResult(input)
 
   private def translateVerificationResult(input: VerificationResult): VerificationResult = {

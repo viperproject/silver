@@ -28,9 +28,6 @@ class RefutePlugin(@unused reporter: viper.silver.reporter.Reporter,
   /** Keyword used to define refute statements. */
   private val refuteKeyword: String = "refute"
 
-  private var refuteAsserts: Map[Position, Refute] = Map()
-  private var refuteAssertsPerEntity: Map[(Method, Position), Refute] = Map()
-
   /** Parser for refute statements. */
   def refute[_: P]: P[PRefute] =
     FP(keyword(refuteKeyword) ~/ exp).map{ case (pos, e) => PRefute(e)(pos) }
@@ -49,19 +46,16 @@ class RefutePlugin(@unused reporter: viper.silver.reporter.Reporter,
    * The ⭐ is nice since such a variable name cannot be parsed, but will it cause issues?
    */
   override def beforeVerify(input: Program): Program = {
-    val transformedMethods = input.methods.map(method =>
+    val transformedMethods = input.methods.map(method => {
+      var refutesInMethod = 0
       ViperStrategy.Slim({
         case r@Refute(exp) =>
-          this.refuteAsserts += (r.pos -> r)
-          this.refuteAssertsPerEntity += ((method, r.pos) -> r)
-          val refutesInMethod = this.refuteAssertsPerEntity.count {
-            case ((m, _), _) => method == m
-          }
+          refutesInMethod += 1
           val nonDetLocalVarDecl = LocalVarDecl(s"__plugin_refute_nondet$refutesInMethod", Bool)(r.pos)
           Seqn(Seq(
             If(nonDetLocalVarDecl.localVar,
               Seqn(Seq(
-                Assert(exp)(r.pos, RefuteInfo),
+                Assert(exp)(r.pos, RefuteInfo(r)),
                 Inhale(BoolLit(false)(r.pos))(r.pos)
               ), Seq())(r.pos),
               Seqn(Seq(), Seq())(r.pos))(r.pos)
@@ -70,52 +64,39 @@ class RefutePlugin(@unused reporter: viper.silver.reporter.Reporter,
           )(r.pos)
       }).recurseFunc({
         case Method(_, _, _, _, _, body) => Seq(body)
-      }).execute[Method](method))
+      }).execute[Method](method)
+    })
     Program(input.domains, input.fields, input.functions, input.predicates, transformedMethods, input.extensions)(input.pos, input.info, input.errT)
   }
 
   /** Remove refutation related errors for the current entity and add refuteAsserts in this entity that didn't report an error. */
-  override def mapEntityVerificationResult(entity: Entity, input: VerificationResult): VerificationResult = {
-    val occurredNonRefuteErrors = input match {
-      case Success => Seq()
-      case Failure(errors) =>
-        errors.filter {
-          case AssertFailed(a, _, _) if a.info == RefuteInfo =>
-            // remove entries whose method and position match:
-            this.refuteAssertsPerEntity = this.refuteAssertsPerEntity.filter {
-              case ((m, pos), _) if entity == m && a.pos == pos => false
-              case _ => true
-            }
-            false
-          case _ => true
-        }
-    }
-    val missingErrorsInEntity = this.refuteAssertsPerEntity.flatMap {
-      case ((m, _), refute) if entity == m => Some(RefuteFailed(refute, RefutationTrue(refute.exp)))
-      case _ => None
-    }
-    val errors = occurredNonRefuteErrors ++ missingErrorsInEntity
-    if (errors.isEmpty) Success
-    else Failure(errors)
-  }
+  override def mapEntityVerificationResult(entity: Entity, input: VerificationResult): VerificationResult =
+    mapVerificationResultsForNode(entity, input)
 
   /** Remove refutation related errors (for all entities) and add refuteAsserts (for all entities) that didn't report an error. */
-  override def mapVerificationResult(input: VerificationResult): VerificationResult = {
-    val occurredNonRefuteErrors = input match {
-      case Success => Seq()
-      case Failure(errors) =>
-        errors.filter {
-          case AssertFailed(a, _, _) if a.info == RefuteInfo =>
-            this.refuteAsserts -= a.pos
-            false
-          case _ => true
-        }
+  override def mapVerificationResult(program: Program, input: VerificationResult): VerificationResult =
+    mapVerificationResultsForNode(program, input)
+
+  private def mapVerificationResultsForNode(n: Node, input: VerificationResult): VerificationResult = {
+    val (refutesForWhichErrorOccurred, otherErrors) = input match {
+      case Success => (Seq.empty, Seq.empty)
+      case Failure(errors) => errors.partitionMap {
+        case AssertFailed(NodeWithInfo(RefuteInfo(r)), _, _) => Left(r)
+        case err => Right(err)
+      }
     }
-    val missingErrorsInEntity = this.refuteAsserts.map {
-      case (_, refute) => RefuteFailed(refute, RefutationTrue(refute.exp))
+    val refutesContainedInNode = n.collect {
+      case NodeWithInfo(RefuteInfo(r)) => r
     }
-    val errors = occurredNonRefuteErrors ++ missingErrorsInEntity
+    val refutesForWhichNoErrorOccurred = refutesContainedInNode.filterNot(refutesForWhichErrorOccurred.contains(_))
+    val missingErrorsInNode = refutesForWhichNoErrorOccurred.map(refute => RefuteFailed(refute, RefutationTrue(refute.exp)))
+
+    val errors = otherErrors ++ missingErrorsInNode
     if (errors.isEmpty) Success
     else Failure(errors)
   }
+}
+
+object NodeWithInfo {
+  def unapply(node : Node) : Option[Info] = Some(node.meta._2)
 }
