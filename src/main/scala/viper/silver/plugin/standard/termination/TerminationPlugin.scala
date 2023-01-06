@@ -13,10 +13,11 @@ import viper.silver.parser._
 import viper.silver.plugin.standard.predicateinstance.PPredicateInstance
 import viper.silver.plugin.standard.termination.transformation.Trafo
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
-import viper.silver.verifier.errors.AssertFailed
+import viper.silver.verifier.errors.{AssertFailed, PreconditionInAppFalse}
 import viper.silver.verifier._
 import fastparse._
 import viper.silver.parser.FastParserCompanion.whitespace
+import viper.silver.reporter.Entity
 
 import scala.annotation.unused
 
@@ -121,10 +122,16 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
     }
   }
 
+  override def mapEntityVerificationResult(entity: Entity, input: VerificationResult): VerificationResult =
+    translateVerificationResult(input)
+
   /**
-   * Call the error transformation on possibly termination related errors.
-   */
-  override def mapVerificationResult(input: VerificationResult): VerificationResult = {
+    * Call the error transformation on possibly termination related errors.
+    */
+  override def mapVerificationResult(@unused program: Program, input: VerificationResult): VerificationResult =
+    translateVerificationResult(input)
+
+  private def translateVerificationResult(input: VerificationResult): VerificationResult = {
     if (deactivated) return input // if decreases checks are deactivated no verification result mapping is required.
 
     input match {
