@@ -54,8 +54,9 @@ class PluginTemplate extends SilverPlugin {
       */
     override def beforeVerify(input: Program) : Program = ???
 
-    /** Called after the verification of an entity. Error transformation should happen here.
-      * This will only be called if verification took place.
+    /** Called after the verification of an entity, which is used to stream verification results to the IDE
+      * (which happens as soon as a member has been verified). Error transformation should happen here.
+      * This will only be called if verification of `entity` took place.
       *
       * @param entity Entity to which `input` belongs
       * @param input Result of verification
