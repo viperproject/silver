@@ -1,0 +1,12 @@
+predicate Pointer(ref: Ref)
+
+method writeTo(ptr: Ref, value: Int)
+  requires acc(Pointer(ptr), 1 / 1)
+  requires perm'(Pointer(ptr)) == 1 / 1 // This is implied by the above
+{
+}
+
+method client(ref: Ref)
+  requires acc(Pointer(ref), 1/1) {
+  call writeTo(ref, 1)
+}

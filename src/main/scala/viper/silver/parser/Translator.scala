@@ -256,8 +256,8 @@ case class Translator(program: PProgram) {
             /* A malformed AST where a field is dereferenced without a receiver */
             Consistency.messages ++= FastMessaging.message(piu, s"expected expression but found field $name")
             LocalVar(pf.idndef.name, ttyp(pf.typ))(pos)
-          case _ =>
-            sys.error("should not occur in type-checked program")
+          case e =>
+            sys.error(s"Decl $e should not occur in type-checked program")
         }
       case pbe @ PBinExp(left, op, right) =>
         val (l, r) = (exp(left), exp(right))

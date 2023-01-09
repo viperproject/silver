@@ -21,7 +21,12 @@ case class PMethodCallPrime(
   override val getSubnodes: Seq[PNode] = targets ++ Seq(method) ++ args
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
-    // TODO: Copy from PMethodCall
+    println("[PMethodCallPrime] Enter typecheck")
+    targets.foreach(t.checkTopTyped(_, None))
+    // t.checkTopTyped(method, None)
+    args.foreach(t.checkTopTyped(_, None))
+    // TODO: Copy other parts from PMethodCall
+    println("[PMethodCallPrime] Exit typecheck")
     None
   }
 
@@ -56,10 +61,12 @@ class PermPrimePlugin(@unused reporter: viper.silver.reporter.Reporter,
   private val PermPrimeKeyword: String = "perm'"
   private val CallPrimeKeyword: String = "call"
 
-  def callPrimeStmt[_: P]: P[PMethodCallPrime] = FP((idnuse.rep(sep = ",") ~ ":=").? ~ CallPrimeKeyword ~ idnuse ~ parens(exp.rep(sep = ","))).map {
+  def callPrimeStmt[_: P]: P[PMethodCallPrime] = FP((idnuse.rep(sep = ",") ~ ":=").? ~ CallPrimeKeyword.log ~ idnuse.log ~ parens(exp.rep(sep = ","))).log.map {
     case (pos, (None, method, args)) =>
+      println("11111")
       PMethodCallPrime(Nil, method, args)(pos)
     case (pos, (Some(targets), method, args)) =>
+      println("22222")
       PMethodCallPrime(targets, method, args)(pos)
   }
 
@@ -86,8 +93,9 @@ class PermPrimePlugin(@unused reporter: viper.silver.reporter.Reporter,
   override def beforeParse(input: String, isImported: Boolean): String = {
     println("[PermPrime] enter beforeParse")
     ParserExtension.addNewKeywords(Set(PermPrimeKeyword, CallPrimeKeyword))
-    ParserExtension.addNewStmtAtEnd(callPrimeStmt(_))
+    ParserExtension.addNewStmtAtStart(callPrimeStmt(_))
     ParserExtension.addNewExpAtStart(permPrimeExp(_))
+    println("[PermPrime] exit beforeParse")
     input
   }
 }
