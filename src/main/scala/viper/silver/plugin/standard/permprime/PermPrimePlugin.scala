@@ -79,7 +79,7 @@ class PermPrimePlugin(@unused reporter: viper.silver.reporter.Reporter,
       curLabel += 1
       PLabel(PIdnDef("pp" + curLabel)(pos), Nil)(pos)
     }
-    StrategyBuilder.Slim[PNode] {
+    val result: PProgram = StrategyBuilder.Slim[PNode] {
       case pcall: PMethodCallPrime =>
         val initLabel = mkLabel(pcall.pos)
         val method = input.methods.find(_.idndef.name == pcall.method.name).get
@@ -127,6 +127,8 @@ class PermPrimePlugin(@unused reporter: viper.silver.reporter.Reporter,
             }
         )(method.pos)
     }.execute(input)
+    println("[PermPrime] exit beforeTranslate")
+    result
   }
 
   override def beforeParse(input: String, isImported: Boolean): String = {
