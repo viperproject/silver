@@ -1,14 +1,12 @@
 package viper.silver.plugin.standard.permprime
 
 import fastparse._
-import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.ast.utility.Visitor
-import viper.silver.ast.utility.rewriter.{StrategyBuilder, Traverse}
-import viper.silver.ast.{CurrentPerm, ErrorTrafo, Exp, ExtensionExp, ExtensionStmt, Info, LocalVar, MethodCall, NoInfo, NoPosition, NoTrafos, Node, Perm, PermExp, Position, Program, ResourceAccess, Seqn, Stmt, Type}
-import viper.silver.parser.{FastParser, NameAnalyser, PCurPerm, PExp, PExtender, PIdnUse, PMethod, PNode, PProgram, PResourceAccess, PSeqn, PStmt, PTypeSubstitution, Translator, TypeChecker}
-import viper.silver.plugin.SilverPlugin
+import viper.silver.ast.utility.rewriter.StrategyBuilder
+import viper.silver.ast._
 import viper.silver.parser.FastParserCompanion.whitespace
-import viper.silver.verifier.VerificationResult
+import viper.silver.parser._
+import viper.silver.plugin.SilverPlugin
 
 import scala.annotation.unused
 
@@ -53,7 +51,7 @@ case class PPermPrime (res: PResourceAccess)(val pos: (Position, Position)) exte
 }
 class PermPrimePlugin(@unused reporter: viper.silver.reporter.Reporter,
                 @unused logger: ch.qos.logback.classic.Logger,
-                config: viper.silver.frontend.SilFrontendConfig,
+                @unused config: viper.silver.frontend.SilFrontendConfig,
                 fp: FastParser) extends SilverPlugin {
 
   import fp.{FP, ParserExtension, exp, idnuse, parens, resAcc}
@@ -61,12 +59,10 @@ class PermPrimePlugin(@unused reporter: viper.silver.reporter.Reporter,
   private val PermPrimeKeyword: String = "perm'"
   private val CallPrimeKeyword: String = "call"
 
-  def callPrimeStmt[_: P]: P[PMethodCallPrime] = FP((idnuse.rep(sep = ",") ~ ":=").? ~ CallPrimeKeyword.log ~ idnuse.log ~ parens(exp.rep(sep = ","))).log.map {
+  def callPrimeStmt[_: P]: P[PMethodCallPrime] = FP((idnuse.rep(sep = ",") ~ ":=").? ~ CallPrimeKeyword ~ idnuse ~ parens(exp.rep(sep = ","))).map {
     case (pos, (None, method, args)) =>
-      println("11111")
       PMethodCallPrime(Nil, method, args)(pos)
     case (pos, (Some(targets), method, args)) =>
-      println("22222")
       PMethodCallPrime(targets, method, args)(pos)
   }
 
@@ -78,7 +74,50 @@ class PermPrimePlugin(@unused reporter: viper.silver.reporter.Reporter,
 
   override def beforeTranslate(input: PProgram): PProgram = {
     println("[PermPrime] enter beforeTranslate")
+    var curLabel = 0
+    def mkLabel(pos: (Position, Position)): PLabel = {
+      curLabel += 1
+      PLabel(PIdnDef("pp" + curLabel)(pos), Nil)(pos)
+    }
     StrategyBuilder.Slim[PNode] {
+      case pcall: PMethodCallPrime =>
+        val initLabel = mkLabel(pcall.pos)
+        val method = input.methods.find(_.idndef.name == pcall.method.name).get
+        val stmts = {
+          List(initLabel) ++
+          method.pres.map { pre =>
+
+            val inlined: PExp = StrategyBuilder.Slim[PNode] {
+              case ident: PIdnUse =>
+                val argIdx = method.formalArgs.indexWhere(_.idndef.name == ident.name)
+                if(argIdx >= 0) {
+                  pcall.args(argIdx)
+                } else {
+                  ident
+                }
+            }.execute(pre)
+
+            val repPP: PExp = StrategyBuilder.Slim[PNode] {
+              case pp: PPermPrime =>
+                val curPerm = PCurPerm(pp.res)(pp.pos)
+                val outsidePerm = PLabelledOld(
+                  PIdnUse(initLabel.idndef.name)(pp.pos),
+                  curPerm
+                )(pp.pos)
+                PBinExp(
+                  outsidePerm,
+                  "-",
+                  curPerm
+                )(pp.pos)
+            }.execute(inlined)
+
+            PExhale(repPP)(pcall.pos)
+          } ++
+          method.posts.map { post =>
+            PInhale(post)(pcall.pos)
+          }
+        }
+        PSeqn(stmts)(pcall.pos)
       case method: PMethod =>
         method.copy(
           pres = method.pres.filterNot { c =>
