@@ -364,6 +364,7 @@ object Consistency {
           case Some(domain) if domain.interpretations.isDefined =>
             s :+= ConsistencyError(s"DomainType ${dt.domainName} references domain with interpretation; must use BackendType instead.", NoPosition)
             c
+          case _ => c
         }
 
       case bt: BackendType =>
@@ -377,6 +378,7 @@ object Consistency {
           case Some(domain) if domain.interpretations.get != bt.interpretations =>
             s :+= ConsistencyError(s"BackendType ${bt.viperName} has different interpretations than the domain it references.", NoPosition)
             c
+          case _ => c
         }
 
     })
