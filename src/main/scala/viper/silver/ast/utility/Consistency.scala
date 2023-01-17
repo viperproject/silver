@@ -323,9 +323,10 @@ object Consistency {
     * Foo(...) must be pure except if it occurs inside Bar(...).
     *
     * @param n The starting node of the consistency check.
-    * @param c The initial context (optional).
+    * @param p The program.
     */
-  def checkContextDependentConsistency(n: Node, c: Context = Context()) : Seq[ConsistencyError] = {
+  def checkContextDependentConsistency(n: Node, p: Program) : Seq[ConsistencyError] = {
+    val c = Context(p)
     var s = Seq.empty[ConsistencyError]
     n.visitWithContext(c)(c => {
       case Package(_, proofScript @ Seqn(_, locals)) =>
@@ -335,8 +336,8 @@ object Consistency {
         c.copy(insideWandStatus = InsideWandStatus.Yes)
 
       case mw @ MagicWand(lhs, rhs) =>
-        s ++= checkWandRelatedOldExpressions(lhs, Context(insideWandStatus = InsideWandStatus.Left))
-        s ++= checkWandRelatedOldExpressions(rhs, Context(insideWandStatus = InsideWandStatus.Right))
+        s ++= checkWandRelatedOldExpressions(lhs, c.copy(insideWandStatus = InsideWandStatus.Left))
+        s ++= checkWandRelatedOldExpressions(rhs, c.copy(insideWandStatus = InsideWandStatus.Right))
 
         if(!noGhostOperations(mw))
           s :+= ConsistencyError("Ghost operations may not occur inside of wands.", mw.pos)
@@ -354,6 +355,30 @@ object Consistency {
       case wp@WildcardPerm() if !c.insideAccessPredicateStatus =>
         s :+= ConsistencyError("\"wildcard\" can only be used in accessibility predicates", wp.pos)
         c
+
+      case dt: DomainType =>
+        c.program.domains.find(_.name == dt.domainName) match {
+          case None =>
+            s :+= ConsistencyError(s"DomainType references non-existent domain ${dt.domainName}.", NoPosition)
+            c
+          case Some(domain) if domain.interpretations.isDefined =>
+            s :+= ConsistencyError(s"DomainType ${dt.domainName} references domain with interpretation; must use BackendType instead.", NoPosition)
+            c
+        }
+
+      case bt: BackendType =>
+        c.program.domains.find(_.name == bt.viperName) match {
+          case None =>
+            s :+= ConsistencyError(s"BackendType references non-existent domain ${bt.viperName}.", NoPosition)
+            c
+          case Some(domain) if domain.interpretations.isEmpty =>
+            s :+= ConsistencyError(s"BackendType ${bt.viperName} references domain without interpretation; must use DomainType instead.", NoPosition)
+            c
+          case Some(domain) if domain.interpretations.get != bt.interpretations =>
+            s :+= ConsistencyError(s"BackendType ${bt.viperName} has different interpretations than the domain it references.", NoPosition)
+            c
+        }
+
     })
     s
   }
@@ -396,6 +421,7 @@ object Consistency {
   }
 
   /** Context for context dependent consistency checking. */
-  case class Context(insideWandStatus: InsideWandStatus = InsideWandStatus.No,
+  case class Context(program: Program,
+                     insideWandStatus: InsideWandStatus = InsideWandStatus.No,
                      insideAccessPredicateStatus: Boolean = false)
 }

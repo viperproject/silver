@@ -31,7 +31,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     }).distinct
 
   override lazy val check : Seq[ConsistencyError] =
-    Consistency.checkContextDependentConsistency(this) ++
+    Consistency.checkContextDependentConsistency(this, this) ++
     Consistency.checkNoFunctionRecursesViaPreconditions(this) ++
     checkMethodCallsAreValid ++
     checkFunctionApplicationsAreValid ++
