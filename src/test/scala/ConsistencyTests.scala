@@ -277,4 +277,34 @@ class ConsistencyTests extends AnyFunSuite with Matchers {
       ConsistencyError("Trigger expression f(0) does not contain any quantified variable.", NoPosition)
     )
   }
+
+  test("Domain types and backend types refer only to existing domains and are used correctly.") {
+    val f1 = Function("f1", Seq(LocalVarDecl("i", DomainType("nonexisting", Map())(Seq()))()), Int, Seq(), Seq(), None)()
+    val f2 = Function("f2", Seq(LocalVarDecl("i", BackendType("nonexisting", Map()))()), Int, Seq(), Seq(), None)()
+    val f3 = Function("f3", Seq(LocalVarDecl("i", DomainType("existing2", Map())(Seq()))()), Int, Seq(), Seq(), None)()
+    val f4 = Function("f4", Seq(LocalVarDecl("i", BackendType("existing1", Map()))()), Int, Seq(), Seq(), None)()
+
+    val d1 = Domain("existing1", Seq(), Seq(), Seq(), None)()
+    val d2 = Domain("existing2", Seq(), Seq(), Seq(), Some(Map("SMTLIL" -> "Bool")))()
+
+    val p1 = Program(domains = Seq(), fields = Seq(), functions = Seq(f1), predicates = Seq(), methods = Seq(), extensions = Seq())()
+    p1.checkTransitively shouldBe Seq(
+      ConsistencyError("DomainType references non-existent domain nonexisting.", NoPosition)
+    )
+
+    val p2 = Program(domains = Seq(), fields = Seq(), functions = Seq(f2), predicates = Seq(), methods = Seq(), extensions = Seq())()
+    p2.checkTransitively shouldBe Seq(
+      ConsistencyError("BackendType references non-existent domain nonexisting.", NoPosition)
+    )
+
+    val p3 = Program(domains = Seq(d2), fields = Seq(), functions = Seq(f3), predicates = Seq(), methods = Seq(), extensions = Seq())()
+    p3.checkTransitively shouldBe Seq(
+      ConsistencyError("DomainType existing2 references domain with interpretation; must use BackendType instead.", NoPosition)
+    )
+
+    val p4 = Program(domains = Seq(d1), fields = Seq(), functions = Seq(f4), predicates = Seq(), methods = Seq(), extensions = Seq())()
+    p4.checkTransitively shouldBe Seq(
+      ConsistencyError("BackendType existing1 references domain without interpretation; must use DomainType instead.", NoPosition)
+    )
+  }
 }
