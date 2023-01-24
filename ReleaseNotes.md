@@ -4,7 +4,7 @@
 
 ### Changes in Viper Language
 
-- Quasihavoc: New statements ``quasihavoc`` and ``quasihavocall`` allow explicitly losing information about a resource. E.g., ``quasihavoc c ==> P(x)`` havocs the snapshot of resource ``P(x)`` if ``c`` is true and some permission to ``P(x)`` is held, and does nothing otherwise. Semantically equivalent to (conditionally) exhaling the current permission amount to the given resource and inhaling it again, but implemented more efficiently. For more details, see [this report](https://ethz.ch/content/dam/ethz/special-interest/infk/chair-program-method/pm/documents/Education/Theses/Daniel_Zhang_PW.pdf). ([Silver#611](https://github.com/viperproject/silver/pull/611))
+- Quasihavoc: New statements ``quasihavoc`` and ``quasihavocall`` allow explicitly losing information about a resource. E.g., ``quasihavoc c ==> P(x)`` havocs the snapshot of resource ``P(x)`` if ``c`` is true and some permission to ``P(x)`` is held, and does nothing otherwise. Semantically equivalent to (conditionally) exhaling the current permission amount to the given resource and inhaling it again, but implemented more efficiently. For more details, see [this report](https://ethz.ch/content/dam/ethz/special-interest/infk/chair-program-method/pm/documents/Education/Theses/Daniel_Zhang_PW.pdf). ([Silver#611](https://github.com/viperproject/silver/pull/611)) Currently, Silicon fully supports ``quasihavoc`` and ``quasihavocall``, while Carbon only supports ``quasihavoc`` for field and predicate resources.
 - Syntax for backend types added in the form of domains with interpretations: Domains can be annotated with interpretations for different backends. E.g., 
 ``domain myBV interpretation (SMTLIB: “(_ BitVec 32)”, Boogie: “bv32”) { ... }``
 will be interpreted by Silicon as the SMTLIB type ``(_ BitVec 32)`` and by Carbon as the Boogie type ``bv32``. Similarly, domain functions can be annotated with SMTLIB interpretations. ([Silver#638](https://github.com/viperproject/silver/pull/638))
@@ -41,6 +41,7 @@ will be interpreted by Silicon as the SMTLIB type ``(_ BitVec 32)`` and by Carbo
 
 - Boogie Version upgraded to 2.15.9 ([Carbon#441](https://github.com/viperproject/carbon/pull/441))
 - Inconsistent interpretation of division and modulo fixed ([Carbon#448](https://github.com/viperproject/carbon/pull/448))
+- Boogie and Z3 instances are now stopped if Carbon is interrupted ([Carbon](https://github.com/viperproject/carbon/pull/426))
 
 ## Release 2022.7
 
