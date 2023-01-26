@@ -4,7 +4,7 @@
 
 ### Changes in Viper Language
 
-- Quasihavoc: New statements ``quasihavoc`` and ``quasihavocall`` allow explicitly losing information about a resource. E.g., ``quasihavoc c ==> P(x)`` havocs the snapshot of resource ``P(x)`` if ``c`` is true and some permission to ``P(x)`` is held, and does nothing otherwise. Semantically equivalent to (conditionally) exhaling the current permission amount to the given resource and inhaling it again, but implemented more efficiently. For more details, see [this report](https://ethz.ch/content/dam/ethz/special-interest/infk/chair-program-method/pm/documents/Education/Theses/Daniel_Zhang_PW.pdf) ([Silver#611](https://github.com/viperproject/silver/pull/611)). Currently, Silicon fully supports ``quasihavoc`` and ``quasihavocall``, while Carbon only supports ``quasihavoc`` for field and predicate resources.
+- Quasihavoc: New statements ``quasihavoc`` and ``quasihavocall`` allow explicitly losing information about a resource. E.g., ``quasihavoc c ==> P(x)`` havocs the snapshot of resource ``P(x)`` if ``c`` is true and some permission to ``P(x)`` is held, and does nothing otherwise. Semantically equivalent to (conditionally) exhaling the current permission amount to the given resource and inhaling it again, but implemented more efficiently. For more details, see [this report](https://ethz.ch/content/dam/ethz/special-interest/infk/chair-program-method/pm/documents/Education/Theses/Daniel_Zhang_PW.pdf) ([Silver#611](https://github.com/viperproject/silver/pull/611)). Currently, the Symbolic Execution backend (Silicon) fully supports ``quasihavoc`` and ``quasihavocall``, while the Verification Condition Generation backend (Carbon) only supports ``quasihavoc`` for field and predicate resources.
 - Syntax for backend types added in the form of domains with interpretations: Domains can be annotated with interpretations for different backends. E.g., 
 ``domain myBV interpretation (SMTLIB: “(_ BitVec 32)”, Boogie: “bv32”) { ... }``
 will be interpreted by Silicon as the SMTLIB type ``(_ BitVec 32)`` and by Carbon as the Boogie type ``bv32``. Similarly, domain functions can be annotated with SMTLIB interpretations. ([Silver#638](https://github.com/viperproject/silver/pull/638))
@@ -25,7 +25,7 @@ will be interpreted by Silicon as the SMTLIB type ``(_ BitVec 32)`` and by Carbo
 
 ### Backend-specific Upgrades/Changes
 
-#### Symbolic Execution Verifier (Silicon)
+#### Symbolic Execution Backend (Silicon)
 
 - Parallel branch verification: Use option ``--parallelizeBranches`` to verify different branches of a method in parallel. Generally speeds up verification but may lead to non-deterministic verification time. ([Silicon#634](https://github.com/viperproject/silicon/pull/634))
 - Parallel Silicon instances: Multiple verifier instances can be used in parallel ([Silicon#635](https://github.com/viperproject/silicon/pull/635)), ([Silver#600](https://github.com/viperproject/silver/pull/600))
@@ -37,7 +37,7 @@ will be interpreted by Silicon as the SMTLIB type ``(_ BitVec 32)`` and by Carbo
 - Multiple performance improvements, mostly related to quantified permissions ([Silicon#668](https://github.com/viperproject/silicon/pull/668)), ([Silicon#649](https://github.com/viperproject/silicon/pull/649)), ([Silicon#651](https://github.com/viperproject/silicon/pull/651)), ([Silver#604](https://github.com/viperproject/silver/pull/604)), ([Silver#605](https://github.com/viperproject/silver/pull/605))
 - Fixed crashes and other issues ([Silicon#648](https://github.com/viperproject/silicon/issues/648)), ([Silicon#321](https://github.com/viperproject/silicon/issues/321)), ([Silicon#641](https://github.com/viperproject/silicon/issues/641)), ([Silicon#665](https://github.com/viperproject/silicon/issues/665))
 
-#### Verification Condition Generation Verifier (Carbon)
+#### Verification Condition Generation Backend (Carbon)
 
 - Boogie Version upgraded to 2.15.9 ([Carbon#441](https://github.com/viperproject/carbon/pull/441))
 - Inconsistent interpretation of division and modulo fixed ([Carbon#448](https://github.com/viperproject/carbon/pull/448))
