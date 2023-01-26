@@ -12,6 +12,18 @@ import viper.silver.ast._
 import viper.silver.ast.utility.Simplifier._
 
 class SimplifierTests extends AnyFunSuite with Matchers {
+
+  test("cond") {
+
+    val a = LocalVar("a", Bool)()
+    val b = LocalVar("a", Bool)()
+    val tru = TrueLit()()
+
+    simplify(CondExp(a,tru,b)()) should be(Implies(Not(a)(), b)())
+    simplify(CondExp(a,b,tru)()) should be(Implies(a, b)())
+
+  }
+
   test("div") {
     simplify(Div(0, 0)()) should be(Div(0, 0)())
     simplify(Div(8, 2)()) should be(4: IntLit)
