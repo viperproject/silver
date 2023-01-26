@@ -79,7 +79,11 @@ object Simplifier {
       case root @ CondExp(condition, FalseLit(), ifFalse) =>
         And(Not(condition)(), ifFalse)(root.pos, root.info)
       case root @ CondExp(condition, TrueLit(), ifFalse) =>
-        Implies(Not(condition)(), ifFalse)(root.pos, root.info)
+        if(ifFalse.isPure) {
+          Or(condition, ifFalse)(root.pos, root.info)
+        } else {
+          Implies(Not(condition)(), ifFalse)(root.pos, root.info)
+        }
       case root @ CondExp(condition, ifTrue, FalseLit()) =>
         And(condition, ifTrue)(root.pos, root.info)
       case root @ CondExp(condition, ifTrue, TrueLit()) =>

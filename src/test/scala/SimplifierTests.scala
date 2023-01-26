@@ -17,9 +17,18 @@ class SimplifierTests extends AnyFunSuite with Matchers {
 
     val a = LocalVar("a", Bool)()
     val b = LocalVar("a", Bool)()
+    val acc = PredicateAccessPredicate(
+      PredicateAccess(Nil, "pred")(),
+      FullPerm()()
+    )()
     val tru = TrueLit()()
 
-    simplify(CondExp(a,tru,b)()) should be(Implies(Not(a)(), b)())
+    // Non-pure conditional should be converted into implication
+    simplify(CondExp(a,tru,acc)()) should be(Implies(Not(a)(), acc)())
+
+    // Pure conditional can be converted into disjunction
+    simplify(CondExp(a,tru,b)()) should be(Or(a, b)())
+
     simplify(CondExp(a,b,tru)()) should be(Implies(a, b)())
 
   }
