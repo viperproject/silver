@@ -102,13 +102,13 @@ case class MapEntry(options: Map[Seq[ValueEntry], ValueEntry], default: ValueEnt
       }
     }
     case _ => parseSingleArgConstraint(ae) match {
-      case Some(("0", v)) => Some(Seq(v))
+      case Some((0, v)) => Some(Seq(v))
       case _ => None
     }
   }
 
   def parseSingleArgConstraint(ae: ValueEntry) = ae match {
-    case ApplicationEntry("=", Seq(ApplicationEntry(":var", Seq(ConstantEntry(index))), v)) => Some(index, v)
+    case ApplicationEntry("=", Seq(ApplicationEntry(":var", Seq(ConstantEntry(index))), v)) => Some(index.toInt, v)
     case _ => None
   }
 }
