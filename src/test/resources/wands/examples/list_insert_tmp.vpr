@@ -14,6 +14,9 @@
  *    been removed.
  */
 
+//:: IgnoreFile(/carbon/issue/101/)
+
+
 field val: Int
 field next: Ref
 
