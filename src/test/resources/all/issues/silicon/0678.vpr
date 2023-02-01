@@ -15,10 +15,3 @@ method mField(r: Ref)
 {
     assume exists x: Ref :: { x.f } perm(x.f) > none
 }
-
-
-method mWand(r: Ref)
-    requires acc(r.f) --* false
-{
-    assume exists x: Ref :: { acc(x.f) --* false } perm(acc(x.f) --* false) > none
-}
