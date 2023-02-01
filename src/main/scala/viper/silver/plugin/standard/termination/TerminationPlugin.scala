@@ -153,30 +153,33 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
    */
   private lazy val extractDecreasesClauses: Strategy[Node, SimpleContext[Node]] = ViperStrategy.Slim({
     case f: Function =>
-      val (_, decreasesSpecification) = extractDecreasesClausesFromExps(f.pres ++ f.posts)
-      val (pres, _) = extractDecreasesClausesFromExps(f.pres)
-      val (posts, _) = extractDecreasesClausesFromExps(f.posts)
+      // decrease spec might occur as part of precondition, postcondition or both:
+      val (pres, preDecreasesSpecification) = extractDecreasesClausesFromExps(f.pres)
+      val (posts, postDecreasesSpecification) = extractDecreasesClausesFromExps(f.posts)
 
+      // remove decrease spec from function:
       val newFunction = f.copy(pres = pres, posts = posts)(f.pos, f.info, f.errT)
 
-      decreasesSpecification match {
-        case Some(dc) => dc.appendToFunction(newFunction)
-        case None => newFunction
+      // add it again as info nodes:
+      Seq(preDecreasesSpecification, postDecreasesSpecification).foldLeft(newFunction){
+        case (modifiedFunction, Some(dc)) => dc.appendToFunction(modifiedFunction)
+        case (modifiedFunction, _) => modifiedFunction
       }
 
     case m: Method =>
-      val (pres, decreasesSpecification) = extractDecreasesClausesFromExps(m.pres)
+      // decrease spec might occur as part of precondition, postcondition or both:
+      val (pres, preDecreasesSpecification) = extractDecreasesClausesFromExps(m.pres)
+      val (posts, postDecreasesSpecification) = extractDecreasesClausesFromExps(m.posts)
 
-      val newMethod =
-        if (pres != m.pres) {
-          m.copy(pres = pres)(m.pos, m.info, m.errT)
-        } else {
-          m
-        }
-      decreasesSpecification match {
-        case Some(dc) => dc.appendToMethod(newMethod)
-        case None => newMethod
+      // remove decrease spec from method:
+      val newMethod = m.copy(pres = pres, posts = posts)(m.pos, m.info, m.errT)
+
+      // add it again as info nodes:
+      Seq(preDecreasesSpecification, postDecreasesSpecification).foldLeft(newMethod){
+        case (modifiedMethod, Some(dc)) => dc.appendToMethod(modifiedMethod)
+        case (modifiedMethod, _) => modifiedMethod
       }
+
     case w: While =>
       val (invs, decreasesSpecification) = extractDecreasesClausesFromExps(w.invs)
 
