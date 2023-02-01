@@ -61,6 +61,7 @@ object QuantifiedPermissions {
         case QuantifiedPermissionAssertion(_, _, acc: FieldAccessPredicate) =>
           collected += acc.loc.field
         case Forall(_, triggers, _) => collected ++= triggers flatMap (_.exps) collect { case fa: FieldAccess => fa.field }
+        case Exists(_, triggers, _) => collected ++= triggers flatMap (_.exps) collect { case fa: FieldAccess => fa.field }
       }
     }
 
@@ -77,6 +78,7 @@ object QuantifiedPermissions {
         case QuantifiedPermissionAssertion(_, _, acc: PredicateAccessPredicate) =>
           collected += program.findPredicate(acc.loc.predicateName)
         case Forall(_, triggers, _) => collected ++= triggers flatMap (_.exps) collect { case pa: PredicateAccess => pa.loc(program) }
+        case Exists(_, triggers, _) => collected ++= triggers flatMap (_.exps) collect { case pa: PredicateAccess => pa.loc(program) }
       }
     }
 
@@ -114,6 +116,7 @@ object QuantifiedPermissions {
     (root collect {
       case QuantifiedPermissionAssertion(_, _, wand: MagicWand) => Seq(wand.structure(program))
       case Forall(_,triggers,_) => triggers flatMap (_.exps) collect {case wand: MagicWand => wand.structure(program)}
+      case Exists(_,triggers,_) => triggers flatMap (_.exps) collect {case wand: MagicWand => wand.structure(program)}
     } toSet) flatten
   }
 
