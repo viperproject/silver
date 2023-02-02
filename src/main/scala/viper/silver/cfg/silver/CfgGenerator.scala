@@ -363,7 +363,7 @@ object CfgGenerator {
             current = None
           case ConditionalJumpStmt(cond, thnTarget, elsTarget) =>
             current.foreach { currentIndex =>
-              val neg = Not(cond)(cond.pos)
+              val neg = Not(cond)(cond.pos, cond.info, cond.errT)
               addTmpEdge(TmpConditionalEdge(cond, currentIndex, resolve(thnTarget)))
               addTmpEdge(TmpConditionalEdge(neg, currentIndex, resolve(elsTarget)))
             }
