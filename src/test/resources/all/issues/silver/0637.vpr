@@ -1,0 +1,41 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+method test1(xs: Seq[Ref])
+    requires (forall i: Int, j: Int :: 0 <= i && i < |xs| && 0 <= j && j < |xs| ==> xs[i] == xs[j] ==> i == j)
+    //:: ExpectedOutput(not.wellformed:insufficient.permission)
+    requires (forall i: Int :: 0 <= i && i < |xs| ==> let j == (xs[i].f) in acc(xs[i].f, 1/2) && j == 0)
+{
+
+}
+
+method test2(x: Ref)
+    //:: ExpectedOutput(not.wellformed:insufficient.permission)
+    requires let j == (x.f) in (acc(x.f, 1/2) && j == 0)
+{
+
+}
+
+method test3(xs: Seq[Ref], ys: Seq[Int])
+    requires |xs| == |ys|
+    requires (forall i: Int, j: Int :: 0 <= i && i < |xs| && 0 <= j && j < |xs| ==> xs[i] == xs[j] ==> i == j)
+    requires (forall i: Int :: 0 <= i && i < |xs| ==> let j == (ys[i]) in acc(xs[i].f, 1/2) && xs[i].f == j)
+{
+    assume |xs| > 3
+    assert xs[2].f == ys[2]
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+method test4(xs: Seq[Ref], ys: Seq[Int])
+    requires |xs| == |ys|
+    requires (forall i: Int, j: Int :: 0 <= i && i < |xs| && 0 <= j && j < |xs| ==> xs[i] == xs[j] ==> i == j)
+    requires (forall i: Int :: 0 <= i && i < |xs| ==> let j == (i) in acc(xs[j].f, 1/2) && xs[i].f == 0)
+{
+    assume |xs| > 3
+    assert xs[2].f == 0
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
