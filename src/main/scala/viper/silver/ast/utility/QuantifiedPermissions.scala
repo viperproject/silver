@@ -253,14 +253,12 @@ object QuantifiedPermissions {
             val desugaredWithoutLet = desugarSourceQuantifiedPermissionSyntax(forallWithoutLet)
             desugaredWithoutLet.map{
               case SourceQuantifiedPermissionAssertion(iqp, Implies(icond, irhs)) if (!irhs.isPure) =>
-                // Since the rhs cannot be a let-binding, we expand the let-expression
-
-                Forall(iqp.variables, iqp.triggers.map(t => t.replace(v.localVar, e)), Implies(And(cond, Let(v, e, icond)(lt.pos, lt.info, lt.errT))(lt.pos, lt.info, lt.errT), irhs.replace(v.localVar, e))(lt.pos, lt.info, lt.errT))(iqp.pos, iqp.info, iqp.errT)
-                //Forall(iqp.variables, iqp.triggers.map(t => t.replace(v.localVar, e)), Implies(icond.replace(v.localVar, e), irhs.replace(v.localVar, e))(iqp.pos, iqp.info))(iqp.pos, iqp.info)
+                // Since the rhs cannot be a let-binding, we expand the let-expression in it.
+                // However, we still use a let in the condition; this preserves well-definedness if v isn't used anywhere
+                Forall(iqp.variables, iqp.triggers.map(t => t.replace(v.localVar, e)), Implies(And(cond, Let(v, e, icond)(lt.pos, lt.info, lt.errT))(lt.pos, lt.info, lt.errT), irhs.replace(v.localVar, e))(iqp.pos, iqp.info, iqp.errT))(iqp.pos, iqp.info, iqp.errT)
               case iforall@Forall(ivars, itriggers, Implies(icond, ibod)) =>
                 // For all pure parts of the quantifier, we just re-wrap the body into a let.
                 Forall(ivars, itriggers, Implies(cond, Let(v, e, Implies(icond, ibod)(lt.pos, lt.info))(lt.pos, lt.info, lt.errT))(lt.pos, lt.info, lt.errT))(iforall.pos, iforall.info)
-                //Forall(ivars, itriggers, Implies(icond, Let(v, e, ibod)(lt.pos, lt.info))(lt.pos, lt.info))(iforall.pos, iforall.info)
             }
           }
           case _ =>
