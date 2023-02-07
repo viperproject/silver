@@ -6,6 +6,7 @@
 
 package viper.silver.ast.utility
 
+import viper.silver.ast.utility.Statements.EmptyStmt
 import viper.silver.ast._
 import viper.silver.ast.utility.rewriter._
 
@@ -15,14 +16,15 @@ import viper.silver.ast.utility.rewriter._
 object Simplifier {
 
   /**
-   * Simplify `expression`, in particular by making use of literals. For
+   * Simplify `n`, in particular by making use of literals. For
    * example, `!true` is replaced by `false`. Division and modulo with divisor
    * 0 are not treated. Note that an expression with non-terminating evaluation due to endless recursion
    * might be transformed to terminating expression.
    */
-  def simplify(expression: Exp): Exp = {
+  def simplify[N <: Node](n: N): N = {
     /* Always simplify children first, then treat parent. */
     StrategyBuilder.Slim[Node]({
+      // expression simplifications
       case root @ Not(BoolLit(literal)) =>
         BoolLit(!literal)(root.pos, root.info)
       case Not(Not(single)) => single
@@ -77,11 +79,15 @@ object Simplifier {
       case root @ CondExp(condition, FalseLit(), ifFalse) =>
         And(Not(condition)(), ifFalse)(root.pos, root.info)
       case root @ CondExp(condition, TrueLit(), ifFalse) =>
-        Or(condition, ifFalse)(root.pos, root.info)
+        if(ifFalse.isPure) {
+          Or(condition, ifFalse)(root.pos, root.info)
+        } else {
+          Implies(Not(condition)(), ifFalse)(root.pos, root.info)
+        }
       case root @ CondExp(condition, ifTrue, FalseLit()) =>
         And(condition, ifTrue)(root.pos, root.info)
       case root @ CondExp(condition, ifTrue, TrueLit()) =>
-        Or(Not(condition)(), ifTrue)(root.pos, root.info)
+        Implies(condition, ifTrue)(root.pos, root.info)
 
       case root @ Forall(_, _, BoolLit(literal)) =>
         BoolLit(literal)(root.pos, root.info)
@@ -112,7 +118,16 @@ object Simplifier {
         IntLit(left / right)(root.pos, root.info)
       case root @ Mod(IntLit(left), IntLit(right)) if right != bigIntZero =>
         IntLit((right.abs + (left % right)) % right.abs)(root.pos, root.info)
-    }, Traverse.BottomUp) execute[Exp](expression)
+
+      // statement simplifications
+      case Seqn(EmptyStmt, _) => EmptyStmt // remove empty Seqn (including unnecessary scopedDecls)
+      case s@Seqn(ss, scopedDecls) if ss.contains(EmptyStmt) => // remove empty statements
+        val newSS = ss.filterNot(_ == EmptyStmt)
+        Seqn(newSS, scopedDecls)(s.pos, s.info, s.errT)
+      case If(_, EmptyStmt, EmptyStmt) => EmptyStmt // remove empty If clause
+      case If(TrueLit(), thn, _) => thn // remove trivial If conditions
+      case If(FalseLit(), _, els) => els // remove trivial If conditions
+    }, Traverse.BottomUp) execute n
   }
 
   private val bigIntZero = BigInt(0)

@@ -89,6 +89,9 @@ trait SilFrontend extends DefaultFrontend {
   /** For testing of plugin import feature */
   def defaultPluginCount: Int = defaultPlugins.size
 
+  /** Name of the expected format for backend types. Examples: "Boogie", "SMTLIB". */
+  def backendTypeFormat: Option[String] = None
+
   protected val fp = new FastParser()
 
   protected var _plugins: SilverPluginManager = SilverPluginManager(defaultPlugins match {
@@ -212,13 +215,41 @@ trait SilFrontend extends DefaultFrontend {
     }
   }
 
-  override def verification() = {
+  override def verification(): Unit = {
+    def filter(input: Program): Result[Program]  = {
+      _plugins.beforeMethodFilter(input) match {
+        case Some(inputPlugin) =>
+          // Filter methods according to command-line arguments.
+          val verifyMethods =
+            if (config != null && config.methods() != ":all") Seq("methods", config.methods())
+            else inputPlugin.methods map (_.name)
+
+          val methods = inputPlugin.methods filter (m => verifyMethods.contains(m.name))
+          val program = Program(inputPlugin.domains, inputPlugin.fields, inputPlugin.functions, inputPlugin.predicates, methods, inputPlugin.extensions)(inputPlugin.pos, inputPlugin.info, inputPlugin.errT)
+
+          _plugins.beforeVerify(program) match {
+            case Some(programPlugin) => Succ(programPlugin)
+            case None => Fail(_plugins.errors)
+          }
+
+        case None => Fail(_plugins.errors)
+      }
+    }
+
+    if (state == DefaultStates.ConsistencyCheck && _errors.isEmpty) {
+      filter(_program.get) match {
+        case Succ(program) => _program = Some(program)
+        case Fail(errors) => _errors ++= errors
+      }
+    }
     super.verification()
-    _verificationResult = _verificationResult.map(_plugins.mapVerificationResult)
+    _verificationResult = _verificationResult.map(_plugins.mapVerificationResult(_program.get, _))
   }
 
   def finish(): Unit = {
-    _plugins.beforeFinish(result) match {
+    val res = _plugins.beforeFinish(result)
+    _verificationResult = Some(res)
+    res match {
       case Success =>
         reporter report OverallSuccessMessage(verifier.name, getTime)
       case f: Failure =>
@@ -298,30 +329,12 @@ trait SilFrontend extends DefaultFrontend {
   }
 
   def doConsistencyCheck(input: Program): Result[Program]= {
-    def filter(input: Program): Result[Program]  = {
-      _plugins.beforeMethodFilter(input) match {
-        case Some(inputPlugin) =>
-          // Filter methods according to command-line arguments.
-          val verifyMethods =
-            if (config != null && config.methods() != ":all") Seq("methods", config.methods())
-            else inputPlugin.methods map (_.name)
-
-          val methods = inputPlugin.methods filter (m => verifyMethods.contains(m.name))
-          val program = Program(inputPlugin.domains, inputPlugin.fields, inputPlugin.functions, inputPlugin.predicates, methods, inputPlugin.extensions)(inputPlugin.pos, inputPlugin.info)
-
-          _plugins.beforeVerify(program) match {
-            case Some(programPlugin) => Succ(programPlugin)
-            case None => Fail(_plugins.errors)
-          }
-
-        case None => Fail(_plugins.errors)
-      }
-    }
-
-    val errors = input.checkTransitively
-    if (errors.isEmpty)
-      filter(input)
-    else
+    var errors = input.checkTransitively
+    if (backendTypeFormat.isDefined)
+      errors = errors ++ Consistency.checkBackendTypes(input, backendTypeFormat.get)
+    if (errors.isEmpty) {
+      Succ(input)
+    } else
       Fail(errors)
   }
 }
