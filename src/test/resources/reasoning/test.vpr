@@ -1,0 +1,330 @@
+function P(x: Int) : Bool {
+    x == 0
+}
+
+function Q(x: Int) : Bool {
+    x == 0
+}
+field f: Int
+
+
+method simple()
+{
+    var z: Int := 0
+    //:: ExpectedOutput(consistency.error)
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) {
+        z := x
+    }
+}
+
+
+method mIfOK1()
+{
+    var w :Int := 0
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) {
+        var l :Int := 0
+        var g: Int := 0
+        if (l >= -1) {
+            g := x
+        } else {
+            w := 4
+        }
+    }
+}
+
+
+
+method mWhileOK()
+{
+    var z: Int := 0
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) {
+        var y: Int := 0
+        while(y<100) { // will only be tainted after the 5th? iteration
+            var x4: Int := 0
+            var x3: Int := 0
+            var x2: Int := 0
+            var x1: Int := 0
+            z := x4
+            x4 := x3
+            x3 := x2
+            x2 := x1
+            x1 := x
+            y := y+1
+        }
+    }
+}
+
+
+method mWhileNOK()
+{
+    var z: Int := 0
+    //:: ExpectedOutput(consistency.error)
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) {
+        var y: Int := 0
+        var x2: Int := 0
+        var x1: Int := 0
+
+        while(y<100) { // will only be tainted after the 5th? iteration
+            z := x2
+            x2 := x1
+            x1 := x
+            y := y+1
+        }
+    }
+}
+
+
+//graph at the end  such that z is influenced by .init_z and .init_x
+//correct because if loop not executed then z is influenced by .init_z?
+method mWhileNOK2()  
+{
+    var z: Int := 0
+    //:: ExpectedOutput(consistency.error)
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) {
+        var y: Int := x
+        var x2: Int := 0
+        var x1: Int := 0
+
+        while(y<100) {
+            z := x2
+            x2 := x1
+            y := y+1
+        }
+    }
+}
+
+
+
+
+method mFieldAssignNOK1(y:Ref)
+requires acc(y.f)
+{
+    //:: ExpectedOutput(consistency.error)
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) {
+        y.f := x
+    }
+}
+
+method mFieldAssignNOK2(y:Ref) 
+{
+    var w: Int
+    //:: ExpectedOutput(consistency.error)
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) {
+        var z: Int := x
+        w := z
+    }
+}
+
+
+method mFieldAssignOK1(y:Ref)
+requires acc(y.f)
+{
+    var z: Int := 0
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) {
+        z := y.f
+    }
+}
+
+
+method mInhaleOK2(y: Ref)
+
+{
+    
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) {
+        inhale (acc(y.f))
+    }
+}
+
+
+
+method mExhaleOK(y:Ref)
+requires acc(y.f)
+{
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) {
+        exhale acc(y.f)
+    }
+}
+
+
+function func1(x:Int) : Int
+{
+    x
+}
+
+method mFunctionOK()
+{
+    var z: Int := 3
+    var y: Int
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) {
+        y := func1(z)
+    }
+}
+
+method mFunctionNOK()
+{
+    var z: Int := 3
+    var y: Int
+    //:: ExpectedOutput(consistency.error)
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) {
+        y := func1(x)
+    }
+}
+
+
+
+method example1(x:Int, y:Int) returns (res: Int)
+influenced res by {x, y}
+{
+    res := x-y
+}
+  
+method mMethodCallNOK1()
+{
+    var z: Int
+    //:: ExpectedOutput(consistency.error)
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) {
+        z := example1(x,x)
+    }
+}
+
+//code without influenced by statement
+method example2(x:Int, y:Int) returns (res: Int)
+{
+    res := 0
+}
+
+method mMethodCallNOK2()
+{
+    var z: Int
+    //:: ExpectedOutput(consistency.error)
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) {
+        z := example2(x,x)
+    }
+}
+
+//code with influenced by statement 
+method example3(x:Int, y:Int) returns (res: Int)
+influenced res by {}
+{
+    res := 0
+}
+
+method mMethodCallOK1()
+{
+    var z: Int
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) {
+        var y:Int := 3
+        z := example3(y,y)
+    }
+}
+
+//method with several return values 
+method exampleMult(a0:Int, a1:Int) returns (r0:Int, r1:Int)
+influenced r0 by {a0, a1}
+influenced r1 by {a0}
+{
+    r0 := a0-a1
+    r1 := a0
+}
+
+method mMethodCallNOK3()
+{
+    var z: Int
+    var w: Int
+    //:: ExpectedOutput(consistency.error)
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) {
+        var v: Int := 3
+        z,w := exampleMult(v,x)
+    }
+}
+
+
+method exampleIncomplete(b:Bool,c:Int) returns (z:Int, w:Int)
+influenced w by {b}
+{
+    z := 3
+    if (b) {
+        var y: Int := 2
+        w := y + 1
+    }
+}
+
+method mMethodCallOK2()
+{
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) {
+        var y:Int
+        var v:Int
+        var bool:Bool := true
+        var count: Int := 16
+        y,v := exampleIncomplete(bool,count)
+    }
+}
+
+method exampleHeap(b:Int) returns (c:Int)
+influenced heap by {heap}
+influenced c by {}
+{
+    c := 3
+}
+
+  
+method mMethodCallOK3()
+{
+    var z: Int
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) {
+        z := exampleHeap(x)
+    }
+}
+
+
+//:: ExpectedOutput(consistency.error)
+method exampleincorrect(b:Bool,c:Int) returns (z:Int, w:Int)
+influenced w by {}
+{
+    z := 3
+    if (b) {
+        var y: Int := 2
+        w := y + 1
+    }
+}
+
+method exampleOverapprox(b:Bool,c:Int) returns (z:Int, w:Int)
+influenced w by {b,c}
+{
+    z := 3
+    if (b) {
+        var y: Int := 2
+        w := y + 1
+    }
+}
+
+
+
+
+method exampleHeapArg2(b:Ref) returns (c:Int)
+requires acc(b.f)
+influenced heap by { heap }
+influenced c by { heap }
+{
+    c := b.f
+}
+
+method exampleHeapArg3(b:Ref) returns (c:Int)
+requires acc(b.f)
+influenced heap by { b, heap }
+influenced c by { b, heap }
+{
+    c := b.f
+}
+
+method exampleHeapArg4(b:Ref) returns (c:Int)
+requires acc(b.f)
+influenced heap by { heap, b }
+influenced c by { heap, b }
+{
+    c := b.f
+}
+
+
+
+

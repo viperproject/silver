@@ -1,7 +1,30 @@
+function greaterthanzero(x:Int) :Bool
+{
+    x > 0
+}
+
 method ex1()
 {
     var y: Int
-    prove forall x:Int {x>0} assuming x>0 implies x>1 {
-        x:=x+1
+    prove forall x:Int {greaterthanzero(x)} assuming x>0 implies x>0 {
+        var z: Int := x+1
     }
+}
+
+
+
+function g_zero(x:Int) : Bool {
+    x>0
+}
+function greater(x:Int, y:Int) :Bool {
+    x>y
+}
+method ex2()
+{
+    var i:Int := 10
+    var j:Int := 5
+    prove forall x:Int, y:Int {g_zero(y),greater(x,y)} assuming (g_zero(y) && greater(x,y)) implies g_zero(x) {
+        var z: Bool := x>y
+    }
+    assert greater(i,j)
 }

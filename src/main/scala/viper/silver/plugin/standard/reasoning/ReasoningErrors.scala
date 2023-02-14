@@ -18,3 +18,23 @@ case class ExistentialElimFailed(override val offendingNode: ErrorNode, override
 
   override def withReason(r: ErrorReason): ExistentialElimFailed = ExistentialElimFailed(offendingNode, r, cached)
 }
+
+case class UniversalIntroFailed(override val offendingNode: ErrorNode, override val reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
+  override val id = "universal introduction.failed"
+  override val text = " not true for all vars."
+
+  override def withNode(offendingNode: errors.ErrorNode = this.offendingNode): UniversalIntroFailed =
+    UniversalIntroFailed(this.offendingNode, this.reason, this.cached)
+
+  override def withReason(r: ErrorReason): UniversalIntroFailed = UniversalIntroFailed(offendingNode, r, cached)
+}
+
+case class FlowAnalysisFailed(override val offendingNode: ErrorNode, override val reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
+  override val id = "flow analysis.failed"
+  override val text = " ."
+
+  override def withNode(offendingNode: errors.ErrorNode = this.offendingNode): FlowAnalysisFailed =
+    FlowAnalysisFailed(this.offendingNode, this.reason, this.cached)
+
+  override def withReason(r: ErrorReason): FlowAnalysisFailed = FlowAnalysisFailed(offendingNode, r, cached)
+}

@@ -1,8 +1,8 @@
 package viper.silver.plugin.standard.reasoning
 
-import viper.silver.ast.{LocalVarDecl, Position, Seqn, Stmt, Trigger}
+import viper.silver.ast.{ExtensionExp, LocalVarDecl, Position, Seqn, Stmt, Trigger}
 import viper.silver.parser.TypeHelper.Bool
-import viper.silver.parser.{NameAnalyser, PExp, PExtender, PLocalVarDecl, PNode, PSeqn, PStmt, PTrigger, Translator, TypeChecker}
+import viper.silver.parser.{NameAnalyser, PExp, PExtender, PLocalVarDecl, PNode, PSeqn, PStmt, PTrigger, PType, PTypeSubstitution, Translator, TypeChecker}
 
 case class PExistentialElim(varList: Seq[PLocalVarDecl], trig: Seq[PTrigger], e: PExp)(val pos: (Position, Position)) extends PExtender with PStmt {
   override val getSubnodes: Seq[PNode] = {
@@ -36,7 +36,72 @@ case class PUniversalIntro(varList: Seq[PLocalVarDecl], triggers: Seq[PTrigger],
   }
 
   override def translateStmt(t: Translator): Stmt = {
-    UniversalIntro(varList.map { case variable => LocalVarDecl(variable.idndef.name, t.ttyp(variable.typ))(t.liftPos(variable))}, triggers.map{case t1 => Trigger(t1.exp.map{ t2 => t.exp(t2)})(t.liftPos(t1))}, t.exp(e1), t.exp(e2), Seqn(block.ss.map{blstmt => t.stmt(blstmt)}, Seq())(t.liftPos(block)))(t.liftPos(e1))
+    val res = UniversalIntro(varList.map { case variable => LocalVarDecl(variable.idndef.name, t.ttyp(variable.typ))(t.liftPos(variable))}, triggers.map{case t1 => Trigger(t1.exp.map{ t2 => t.exp(t2)})(t.liftPos(t1))}, t.exp(e1), t.exp(e2), t.stmt(block).asInstanceOf[Seqn])(t.liftPos(e1))
+    res
   }
 
+}
+
+sealed trait PFlowAnnotation extends PExtender with PExp {
+  override def typeSubstitutions: Seq[PTypeSubstitution] = Seq(PTypeSubstitution.id)
+
+  override def forceSubstitution(ts: PTypeSubstitution): Unit = {}
+
+  override val getSubnodes: Seq[PNode] = Seq()
+}
+
+case class PFlowAnnotationVar(v:PExp, varList: Seq[PExp])(val pos: (Position,Position)) extends PFlowAnnotation {
+
+  override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = {
+   varList.foreach(c => {
+      t.checkTopTyped(c, None)
+    })
+    t.checkTopTyped(v, None)
+    None
+  }
+
+  override def translateExp(t: Translator): ExtensionExp = {
+    FlowAnnotationVar(t.exp(v), varList.map { case variable => t.exp(variable) })(t.liftPos(this))
+
+  }
+}
+
+/** specified type of the PFlowAnnotationVar class which includes heap as one of the argument variables */
+case class PFlowAnnotationVarHeapArg(v:PExp, varList: Seq[PExp])(val pos:(Position,Position)) extends PFlowAnnotation {
+
+  override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = {
+
+    varList.foreach(c => {
+      t.checkTopTyped(c, None)
+    })
+    t.checkTopTyped(v, None)
+    None
+  }
+  override def translateExp(t: Translator): ExtensionExp = FlowAnnotationVarHeapArg(t.exp(v), varList.map { case variable => t.exp(variable) })(t.liftPos(this))
+}
+
+case class PFlowAnnotationHeap(varList: Seq[PExp])(val pos: (Position,Position)) extends PFlowAnnotation {
+
+  override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = {
+    varList.foreach(c => t.checkTopTyped(c, None))
+    None
+  }
+
+  override def translateExp(t: Translator): ExtensionExp = {
+    FlowAnnotationHeap(varList.map { case variable => t.exp(variable) })(t.liftPos(this))
+
+  }
+}
+
+case class PFlowAnnotationHeapHeapArg(varList: Seq[PExp])(val pos: (Position,Position)) extends PFlowAnnotation {
+
+  override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = {
+    varList.foreach(c => t.checkTopTyped(c, None))
+    None
+  }
+
+  override def translateExp(t: Translator): ExtensionExp = {
+    FlowAnnotationHeapHeapArg(varList.map { case variable => t.exp(variable) })(t.liftPos(this))
+
+  }
 }
