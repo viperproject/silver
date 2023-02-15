@@ -63,10 +63,9 @@ case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv
       case _: SimpleMessage | _: CopyrightReport | _: MissingDependencyReport | _: BackendSubProcessReport |
            _: InternalWarningMessage | _: ConfigurationConfirmation=> // Irrelevant for reporting
 
-      case QuantifierInstantiationsMessage(quantifier, instantiations, max_gen, max_cost) =>
-        csv_file.write(s"quantifier_instantiations_message(" +
-          s"quantifier=${quantifier}, instantiations=${instantiations.toString}," +
-          s"max_gen=${max_gen}, max_cost=${max_cost})\n")
+      case q: QuantifierInstantiationsMessage => csv_file.write(s"${q.toString}\n")
+      case q: QuantifierChosenTriggersMessage => csv_file.write(s"${q.toString}\n")
+      case t: VerificationTerminationMessage => csv_file.write(s"${t.toString}\n")
       case _ =>
         println( s"Cannot properly print message of unsupported type: $msg" )
     }
@@ -168,9 +167,11 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
         //println( s"Configuration confirmation: $text" )
       case InternalWarningMessage(_) =>        // TODO  use for progress reporting
         //println( s"Internal warning: $text" )
-      case _:SimpleMessage =>
+      case _: SimpleMessage =>
         //println( sm.text )
-      case QuantifierInstantiationsMessage(_, _, _, _) => // too verbose, do not print
+      case _: QuantifierInstantiationsMessage => // too verbose, do not print
+      case _: QuantifierChosenTriggersMessage => // too verbose, do not print
+      case t: VerificationTerminationMessage => println(t.toString)
       case _ =>
         println( s"Cannot properly print message of unsupported type: $msg" )
     }
@@ -179,7 +180,7 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
 }
 
 case class PollingReporter(name: String = "polling_reporter", pass_through_reporter: Reporter) extends Reporter {
-  // this reporter stores the messages it receives and reports them upon
+  // this reporter stores the messages it receives and reports them upon polling
   var messages: Queue[Message] = Queue()
 
   def report(msg: Message): Unit = this.synchronized {
