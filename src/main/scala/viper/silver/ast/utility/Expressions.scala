@@ -191,6 +191,8 @@ object Expressions {
           case Mod(_, q) => List(NeCmp(q, IntLit(0)(p))(p))
           case SeqIndex(s, idx) => List(GeCmp(idx, IntLit(0)(p))(p), LtCmp(idx, SeqLength(s)(p))(p))
           case MapLookup(m, k) => List(MapContains(k, m)(p))
+          case Unfolding(pred, _) => List(pred)
+          case Applying(wand, _) => List(wand)
           case _ => Nil
         }
         // Only use non-trivial conditions for the subnodes.
@@ -211,7 +213,7 @@ object Expressions {
             val Seq(leftConds, rightConds) = nonTrivialSubConds
             reduceOrProofObs(left, leftConds, rightConds, p)
           case CondExp(cond, _, _) =>
-            val Seq(condConds, thenConds, elseConds) = nonTrivialSubConds
+            val Seq(condConds, thenConds, elseConds, _) = nonTrivialSubConds
             reduceCondExpProofObs(cond, condConds, thenConds, elseConds, p)
           case _ => subConds.flatten
         }
