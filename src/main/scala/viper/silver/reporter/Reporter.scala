@@ -189,7 +189,7 @@ case class PollingReporter(name: String = "polling_reporter", pass_through_repor
   }
 
   def getNewMessage(): Message = this.synchronized {
-    return messages.dequeue()
+    messages.dequeue()
   }
 
   def hasNewMessage(): Boolean = this.synchronized {

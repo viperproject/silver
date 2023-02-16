@@ -279,11 +279,12 @@ case class PongMessage(override val text: String) extends SimpleMessage(text) {
   override val name: String = "dbg__pong"
 }
 
+// quantifier refers to the name/qid of a smt quantifier
 case class QuantifierInstantiationsMessage(quantifier: String, instantiations: Int,
                                            max_gen: Int, max_cost: Int) extends Message {
   override lazy val toString: String = s"quantifier_instantiations_message(" +
-    s"quantifier=${quantifier}, instantiations=${instantiations.toString}," +
-    s"max_gen=${max_gen}, max_cost=${max_cost})"
+    s"quantifier=$quantifier, instantiations=${instantiations.toString}, " +
+    s"max_gen=$max_gen, max_cost=$max_cost)"
   override val name: String = "quantifier_instantiations_message"
 }
 
@@ -295,6 +296,6 @@ case class QuantifierChosenTriggersMessage(quantifier: QuantifiedExp, triggers: 
 }
 
 case class VerificationTerminationMessage() extends Message {
-  override lazy val toString: String = s"verification_termination_message"
+  override val toString: String = "verification_termination_message"
   override val name: String = "verification_termination_message"
 }
