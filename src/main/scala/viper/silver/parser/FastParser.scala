@@ -794,13 +794,22 @@ class FastParser {
 
   // Note that `typedFapp` is before `"(" ~ exp ~ ")"` to ensure that the latter doesn't gobble up the brackets for the former
   // and then look like an `fapp` up untill the `: type` part, after which we need to backtrack all the way back (or error if cut)
-  def atom(implicit ctx : P[_]) : P[PExp] = P(ParserExtension.newExpAtStart(ctx) | integer | booltrue | boolfalse | nul | old
+  def atom(implicit ctx : P[_]) : P[PExp] = P(ParserExtension.newExpAtStart(ctx) | annotatedAtom
+    | integer | booltrue | boolfalse | nul | old
     | result | unExp | typedFapp
     | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | applying
     | setTypedEmpty | explicitSetNonEmpty | multiSetTypedEmpty | explicitMultisetNonEmpty | seqTypedEmpty
     | size | explicitSeqNonEmpty | seqRange
     | mapTypedEmpty | explicitMapNonEmpty | mapDomain | mapRange
     | fapp | idnuse | ParserExtension.newExpAtEnd(ctx))
+
+  def stringLiteral[_: P]: P[String] = P("\"" ~ CharsWhile(_ != '\"').! ~ "\"")
+
+  def annotation[_: P]: P[(String, String)] = P("@" ~~ ident ~ stringLiteral)
+
+  def annotatedAtom[_: P]: P[PExp] = FP(annotation ~ atom).map{
+    case (pos, (key, value, exp)) => PAnnotatedExp(exp, (key, value))(pos)
+  }
 
   def result[_: P]: P[PResultLit] = FP(keyword("result")).map { case (pos, _) => PResultLit()(pos) }
 
@@ -1094,10 +1103,15 @@ class FastParser {
     case (pos, (func, args, typeGiven)) => PCall(func, args, Some(typeGiven))(pos)
   }
 
-  def stmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | macroassign | fieldassign | localassign | fold | unfold | exhale | assertP |
+  def stmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | annotatedStmt |
+    macroassign | fieldassign | localassign | fold | unfold | exhale | assertP |
     inhale | assume | ifthnels | whle | varDecl | defineDecl | newstmt | 
     methodCall | goto | lbl | packageWand | applyWand | macroref | block |
     quasihavoc | quasihavocall | ParserExtension.newStmtAtEnd(ctx))
+
+  def annotatedStmt(implicit ctx : P[_]): P[PStmt] = (FP(annotation ~ stmt).map{
+    case (pos, (key, value, pStmt)) => PAnnotatedStmt(pStmt, (key, value))(pos)
+  })
 
   def nodefinestmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | fieldassign | localassign | fold | unfold | exhale | assertP |
     inhale | assume | ifthnels | whle | varDecl | newstmt |

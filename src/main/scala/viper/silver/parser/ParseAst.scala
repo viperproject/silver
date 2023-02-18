@@ -357,6 +357,11 @@ trait PExp extends PNode {
   def forceSubstitution(ts: PTypeSubstitution): Unit
 }
 
+case class PAnnotatedExp(e: PExp, annotation: (String, String))(val pos: (Position, Position)) extends PExp {
+  override def typeSubstitutions: collection.Seq[PTypeSubstitution] = e.typeSubstitutions
+  override def forceSubstitution(ts: PTypeSubstitution): Unit = e.forceSubstitution(ts)
+}
+
 case class PMagicWandExp(override val left: PExp, override val right: PExp)(val posi: (Position, Position)) extends PBinExp(left, MagicWandOp.op, right)(posi) with PResourceAccess
 
 class PTypeSubstitution(val m:Map[String,PType])  //extends Map[String,PType]()
@@ -1050,6 +1055,8 @@ trait PStmt extends PNode {
     }
   }
 }
+
+case class PAnnotatedStmt(stmt: PStmt, annotation: (String, String))(val pos: (Position, Position)) extends PStmt
 case class PSeqn(ss: Seq[PStmt])(val pos: (Position, Position)) extends PStmt with PScope
 case class PFold(e: PExp)(val pos: (Position, Position)) extends PStmt
 case class PUnfold(e: PExp)(val pos: (Position, Position)) extends PStmt
@@ -1330,6 +1337,8 @@ object Nodes {
       case PDefine(idndef, optArgs, body) => Seq(idndef) ++ optArgs.getOrElse(Nil) ++ Seq(body)
       case PQuasihavoc(lhs, e) => lhs.toSeq :+ e
       case PQuasihavocall(vars, lhs, e) => vars ++ lhs.toSeq :+ e
+      case PAnnotatedExp(e, _) => Seq(e)
+      case PAnnotatedStmt(s, _) => Seq(s)
       case t : PExtender => t.getSubnodes()
       case _: PSkip => Nil
       case _: PUnnamedFormalArgDecl => Nil

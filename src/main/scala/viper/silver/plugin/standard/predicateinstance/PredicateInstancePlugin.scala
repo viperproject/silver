@@ -30,7 +30,7 @@ class PredicateInstancePlugin(@unused reporter: viper.silver.reporter.Reporter,
   /**
    * Syntactic marker for predicate instances
    */
-  val PredicateInstanceMarker: String = "@"
+  val PredicateInstanceMarker: String = "#"
 
   val PredicateInstanceDomainName = "PredicateInstance"
 
