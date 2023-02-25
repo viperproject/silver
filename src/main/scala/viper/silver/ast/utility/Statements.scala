@@ -58,6 +58,9 @@ object Statements {
       case s: Seqn =>
         // add variables defined in scope
         decls ++ s.scopedDecls.collect { case variable: LocalVarDecl => variable }
+      case Let(variable, _, _) =>
+        // add defined variable
+        decls ++ Seq(variable)
       case _ =>
         decls
     }

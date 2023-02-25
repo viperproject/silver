@@ -203,6 +203,34 @@ case class Goto(target: String)(val pos: Position = NoPosition, val info: Info =
   */
 case class LocalVarDeclStmt(decl: LocalVarDecl)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt
 
+/** Quasihavoc statement.
+  * Replaces the quasihavocked resource's snapshot with a fresh snapshot.
+  * The optional lhs provides a guard, under which the resource is quasihavocked. For example,
+  *   quasihavoc c ==> Pred(x)
+  * means that we only quasihavoc Pred(x) if the condition c is true.
+  * The quasihavocall variant of this statement allows one to quasihavoc an unbounded number of resources
+  */
+case class Quasihavoc(lhs: Option[Exp], exp: ResourceAccess)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
+  override lazy val check: Seq[ConsistencyError] = {
+    // Sanity checks of properties that should be guaranteed by earlier phases of the front end. These checks
+    // are similar to the ones provided by inhale and exhale statements.
+    (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
+    (if (lhs.nonEmpty && !(lhs.get isSubtype Bool)) Seq(ConsistencyError(s"Left side of quasihavoc implication must be of type Bool, but found ${exp.typ}", exp.pos)) else Seq())
+  }
+}
+
+/** Quasihavocall statement (see quasiavoc statement)
+  * Must extend Scope because it declares quantified variables.
+  */
+case class Quasihavocall(vars: Seq[LocalVarDecl], lhs: Option[Exp], exp: ResourceAccess)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt with Scope {
+  val scopedDecls: Seq[Declaration] = vars
+
+  override lazy val check : Seq[ConsistencyError] = {
+    (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
+    (if (lhs.nonEmpty && !(lhs.get isSubtype Bool)) Seq(ConsistencyError(s"Left side of quasihavocall implication must be of type Bool, but found ${exp.typ}", exp.pos)) else Seq())
+  }
+}
+
 
 /** Generic Statement type to use to extend the AST.
   * New statement-typed AST nodes can be defined by creating new case classes extending this trait.

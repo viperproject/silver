@@ -49,9 +49,9 @@ sealed trait Exp extends Hashable with Typed with Positioned with Infoed with Tr
 
   override def toString() = {
    // Carbon relies on expression pretty-printing resulting in a string without line breaks,
-   // so for the special case of directly converting an expression to a string,, we remove all line breaks
+   // so for the special case of directly converting an expression to a string, we remove all line breaks
    // the pretty printer might have inserted.
-   super.toString.replaceAll("\n", " ")
+   super.toString.replaceAll("\n\\s*", " ")
  }
 
 }
@@ -405,14 +405,17 @@ object DomainFuncApp {
 }
 
 // --- References to backend (i.e., SMTLIB or Boogie 'builtin') functions
-
-case class BackendFuncApp(backendFunc: BackendFunc, args: Seq[Exp])
-                         (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
+case class BackendFuncApp(backendFuncName: String, args: Seq[Exp])
+                         (val pos: Position, val info: Info, override val typ: Type, val interpretation: String, val errT: ErrorTrafo)
   extends AbstractDomainFuncApp {
   override lazy val check : Seq[ConsistencyError] = args.flatMap(Consistency.checkPure)
-  override def func = (_: Program) => backendFunc
-  def funcname = backendFunc.name
-  override def typ = backendFunc.typ
+  override def func = (p: Program) => p.findDomainFunction(backendFuncName)
+  def funcname = backendFuncName
+}
+
+object BackendFuncApp {
+  def apply(backendFunc: DomainFunc, args: Seq[Exp])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos): BackendFuncApp =
+    BackendFuncApp(backendFunc.name, args)(pos, info, backendFunc.typ, backendFunc.interpretation.get, errT)
 }
 
 // --- Field and predicate accesses
@@ -1182,7 +1185,7 @@ object FuncLikeApp {
   def apply(f: FuncLike, args: Seq[Exp], typVars: Map[TypeVar, Type]) = {
     f match {
       case f@Function(_, _, _, _, _, _) => FuncApp(f, args)()
-      case f@DomainFunc(_, _, _, _) => DomainFuncApp(f, args, typVars)()
+      case f@DomainFunc(_, _, _, _, _) => DomainFuncApp(f, args, typVars)()
       case _ => sys.error(s"should not occur: $f (${f.getClass})")
     }
   }

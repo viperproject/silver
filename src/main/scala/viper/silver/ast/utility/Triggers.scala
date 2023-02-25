@@ -9,12 +9,12 @@ package viper.silver.ast.utility
 import viper.silver.ast
 import viper.silver.ast._
 
+import java.util.concurrent.atomic.AtomicInteger
+
 /** Utility methods for triggers */
 object Triggers {
-  /** Attention: The trigger generator is *not* thread-safe, because its super class
-    * [[GenericTriggerGenerator]] is not.
-    */
-  object TriggerGeneration extends GenericTriggerGenerator[Node, Type, Exp, LocalVar, QuantifiedExp] {
+
+  class TriggerGeneration extends GenericTriggerGenerator[Node, Type, Exp, LocalVar, QuantifiedExp] {
     protected def hasSubnode(root: Node, child: Node) = root.hasSubnode(child)
     protected def visit[A](root: Node)(f: PartialFunction[Node, A]) = root.visit(f)
     protected def deepCollect[A](root: Node)(f: PartialFunction[Node, A]) = root.deepCollect(f)
@@ -53,13 +53,23 @@ object Triggers {
     }
   }
 
-  /** Attention: The axiom rewriter is *not* thread-safe, because it makes use of the
-    * [[TriggerGeneration]], which is not thread-safe.
+  /**
+    * We offer two objects with different configurations.
+    * If several Viper instances are to be used concurrently, code *must not* call the setCustomIsForbiddenTrigger and
+    * setCustomIsPossibleTrigger methods on these objects.
     */
+  object DefaultTriggerGeneration extends TriggerGeneration
+
+  object TriggerGenerationWithAddAndSubtract extends TriggerGeneration {
+    customIsForbiddenInTrigger = {
+      case _: ast.Add | _: ast.Sub => false
+    }
+  }
+
   object AxiomRewriter extends GenericAxiomRewriter[Type, Exp, LocalVar, QuantifiedExp, EqCmp, And, Implies, Add, Sub,
                                                     Trigger] {
 
-    private var nextUniqueId = 0
+    private val nextUniqueId = new AtomicInteger(0)
 
     /*
      * Abstract members - type arguments
@@ -94,7 +104,7 @@ object Triggers {
     protected def Trigger(exps: Seq[Exp]) = ast.Trigger(exps)()
 
     /* True iff the given node is not allowed in triggers */
-    protected def isForbiddenInTrigger(e: Exp): Boolean = TriggerGeneration.isForbiddenInTrigger(e)
+    protected def isForbiddenInTrigger(e: Exp): Boolean = DefaultTriggerGeneration.isForbiddenInTrigger(e)
 
     /*
      * Abstract members - dependencies
@@ -103,8 +113,7 @@ object Triggers {
     protected val solver = SimpleArithmeticSolver
 
     protected def fresh(name: String, typ: Type) = {
-      nextUniqueId += 1
-      LocalVar(s"__rw_$name$nextUniqueId", typ)()
+      LocalVar(s"__rw_$name${nextUniqueId.incrementAndGet()}", typ)()
     }
 
     protected def log(message: String): Unit = {}

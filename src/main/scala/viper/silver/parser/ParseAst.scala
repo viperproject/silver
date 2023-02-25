@@ -1073,6 +1073,8 @@ case class PTypeVarDecl(idndef: PIdnDef)(val pos: (Position, Position)) extends 
 case class PMacroRef(idnuse : PIdnUse)(val pos: (Position, Position)) extends PStmt
 case class PDefine(idndef: PIdnDef, parameters: Option[Seq[PIdnDef]], body: PNode)(val pos: (Position, Position)) extends PStmt with PLocalDeclaration
 case class PSkip()(val pos: (Position, Position)) extends PStmt
+case class PQuasihavoc(lhs: Option[PExp], e: PExp)(val pos: (Position, Position)) extends PStmt
+case class PQuasihavocall(vars: Seq[PFormalArgDecl], lhs: Option[PExp], e: PExp)(val pos: (Position, Position)) extends PStmt with PScope
 
 sealed trait PNewStmt extends PStmt {
   def target: PIdnUse
@@ -1167,7 +1169,7 @@ case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalRetur
     }).execute[PMethod](this)
   }
 }
-case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom])(val pos: (Position, Position)) extends PMember with PGlobalDeclaration
+case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom], interpretations: Option[Map[String, String]])(val pos: (Position, Position)) extends PMember with PGlobalDeclaration
 case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp])(val pos: (Position, Position)) extends PAnyFunction {
   def deepCopy(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, typ: PType = this.typ, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, body: Option[PExp] = this.body): PFunction = {
     StrategyBuilder.Slim[PNode]({
@@ -1176,14 +1178,14 @@ case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PTyp
   }
 }
 
-case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl], typ: PType, unique: Boolean)(val domainName:PIdnUse)(val pos: (Position, Position)) extends PAnyFunction
+case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl], typ: PType, unique: Boolean, interpretation: Option[String])(val domainName:PIdnUse)(val pos: (Position, Position)) extends PAnyFunction
 case class PAxiom(idndef: Option[PIdnDef], exp: PExp)(val domainName:PIdnUse)(val pos: (Position, Position)) extends PScope
 case class PField(idndef: PIdnDef, typ: PType)(val pos: (Position, Position)) extends PMember with PTypedDeclaration with PGlobalDeclaration
 case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: Option[PExp])(val pos: (Position, Position)) extends PMember with PTypedDeclaration with PGlobalDeclaration{
   val typ = PPredicateType()()
 }
 
-case class PDomainFunction1(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl], typ: PType, unique: Boolean)(val pos: (Position, Position))
+case class PDomainFunction1(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl], typ: PType, unique: Boolean, interpretation: Option[String])(val pos: (Position, Position))
 case class PAxiom1(idndef: Option[PIdnDef], exp: PExp)(val pos: (Position, Position))
 
 /**
@@ -1313,19 +1315,21 @@ object Nodes {
       case PLocalImport(_) =>
         Seq()
       case PStandardImport(_) => Seq()
-      case PDomain(idndef, typVars, funcs, axioms) => Seq(idndef) ++ typVars ++ funcs ++ axioms
+      case PDomain(idndef, typVars, funcs, axioms, _) => Seq(idndef) ++ typVars ++ funcs ++ axioms
       case PField(idndef, typ) => Seq(idndef, typ)
       case PMethod(idndef, args, rets, pres, posts, body) =>
         Seq(idndef) ++ args ++ rets ++ pres ++ posts ++ body.toSeq
       case PFunction(name, args, typ, pres, posts, body) =>
         Seq(name) ++ args ++ Seq(typ) ++ pres ++ posts ++ body
-      case PDomainFunction(name, args, typ, _) =>
+      case PDomainFunction(name, args, typ, _, _) =>
         Seq(name) ++ args ++ Seq(typ)
       case PPredicate(name, args, body) =>
         Seq(name) ++ args ++ body
       case PAxiom(idndef, exp) => (if (idndef.isDefined) Seq(idndef.get) else Nil) ++ Seq(exp)
       case PTypeVarDecl(name) => Seq(name)
       case PDefine(idndef, optArgs, body) => Seq(idndef) ++ optArgs.getOrElse(Nil) ++ Seq(body)
+      case PQuasihavoc(lhs, e) => lhs.toSeq :+ e
+      case PQuasihavocall(vars, lhs, e) => vars ++ lhs.toSeq :+ e
       case t : PExtender => t.getSubnodes()
       case _: PSkip => Nil
       case _: PUnnamedFormalArgDecl => Nil
