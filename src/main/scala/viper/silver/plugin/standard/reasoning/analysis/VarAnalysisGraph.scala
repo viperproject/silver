@@ -2,9 +2,12 @@ package viper.silver.plugin.standard.reasoning.analysis
 
 import org.jgrapht.Graph
 import org.jgrapht.graph.{AbstractBaseGraph, DefaultDirectedGraph, DefaultEdge}
-import viper.silver.ast.{AccessPredicate, Assert, Assume, BinExp, CurrentPerm, DomainFuncApp, Exhale, Exp, FieldAccess, FieldAssign, ForPerm, FuncApp, If, Inhale, Int, Label, LocalVar, LocalVarAssign, LocalVarDecl, MethodCall, Perm, Program, Ref, Seqn, Stmt, UnExp, While}
-import viper.silver.plugin.standard.reasoning.{ExistentialElim, FlowAnnotationHeap, FlowAnnotationHeapHeapArg, FlowAnnotationVar, FlowAnnotationVarHeapArg, UniversalIntro}
-import viper.silver.verifier.AbstractError
+import viper.silver.ast.{AccessPredicate, Apply, Assert, Assume, BinExp, CurrentPerm, DomainFuncApp, Exhale, Exp, FieldAccess, FieldAssign, Fold, ForPerm, FuncApp, Goto, If, Inhale, Int, Label, LocalVar, LocalVarAssign, LocalVarDecl, MethodCall, Package, Perm, Program, Ref, Seqn, Stmt, UnExp, Unfold, While}
+import viper.silver.plugin.standard.reasoning.{FlowAnnotation, OldCall, Var}
+//import viper.silver.plugin.standard.reasoning.{ExistentialElim, FlowAnnotationHeap, FlowAnnotationHeapHeapArg, FlowAnnotationVar, FlowAnnotationVarHeapArg, UniversalIntro}
+import viper.silver.plugin.standard.reasoning.{ExistentialElim, UniversalIntro}
+
+import viper.silver.verifier.{AbstractError, ConsistencyError}
 
 import java.io.StringWriter
 import scala.jdk.CollectionConverters._
@@ -18,6 +21,35 @@ case class VarAnalysisGraph(prog: Program,
   val prefix: String = ".init_"
 
   val heap_vertex: LocalVarDecl = LocalVarDecl(".heap", Ref)()
+
+
+  def executeTaintedGraphAnalysis(graph1: Graph[LocalVarDecl,DefaultEdge], tainted: Set[LocalVarDecl], blk: Seqn, allVertices: Map[LocalVarDecl, LocalVarDecl], u: UniversalIntro): Unit = {
+
+
+    val graph = compute_graph(graph1, blk, allVertices)
+
+
+    var noEdges: Boolean = true
+    var badEdges = Set[DefaultEdge]()
+    tainted.foreach(v => {
+      if (graph.edgesOf(createInitialVertex(v)).size() > 1) {
+        badEdges = badEdges ++ graph.edgesOf(createInitialVertex(v)).asScala.toSet[DefaultEdge]
+        noEdges = false
+      }
+    })
+    if (!noEdges) {
+      var tainted_vars: Set[LocalVarDecl] = Set()
+      badEdges.foreach(e => {
+        val target = graph.getEdgeTarget(e)
+        if (!tainted.contains(target)) {
+          tainted_vars = tainted_vars + graph.getEdgeTarget(e)
+        }
+      })
+      val problem_vars: String = tainted_vars.mkString(", ")
+      val problem_pos: String = tainted_vars.map(vs => vs.pos).mkString(", ")
+      reportErrorWithMsg(ConsistencyError("Universal introduction variable might have been assigned to variable " + problem_vars + " at positions (" + problem_pos + "), defined outside of the block", u.pos))
+    }
+  }
 
 
   /**
@@ -231,9 +263,11 @@ case class VarAnalysisGraph(prog: Program,
       case Seqn(ss, scopedSeqnDeclarations) =>
         var allVertices: Map[LocalVarDecl,LocalVarDecl] = vertices
         for (d <- scopedSeqnDeclarations) {
-          val d_decl = d.asInstanceOf[LocalVarDecl]
-          val d_init = createInitialVertex(d_decl)
-          allVertices += (d_decl -> d_init)
+          if (d.isInstanceOf[LocalVarDecl]) {
+            val d_decl = d.asInstanceOf[LocalVarDecl]
+            val d_init = createInitialVertex(d_decl)
+            allVertices += (d_decl -> d_init)
+          }
         }
         var new_graph: Graph[LocalVarDecl, DefaultEdge] = createIdentityGraph(allVertices)
         for (s <- ss) {
@@ -309,7 +343,7 @@ case class VarAnalysisGraph(prog: Program,
 
         for (v <- rhs_vars) {
           /** if the variable on the right hand side is a field access */
-          if (v.typ == Ref || v.typ == Perm) {
+          if (v.equals(heap_vertex)) {
             val heap_init = vertices(heap_vertex)
             new_graph.addEdge(heap_init, lhs_decl, new DefaultEdge)
           } else {
@@ -323,20 +357,27 @@ case class VarAnalysisGraph(prog: Program,
         new_graph = addMissingEdges(new_graph, vert_wout_lhs)
         new_graph
 
-      case Inhale(exp) =>
+      case Inhale(exp) => expInfluencesAll(exp, graph, vertices)
+        /*
         val id_graph = createIdentityGraph(vertices)
-        if (exp.isPure) {
-          graph
-        } else {
-          val inhale_vars = getVarsFromExpr(graph, exp)
-          inhale_vars.foreach(v => {
-            if (v.typ == Ref) {
-              val init_v = createInitialVertex(v)
-              id_graph.addEdge(init_v, heap_vertex, new DefaultEdge)
-            }
+        val inhale_vars = getVarsFromExpr(graph, exp)
+        inhale_vars.foreach(v => {
+          //val init_v = createInitialVertex(v)
+          val init_v = vertices(v)
+
+          //id_graph.addEdge(init_v, heap_vertex, new DefaultEdge)
+          vertices.keySet.foreach(k => {
+            id_graph.addEdge(init_v, k, new DefaultEdge)
+            println(s"edge from ${init_v} to ${k}")
           })
-          id_graph
-        }
+
+        })
+        id_graph
+         */
+
+
+      /** same as inhale */
+      case Assume(exp) => expInfluencesAll(exp, graph, vertices)
 
       case Exhale(exp) =>
         val id_graph = createIdentityGraph(vertices)
@@ -353,8 +394,7 @@ case class VarAnalysisGraph(prog: Program,
           id_graph
         }
 
-      case Assume(_) =>
-        graph
+
 
       case Label(_, _) =>
         graph
@@ -372,7 +412,7 @@ case class VarAnalysisGraph(prog: Program,
         val rhs_vars = getVarsFromExpr(graph, rhs)
         rhs_vars.foreach(v => {
           /** Edge from .init_heap to heap does not have to be added since it exists anyways */
-          if (v.typ == Ref || v.typ == Perm || v == heap_vertex) {
+          if (v.equals(heap_vertex)) {
             id_graph
           } else {
             val v_init = createInitialVertex(v)
@@ -384,14 +424,74 @@ case class VarAnalysisGraph(prog: Program,
       case ExistentialElim(_,_,_) => graph
 
       case UniversalIntro(varList,_,_,_,blk) =>
-        val new_vertices: Map[LocalVarDecl, LocalVarDecl] = vertices ++ varList.map(v => (v,createInitialVertex(v)))
-        compute_graph(graph,blk,new_vertices)
+        val new_vertices: Map[LocalVarDecl, LocalVarDecl] = vertices ++ varList.map(v => (v -> createInitialVertex(v)))
+        val new_graph = compute_graph(graph,blk,new_vertices)
+        varList.foreach(v => {
+          new_graph.removeVertex(v)
+          new_graph.removeVertex(new_vertices(v))
+        })
+        new_graph
 
       case Assert(_) => graph
 
+      case Fold(acc) =>
+        val id_graph = createIdentityGraph(vertices)
+        val vars = getVarsFromExpr(graph, acc)
+        vars.foreach(v => {
+          id_graph.addEdge(vertices(v), heap_vertex, new DefaultEdge)
+        })
+        id_graph
+
+      case Unfold(acc) =>
+        val id_graph = createIdentityGraph(vertices)
+        val vars = getVarsFromExpr(graph, acc)
+        vars.foreach(v => {
+          id_graph.addEdge(vertices(v), heap_vertex, new DefaultEdge)
+        })
+        id_graph
+
+      case Apply(exp) =>
+        val id_graph = createIdentityGraph(vertices)
+        val vars = getVarsFromExpr(graph, exp)
+        vars.foreach(v => {
+          id_graph.addEdge(vertices(v), heap_vertex, new DefaultEdge)
+        })
+        id_graph
+
+      case Package(wand, _) =>
+        val id_graph = createIdentityGraph(vertices)
+        val vars = getVarsFromExpr(graph, wand)
+        vars.foreach(v => {
+          id_graph.addEdge(vertices(v), heap_vertex, new DefaultEdge)
+        })
+        id_graph
+
+      case g@Goto(_) =>
+        reportErrorWithMsg(ConsistencyError(s"${g} is an undefined statement for the universal introduction block", g.pos))
+        graph
+
+      case OldCall(_,_) => graph
       case s@_ =>
-        throw new UnsupportedOperationException("undefined statement for universal introduction block: " + s)
+        reportErrorWithMsg(ConsistencyError(s"${s} is an undefined statement for the universal introduction block", s.pos))
+        graph
+        //throw new UnsupportedOperationException("undefined statement for universal introduction block: " + s)
     }
+  }
+
+  def expInfluencesAll(exp:Exp, graph: Graph[LocalVarDecl, DefaultEdge], vertices: Map[LocalVarDecl,LocalVarDecl]) : Graph[LocalVarDecl, DefaultEdge] = {
+    val id_graph = createIdentityGraph(vertices)
+    val inhale_vars = getVarsFromExpr(graph, exp)
+    inhale_vars.foreach(v => {
+      //val init_v = createInitialVertex(v)
+      val init_v = vertices(v)
+
+      //id_graph.addEdge(init_v, heap_vertex, new DefaultEdge)
+      vertices.keySet.foreach(k => {
+        id_graph.addEdge(init_v, k, new DefaultEdge)
+      })
+
+    })
+    id_graph
   }
 
   def createInfluencedByGraph(graph: Graph[LocalVarDecl, DefaultEdge], vertices: Map[LocalVarDecl,LocalVarDecl], arg_names: Seq[Exp], ret_names: Seq[LocalVar], method_arg_names: Seq[LocalVarDecl], method_ret_names: Seq[LocalVarDecl],  posts: Seq[Exp]): Graph[LocalVarDecl, DefaultEdge] = {
@@ -448,17 +548,10 @@ case class VarAnalysisGraph(prog: Program,
 
     /** need to add the edges from the influenced by expression */
     posts.foreach {
-      case v@(FlowAnnotationVar(_,_) | FlowAnnotationVarHeapArg(_,_)) =>
-        /** depending on whether or not heap is method argument get argument in influenced by statement */
-        val (returned, arguments) = v match {
-          case FlowAnnotationVar(r,a) =>
-            (r,a)
-          case FlowAnnotationVarHeapArg(r,a) =>
-            (r,a++Seq(heap_vertex.localVar))
-        }
+      case FlowAnnotation(returned, arguments) =>
 
         /** returned has to be instance of LocalVar */
-        val returned_var: LocalVar = returned.asInstanceOf[LocalVar]
+        val returned_var: LocalVar = if (returned.isInstanceOf[Var]) returned.asInstanceOf[Var].var_decl.asInstanceOf[LocalVar] else heap_vertex.localVar
         /** create LocalVarDecl such that it can be added in the graph */
         val return_decl = LocalVarDecl(returned_var.name, returned_var.typ)(returned_var.pos)
         retSet -= return_decl
@@ -469,31 +562,11 @@ case class VarAnalysisGraph(prog: Program,
 
         arguments.foreach(argument => {
           /** argument has to be instance of LocalVar */
-          val argument_var: LocalVar = argument.asInstanceOf[LocalVar]
+          val argument_var: LocalVar = if (argument.isInstanceOf[Var]) argument.asInstanceOf[Var].var_decl.asInstanceOf[LocalVar] else heap_vertex.localVar
           val argument_decl = LocalVarDecl(argument_var.name, argument_var.typ)(argument_var.pos)
           /** get corresponding .arg variable and add edge from .arg to .ret vertex */
           val prov_decl = method_args(argument_decl)
           methodcall_graph.addEdge(prov_decl, method_rets(return_decl), new DefaultEdge)
-        })
-      case h@(FlowAnnotationHeap(_) | FlowAnnotationHeapHeapArg(_) )=>
-        if (!methodcall_graph.containsVertex(method_rets(heap_vertex))) {
-          methodcall_graph.addVertex(method_rets(heap_vertex))
-        }
-        retSet -= heap_vertex
-
-        val arguments = h match {
-          case FlowAnnotationHeap(a) =>
-            a
-          case FlowAnnotationHeapHeapArg(a) =>
-            a ++ Seq(heap_vertex.localVar)
-        }
-
-        arguments.foreach(argument => {
-          /** argument has to be instance of LocalVar */
-          val argument_var: LocalVar = argument.asInstanceOf[LocalVar]
-          val argument_decl = LocalVarDecl(argument_var.name, argument_var.typ)(argument_var.pos)
-          val prov_decl = method_args(argument_decl)
-          methodcall_graph.addEdge(prov_decl, method_rets(heap_vertex), new DefaultEdge)
         })
 
     }

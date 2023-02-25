@@ -7,7 +7,6 @@ function Q(x: Int) : Bool {
 }
 field f: Int
 
-
 method simple()
 {
     var z: Int := 0
@@ -134,7 +133,6 @@ method mInhaleOK2(y: Ref)
         inhale (acc(y.f))
     }
 }
-
 
 
 method mExhaleOK(y:Ref)
@@ -277,8 +275,8 @@ method mMethodCallOK3()
 }
 
 
-//:: ExpectedOutput(consistency.error)
 method exampleincorrect(b:Bool,c:Int) returns (z:Int, w:Int)
+//:: ExpectedOutput(consistency.error)
 influenced w by {}
 {
     z := 3
@@ -304,7 +302,7 @@ influenced w by {b,c}
 method exampleHeapArg2(b:Ref) returns (c:Int)
 requires acc(b.f)
 influenced heap by { heap }
-influenced c by { heap }
+influenced c by { heap , b }
 {
     c := b.f
 }
@@ -325,6 +323,83 @@ influenced c by { heap, b }
     c := b.f
 }
 
+method exampleWrongInfluenced() returns (c:Int)
+//:: ExpectedOutput(consistency.error)
+influenced c by {c}
+{
+    c := 0
+}
 
+//:: ExpectedOutput(consistency.error)
+method l1()
+isLemma
+{
+    var z:Int := 3
+}
 
+method l2()
+decreases
+isLemma
+{
+    var x:Int
+    //:: ExpectedOutput(consistency.error)
+    inhale(x == 0)
+}
 
+//:: ExpectedOutput(consistency.error)
+method l3()
+isLemma
+decreases *
+{
+    var x:Int := 0
+    while (x>0) {
+        x := x+1
+    }
+}
+
+method l4()
+isLemma
+decreases
+{
+    var t: Int := 0
+}
+
+predicate foo(xs:Ref)
+{
+    acc(xs.f)
+}
+
+method mFold()
+{
+    var z: Ref
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) {
+        assume acc(z.f)
+        fold foo(z)
+    }
+}
+
+method mFoldNOK()
+{
+    var z: Ref
+    //:: ExpectedOutput(consistency.error)
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) {
+        z.f := x
+        assume acc(z.f)
+        fold foo(z)
+    }
+}
+
+method mOldCallOK()
+{
+    label l
+    oldCall[l](l3())
+}
+
+method mOldCallNOK()
+{
+    var x: Int := 0
+    label l
+    x := 2
+    //:: ExpectedOutput(consistency.error)
+    oldCall[l](exampleHeap(x))
+}

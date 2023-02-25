@@ -1,6 +1,7 @@
 package viper.silver.plugin.standard.reasoning.analysis
 
 import viper.silver.ast.{Assume, BinExp, Declaration, Exp, FieldAssign, If, Inhale, Label, LocalVar, LocalVarAssign, LocalVarDecl, MethodCall, Seqn, Stmt, UnExp, While}
+import viper.silver.plugin.standard.reasoning.UniversalIntro
 import viper.silver.verifier.{AbstractError, ConsistencyError}
 
 import scala.collection.mutable
@@ -8,6 +9,25 @@ import scala.collection.mutable
 trait VarAnalysisSet {
 
   def reportErrorWithMsg(error: AbstractError): Unit
+
+
+  def executeTaintedSetAnalysis(tainted: Set[Declaration], vars_outside_blk: mutable.Set[Declaration], blk: Seqn, u: UniversalIntro, reportError: AbstractError => Unit): Unit = {
+    /** check whether any additional variables are tainted inside of the block */
+    var all_tainted = Set[Declaration]()
+    all_tainted = get_tainted_vars_stmt(tainted, blk)
+
+
+    /** remove the variables that were tainted to begin with */
+    vars_outside_blk --= mutable.Set(u.transitiveScopedDecls: _*)
+
+    /** check whether any variables were tainted that are declared outside of our block */
+    if (!(vars_outside_blk.intersect(all_tainted).isEmpty)) {
+      val tainted_vars: Set[Declaration] = all_tainted.intersect(vars_outside_blk)
+      val problem_vars: String = tainted_vars.mkString(", ")
+      val problem_pos: String = tainted_vars.map(vs => vs.pos).mkString(", ")
+      reportError(ConsistencyError("Universal introduction variable might have been assigned to variable " + problem_vars + " at positions (" + problem_pos + "), defined outside of the block", u.pos))
+    }
+  }
 
   /**
     * check which arguments are influenced by universal introduction variables and add them to the tainted set.
