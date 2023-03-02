@@ -94,7 +94,7 @@ trait SilFrontend extends DefaultFrontend {
 
   protected val fp = new FastParser()
 
-  protected var _plugins: SilverPluginManager = SilverPluginManager(defaultPlugins match {
+  private var _plugins: SilverPluginManager = SilverPluginManager(defaultPlugins match {
     case Seq() => None
     case s => Some(s.mkString(":"))
   })(reporter, logger, _config, fp)
@@ -187,11 +187,11 @@ trait SilFrontend extends DefaultFrontend {
     if(_config != null) {
 
       // concat defined plugins and default plugins
-      val plugins: Option[String] = {
+      val pluginsArg: Option[String] = {
         val list = _config.plugin.toOption ++ defaultPlugins
         if (list.isEmpty) { None } else { Some(list.mkString(":")) }
       }
-      _plugins = SilverPluginManager(plugins)(reporter, logger, _config, fp)
+      _plugins = SilverPluginManager(pluginsArg)(reporter, logger, _config, fp)
     }
   }
 
@@ -217,7 +217,7 @@ trait SilFrontend extends DefaultFrontend {
 
   override def verification(): Unit = {
     def filter(input: Program): Result[Program]  = {
-      _plugins.beforeMethodFilter(input) match {
+      plugins.beforeMethodFilter(input) match {
         case Some(inputPlugin) =>
           // Filter methods according to command-line arguments.
           val verifyMethods =
@@ -227,12 +227,12 @@ trait SilFrontend extends DefaultFrontend {
           val methods = inputPlugin.methods filter (m => verifyMethods.contains(m.name))
           val program = Program(inputPlugin.domains, inputPlugin.fields, inputPlugin.functions, inputPlugin.predicates, methods, inputPlugin.extensions)(inputPlugin.pos, inputPlugin.info, inputPlugin.errT)
 
-          _plugins.beforeVerify(program) match {
+          plugins.beforeVerify(program) match {
             case Some(programPlugin) => Succ(programPlugin)
-            case None => Fail(_plugins.errors)
+            case None => Fail(plugins.errors)
           }
 
-        case None => Fail(_plugins.errors)
+        case None => Fail(plugins.errors)
       }
     }
 
@@ -243,11 +243,11 @@ trait SilFrontend extends DefaultFrontend {
       }
     }
     super.verification()
-    _verificationResult = _verificationResult.map(_plugins.mapVerificationResult(_program.get, _))
+    _verificationResult = _verificationResult.map(plugins.mapVerificationResult(_program.get, _))
   }
 
   def finish(): Unit = {
-    val res = _plugins.beforeFinish(result)
+    val res = plugins.beforeFinish(result)
     _verificationResult = Some(res)
     res match {
       case Success =>
@@ -263,9 +263,9 @@ trait SilFrontend extends DefaultFrontend {
 
   override def doParsing(input: String): Result[PProgram] = {
     val file = _inputFile.get
-    _plugins.beforeParse(input, isImported = false) match {
+    plugins.beforeParse(input, isImported = false) match {
       case Some(inputPlugin) =>
-        val result = fp.parse(inputPlugin, file, Some(_plugins))
+        val result = fp.parse(inputPlugin, file, Some(plugins))
           result match {
             case Parsed.Success(e@ PProgram(_, _, _, _, _, _, _, _, err_list), _) =>
               if (err_list.isEmpty || err_list.forall(p => p.isInstanceOf[ParseWarning])) {
@@ -282,12 +282,12 @@ trait SilFrontend extends DefaultFrontend {
             case error: ParseError => Fail(List(error))
           }
 
-      case None => Fail(_plugins.errors)
+      case None => Fail(plugins.errors)
     }
   }
 
   override def doSemanticAnalysis(input: PProgram): Result[PProgram] = {
-    _plugins.beforeResolve(input) match {
+    plugins.beforeResolve(input) match {
       case Some(inputPlugin) =>
         val r = Resolver(inputPlugin)
         val analysisResult = r.run
@@ -306,13 +306,13 @@ trait SilFrontend extends DefaultFrontend {
             Fail(errors)
         }
 
-      case None => Fail(_plugins.errors)
+      case None => Fail(plugins.errors)
     }
   }
 
   override def doTranslation(input: PProgram): Result[Program] = {
 
-    _plugins.beforeTranslate(input) match {
+    plugins.beforeTranslate(input) match {
       case Some(modifiedInputPlugin) =>
         Translator(modifiedInputPlugin).translate match {
           case Some(program) =>
@@ -324,7 +324,7 @@ trait SilFrontend extends DefaultFrontend {
             }))
         }
 
-      case None => Fail(_plugins.errors)
+      case None => Fail(plugins.errors)
     }
   }
 
