@@ -1,0 +1,54 @@
+adt Tree {
+    Leaf()
+    Node(v: Int, left: Tree, right: Tree)
+}
+
+function isBST(t:Tree): Bool 
+{
+    t.isLeaf
+        ? true
+        : allNodesLessThan(t.left, t.v) && isBST(t.left) && allNodesGreaterThan(t.right, t.v) && isBST(t.right)
+
+}
+
+function allNodesLessThan(t:Tree, value: Int): Bool
+{
+   t.isLeaf 
+        ? true 
+        : t.v < value && allNodesLessThan(t.right, value) && allNodesLessThan(t.left, value)
+}
+
+function allNodesGreaterThan(t:Tree, value: Int): Bool
+{
+   t.isLeaf 
+        ? true 
+        : t.v > value && allNodesGreaterThan(t.left, value) && allNodesGreaterThan(t.right, value)
+}
+
+
+method insertValue(v:Int, t:Tree) returns (res: Tree)
+    ensures forall i:Int :: allNodesGreaterThan(t,i) && i < v ==> allNodesGreaterThan(res, i)
+    ensures forall i:Int :: allNodesLessThan(t, i) && v < i ==> allNodesLessThan(res, i)
+    ensures isBST(t) ==> isBST(res)
+{   
+    var new_rightsubtree: Tree
+    var new_leftsubtree: Tree
+
+    if(t.isLeaf) {
+        res:= Node(v, Leaf(), Leaf())
+    } else {
+        if (v == t.v)
+        {
+            // value is already in tree so we do nothing
+            res:= t
+        }
+        elseif (v < t.v)
+        {   
+            new_leftsubtree := insertValue(v, t.left)
+            res := Node(t.v, new_leftsubtree, t.right)
+        } else {
+            new_rightsubtree := insertValue(v, t.right)
+            res := Node(t.v, t.left, new_rightsubtree)
+        }
+    } 
+}

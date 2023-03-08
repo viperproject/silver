@@ -81,16 +81,24 @@ trait SilFrontend extends DefaultFrontend {
    * All default plugins can be excluded from the plugins by providing the --disableDefaultPlugins flag
    */
   private val defaultPlugins: Seq[String] = Seq(
+    "viper.silver.plugin.standard.adt.AdtPlugin",
     "viper.silver.plugin.standard.termination.TerminationPlugin",
+    "viper.silver.plugin.standard.refute.RefutePlugin",
     "viper.silver.plugin.standard.predicateinstance.PredicateInstancePlugin",
     "viper.silver.plugin.standard.inline.InlinePredicatePlugin"
   )
+  /** For testing of plugin import feature */
+  def defaultPluginCount: Int = defaultPlugins.size
 
+  /** Name of the expected format for backend types. Examples: "Boogie", "SMTLIB". */
+  def backendTypeFormat: Option[String] = None
 
-  protected var _plugins: SilverPluginManager = SilverPluginManager(defaultPlugins match {
+  protected val fp = new FastParser()
+
+  private var _plugins: SilverPluginManager = SilverPluginManager(defaultPlugins match {
     case Seq() => None
     case s => Some(s.mkString(":"))
-  })(reporter.reporter, logger, _config)
+  })(reporter, logger, _config, fp)
 
   def plugins: SilverPluginManager = _plugins
 
@@ -133,12 +141,6 @@ trait SilFrontend extends DefaultFrontend {
     if (_config.dependencies()) {
       reporter report ExternalDependenciesReport(_ver.dependencies)
     }
-
-    // FIXME The error transformer function may not be immutable with current design:
-    // FIXME  `reporter` is a field of trait Frontend, whereas the plugin manager
-    // FIXME  stored in `_plugins` is only initialized here, in SilFrontend.
-    // FIXME  Consider refactoring this part. --- ATG 2019
-    reporter.transform = _plugins.mapVerificationResult
     true
   }
 
@@ -186,11 +188,11 @@ trait SilFrontend extends DefaultFrontend {
     if(_config != null) {
 
       // concat defined plugins and default plugins
-      val plugins: Option[String] = {
+      val pluginsArg: Option[String] = {
         val list = _config.plugin.toOption ++ defaultPlugins
         if (list.isEmpty) { None } else { Some(list.mkString(":")) }
       }
-      _plugins = SilverPluginManager(plugins)(reporter.reporter, logger, _config)
+      _plugins = SilverPluginManager(pluginsArg)(reporter, logger, _config, fp)
     }
   }
 
@@ -214,8 +216,41 @@ trait SilFrontend extends DefaultFrontend {
     }
   }
 
+  override def verification(): Unit = {
+    def filter(input: Program): Result[Program]  = {
+      plugins.beforeMethodFilter(input) match {
+        case Some(inputPlugin) =>
+          // Filter methods according to command-line arguments.
+          val verifyMethods =
+            if (config != null && config.methods() != ":all") Seq("methods", config.methods())
+            else inputPlugin.methods map (_.name)
+
+          val methods = inputPlugin.methods filter (m => verifyMethods.contains(m.name))
+          val program = Program(inputPlugin.domains, inputPlugin.fields, inputPlugin.functions, inputPlugin.predicates, methods, inputPlugin.extensions)(inputPlugin.pos, inputPlugin.info, inputPlugin.errT)
+
+          plugins.beforeVerify(program) match {
+            case Some(programPlugin) => Succ(programPlugin)
+            case None => Fail(plugins.errors)
+          }
+
+        case None => Fail(plugins.errors)
+      }
+    }
+
+    if (state == DefaultStates.ConsistencyCheck && _errors.isEmpty) {
+      filter(_program.get) match {
+        case Succ(program) => _program = Some(program)
+        case Fail(errors) => _errors ++= errors
+      }
+    }
+    super.verification()
+    _verificationResult = _verificationResult.map(plugins.mapVerificationResult(_program.get, _))
+  }
+
   def finish(): Unit = {
-    _plugins.beforeFinish(result) match {
+    val res = plugins.beforeFinish(result)
+    _verificationResult = Some(res)
+    res match {
       case Success =>
         reporter report OverallSuccessMessage(verifier.name, getTime)
       case f: Failure =>
@@ -229,9 +264,9 @@ trait SilFrontend extends DefaultFrontend {
 
   override def doParsing(input: String): Result[PProgram] = {
     val file = _inputFile.get
-    _plugins.beforeParse(input, isImported = false) match {
+    plugins.beforeParse(input, isImported = false) match {
       case Some(inputPlugin) =>
-        val result = FastParser.parse(inputPlugin, file, Some(_plugins))
+        val result = fp.parse(inputPlugin, file, Some(plugins))
           result match {
             case Parsed.Success(e@ PProgram(_, _, _, _, _, _, _, _, err_list), _) =>
               if (err_list.isEmpty || err_list.forall(p => p.isInstanceOf[ParseWarning])) {
@@ -239,21 +274,21 @@ trait SilFrontend extends DefaultFrontend {
                 Succ({e.initProperties(); e})
               }
               else Fail(err_list)
-            case fail @ Parsed.Failure(_, index, extra) =>
+            case fail @ Parsed.Failure(_, index, _) =>
               val msg = fail.trace().longAggregateMsg
-              val (line, col) = LineCol(index)
+              val (line, col) = fp.lineCol.getPos(index)
               Fail(List(ParseError(s"Expected $msg", SourcePosition(file, line, col))))
             //? val pos = extra.input.prettyIndex(index).split(":").map(_.toInt)
               //? Fail(List(ParseError(s"Expected $msg", SourcePosition(file, pos(0), pos(1)))))
             case error: ParseError => Fail(List(error))
           }
 
-      case None => Fail(_plugins.errors)
+      case None => Fail(plugins.errors)
     }
   }
 
   override def doSemanticAnalysis(input: PProgram): Result[PProgram] = {
-    _plugins.beforeResolve(input) match {
+    plugins.beforeResolve(input) match {
       case Some(inputPlugin) =>
         val r = Resolver(inputPlugin)
         val analysisResult = r.run
@@ -272,13 +307,13 @@ trait SilFrontend extends DefaultFrontend {
             Fail(errors)
         }
 
-      case None => Fail(_plugins.errors)
+      case None => Fail(plugins.errors)
     }
   }
 
   override def doTranslation(input: PProgram): Result[Program] = {
 
-    _plugins.beforeTranslate(input) match {
+    plugins.beforeTranslate(input) match {
       case Some(modifiedInputPlugin) =>
         Translator(modifiedInputPlugin).translate match {
           case Some(program) =>
@@ -290,35 +325,17 @@ trait SilFrontend extends DefaultFrontend {
             }))
         }
 
-      case None => Fail(_plugins.errors)
+      case None => Fail(plugins.errors)
     }
   }
 
   def doConsistencyCheck(input: Program): Result[Program]= {
-    def filter(input: Program): Result[Program]  = {
-      _plugins.beforeMethodFilter(input) match {
-        case Some(inputPlugin) =>
-          // Filter methods according to command-line arguments.
-          val verifyMethods =
-            if (config != null && config.methods() != ":all") Seq("methods", config.methods())
-            else inputPlugin.methods map (_.name)
-
-          val methods = inputPlugin.methods filter (m => verifyMethods.contains(m.name))
-          val program = Program(inputPlugin.domains, inputPlugin.fields, inputPlugin.functions, inputPlugin.predicates, methods, inputPlugin.extensions)(inputPlugin.pos, inputPlugin.info)
-
-          _plugins.beforeVerify(program) match {
-            case Some(programPlugin) => Succ(programPlugin)
-            case None => Fail(_plugins.errors)
-          }
-
-        case None => Fail(_plugins.errors)
-      }
-    }
-
-    val errors = input.checkTransitively
-    if (errors.isEmpty)
-      filter(input)
-    else
+    var errors = input.checkTransitively
+    if (backendTypeFormat.isDefined)
+      errors = errors ++ Consistency.checkBackendTypes(input, backendTypeFormat.get)
+    if (errors.isEmpty) {
+      Succ(input)
+    } else
       Fail(errors)
   }
 }

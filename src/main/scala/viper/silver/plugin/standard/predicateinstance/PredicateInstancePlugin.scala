@@ -9,17 +9,23 @@ package viper.silver.plugin.standard.predicateinstance
 import viper.silver.ast.{Domain, DomainType, ErrTrafo, FuncApp, Function, Position, PredicateAccess, PredicateAccessPredicate, Program, WildcardPerm}
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.Traverse
-import viper.silver.parser.FastParser._
 import viper.silver.parser._
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier.{ConsistencyError, Failure, Success, VerificationResult}
 import viper.silver.verifier.errors.PreconditionInAppFalse
 import fastparse._
-import viper.silver.parser.FastParser.whitespace
+import viper.silver.parser.FastParserCompanion.whitespace
+import viper.silver.reporter.Entity
 
+import scala.annotation.unused
 import scala.collection.immutable.ListMap
 
-class PredicateInstancePlugin  extends SilverPlugin with ParserPluginTemplate {
+class PredicateInstancePlugin(@unused reporter: viper.silver.reporter.Reporter,
+                              @unused logger: ch.qos.logback.classic.Logger,
+                              @unused config: viper.silver.frontend.SilFrontendConfig,
+                              fp: FastParser)  extends SilverPlugin with ParserPluginTemplate {
+
+  import fp.{FP, predAcc, ParserExtension}
 
   /**
    * Syntactic marker for predicate instances
@@ -90,10 +96,16 @@ class PredicateInstancePlugin  extends SilverPlugin with ParserPluginTemplate {
     newProgram
   }
 
+  override def mapEntityVerificationResult(entity: Entity, input: VerificationResult): VerificationResult =
+    translateVerificationResult(input)
+
   /**
    * Initiate the error transformer for possibly predicate instances related errors
    */
-  override def mapVerificationResult(input: VerificationResult): VerificationResult = {
+  override def mapVerificationResult(@unused program: Program, input: VerificationResult): VerificationResult =
+    translateVerificationResult(input)
+
+  private def translateVerificationResult(input: VerificationResult): VerificationResult = {
     input match {
       case Success => input
       case Failure(errors) =>

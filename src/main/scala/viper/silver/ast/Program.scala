@@ -6,7 +6,7 @@
 
 package viper.silver.ast
 
-import viper.silver.ast.pretty.{Fixity, Infix, LeftAssociative, NonAssociative, Prefix, RightAssociative}
+import viper.silver.ast.pretty.{Fixity, Infix, LeftAssociative, NonAssociative, Prefix, PrettyPrintPrimitives, RightAssociative}
 import utility.{Consistency, DomainInstances, Nodes, Types, Visitor}
 import viper.silver.ast.MagicWandStructure.MagicWandStructure
 import viper.silver.ast.utility.rewriter.StrategyBuilder
@@ -31,11 +31,12 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     }).distinct
 
   override lazy val check : Seq[ConsistencyError] =
-    Consistency.checkContextDependentConsistency(this) ++
+    Consistency.checkContextDependentConsistency(this, this) ++
     Consistency.checkNoFunctionRecursesViaPreconditions(this) ++
     checkMethodCallsAreValid ++
     checkFunctionApplicationsAreValid ++
     checkDomainFunctionApplicationsAreValid ++
+    checkPredicateAccessesAreValid ++
     checkAbstractPredicatesUsage ++
     checkIdentifiers
 
@@ -105,6 +106,28 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
             s :+= ConsistencyError(
               s"No matching function $name found of return type ${funcApp.typ}, instead found with return type ${funcDef.typ}.",
               funcApp.pos
+            )
+          }
+        }
+      }
+    }
+
+    s
+  }
+
+  /** Checks that the predicate access arguments are assignable to formalArgs.
+    **/
+  lazy val checkPredicateAccessesAreValid: Seq[ConsistencyError] = {
+    var s = Seq.empty[ConsistencyError]
+
+    for (predAcc@PredicateAccess(args, name) <- this) {
+      this.findPredicateOptionally(name) match {
+        case None => // Consistency error already reported by checkIdentifiers
+        case Some(predDef) => {
+          if (!Consistency.areAssignable(args, predDef.formalArgs)) {
+            s :+= ConsistencyError(
+              s"Predicate $name with formal arguments ${predDef.formalArgs} cannot be used with provided arguments $args.",
+              predAcc.pos
             )
           }
         }
@@ -264,6 +287,8 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     }
   }
 
+  def findPredicateOptionally(name: String): Option[Predicate] = this.predicates.find(_.name == name)
+
   def findPredicate(name: String): Predicate = {
     this.predicates.find(_.name == name) match {
       case Some(p) => p
@@ -412,8 +437,8 @@ object MethodWithLabelsInScope {
                  (pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos): Method = {
     val newBody = body match {
       case Some(actualBody) =>
-        val newScopedDecls = actualBody.scopedDecls ++ actualBody.deepCollect({case l: Label => l})
-        Some(actualBody.copy(scopedDecls = newScopedDecls)(actualBody.pos, actualBody.info, actualBody.errT))
+        val newScopedDecls = actualBody.scopedSeqnDeclarations ++ actualBody.deepCollect({case l: Label => l})
+        Some(actualBody.copy(scopedSeqnDeclarations = newScopedDecls)(actualBody.pos, actualBody.info, actualBody.errT))
       case _ => body
     }
     Method(name, formalArgs, formalReturns, pres, posts, newBody)(pos, info, errT)
@@ -459,6 +484,8 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres
 
   def isAbstract = body.isEmpty
 
+  lazy val isPure = pres.forall(_.isPure)
+
   override def isValid : Boolean /* Option[Message] */ = this match {
     case _ if (for (e <- pres ++ posts) yield e.contains[MagicWand]).contains(true) => false
     case _ if (for (e <- body)           yield e.contains[MagicWand]).contains(true) => false
@@ -503,8 +530,11 @@ case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition,
 // --- Domains and domain members
 
 /** A user-defined domain. */
-case class Domain(name: String, functions: Seq[DomainFunc], axioms: Seq[DomainAxiom], typVars: Seq[TypeVar] = Nil)
+case class Domain(name: String, functions: Seq[DomainFunc], axioms: Seq[DomainAxiom], typVars: Seq[TypeVar] = Nil, interpretations: Option[Map[String, String]] = None)
                  (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Member with Positioned with Infoed with TransformableErrors {
+
+  override lazy val check : Seq[ConsistencyError] =
+    if (typVars.nonEmpty && interpretations.nonEmpty) Seq(ConsistencyError("Interpreted domains cannot have type arguments.", pos)) else Seq()
 
   val scopedDecls = Seq()
   override def getMetadata:Seq[Any] = {
@@ -552,7 +582,7 @@ object Substitution{
   def toString(s : Substitution) : String = s.mkString(",")
 }
 /** Domain function which is not a binary or unary operator. */
-case class DomainFunc(name: String, formalArgs: Seq[AnyLocalVarDecl], typ: Type, unique: Boolean = false)
+case class DomainFunc(name: String, formalArgs: Seq[AnyLocalVarDecl], typ: Type, unique: Boolean = false, interpretation: Option[String] = None)
                      (val pos: Position = NoPosition, val info: Info = NoInfo,val domainName : String, val errT: ErrorTrafo = NoTrafos)
                       extends AbstractDomainFunc with DomainMember with Declaration {
   override lazy val check : Seq[ConsistencyError] =
@@ -770,13 +800,20 @@ case object NotOp extends UnOp with BoolDomainFunc {
   lazy val fixity = Prefix
 }
 
+object BackendFunc {
+  def apply(name: String, smtName: String, domain: String, typ: Type, formalArgs: Seq[LocalVarDecl])
+                    (pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos): DomainFunc = {
+    DomainFunc(name, formalArgs, typ, false, Some(smtName))(pos, info, domain, errT)
+  }
 
-case class BackendFunc(name: String, smtName: String, override val typ: Type, override val formalArgs: Seq[LocalVarDecl])
-  extends Node with AbstractDomainFunc with BuiltinDomainFunc
+  def unapply(df: DomainFunc) =
+    if (df.interpretation.isDefined) Some((df.name, df.interpretation.get, df.typ, df.formalArgs)) else None
+}
 
 /**
   * The Extension Member trait provides the way to expand the Ast to include new Top Level declarations
   */
 trait ExtensionMember extends Member{
   def extensionSubnodes: Seq[Node]
+  def prettyPrint: PrettyPrintPrimitives#Cont
 }

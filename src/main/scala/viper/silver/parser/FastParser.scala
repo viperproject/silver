@@ -8,13 +8,15 @@ package viper.silver.parser
 
 import java.net.URL
 import java.nio.file.{Files, Path, Paths}
+
 import viper.silver.ast.{FilePosition, LabelledOld, LineCol, NoPosition, Position, SourcePosition}
 import viper.silver.ast.utility.rewriter.{ContextA, PartialContextC, StrategyBuilder}
+import viper.silver.parser.FastParserCompanion.{LW, LeadingWhitespace}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
-import viper.silver.plugin.SilverPluginManager
+import viper.silver.plugin.{ParserPluginTemplate, SilverPluginManager}
 import viper.silver.verifier.{ParseError, ParseWarning}
 
-import scala.collection.mutable
+import scala.collection.{Set, immutable, mutable}
 
 
 case class ParseException(msg: String, pos: Position) extends Exception
@@ -23,7 +25,88 @@ case class SuffixedExpressionGenerator[E <: PExp](func: PExp => E) extends (PExp
   override def apply(v1: PExp): E = func(v1)
 }
 
-object FastParser {
+object FastParserCompanion {
+  import fastparse._
+
+  val whitespaceWithoutNewlineOrComments = {
+    import NoWhitespace._
+    implicit ctx: ParsingRun[_] =>
+      NoTrace((" " | "\t").rep)
+  }
+
+  implicit val whitespace = {
+    import NoWhitespace._
+    implicit ctx: ParsingRun[_] =>
+      NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
+  }
+
+  class LeadingWhitespace[T](val p: () => P[T]) extends AnyVal {
+    /**
+      * Using `p.lw` is shorthand for `Pass ~ p` (the same parser but with possibly leading whitespace).
+      *
+      * A parser of the form `FP(p0 ~ p1.?)` or `FP(p0 ~ p2.rep)` may return an end position which
+      * includes trailing whitespaces (incl. comments, newlines) if `p1` or `p2` fail to match (the `~` does this).
+      * Instead we would like to use `FP(p0 ~~ (Pass ~ p1).?)` or `FP(p0 ~~ (Pass ~ p2).rep)`, which avoids this issue.
+      */
+    def lw(implicit ctx: P[Any]): LW[T] = new LW(() => Pass ~ p())
+    def ~~~[V, R](other: LW[V])(implicit s: Implicits.Sequencer[T, V, R], ctx: P[Any]): P[R] = (p() ~~ other.p()).asInstanceOf[P[R]]
+    def ~~~/[V, R](other: LW[V])(implicit s: Implicits.Sequencer[T, V, R], ctx: P[Any]): P[R] = (p() ~~/ other.p()).asInstanceOf[P[R]]
+  }
+  /**
+    * A parser which matches leading whitespaces. See `LeadingWhitespace.lw` for more info. Can only be operated on in
+    * restricted ways (e.g. `?`, `rep`, `|` or `map`), requiring that it is eventually appened to a normal parser (of type `P[V]`).
+    *
+    * For example, the following two are equivalent:
+    * {{{FP("hello" ~~~ "world".lw.?)
+    * FP("hello" ~~ (Pass ~ "world").?)}}}
+    * The type system prevents one from erroneously writing:
+    * {{{FP("hello" ~ "world".lw.?)}}}
+    */
+  class LW[T](val p: () => P[T]) {
+    def ?[V](implicit optioner: Implicits.Optioner[T, V], ctx: P[Any]): LW[V] = new LW(() => p().?.asInstanceOf[P[V]])
+    def rep[V](implicit repeater: Implicits.Repeater[T, V], ctx: P[Any]): LW[V] = new LW(() => p().rep.asInstanceOf[P[V]])
+    def |[V >: T](other: LW[V])(implicit ctx: P[Any]): LW[V] = new LW(() => (p() | other.p()).asInstanceOf[P[V]])
+    def map[V](f: T => V): LW[V] = new LW(() => p().map(f))
+  }
+
+  val basicKeywords = immutable.Set("result",
+    // types
+    "Int", "Perm", "Bool", "Ref", "Rational",
+    // boolean constants
+    "true", "false",
+    // null
+    "null",
+    // preamble importing
+    "import",
+    // declaration keywords
+    "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "field", "define", "interpretation",
+    // specifications
+    "requires", "ensures", "invariant",
+    // statements
+    "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "package", "apply", "quasihavoc", "quasihavocall",
+    // control flow
+    "while", "if", "elseif", "else", "goto", "label",
+    // sequences
+    "Seq",
+    // sets and multisets
+    "Set", "Multiset", "union", "intersection", "setminus", "subset",
+    // maps
+    "Map", "range",
+    // prover hint expressions
+    "unfolding", "in", "applying", "asserting",
+    // old expression
+    "old", "lhs",
+    // other expressions
+    "let",
+    // quantification
+    "forall", "exists", "forperm",
+    // permission syntax
+    "acc", "wildcard", "write", "none", "epsilon", "perm",
+    // modifiers
+    "unique")
+}
+
+class FastParser {
   import fastparse._
 
   implicit val whitespace = {
@@ -31,6 +114,8 @@ object FastParser {
     implicit ctx: ParsingRun[_] =>
       NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
   }
+
+  val lineCol = new LineCol(this)
 
   /* When importing a file from standard library, e.g. `include <inc.vpr>`, the file is expected
    * to be located in `resources/${standard_import_directory}`, e.g. `resources/import/inv.vpr`.
@@ -145,7 +230,7 @@ object FastParser {
             j += 1
           }
         }
-      PProgram(Seq(), macros, domains, fields, functions, predicates, methods, extensions, errors)()
+      PProgram(Seq(), macros, domains, fields, functions, predicates, methods, extensions, errors)(p.pos)
     }
 
 
@@ -183,43 +268,16 @@ object FastParser {
     * Function that wraps a parser to provide start and end positions if the wrapped parser succeeds.
     */
   def FP[T](t: => P[T])(implicit ctx: P[_]): P[((FilePosition, FilePosition), T)] = {
-    val startPos = LineCol(ctx.index)
+    val startPos = lineCol.getPos(ctx.index)
     val res: P[T] = t
-    val finishPos = LineCol(ctx.index)
+    val finishPos = lineCol.getPos(ctx.index)
     res.map({ parsed => ((FilePosition(_file, startPos._1, startPos._2), FilePosition(_file, finishPos._1, finishPos._2)), parsed) })
   }
 
   import scala.language.implicitConversions
   implicit def LeadingWhitespaceStr(p: String)(implicit ctx: P[Any]): LeadingWhitespace[Unit] = new LeadingWhitespace(() => P(p))
   implicit def LeadingWhitespace[T](p: => P[T]) = new LeadingWhitespace(() => p)
-  class LeadingWhitespace[T](val p: () => P[T]) extends AnyVal {
-  /**
-    * Using `p.lw` is shorthand for `Pass ~ p` (the same parser but with possibly leading whitespace).
-    *
-    * A parser of the form `FP(p0 ~ p1.?)` or `FP(p0 ~ p2.rep)` may return an end position which
-    * includes trailing whitespaces (incl. comments, newlines) if `p1` or `p2` fail to match (the `~` does this).
-    * Instead we would like to use `FP(p0 ~~ (Pass ~ p1).?)` or `FP(p0 ~~ (Pass ~ p2).rep)`, which avoids this issue.
-    */
-    def lw(implicit ctx: P[Any]): LW[T] = new LW(() => Pass ~ p())
-    def ~~~[V, R](other: LW[V])(implicit s: Implicits.Sequencer[T, V, R], ctx: P[Any]): P[R] = (p() ~~ other.p()).asInstanceOf[P[R]]
-    def ~~~/[V, R](other: LW[V])(implicit s: Implicits.Sequencer[T, V, R], ctx: P[Any]): P[R] = (p() ~~/ other.p()).asInstanceOf[P[R]]
-  }
-  /**
-    * A parser which matches leading whitespaces. See `LeadingWhitespace.lw` for more info. Can only be operated on in
-    * restricted ways (e.g. `?`, `rep`, `|` or `map`), requiring that it is eventually appened to a normal parser (of type `P[V]`).
-    * 
-    * For example, the following two are equivalent:
-    * {{{FP("hello" ~~~ "world".lw.?)
-    * FP("hello" ~~ (Pass ~ "world").?)}}}
-    * The type system prevents one from erroneously writing:
-    * {{{FP("hello" ~ "world".lw.?)}}}
-    */
-  class LW[T](val p: () => P[T]) {
-    def ?[V](implicit optioner: Implicits.Optioner[T, V], ctx: P[Any]): LW[V] = new LW(() => p().?.asInstanceOf[P[V]])
-    def rep[V](implicit repeater: Implicits.Repeater[T, V], ctx: P[Any]): LW[V] = new LW(() => p().rep.asInstanceOf[P[V]])
-    def |[V >: T](other: LW[V])(implicit ctx: P[Any]): LW[V] = new LW(() => (p() | other.p()).asInstanceOf[P[V]])
-    def map[V](f: T => V): LW[V] = new LW(() => p().map(f))
-  }
+
 
   // Actual Parser starts from here
   def identContinues[_: P] = CharIn("0-9", "A-Z", "a-z", "$_")
@@ -264,7 +322,7 @@ object FastParser {
       case fastparse.Parsed.Success(prog, _) => prog
       case fail @ fastparse.Parsed.Failure(_, index, _) =>
         val msg = fail.trace().longMsg
-        val (line, col) = LineCol(index)
+        val (line, col) = lineCol.getPos(index)
         throw ParseException(s"Expected $msg", FilePosition(path, line, col))
     }
   }
@@ -474,7 +532,7 @@ object FastParser {
       linearizeMethod(doExpandDefines(localMacros ++ globalMacros, methodWithoutMacros, p))
     })
 
-    PProgram(p.imports, p.macros, domains, p.fields, functions, predicates, methods, p.extensions, p.errors ++ warnings)()
+    PProgram(p.imports, p.macros, domains, p.fields, functions, predicates, methods, p.extensions, p.errors ++ warnings)(p.pos)
   }
 
 
@@ -732,59 +790,25 @@ object FastParser {
   /** The file we are currently parsing (for creating positions later). */
   def file: Path = _file
 
-  lazy val keywords = Set("result",
-    // types
-    "Int", "Perm", "Bool", "Ref", "Rational",
-    // boolean constants
-    "true", "false",
-    // null
-    "null",
-    // preamble importing
-    "import",
-    // declaration keywords
-    "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "field", "define",
-    // specifications
-    "requires", "ensures", "invariant",
-    // statements
-    "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "package", "apply",
-    // control flow
-    "while", "if", "elseif", "else", "goto", "label",
-    // sequences
-    "Seq",
-    // sets and multisets
-    "Set", "Multiset", "union", "intersection", "setminus", "subset",
-    // maps
-    "Map", "range",
-    // prover hint expressions
-    "unfolding", "in", "applying", "asserting",
-    // old expression
-    "old", "lhs",
-    // other expressions
-    "let",
-    // quantification
-    "forall", "exists", "forperm",
-    // permission syntax
-    "acc", "wildcard", "write", "none", "epsilon", "perm",
-    // modifiers
-    "unique") | ParserExtension.extendedKeywords
+  lazy val keywords = FastParserCompanion.basicKeywords | ParserExtension.extendedKeywords
 
-
+  // Note that `typedFapp` is before `"(" ~ exp ~ ")"` to ensure that the latter doesn't gobble up the brackets for the former
+  // and then look like an `fapp` up untill the `: type` part, after which we need to backtrack all the way back (or error if cut)
   def atom(implicit ctx : P[_]) : P[PExp] = P(ParserExtension.newExpAtStart(ctx) | integer | booltrue | boolfalse | nul | old
-    | result | unExp
+    | result | unExp | typedFapp
     | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | applying | asserting
     | setTypedEmpty | explicitSetNonEmpty | multiSetTypedEmpty | explicitMultisetNonEmpty | seqTypedEmpty
-    // | seqLength | explicitSeqNonEmpty | seqRange | fapp | typedFapp | idnuse | ParserExtension.newExpAtEnd(ctx))
     | size | explicitSeqNonEmpty | seqRange
     | mapTypedEmpty | explicitMapNonEmpty | mapDomain | mapRange
-    | fapp | typedFapp | idnuse | ParserExtension.newExpAtEnd(ctx))
+    | fapp | idnuse | ParserExtension.newExpAtEnd(ctx))
 
   def result[_: P]: P[PResultLit] = FP(keyword("result")).map { case (pos, _) => PResultLit()(pos) }
 
-  def unExp[_: P]: P[PUnExp] = FP(CharIn("\\-\\!").! ~~ !" " ~~ suffixExpr).map { case (pos, (a, b)) => PUnExp(a, b)(pos) }
+  def unExp[_: P]: P[PUnExp] = FP(CharIn("\\-\\!").! ~ suffixExpr).map { case (pos, (a, b)) => PUnExp(a, b)(pos) }
 
   def strInteger[_: P]: P[String] = P(CharIn("0-9").rep(1)).!
 
-  def integer[_: P]: P[PIntLit] = FP(strInteger.filter(s => !s.contains(' '))).map { case (pos, s) => PIntLit(BigInt(s))(pos) }
+  def integer[_: P]: P[PIntLit] = FP(strInteger.filter(s => s.matches("\\S+"))).map { case (pos, s) => PIntLit(BigInt(s))(pos) }
 
   def booltrue[_: P]: P[PBoolLit] = FP(keyword("true")).map {case (pos, _) => PBoolLit(b = true)(pos)}
 
@@ -862,8 +886,6 @@ object FastParser {
 
   def suffixExpr[_: P]: P[PExp] = P((atom ~~~ suffix.lw.rep).map { case (fac, ss) => foldPExp[PExp](fac, ss) })
 
-  def realSuffixExpr[_: P]: P[PExp] = P((atom ~~~ suffix.lw.rep).map { case (fac, ss) => foldPExp[PExp](fac, ss) })
-
   def termOp[_: P]: P[String] = P(StringIn("*", "/", "\\", "%").!)
 
   def term[_: P]: P[PExp] = P((suffixExpr ~~~ termd.lw.rep).map { case (a, ss) => foldPExp[PExp](a, ss) })
@@ -921,7 +943,7 @@ object FastParser {
   def locAcc[_: P]: P[PLocationAccess] = P(fieldAcc | predAcc)
 
   def fieldAcc[_: P]: P[PFieldAccess] =
-    P(NoCut(realSuffixExpr.filter(isFieldAccess)).map {
+    P(NoCut(suffixExpr.filter(isFieldAccess)).map {
       case fa: PFieldAccess => fa
       case other => sys.error(s"Unexpectedly found $other")
     })
@@ -1017,43 +1039,51 @@ object FastParser {
 
   def setTypedEmpty[_: P]: P[PExp] = collectionTypedEmpty("Set", (a, b) => PEmptySet(a)(b))
 
-  def explicitSetNonEmpty[_: P]: P[PExp] = P("Set" ~ "(" ~/ exp.rep(sep = ",", min = 1) ~ ")").map(PExplicitSet(_)())
+  def explicitSetNonEmpty[_: P]: P[PExp] = P(FP("Set" ~ "(" ~ exp.rep(sep = ",", min = 1) ~ ")").map {
+    case (pos, exps) => PExplicitSet(exps)(pos)
+  })
 
-  def explicitMultisetNonEmpty[_: P]: P[PExp] = P("Multiset" ~ "(" ~/ exp.rep(min = 1, sep = ",") ~ ")").map(PExplicitMultiset(_)())
+  def explicitMultisetNonEmpty[_: P]: P[PExp] = P(FP("Multiset" ~ "(" ~ exp.rep(min = 1, sep = ",") ~ ")").map {
+    case (pos, exps) => PExplicitMultiset(exps)(pos)
+  })
 
   def multiSetTypedEmpty[_: P]: P[PExp] = collectionTypedEmpty("Multiset", (a, b) => PEmptyMultiset(a)(b))
 
   def seqTypedEmpty[_: P]: P[PExp] = collectionTypedEmpty("Seq", (a, b) => PEmptySeq(a)(b))
 
-  //HEAD: def seqLength[_: P]: P[PExp] = P("|" ~ exp ~ "|").map(PSize(_)())
-  def size[_: P]: P[PExp] = P("|" ~ exp ~ "|").map(PSize(_)())
-  //MAP: lazy val size: P[PExp] = P("|" ~ exp ~ "|").map(PSize)
+  def size[_: P]: P[PExp] = P(FP("|" ~ exp ~ "|").map {
+    case (pos, e) => PSize(e)(pos)
+  })
 
-  def explicitSeqNonEmpty[_: P]: P[PExp] = P("Seq" ~ "(" ~/ exp.rep(min = 1, sep = ",") ~ ")").map(PExplicitSeq(_)())
+  def explicitSeqNonEmpty[_: P]: P[PExp] = P(FP("Seq" ~ "(" ~ exp.rep(min = 1, sep = ",") ~ ")").map {
+    case (pos, exps) => PExplicitSeq(exps)(pos)
+  })
 
   private def collectionTypedEmpty[_: P](name: String, typeConstructor: (PType, (Position, Position)) => PExp): P[PExp] =
-    FP(`name` ~ ("[" ~/ typ ~ "]").? ~ "(" ~ ")").map{ case (pos, typ) => typeConstructor(typ.getOrElse(PTypeVar("#E")), pos)}
+    FP(`name` ~ ("[" ~ typ ~ "]").? ~ "(" ~ ")").map{ case (pos, typ) => typeConstructor(typ.getOrElse(PTypeVar("#E")), pos)}
 
   def seqRange[_: P]: P[PExp] = FP("[" ~ exp ~ ".." ~ exp ~ ")").map { case (pos, (a, b)) => PRangeSeq(a, b)(pos) }
-  // MAPS: lazy val seqRange: P[PExp] = P("[" ~ exp ~ ".." ~ exp ~ ")").map { case (a, b) => PRangeSeq(a, b) }
 
-  def mapTypedEmpty[_: P] : P[PMapLiteral] = P("Map" ~ ("[" ~/ typ ~ "," ~ typ ~ "]").? ~ "(" ~ ")").map {
-    case Some((keyType, valueType)) => PEmptyMap(keyType, valueType)()
-    case None => PEmptyMap(PTypeVar("#K"), PTypeVar("#E"))()
-  }
+  def mapTypedEmpty[_: P] : P[PMapLiteral] = P(FP("Map" ~ ("[" ~ typ ~ "," ~ typ ~ "]").? ~ "(" ~ ")").map {
+    case (pos, Some((keyType, valueType))) => PEmptyMap(keyType, valueType)(pos)
+    case (pos, None) => PEmptyMap(PTypeVar("#K"), PTypeVar("#E"))(pos)
+  })
 
-  def maplet[_: P]: P[PMaplet] = P(exp ~ ":=" ~ exp).map {
-    case (key, value) => PMaplet(key, value)()
-  }
+  def maplet[_: P]: P[PMaplet] = P(FP(exp ~ ":=" ~ exp).map {
+    case (pos, (key, value)) => PMaplet(key, value)(pos)
+  })
 
-  // MAPS: lazy val explicitMapNonEmpty : P[PMapLiteral] = P("Map" ~ "(" ~/ maplet.rep(min = 1, sep = ",") ~ ")").map(PExplicitMap)
-  def explicitMapNonEmpty[_: P]: P[PMapLiteral] = P("Map" ~ "(" ~/ maplet.rep(sep = ",", min = 1) ~ ")").map(PExplicitMap(_)())
+  def explicitMapNonEmpty[_: P]: P[PMapLiteral] = P(FP("Map" ~ "(" ~ maplet.rep(sep = ",", min = 1) ~ ")").map {
+    case (pos, maplets) => PExplicitMap(maplets)(pos)
+  })
 
-  //lazy val mapDomain : P[PExp] = P("domain" ~ "(" ~ exp ~ ")").map(PMapDomain)
-  def mapDomain[_: P]: P[PExp] = P("domain" ~ "(" ~ exp ~ ")").map(PMapDomain(_)())
-  //def size[_: P]: P[PExp] = P("|" ~ exp ~ "|").map(PSize(_))
+  def mapDomain[_: P]: P[PExp] = P(FP("domain" ~ "(" ~ exp ~ ")").map {
+    case (pos, e) => PMapDomain(e)(pos)
+  })
 
-  def mapRange[_: P] : P[PExp] = P("range" ~ "(" ~ exp ~ ")").map(PMapRange(_)())
+  def mapRange[_: P] : P[PExp] = P(FP("range" ~ "(" ~ exp ~ ")").map {
+    case (pos, e) => PMapRange(e)(pos)
+  })
 
   def fapp[_: P]: P[PCall] = FP(idnuse ~ parens(actualArgList)).map {
     case (pos, (func, args)) =>
@@ -1066,11 +1096,13 @@ object FastParser {
 
   def stmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | macroassign | fieldassign | localassign | fold | unfold | exhale | assertP |
     inhale | assume | ifthnels | whle | varDecl | defineDecl | newstmt | 
-    methodCall | goto | lbl | packageWand | applyWand | macroref | block | ParserExtension.newStmtAtEnd(ctx))
+    methodCall | goto | lbl | packageWand | applyWand | macroref | block |
+    quasihavoc | quasihavocall | ParserExtension.newStmtAtEnd(ctx))
 
   def nodefinestmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | fieldassign | localassign | fold | unfold | exhale | assertP |
     inhale | assume | ifthnels | whle | varDecl | newstmt |
-    methodCall | goto | lbl | packageWand | applyWand | macroref | block | ParserExtension.newStmtAtEnd(ctx))
+    methodCall | goto | lbl | packageWand | applyWand | macroref | block |
+    quasihavoc | quasihavocall | ParserExtension.newStmtAtEnd(ctx))
 
   def macroref[_: P]: P[PMacroRef] = FP(idnuse).map { case (pos, a) => PMacroRef(a)(pos) }
 
@@ -1092,6 +1124,28 @@ object FastParser {
 
   def assume[_: P]: P[PAssume] = FP(keyword("assume") ~/ exp).map{ case (pos, e) => PAssume(e)(pos) }
 
+  // Parsing Havoc statements
+  // Havoc statements have two forms:
+  //    1. havoc <resource>
+  //    2. havoc <exp> ==> <resource>
+  // Note that you cannot generalize (2) to something like "<exp1> ==> <exp2> ==> <resource>".
+  // We therefore forbid the lhs of (2) from being an arbitrary expression. Instead,
+  // we enforce that it's a "magicWandExp", which is one level below an implication expression
+  // in the grammar. Note that it is still possible to express "(<exp1> ==> <exp2>) ==> <resource>
+  // using parentheses.
+
+  // Havocall follows a similar pattern to havoc but allows quantifying over variables.
+
+  def quasihavoc[_: P]: P[PQuasihavoc] = FP(keyword("quasihavoc") ~/
+    (magicWandExp ~ "==>").? ~ exp ).map {
+      case (pos, (lhs, rhs)) => PQuasihavoc(lhs, rhs)(pos)
+  }
+
+  def quasihavocall[_: P]: P[PQuasihavocall] = FP(keyword("quasihavocall") ~/
+    nonEmptyFormalArgList ~ "::" ~ (magicWandExp ~ "==>").? ~ exp).map {
+    case (pos, (vars, lhs, rhs)) => PQuasihavocall(vars, lhs, rhs)(pos)
+  }
+
   def ifthnels[_: P]: P[PIf] = FP("if" ~ "(" ~ exp ~ ")" ~ block ~~~ elsifEls).map {
     case (pos, (cond, thn, ele)) => PIf(cond, thn, ele)(pos)
   }
@@ -1105,9 +1159,9 @@ object FastParser {
     case (pos, (cond, thn, ele)) => PSeqn(Seq(PIf(cond, thn, ele)(pos)))(pos)
   }
 
-  def els[_: P]: LW[PSeqn] = ((keyword("else") ~/ block) | FP(Pass)).lw.map {
-    case block: PSeqn => block
-    case (pos, _) => PSeqn(Nil)() }
+  def els[_: P]: LW[PSeqn] = ((keyword("else") ~/ block) | FP(Pass).map {
+    case (pos, _) => PSeqn(Nil)(pos)
+  }).lw
 
   def whle[_: P]: P[PWhile] = FP(keyword("while") ~/ "(" ~ exp ~ ")" ~ inv.rep ~ block).map {
     case (pos, (cond, invs, body)) =>
@@ -1156,10 +1210,11 @@ object FastParser {
 
   def applying[_: P]: P[PExp] = FP(keyword("applying") ~/ "(" ~ magicWandExp ~ ")" ~ "in" ~ exp).map { case (pos, (a, b)) => PApplying(a, b)(pos) }
 
+ 
   def asserting[_: P]: P[PExp] = FP(keyword("asserting") ~/ "(" ~ exp ~ ")" ~ "in" ~ exp).map { case (pos, (a, b)) => PAsserting(a, b)(pos) }
 
-  def programDecl(implicit ctx : P[_]) : P[PProgram] = P((ParserExtension.newDeclAtStart(ctx) | preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl | ParserExtension.newDeclAtEnd(ctx)).rep).map {
-    decls => {
+  def programDecl(implicit ctx : P[_]) : P[PProgram] = P(FP((ParserExtension.newDeclAtStart(ctx) | preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl | ParserExtension.newDeclAtEnd(ctx)).rep).map {
+    case (pos, decls) => {
       PProgram(
         decls.collect { case i: PImport => i }, // Imports
         decls.collect { case d: PDefine => d }, // Macros
@@ -1170,9 +1225,9 @@ object FastParser {
         decls.collect { case m: PMethod => m }, // Methods
         decls.collect { case e: PExtender => e }, // Extensions
         Seq() // Parse Errors
-      )()
+      )(pos)
     }
-  }
+  })
 
   def preambleImport[_: P]: P[PImport] = FP(keyword("import") ~/ (
       P(quoted(relativeFilePath.!)).map{ filename => pos: (Position, Position) => PLocalImport(filename)(pos) } |
@@ -1181,23 +1236,26 @@ object FastParser {
 
   def relativeFilePath[_: P]: P[String] = P(CharIn("~.").?.! ~~ (CharIn("/").? ~~ CharIn(".", "A-Z", "a-z", "0-9", "_\\- \n\t")).rep(1))
 
-  def domainDecl[_: P]: P[PDomain] = FP("domain" ~/ idndef ~ ("[" ~ domainTypeVarDecl.rep(sep = ",") ~ "]").? ~ "{" ~ (domainFunctionDecl | axiomDecl).rep ~
+  def anyString[_: P]: P[String] = P(CharIn("A-Z", "a-z", "0-9", "()._ ").rep(1).!)
+
+  def domainDecl[_: P]: P[PDomain] = FP("domain" ~/ idndef ~ ("[" ~ domainTypeVarDecl.rep(sep = ",") ~ "]").? ~ ("interpretation" ~ parens((ident ~ ":" ~ quoted(anyString.!)).rep(sep = ","))).? ~ "{" ~ (domainFunctionDecl | axiomDecl).rep ~
     "}").map {
-    case (pos, (name, typparams, members)) =>
+    case (pos, (name, typparams, interpretations, members)) =>
       val funcs = members collect { case m: PDomainFunction1 => m }
       val axioms = members collect { case m: PAxiom1 => m }
       PDomain(
         name,
         typparams.getOrElse(Nil),
-        funcs map (f => PDomainFunction(f.idndef, f.formalArgs, f.typ, f.unique)(PIdnUse(name.name)(name.pos))(f.pos)),
-        axioms map (a => PAxiom(a.idndef, a.exp)(PIdnUse(name.name)(name.pos))(a.pos)))(pos)
+        funcs map (f => PDomainFunction(f.idndef, f.formalArgs, f.typ, f.unique, f.interpretation)(PIdnUse(name.name)(name.pos))(f.pos)),
+        axioms map (a => PAxiom(a.idndef, a.exp)(PIdnUse(name.name)(name.pos))(a.pos)),
+        interpretations.map(i => i.toMap))(pos)
   }
 
   def domainTypeVarDecl[_: P]: P[PTypeVarDecl] = FP(idndef).map{ case (pos, i) => PTypeVarDecl(i)(pos) }
 
-  def domainFunctionDecl[_: P]: P[PDomainFunction1] = FP("unique".!.? ~ domainFunctionSignature ~~~ ";".lw.?).map {
-    case (pos, (unique, fdecl)) => fdecl match {
-      case (name, formalArgs, t) => PDomainFunction1(name, formalArgs, t, unique.isDefined)(pos)
+  def domainFunctionDecl[_: P]: P[PDomainFunction1] = FP("unique".!.? ~ domainFunctionSignature ~ ("interpretation" ~ quoted(anyString.!)).? ~~~ ";".lw.?).map {
+    case (pos, (unique, fdecl, interpretation)) => fdecl match {
+      case (name, formalArgs, t) => PDomainFunction1(name, formalArgs, t, unique.isDefined, interpretation)(pos)
     }
   }
 
@@ -1242,4 +1300,132 @@ object FastParser {
   def methodSignature[_: P] = P("method" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~~~ ("returns" ~ "(" ~ formalArgList ~ ")").lw.?)
 
   def entireProgram[_: P]: P[PProgram] = P(Start ~ programDecl ~ End)
+
+
+  object ParserExtension extends ParserPluginTemplate {
+
+    import ParserPluginTemplate._
+
+    /**
+      * These private variables are the storage variables for each of the extensions.
+      * As the parser are evaluated lazily, it is possible for us to stores extra parsing sequences in these variables
+      * and after the plugins are loaded, the parsers are added to these variables and when any parser is required,
+      * can be referenced back.
+      */
+    private var _newDeclAtEnd: Option[Extension[PExtender]] = None
+    private var _newDeclAtStart: Option[Extension[PExtender]] = None
+
+    private var _newExpAtEnd: Option[Extension[PExp]] = None
+    private var _newExpAtStart: Option[Extension[PExp]] = None
+
+    private var _newStmtAtEnd: Option[Extension[PStmt]] = None
+    private var _newStmtAtStart: Option[Extension[PStmt]] = None
+
+    private var _preSpecification: Option[Extension[PExp]] = None
+    private var _postSpecification: Option[Extension[PExp]] = None
+    private var _invSpecification: Option[Extension[PExp]] = None
+
+    private var _extendedKeywords: Set[String] = Set()
+
+
+    /**
+      * For more details regarding the functionality of each of these initial parser extensions
+      * and other hooks for the parser extension, please refer to ParserPluginTemplate.scala
+      */
+    override def newDeclAtStart : Extension[PExtender] = _newDeclAtStart match {
+      case None => ParserPluginTemplate.defaultExtension
+      case Some(ext) => ext
+    }
+
+    override def newDeclAtEnd : Extension[PExtender] = _newDeclAtEnd match {
+      case None => ParserPluginTemplate.defaultExtension
+      case Some(ext) => ext
+    }
+
+    override def newStmtAtEnd : Extension[PStmt] = _newStmtAtEnd match {
+      case None => ParserPluginTemplate.defaultStmtExtension
+      case Some(ext) => ext
+    }
+
+    override def newStmtAtStart : Extension[PStmt] = _newStmtAtStart match {
+      case None => ParserPluginTemplate.defaultStmtExtension
+      case Some(ext) => ext
+    }
+
+    override def newExpAtEnd : Extension[PExp] = _newExpAtEnd match {
+      case None => ParserPluginTemplate.defaultExpExtension
+      case Some(ext) => ext
+    }
+
+    override def newExpAtStart : Extension[PExp] = _newExpAtStart match {
+      case None => ParserPluginTemplate.defaultExpExtension
+      case Some(ext) => ext
+    }
+
+    override def postSpecification : Extension[PExp] = _postSpecification match {
+      case None => ParserPluginTemplate.defaultExpExtension
+      case Some(ext) => ext
+    }
+
+    override def preSpecification : Extension[PExp] = _preSpecification match {
+      case None => ParserPluginTemplate.defaultExpExtension
+      case Some(ext) => ext
+    }
+
+    override def invSpecification : Extension[PExp] = _invSpecification match {
+      case None => ParserPluginTemplate.defaultExpExtension
+      case Some(ext) => ext
+    }
+
+    override def extendedKeywords : Set[String] = _extendedKeywords
+
+    def addNewDeclAtEnd(t: Extension[PExtender]) : Unit = _newDeclAtEnd match {
+      case None => _newDeclAtEnd = Some(t)
+      case Some(s) => _newDeclAtEnd = Some(combine(s, t))
+    }
+
+    def addNewDeclAtStart(t: Extension[PExtender]) : Unit = _newDeclAtStart match {
+      case None => _newDeclAtStart = Some(t)
+      case Some(s) => _newDeclAtStart = Some(combine(s, t))
+    }
+
+    def addNewExpAtEnd(t: Extension[PExp]) : Unit = _newExpAtEnd match {
+      case None => _newExpAtEnd = Some(t)
+      case Some(s) => _newExpAtEnd = Some(combine(s, t))
+    }
+
+    def addNewExpAtStart(t: Extension[PExp]) : Unit = _newExpAtStart match {
+      case None => _newExpAtStart = Some(t)
+      case Some(s) => _newExpAtStart = Some(combine(s, t))
+    }
+
+    def addNewStmtAtEnd(t: Extension[PStmt]) : Unit = _newStmtAtEnd match {
+      case None => _newStmtAtEnd = Some(t)
+      case Some(s) => _newStmtAtEnd = Some(combine(s, t))
+    }
+
+    def addNewStmtAtStart(t: Extension[PStmt]) : Unit = _newStmtAtStart match {
+      case None => _newStmtAtStart = Some(t)
+      case Some(s) => _newStmtAtStart = Some(combine(s, t))
+    }
+
+    def addNewPreCondition(t: Extension[PExp]) : Unit = _preSpecification match {
+      case None => _preSpecification = Some(t)
+      case Some(s) => _preSpecification = Some(combine(s, t))
+    }
+
+    def addNewPostCondition(t: Extension[PExp]) : Unit = _postSpecification match {
+      case None => _postSpecification = Some(t)
+      case Some(s) => _postSpecification = Some(combine(s, t))
+    }
+
+    def addNewInvariantCondition(t: Extension[PExp]) : Unit = _invSpecification match {
+      case None => _invSpecification = Some(t)
+      case Some(s) => _invSpecification = Some(combine(s, t))
+    }
+
+    def addNewKeywords(t : Set[String]) : Unit = {
+      _extendedKeywords ++= t
+    }
+  }
 }

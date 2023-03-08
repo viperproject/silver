@@ -127,6 +127,13 @@ class ConsistencyTests extends AnyFunSuite with Matchers {
         body          = None
       )()
 
+    val pred =
+      Predicate(
+        name          = "P",
+        formalArgs    = Seq(LocalVarDecl("x", Int)()),
+        body          = None
+      )()
+
     val callerIntVarDecl = LocalVarDecl("intRes", Int)()
     val callerIntVar = LocalVar("intRes", Int)()
     val callerBoolVarDecl = LocalVarDecl("boolRes", Bool)()
@@ -147,23 +154,35 @@ class ConsistencyTests extends AnyFunSuite with Matchers {
         Seq()
       )()
 
+    val callerPosts =
+      Seq(
+        // Wrong: zero arguments
+        PredicateAccessPredicate(PredicateAccess(Seq(), "P")(), FullPerm()())(),
+        // Wrong: wrong argument type
+        PredicateAccessPredicate(PredicateAccess(Seq(callerBoolVar), "P")(), FullPerm()())(),
+        // Correct
+        PredicateAccessPredicate(PredicateAccess(Seq(callerIntVar), "P")(), FullPerm()())()
+      )
+
     val caller =
       Method(
         name          = "caller",
         formalArgs    = Seq(),
         formalReturns = Seq(callerIntVarDecl, callerBoolVarDecl),
         pres          = Seq(),
-        posts         = Seq(),
+        posts         = callerPosts,
         body          = Some(callerBody)
       )()
 
     val program =
-      Program(domains    = Seq(), fields     = Seq(), functions  = Seq(func), predicates = Seq(), methods    = Seq(caller), extensions = Seq())()
+      Program(domains    = Seq(), fields     = Seq(), functions  = Seq(func), predicates = Seq(pred), methods    = Seq(caller), extensions = Seq())()
 
     program.checkTransitively shouldBe Seq(
       ConsistencyError("Function f with formal arguments List(x: Int) cannot be applied to provided arguments List().", NoPosition),
       ConsistencyError("No matching function f found of return type Bool, instead found with return type Int.", NoPosition),
       ConsistencyError("Function f with formal arguments List(x: Int) cannot be applied to provided arguments List(boolRes).", NoPosition),
+      ConsistencyError("Predicate P with formal arguments List(x: Int) cannot be used with provided arguments List().", NoPosition),
+      ConsistencyError("Predicate P with formal arguments List(x: Int) cannot be used with provided arguments List(boolRes).", NoPosition),
       ConsistencyError("No matching identifier g found of type Function.", NoPosition)
     )
   }
@@ -235,6 +254,57 @@ class ConsistencyTests extends AnyFunSuite with Matchers {
 
     forall.checkTransitively shouldBe Seq(
       ConsistencyError("Quantified permissions must have an implication as expression, with the access predicate in its right-hand side.", NoPosition)
+    )
+  }
+
+  test("Testing if Forall AST nodes have at least one quantified variable, all variables are mentioned in " +
+    "the trigger, and each trigger expression contains at least one quantified variable.") {
+
+    val f = Function("f", Seq(LocalVarDecl("i", Int)()), Int, Seq(), Seq(), None)()
+    val forallNoVar = Forall(Seq(), Seq(), TrueLit()())()
+    val forallUnusedVar = Forall(Seq(LocalVarDecl("i", Int)(), LocalVarDecl("j", Int)()), Seq(Trigger(Seq(FuncApp(f, Seq(LocalVar("j", Int)()))()))()), TrueLit()())()
+    val forallNoVarTrigger = Forall(Seq(LocalVarDecl("i", Int)()), Seq(Trigger(Seq(FuncApp(f, Seq(LocalVar("i", Int)()))(), FuncApp(f, Seq(IntLit(0)()))()))()), TrueLit()())()
+
+    forallNoVar.checkTransitively shouldBe Seq(
+      ConsistencyError("Quantifier must have at least one quantified variable.", NoPosition)
+    )
+
+    forallUnusedVar.checkTransitively shouldBe Seq(
+      ConsistencyError("Variable i is not mentioned in one or more triggers.", NoPosition)
+    )
+
+    forallNoVarTrigger.checkTransitively shouldBe Seq(
+      ConsistencyError("Trigger expression f(0) does not contain any quantified variable.", NoPosition)
+    )
+  }
+
+  test("Domain types and backend types refer only to existing domains and are used correctly.") {
+    val f1 = Function("f1", Seq(LocalVarDecl("i", DomainType("nonexisting", Map())(Seq()))()), Int, Seq(), Seq(), None)()
+    val f2 = Function("f2", Seq(LocalVarDecl("i", BackendType("nonexisting", Map()))()), Int, Seq(), Seq(), None)()
+    val f3 = Function("f3", Seq(LocalVarDecl("i", DomainType("existing2", Map())(Seq()))()), Int, Seq(), Seq(), None)()
+    val f4 = Function("f4", Seq(LocalVarDecl("i", BackendType("existing1", Map()))()), Int, Seq(), Seq(), None)()
+
+    val d1 = Domain("existing1", Seq(), Seq(), Seq(), None)()
+    val d2 = Domain("existing2", Seq(), Seq(), Seq(), Some(Map("SMTLIL" -> "Bool")))()
+
+    val p1 = Program(domains = Seq(), fields = Seq(), functions = Seq(f1), predicates = Seq(), methods = Seq(), extensions = Seq())()
+    p1.checkTransitively shouldBe Seq(
+      ConsistencyError("DomainType references non-existent domain nonexisting.", NoPosition)
+    )
+
+    val p2 = Program(domains = Seq(), fields = Seq(), functions = Seq(f2), predicates = Seq(), methods = Seq(), extensions = Seq())()
+    p2.checkTransitively shouldBe Seq(
+      ConsistencyError("BackendType references non-existent domain nonexisting.", NoPosition)
+    )
+
+    val p3 = Program(domains = Seq(d2), fields = Seq(), functions = Seq(f3), predicates = Seq(), methods = Seq(), extensions = Seq())()
+    p3.checkTransitively shouldBe Seq(
+      ConsistencyError("DomainType existing2 references domain with interpretation; must use BackendType instead.", NoPosition)
+    )
+
+    val p4 = Program(domains = Seq(d1), fields = Seq(), functions = Seq(f4), predicates = Seq(), methods = Seq(), extensions = Seq())()
+    p4.checkTransitively shouldBe Seq(
+      ConsistencyError("BackendType existing1 references domain without interpretation; must use DomainType instead.", NoPosition)
     )
   }
 }

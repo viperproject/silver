@@ -132,6 +132,13 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     case i => throw new IllegalArgumentException(s"Unsupported inline predicate strategy provided. Expected 'default', 'approximate' or 'asserting' but got $i")
   }))
 
+  val adtPlugin = opt[Boolean]("disableAdtPlugin",
+    descr = "Disable the ADT plugin, which adds support for ADTs as a built-in type.",
+    default = Some(false),
+    noshort = true,
+    hidden = true
+  )
+
   val assumeInjectivityOnInhale = opt[Boolean]("assumeInjectivityOnInhale",
     descr = "Assumes injectivity of the receiver expression when inhaling quantified permissions, instead of checking it.",
     default = Some(false),
@@ -174,6 +181,7 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
       case Version => println(builder.vers.get)
       case Help(_) =>
         _printHelp = true
+        helpWidth(120)
         printHelp()
       case ScallopException(message) => error = Some(message)
       case unhandled => throw unhandled

@@ -8,7 +8,6 @@ package viper.silver.cfg.utility
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast.{Exp, If, Info, Infoed, LocalVar, MakeInfoPair, NoInfo, Seqn, Stmt}
 import viper.silver.cfg._

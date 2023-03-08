@@ -1,0 +1,26 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <decreases/declaration.vpr>
+
+field f: Int
+
+function test(x: Ref): Bool
+    decreases
+    requires acc(x.f)
+    //:: ExpectedOutput(termination.failed:termination.condition.false)
+    requires [forperm x2: Ref [x2.f] :: nonTerminating(x2.f), true]
+{
+    true
+}
+
+function test2(x: Ref): Bool
+    decreases
+    // current heap does not hold any permissions so `nonTermination` is not evaluated
+    requires [forperm x2: Ref [x2.f] :: nonTerminating(x2.f), true]
+{
+    true
+}
+
+function nonTerminating(v: Int): Bool
+    decreases *

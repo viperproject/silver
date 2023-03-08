@@ -7,11 +7,11 @@
 package viper.silver.parser
 
 import viper.silver.FastMessaging
-import viper.silver.ast.{SourcePosition, _}
 import viper.silver.ast.utility._
+import viper.silver.ast.{SourcePosition, _}
+import viper.silver.plugin.standard.adt.{Adt, AdtType}
 
 import scala.language.implicitConversions
-import scala.util.parsing.input.NoPosition
 
 /**
  * Takes an abstract syntax tree after parsing is done and translates it into
@@ -31,10 +31,24 @@ case class Translator(program: PProgram) {
 
     program match {
       case PProgram(_, _, pdomains, pfields, pfunctions, ppredicates, pmethods, pextensions, _) =>
-        (pdomains ++ pfields ++ pfunctions ++ ppredicates ++
-            pmethods ++ (pdomains flatMap (_.funcs))) foreach translateMemberSignature
+
+        /* [2022-03-14 Alessandro] Domain signatures need no be translated first, since signatures of other declarations
+         * like domain functions, and ordinary functions might depend on the domain signature. Especially this is the case
+         * when signatures contain user-defined domain types. The same applies for extensions since they might introduce
+         * new top-level declarations that behave similar as domains.
+         */
+        pdomains foreach translateMemberSignature
         pextensions foreach translateMemberSignature
 
+        /* [2022-03-14 Alessandro] Following signatures can be translated independently of each other but must be translated
+         * after signatures of domains and extensions because of the above mentioned reasons.
+         */
+        pdomains flatMap (_.funcs) foreach translateMemberSignature
+        (pfields ++ pfunctions ++ ppredicates ++ pmethods) foreach translateMemberSignature
+
+        /* [2022-03-14 Alessandro] After the signatures are translated, the actual full translations can be done
+         * independently of each other.
+         */
         val extensions = pextensions map translate
         val domain = (pdomains map translate) ++ extensions filter (t => t.isInstanceOf[Domain])
         val fields = (pfields map translate) ++ extensions filter (t => t.isInstanceOf[Field])
@@ -48,8 +62,10 @@ case class Translator(program: PProgram) {
                 functions.asInstanceOf[Seq[Function]], predicates.asInstanceOf[Seq[Predicate]], methods.asInstanceOf[Seq[Method]],
                     (extensions filter (t => t.isInstanceOf[ExtensionMember])).asInstanceOf[Seq[ExtensionMember]])(program))
 
-        finalProgram.deepCollect {case fp: ForPerm => Consistency.checkForPermArguments(fp, finalProgram)}
-        finalProgram.deepCollect {case trig: Trigger => Consistency.checkTriggers(trig, finalProgram)}
+        finalProgram.deepCollect {
+          case fp: ForPerm => Consistency.checkForPermArguments(fp, finalProgram)
+          case trig: Trigger => Consistency.checkTriggers(trig, finalProgram)
+        }
 
         if (Consistency.messages.isEmpty) Some(finalProgram) // all error messages generated during translation should be Consistency messages
         else None
@@ -66,9 +82,9 @@ case class Translator(program: PProgram) {
 
       val newBody = body.map(actualBody => {
         val b = stmt(actualBody).asInstanceOf[Seqn]
-        val newScopedDecls = b.scopedDecls ++ b.deepCollect {case l: Label => l}
+        val newScopedDecls = b.scopedSeqnDeclarations ++ b.deepCollect {case l: Label => l}
 
-        b.copy(scopedDecls = newScopedDecls)(b.pos, b.info, b.errT)
+        b.copy(scopedSeqnDeclarations = newScopedDecls)(b.pos, b.info, b.errT)
       })
 
       val finalMethod = m.copy(pres = pres map exp, posts = posts map exp, body = newBody)(m.pos, m.info, m.errT)
@@ -79,10 +95,10 @@ case class Translator(program: PProgram) {
   }
 
   private def translate(d: PDomain): Domain = d match {
-    case PDomain(name, _, functions, axioms) =>
+    case PDomain(name, _, functions, axioms, interpretation) =>
       val d = findDomain(name)
       val dd = d.copy(functions = functions map (f => findDomainFunction(f.idndef)),
-        axioms = axioms map translate)(d.pos, d.info, d.errT)
+        axioms = axioms map translate, interpretations = interpretation)(d.pos, d.info, d.errT)
       members(d.name) = dd
       dd
   }
@@ -131,10 +147,10 @@ case class Translator(program: PProgram) {
         Field(name, ttyp(typ))(pos)
       case PFunction(_, formalArgs, typ, _, _, _) =>
         Function(name, formalArgs map liftVarDecl, ttyp(typ), null, null, null)(pos)
-      case pdf@ PDomainFunction(_, args, typ, unique) =>
-        DomainFunc(name, args map liftAnyVarDecl, ttyp(typ), unique)(pos,NoInfo,pdf.domainName.name)
-      case PDomain(_, typVars, _, _) =>
-        Domain(name, null, null, typVars map (t => TypeVar(t.idndef.name)))(pos)
+      case pdf@ PDomainFunction(_, args, typ, unique, interp) =>
+        DomainFunc(name, args map liftAnyVarDecl, ttyp(typ), unique, interp)(pos,NoInfo,pdf.domainName.name)
+      case PDomain(_, typVars, _, _, interp) =>
+        Domain(name, null, null, typVars map (t => TypeVar(t.idndef.name)), interp)(pos)
       case PPredicate(_, formalArgs, _) =>
         Predicate(name, formalArgs map liftVarDecl, null)(pos)
       case PMethod(_, formalArgs, formalReturns, _, _, _) =>
@@ -224,9 +240,32 @@ case class Translator(program: PProgram) {
         If(exp(cond), stmt(thn).asInstanceOf[Seqn], stmt(els).asInstanceOf[Seqn])(pos)
       case PWhile(cond, invs, body) =>
         While(exp(cond), invs map exp, stmt(body).asInstanceOf[Seqn])(pos)
+      case PQuasihavoc(lhs, e) =>
+        val (newLhs, newE) = havocStmtHelper(lhs, e)
+        Quasihavoc(newLhs, newE)(pos)
+      case PQuasihavocall(vars, lhs, e) =>
+        val newVars = vars map liftVarDecl
+        val (newLhs, newE) = havocStmtHelper(lhs, e)
+        Quasihavocall(newVars, newLhs, newE)(pos)
       case t: PExtender =>   t.translateStmt(this)
       case _: PDefine | _: PSkip =>
         sys.error(s"Found unexpected intermediate statement $s (${s.getClass.getName}})")
+    }
+  }
+
+  /** Helper function that translates subexpressions common to a Havoc or Havocall statement */
+  def havocStmtHelper(lhs: Option[PExp], e: PExp): (Option[Exp], ResourceAccess) = {
+    val newLhs = lhs.map(exp)
+    exp(e) match {
+      case exp: FieldAccess => (newLhs, exp)
+      case PredicateAccessPredicate(predAccess, perm) =>
+        // A PrediateAccessPredicate is a PredicateResourceAccess combined with
+        // a Permission. Havoc expects a ResourceAccess. To make types match,
+        // we must extract the PredicateResourceAccess.
+        assert(perm.isInstanceOf[FullPerm])
+        (newLhs, predAccess)
+      case exp: MagicWand => (newLhs, exp)
+      case _ => sys.error("Can't havoc this kind of expression")
     }
   }
 
@@ -277,9 +316,11 @@ case class Translator(program: PProgram) {
               case _ => sys.error("should not occur in type-checked program")
             }
           case "/" =>
-            assert(r.typ==Int)
             l.typ match {
-              case Perm => PermDiv(l, r)(pos)
+              case Perm => r.typ match {
+                case Int => PermDiv(l, r)(pos)
+                case Perm => PermPermDiv(l, r)(pos)
+              }
               case Int  =>
                 assert (r.typ==Int)
                 if (ttyp(pbe.typ) == Int)
@@ -371,7 +412,7 @@ case class Translator(program: PProgram) {
       case pfa@PCall(func, args, _) =>
         members(func.name) match {
           case f: Function => FuncApp(f, args map exp)(pos)
-          case f @ DomainFunc(_, _, _, _) =>
+          case f @ DomainFunc(_, _, _, _, _) =>
             val actualArgs = args map exp
             /* TODO: Not used - problem?*/
             type TypeSubstitution = Map[TypeVar, Type]
@@ -385,7 +426,10 @@ case class Translator(program: PProgram) {
                 assert(s.keys.toSet.subsetOf(d.typVars.toSet))
                 val sp = s //completeWithDefault(d.typVars,s)
                 assert(sp.keys.toSet == d.typVars.toSet)
-                DomainFuncApp(f, actualArgs, sp)(pos)
+                if (f.interpretation.isDefined)
+                  BackendFuncApp(f, actualArgs)(pos)
+                else
+                  DomainFuncApp(f, actualArgs, sp)(pos)
               case _ => sys.error("type unification error - should report and not crash")
             }
           case _: Predicate =>
@@ -569,12 +613,20 @@ case class Translator(program: PProgram) {
       MapType(ttyp(keyType), ttyp(valueType))
     case PDomainType(name, args) =>
       members.get(name.name) match {
-        case Some(d) =>
-          val domain = d.asInstanceOf[Domain]
-          val typVarMapping = domain.typVars zip (args map ttyp)
-          DomainType(domain, typVarMapping /*.filter {
+        case Some(domain: Domain) =>
+          if (domain.interpretations.isDefined) {
+            BackendType(domain.name, domain.interpretations.get)
+          } else {
+            val typVarMapping = domain.typVars zip (args map ttyp)
+            DomainType(domain, typVarMapping /*.filter {
             case (tv, tt) => tv!=tt //!tt.isInstanceOf[TypeVar]
           }*/.toMap)
+          }
+        case Some(adt: Adt) =>
+          val typVarMapping = adt.typVars zip (args map ttyp)
+          AdtType(adt, typVarMapping.toMap)
+        case Some(other) =>
+          sys.error(s"Did not expect member ${other}")
         case None =>
           assert(args.isEmpty)
           TypeVar(name.name) // not a domain, i.e. it must be a type variable

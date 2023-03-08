@@ -1,0 +1,28 @@
+field val: Int
+
+function read(): Perm
+  ensures none < result
+  ensures result < write
+
+predicate P(self: Ref) {
+  acc(self.val, write)
+}
+
+predicate array(arr: Seq[Ref]) {
+  // If we replace the forall with acc(P(arr[1])), the verification succeeds
+  |arr| == 3 &&
+  (forall i: Int, j: Int :: { arr[i], arr[j] } 0 <= i && i < |arr| && 0 <= j && j < i ==> arr[i] != arr[j]) &&
+  forall i: Int :: { arr[i] } 0 <= i && i < |arr| ==> acc(P(arr[i]))
+}
+
+method test() returns (res: Ref)
+{
+  var arr: Seq[Ref]
+
+  inhale acc(array(arr), read())
+  unfold acc(array(arr), read())
+  unfold acc(P(arr[1]), read())
+
+  inhale acc(res.val, write)
+  res.val := 1
+}

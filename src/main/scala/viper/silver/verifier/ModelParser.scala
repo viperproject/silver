@@ -1,17 +1,27 @@
 package viper.silver.verifier
 
 import fastparse._
-import viper.silver.parser.FastParser.whitespace
-
 object ModelParser {
+  
+  def modelEntry[_: P]: P[(String, ModelEntry)] = {
+    // Do not allow newlines between "->" and the definition.
+    // Otherwise, if there is no definition, we could parse the id in the next line as the value here.
+    implicit val ws = viper.silver.parser.FastParserCompanion.whitespaceWithoutNewlineOrComments
+    P(idnuse ~ "->" ~ definition.?).map {
+      case (i, Some(e)) => (i, e)
+      case (i, None) => (i, UnspecifiedEntry)
+    }
+  }
+
+  // Late import s.t. we can unambiguously use a different whitespace definition in the modelEntry rule above.
+  import viper.silver.parser.FastParserCompanion.whitespace
+
   // note that the dash/minus character '-' needs to be escaped by double backslashes such that it is not interpreted as a range
   def identifier[_: P]: P[Unit] = P(CharIn("0-9", "A-Z", "a-z", "[]\"'#+\\-*/:=!$_@<>.%~").repX(1))
 
   def idnuse[_: P]: P[String] = P(identifier).!.filter(a => a != "else" && a != "let" && a != "->")
 
   def numeral[_: P]: P[Unit] = P(CharIn("0-9").repX(1))
-
-  def modelEntry[_: P]: P[(String, ModelEntry)] = P(idnuse ~ "->" ~ definition)
 
   def definition[_: P]: P[ModelEntry] = P(mapping | value)
 
@@ -27,7 +37,9 @@ object ModelParser {
 
   def option[_: P]: P[(Seq[ValueEntry], ValueEntry)] = P(value.rep(1) ~ "->" ~ value)
 
-  def default[_: P]: P[MapEntry] = P(value)
+  // depending on Z3 options, we seem to get an "else ->" before the default value
+  // or not, so we match both.
+  def default[_: P]: P[MapEntry] = P(("else" ~ "->").? ~ value)
     .map { default => MapEntry(Map.empty, default).resolveFunctionDefinition }
 
   def value[_: P]: P[ValueEntry] = P(unspecified | let | constant | application)

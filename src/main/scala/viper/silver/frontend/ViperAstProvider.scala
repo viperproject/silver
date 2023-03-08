@@ -10,16 +10,16 @@ package viper.silver.frontend
 import ch.qos.logback.classic.Logger
 import viper.silver.ast.Program
 import viper.silver.logger.ViperStdOutLogger
-import viper.silver.plugin.PluginAwareReporter
+import viper.silver.plugin.SilverPluginManager
 import viper.silver.reporter.{AstConstructionFailureMessage, AstConstructionSuccessMessage, Reporter}
 import viper.silver.verifier.{Failure, Success, VerificationResult, Verifier}
 
+import java.nio.file.Path
 
-class ViperAstProvider(override val reporter: PluginAwareReporter,
-                       override implicit val logger: Logger) extends SilFrontend {
 
-  def this(reporter: Reporter, logger: Logger = ViperStdOutLogger("ViperAstProvider", "INFO").get) =
-    this(PluginAwareReporter(reporter), logger)
+class ViperAstProvider(override val reporter: Reporter,
+                       override implicit val logger: Logger = ViperStdOutLogger("ViperAstProvider", "INFO").get,
+                       private val disablePlugins: Boolean = false) extends SilFrontend {
 
   class Config(args: Seq[String]) extends SilFrontendConfig(args, "ViperAstProviderConfig") {
     verify()
@@ -83,12 +83,27 @@ class ViperAstProvider(override val reporter: PluginAwareReporter,
   protected var instance: AstProvidingVerifier = _
 
   override def createVerifier(fullCmd: String): Verifier = {
-    instance = new AstProvidingVerifier(reporter.reporter)
+    instance = new AstProvidingVerifier(reporter)
     instance
   }
 
   override def configureVerifier(args: Seq[String]): SilFrontendConfig = {
     instance.parseCommandLine(args)
     instance.config
+  }
+
+  override def reset(input: Path): Unit = {
+    super.reset(input)
+    if (_config != null) {
+      noPluginsManager = SilverPluginManager(None)(reporter, logger, _config, fp)
+    }
+  }
+
+  private var noPluginsManager = SilverPluginManager(None)(reporter, logger, _config, fp)
+  override def plugins: SilverPluginManager = {
+    if (disablePlugins) noPluginsManager
+    else {
+      super.plugins
+    }
   }
 }

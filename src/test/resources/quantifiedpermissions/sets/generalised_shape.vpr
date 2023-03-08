@@ -50,7 +50,7 @@ method test10(x1: Ref, x2: Ref)
   requires acc(x1.g) && acc(x1.g.f, wildcard)
   requires acc(x2.g) && acc(x2.g.f, wildcard)
   ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g, wildcard)
-  //:: ExpectedOutput(not.wellformed:receiver.not.injective)
+  //:: ExpectedOutput(not.wellformed:qp.not.injective)
   ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g.f, wildcard)
 {}
 
@@ -70,13 +70,13 @@ method test11(x1: Ref, x2: Ref, x3: Ref, x4: Ref, x5: Ref, x6: Ref)
   requires acc(x5.g) && acc(x5.g.f)
   requires acc(x6.g) && acc(x6.g.f)
 {
-  //:: ExpectedOutput(call.failed:receiver.not.injective)
+  //:: ExpectedOutput(call.failed:qp.not.injective)
   test10(x1, x6)
-  //:: ExpectedOutput(call.failed:receiver.not.injective)
-  //:: MissingOutput(call.failed:receiver.not.injective, /silicon/issue/34/)
+  //:: ExpectedOutput(call.failed:qp.not.injective)
+  //:: MissingOutput(call.failed:qp.not.injective, /silicon/issue/34/)
   test10(x2, x5)
-  //:: ExpectedOutput(call.failed:receiver.not.injective)
-  //:: MissingOutput(call.failed:receiver.not.injective, /silicon/issue/34/)
+  //:: ExpectedOutput(call.failed:qp.not.injective)
+  //:: MissingOutput(call.failed:qp.not.injective, /silicon/issue/34/)
   test10(x3, x4)
 }
 

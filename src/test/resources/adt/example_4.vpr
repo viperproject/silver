@@ -1,0 +1,77 @@
+adt Option[T] {
+    Some(value:T)
+    None()
+}
+
+domain AddDomain[T] {
+    function add(a:T, b: T): T
+
+    axiom {
+        forall o1:Perm, o2:Perm :: {add(o1,o2)} add(o1,o2) == (o1 + o2)
+    }
+    axiom {
+        forall o1:Int, o2:Int :: {add(o1,o2)} add(o1,o2) == (o1 + o2)
+    }
+    axiom {
+        forall o1:Seq[T], o2:Seq[T] :: {add(o1,o2)} add(o1,o2) == (o1 ++ o2)
+    }
+    axiom {
+        forall o1:Set[T], o2:Set[T] :: {add(o1,o2)} add(o1,o2) == (o1 union o2)
+    }
+    axiom {
+        forall o1:Option[T], o2:Option[T] :: {add(o1,o2)} add(o1,o2) == ((o1.isSome && o2.isSome) ? Some(add(o1.value, o2.value)) : None())
+    }
+}
+
+method request(arg: Int) returns (res: Option[Int]) 
+ensures arg > 0 ==> res.isSome && res == Some(2*arg)
+ensures arg < 0 ==> res.isNone
+{
+    if (arg > 0)
+    {   
+        res:= add(Some(arg), Some(arg))
+    }
+    else
+    {
+        res:= None()
+    }
+}
+
+method client() {
+
+    var response: Option[Int]
+    response := request(1)
+    if (response.isSome)
+    {
+        // resquest successfull
+        assert response.value == 2
+
+        var o: Option[Int]
+        o := Some(3)
+
+        assert add(response, None()) == None()
+        assert add(o, response).value == 5
+
+        assert add(Some(Seq(1,2,3)), Some(Seq(1,2,3))).value == Seq(1,2,3,1,2,3)
+    }
+    else
+    {
+        assert false
+    }
+
+
+
+    response := request(-1)
+    assert response.isNone
+    if (response.isSome)
+    {
+        // resquest successfull
+        assert false
+
+    }
+    else
+    {
+        assert true
+    }
+
+}

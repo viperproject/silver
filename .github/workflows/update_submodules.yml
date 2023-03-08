@@ -1,0 +1,36 @@
+name: Update Silver Submodule
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  update_submodule:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - repo: 'silicon'
+          - repo: 'carbon'
+    runs-on: ubuntu-latest
+
+    steps:
+    # Checkout the repository to the GitHub Actions runner
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        repository: viperproject/${{ matrix.repo }}
+        token: ${{ secrets.PAT }}
+        submodules: true
+
+    # Update references
+    - name: Git Sumbodule Update
+      run: |
+        git submodule update --remote silver
+
+    - name: Commit update
+      run: |
+        git config --global user.name 'Silver Bot'
+        git config --global user.email 'bot@noreply.github.com'
+        git commit -am "Update silver submodule" && git push || echo "No changes to commit"

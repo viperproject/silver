@@ -15,7 +15,7 @@ class SilNameGenerator extends DefaultNameGenerator {
   val identFirstLetter = "[a-zA-Z$_]"
   val identOtherLetterChars = "a-zA-Z0-9$_'"
   val identOtherLetter = s"[$identOtherLetterChars]"
-  val reservedNames = Consistency.reservedNames.toSet
+  val reservedNames = Consistency.reservedNames
   val separator = "_"
   val firstCharacter = identFirstLetter.r
   val otherCharacter = identOtherLetter.r

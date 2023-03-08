@@ -8,7 +8,7 @@ package viper.silver.ast.utility
 
 import viper.silver.ast._
 import viper.silver.ast.utility.rewriter.Traverse
-import viper.silver.parser.FastParser
+import viper.silver.parser.FastParserCompanion
 import viper.silver.verifier.ConsistencyError
 import viper.silver.{FastMessage, FastMessaging}
 
@@ -29,7 +29,7 @@ object Consistency {
     recordIfNot(suspect, !property, message)
 
   /** Names that are not allowed for use in programs. */
-  def reservedNames: Seq[String] = FastParser.keywords.toSeq
+  def reservedNames: Set[String] = FastParserCompanion.basicKeywords
 
   /** Returns true iff the string `name` is a valid identifier. */
   val identFirstLetter = "[a-zA-Z$_]"
@@ -109,6 +109,18 @@ object Consistency {
       true
     else
       !found
+  }
+
+  def checkBackendTypes(p: Program, backendName: String): Seq[ConsistencyError] = {
+    var result: List[ConsistencyError] = Nil
+    for (domain <- p.domains) {
+      if (domain.interpretations.isDefined) {
+        if (!domain.interpretations.get.contains(backendName)) {
+          result = ConsistencyError(s"Domain ${domain.name} has no interpretation for backend ${backendName}.", domain.pos) :: result
+        }
+      }
+    }
+    result
   }
 
   /** Convenience methods to treat null values as some other default values (e.g treat null as empty List) */
@@ -198,6 +210,13 @@ object Consistency {
         }
       })
     })
+    for (t <- triggers) {
+      for (e <- t.exps) {
+        if (!variables.exists(v => e.contains(v.localVar))) {
+          s :+= ConsistencyError(s"Trigger expression $e does not contain any quantified variable.", e.pos)
+        }
+      }
+    }
     s
   }
 
@@ -303,9 +322,10 @@ object Consistency {
     * Foo(...) must be pure except if it occurs inside Bar(...).
     *
     * @param n The starting node of the consistency check.
-    * @param c The initial context (optional).
+    * @param p The program.
     */
-  def checkContextDependentConsistency(n: Node, c: Context = Context()) : Seq[ConsistencyError] = {
+  def checkContextDependentConsistency(n: Node, p: Program) : Seq[ConsistencyError] = {
+    val c = Context(p)
     var s = Seq.empty[ConsistencyError]
     n.visitWithContext(c)(c => {
       case Package(_, proofScript @ Seqn(_, locals)) =>
@@ -315,8 +335,8 @@ object Consistency {
         c.copy(insideWandStatus = InsideWandStatus.Yes)
 
       case mw @ MagicWand(lhs, rhs) =>
-        s ++= checkWandRelatedOldExpressions(lhs, Context(insideWandStatus = InsideWandStatus.Left))
-        s ++= checkWandRelatedOldExpressions(rhs, Context(insideWandStatus = InsideWandStatus.Right))
+        s ++= checkWandRelatedOldExpressions(lhs, c.copy(insideWandStatus = InsideWandStatus.Left))
+        s ++= checkWandRelatedOldExpressions(rhs, c.copy(insideWandStatus = InsideWandStatus.Right))
 
         if(!noGhostOperations(mw))
           s :+= ConsistencyError("Ghost operations may not occur inside of wands.", mw.pos)
@@ -334,6 +354,32 @@ object Consistency {
       case wp@WildcardPerm() if !c.insideAccessPredicateStatus =>
         s :+= ConsistencyError("\"wildcard\" can only be used in accessibility predicates", wp.pos)
         c
+
+      case dt: DomainType =>
+        c.program.domains.find(_.name == dt.domainName) match {
+          case None =>
+            s :+= ConsistencyError(s"DomainType references non-existent domain ${dt.domainName}.", NoPosition)
+            c
+          case Some(domain) if domain.interpretations.isDefined =>
+            s :+= ConsistencyError(s"DomainType ${dt.domainName} references domain with interpretation; must use BackendType instead.", NoPosition)
+            c
+          case _ => c
+        }
+
+      case bt: BackendType =>
+        c.program.domains.find(_.name == bt.viperName) match {
+          case None =>
+            s :+= ConsistencyError(s"BackendType references non-existent domain ${bt.viperName}.", NoPosition)
+            c
+          case Some(domain) if domain.interpretations.isEmpty =>
+            s :+= ConsistencyError(s"BackendType ${bt.viperName} references domain without interpretation; must use DomainType instead.", NoPosition)
+            c
+          case Some(domain) if domain.interpretations.get != bt.interpretations =>
+            s :+= ConsistencyError(s"BackendType ${bt.viperName} has different interpretations than the domain it references.", NoPosition)
+            c
+          case _ => c
+        }
+
     })
     s
   }
@@ -376,6 +422,7 @@ object Consistency {
   }
 
   /** Context for context dependent consistency checking. */
-  case class Context(insideWandStatus: InsideWandStatus = InsideWandStatus.No,
+  case class Context(program: Program,
+                     insideWandStatus: InsideWandStatus = InsideWandStatus.No,
                      insideAccessPredicateStatus: Boolean = false)
 }

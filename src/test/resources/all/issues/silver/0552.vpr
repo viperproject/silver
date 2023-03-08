@@ -1,0 +1,7 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+domain HeapVersion {}
+
+method Arc_clone(x: Ref, y: HeapVersion)
+    requires false ==> Map[Ref, HeapVersion]()[x] == y

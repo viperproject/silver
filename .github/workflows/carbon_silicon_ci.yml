@@ -1,0 +1,75 @@
+name: Run Backend CI
+
+on:
+  push:
+    branches: [ master ]
+  # `pull_request_target` can be triggered by a malicious PR to Silver
+  # So we run the backend CI on a fork to ensure safety
+  pull_request_target:
+    branches: [ master ]
+  workflow_dispatch:
+
+# `${{ secrets.PAT }}` must give access to `${{ env.fork }}/${{ matrix.repo }}`
+# for both pushes and triggering workflows (`workflow`+`repo` and `repo_hook` scopes).
+env:
+  fork: viper-admin
+  branch: master
+  sha: ${{ github.event.pull_request.head.sha || github.sha }}
+  ref: ${{ github.head_ref || github.ref }}
+  repo: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+
+jobs:
+  run_ci:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - repo: 'silicon'
+          - repo: 'carbon'
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout backend
+      uses: actions/checkout@v3
+      with:
+        repository: ${{ env.fork }}/${{ matrix.repo }}
+        token: ${{ secrets.PAT }}
+        ref: ${{ env.branch }}
+        submodules: true
+
+    - name: Update fork
+      run: |
+        git config --global user.name 'Silver Bot'
+        git config --global user.email 'bot@noreply.github.com'
+        git remote add upstream https://github.com/viperproject/${{ matrix.repo }}
+        git fetch upstream ${{ env.branch }}
+        git pull upstream ${{ env.branch }}
+        git push origin ${{ env.branch }}
+
+    - name: Checkout current silver
+      run: |
+        git checkout -b ci-test-${{ env.sha }}
+        cd silver
+        git remote add upstream https://github.com/${{ env.repo }}
+        git fetch upstream ${{ env.ref }}
+        git checkout ${{ env.sha }}
+        cd ..
+
+    - name: Push temporary branch
+      run: |
+        git commit -am "Set silver submodule to ${{ env.sha }} [skip ci]" || echo "Correct Silver already checked out"
+        git push origin ci-test-${{ env.sha }}
+
+    - name: Run CI
+      uses: convictional/trigger-workflow-and-wait@v1.6.0
+      with:
+        owner: ${{ env.fork }}
+        repo: ${{ matrix.repo }}
+        github_token: ${{ secrets.PAT }}
+        ref: ci-test-${{ env.sha }}
+        workflow_file_name: ci.yml
+
+    - name: Delete temporary branch
+      if: always()
+      run: |
+        git push origin --delete ci-test-${{ env.sha }}

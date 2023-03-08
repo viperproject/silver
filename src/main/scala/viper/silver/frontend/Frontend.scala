@@ -13,9 +13,9 @@ import ch.qos.logback.classic.Logger
 
 import scala.io.Source
 import viper.silver.ast._
-import viper.silver.plugin.PluginAwareReporter
 import viper.silver.reporter.StdIOReporter
 import viper.silver.verifier._
+import viper.silver.reporter.Reporter
 
 
 /** A translator for some programming language that produces a Viper program (which then in turn can be verified using a
@@ -47,7 +47,7 @@ trait Frontend {
     *
     * @see <a href="https://bitbucket.org/viperproject/viperserver/src">ViperServer</a> for more details.
     */
-  val reporter: PluginAwareReporter = PluginAwareReporter(StdIOReporter())
+  val reporter: Reporter = StdIOReporter()
 
   /** Represents a phase of the frontend */
   case class Phase(name: String, f: () => Unit)

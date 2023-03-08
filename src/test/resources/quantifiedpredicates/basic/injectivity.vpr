@@ -14,14 +14,14 @@ predicate pred2(a:Ref, i:Int) {
 //1 argument
 method test01(xs: Seq[Ref], y: Ref)
 requires acc(pred1(y))
-//:: ExpectedOutput(not.wellformed:receiver.not.injective)
+//:: ExpectedOutput(not.wellformed:qp.not.injective)
 ensures forall x: Ref :: x in xs  ==> acc(pred1(y))
 {}
 
 //2 arguments
 method test02(xs: Seq[Ref], y: Ref)
 	requires acc(pred2(y, 1))
-	//:: ExpectedOutput(not.wellformed:receiver.not.injective)
+	//:: ExpectedOutput(not.wellformed:qp.not.injective)
 	ensures forall x: Ref :: x in xs  ==> acc(pred2(y, 1))
 {}
 

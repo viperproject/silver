@@ -1,0 +1,25 @@
+adt List[T] {
+    Nil()
+    Cons(value: T, tail: List[T])
+}
+
+
+adt Tree[T] {
+    Leaf()
+    Node(value: T, left: Tree[T], right: Tree[T])
+}
+
+
+method destructors_2()
+{   
+    assert Cons(1, Nil()).value == 1
+
+    assert Cons(1, Nil()).tail == Nil()
+
+    assert Node(42, Node(42, Leaf(), Node(42, Node(42, Leaf(), Leaf()), Leaf())), Leaf()).value == 42
+    
+    assert Node(42, Node(42, Leaf(), Node(42, Node(42, Leaf(), Leaf()), Leaf())), Leaf()).left.right.left.value == 42
+
+    assert ((Node(42, Node(42, Leaf(), Node(42, Node(42, Leaf(), Leaf()), Leaf())), Leaf()).left).right.left).value == 42
+
+}

@@ -8,7 +8,6 @@ package viper.silver.verifier
 
 import fastparse.Parsed
 import viper.silver.ast._
-import viper.silver.ast.pretty.FastPrettyPrinter
 import viper.silver.ast.utility.rewriter.Rewritable
 
 
@@ -153,12 +152,24 @@ trait ErrorMessage {
 
   // Should consider refactoring as a transformer, if/once we make the error message structure recursive
   def withNode(offendingNode: errors.ErrorNode = this.offendingNode) : ErrorMessage
+
+  // Check if the offendingNode contains any `FailureExpectedInfo` info tags
+  def isExpected: Boolean = offendingNode match {
+    case i: Infoed => i.info.getUniqueInfo[FailureExpectedInfo].isDefined
+    case _ => false
+  }
 }
 
 trait VerificationError extends AbstractError with ErrorMessage {
   def reason: ErrorReason
   def readableMessage(withId: Boolean = false, withPosition: Boolean = false): String
-  override def readableMessage: String = readableMessage(false, true) + failureContexts.map(e => e.toString).mkString("\n")
+  override def readableMessage: String = {
+    val msg = readableMessage(false, true)
+    if (failureContexts.isEmpty)
+      msg
+    else
+      msg + "\n" + failureContexts.map(e => e.toString).mkString("\n")
+  }
   def loggableMessage: String = s"$fullId-$pos" + (if (cached) "-cached" else "")
   def fullId = s"$id:${reason.id}"
   var failureContexts: Seq[FailureContext] = Seq() //TODO: make immutable
@@ -212,7 +223,7 @@ object PartialVerificationError { // Note: the apply method is used here to inst
 }
 
 case object NullPartialVerificationError extends PartialVerificationError {
-  def f = x => null
+  def f = _ => null
 }
 
 abstract class AbstractVerificationError extends VerificationError {
@@ -524,6 +535,31 @@ object errors {
   def LetWandFailed(offendingNode: LocalVarAssign): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => LetWandFailed(offendingNode, reason))
 
+  case class QuasihavocFailed(offendingNode: Quasihavoc, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
+    val id = "quasihavoc.failed"
+    val text = "Quasihavoc might fail."
+
+    override val pos = offendingNode.exp.pos
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = QuasihavocFailed(offendingNode.asInstanceOf[Quasihavoc], this.reason, this.cached)
+    def withReason(r: ErrorReason) = QuasihavocFailed(offendingNode, r, cached)
+  }
+
+  def QuasihavocFailed(offendingNode: Quasihavoc): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => QuasihavocFailed(offendingNode, reason))
+
+  case class HavocallFailed(offendingNode: Quasihavocall, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
+    val id = "quasihavocall.failed"
+    val text = "Quasihavocall might fail."
+
+    override val pos = offendingNode.exp.pos
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = HavocallFailed(offendingNode.asInstanceOf[Quasihavocall], this.reason, this.cached)
+    def withReason(r: ErrorReason) = HavocallFailed(offendingNode, r, cached)
+  }
+
+  def HavocallFailed(offendingNode: Quasihavocall): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => HavocallFailed(offendingNode, reason))
+
+
   case class HeuristicsFailed(offendingNode: ErrorNode, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "heuristics.failed"
     val text = "Applying heuristics failed."
@@ -616,7 +652,7 @@ object reasons {
 
   case class InsufficientPermission(offendingNode: LocationAccess) extends AbstractErrorReason {
     val id = "insufficient.permission"
-    def readableMessage = s"There might be insufficient permission to access " + FastPrettyPrinter.pretty(offendingNode)
+    def readableMessage = s"There might be insufficient permission to access $offendingNode"
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = InsufficientPermission(offendingNode.asInstanceOf[LocationAccess])
   }
@@ -635,11 +671,18 @@ object reasons {
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = MagicWandChunkNotFound(offendingNode.asInstanceOf[MagicWand])
   }
 
-  case class ReceiverNotInjective(offendingNode: LocationAccess) extends AbstractErrorReason {
-    val id = "receiver.not.injective"
-    def readableMessage = s"Receiver of $offendingNode [$pos]  might not be injective."
+  case class QPAssertionNotInjective(offendingNode: ResourceAccess) extends AbstractErrorReason {
+    val id = "qp.not.injective"
+    def readableMessage = s"Quantified resource $offendingNode might not be injective."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = ReceiverNotInjective(offendingNode.asInstanceOf[LocationAccess])
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = QPAssertionNotInjective(offendingNode.asInstanceOf[ResourceAccess])
+  }
+
+  case class QuasihavocallNotInjective(offendingNode: Quasihavocall) extends AbstractErrorReason {
+    val id = "quasihavocall.not.injective"
+    val readableMessage = s"Quasihavocall statement $offendingNode might not be injective."
+
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = QuasihavocallNotInjective(offendingNode.asInstanceOf[Quasihavocall])
   }
 
   case class LabelledStateNotReached(offendingNode: LabelledOld) extends AbstractErrorReason {

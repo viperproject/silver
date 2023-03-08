@@ -1,0 +1,22 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Side remark: none of these quantifiers admit any (natural) triggers
+
+predicate P()
+
+method test()
+  requires P()
+   //:: IgnoreFile(/carbon/issue/391/)
+  ensures forall i: Int :: i == 0 ==> P()
+{}
+
+field f: Int
+
+method test2(x: Ref) {
+  inhale forall i: Int :: i == 0 ==> acc(x.f)
+}
+
+method test3(x: Ref) {
+  inhale forall i: Int :: i == 0 ==> true --* true
+}

@@ -6,11 +6,11 @@
 
 package viper.silver.parser
 
+import viper.silver.FastMessaging
+import viper.silver.ast.{LabelledOld, MagicWandOp}
+
 import scala.collection.mutable
 import scala.reflect._
-import viper.silver.ast.{LabelledOld, MagicWandOp}
-import viper.silver.ast.utility.Visitor
-import viper.silver.FastMessaging
 
 /**
  * A resolver and type-checker for the intermediate Viper AST.
@@ -50,16 +50,32 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   def check(p: PProgram): Unit = {
+
+    /* [2022-03-14 Alessandro] Domain function declarations, method declarations and ordinary function declarations
+     * must be checked before their application is checked. Especially, this is because type variables in signatures
+     * must be resolved. However, the checks in the following block are independent of each other.
+     */
     p.domains foreach checkFunctions
-    p.domains foreach checkAxioms
     p.fields foreach check
     p.functions foreach checkDeclaration
     p.predicates foreach checkDeclaration
+    p.methods foreach checkDeclaration
+
+    /* [2022-03-14 Alessandro] Unfortunately, there is currently no mechanism of checking some extensions "signature" first
+     * and checking its "body" in a later step. However, there are currently no Extensions planned that would use this
+     * functionality. Hence we check all the extensions after declarations and signatures are checked. This allows
+     * extensions in which there are function, domain function and method applications.
+     */
+    p.extensions foreach checkExtension
+
+    /* [2022-03-14 Alessandro]
+     * The following block of checks must occur after declarations and signatures are checked, but the checks in the block
+     * do not depend on each other. Note that extensions are checked beforehand, which allow function and method alike extensions.
+     */
+    p.domains foreach checkAxioms
     p.functions foreach checkBody
     p.predicates foreach checkBody
-    p.methods foreach checkDeclaration
     p.methods foreach checkBody
-    p.extensions foreach checkExtension
 
 
     /* Report any domain type that couldn't be resolved */
@@ -254,9 +270,41 @@ case class TypeChecker(names: NameAnalyser) {
       case _: PDefine =>
         /* Should have been removed right after parsing */
         sys.error(s"Unexpected node $stmt found")
+      case PQuasihavoc(lhs, e) =>
+        checkHavoc(stmt, lhs, e)
+      case havoc@PQuasihavocall(vars, lhs, e) =>
+        vars foreach (v => check(v.typ))
+        // update the curMember, which contains quantified variable information
+        val oldCurMember = curMember
+        curMember = havoc
+        // Actually type check the havoc
+        checkHavoc(stmt, lhs, e)
+        // restore the previous curMember
+        curMember = oldCurMember
+
       case t:PExtender => t.typecheck(this, names).getOrElse(Nil) foreach(message =>
                               messages ++= FastMessaging.message(t, message))
       case _: PSkip =>
+    }
+  }
+
+  def checkHavoc(stmt: PStmt, lhs: Option[PExp], e: PExp): Unit = {
+    // If there is a condition, make sure that it is a Bool
+    if (lhs.nonEmpty) {
+      check(lhs.get, Bool)
+    }
+    // Make sure that the rhs is a resource
+    val havocError = "Havoc statement must take a field access, predicate, or wand"
+    e match {
+      case _: PFieldAccess => checkTopTyped(e, None)
+      case pc: PCall =>
+        check(e, Bool)
+        // make sure that this is in fact a predicate
+        if (pc.extfunction == null) {
+          messages ++= FastMessaging.message(stmt, havocError)
+        }
+      case _: PMagicWandExp => check(e, Bool)
+      case _ => messages ++= FastMessaging.message(stmt, havocError)
     }
   }
 
@@ -353,7 +401,7 @@ case class TypeChecker(names: NameAnalyser) {
         }
 
         x match {
-          case PDomain(_, typVars, _, _) =>
+          case PDomain(_, typVars, _, _, _) =>
             ensure(args.length == typVars.length, typ, "wrong number of type arguments")
             dt.kind = PDomainTypeKinds.Domain
           case PTypeVarDecl(_) =>
@@ -464,14 +512,14 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   def check(exp: PExp, expected: PType) = exp match {
-    case t: PExtender => t.typecheck(this, names).getOrElse(Nil) foreach (message =>
+    case t: PExtender => t.typecheck(this, names, expected).getOrElse(Nil) foreach (message =>
       messages ++= FastMessaging.message(t, message))
 
     case _ => checkTopTyped(exp, Some(expected))}
 
   def checkTopTyped(exp: PExp, oexpected: Option[PType]): Unit =
   {
-    check(exp, PTypeSubstitution.id)
+    checkInternal(exp)
     if (exp.typ.isValidOrUndeclared && exp.typeSubstitutions.nonEmpty) {
       val etss = oexpected match {
         case Some(expected) if expected.isValidOrUndeclared => exp.typeSubstitutions.flatMap(_.add(exp.typ, expected))
@@ -491,12 +539,7 @@ case class TypeChecker(names: NameAnalyser) {
     }
   }
 
-  def checkInternal(exp: PExp): Unit =
-  {
-    check(exp,PTypeSubstitution.id)
-  }
-
-  def check(exp: PExp, s: PTypeSubstitution) : Unit = {
+  def checkInternal(exp: PExp) : Unit = {
     /**
      * Set the type of 'exp', and check that the actual type is allowed by one of the expected types.
      */
@@ -596,7 +639,7 @@ case class TypeChecker(names: NameAnalyser) {
                           if (inAxiomScope(Some(pfa)))
                             issueError(func, func.name + " is not a domain function")
 
-                        case pdf@PDomainFunction(_, _, _, _) =>
+                        case pdf@PDomainFunction(_, _, _, _, _) =>
                           val domain = names.definition(curMember)(pdf.domainName).asInstanceOf[PDomain]
                           val fdtv = PTypeVar.freshTypeSubstitution((domain.typVars map (tv => tv.idndef.name)).distinct) //fresh domain type variables
                           pfa.domainTypeRenaming = Some(fdtv)
@@ -659,6 +702,12 @@ case class TypeChecker(names: NameAnalyser) {
                 }
               case pecl: PEmptyCollectionLiteral if !pecl.pElementType.isValidOrUndeclared =>
                 check(pecl.pElementType)
+
+              case pem: PEmptyMap if !pem.pKeyType.isValidOrUndeclared || !pem.pValueType.isValidOrUndeclared =>
+                if (!pem.pKeyType.isValidOrUndeclared)
+                  check(pem.pKeyType)
+                if (!pem.pValueType.isValidOrUndeclared)
+                  check(pem.pValueType)
 
               case _ =>
             }
@@ -839,6 +888,9 @@ case class NameAnalyser() {
         n match {
           case d: PDeclaration =>
             getMap(d).get(d.idndef.name) match {
+              case Some(m: PMember) if d eq m =>
+                // We re-encountered a member we already looked at in the previous run.
+                // This is expected, nothing to do.
               case Some(e: PDeclaration) =>
                 messages ++= FastMessaging.message(e.idndef, "Duplicate identifier `" + e.idndef.name + "' at " + e.idndef.pos._1 + " and at " + d.idndef.pos._1)
               case Some(_: PErrorEntity) =>
@@ -851,6 +903,22 @@ case class NameAnalyser() {
                   case None =>
                     getMap(d).put(d.idndef.name, d)
                 }
+            }
+          case i@PIdnUse(name) =>
+            // look up in both maps (if we are not in a method currently, we look in the same map twice, but that is ok)
+            getCurrentMap.getOrElse(name, globalDeclarationMap.getOrElse(name, PUnknownEntity())) match {
+              case PUnknownEntity() =>
+                // domain types can also be type variables, which need not be declared
+                // goto and state labels may exist out of scope (but must exist in method, this is checked in final AST in checkIdentifiers)
+                if (i.parent.isDefined) {
+                  val parent = i.parent.get
+                  if (!parent.isInstanceOf[PDomainType] && !parent.isInstanceOf[PGoto] &&
+                    !(parent.isInstanceOf[PLabelledOld] && i == parent.asInstanceOf[PLabelledOld].label) &&
+                    !(name == LabelledOld.LhsOldLabel && parent.isInstanceOf[PLabelledOld])) {
+                    messages ++= FastMessaging.message(i, s"identifier $name not defined.")
+                  }
+                }
+              case _ =>
             }
           case _ =>
         }
@@ -874,6 +942,7 @@ case class NameAnalyser() {
         n match {
           case _: PDeclaration => true
           case _: PScope => true
+          case _: PIdnUse => true
           case _ => target.isDefined
         }
       }
@@ -895,74 +964,31 @@ case class NameAnalyser() {
       }
     }
 
-    def containsSubnodeBefore(container: PNode, toFind: PNode, before: PNode) : Boolean = {
-      var beforeFound = false
-      val pred = new PartialFunction[PNode, PNode] {
-        def isDefinedAt(node: PNode): Boolean = {
-          if (!beforeFound){
-            if (node eq before){
-              beforeFound = true
-            }
-          }
-          (node eq toFind) && node != container && !beforeFound
+    n match {
+      case prog: PProgram =>
+        // find all global names first
+        for (d <- prog.domains) {
+          nodeDownNameCollectorVisitor(d)
+          d.funcs.foreach(f => {nodeDownNameCollectorVisitor(f); nodeUpNameCollectorVisitor(f)})
+          nodeUpNameCollectorVisitor(d)
         }
+        prog.fields.foreach(f => f.visit(nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor))
+        prog.functions.foreach(f => {nodeDownNameCollectorVisitor(f); nodeUpNameCollectorVisitor(f)})
+        prog.predicates.foreach(f => {nodeDownNameCollectorVisitor(f); nodeUpNameCollectorVisitor(f)})
+        prog.methods.foreach(m => {nodeDownNameCollectorVisitor(m); nodeUpNameCollectorVisitor(m)})
+        prog.extensions.foreach(e => e.visit(nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor))
 
-        def apply(node: PNode) = node
-      }
-      Visitor.existsDefined(container, Nodes.subnodes)(pred)
+        // now completely walk through all axioms, functions, predicates, and methods
+        prog.domains.foreach(d => d.visit(nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor))
+        prog.functions.foreach(f => f.visit(nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor))
+        prog.predicates.foreach(f => f.visit(nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor))
+        prog.methods.foreach(m => m.visit(nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor))
+
+      case _ =>
+        // find all declarations
+        n.visit(nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor)
     }
-
-    def getContainingMethod(node : PNode) : Option[PMethod] = {
-      node match {
-        case null => None
-        case method : PMethod => Some(method)
-        case nonMethod =>
-          nonMethod.parent match {
-            case Some(parentNode) => getContainingMethod(parentNode)
-            case None => None
-          }
-      }
-    }
-
-    // find all declarations
-    n.visit(nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor)
     clearUniversalDeclarationsMap()
-    /* Check all identifier uses. */
-    n.visit({
-      case m: PScope =>
-        scopeStack.push(curMember)
-        curMember = m
-      case i@PIdnUse(name) =>
-        // look up in both maps (if we are not in a method currently, we look in the same map twice, but that is ok)
-        getCurrentMap.getOrElse(name, globalDeclarationMap.getOrElse(name, PUnknownEntity())) match {
-          case PUnknownEntity() =>
-            // domain types can also be type variables, which need not be declared
-            // goto and state labels may exist out of scope (but must exist in method, this is checked in final AST in checkIdentifiers)
-            if (i.parent.isDefined) {
-              val parent = i.parent.get
-              if (!parent.isInstanceOf[PDomainType] && !parent.isInstanceOf[PGoto] &&
-              !(parent.isInstanceOf[PLabelledOld] && i==parent.asInstanceOf[PLabelledOld].label) &&
-              !(name == LabelledOld.LhsOldLabel && parent.isInstanceOf[PLabelledOld])) {
-                messages ++= FastMessaging.message(i, s"identifier $name not defined.")
-              }
-            }
-          case localVar : PLocalVarDecl =>
-            getContainingMethod(localVar) match {
-              case Some(PMethod(_, _, _, _, _, Some(actualBody))) =>
-                // Variables must not be used before they are declared
-                if (containsSubnodeBefore(actualBody, i, localVar)){
-                  messages ++= FastMessaging.message(i, s"local variable $name cannot be accessed before it is declared.")
-                }
-              case _ =>
-            }
-          case _ =>
-        }
-      case _ =>
-    }, {
-      case _: PScope =>
-        curMember = scopeStack.pop()
-      case _ =>
-    })
   }
 
   def run(p: PProgram): Boolean = {

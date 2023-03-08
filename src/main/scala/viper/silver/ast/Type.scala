@@ -7,6 +7,7 @@
 package viper.silver.ast
 
 import utility.Types
+import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.verifier.ConsistencyError
 
 /** Silver types. */
@@ -199,8 +200,9 @@ case class TypeVar(name: String) extends Type {
   //def !=(other: TypeVar) = name != other
 }
 
-case class BackendType(boogieName: String, smtName: String) extends AtomicType
+case class BackendType(viperName: String, interpretations: Map[String, String]) extends AtomicType
 
 trait ExtensionType extends Type{
   def getAstType: Type = ???
+  def prettyPrint: PrettyPrintPrimitives#Cont = ???
 }

@@ -1,0 +1,8 @@
+adt List[T] {
+    //:: ExpectedOutput(typechecker.error)
+    Nil()
+    Cons(value: T, tail: List[T])
+}
+
+
+field isNil:Int

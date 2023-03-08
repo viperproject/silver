@@ -1,0 +1,33 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field discriminant: Int
+
+field field1: Ref
+
+predicate pred(self: Ref) {
+  acc(self.discriminant, write) &&
+  acc(self.field1, write) &&
+  (self.discriminant == 4 ?
+    predFive(self.field1) :
+    (false ? tt(self.field1) : true))
+}
+
+predicate predFive(self: Ref) {
+  true && true
+}
+
+predicate tt(self: Ref) {
+  true
+}
+
+method m_test1() returns ()
+{
+  var _1: Ref
+  inhale acc(pred(_1), write)
+  inhale (unfolding acc(pred(_1), write) in _1.discriminant == 4 &&
+    (unfolding predFive(_1.field1) in true))
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}

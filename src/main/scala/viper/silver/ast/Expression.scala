@@ -47,6 +47,13 @@ sealed trait Exp extends Hashable with Typed with Positioned with Infoed with Tr
    */
  // lazy val proofObligations = Expressions.proofObligations(this)
 
+  override def toString() = {
+   // Carbon relies on expression pretty-printing resulting in a string without line breaks,
+   // so for the special case of directly converting an expression to a string, we remove all line breaks
+   // the pretty printer might have inserted.
+   super.toString.replaceAll("\n\\s*", " ")
+ }
+
 }
 
 // --- Simple integer and boolean expressions (binary and unary operations, literals)
@@ -336,6 +343,13 @@ case class PermDiv(left: Exp, right: Exp)(val pos: Position = NoPosition, val in
     (if(left.typ != Perm) Seq(ConsistencyError(s"First parameter of permission division expression must be Perm, but found ${left.typ}", left.pos)) else Seq()) ++
     (if(right.typ != Int) Seq(ConsistencyError(s"Second parameter of permission division expression must be Int, but found ${right.typ}", right.pos)) else Seq())
 }
+
+case class PermPermDiv(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(PermDivOp) with PermExp with ForbiddenInTrigger
+{
+  override lazy val check : Seq[ConsistencyError] =
+    (if(left.typ != Perm) Seq(ConsistencyError(s"First parameter of permission division expression must be Perm, but found ${left.typ}", left.pos)) else Seq()) ++
+      (if(right.typ != Perm) Seq(ConsistencyError(s"Second parameter of permission-permission division expression must be Perm, but found ${right.typ}", right.pos)) else Seq())
+}
 /** The permission currently held for a given resource. */
 case class CurrentPerm(res: ResourceAccess)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends PermExp
 
@@ -382,7 +396,7 @@ case class DomainFuncApp(funcname: String, args: Seq[Exp], typVarMap: Map[TypeVa
   //Strangely, the copy method is not a member of the DomainFuncApp case class,
   //therefore, We need this method that does the copying manually
   def copy(funcname: String = this.funcname, args: Seq[Exp] = this.args, typVarMap: Map[TypeVar, Type] = this.typVarMap): (Position, Info, Type, String, ErrorTrafo) => DomainFuncApp ={
-    DomainFuncApp(this.funcname,args,typVarMap)
+    DomainFuncApp(funcname,args,typVarMap)
   }
 }
 object DomainFuncApp {
@@ -391,14 +405,17 @@ object DomainFuncApp {
 }
 
 // --- References to backend (i.e., SMTLIB or Boogie 'builtin') functions
-
-case class BackendFuncApp(backendFunc: BackendFunc, args: Seq[Exp])
-                         (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
+case class BackendFuncApp(backendFuncName: String, args: Seq[Exp])
+                         (val pos: Position, val info: Info, override val typ: Type, val interpretation: String, val errT: ErrorTrafo)
   extends AbstractDomainFuncApp {
   override lazy val check : Seq[ConsistencyError] = args.flatMap(Consistency.checkPure)
-  override def func = (p: Program) => backendFunc
-  def funcname = backendFunc.name
-  override def typ = backendFunc.typ
+  override def func = (p: Program) => p.findDomainFunction(backendFuncName)
+  def funcname = backendFuncName
+}
+
+object BackendFuncApp {
+  def apply(backendFunc: DomainFunc, args: Seq[Exp])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos): BackendFuncApp =
+    BackendFuncApp(backendFunc.name, args)(pos, info, backendFunc.typ, backendFunc.interpretation.get, errT)
 }
 
 // --- Field and predicate accesses
@@ -556,6 +573,7 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
   //require(isValid, s"Invalid quantifier: { $this } .")
   override lazy val check : Seq[ConsistencyError] =
     (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Body of universal quantifier must be of Bool type, but found ${exp.typ}", exp.pos)) else Seq()) ++
+    (if (variables.isEmpty) Seq(ConsistencyError("Quantifier must have at least one quantified variable.", pos)) else Seq()) ++
     Consistency.checkAllVarsMentionedInTriggers(variables, triggers) ++
     checkNoNestedQuantsForQuantPermissions ++
     checkQuantifiedPermission
@@ -622,7 +640,8 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
 /** Existential quantification. */
 case class Exists(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends QuantifiedExp {
   override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(exp) ++
-    (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Body of existential quantifier must be of Bool type, but found ${exp.typ}", exp.pos)) else Seq())
+    (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Body of existential quantifier must be of Bool type, but found ${exp.typ}", exp.pos)) else Seq()) ++
+    (if (variables.isEmpty) Seq(ConsistencyError("Quantifier must have at least one quantified variable.", pos)) else Seq())
 
   /** Returns an identical forall quantification that has some automatically generated triggers
     * if necessary and possible.
@@ -759,35 +778,39 @@ case class SeqAppend(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 }
 
 /** Access to an element of a sequence at a given index position (starting at 0). */
-case class SeqIndex(s: Exp, idx: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp {
+case class SeqIndex(s: Exp, idx: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp with PrettyOperatorExpression {
   override lazy val check : Seq[ConsistencyError] =
     (if(!s.typ.isInstanceOf[SeqType]) Seq(ConsistencyError(s"Expected sequence type but found ${s.typ}", s.pos)) else Seq()) ++
     (if(!(idx isSubtype Int)) Seq(ConsistencyError(s"Second parameter of sequence-access expression must be Int, but found ${idx.typ}", idx.pos)) else Seq())
   lazy val typ = s.typ.asInstanceOf[SeqType].elementType
   def getArgs = Seq(s,idx)
   def withArgs(newArgs: Seq[Exp]) = SeqIndex(newArgs.head,newArgs(1))(pos, info, errT)
+  override def priority: Int = 10
+  override def fixity: Fixity = Infix(LeftAssociative)
 }
 
 /** Take the first 'n' elements of the sequence 'seq'. */
-case class SeqTake(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp {
+case class SeqTake(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp with PrettyOperatorExpression {
   override lazy val check : Seq[ConsistencyError] =
     (if(!s.typ.isInstanceOf[SeqType]) Seq(ConsistencyError(s"Expected sequence type but found ${s.typ}", s.pos)) else Seq()) ++
     (if(!(n isSubtype Int)) Seq(ConsistencyError(s"Second parameter of sequence-take expression must be Int, but found ${n.typ}", n.pos)) else Seq())
   lazy val typ = s.typ
   def getArgs = Seq(s,n)
   def withArgs(newArgs: Seq[Exp]) = SeqTake(newArgs.head,newArgs(1))(pos, info, errT)
-
+  override def priority: Int = 10
+  override def fixity: Fixity = Infix(LeftAssociative)
 }
 
 /** Drop the first 'n' elements of the sequence 'seq'. */
-case class SeqDrop(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp {
+case class SeqDrop(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp with PrettyOperatorExpression {
   override lazy val check : Seq[ConsistencyError] =
     (if(!s.typ.isInstanceOf[SeqType]) Seq(ConsistencyError(s"Expected sequence type but found ${s.typ}", s.pos)) else Seq()) ++
     (if(!(n isSubtype Int)) Seq(ConsistencyError(s"Second parameter of sequence-drop expression must be Int, but found ${n.typ}", n.pos)) else Seq())
   lazy val typ = s.typ
   def getArgs = Seq(s,n)
   def withArgs(newArgs: Seq[Exp]) = SeqDrop(newArgs.head,newArgs(1))(pos, info, errT)
-
+  override def priority: Int = 10
+  override def fixity: Fixity = Infix(LeftAssociative)
 }
 
 /** Is the element 'elem' contained in the sequence 'seq'? */
@@ -1167,7 +1190,7 @@ object FuncLikeApp {
   def apply(f: FuncLike, args: Seq[Exp], typVars: Map[TypeVar, Type]) = {
     f match {
       case f@Function(_, _, _, _, _, _) => FuncApp(f, args)()
-      case f@DomainFunc(_, _, _, _) => DomainFuncApp(f, args, typVars)()
+      case f@DomainFunc(_, _, _, _, _) => DomainFuncApp(f, args, typVars)()
       case _ => sys.error(s"should not occur: $f (${f.getClass})")
     }
   }
