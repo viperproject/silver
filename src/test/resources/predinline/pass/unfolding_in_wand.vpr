@@ -15,7 +15,6 @@ requires Cell(x) {
 method test0(x: Ref)
 requires Cell(x)
 ensures Cell(x) {
-    //:: UnexpectedOutput(package.failed:insufficient.permission, /Carbon/issue/416/)
     package Cell(x) && (unfolding Cell(x) in x.f == 0) --* Cell(x) && getAndTransform(x) == 2 {
         if (getAndTransform(x) != 2) {
             assert false
