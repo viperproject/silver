@@ -238,8 +238,8 @@ class ConsistencyTests extends AnyFunSuite with Matchers {
       Program(domains    = Seq(domain), fields     = Seq(), functions  = Seq(), predicates = Seq(), methods    = Seq(caller), extensions = Seq())()
 
     program.checkTransitively shouldBe Seq(
-      ConsistencyError("No domain function named g found in the program.", NoPosition),
-      ConsistencyError("No matching domain function f found in domain WrongDomain, instead found in domain MyDomain.", NoPosition),
+      ConsistencyError("No domain function named g found in domain MyDomain.", NoPosition),
+      ConsistencyError("Domain name WrongDomain not found in program.", NoPosition),
       ConsistencyError("Domain function f with formal arguments List(x: Int) cannot be applied to provided arguments List().", NoPosition),
       ConsistencyError("No matching domain function f found of return type Bool, instead found with return type Int.", NoPosition),
       ConsistencyError("Domain function f with formal arguments List(x: Int) cannot be applied to provided arguments List(boolRes).", NoPosition),

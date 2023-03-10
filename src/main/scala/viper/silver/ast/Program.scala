@@ -145,8 +145,8 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     var s = Seq.empty[ConsistencyError]
 
     for (funcApp@DomainFuncApp(name, args, typVarMap) <- this) {
-      this.findDomainFunctionOptionally(name) match {
-        case None => s :+= ConsistencyError(s"No domain function named $name found in the program.", funcApp.pos)
+      this.findDomainFunctionOptionally(name, funcApp.domainName) match {
+        case None => s :+= ConsistencyError(s"No domain function named $name found in domain ${funcApp.domainName}.", funcApp.pos)
         case Some(funcDef) => {
           if (!Consistency.areAssignable(args, funcDef.formalArgs map {
             fa =>
@@ -303,12 +303,21 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     }
   }
 
-  def findDomainFunctionOptionally(name: String): Option[DomainFunc] = this.domains.flatMap(_.functions).find(_.name == name)
+  def slowFindDomainFunctionOptionally(name: String): Option[DomainFunc] = this.domains.flatMap(_.functions).find(_.name == name)
 
-  def findDomainFunction(name: String): DomainFunc = {
-    findDomainFunctionOptionally(name) match {
+  def findDomainFunctionOptionally(name: String, domain: String): Option[DomainFunc] = this.findDomain(domain).functions.find(_.name == name)
+
+  def slowFindDomainFunction(name: String): DomainFunc = {
+    slowFindDomainFunctionOptionally(name) match {
       case Some(f) => f
       case None => sys.error("Domain function " + name + " not found in program.")
+    }
+  }
+
+  def findDomainFunction(name: String, domain: String): DomainFunc = {
+    findDomainFunctionOptionally(name, domain) match {
+      case Some(f) => f
+      case None => sys.error("Domain function " + name + " not found in domain " + domain + ".")
     }
   }
 
@@ -583,7 +592,7 @@ object Substitution{
 }
 /** Domain function which is not a binary or unary operator. */
 case class DomainFunc(name: String, formalArgs: Seq[AnyLocalVarDecl], typ: Type, unique: Boolean = false, interpretation: Option[String] = None)
-                     (val pos: Position = NoPosition, val info: Info = NoInfo,val domainName : String, val errT: ErrorTrafo = NoTrafos)
+                     (val pos: Position = NoPosition, val info: Info = NoInfo, val domainName: String, val errT: ErrorTrafo = NoTrafos)
                       extends AbstractDomainFunc with DomainMember with Declaration {
   override lazy val check : Seq[ConsistencyError] =
     if (unique && formalArgs.nonEmpty) Seq(ConsistencyError("Only constants, i.e. nullary domain functions can be unique.", pos)) else Seq()

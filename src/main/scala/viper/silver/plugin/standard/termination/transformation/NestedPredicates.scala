@@ -25,7 +25,7 @@ import scala.collection.immutable.ListMap
  */
 trait NestedPredicates extends ProgramManager with ErrorReporter {
 
-  lazy val nestedFunc: Option[DomainFunc] = program.findDomainFunctionOptionally("nestedPredicates")
+  lazy val nestedFunc: Option[DomainFunc] = program.slowFindDomainFunctionOptionally("nestedPredicates")
 
   protected def containsPredicateInstances(dc: DecreasesSpecification): Boolean = {
     dc.tuple.exists(_.tupleExpressions.exists(_.isSubtype(PredicateInstance.getType)))

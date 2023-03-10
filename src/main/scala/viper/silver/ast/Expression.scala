@@ -388,7 +388,7 @@ case class DomainFuncApp(funcname: String, args: Seq[Exp], typVarMap: Map[TypeVa
   extends AbstractDomainFuncApp with PossibleTrigger {
   override lazy val check : Seq[ConsistencyError] = args.flatMap(Consistency.checkPure)
 
-  def func = (p:Program) => p.findDomainFunction(funcname)
+  def func = (p:Program) => p.findDomainFunction(funcname, domainName)
   def getArgs = args
   def withArgs(newArgs: Seq[Exp]) = DomainFuncApp(funcname,newArgs,typVarMap)(pos,info,typ,domainName, errT)
   def asManifestation = this
@@ -409,7 +409,7 @@ case class BackendFuncApp(backendFuncName: String, args: Seq[Exp])
                          (val pos: Position, val info: Info, override val typ: Type, val interpretation: String, val errT: ErrorTrafo)
   extends AbstractDomainFuncApp {
   override lazy val check : Seq[ConsistencyError] = args.flatMap(Consistency.checkPure)
-  override def func = (p: Program) => p.findDomainFunction(backendFuncName)
+  override def func = (p: Program) => p.slowFindDomainFunction(backendFuncName)
   def funcname = backendFuncName
 }
 

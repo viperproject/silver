@@ -22,8 +22,8 @@ import scala.collection.immutable.ListMap
  */
 trait DecreasesCheck extends ProgramManager with ErrorReporter {
 
-  protected val decreasingFunc: Option[DomainFunc] = program.findDomainFunctionOptionally("decreasing")
-  protected val boundedFunc: Option[DomainFunc] = program.findDomainFunctionOptionally("bounded")
+  protected val decreasingFunc: Option[DomainFunc] = program.slowFindDomainFunctionOptionally("decreasing")
+  protected val boundedFunc: Option[DomainFunc] = program.slowFindDomainFunctionOptionally("bounded")
 
 
   /**
