@@ -58,7 +58,7 @@ class PredicateInstancePlugin(@unused reporter: viper.silver.reporter.Reporter,
    * (to the respective predicate instance functions)
    */
   override def beforeVerify(input: Program): Program = {
-    val PredicateInstanceDomain: Option[Domain] =  input.domains.find(_.name == "PredicateInstance")
+    val PredicateInstanceDomain: Option[Domain] =  input.findDomainOptionally("PredicateInstance")
 
     // list of all created predicate instance functions
     var createdPIFunctions = ListMap[String, Function]()
