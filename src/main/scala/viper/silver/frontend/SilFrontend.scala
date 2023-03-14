@@ -84,8 +84,7 @@ trait SilFrontend extends DefaultFrontend {
     "viper.silver.plugin.standard.adt.AdtPlugin",
     "viper.silver.plugin.standard.termination.TerminationPlugin",
     "viper.silver.plugin.standard.refute.RefutePlugin",
-    "viper.silver.plugin.standard.predicateinstance.PredicateInstancePlugin",
-    "viper.silver.plugin.standard.inline.InlinePredicatePlugin"
+    "viper.silver.plugin.standard.predicateinstance.PredicateInstancePlugin"
   )
   /** For testing of plugin import feature */
   def defaultPluginCount: Int = defaultPlugins.size

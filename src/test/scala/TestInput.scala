@@ -36,7 +36,7 @@ case class DefaultTestInput(
     tags: Seq[Tag]) extends TestInput {}
 
 object DefaultTestInput {
-  val fileListRegex = """(.*)_file\d+\.(?:sil|vpr)""".r
+  val fileListRegex = """(.*)_file\d*.*""".r
 
   /**
    * Creates the default test input from the given source file and prefix.
@@ -63,7 +63,7 @@ object DefaultTestInput {
     val files: Seq[Path] = file.toString match {
       case fileListRegex(n) =>
         // Create a regex for files that belong to the same test.
-        val regex = (Pattern.quote(n) + """_file(\d+)\.(?:sil|vpr)""").r
+        val regex = (Pattern.quote(n) + """_file(\d*).*""").r
         // Collect all files that match this regex and their numbers.
         var files = List[(Path, Int)]()
         val dirStream = Files.newDirectoryStream(file.getParent)

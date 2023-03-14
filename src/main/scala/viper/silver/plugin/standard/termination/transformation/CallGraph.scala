@@ -11,7 +11,7 @@ import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 
 import scala.jdk.CollectionConverters._
 
-object CallGraph {
+protected object CallGraph {
 
   /**
    * @return sets, each containing recursively dependent vertices.

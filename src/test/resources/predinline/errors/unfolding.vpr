@@ -1,9 +1,0 @@
-inline predicate falze()
-{
-    false
-}
-
-method test() {
-    //:: ExpectedOutput(assignment.failed:insufficient.permission)
-    var res: Int := unfolding falze() in 0
-}

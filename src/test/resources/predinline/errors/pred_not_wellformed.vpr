@@ -1,9 +1,0 @@
-// Any copyright is dedicated to the Public Domain.
-// http://creativecommons.org/publicdomain/zero/1.0/
-
-field x: Int
-
-//:: ExpectedOutput(predicate.not.wellformed:insufficient.permission)
-inline predicate P(this: Ref) {
-  this != null && this.x == 1
-}

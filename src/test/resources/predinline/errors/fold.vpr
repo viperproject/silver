@@ -1,9 +1,0 @@
-inline predicate falze()
-{
-    false
-}
-
-method test() {
-    //:: ExpectedOutput(fold.failed:assertion.false)
-    fold falze()
-}

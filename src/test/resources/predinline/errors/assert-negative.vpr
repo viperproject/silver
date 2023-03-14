@@ -1,9 +1,0 @@
-inline predicate falze()
-{
-    false
-}
-
-method test() {
-    //:: ExpectedOutput(assert.failed:negative.permission)
-    assert acc(falze(), -write)
-}
