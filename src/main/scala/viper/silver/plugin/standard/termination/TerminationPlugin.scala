@@ -6,18 +6,18 @@
 
 package viper.silver.plugin.standard.termination
 
+import fastparse._
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.{SimpleContext, Strategy, StrategyBuilder}
-import viper.silver.ast.{Applying, Assert, CondExp, CurrentPerm, Exp, Function, InhaleExhaleExp, MagicWand, Method, Node, Program, Unfolding, While}
+import viper.silver.ast.{Assert, CondExp, CurrentPerm, Exp, Function, HintExp, InhaleExhaleExp, MagicWand, Method, Node, Program, While}
+import viper.silver.parser.FastParserCompanion.whitespace
 import viper.silver.parser._
 import viper.silver.plugin.standard.predicateinstance.PPredicateInstance
 import viper.silver.plugin.standard.termination.transformation.Trafo
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
-import viper.silver.verifier.errors.{AssertFailed, PreconditionInAppFalse}
-import viper.silver.verifier._
-import fastparse._
-import viper.silver.parser.FastParserCompanion.whitespace
 import viper.silver.reporter.Entity
+import viper.silver.verifier._
+import viper.silver.verifier.errors.AssertFailed
 
 import scala.annotation.unused
 
@@ -25,7 +25,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
                         @unused logger: ch.qos.logback.classic.Logger,
                         config: viper.silver.frontend.SilFrontendConfig,
                         fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
-  import fp.{FP, keyword, exp, ParserExtension}
+  import fp.{FP, ParserExtension, exp, keyword}
 
   private def deactivated: Boolean = config != null && config.terminationPlugin.toOption.getOrElse(false)
 
@@ -246,8 +246,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
     case _ =>
   }).recurseFunc({
     case CondExp(_, e1, e2) => Seq(e1, e2)
-    case Applying(_, exp) => Seq(exp)
-    case Unfolding(_, exp) => Seq(exp)
+    case h: HintExp => Seq(h.body)
     case CurrentPerm(_) => Nil
   })
 }

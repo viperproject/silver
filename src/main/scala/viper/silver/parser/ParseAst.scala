@@ -717,6 +717,13 @@ case class PApplying(wand: PExp, exp: PExp)(val pos: (Position, Position)) exten
     List(Map(POpApp.pArgS(0) -> Wand, POpApp.pResS -> POpApp.pArg(1)))
 }
 
+case class PAsserting(assertion: PExp, exp: PExp)(val pos: (Position, Position)) extends POpApp {
+  override val opName = "applying"
+  override val args = Seq(assertion, exp)
+  override val signatures : List[PTypeSubstitution] =
+    List(Map(POpApp.pArgS(0) -> Bool, POpApp.pResS -> POpApp.pArg(1)))
+}
+
 sealed trait PBinder extends PExp{
   def body:PExp
   var _typeSubstitutions : List[PTypeSubstitution] =  null
@@ -1255,6 +1262,7 @@ object Nodes {
       case PCall(func, args, optType) => Seq(func) ++ args ++ (optType match { case Some(t) => Seq(t) case None => Nil})
       case PUnfolding(acc, exp) => Seq(acc, exp)
       case PApplying(wand, exp) => Seq(wand, exp)
+      case PAsserting(assertion, exp) => Seq(assertion, exp)
       case PExists(vars, triggers, exp) => vars ++ triggers ++ Seq(exp)
       case PLabelledOld(id, e) => Seq(id, e)
       case po: POldExp => Seq(po.e)
