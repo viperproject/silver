@@ -718,7 +718,7 @@ case class PApplying(wand: PExp, exp: PExp)(val pos: (Position, Position)) exten
 }
 
 case class PAsserting(assertion: PExp, exp: PExp)(val pos: (Position, Position)) extends POpApp {
-  override val opName = "applying"
+  override val opName = "asserting"
   override val args = Seq(assertion, exp)
   override val signatures : List[PTypeSubstitution] =
     List(Map(POpApp.pArgS(0) -> Bool, POpApp.pResS -> POpApp.pArg(1)))
