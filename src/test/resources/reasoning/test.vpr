@@ -323,7 +323,7 @@ influenced c by { heap, b }
     c := b.f
 }
 
-method exampleWrongInfluenced() returns (c:Int)
+method exampleWrongInfluenced(a:Int) returns (c:Int)
 //:: ExpectedOutput(consistency.error)
 influenced c by {c}
 {
@@ -402,4 +402,119 @@ method mOldCallNOK()
     x := 2
     //:: ExpectedOutput(consistency.error)
     oldCall[l](exampleHeap(x))
+}
+
+
+
+method callLemma(x:Int) returns (y:Int, w:Int)
+
+isLemma
+decreases
+requires x > 0
+ensures y + w + x > 7
+ensures y == 3
+{
+    y := 3
+    w := 4
+}
+
+method mOldCallOK1()
+{
+    var x: Int := 5
+    label l
+    var z: Int
+    var a: Int
+    z,a := oldCall[l](callLemma(x + 5))
+}
+
+
+method exProjDesc()
+{
+    var k: Int
+    //:: ExpectedOutput(consistency.error)
+    prove forall x: Int assuming true implies x==k {
+        k := x
+    }
+}
+
+
+method mWhileCheck()
+{
+    var c:Bool
+    var e:Int
+    var d:Int
+    //:: ExpectedOutput(consistency.error)
+    prove forall a:Int {P(a)} assuming P(a) implies Q(a) {
+        while (c)
+        {
+            d:=e
+            e:=a
+        }
+    }
+}
+
+
+method m(a:Int, b:Int)
+returns (d:Int)
+influenced d by {a}
+influenced heap by {heap}
+{
+    d:=a
+}
+
+method m1()
+{
+    var b:Int
+    var d:Int
+    //:: ExpectedOutput(consistency.error)
+    prove forall a:Int {P(a)} assuming P(a) implies Q(a) {
+        d:=m(a,b)
+    }
+}
+
+method mInhaleAccess()
+{
+    var d:Ref
+    //:: ExpectedOutput(consistency.error)
+    prove forall a:Int {P(a)} assuming P(a) implies Q(a) {
+        inhale acc(d.f)
+        d.f:=a
+    }
+}
+
+
+method mLiteralAssign()
+{
+    var d: Int
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x)
+    {
+        d:=x
+        d:=3
+    }
+}
+
+method mUnivIntro()
+{
+    var d: Int
+    //:: ExpectedOutput(consistency.error)
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x)
+    {
+        prove forall y:Int {P(y)} assuming P(y) implies Q(y)
+        {
+            d:=x
+        }
+    }
+}
+
+method dosomething(x: Int)
+{
+    var y:Int := x
+}
+
+method xmcall()
+{
+    //:: ExpectedOutput(consistency.error)
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) {
+        dosomething(x) 
+    }
 }

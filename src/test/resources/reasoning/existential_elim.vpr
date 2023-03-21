@@ -1,0 +1,31 @@
+function eq(x: Int, y: Int): Bool {
+    x == y
+}
+
+method ex1()
+    requires exists x: Int :: { eq(x, 42) } eq(x, 42)
+{
+    obtain x:Int where eq(x, 42)
+    assert x == 42
+}
+
+
+field f: Int
+
+method ex2()
+{
+    //:: ExpectedOutput(consistency.error)
+    obtain x: Ref where {x.f} acc(x.f)
+}
+
+function geq(x:Int, y:Int) : Bool
+{
+    x>=y
+}
+
+method ex3()
+{
+    assert geq(3, 0)
+    obtain x:Int, y:Int where {geq(x,y)} geq(x,y)
+    assert x>=y
+}

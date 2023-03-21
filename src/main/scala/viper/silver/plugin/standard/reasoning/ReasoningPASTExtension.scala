@@ -1,10 +1,8 @@
 package viper.silver.plugin.standard.reasoning
 
-import viper.silver.FastMessaging
-import viper.silver.ast.{ErrorTrafo, ExtensionExp, Info, Label, LocalVar, LocalVarDecl, Member, Method, MethodCall, NoInfo, NoPosition, NoTrafos, Position, Seqn, SourcePosition, Stmt, Trigger}
+import viper.silver.ast.{ExtensionExp, Label, LocalVar, LocalVarDecl, Position, Seqn, Stmt, Trigger}
 import viper.silver.parser.TypeHelper.Bool
-import viper.silver.parser.{NameAnalyser, PExp, PExtender, PGlobalDeclaration, PIdnDef, PIdnUse, PLabel, PLocalVarDecl, PMember, PMethod, PNode, PSeqn, PStmt, PTrigger, PType, PTypeSubstitution, Translator, TypeChecker}
-import viper.silver.plugin.standard.termination.PDecreasesClause
+import viper.silver.parser.{NameAnalyser, PExp, PExtender, PIdnUse, PLocalVarDecl, PNode, PSeqn, PStmt, PTrigger, PType, PTypeSubstitution, Translator, TypeChecker}
 
 case class PExistentialElim(varList: Seq[PLocalVarDecl], trig: Seq[PTrigger], e: PExp)(val pos: (Position, Position)) extends PExtender with PStmt {
   override val getSubnodes: Seq[PNode] = {
@@ -45,7 +43,6 @@ case class PUniversalIntro(varList: Seq[PLocalVarDecl], triggers: Seq[PTrigger],
 }
 
 case class PFlowAnnotation(v:PFlowVar, varList: Seq[PFlowVar])(val pos: (Position,Position)) extends PExtender with PExp {
-//sealed trait PFlowAnnotation extends PExtender with PExp {
   override def typeSubstitutions: Seq[PTypeSubstitution] = Seq(PTypeSubstitution.id)
 
   override def forceSubstitution(ts: PTypeSubstitution): Unit = {}
@@ -91,65 +88,6 @@ case class PVar(decl:PExp)(val pos: (Position,Position)) extends PFlowVar{
     Var(t.exp(decl))(t.liftPos(this))
   }
 }
-/*
-case class PFlowAnnotationVar(v:PExp, varList: Seq[PExp])(val pos: (Position,Position)) extends PFlowAnnotation {
-
-  override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = {
-   varList.foreach(c => {
-      t.checkTopTyped(c, None)
-    })
-    t.checkTopTyped(v, None)
-    None
-  }
-
-  override def translateExp(t: Translator): ExtensionExp = {
-    FlowAnnotationVar(t.exp(v), varList.map { case variable => t.exp(variable) })(t.liftPos(this))
-
-  }
-}
-
-/** specified type of the PFlowAnnotationVar class which includes heap as one of the argument variables */
-case class PFlowAnnotationVarHeapArg(v:PExp, varList: Seq[PExp])(val pos:(Position,Position)) extends PFlowAnnotation {
-
-  override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = {
-
-    varList.foreach(c => {
-      t.checkTopTyped(c, None)
-    })
-    t.checkTopTyped(v, None)
-    None
-  }
-  override def translateExp(t: Translator): ExtensionExp = FlowAnnotationVarHeapArg(t.exp(v), varList.map { case variable => t.exp(variable) })(t.liftPos(this))
-}
-
-case class PFlowAnnotationHeap(varList: Seq[PExp])(val pos: (Position,Position)) extends PFlowAnnotation {
-
-  override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = {
-    varList.foreach(c => t.checkTopTyped(c, None))
-    None
-  }
-
-  override def translateExp(t: Translator): ExtensionExp = {
-    FlowAnnotationHeap(varList.map { case variable => t.exp(variable) })(t.liftPos(this))
-
-  }
-}
-
-case class PFlowAnnotationHeapHeapArg(varList: Seq[PExp])(val pos: (Position,Position)) extends PFlowAnnotation {
-
-  override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = {
-    varList.foreach(c => t.checkTopTyped(c, None))
-    None
-  }
-
-  override def translateExp(t: Translator): ExtensionExp = {
-    FlowAnnotationHeapHeapArg(varList.map { case variable => t.exp(variable) })(t.liftPos(this))
-
-  }
-}
-
- */
-
 
 case class PLemma()(val pos: (Position,Position)) extends PExtender with PExp {
 
@@ -167,42 +105,6 @@ case class PLemma()(val pos: (Position,Position)) extends PExtender with PExp {
     Lemma()(t.liftPos(this))
 
   }
-  /*
-  override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = {
-    None
-  }
-
-
-  override def getSubnodes(): Seq[PNode] = method.subnodes
-
-  override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
-    t.checkMember(method)()
-    None
-  }
-
-  override def idndef: PIdnDef = method.idndef
-
-  override val pos: (Position, Position) = lemma_pos
-
-  override def translateMember(t: Translator): Member = {
-    //Lemma(Method(method.idndef.name,method.formalArgs map t.liftVarDecl,method.formalReturns map t.liftVarDecl,method.pres map t.exp,method.posts map t.exp,Option(Seqn(method.body)))(lemma_pos))
-    val newBody = method.body.map(actualBody => {
-      val b = t.stmt(actualBody).asInstanceOf[Seqn]
-      val newScopedDecls = b.scopedSeqnDeclarations ++ b.deepCollect { case l: Label => l }
-
-      b.copy(scopedSeqnDeclarations = newScopedDecls)(b.pos, b.info, b.errT)
-    })
-
-    val finalMethod = Method(pres = method.pres map t.exp, posts = method.posts map t.exp, body = newBody, formalArgs = method.formalArgs map t.liftVarDecl, formalReturns = method.formalReturns map t.liftVarDecl, name = method.idndef.name)(method.pos._1)
-
-    t.getMembers().addOne(method.idndef.name, finalMethod)
-
-    finalMethod
-  }
-  override def translateMemberSignature(t: Translator): Member = {
-    Method(method.idndef.name, method.formalArgs map t.liftVarDecl, method.formalReturns map t.liftVarDecl, null, null, null)(method.pos._1)
-  }
-  */
 }
 
 case class POldCall(rets: Seq[PIdnUse], lbl:PIdnUse, method: PIdnUse, args:Seq[PExp])(val pos: (Position, Position)) extends PExtender with PStmt {
@@ -212,11 +114,13 @@ case class POldCall(rets: Seq[PIdnUse], lbl:PIdnUse, method: PIdnUse, args:Seq[P
     args.foreach(a =>
       t.checkTopTyped(a,None)
     )
+    rets.foreach(r =>
+      t.checkTopTyped(r, None))
     None
   }
 
   override def translateStmt(t: Translator): Stmt = {
-    //OldCall(rets.map(r => LocalVar(r.name, t.ttyp(r.typ))(t.liftPos(r))), Label(lbl.name, Seq() map t.exp)(t.liftPos(lbl)),t.exp(exp))(t.liftPos(this))
-    OldCall(MethodCall(method.name, args map t.exp, rets.map(r => LocalVar(r.name,t.ttyp(r.typ))(t.liftPos(r))))(t.liftPos(method), NoInfo, NoTrafos), Label(lbl.name, Seq())(t.liftPos(lbl)))(t.liftPos(this))
+    OldCall(method.name, args map t.exp, (rets map t.exp).asInstanceOf[Seq[LocalVar]], Label(lbl.name, Seq())(t.liftPos(lbl)))(t.liftPos(this))
+
   }
 }

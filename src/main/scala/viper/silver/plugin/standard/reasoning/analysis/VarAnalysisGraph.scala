@@ -2,16 +2,14 @@ package viper.silver.plugin.standard.reasoning.analysis
 
 import org.jgrapht.Graph
 import org.jgrapht.graph.{AbstractBaseGraph, DefaultDirectedGraph, DefaultEdge}
-import viper.silver.ast.{AccessPredicate, Apply, Assert, Assume, BinExp, CurrentPerm, DomainFuncApp, Exhale, Exp, FieldAccess, FieldAssign, Fold, ForPerm, FuncApp, Goto, If, Inhale, Int, Label, LocalVar, LocalVarAssign, LocalVarDecl, MethodCall, Package, Perm, Program, Ref, Seqn, Stmt, UnExp, Unfold, While}
+import viper.silver.ast.{AccessPredicate, Apply, Assert, Assume, BinExp, CurrentPerm, DomainFuncApp, Exhale, Exp, FieldAccess, FieldAssign, Fold, ForPerm, FuncApp, Goto, If, Inhale, Int, Label, LocalVar, LocalVarAssign, LocalVarDecl, MethodCall, Package, Program, Ref, Seqn, Stmt, UnExp, Unfold, While}
 import viper.silver.plugin.standard.reasoning.{FlowAnnotation, OldCall, Var}
-//import viper.silver.plugin.standard.reasoning.{ExistentialElim, FlowAnnotationHeap, FlowAnnotationHeapHeapArg, FlowAnnotationVar, FlowAnnotationVarHeapArg, UniversalIntro}
 import viper.silver.plugin.standard.reasoning.{ExistentialElim, UniversalIntro}
 
 import viper.silver.verifier.{AbstractError, ConsistencyError}
 
 import java.io.StringWriter
 import scala.jdk.CollectionConverters._
-import scala.util.control.Breaks.break
 
 
 
@@ -23,11 +21,11 @@ case class VarAnalysisGraph(prog: Program,
   val heap_vertex: LocalVarDecl = LocalVarDecl(".heap", Ref)()
 
 
-  def executeTaintedGraphAnalysis(graph1: Graph[LocalVarDecl,DefaultEdge], tainted: Set[LocalVarDecl], blk: Seqn, allVertices: Map[LocalVarDecl, LocalVarDecl], u: UniversalIntro): Unit = {
+  /** execute the information flow analysis with graphs.
+    * When executed on the universal introduction statement the tainted variables are simply the quantified variables */
+  def executeTaintedGraphAnalysis(tainted: Set[LocalVarDecl], blk: Seqn, allVertices: Map[LocalVarDecl, LocalVarDecl], u: UniversalIntro): Unit = {
 
-
-    val graph = compute_graph(graph1, blk, allVertices)
-
+    val graph = compute_graph(blk, allVertices)
 
     var noEdges: Boolean = true
     var badEdges = Set[DefaultEdge]()
@@ -45,9 +43,9 @@ case class VarAnalysisGraph(prog: Program,
           tainted_vars = tainted_vars + graph.getEdgeTarget(e)
         }
       })
-      val problem_vars: String = tainted_vars.mkString(", ")
-      val problem_pos: String = tainted_vars.map(vs => vs.pos).mkString(", ")
-      reportErrorWithMsg(ConsistencyError("Universal introduction variable might have been assigned to variable " + problem_vars + " at positions (" + problem_pos + "), defined outside of the block", u.pos))
+      val tainted_vars_sorted: List[LocalVarDecl] = tainted_vars.toList.sortWith(_.name < _.name)
+      val problem_vars: String = tainted_vars_sorted.mkString(", ")
+      reportErrorWithMsg(ConsistencyError("Universal introduction variable might have been assigned to variable " + problem_vars + ", defined outside of the block", u.pos))
     }
   }
 
@@ -95,7 +93,7 @@ case class VarAnalysisGraph(prog: Program,
     * @param vertices the vertices representing variables which should be checked
     * @return graph
     */
-  def addMissingEdges(graph: Graph[LocalVarDecl,DefaultEdge], vertices:Map[LocalVarDecl,LocalVarDecl]): Graph[LocalVarDecl, DefaultEdge] = {
+  def addIdentityEdges(graph: Graph[LocalVarDecl,DefaultEdge], vertices:Map[LocalVarDecl,LocalVarDecl]): Graph[LocalVarDecl, DefaultEdge] = {
 
     for ((v,v_init)<-vertices) {
       if (graph.incomingEdgesOf(v).isEmpty) {
@@ -106,6 +104,7 @@ case class VarAnalysisGraph(prog: Program,
   }
 
   /**
+    * for debugging purposes
     * @param graph graph that should be translated to DOT-language
     * @return String that is the graph in DOT-language
     *
@@ -182,7 +181,11 @@ case class VarAnalysisGraph(prog: Program,
 
 
       case FieldAccess(v,_) =>
-        getVarsFromExpr(graph, v)
+        val allVars = vars ++ getVarsFromExpr(graph,v)
+        if(!allVars.contains(heap_vertex))
+          allVars + heap_vertex
+        else
+          allVars
 
       case AccessPredicate(access, _) =>
         /** Should only be the case in e.g.an inhale or an exhale statement */
@@ -209,7 +212,7 @@ case class VarAnalysisGraph(prog: Program,
   }
 
   /**
-    * takes to graphs and returns a new graph containing the union of the edges of both input graphs. Both graphs should contain the same vertices!
+    * takes two graphs and returns a new graph containing the union of the edges of both input graphs. Both graphs should contain the same vertices!
     * @param graph1
     * @param graph2
     * @return graph
@@ -225,7 +228,8 @@ case class VarAnalysisGraph(prog: Program,
         }
       }
     } else {
-      /** TODO: Should error be thrown? Should not happen */
+      /* should not happen */
+      ()
     }
     new_graph
   }
@@ -250,15 +254,18 @@ case class VarAnalysisGraph(prog: Program,
           new_graph.addEdge(src, graph2.getEdgeTarget(e2), new DefaultEdge)
         }
       } else {
-        /** TODO: Should technically not happen */
+        /* should not happen */
+        ()
       }
     }
     new_graph
   }
 
 
-
-  def compute_graph(graph: Graph[LocalVarDecl,DefaultEdge], stmt: Stmt, vertices: Map[LocalVarDecl,LocalVarDecl]): Graph[LocalVarDecl,DefaultEdge] = {
+  /** creates a graph based on the statement
+    * edge is influenced by relation: source influences target
+    * vertices are all variables in scope*/
+  def compute_graph(stmt: Stmt, vertices: Map[LocalVarDecl,LocalVarDecl]): Graph[LocalVarDecl,DefaultEdge] = {
     stmt match {
       case Seqn(ss, scopedSeqnDeclarations) =>
         var allVertices: Map[LocalVarDecl,LocalVarDecl] = vertices
@@ -271,8 +278,7 @@ case class VarAnalysisGraph(prog: Program,
         }
         var new_graph: Graph[LocalVarDecl, DefaultEdge] = createIdentityGraph(allVertices)
         for (s <- ss) {
-          val graph_copy = copyGraph(new_graph)
-          val comp_graph = compute_graph(graph_copy, s, allVertices)
+          val comp_graph = compute_graph(s, allVertices)
 
           new_graph = mergeGraphs(new_graph, comp_graph, allVertices)
         }
@@ -291,10 +297,10 @@ case class VarAnalysisGraph(prog: Program,
         val id_graph = createIdentityGraph(vertices)
         val expr_vars = getVarsFromExpr(id_graph, cond)
         val cond_graph = copyGraph(id_graph)
-        val thn_graph = compute_graph(copyGraph(id_graph), thn, vertices)
-        val els_graph = compute_graph(copyGraph(id_graph), els, vertices)
-        val writtenToThn = writtenTo(vertices, thn).getOrElse(Set())
-        val writtenToEls = writtenTo(vertices, els).getOrElse(Set())
+        val thn_graph = compute_graph(thn, vertices)
+        val els_graph = compute_graph(els, vertices)
+        val writtenToThn = getModifiedVars(vertices, thn).getOrElse(Set())
+        val writtenToEls = getModifiedVars(vertices, els).getOrElse(Set())
         val allWrittenTo = writtenToThn ++ writtenToEls
         for (w <- allWrittenTo) {
           if (cond_graph.containsVertex(w)) {
@@ -311,30 +317,29 @@ case class VarAnalysisGraph(prog: Program,
         val res_graph = unionEdges(cond_graph, thn_els_graph)
         res_graph
 
-      case w@While(cond, _, body) =>
-        val graph_copy: Graph[LocalVarDecl, DefaultEdge] = copyGraph(graph)
+      case While(cond, _, body) =>
 
         /** analyse one iteration of the while loop */
-        var new_graph: Graph[LocalVarDecl, DefaultEdge] = compute_graph(graph_copy, If(cond, body, Seqn(Seq(), Seq())(body.pos))(body.pos), vertices)
-        new_graph = mergeGraphs(graph_copy, new_graph, vertices)
+        val one_iter_graph: Graph[LocalVarDecl, DefaultEdge] = compute_graph(If(cond, body, Seqn(Seq(), Seq())(body.pos))(body.pos), vertices)
 
-        /** check whether the edges are equal.
-          * First check whether both edge sets have the same size
-          * then go through each edge and check whether it also exists in the new graph */
-        var edges_equal: Boolean = true
-        val equal_size: Boolean = graph.edgeSet().size().equals(new_graph.edgeSet().size())
-        if (equal_size && new_graph.vertexSet().equals(graph.vertexSet())) {
-          for (e1: DefaultEdge <- new_graph.edgeSet().asScala.toSet) {
-            if (graph.getEdge(new_graph.getEdgeSource(e1), new_graph.getEdgeTarget(e1)) == null) {
-              edges_equal = false
-              compute_graph(new_graph, w, vertices)
-              break()
+        var edges_equal: Boolean = false
+        var merge_graph = copyGraph(one_iter_graph)
+        while(!edges_equal) {
+          val last_iter_graph = copyGraph(merge_graph)
+          merge_graph = mergeGraphs(merge_graph, one_iter_graph, vertices)
+          val equal_size: Boolean = last_iter_graph.edgeSet().size().equals(merge_graph.edgeSet().size())
+          if (equal_size && last_iter_graph.vertexSet().equals(merge_graph.vertexSet())) {
+            for (e1: DefaultEdge <- last_iter_graph.edgeSet().asScala.toSet) {
+              if (merge_graph.getEdge(last_iter_graph.getEdgeSource(e1), last_iter_graph.getEdgeTarget(e1)) == null) {
+                edges_equal = false
+
+              } else {
+                edges_equal = true
+              }
             }
           }
-          graph
-        } else {
-          compute_graph(new_graph, w, vertices)
         }
+        merge_graph
 
       case LocalVarAssign(lhs,rhs) =>
         var new_graph: Graph[LocalVarDecl,DefaultEdge] = createEmptyGraph(vertices)
@@ -354,37 +359,25 @@ case class VarAnalysisGraph(prog: Program,
 
         /** Since variables that are not assigned to should have an edge from their initial value to their 'end'-value */
         val vert_wout_lhs = vertices - lhs_decl
-        new_graph = addMissingEdges(new_graph, vert_wout_lhs)
+        new_graph = addIdentityEdges(new_graph, vert_wout_lhs)
         new_graph
 
-      case Inhale(exp) => expInfluencesAll(exp, graph, vertices)
-        /*
+      case Inhale(exp) =>
         val id_graph = createIdentityGraph(vertices)
-        val inhale_vars = getVarsFromExpr(graph, exp)
-        inhale_vars.foreach(v => {
-          //val init_v = createInitialVertex(v)
-          val init_v = vertices(v)
-
-          //id_graph.addEdge(init_v, heap_vertex, new DefaultEdge)
-          vertices.keySet.foreach(k => {
-            id_graph.addEdge(init_v, k, new DefaultEdge)
-            println(s"edge from ${init_v} to ${k}")
-          })
-
-        })
-        id_graph
-         */
+        expInfluencesAllVertices(exp, id_graph, vertices)
 
 
       /** same as inhale */
-      case Assume(exp) => expInfluencesAll(exp, graph, vertices)
+      case Assume(exp) =>
+        val id_graph = createIdentityGraph(vertices)
+        expInfluencesAllVertices(exp, id_graph, vertices)
 
       case Exhale(exp) =>
         val id_graph = createIdentityGraph(vertices)
         if (exp.isPure) {
-          graph
+          id_graph
         } else {
-          val exhale_vars = getVarsFromExpr(graph, exp)
+          val exhale_vars = getVarsFromExpr(id_graph, exp)
           exhale_vars.foreach(v => {
             if (v.typ == Ref) {
               val init_v = createInitialVertex(v)
@@ -395,13 +388,14 @@ case class VarAnalysisGraph(prog: Program,
         }
 
 
+      case Assert(_) => createIdentityGraph(vertices)
+
 
       case Label(_, _) =>
-        graph
+        createIdentityGraph(vertices)
 
       case MethodCall(methodName, args, targets) =>
       val met = prog.findMethod(methodName)
-        /** create graph from each variable in each expression to the according method variable */
         val methodcall_graph: Graph[LocalVarDecl, DefaultEdge] = createEmptyGraph(vertices)
 
         createInfluencedByGraph(methodcall_graph,vertices,args,targets,met.formalArgs, met.formalReturns,met.posts)
@@ -409,7 +403,7 @@ case class VarAnalysisGraph(prog: Program,
 
       case FieldAssign(_, rhs) =>
         val id_graph = createIdentityGraph(vertices)
-        val rhs_vars = getVarsFromExpr(graph, rhs)
+        val rhs_vars = getVarsFromExpr(id_graph, rhs)
         rhs_vars.foreach(v => {
           /** Edge from .init_heap to heap does not have to be added since it exists anyways */
           if (v.equals(heap_vertex)) {
@@ -421,22 +415,23 @@ case class VarAnalysisGraph(prog: Program,
         })
         id_graph
 
-      case ExistentialElim(_,_,_) => graph
+        /** TODO: technically not implemented correctly */
+      case ExistentialElim(_,_,_) =>
+        createIdentityGraph(vertices)
 
       case UniversalIntro(varList,_,_,_,blk) =>
         val new_vertices: Map[LocalVarDecl, LocalVarDecl] = vertices ++ varList.map(v => (v -> createInitialVertex(v)))
-        val new_graph = compute_graph(graph,blk,new_vertices)
+        val new_graph = compute_graph(blk,new_vertices)
         varList.foreach(v => {
           new_graph.removeVertex(v)
           new_graph.removeVertex(new_vertices(v))
         })
         new_graph
 
-      case Assert(_) => graph
 
       case Fold(acc) =>
         val id_graph = createIdentityGraph(vertices)
-        val vars = getVarsFromExpr(graph, acc)
+        val vars = getVarsFromExpr(id_graph, acc)
         vars.foreach(v => {
           id_graph.addEdge(vertices(v), heap_vertex, new DefaultEdge)
         })
@@ -444,7 +439,7 @@ case class VarAnalysisGraph(prog: Program,
 
       case Unfold(acc) =>
         val id_graph = createIdentityGraph(vertices)
-        val vars = getVarsFromExpr(graph, acc)
+        val vars = getVarsFromExpr(id_graph, acc)
         vars.foreach(v => {
           id_graph.addEdge(vertices(v), heap_vertex, new DefaultEdge)
         })
@@ -452,7 +447,7 @@ case class VarAnalysisGraph(prog: Program,
 
       case Apply(exp) =>
         val id_graph = createIdentityGraph(vertices)
-        val vars = getVarsFromExpr(graph, exp)
+        val vars = getVarsFromExpr(id_graph, exp)
         vars.foreach(v => {
           id_graph.addEdge(vertices(v), heap_vertex, new DefaultEdge)
         })
@@ -460,32 +455,38 @@ case class VarAnalysisGraph(prog: Program,
 
       case Package(wand, _) =>
         val id_graph = createIdentityGraph(vertices)
-        val vars = getVarsFromExpr(graph, wand)
+        val vars = getVarsFromExpr(id_graph, wand)
         vars.foreach(v => {
           id_graph.addEdge(vertices(v), heap_vertex, new DefaultEdge)
         })
         id_graph
 
       case g@Goto(_) =>
-        reportErrorWithMsg(ConsistencyError(s"${g} is an undefined statement for the universal introduction block", g.pos))
-        graph
+        reportErrorWithMsg(ConsistencyError(s"${g} is an undefined statement for the modular information flow analysis", g.pos))
+        createEmptyGraph(vertices)
 
-      case OldCall(_,_) => graph
+      case OldCall(methodName,args,targets,_) =>
+        val met = prog.findMethod(methodName)
+        val methodcall_graph: Graph[LocalVarDecl, DefaultEdge] = createEmptyGraph(vertices)
+
+        createInfluencedByGraph(methodcall_graph, vertices, args, targets, met.formalArgs, met.formalReturns, met.posts)
+
       case s@_ =>
-        reportErrorWithMsg(ConsistencyError(s"${s} is an undefined statement for the universal introduction block", s.pos))
-        graph
-        //throw new UnsupportedOperationException("undefined statement for universal introduction block: " + s)
+        reportErrorWithMsg(ConsistencyError(s"${s} is an undefined statement for the modular information flow analysis", s.pos))
+        createEmptyGraph(vertices)
     }
   }
 
-  def expInfluencesAll(exp:Exp, graph: Graph[LocalVarDecl, DefaultEdge], vertices: Map[LocalVarDecl,LocalVarDecl]) : Graph[LocalVarDecl, DefaultEdge] = {
+
+  /**
+    * creates an edge between every variable in the expression to every variable that is in scope and returns resulting graph
+    */
+  def expInfluencesAllVertices(exp:Exp, graph: Graph[LocalVarDecl, DefaultEdge], vertices: Map[LocalVarDecl,LocalVarDecl]) : Graph[LocalVarDecl, DefaultEdge] = {
     val id_graph = createIdentityGraph(vertices)
-    val inhale_vars = getVarsFromExpr(graph, exp)
-    inhale_vars.foreach(v => {
-      //val init_v = createInitialVertex(v)
+    val vars = getVarsFromExpr(graph, exp)
+    vars.foreach(v => {
       val init_v = vertices(v)
 
-      //id_graph.addEdge(init_v, heap_vertex, new DefaultEdge)
       vertices.keySet.foreach(k => {
         id_graph.addEdge(init_v, k, new DefaultEdge)
       })
@@ -494,9 +495,12 @@ case class VarAnalysisGraph(prog: Program,
     id_graph
   }
 
+  /** creates graph for methodcall and oldcall. maps expressions passed to methods to the method arguments, computes the graph based on the flow annotation,
+    * and finally maps the return variables to the variables that the method is assigned to. */
   def createInfluencedByGraph(graph: Graph[LocalVarDecl, DefaultEdge], vertices: Map[LocalVarDecl,LocalVarDecl], arg_names: Seq[Exp], ret_names: Seq[LocalVar], method_arg_names: Seq[LocalVarDecl], method_ret_names: Seq[LocalVarDecl],  posts: Seq[Exp]): Graph[LocalVarDecl, DefaultEdge] = {
     /** set of all target variables that have not been included in the influenced by expression up until now */
     var retSet: Set[LocalVarDecl] = method_ret_names.toSet + heap_vertex
+
     var methodcall_graph = copyGraph(graph)
     val method_arg_names_incl_heap = method_arg_names ++ Seq(heap_vertex)
 
@@ -569,6 +573,8 @@ case class VarAnalysisGraph(prog: Program,
           methodcall_graph.addEdge(prov_decl, method_rets(return_decl), new DefaultEdge)
         })
 
+      case _ => ()
+
     }
 
     /** now need to add to graph the edges from the method return variables to the target variables */
@@ -620,6 +626,12 @@ case class VarAnalysisGraph(prog: Program,
       })
     }
 
+    /** remove rest of .ret variable incase no assigment */
+    method_rets.values.foreach(ret_vert => {
+      methodcall_graph.removeVertex(ret_vert)
+    })
+
+
 
     /** remove edge from the .arg_ to the .init vertex */
     copy_arg_graph = copyGraph(methodcall_graph)
@@ -641,19 +653,22 @@ case class VarAnalysisGraph(prog: Program,
 
     /** Since variables that are not assigned to should have an edge from their initial value to their 'end'-value */
     val vert_wout_lhs = vertices.removedAll(targets_decl)
-    methodcall_graph = addMissingEdges(methodcall_graph, vert_wout_lhs)
+    methodcall_graph = addIdentityEdges(methodcall_graph, vert_wout_lhs)
     methodcall_graph
   }
 
 
-  def writtenTo(vertices: Map[LocalVarDecl,LocalVarDecl], stmt: Stmt): Option[Set[LocalVarDecl]] = {
+  /**
+    * get the variables that were modified by the statement stmt
+    */
+  def getModifiedVars(vertices: Map[LocalVarDecl,LocalVarDecl], stmt: Stmt): Option[Set[LocalVarDecl]] = {
     var output: Option[Set[LocalVarDecl]] = None
     stmt match {
       case Seqn(ss, _) =>
         for (s <- ss) {
           output match {
-            case None => output = writtenTo(vertices, s)
-            case Some(v) => output = Some(v ++ writtenTo(vertices, s).getOrElse(Set[LocalVarDecl]()))
+            case None => output = getModifiedVars(vertices, s)
+            case Some(v) => output = Some(v ++ getModifiedVars(vertices, s).getOrElse(Set[LocalVarDecl]()))
           }
 
         }
@@ -670,8 +685,8 @@ case class VarAnalysisGraph(prog: Program,
         }
         res
       case If(_, thn, els) =>
-        val writtenThn: Option[Set[LocalVarDecl]] = writtenTo(vertices, thn)
-        val writtenEls: Option[Set[LocalVarDecl]] = writtenTo(vertices, els)
+        val writtenThn: Option[Set[LocalVarDecl]] = getModifiedVars(vertices, thn)
+        val writtenEls: Option[Set[LocalVarDecl]] = getModifiedVars(vertices, els)
         (writtenThn, writtenEls) match {
           case (None, None) => None
           case (Some(_), None) => writtenThn
@@ -680,7 +695,7 @@ case class VarAnalysisGraph(prog: Program,
         }
 
       case While(_, _, body) =>
-        writtenTo(vertices, body)
+        getModifiedVars(vertices, body)
 
       case MethodCall(_, _, _) =>
         None
@@ -699,361 +714,4 @@ case class VarAnalysisGraph(prog: Program,
         None
     }
   }
-
- 
 }
-
-
-/**
-  * ************************************
-  *                                    *
-  *         old Graph version          *
-  *                                    *
-  * ************************************
-  */
-/*
-trait VarAnalysisGraph {
-  def reportErrorWithMsg(error: AbstractError): Unit
-
-  /**
-    *
-    * @param graph to which vertices should be added
-    * @param scopedSeqnDeclarations variable declaration inside this codeblock
-    * @return graph with the newly added vertices
-    */
-  def addNodes(graph: Graph[Declaration, DefaultEdge], scopedSeqnDeclarations: Seq[Declaration]): Graph[Declaration, DefaultEdge] = {
-    val result_graph: Graph[Declaration, DefaultEdge] = graph
-    scopedSeqnDeclarations.foreach(decl => result_graph.addVertex(decl))
-    result_graph
-  }
-
-  /**
-    * @param graph
-    * @return String that is the graph in DOT-language
-    *
-    */
-
-  def createDOT(graph:Graph[Declaration, DefaultEdge]) : String = {
-    val writer: StringWriter = new StringWriter()
-    writer.write("strict digraph G {\n")
-    graph.vertexSet().forEach(v => {
-      writer.write("  " + v.name + ";\n")
-    })
-    graph.edgeSet().forEach(e => {
-      writer.write("  " + graph.getEdgeSource(e) + " -> " + graph.getEdgeTarget(e) + ";\n")
-    })
-    writer.write("}\n")
-    writer.toString
-  }
-
-  /**
-    *
-    * @param graph existing graph
-    * @param exp expressions from which all variables should be returned
-    * @return set of Variable declarations
-    */
-  def getVarsFromExpr(graph: Graph[Declaration, DefaultEdge], exp: Exp): Set[Declaration] = {
-    val vars: Set[Declaration] = Set()
-    exp match {
-      case l@LocalVar(_, _) => {
-        var l_decl: Declaration = LocalVarDecl("", Int)()
-        graph.vertexSet().forEach(v => if (v.name == l.name) { l_decl = v })
-        if (l_decl.name == "") {
-          l_decl = LocalVarDecl(l.name,l.typ)()
-        }
-        vars + l_decl
-      }
-      case BinExp(exp1, exp2) => {
-        getVarsFromExpr(graph, exp1) ++ getVarsFromExpr(graph, exp2)
-      }
-      case UnExp(exp) => {
-        getVarsFromExpr(graph, exp)
-      }
-      case _ => Set()
-    }
-  }
-
-  /**
-    *
-    * @param graph graph that should be copied. Note: Shallow copy of graph instance, neither Vertices nor Edges are cloned
-    * @return copied graph
-    */
-  def copyGraph(graph: Graph[Declaration, DefaultEdge]): Graph[Declaration, DefaultEdge] = {
-    val copied_graph = graph.asInstanceOf[AbstractBaseGraph[Declaration,DefaultEdge]].clone().asInstanceOf[DefaultDirectedGraph[Declaration, DefaultEdge]]
-    copied_graph
-  }
-
-  /**
-    *
-    * @param graph
-    * @param src src vertex of edge (basically righthand-side of the assignment
-    * @param target target vertex of edge (basically lefthand-side of the assigment
-    * @return Graph with the new edge included
-    */
-  def addTransitiveEdge(graph: Graph[Declaration, DefaultEdge], src: Declaration, target: Declaration): Graph[Declaration, DefaultEdge] = {
-    val new_graph = copyGraph(graph)
-    // the first condition depends on whether or not we want to include self loops
-    if (/*!src.equals(target) && */!new_graph.containsEdge(src, target)) {
-      new_graph.addEdge(src, target, new DefaultEdge)
-      /** go on level up and add those edges as well, this is enough
-        * since our invariant tells us that our graph is always transitively closed */
-      new_graph.incomingEdgesOf(src).forEach(e => {
-        val src1 = new_graph.getEdgeSource(e)
-        /** edge only needs to be added if it doesn't exist yet */
-        if (!new_graph.containsEdge(src1, target)) {
-          new_graph.addEdge(src1, target, new DefaultEdge)
-        }
-      })
-    }
-    new_graph
-  }
-
-  def compute_graph(graph: Graph[Declaration, DefaultEdge], stmt: Stmt): Graph[Declaration, DefaultEdge] = {
-    stmt match {
-      case Seqn(ss, scopedSeqnDeclarations) => {
-        val graph_copy: Graph[Declaration, DefaultEdge] = copyGraph(graph)
-        var new_graph = addNodes(graph_copy, scopedSeqnDeclarations)
-        for (s <- ss) {
-          val new_graph_copy: Graph[Declaration,DefaultEdge] = copyGraph(new_graph)
-          new_graph = compute_graph(new_graph_copy, s)
-        }
-        val final_graph: Graph[Declaration, DefaultEdge] = new DefaultDirectedGraph[Declaration, DefaultEdge](classOf[DefaultEdge])
-        graph.vertexSet().forEach(v => final_graph.addVertex(v))
-        new_graph.edgeSet().forEach(e => {
-          val source: Declaration = new_graph.getEdgeSource(e)
-          val target: Declaration = new_graph.getEdgeTarget(e)
-          if (final_graph.containsVertex(source) && final_graph.containsVertex(target)) {
-            final_graph.addEdge(source, target, e)
-          }
-        })
-        final_graph
-      }
-
-      case If(cond, thn, els) => {
-        val cond_variables = getVarsFromExpr(graph, cond)
-        val new_graph = copyGraph(graph)
-
-        val new_graph_for_els: Graph[Declaration,DefaultEdge] = copyGraph(new_graph)
-        val thn_graph = compute_graph(new_graph, thn)
-        val els_graph = compute_graph(new_graph_for_els, els)
-
-        //println("then graph: ", createDOT(thn_graph))
-        //println("else graph: ", createDOT(els_graph))
-
-
-        /** take union of these two graphs from the else and the then block
-          * First: make copy of thn_graph and declare this as the graph_union
-          * Second: add all edges from els_graph that are not in the graph_union yet */
-        var graph_union: Graph[Declaration,DefaultEdge] = copyGraph(thn_graph)
-        els_graph.edgeSet().forEach(e => {
-          if (!graph_union.containsEdge(e)) {
-            graph_union.addEdge(els_graph.getEdgeSource(e), els_graph.getEdgeTarget(e), e)
-          }
-        })
-
-        cond_variables.foreach(src => {
-          val writtenToThn = writtenTo(new_graph, thn)
-          val writtenToEls = writtenTo(new_graph, els)
-          val allWrittenTo = writtenToThn.getOrElse(Set()) ++ writtenToEls.getOrElse(Set())
-          allWrittenTo.foreach(t => {
-            /** otherwise it is an assigment to a variable that is only inside
-              * the scope of the block and therefore not relevant for us
-              */
-            if (graph_union.containsVertex(t)) {
-              /** we need here transitive edge since otherwise the invariant may not hold (graph is transitively closed) */
-              graph_union = addTransitiveEdge(graph_union, src, t)
-              // graph_union.addEdge(src, t, new DefaultEdge)
-            }
-          })
-        })
-        graph_union
-      }
-
-      case w@While(cond, _, body) => {
-        val graph_copy : Graph[Declaration,DefaultEdge] = copyGraph(graph)
-        /** analyse one iteration of the while loop */
-        val new_graph: Graph[Declaration, DefaultEdge] = compute_graph(graph_copy, If(cond,body,Seqn(Seq(), Seq())(body.pos))(body.pos))
-        //println("graph")
-        //println(createDOT(graph))
-        println("new_graph")
-        println(createDOT(new_graph))
-
-        /** check whether the edges are equal.
-          * First check whether both edge sets have the same size
-          * then go through each edge and check whether it also exists in the new graph*/
-        var edges_equal: Boolean = graph.edgeSet().size().equals(new_graph.edgeSet().size())
-        if (edges_equal) {
-          for (e1: DefaultEdge <- new_graph.edgeSet().asScala.toSet) {
-            edges_equal = false
-            for (e2: DefaultEdge <- graph.edgeSet().asScala.toSet) {
-              edges_equal = edges_equal || e1.equals(e2)
-            }
-            /** if no equal edge found then break out of the loop */
-            if (!edges_equal) {
-              break()
-            }
-          }
-        }
-        if (new_graph.vertexSet().equals(graph.vertexSet()) && edges_equal) {
-          graph
-        } else {
-          compute_graph(new_graph, w)
-        }
-      }
-
-      case LocalVarAssign(lhs, rhs) => {
-        val rhs_vars = getVarsFromExpr(graph, rhs)
-        //var lhs_decl: Declaration = LocalVarDecl("",Int)()
-        /** This way the position is the location of the assignment not the declaration. Better for error message but makes less sense I guess */
-        val lhs_decl: Declaration = LocalVarDecl(lhs.name,lhs.typ)(lhs.pos)
-        //graph.vertexSet().forEach(v => if (v.name == lhs.name) {lhs_decl=v})
-        //println("Before assignment: ", createDOT(graph))
-        var new_graph: Graph[Declaration, DefaultEdge] = copyGraph(graph)
-
-        val incomingEdges: Set[DefaultEdge] = graph.incomingEdgesOf(lhs_decl).asScala.toSet
-
-        val edgesToRemove: Set[DefaultEdge] = graph.edgesOf(lhs_decl).asScala.toSet
-
-        //println("Edges to remove", lhs, rhs, edgesToRemove)
-        /** remove all edges to and from the lhs in the new graph, since the lhs is reassigned */
-        //println("before removing: New graph, ", createDOT(new_graph))
-        edgesToRemove.foreach(e => new_graph.removeEdge(e))
-        //println("after removing: New graph, ", createDOT(new_graph))
-
-
-        /** add all new edges to the graph */
-        rhs_vars.foreach(v => {
-          /** if v not equal to the lhs then add the Transitive edge to the new_graph */
-          if(!v.equals(lhs_decl)) {
-              new_graph = addTransitiveEdge(new_graph, v, lhs_decl)
-
-          /** if v is equal to the lhs then we need to add all the incoming edge to the lhs back into the new graph */
-          } else {
-            incomingEdges.foreach(e => new_graph.addEdge(graph.getEdgeSource(e), graph.getEdgeTarget(e),e))
-          }
-          //println("after adding the new edges: ",createDOT(new_graph))
-        })
-        //println("After assignment: ", createDOT(new_graph))
-
-        new_graph
-      }
-
-      case i@Inhale(exp) => {
-        if (exp.isPure) {
-          graph
-        } else {
-          reportErrorWithMsg(ConsistencyError("There might be an impure inhale expression inside universal introduction block", i.pos))
-          graph
-        }
-      }
-
-      case Assume(_) => {
-        graph
-      }
-
-      case Label(_, _) => {
-        graph
-      }
-
-      /** TODO: Method call */
-      case m@MethodCall(methodName, args, targets) => {
-        verifier.findMethod
-        reportErrorWithMsg(ConsistencyError("Might be not allowed method call inside universal introduction block", m.pos))
-        /** maybe add to graph all edges from args to targets */
-        /** somehow would have to check the influenced _ target _ by {...}. maybe like this?*/
-        /*
-        for (s<-m.subnodes) {
-          if (s.isInstanceOf[PostconditionBlock]) {
-
-          }
-        }
-
-         */
-        graph
-      }
-
-      case f@FieldAssign(_, _) => {
-        reportErrorWithMsg(ConsistencyError("FieldAssign for universal introduction block", f.pos))
-        graph
-      }
-
-      case _ => {
-        throw new UnsupportedOperationException("undefined statement for universal introduction block")
-      }
-
-    }
-  }
-
-  def writtenTo(graph: Graph[Declaration, DefaultEdge], stmt: Stmt): Option[Set[Declaration]] = {
-    var output: Option[Set[Declaration]] = None
-    stmt match {
-      case Seqn(ss, _) => {
-        for (s <- ss) {
-          output match {
-            case None => output = writtenTo(graph,s)
-            case Some(v) => output = Some(v ++ writtenTo(graph,s).getOrElse(Set[Declaration]()))
-          }
-
-        }
-        output
-      }
-      case LocalVarAssign(lhs, _) => {
-        // val lhs_var = LocalVarDecl(lhs.name, lhs.typ)(lhs.pos)
-        var lhs_decl: Declaration = LocalVarDecl("", Int)()
-        graph.vertexSet().forEach(v => { if (v.name == lhs.name) { lhs_decl = v } })
-        Some(Set(lhs_decl))
-      }
-      case If(_, thn, els) => {
-        val writtenThn: Option[Set[Declaration]] = writtenTo(graph, thn)
-        val writtenEls: Option[Set[Declaration]] = writtenTo(graph, els)
-        (writtenThn, writtenEls) match {
-          case (None, None) => None
-          case (Some(_), None) => writtenThn
-          case (None, Some(_)) => writtenEls
-          case (Some(t), Some(e)) => Some(t ++ e)
-        }
-      }
-
-      case While(_, _, body) => {
-        writtenTo(graph, body)
-      }
-
-      /** TODO */
-      case MethodCall(_, _, _) => {
-        None
-      }
-
-
-      case Inhale(_) => {
-        None
-      }
-
-      case Assume(_) => {
-        None
-      }
-
-      case Label(_, _) => {
-        None
-      }
-
-      case _ => {
-        None
-      }
-    }
-  }
-  /** Own Edge class such that we can define the equals method.
-    * Two edges should be equal if their source and target vertices are equal. */
-  class DefaultEdge extends DefaultEdge {
-    override def equals(any: Any): Boolean = {
-      if(any.isInstanceOf[DefaultEdge]) {
-        val other = any.asInstanceOf[DefaultEdge]
-        this.getSource.equals(other.getSource) && this.getTarget.equals(other.getTarget)
-      } else {
-        false
-      }
-    }
-  }
-
-}
-
- */

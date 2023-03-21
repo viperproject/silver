@@ -1,0 +1,127 @@
+field f: Int
+
+// Should be accepted
+method test1(x: Ref) returns (z: Ref)
+    influenced z by {x}
+{
+    z := x
+}
+
+// Should be rejected
+method test2(x: Ref) returns (z: Ref)
+//:: ExpectedOutput(consistency.error)
+    influenced z by {heap}
+{
+    z := x
+}
+
+// Should be accepted
+method test3(x: Perm) returns (y: Perm)
+    influenced y by {x}
+{
+    y := x
+}
+
+// Should be rejected
+method test4(x: Perm) returns (y: Perm)
+//:: ExpectedOutput(consistency.error)
+    influenced y by {heap}
+{
+    y := x
+}
+
+// Should be accepted (we interpret absence of influenced by as influenced by everything, as shown below)
+method test5(x: Int, y: Int) returns (a: Int, b: Int)
+{
+    a := x + y
+    b := x + y
+}
+
+method test5_equivalent(x: Int, y: Int) returns (a: Int, b: Int)
+    influenced a by {y, x, heap}
+    influenced b by {x, heap, y}
+{
+    a := x + y
+    b := x + y
+}
+
+// The annotation "influenced heap by {heap}" should be rejected,
+// since test5 has no flow-annotation for the heap, thus it should be
+// considered as influenced heap by {heap, x, y}
+method test5_caller(x: Int, y: Int) returns (a: Int, b: Int)
+//:: ExpectedOutput(consistency.error)
+    influenced heap by {heap}
+    influenced a by {y, x, heap}
+    influenced b by {x, heap, y}
+{
+    a, b := test5(x, y)
+}
+
+// should be rejected (at most 1 line per return variable)
+method test6(x: Int, y: Int) returns (a: Int, b: Int)
+    influenced a by {y, x}
+    influenced b by { }
+//:: ExpectedOutput(consistency.error)
+    influenced b by {x, y}
+{
+    a := x + y
+    b := x + y
+}
+
+// should be rejected: x cannot be influenced by anything, since it's a formal argument
+method test7(x: Int, y: Int) returns (a: Int, b: Int)
+    influenced a by {y, x}
+    influenced b by {x, y}
+//:: ExpectedOutput(consistency.error)
+    influenced x by {x}
+{
+    a := x + y
+    b := x + y
+}
+
+// The most precise annotation for this test is
+// influenced a by {x, y}
+// influenced b by {x, y}
+// influenced heap by {heap, x}
+method caller_test6(x: Int, y: Int, r: Ref) returns (a: Int, b: Int)
+    requires acc(r.f)
+    influenced b by {x, y}
+    influenced a by {x, y}
+{
+    a, b := test6(x, y)
+    r.f := x
+}
+
+// Should be rejected: the heap (r.f in this case)
+// is influenced by x in caller_test6
+method caller_caller_test6(x: Int, y: Int, r: Ref)
+    requires acc(r.f)
+//:: ExpectedOutput(consistency.error)
+    influenced heap by {heap}
+{
+    var a: Int
+    var b: Int
+    a, b := caller_test6(x, y, r)
+}
+
+// Should be rejected: The heap (x.f in this case)
+// is influenced by y
+method test8(x: Ref, y: Int)
+    requires acc(x.f)
+//:: ExpectedOutput(consistency.error)
+    influenced heap by {heap}
+{
+    x.f := y
+}
+
+// Should be rejected: The heap (permission to x.f in this case)
+// is influenced by y
+method test9(x: Ref, y: Int)
+    requires acc(x.f)
+//:: ExpectedOutput(consistency.error)
+    influenced heap by {heap}
+{
+    if (y == 0) {
+        exhale acc(x.f)
+    }
+}

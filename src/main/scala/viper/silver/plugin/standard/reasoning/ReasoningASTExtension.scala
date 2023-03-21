@@ -1,15 +1,12 @@
 package viper.silver.plugin.standard.reasoning
 
-import viper.silver.FastMessaging
 import viper.silver.ast._
-import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, braces, brackets, char, defaultIndent, group, line, lineIfSomeNonEmpty, nest, nil, parens, show, showBlock, showContracts, showStmt, showVars, space, ssep, text, toParenDoc}
+import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, brackets, char, defaultIndent, group, line, nest, nil, parens, show, showBlock, showVars, space, ssep, text, toParenDoc}
 import viper.silver.ast.pretty.PrettyPrintPrimitives
-import viper.silver.ast.utility.{Consistency, Expressions}
-import viper.silver.plugin.standard.termination.PDecreasesClause
+import viper.silver.ast.utility.{Consistency}
 import viper.silver.verifier.{ConsistencyError, Failure, VerificationResult}
 
 
-/** An `FailureExpectedInfo` info that tells us that this assert is a existential elimination. */
 case object ReasoningInfo extends FailureExpectedInfo
 
 case class ExistentialElim(varList: Seq[LocalVarDecl], trigs: Seq[Trigger], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionStmt {
@@ -66,8 +63,7 @@ case class Var(decl:Exp)(val pos: Position = NoPosition, val info: Info = NoInfo
   def var_decl: Exp = decl
 }
 case class FlowAnnotation(v: FlowVar, varList: Seq[FlowVar])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionExp with Node with Scope {
-//sealed trait FlowAnnotation extends ExtensionExp with Node with Scope {
-   override def extensionIsPure: Boolean = true
+  override def extensionIsPure: Boolean = true
 
   override val scopedDecls = Seq()
 
@@ -98,58 +94,6 @@ case class FlowAnnotation(v: FlowVar, varList: Seq[FlowVar])(val pos: Position =
   }
 }
 
-/*
-case class FlowAnnotationVar(v: Exp, varList: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends FlowAnnotation {
-
-  override def extensionSubnodes: Seq[Node] = Seq(v) ++ varList
-
-  /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
-    * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression. */
-  override def prettyPrint: PrettyPrintPrimitives#Cont = {
-    text("influenced") <+> show(v) <+>
-    text("by") <+>
-      ssep(varList map show, group(char (',') <> line(" ")))
-  }
-}
-
-case class FlowAnnotationVarHeapArg(v: Exp, varList: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends FlowAnnotation {
-
-  override def extensionSubnodes: Seq[Node] = Seq(v) ++ varList
-  override def prettyPrint: PrettyPrintPrimitives#Cont = {
-    text("influenced") <+> show(v) <+>
-      text("by") <+>
-      ssep(varList map show, group(char(',') <> line(" "))) <+> text(", heap")
-  }
-}
-
-case class FlowAnnotationHeap(varList: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends FlowAnnotation {
-
-  override def extensionSubnodes: Seq[Node] = varList
-
-  /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
-    * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression. */
-  override def prettyPrint: PrettyPrintPrimitives#Cont = {
-    text("influenced heap") <+>
-      text("by") <+>
-      ssep(varList map show, group(char (',') <> line(" ")))
-  }
-}
-
-case class FlowAnnotationHeapHeapArg(varList: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends FlowAnnotation {
-
-  override def extensionSubnodes: Seq[Node] = varList
-
-  /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
-    * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression. */
-  override def prettyPrint: PrettyPrintPrimitives#Cont = {
-    text("influenced heap") <+>
-      text("by") <+>
-      ssep(varList map show, group(char (',') <> line(" "))) <+> text(", heap")
-
-  }
-}
-
- */
 
 case class Lemma()(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionExp with Node with Scope {
 
@@ -172,66 +116,29 @@ case class Lemma()(val pos: Position = NoPosition, val info: Info = NoInfo, val 
     text("isLemma")
 
   }
-
-  /*
-  override def extensionSubnodes: Seq[Node] = method.subnodes
-
-  override lazy val check: Seq[ConsistencyError] = {
-
-    var errors: Seq[ConsistencyError] = Seq()
-
-    var decreasesclauses = method.posts.filter(post => post.isInstanceOf[PDecreasesClause])
-    decreasesclauses ++= method.pres.filter(pre => pre.isInstanceOf[PDecreasesClause])
-
-    if (decreasesclauses.isEmpty) {
-      errors ++= Seq(ConsistencyError("Lemma is not guaranteed to terminate. Add decreases clause.", this.pos))
-    }
-    var pure = method.posts.filter(post => !post.isPure)
-    pure ++= method.pres.filter(pre => !pre.isPure)
-    if(pure.nonEmpty && method.pres.nonEmpty){
-      errors ++= Seq(ConsistencyError("Lemma is not pure", this.pos))
-    }
-    errors
-  }
-  override def prettyPrint: PrettyPrintPrimitives#Cont = {
-    group(text("lemma") <+> name <> nest(defaultIndent, parens(showVars(method.formalArgs))) <> {
-      if (method.formalReturns.isEmpty) nil
-      else nest(defaultIndent, line <> "returns" <+> parens(showVars(method.formalReturns)))
-    }) <>
-      nest(defaultIndent,
-        showContracts("requires", method.pres) <>
-          showContracts("ensures", method.posts)
-      ) <>
-      line <> (
-      method.body match {
-        case None =>
-          nil
-        case Some(actualBody) =>
-          braces(nest(defaultIndent,
-            lineIfSomeNonEmpty(actualBody.children) <>
-              ssep(Seq(showStmt(actualBody)), line)
-          ) <> line)
-      })
-  }
-
-  override def name: String = method.name
-
-  override val scopedDecls: Seq[Declaration] = method.scopedDecls
-
-  */
 }
 
-case class OldCall(mc:MethodCall, l:Label)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionStmt with Scope {
+case class OldCall(methodName: String, args: Seq[Exp], rets: Seq[LocalVar], l:Label)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionStmt with Scope {
   override val scopedDecls = Seq()
+
+  override lazy val check: Seq[ConsistencyError] = {
+    var s = Seq.empty[ConsistencyError]
+    if (!Consistency.noResult(this))
+      s :+= ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)
+    if (!Consistency.noDuplicates(rets))
+      s :+= ConsistencyError("Targets are not allowed to have duplicates", rets.head.pos)
+    s ++= args.flatMap(Consistency.checkPure)
+    s
+  }
 
 
   override lazy val prettyPrint: PrettyPrintPrimitives#Cont = {
-    val call = text("oldCall") <> brackets(show(l)) <> text(mc.methodName) <> nest(defaultIndent, parens(ssep(mc.args map show, group(char(',') <> line))))
-    mc.targets match {
+    val call = text("oldCall") <> brackets(show(l)) <> text(methodName) <> nest(defaultIndent, parens(ssep(args map show, group(char(',') <> line))))
+    rets match {
       case Nil => call
-      case _ => ssep(mc.targets map show, char(',') <> space) <+> ":=" <+> call
+      case _ => ssep(rets map show, char(',') <> space) <+> ":=" <+> call
     }
   }
 
-  override val extensionSubnodes: Seq[Node] = mc.args ++ mc.targets
+  override val extensionSubnodes: Seq[Node] = args ++ rets
 }

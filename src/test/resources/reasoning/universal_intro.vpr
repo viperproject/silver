@@ -28,3 +28,23 @@ method ex2()
     }
     assert greater(i,j)
 }
+
+
+function P(k: Int) : Bool
+{
+    false
+}
+
+function Q(k: Int) : Bool
+{
+    k==2
+}
+
+//assuming false
+method m1()
+{
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) {
+            var y:Int := x+1
+        }
+}
+
