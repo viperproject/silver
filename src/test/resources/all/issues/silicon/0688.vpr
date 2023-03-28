@@ -1,0 +1,35 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+domain Snap  {
+  function trigger(_0: Snap, _2: Int): Bool
+}
+
+function loopkup(address: Ref): Snap
+  requires acc(P1(address), wildcard)
+
+predicate P1(address: Ref)
+
+predicate P2(index: Int)
+
+method test()
+{
+  var address: Ref
+
+  var marco: Perm
+  assume marco >= none
+  var marcoAddress: Ref
+  inhale acc(P1(marcoAddress), marco)
+  assume marco <= none
+
+  exhale (forall index: Int ::
+    {
+        trigger(loopkup(address), index)
+    }
+    false ==> acc(P2(index), write)
+  )
+  
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+
+}
