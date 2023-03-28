@@ -87,3 +87,20 @@ method sh_borrow(a: Ref, p: Perm) returns (bw: Ref)
   bw := a
   package acc(bw.ref, p/2) --* acc(a.ref, p/2) && old[lhs](bw.ref) == a.ref
 }
+
+// Simpler way of triggering the bug:
+predicate P(x: Ref) { true }
+method simple()
+{
+  var y: Ref
+  var z: Ref
+  inhale acc(z.f, 1/2)
+  fold acc(P(y), 1/2)
+
+  //:: ExpectedOutput(exhale.failed:insufficient.permission)
+  exhale acc(z.f)
+
+  assume false
+  // force QP for P
+  inhale forall x: Ref :: x in Set[Ref]() ==> acc(P(x))
+}
