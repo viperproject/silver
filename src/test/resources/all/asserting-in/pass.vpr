@@ -1,0 +1,7 @@
+field x: Int
+
+method test1(r: Ref) returns (y: Int)
+requires acc(r.x)
+ensures acc(r.x) && y == r.x {
+  y := asserting (acc(r.x)) in r.x
+}

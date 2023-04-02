@@ -1,0 +1,15 @@
+method assign() {
+//:: ExpectedOutput(assignment.failed:assertion.false)
+  var x: Int := asserting (false) in 0
+}
+
+method pres()
+//:: ExpectedOutput(not.wellformed:assertion.false)
+requires asserting (false) in false {
+  assert false
+}
+
+//:: ExpectedOutput(function.not.wellformed:assertion.false)
+function fun(): Int {
+  asserting (false) in 0
+}
