@@ -510,7 +510,7 @@ class FastParser {
       }
 
       if (body != method.body) {
-        PMethod(method.idndef, method.formalArgs, method.formalReturns, method.pres, method.posts, body)(method.pos)
+        PMethod(method.idndef, method.formalArgs, method.formalReturns, method.pres, method.posts, body)(method.pos, method.annotations)
       } else {
         method
       }
@@ -1224,7 +1224,8 @@ class FastParser {
 
   def applying[_: P]: P[PExp] = FP(keyword("applying") ~/ "(" ~ magicWandExp ~ ")" ~ "in" ~ exp).map { case (pos, (a, b)) => PApplying(a, b)(pos) }
 
-  def programDecl(implicit ctx : P[_]) : P[PProgram] = P(FP((ParserExtension.newDeclAtStart(ctx) | preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl | ParserExtension.newDeclAtEnd(ctx)).rep).map {
+  def programDecl(implicit ctx : P[_]) : P[PProgram] =
+    P(FP((ParserExtension.newDeclAtStart(ctx) | preambleImport | defineDecl | fieldDecl | methodDecl | domainDecl | functionDecl | predicateDecl | ParserExtension.newDeclAtEnd(ctx)).rep).map {
     case (pos, decls) => {
       PProgram(
         decls.collect { case i: PImport => i }, // Imports
@@ -1249,24 +1250,24 @@ class FastParser {
 
   def anyString[_: P]: P[String] = P(CharIn("A-Z", "a-z", "0-9", "()._ ").rep(1).!)
 
-  def domainDecl[_: P]: P[PDomain] = FP("domain" ~/ idndef ~ ("[" ~ domainTypeVarDecl.rep(sep = ",") ~ "]").? ~ ("interpretation" ~ parens((ident ~ ":" ~ quoted(anyString.!)).rep(sep = ","))).? ~ "{" ~ (domainFunctionDecl | axiomDecl).rep ~
+  def domainDecl[_: P]: P[PDomain] = FP(annotation.rep(0) ~ "domain" ~/ idndef ~ ("[" ~ domainTypeVarDecl.rep(sep = ",") ~ "]").? ~ ("interpretation" ~ parens((ident ~ ":" ~ quoted(anyString.!)).rep(sep = ","))).? ~ "{" ~ (domainFunctionDecl | axiomDecl).rep ~
     "}").map {
-    case (pos, (name, typparams, interpretations, members)) =>
+    case (pos, (anns, name, typparams, interpretations, members)) =>
       val funcs = members collect { case m: PDomainFunction1 => m }
       val axioms = members collect { case m: PAxiom1 => m }
       PDomain(
         name,
         typparams.getOrElse(Nil),
-        funcs map (f => PDomainFunction(f.idndef, f.formalArgs, f.typ, f.unique, f.interpretation)(PIdnUse(name.name)(name.pos))(f.pos)),
-        axioms map (a => PAxiom(a.idndef, a.exp)(PIdnUse(name.name)(name.pos))(a.pos)),
-        interpretations.map(i => i.toMap))(pos)
+        funcs map (f => PDomainFunction(f.idndef, f.formalArgs, f.typ, f.unique, f.interpretation)(PIdnUse(name.name)(name.pos))(f.pos, f.annotations)),
+        axioms map (a => PAxiom(a.idndef, a.exp)(PIdnUse(name.name)(name.pos))(a.pos, a.annotations)),
+        interpretations.map(i => i.toMap))(pos, anns)
   }
 
   def domainTypeVarDecl[_: P]: P[PTypeVarDecl] = FP(idndef).map{ case (pos, i) => PTypeVarDecl(i)(pos) }
 
-  def domainFunctionDecl[_: P]: P[PDomainFunction1] = FP("unique".!.? ~ domainFunctionSignature ~ ("interpretation" ~ quoted(anyString.!)).? ~~~ ";".lw.?).map {
-    case (pos, (unique, fdecl, interpretation)) => fdecl match {
-      case (name, formalArgs, t) => PDomainFunction1(name, formalArgs, t, unique.isDefined, interpretation)(pos)
+  def domainFunctionDecl[_: P]: P[PDomainFunction1] = FP(annotation.rep(0) ~ "unique".!.? ~ domainFunctionSignature ~ ("interpretation" ~ quoted(anyString.!)).? ~~~ ";".lw.?).map {
+    case (pos, (anns, unique, fdecl, interpretation)) => fdecl match {
+      case (name, formalArgs, t) => PDomainFunction1(name, formalArgs, t, unique.isDefined, interpretation)(pos, anns)
     }
   }
 
@@ -1280,15 +1281,15 @@ class FastParser {
 
   def formalArgList[_: P]: P[Seq[PFormalArgDecl]] = P(formalArg.rep(sep = ","))
 
-  def axiomDecl[_: P]: P[PAxiom1] = FP(keyword("axiom") ~ idndef.? ~ "{" ~ exp ~ "}" ~~~ ";".lw.?).map { case (pos, (a, b)) => PAxiom1(a, b)(pos) }
+  def axiomDecl[_: P]: P[PAxiom1] = FP(annotation.rep(0) ~ keyword("axiom") ~ idndef.? ~ "{" ~ exp ~ "}" ~~~ ";".lw.?).map { case (pos, (anns, a, b)) => PAxiom1(a, b)(pos, anns) }
 
-  def fieldDecl[_: P]: P[PField] = FP(keyword("field") ~/ idndef ~ ":" ~ typ ~~~ ";".lw.?).map {
-    case (pos, (a, b)) => PField(a, b)(pos)
+  def fieldDecl[_: P]: P[PField] = FP(annotation.rep(0) ~ keyword("field") ~/ idndef ~ ":" ~ typ ~~~ ";".lw.?).map {
+    case (pos, (anns, a, b)) => PField(a, b)(pos, anns)
   }
 
-  def functionDecl[_: P]: P[PFunction] = FP("function" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~~~ pre.lw.rep ~~~
-    post.lw.rep ~~~ ("{" ~ exp ~ "}").lw.?).map({ case (pos, (a, b, c, d, e, f)) =>
-      PFunction(a, b, c, d, e, f)(pos)
+  def functionDecl[_: P]: P[PFunction] = FP(annotation.rep(0) ~ "function" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~~~ pre.lw.rep ~~~
+    post.lw.rep ~~~ ("{" ~ exp ~ "}").lw.?).map({ case (pos, (anns, a, b, c, d, e, f)) =>
+      PFunction(a, b, c, d, e, f)(pos, anns)
   })
 
 
@@ -1298,14 +1299,14 @@ class FastParser {
 
   def decCl[_: P]: P[Seq[PExp]] = P(exp.rep(sep = ","))
 
-  def predicateDecl[_: P]: P[PPredicate] = FP(keyword("predicate") ~/ idndef ~ "(" ~ formalArgList ~ ")" ~~~ ("{" ~ exp ~ "}").lw.?).map {
-    case (pos, (a, b, c)) =>
-      PPredicate(a, b, c)(pos)
+  def predicateDecl[_: P]: P[PPredicate] = FP(annotation.rep(0) ~ keyword("predicate") ~/ idndef ~ "(" ~ formalArgList ~ ")" ~~~ ("{" ~ exp ~ "}").lw.?).map {
+    case (pos, (anns, a, b, c)) =>
+      PPredicate(a, b, c)(pos, anns)
   }
 
-  def methodDecl[_: P]: P[PMethod] = FP(methodSignature ~~~/ pre.lw.rep ~~~ post.lw.rep ~~~ block.lw.?).map {
-    case (pos, (name, args, rets, pres, posts, body)) =>
-      PMethod(name, args, rets.getOrElse(Nil), pres, posts, body)(pos)
+  def methodDecl[_: P]: P[PMethod] = FP(annotation.rep(0) ~ methodSignature ~~~/ pre.lw.rep ~~~ post.lw.rep ~~~ block.lw.?).map {
+    case (pos, (anns, (name, args, rets), pres, posts, body)) =>
+      PMethod(name, args, rets.getOrElse(Nil), pres, posts, body)(pos, anns)
   }
 
   def methodSignature[_: P] = P("method" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~~~ ("returns" ~ "(" ~ formalArgList ~ ")").lw.?)

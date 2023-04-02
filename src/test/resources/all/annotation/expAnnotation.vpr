@@ -1,6 +1,7 @@
+@isghost "nope"
 field f: Int
 
-
+@inlining "never"
 function fun01(x: Ref, y: Ref, b: Bool): Int
   requires b ? acc(x.f) : acc(y.f)
 
@@ -8,12 +9,31 @@ function fun02(x: Ref, y: Ref, b: Bool): Int
   requires acc(x.f, b ? write : none)
   requires acc(y.f, !b ? write : none)
 
+@inline "never"
+predicate P(x: Ref)
 
+@interp "some smtlib thingy"
+domain MyType {
+
+  @asd "test 123"
+  @asdd "test 123"
+  function id(MyType): MyType
+
+  @asd "test 123"
+  axiom {
+    @asd "test 123"
+    true
+  }
+}
+
+@setting "donotverify"
+@verifier "none"
 method m(x: Ref, y: Ref)
     requires acc(x.f)
     requires acc(y.f)
 {
     var tmp: Int
+    @annotatingastatement "the assignment"
     tmp := @asd "test 123" fun02(x, @lul "this is ugly" y, true)
     y.f := 1
     assert tmp == fun02(x, y, true)
