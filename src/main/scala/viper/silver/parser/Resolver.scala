@@ -472,7 +472,7 @@ case class TypeChecker(names: NameAnalyser) {
     val cs = new PTypeSubstitution(
       pts1.map({ case (s: String, pt: PType) => s -> pt.substitute(pts2) }) ++
         pts2.map({ case (s: String, pt: PType) => s -> pt.substitute(pts1) }))
-      cs.add(pt1,pt2)
+    cs.add(pt1,pt2)
   }
   def unifySequenceWithSubstitutions(
     rlts: Seq[PTypeSubstitution], //local substitutions, refreshed
@@ -485,12 +485,7 @@ case class TypeChecker(names: NameAnalyser) {
     var pss = rlts
     for (tri <- argData){
       val current = (for (ps <- pss; aps <- tri._3) yield composeAndAdd(ps, aps, tri._1, tri._2))
-      var a = Seq[PTypeSubstitution]()
-      for (e <- current){
-        if (e.isDefined)
-          a = a.:+(e.get)
-      }
-      pss = a
+      pss = current.flatten
     }
     pss
     //(a:Set[PTypeSubstitution], e:Option[PTypeSubstitution])=>{

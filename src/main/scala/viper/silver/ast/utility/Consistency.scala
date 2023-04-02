@@ -357,7 +357,7 @@ object Consistency {
         c
 
       case dt: DomainType =>
-        c.program.domains.find(_.name == dt.domainName) match {
+        c.program.findDomainOptionally(dt.domainName) match {
           case None =>
             s :+= ConsistencyError(s"DomainType references non-existent domain ${dt.domainName}.", NoPosition)
             c
@@ -368,7 +368,7 @@ object Consistency {
         }
 
       case bt: BackendType =>
-        c.program.domains.find(_.name == bt.viperName) match {
+        c.program.findDomainOptionally(bt.viperName) match {
           case None =>
             s :+= ConsistencyError(s"BackendType references non-existent domain ${bt.viperName}.", NoPosition)
             c

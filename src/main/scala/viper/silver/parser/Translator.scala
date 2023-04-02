@@ -105,9 +105,9 @@ case class Translator(program: PProgram) {
 
   private def translate(a: PAxiom): DomainAxiom = a match {
     case pa@PAxiom(Some(name), e) =>
-      NamedDomainAxiom(name.name, exp(e))(a, domainName = pa.domainName.name)
+      NamedDomainAxiom(name.name, exp(e))(a, toInfo(pa.annotations), domainName = pa.domainName.name)
     case pa@PAxiom(None, e) =>
-      AnonymousDomainAxiom(exp(e))(a, domainName = pa.domainName.name)
+      AnonymousDomainAxiom(exp(e))(a, toInfo(pa.annotations), domainName = pa.domainName.name)
   }
 
   private def translate(f: PFunction): Function = f match {
@@ -143,20 +143,27 @@ case class Translator(program: PProgram) {
     val pos = p
     val name = p.idndef.name
     val t = p match {
-      case PField(_, typ) =>
-        Field(name, ttyp(typ))(pos)
-      case PFunction(_, formalArgs, typ, _, _, _) =>
-        Function(name, formalArgs map liftVarDecl, ttyp(typ), null, null, null)(pos)
+      case pf@PField(_, typ) =>
+        Field(name, ttyp(typ))(pos, toInfo(pf.annotations))
+      case pf@PFunction(_, formalArgs, typ, _, _, _) =>
+        Function(name, formalArgs map liftVarDecl, ttyp(typ), null, null, null)(pos, toInfo(pf.annotations))
       case pdf@ PDomainFunction(_, args, typ, unique, interp) =>
-        DomainFunc(name, args map liftAnyVarDecl, ttyp(typ), unique, interp)(pos,NoInfo,pdf.domainName.name)
-      case PDomain(_, typVars, _, _, interp) =>
-        Domain(name, null, null, typVars map (t => TypeVar(t.idndef.name)), interp)(pos)
-      case PPredicate(_, formalArgs, _) =>
-        Predicate(name, formalArgs map liftVarDecl, null)(pos)
-      case PMethod(_, formalArgs, formalReturns, _, _, _) =>
-        Method(name, formalArgs map liftVarDecl, formalReturns map liftVarDecl, null, null, null)(pos)
+        DomainFunc(name, args map liftAnyVarDecl, ttyp(typ), unique, interp)(pos,toInfo(pdf.annotations),pdf.domainName.name)
+      case pd@PDomain(_, typVars, _, _, interp) =>
+        Domain(name, null, null, typVars map (t => TypeVar(t.idndef.name)), interp)(pos, toInfo(pd.annotations))
+      case pp@PPredicate(_, formalArgs, _) =>
+        Predicate(name, formalArgs map liftVarDecl, null)(pos, toInfo(pp.annotations))
+      case pm@PMethod(_, formalArgs, formalReturns, _, _, _) =>
+        Method(name, formalArgs map liftVarDecl, formalReturns map liftVarDecl, null, null, null)(pos, toInfo(pm.annotations))
     }
     members.put(p.idndef.name, t)
+  }
+
+  def toInfo(annotations: Seq[(String, String)]): Info = {
+    if (annotations.isEmpty)
+      NoInfo
+    else
+      AnnotationInfo(annotations.toMap)
   }
 
   private def translateMemberSignature(p: PExtender): Unit ={

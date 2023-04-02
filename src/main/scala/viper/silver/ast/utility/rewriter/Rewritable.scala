@@ -6,7 +6,7 @@
 
 package viper.silver.ast.utility.rewriter
 
-import viper.silver.parser.PDomainFunction
+import viper.silver.parser.{PDomain, PDomainFunction}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
 import viper.silver.ast.{AtomicType, BackendFuncApp, DomainFuncApp, ErrorTrafo, FuncApp, Info, Node, Position}
 
@@ -49,9 +49,10 @@ trait Rewritable extends Product {
           case df: DomainFuncApp => secondArgList = Seq(df.pos, df.info, df.typ, df.domainName, df.errT)
           case ba: BackendFuncApp => secondArgList = Seq(ba.pos, ba.info, ba.typ, ba.interpretation, ba.errT)
           case no: Node => secondArgList = no.getMetadata
-          case pa: PAxiom => secondArgList = Seq(pa.domainName) ++ Seq(pos.getOrElse(pa.pos))
+          case pa: PAxiom => secondArgList = Seq(pa.domainName) ++ Seq(pos.getOrElse(pa.pos), pa.annotations)
           case pm: PMagicWandExp => firstArgList = Seq(children.head) ++ children.drop(2) ++ Seq(pos.getOrElse(pm.pos))
-          case pd: PDomainFunction => secondArgList = Seq(pd.domainName) ++ Seq(pos.getOrElse(pd.pos))
+          case pd: PDomainFunction => secondArgList = Seq(pd.domainName) ++ Seq(pos.getOrElse(pd.pos), pd.annotations)
+          case pd: PDomain => secondArgList = Seq(pos.getOrElse(pd.pos), pd.annotations)
           case pn: PNode => secondArgList = Seq(pos.getOrElse(pn.pos))
           case _ =>
         }

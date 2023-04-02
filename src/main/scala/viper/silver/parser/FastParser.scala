@@ -1250,20 +1250,22 @@ class FastParser {
 
   def anyString[_: P]: P[String] = P(CharIn("A-Z", "a-z", "0-9", "()._ ").rep(1).!)
 
-  def domainDecl[_: P]: P[PDomain] = FP(annotation.rep(0) ~ "domain" ~/ idndef ~ ("[" ~ domainTypeVarDecl.rep(sep = ",") ~ "]").? ~ ("interpretation" ~ parens((ident ~ ":" ~ quoted(anyString.!)).rep(sep = ","))).? ~ "{" ~ (domainFunctionDecl | axiomDecl).rep ~
+  def domainDecl[_: P]: P[PDomain] = FP(annotation.rep(0) ~ "domain" ~/ idndef ~ typeParams ~ ("interpretation" ~ parens((ident ~ ":" ~ quoted(anyString.!)).rep(sep = ","))).? ~ "{" ~ (domainFunctionDecl | axiomDecl).rep ~
     "}").map {
     case (pos, (anns, name, typparams, interpretations, members)) =>
       val funcs = members collect { case m: PDomainFunction1 => m }
       val axioms = members collect { case m: PAxiom1 => m }
       PDomain(
         name,
-        typparams.getOrElse(Nil),
+        typparams,
         funcs map (f => PDomainFunction(f.idndef, f.formalArgs, f.typ, f.unique, f.interpretation)(PIdnUse(name.name)(name.pos))(f.pos, f.annotations)),
         axioms map (a => PAxiom(a.idndef, a.exp)(PIdnUse(name.name)(name.pos))(a.pos, a.annotations)),
         interpretations.map(i => i.toMap))(pos, anns)
   }
 
   def domainTypeVarDecl[_: P]: P[PTypeVarDecl] = FP(idndef).map{ case (pos, i) => PTypeVarDecl(i)(pos) }
+
+  def typeParams[_: P]: P[Seq[PTypeVarDecl]] = P(("[" ~ domainTypeVarDecl.rep(sep = ",") ~ "]").?).map(_.getOrElse(Nil))
 
   def domainFunctionDecl[_: P]: P[PDomainFunction1] = FP(annotation.rep(0) ~ "unique".!.? ~ domainFunctionSignature ~ ("interpretation" ~ quoted(anyString.!)).? ~~~ ";".lw.?).map {
     case (pos, (anns, unique, fdecl, interpretation)) => fdecl match {
