@@ -1,4 +1,4 @@
-//:: ExpectedOutput(consistency.error)
+//:: ExpectedOutput(typechecker.error)
 @isghost("nope")
 @isghost("yes")
 field f: Int
@@ -10,7 +10,7 @@ method m(x: Ref, y: Ref)
     requires acc(y.f)
 {
     var tmp: Ref
-    //:: ExpectedOutput(consistency.error)
+    //:: ExpectedOutput(typechecker.error)
     @annotatingastatement("the assignment")
     @annotatingastatement("double")
     tmp := x
@@ -24,7 +24,7 @@ method m2(x: Ref, y: Ref)
     requires acc(y.f)
 {
     var tmp: Ref
-    //:: ExpectedOutput(consistency.error)
+    //:: ExpectedOutput(typechecker.error)
     tmp := @asd("test 123") @asd("test 1234") x
     y.f := 1
 }
