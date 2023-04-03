@@ -6,7 +6,7 @@
 
 package viper.silver.ast.utility.rewriter
 
-import viper.silver.parser.{PDomain, PDomainFunction, PMethod}
+import viper.silver.parser.{PDomain, PDomainFunction, PFunction, PMethod, PPredicate}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
 import viper.silver.ast.{AtomicType, BackendFuncApp, DomainFuncApp, ErrorTrafo, FuncApp, Info, Node, Position}
 
@@ -54,6 +54,8 @@ trait Rewritable extends Product {
           case pd: PDomainFunction => secondArgList = Seq(pd.domainName) ++ Seq(pos.getOrElse(pd.pos), pd.annotations)
           case pd: PDomain => secondArgList = Seq(pos.getOrElse(pd.pos), pd.annotations)
           case pm: PMethod => secondArgList = Seq(pos.getOrElse(pm.pos), pm.annotations)
+          case pp: PPredicate => secondArgList = Seq(pos.getOrElse(pp.pos), pp.annotations)
+          case pf: PFunction => secondArgList = Seq(pos.getOrElse(pf.pos), pf.annotations)
           case pn: PNode => secondArgList = Seq(pos.getOrElse(pn.pos))
           case _ =>
         }

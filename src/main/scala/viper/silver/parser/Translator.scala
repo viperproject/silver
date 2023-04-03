@@ -105,9 +105,9 @@ case class Translator(program: PProgram) {
 
   private def translate(a: PAxiom): DomainAxiom = a match {
     case pa@PAxiom(Some(name), e) =>
-      NamedDomainAxiom(name.name, exp(e))(a, toInfo(pa.annotations), domainName = pa.domainName.name)
+      NamedDomainAxiom(name.name, exp(e))(a, toInfo(pa.annotations, pa), domainName = pa.domainName.name)
     case pa@PAxiom(None, e) =>
-      AnonymousDomainAxiom(exp(e))(a, toInfo(pa.annotations), domainName = pa.domainName.name)
+      AnonymousDomainAxiom(exp(e))(a, toInfo(pa.annotations, pa), domainName = pa.domainName.name)
   }
 
   private def translate(f: PFunction): Function = f match {
@@ -144,26 +144,34 @@ case class Translator(program: PProgram) {
     val name = p.idndef.name
     val t = p match {
       case pf@PField(_, typ) =>
-        Field(name, ttyp(typ))(pos, toInfo(pf.annotations))
+        Field(name, ttyp(typ))(pos, toInfo(pf.annotations, pf))
       case pf@PFunction(_, formalArgs, typ, _, _, _) =>
-        Function(name, formalArgs map liftVarDecl, ttyp(typ), null, null, null)(pos, toInfo(pf.annotations))
+        Function(name, formalArgs map liftVarDecl, ttyp(typ), null, null, null)(pos, toInfo(pf.annotations, pf))
       case pdf@ PDomainFunction(_, args, typ, unique, interp) =>
-        DomainFunc(name, args map liftAnyVarDecl, ttyp(typ), unique, interp)(pos,toInfo(pdf.annotations),pdf.domainName.name)
+        DomainFunc(name, args map liftAnyVarDecl, ttyp(typ), unique, interp)(pos,toInfo(pdf.annotations, pdf),pdf.domainName.name)
       case pd@PDomain(_, typVars, _, _, interp) =>
-        Domain(name, null, null, typVars map (t => TypeVar(t.idndef.name)), interp)(pos, toInfo(pd.annotations))
+        Domain(name, null, null, typVars map (t => TypeVar(t.idndef.name)), interp)(pos, toInfo(pd.annotations, pd))
       case pp@PPredicate(_, formalArgs, _) =>
-        Predicate(name, formalArgs map liftVarDecl, null)(pos, toInfo(pp.annotations))
+        Predicate(name, formalArgs map liftVarDecl, null)(pos, toInfo(pp.annotations, pp))
       case pm@PMethod(_, formalArgs, formalReturns, _, _, _) =>
-        Method(name, formalArgs map liftVarDecl, formalReturns map liftVarDecl, null, null, null)(pos, toInfo(pm.annotations))
+        Method(name, formalArgs map liftVarDecl, formalReturns map liftVarDecl, null, null, null)(pos, toInfo(pm.annotations, pm))
     }
     members.put(p.idndef.name, t)
   }
 
-  def toInfo(annotations: Seq[(String, String)]): Info = {
-    if (annotations.isEmpty)
+  def toInfo(annotations: Seq[(String, Seq[String])], node: PNode): Info = {
+    if (annotations.isEmpty) {
       NoInfo
-    else
+    } else {
+      val keys = annotations.map(_._1)
+      val duplicates = keys.diff(keys.distinct).distinct
+      if (duplicates.nonEmpty) {
+        for (dupKey <- duplicates) {
+          Consistency.messages ++= FastMessaging.message(node, s"duplicate annotation $dupKey")
+        }
+      }
       AnnotationInfo(annotations.toMap)
+    }
   }
 
   private def translateMemberSignature(p: PExtender): Unit ={
@@ -279,19 +287,25 @@ case class Translator(program: PProgram) {
     }
   }
 
-  def extractAnnotation(pexp: PExp): (PExp, Map[String, String]) = {
+  def extractAnnotation(pexp: PExp): (PExp, Map[String, Seq[String]]) = {
     pexp match {
       case PAnnotatedExp(e, (key, value)) =>
         val (resPexp, innerMap) = extractAnnotation(e)
+        if (innerMap.contains(key)) {
+          Consistency.messages ++= FastMessaging.message(pexp, s"duplicate annotation $key")
+        }
         (resPexp, innerMap.updated(key, value))
       case _ => (pexp, Map())
     }
   }
 
-  def extractAnnotationFromStmt(pStmt: PStmt): (PStmt, Map[String, String]) = {
+  def extractAnnotationFromStmt(pStmt: PStmt): (PStmt, Map[String, Seq[String]]) = {
     pStmt match {
       case PAnnotatedStmt(s, (key, value)) =>
         val (resPStmt, innerMap) = extractAnnotationFromStmt(s)
+        if (innerMap.contains(key)) {
+          Consistency.messages ++= FastMessaging.message(pStmt, s"duplicate annotation $key")
+        }
         (resPStmt, innerMap.updated(key, value))
       case _ => (pStmt, Map())
     }

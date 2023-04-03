@@ -805,7 +805,7 @@ class FastParser {
 
   def stringLiteral[_: P]: P[String] = P("\"" ~ CharsWhile(_ != '\"').! ~ "\"")
 
-  def annotation[_: P]: P[(String, String)] = P("@" ~~ ident ~ stringLiteral)
+  def annotation[_: P]: P[(String, Seq[String])] = P("@" ~~ ident ~ parens(stringLiteral.rep(sep = ",")))
 
   def annotatedAtom[_: P]: P[PExp] = FP(annotation ~ atom).map{
     case (pos, (key, value, exp)) => PAnnotatedExp(exp, (key, value))(pos)

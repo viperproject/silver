@@ -371,7 +371,7 @@ case object NoInfo extends Info {
   override val isCached = false
 }
 
-case class AnnotationInfo(values: Map[String, String]) extends Info {
+case class AnnotationInfo(values: Map[String, Seq[String]]) extends Info {
   override val isCached = false
   override val comment = Nil
 }

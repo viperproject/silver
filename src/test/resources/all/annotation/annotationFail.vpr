@@ -1,0 +1,30 @@
+//:: ExpectedOutput(consistency.error)
+@isghost("nope")
+@isghost("yes")
+field f: Int
+
+@setting("donotverify")
+@verifier("none", "atall")
+method m(x: Ref, y: Ref)
+    requires acc(x.f)
+    requires acc(y.f)
+{
+    var tmp: Ref
+    //:: ExpectedOutput(consistency.error)
+    @annotatingastatement("the assignment")
+    @annotatingastatement("double")
+    tmp := x
+    y.f := 1
+}
+
+@setting("donotverify")
+@verifier("none", "atall")
+method m2(x: Ref, y: Ref)
+    requires acc(x.f)
+    requires acc(y.f)
+{
+    var tmp: Ref
+    //:: ExpectedOutput(consistency.error)
+    tmp := @asd("test 123") @asd("test 1234") x
+    y.f := 1
+}
