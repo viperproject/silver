@@ -22,7 +22,6 @@ function h(x: Int): Int
     requires f(x) == 0
     requires f1(x) == 0
     ensures result == x
-    ensures result > 0 ==> result == h(result-1) + 1
 {
     x == 0 ? 0 : 1 + h(x-1)
 }

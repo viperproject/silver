@@ -7,6 +7,7 @@ function count(lo: Int, hi: Int, a: Dummy):Int
 
 function recfun(x: Int): Int
   requires x > 0
+  //:: ExpectedOutput(consistency.error)
   ensures recfun(x) < 0
 { -x }
 

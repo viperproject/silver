@@ -7,6 +7,7 @@ function h(x: Int): Int
     decreases x
     requires x >= 0
     ensures result == x
+    //:: ExpectedOutput(consistency.error)
     ensures result > 0 ==> result == h(result-1) + 1
 {
     x == 0 ? 0 : 1 + h(x-1)
@@ -16,7 +17,7 @@ function foo(x: Int): Int
     decreases x
     requires x >= 0
     ensures result == x
-    //:: ExpectedOutput(termination.failed:tuple.false)
+    //:: ExpectedOutput(consistency.error)
     ensures result == foo(result)
 {
     x == 0 ? 0 : 1 + foo(x-1)
@@ -26,7 +27,7 @@ function g(x: Int): Int
     decreases x
     requires x >= 0
     ensures result == x
-    //:: ExpectedOutput(termination.failed:tuple.false)
+    //:: ExpectedOutput(consistency.error)
     ensures result == g(x + 1) - 1
 {
     x == 0 ? 0 : 1 + g(x-1)
