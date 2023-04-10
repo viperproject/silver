@@ -464,6 +464,8 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres
       Seq(ConsistencyError("Function post-conditions must not have old expressions.", p.pos)) else Seq()}) ++
     (pres ++ posts).flatMap(Consistency.checkNoPermForpermExceptInhaleExhale) ++
     (if(!(body forall (_ isSubtype typ))) Seq(ConsistencyError("Type of function body must match function type.", pos)) else Seq() ) ++
+    (if (body.isDefined) posts.flatMap(p => if (!Consistency.noFuncApp(p, this))
+      Seq(ConsistencyError("Postcondition of non-abstract function must not have self-references.", p.pos)) else Seq()) else Seq()) ++
     pres.flatMap(Consistency.checkPre) ++
     posts.flatMap(Consistency.checkPost) ++
     posts.flatMap(p => if (!Consistency.noPermissions(p))

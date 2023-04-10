@@ -69,6 +69,9 @@ object Consistency {
   /** Returns true if the given node contains no result. */
   def noResult(n: Node) = !n.existsDefined { case _: Result => }
 
+  /** Returns true if the given node contains no application of the given function. */
+  def noFuncApp(n: Node, f: Function) = !n.existsDefined{ case app: FuncApp if app.funcname == f.name => }
+
   /** Returns true if the given node contains no perm expression.*/
   def noPerm(n: Node)  = !n.existsDefined { case _: CurrentPerm => }
 

@@ -1,0 +1,19 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+adt List[T] {
+    Nil()
+    Cons(value : T, tail : List[T])
+}
+
+function lenght(xs : List[Int]) : Int
+    //:: ExpectedOutput(consistency.error)
+    ensures lenght(xs) >= 0
+    //:: ExpectedOutput(consistency.error)
+    ensures xs.isNil ==> lenght(xs) == 0
+    //:: ExpectedOutput(consistency.error)
+    ensures (xs.isCons ==> lenght(xs) == lenght(xs.tail) + 2)
+    ensures false
+{
+(xs.isNil ? 0 : (1 + lenght(xs.tail)))
+}
