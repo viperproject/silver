@@ -16,7 +16,7 @@ import viper.silver.parser.Transformer.ParseTreeDuplicationError
 import viper.silver.plugin.{ParserPluginTemplate, SilverPluginManager}
 import viper.silver.verifier.{ParseError, ParseWarning}
 
-import scala.collection.{Set, immutable, mutable}
+import scala.collection.{immutable, mutable}
 
 
 case class ParseException(msg: String, pos: Position) extends Exception
