@@ -175,7 +175,7 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
         //println( sm.text )
       case _: QuantifierInstantiationsMessage => // too verbose, do not print
       case _: QuantifierChosenTriggersMessage => // too verbose, do not print
-      case t: VerificationTerminationMessage =>
+      case _: VerificationTerminationMessage =>
       case _ =>
         println( s"Cannot properly print message of unsupported type: $msg" )
     }
