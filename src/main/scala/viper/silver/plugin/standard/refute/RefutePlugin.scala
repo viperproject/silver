@@ -29,7 +29,7 @@ class RefutePlugin(@unused reporter: viper.silver.reporter.Reporter,
   private val refuteKeyword: String = "refute"
 
   /** Parser for refute statements. */
-  def refute[_: P]: P[PRefute] =
+  def refute[$: P]: P[PRefute] =
     FP(keyword(refuteKeyword) ~/ exp).map{ case (pos, e) => PRefute(e)(pos) }
 
   /** Add refute to the parser. */
