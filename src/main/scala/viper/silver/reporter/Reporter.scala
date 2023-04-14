@@ -60,6 +60,9 @@ case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv
       case EntityFailureMessage(_, concerning, time, _, cached) =>
         csv_file.write(s"EntityFailureMessage,${concerning.name},${time}, ${cached}\n")
 
+      case BranchFailureMessage(_, concerning, _, cached) =>
+        csv_file.write(s"BranchFailureMessage,${concerning.name},${cached}\n")
+
       case _: SimpleMessage | _: CopyrightReport | _: MissingDependencyReport | _: BackendSubProcessReport |
            _: InternalWarningMessage | _: ConfigurationConfirmation=> // Irrelevant for reporting
 
@@ -162,7 +165,8 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
 
       // These get reported without being transformed by any plugins, it would be an issue if we printed them to STDOUT.
       case EntitySuccessMessage(_, _, _, _) =>    // FIXME Currently, we only print overall verification results to STDOUT.
-      case EntityFailureMessage(_, _, _, _, _) => // FIXME Currently, we only print overall verification results to STDOUT.
+      case EntityFailureMessage(_, _, _, _, _) =>    // FIXME Currently, we only print overall verification results to STDOUT.
+      case BranchFailureMessage(_, _, _, _) =>    // FIXME Currently, we only print overall verification results to STDOUT.
       case ConfigurationConfirmation(_) =>     // TODO  use for progress reporting
         //println( s"Configuration confirmation: $text" )
       case InternalWarningMessage(_) =>        // TODO  use for progress reporting
@@ -171,7 +175,7 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
         //println( sm.text )
       case _: QuantifierInstantiationsMessage => // too verbose, do not print
       case _: QuantifierChosenTriggersMessage => // too verbose, do not print
-      case t: VerificationTerminationMessage => println(t.toString)
+      case t: VerificationTerminationMessage =>
       case _ =>
         println( s"Cannot properly print message of unsupported type: $msg" )
     }
