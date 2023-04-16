@@ -291,12 +291,12 @@ trait PGenericType extends PType {
   def genericName : String
   def typeArguments : Seq[PType]
   override def isGround = typeArguments.forall(_.isGround)
+  override def toString = s"$genericName[${typeArguments.mkString(", ")}]"
 }
 
-sealed trait PGenericCollectionType extends PGenericType{
+sealed trait PGenericCollectionType extends PGenericType {
   def elementType : PType
   override val typeArguments = Seq(elementType)
-  override def toString = genericName + s"[$elementType]"
   override val subNodes = Seq(elementType)
   override def isValidOrUndeclared = typeArguments.forall(_.isValidOrUndeclared)
 }
