@@ -823,10 +823,17 @@ case class NameAnalyser() {
           case None =>
             globalDeclarationMap.get(idnuse.name).get
           case Some(foundEntity) =>
-            if (expected.isDefined && foundEntity.getClass != expected.get)
-              globalDeclarationMap.get(idnuse.name).get
-            else
+            if (expected.isDefined && foundEntity.getClass != expected.get) {
+              val globalResult = globalDeclarationMap.get(idnuse.name)
+              if (globalResult.isDefined && globalResult.get.getClass == expected.get) {
+                globalResult.get
+              } else {
+                // error will reported by caller.
+                null
+              }
+            } else {
               foundEntity
+            }
         }
 
       entity.asInstanceOf[PDeclaration] // TODO: Why is the cast necessary? Remove if possible.
