@@ -359,7 +359,7 @@ object PAdtOpApp {
           case pdc@PDiscriminatorCall(name, _) =>
             t.names.definition(t.curMember)(name) match {
               case Some(ac: PAdtConstructor) =>
-                val adt = t.names.definition(t.curMember)(ac.adtName).asInstanceOf[PAdt]
+                val adt = t.names.definition(t.curMember)(ac.adtName).get.asInstanceOf[PAdt]
                 pdc.adt = adt
                 val fdtv = PTypeVar.freshTypeSubstitution((adt.typVars map (tv => tv.idndef.name)).distinct) //fresh domain type variables
                 pdc.adtTypeRenaming = Some(fdtv)
