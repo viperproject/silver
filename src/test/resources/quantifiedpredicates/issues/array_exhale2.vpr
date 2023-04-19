@@ -33,7 +33,6 @@ predicate p(a: IArray, i:Int)
 method m1(a: IArray, n: Int, i1: Int, i2:Int)
   requires n > 3
   requires forall i: Int :: i > 0 && i < n ==> acc(p(a, i+1))
-   //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /Silicon/issue/251/)
   ensures  forall i: Int :: i > 0 && i < n  ==> acc(p(a,i+1))
 {}
 
@@ -63,7 +62,6 @@ method m5(a: IArray, n: Int, i1: Int, i2:Int)
   requires n > 3
   requires forall i: Int ::i > 0 && i < n  ==> acc(p(a, i+1))
    //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /Carbon/issue/159/)
-   //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /Silicon/issue/251/)
   ensures  forall i: Int :: i > 1 && i < n+1  ==> acc(p(a, i))
 {}
 
@@ -71,7 +69,6 @@ method m6(a: IArray, n: Int, i1: Int, i2:Int)
   requires n > 3
   requires forall i: Int ::  i > 0 && i < n  ==> acc(loc(a, i+1).val)
    //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /Carbon/issue/159/)
-   //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /Silicon/issue/251/)
   ensures  forall i: Int ::  i > 1 && i < n+1  ==> acc(loc(a, i).val)
 {}
 
