@@ -115,7 +115,7 @@ case class PAdtConstructor(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl])
     Try {
       n.definition(t.curMember)(PIdnUse("is" + idndef.name)(idndef.pos))
     } match {
-      case Success(decl) =>
+      case Success(Some(decl)) =>
         t.messages ++= FastMessaging.message(idndef, "corresponding adt discriminator identifier `" + decl.idndef.name + "' at " + idndef.pos._1 + " is shadowed at " + decl.idndef.pos._1)
       case _ =>
     }
@@ -211,7 +211,7 @@ case class PAdtType(adt: PIdnUse, args: Seq[PType])
         var x: Any = null
 
         try {
-          x = t.names.definition(t.curMember)(adt)
+          x = t.names.definition(t.curMember)(adt).get
         } catch {
           case _: Throwable =>
         }
@@ -325,10 +325,10 @@ object PAdtOpApp {
             }
 
             if (!nestedTypeError) {
-              val ac = t.names.definition(t.curMember)(constr).asInstanceOf[PAdtConstructor]
+              val ac = t.names.definition(t.curMember)(constr).get.asInstanceOf[PAdtConstructor]
               pcc.constructor = ac
               t.ensure(ac.formalArgs.size == args.size, pcc, "wrong number of arguments")
-              val adt = t.names.definition(t.curMember)(ac.adtName).asInstanceOf[PAdt]
+              val adt = t.names.definition(t.curMember)(ac.adtName).get.asInstanceOf[PAdt]
               pcc.adt = adt
               val fdtv = PTypeVar.freshTypeSubstitution((adt.typVars map (tv => tv.idndef.name)).distinct) //fresh domain type variables
               pcc.adtTypeRenaming = Some(fdtv)
@@ -339,7 +339,7 @@ object PAdtOpApp {
           case pdc@PDestructorCall(name, _) =>
             pdc.args.head.typ match {
               case at: PAdtType =>
-                val adt = t.names.definition(t.curMember)(at.adt).asInstanceOf[PAdt]
+                val adt = t.names.definition(t.curMember)(at.adt).get.asInstanceOf[PAdt]
                 pdc.adt = adt
                 val matchingConstructorArgs: Seq[PFormalArgDecl] = adt.constructors flatMap (c => c.formalArgs.collect { case fad@PFormalArgDecl(idndef, _) if idndef.name == name => fad })
                 if (matchingConstructorArgs.nonEmpty) {
@@ -358,7 +358,7 @@ object PAdtOpApp {
 
           case pdc@PDiscriminatorCall(name, _) =>
             t.names.definition(t.curMember)(name) match {
-              case ac: PAdtConstructor =>
+              case Some(ac: PAdtConstructor) =>
                 val adt = t.names.definition(t.curMember)(ac.adtName).asInstanceOf[PAdt]
                 pdc.adt = adt
                 val fdtv = PTypeVar.freshTypeSubstitution((adt.typVars map (tv => tv.idndef.name)).distinct) //fresh domain type variables

@@ -196,7 +196,7 @@ case class TypeChecker(names: NameAnalyser) {
         check(e, Bool)
       case PAssume(e) =>
         check(e, Bool)
-      case p@PVarAssign(idnuse, PCall(func, args, _)) if names.definition(curMember)(func).isInstanceOf[PMethod] =>
+      case p@PVarAssign(idnuse, PCall(func, args, _)) if names.definition(curMember)(func).get.isInstanceOf[PMethod] =>
         /* This is a method call that got parsed in a slightly confusing way.
          * TODO: Get rid of this case! There is a matching case in the translator.
          */
@@ -205,10 +205,10 @@ case class TypeChecker(names: NameAnalyser) {
 
       case PVarAssign(idnuse, rhs) =>
         names.definition(curMember)(idnuse) match {
-          case PLocalVarDecl(_, typ, _) =>
+          case Some(PLocalVarDecl(_, typ, _)) =>
             check(idnuse, typ)
             check(rhs, typ)
-          case PFormalArgDecl(_, typ) =>
+          case Some(PFormalArgDecl(_, typ)) =>
             check(idnuse, typ)
             check(rhs, typ)
           case _ =>
@@ -219,14 +219,14 @@ case class TypeChecker(names: NameAnalyser) {
         acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](Seq(target), msg){(v, _) => check(v, Ref)}
         fields foreach (_.foreach (field =>
           names.definition(curMember)(field) match {
-            case PField(_, typ) =>
+            case Some(PField(_, typ)) =>
               check(field, typ)
             case _ =>
               messages ++= FastMessaging.message(stmt, "expected a field as argument")
           }))
       case PMethodCall(targets, method, args) =>
         names.definition(curMember)(method) match {
-          case PMethod(_, formalArgs, formalTargets, _, _, _) =>
+          case Some(PMethod(_, formalArgs, formalTargets, _, _, _)) =>
             formalArgs.foreach(fa=>check(fa.typ))
             if (formalArgs.length != args.length) {
               messages ++= FastMessaging.message(stmt, "wrong number of arguments")
@@ -247,7 +247,7 @@ case class TypeChecker(names: NameAnalyser) {
       case PGoto(_) =>
       case PFieldAssign(field, rhs) =>
         names.definition(curMember)(field.idnuse, Some(PField.getClass)) match {
-          case PField(_, typ) =>
+          case Some(PField(_, typ)) =>
             check(field, typ)
             check(rhs, typ)
           case _ =>
@@ -318,7 +318,7 @@ case class TypeChecker(names: NameAnalyser) {
       case PAccPred(PCall( idnuse, _, _), _) =>
         val ad = names.definition(curMember)(idnuse)
         ad match {
-          case _: PPredicate =>
+          case Some(_: PPredicate) =>
             acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate"){(_, _predicate) =>
               val predicate = _predicate.asInstanceOf[PPredicate]
               if (predicate.body.isEmpty) messages ++= FastMessaging.message(idnuse, messageIfAbstractPredicate)
@@ -368,7 +368,7 @@ case class TypeChecker(names: NameAnalyser) {
     val acceptedClasses = Seq[Class[_]](classTag[T1].runtimeClass, classTag[T2].runtimeClass)
 
     idnUses.foreach { use =>
-      val decl = names.definition(curMember)(use)
+      val decl = names.definition(curMember)(use).get
 
       acceptedClasses.find(_.isInstance(decl)) match {
         case Some(_) =>
@@ -395,7 +395,7 @@ case class TypeChecker(names: NameAnalyser) {
         var x: Any = null
 
         try {
-          x = names.definition(curMember)(domain)
+          x = names.definition(curMember)(domain).get
         } catch {
           case _: Throwable =>
         }
@@ -622,7 +622,7 @@ case class TypeChecker(names: NameAnalyser) {
                 if (!nestedTypeError) {
                   val ad = names.definition(curMember)(func)
                   ad match {
-                    case fd: PAnyFunction =>
+                    case Some(fd: PAnyFunction) =>
                       pfa.function = fd
                       ensure(fd.formalArgs.size == args.size, pfa, "wrong number of arguments")
                       fd match {
@@ -635,15 +635,15 @@ case class TypeChecker(names: NameAnalyser) {
                             issueError(func, func.name + " is not a domain function")
 
                         case pdf@PDomainFunction(_, _, _, _, _) =>
-                          val domain = names.definition(curMember)(pdf.domainName).asInstanceOf[PDomain]
+                          val domain = names.definition(curMember)(pdf.domainName).get.asInstanceOf[PDomain]
                           val fdtv = PTypeVar.freshTypeSubstitution((domain.typVars map (tv => tv.idndef.name)).distinct) //fresh domain type variables
                           pfa.domainTypeRenaming = Some(fdtv)
                           pfa._extraLocalTypeVariables = (domain.typVars map (tv => PTypeVar(tv.idndef.name))).toSet
                           extraReturnTypeConstraint = explicitType
                       }
-                    case ppa: PPredicate =>
+                    case Some(ppa: PPredicate) =>
                       pfa.extfunction = ppa
-                      val predicate = names.definition(curMember)(func).asInstanceOf[PPredicate]
+                      val predicate = names.definition(curMember)(func).get.asInstanceOf[PPredicate]
                       acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(func), "expected predicate") { (id, _) =>
                         checkInternal(id)
                         if (args.length != predicate.formalArgs.length)
@@ -687,7 +687,7 @@ case class TypeChecker(names: NameAnalyser) {
                 }
 
               case ppa@PPredicateAccess(args, idnuse) =>
-                val predicate = names.definition(curMember)(ppa.idnuse).asInstanceOf[PPredicate]
+                val predicate = names.definition(curMember)(ppa.idnuse).get.asInstanceOf[PPredicate]
                 acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate") { (id, _) =>
                   checkInternal(id)
                   if (args.length != predicate.formalArgs.length)
@@ -735,11 +735,11 @@ case class TypeChecker(names: NameAnalyser) {
 
       case piu @ PIdnUse(_) =>
         names.definition(curMember)(piu) match {
-          case decl @ PLocalVarDecl(_, typ, _) => setPIdnUseTypeAndEntity(piu, typ, decl)
-          case decl @ PFormalArgDecl(_, typ) => setPIdnUseTypeAndEntity(piu, typ, decl)
-          case decl @ PField(_, typ) => setPIdnUseTypeAndEntity(piu, typ, decl)
-          case decl @ PPredicate(_, _, _) => setPIdnUseTypeAndEntity(piu, Pred, decl)
-          case x => issueError(piu, s"expected identifier, but got $x")
+          case Some(decl @ PLocalVarDecl(_, typ, _)) => setPIdnUseTypeAndEntity(piu, typ, decl)
+          case Some(decl @ PFormalArgDecl(_, typ)) => setPIdnUseTypeAndEntity(piu, typ, decl)
+          case Some(decl @ PField(_, typ)) => setPIdnUseTypeAndEntity(piu, typ, decl)
+          case Some(decl @ PPredicate(_, _, _)) => setPIdnUseTypeAndEntity(piu, Pred, decl)
+          case x => issueError(piu, s"expected identifier, but got ${x.get}")
         }
 
       case pl@PLet(e,ns) =>
@@ -795,7 +795,7 @@ case class NameAnalyser() {
   var messages : FastMessaging.Messages = Nil
 
 
-  /** Resolves the entity to which the given identifier `idnuse` refers.
+  /** Resolves the declaration to which the given identifier `idnuse` refers.
     *
     * If `member` is not null then the identifier will first be looked up in
     * the scope defined by the member. If it fails (or if the member is null),
@@ -811,32 +811,32 @@ case class NameAnalyser() {
     * @param member Current scope in which to start the resolving.
     * @param idnuse Identifier that is to be resolved.
     * @param expected Expected class of the entity.
-    * @return Resolved entity.
+    * @return Resolved entity of expected type, or None if no entity of that type was found.
     */
-  def definition(member: PScope)(idnuse: PIdnUse, expected: Option[Class[_]] = None): PDeclaration = {
+  def definition(member: PScope)(idnuse: PIdnUse, expected: Option[Class[_]] = None): Option[PDeclaration] = {
     if (member == null) {
-      globalDeclarationMap.get(idnuse.name).get.asInstanceOf[PDeclaration]
+      globalDeclarationMap.get(idnuse.name)
     } else {
       // lookup in method map first, and otherwise in the general one
       val entity =
         localDeclarationMaps.get(member.scopeId).get.get(idnuse.name) match {
           case None =>
-            globalDeclarationMap.get(idnuse.name).get
+            globalDeclarationMap.get(idnuse.name)
           case Some(foundEntity) =>
             if (expected.isDefined && foundEntity.getClass != expected.get) {
               val globalResult = globalDeclarationMap.get(idnuse.name)
               if (globalResult.isDefined && globalResult.get.getClass == expected.get) {
-                globalResult.get
+                globalResult
               } else {
                 // error will reported by caller.
-                null
+                None
               }
             } else {
-              foundEntity
+              Some(foundEntity)
             }
         }
 
-      entity.asInstanceOf[PDeclaration] // TODO: Why is the cast necessary? Remove if possible.
+      entity
     }
   }
 
@@ -847,8 +847,8 @@ case class NameAnalyser() {
     namesInScope.clear()
   }
 
-  private val globalDeclarationMap = mutable.HashMap[String, PEntity]()
-  private val universalDeclarationMap = mutable.HashMap[String, PEntity]()
+  private val globalDeclarationMap = mutable.HashMap[String, PDeclaration]()
+  private val universalDeclarationMap = mutable.HashMap[String, PDeclaration]()
 
   /* [2014-11-13 Malte] Changed localDeclarationMaps to be a map from PScope.Id
    * instead of from PScope directly. This was necessary in order to support
@@ -858,7 +858,7 @@ case class NameAnalyser() {
    * localDeclarationMaps because such that the value stored for scope cannot
    * be retrieved anymore.
    */
-  private val localDeclarationMaps = mutable.HashMap[PScope.Id, mutable.HashMap[String, PEntity]]()
+  private val localDeclarationMaps = mutable.HashMap[PScope.Id, mutable.HashMap[String, PDeclaration]]()
 
   private val namesInScope = mutable.Set.empty[String]
 
@@ -872,13 +872,13 @@ case class NameAnalyser() {
   }
   private def check(n: PNode, target: Option[PNode]): Unit = {
     var curMember: PScope = null
-    def getMap(d:PNode) : mutable.HashMap[String, PEntity] =
+    def getMap(d:PNode) : mutable.HashMap[String, PDeclaration] =
       d match {
         case _: PUniversalDeclaration => universalDeclarationMap
         case _: PGlobalDeclaration => globalDeclarationMap
         case _ => getCurrentMap
       }
-    def getCurrentMap: mutable.HashMap[String, PEntity] =
+    def getCurrentMap: mutable.HashMap[String, PDeclaration] =
       if (curMember == null) globalDeclarationMap else localDeclarationMaps.get(curMember.scopeId).get
 
     val scopeStack = mutable.Stack[PScope]()
@@ -895,13 +895,11 @@ case class NameAnalyser() {
                 // This is expected, nothing to do.
               case Some(e: PDeclaration) =>
                 messages ++= FastMessaging.message(e.idndef, "Duplicate identifier `" + e.idndef.name + "' at " + e.idndef.pos._1 + " and at " + d.idndef.pos._1)
-              case Some(_: PErrorEntity) =>
               case None =>
                 globalDeclarationMap.get(d.idndef.name) match {
                   case Some(e: PDeclaration) =>
                     if (!(d.parent.isDefined && d.parent.get.isInstanceOf[PDomainFunction]))
                       messages ++= FastMessaging.message(e, "Identifier shadowing `" + e.idndef.name + "' at " + e.idndef.pos._1 + " and at " + d.idndef.pos._1)
-                  case Some(_: PErrorEntity) =>
                   case None =>
                     getMap(d).put(d.idndef.name, d)
                 }
@@ -929,9 +927,9 @@ case class NameAnalyser() {
           case s: PScope =>
             val localDeclarations =
               if (curMember == null)
-                mutable.HashMap[String, PEntity]()
+                mutable.HashMap[String, PDeclaration]()
               else
-                localDeclarationMaps.getOrElse(curMember.scopeId, mutable.HashMap[String, PEntity]()).clone()
+                localDeclarationMaps.getOrElse(curMember.scopeId, mutable.HashMap[String, PDeclaration]()).clone()
 
             localDeclarationMaps.put(s.scopeId, localDeclarations)
             scopeStack.push(curMember)
