@@ -30,6 +30,8 @@ object Triggers {
     /* True iff the given node is a possible trigger */
     protected def isPossibleTrigger(e: Exp): Boolean = (customIsPossibleTrigger orElse {
       case _: PossibleTrigger => true
+      case Old(_: PossibleTrigger) => true
+      case LabelledOld(_: PossibleTrigger, _) => true
       case _ => false
     }: PartialFunction[Exp, Boolean])(e)
 

@@ -40,6 +40,5 @@ method merge_sort_part(arr: Ref, from: Int, until: Int)
   //assert index < right_index // sanity check: passes
   store(arr,index, left_value);
 
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/509/)
   assert forall i:Int, j:Int :: {lookup(arr,i),lookup(arr,j)}(right_index<=i && i<j && j<until) ==> lookup(arr,i) <= lookup(arr,j)
 }
