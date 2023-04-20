@@ -1,0 +1,15 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+domain bv1 interpretation (SMTLIB: "(_ BitVec 1)", Boogie: "bv1") {
+  function bv1_mk(): bv1 interpretation "#b0"
+}
+
+method m()
+{
+    var a: bv1
+    a := bv1_mk()
+    var b: bv1
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert a == b
+}
