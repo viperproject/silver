@@ -5,7 +5,6 @@
  * VerifyThis@FM2012: http://fm2012.verifythis.org/challenges
  */
 
-//:: IgnoreFile(/silicon/issue/398/)
 
 define access(a) forall k: Int :: 0 <= k && k < len(a) ==> acc(loc(a, k).val)
 define untouched(a) forall k: Int :: 0 <= k && k < len(a) ==> loc(a, k).val == old(loc(a, k).val)
