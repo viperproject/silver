@@ -3,6 +3,10 @@
 
 field f1: Int
 
+function permInPost(x: Ref): Int
+  //:: ExpectedOutput(consistency.error)
+  ensures [perm(x.f1) == none, true]
+
 method permUse()
 {
   var r1: Ref

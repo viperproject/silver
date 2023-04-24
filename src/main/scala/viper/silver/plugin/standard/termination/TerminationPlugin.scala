@@ -79,6 +79,9 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
       case pc@PCall(idnUse, args, None) if input.predicates.exists(_.idndef.name == idnUse.name) =>
         // PCall represents the predicate access before the translation into the AST
         PPredicateInstance(args, idnUse)(pc.pos)
+      case PAccPred(pa@PPredicateAccess(args, idnuse), _) => PPredicateInstance(args, idnuse)(pa.pos)
+      case PAccPred(pc@PCall(idnUse, args, None), _) if input.predicates.exists(_.idndef.name == idnUse.name) =>
+        PPredicateInstance(args, idnUse)(pc.pos)
       case d => d
     }).recurseFunc({
       case PUnfolding(_, exp) => // ignore predicate access when it is used for unfolding
