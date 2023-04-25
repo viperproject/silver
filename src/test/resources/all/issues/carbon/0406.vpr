@@ -1,0 +1,24 @@
+field f: Ref
+
+method m1() {
+    var y: Ref
+    var z: Ref
+    inhale acc(y.f) && acc(z.f)
+    exhale acc(y.f) && forperm x: Ref [x.f] :: x != z ==> 0/0 == 0/0
+}
+
+method m2() {
+    var x: Ref
+
+    inhale acc(x.f)
+
+    //:: ExpectedOutput(exhale.failed:division.by.zero)
+    exhale acc(x.f) && (perm(x.f) == none ==> 0/0 == 0/0)
+}
+
+method m3() {
+    var x: Ref
+
+    inhale acc(x.f)
+    exhale acc(x.f) && (perm(x.f) != none ==> 0/0 == 0/0)
+}
