@@ -240,6 +240,8 @@ case class PAdtType(adt: PIdnUse, args: Seq[PType])
     }
   }
 
+  override def withTypeArguments(s: Seq[PType]): PGenericType = copy(args = s)(pos)
+
   override def toString: String = adt.name + (if (args.isEmpty) "" else s"[${args.mkString(", ")}]")
 
 }
@@ -282,7 +284,7 @@ sealed trait PAdtOpApp extends PExtender with POpApp {
         assert(s3.m.forall(_._2.isGround))
         adtSubstitution = Some(s3)
         dtr.mm.values.foldLeft(ots)(
-          (tss, s) => if (tss.contains(s)) tss else tss.add(s, PTypeSubstitution.defaultType).get)
+          (tss, s) => if (tss.contains(s)) tss else tss.add(s, PTypeSubstitution.defaultType).toOption.get)
       case _ => ots
     }
     super.forceSubstitution(ts)
@@ -386,7 +388,7 @@ object PAdtOpApp {
                 case Some(t) => Seq((rrt, t, List(PTypeSubstitution.id)))
               }
               )
-          )
+          ).getOrElse(Seq())
           val ts = poa.typeSubstitutions.distinct
           if (ts.isEmpty)
             t.typeError(poa)

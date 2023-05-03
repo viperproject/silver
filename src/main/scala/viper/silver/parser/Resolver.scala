@@ -459,11 +459,12 @@ case class TypeChecker(names: NameAnalyser) {
    * Type-check and resolve e and ensure that it has type expected.  If that is not the case, then an
    * error should be issued.
    */
-  def composeAndAdd(pts1: PTypeSubstitution,pts2: PTypeSubstitution,pt1:PType,pt2:PType) : Option[PTypeSubstitution] = {
+  def composeAndAdd(pts1: PTypeSubstitution,pts2: PTypeSubstitution,pt1:PType,pt2:PType) : Either[(PType, PType), PTypeSubstitution] = {
     val sharedKeys = pts1.keySet.intersect(pts2.keySet)
     if (sharedKeys.exists(p => pts1.get(p).get != pts2.get(p).get)) {
       /* no composed substitution if input substitutions do not match */
-      return None
+      val nonMatchingKey = sharedKeys.find(p => pts1.get(p).get != pts2.get(p).get).get
+      return Left((pts1.get(nonMatchingKey).get, pts2.get(nonMatchingKey).get))
     }
 
     //composed substitution before add
@@ -474,7 +475,7 @@ case class TypeChecker(names: NameAnalyser) {
   }
   def unifySequenceWithSubstitutions(
     rlts: Seq[PTypeSubstitution], //local substitutions, refreshed
-    argData: scala.collection.immutable.Seq[(PType, PType, Seq[PTypeSubstitution])]) : Seq[PTypeSubstitution]
+    argData: scala.collection.immutable.Seq[(PType, PType, Seq[PTypeSubstitution])]) : Either[(PType, PType), Seq[PTypeSubstitution]]
     // a sequence of triples, one per op arguments, where
     //_1 is the fresh local argument type
     //_2 is the type of the argument expression
@@ -482,10 +483,15 @@ case class TypeChecker(names: NameAnalyser) {
       = {
     var pss = rlts
     for (tri <- argData){
-      val current = (for (ps <- pss; aps <- tri._3) yield composeAndAdd(ps, aps, tri._1, tri._2))
-      pss = current.flatten
+      val current = (for (ps <- pss; aps <- tri._3)
+        yield composeAndAdd(ps, aps, tri._1, tri._2))
+      val badMatch = current.find(e => e.isLeft)
+      if (badMatch.isDefined) {
+        return Left(badMatch.get.swap.toOption.get)
+      }
+      pss = current.flatMap(_.toOption)
     }
-    pss
+    Right(pss)
     //(a:Set[PTypeSubstitution], e:Option[PTypeSubstitution])=>{
   }
 
@@ -493,7 +499,7 @@ case class TypeChecker(names: NameAnalyser) {
     pts.m.flatMap(kv=>kv._2.freeTypeVariables &~ pts.m.keySet).foldLeft(pts)((ts,fv)=>
       {
         messages ++= FastMessaging.message(exp, s"Unconstrained type parameter, substituting default type ${PTypeSubstitution.defaultType}.", error=false)
-        ts.add(PTypeVar(fv),PTypeSubstitution.defaultType).get
+        ts.add(PTypeVar(fv),PTypeSubstitution.defaultType).toOption.get
       }
     )
 
@@ -517,7 +523,7 @@ case class TypeChecker(names: NameAnalyser) {
     checkInternal(exp)
     if (exp.typ.isValidOrUndeclared && exp.typeSubstitutions.nonEmpty) {
       val etss = oexpected match {
-        case Some(expected) if expected.isValidOrUndeclared => exp.typeSubstitutions.flatMap(_.add(exp.typ, expected))
+        case Some(expected) if expected.isValidOrUndeclared => exp.typeSubstitutions.flatMap(_.add(exp.typ, expected).toOption)
         case _ => exp.typeSubstitutions
       }
       if (etss.nonEmpty) {
@@ -714,18 +720,22 @@ case class TypeChecker(names: NameAnalyser) {
               val rrt: PDomainType = POpApp.pRes.substitute(ltr).asInstanceOf[PDomainType] // return type (which is a dummy type variable) replaced with fresh type
               val flat = poa.args.indices map (i => POpApp.pArg(i).substitute(ltr)) //fresh local argument types
               // the triples below are: (fresh argument type, argument type as used in domain of substitutions, substitutions)
-              poa.typeSubstitutions ++= unifySequenceWithSubstitutions(rlts, flat.indices.map(i => (flat(i), poa.args(i).typ, poa.args(i).typeSubstitutions.distinct.toSeq)) ++
+              val arg = flat.indices.map(i => (flat(i), poa.args(i).typ, poa.args(i).typeSubstitutions.distinct.toSeq)) ++
                 (
                   extraReturnTypeConstraint match {
                     case None => Nil
                     case Some(t) => Seq((rrt, t, List(PTypeSubstitution.id)))
                   }
-                )
-              )
-              val ts = poa.typeSubstitutions.distinct
-              if (ts.isEmpty)
-                typeError(poa)
-              poa.typ = if (ts.size == 1) rrt.substitute(ts.head) else rrt
+                  )
+              val unifiedSequence = unifySequenceWithSubstitutions(rlts, arg)
+              if (unifiedSequence.isLeft && poa.typeSubstitutions.isEmpty) {
+                val problem = unifiedSequence.swap.toOption.get
+                messages ++= FastMessaging.message(exp, s"Type error in the expression at ${exp.pos._1}. Could not unify ${problem._1} with ${problem._2}.")
+              } else {
+                poa.typeSubstitutions ++= unifiedSequence.toOption.get
+                val ts = poa.typeSubstitutions.distinct
+                poa.typ = if (ts.size == 1) rrt.substitute(ts.head) else rrt
+              }
             } else {
               poa.typeSubstitutions.clear()
               poa.typ = PUnknown()()
@@ -749,7 +759,7 @@ case class TypeChecker(names: NameAnalyser) {
         ns.variable.typ = e.typ
         checkInternal(pl.body)
         pl.typ = pl.body.typ
-        pl._typeSubstitutions = (for (ts1 <- pl.body.typeSubstitutions;ts2 <- e.typeSubstitutions) yield ts1*ts2).flatten.toList.distinct
+        pl._typeSubstitutions = (for (ts1 <- pl.body.typeSubstitutions;ts2 <- e.typeSubstitutions) yield (ts1*ts2).toOption).flatten.toList.distinct
         curMember = oldCurMember
 
       case pq: PForPerm =>
