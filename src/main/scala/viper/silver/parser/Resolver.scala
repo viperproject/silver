@@ -485,8 +485,9 @@ case class TypeChecker(names: NameAnalyser) {
     for (tri <- argData){
       val current = (for (ps <- pss; aps <- tri._3)
         yield composeAndAdd(ps, aps, tri._1, tri._2))
-      val badMatch = current.find(e => e.isLeft)
-      if (badMatch.isDefined) {
+      val allBad = current.forall(e => e.isLeft)
+      if (allBad) {
+        val badMatch = current.find(e => e.isLeft)
         return Left(badMatch.get.swap.toOption.get)
       }
       pss = current.flatMap(_.toOption)
@@ -532,7 +533,12 @@ case class TypeChecker(names: NameAnalyser) {
       } else {
         oexpected match {
           case Some(expected) =>
-            messages ++= FastMessaging.message(exp, s"Expected type ${expected.toString}, but found ${exp.typ.toString} at the expression at ${exp.pos._1}")
+            val reportedActual = if (exp.typ.isGround) {
+              exp.typ
+            } else {
+              exp.typ.substitute(selectAndGroundTypeSubstitution(exp, exp.typeSubstitutions))
+            }
+            messages ++= FastMessaging.message(exp, s"Expected type ${expected.toString}, but found ${reportedActual} at the expression at ${exp.pos._1}")
           case None =>
             typeError(exp)
         }
@@ -730,7 +736,7 @@ case class TypeChecker(names: NameAnalyser) {
               val unifiedSequence = unifySequenceWithSubstitutions(rlts, arg)
               if (unifiedSequence.isLeft && poa.typeSubstitutions.isEmpty) {
                 val problem = unifiedSequence.swap.toOption.get
-                messages ++= FastMessaging.message(exp, s"Type error in the expression at ${exp.pos._1}. Could not unify ${problem._1} with ${problem._2}.")
+                messages ++= FastMessaging.message(exp, s"Type error in the expression at ${exp.pos._1}. Expected ${problem._1} but got ${problem._2}.")
               } else {
                 poa.typeSubstitutions ++= unifiedSequence.toOption.get
                 val ts = poa.typeSubstitutions.distinct
