@@ -287,8 +287,8 @@ class RegexTests extends AnyFunSuite with FileComparisonHelper {
     val map = collection.mutable.Map.empty[LocalVar, BigInt]
     val collect = ViperStrategy.Slim({
       case p: Program => map.clear(); p // Reset map at start
-      case ass@LocalVarAssign(l: LocalVar, i: IntLit) => map += (l -> i.i); ass
-    }) recurseFunc { case l: LocalVarAssign => Seq(l.rhs) }
+      case ass@Assign(l: LocalVar, i: IntLit) => map += (l -> i.i); ass
+    }) recurseFunc { case l: Assign[_] => Seq(l.rhs) }
 
     val replace = ViperStrategy.Slim({
       case l: LocalVar =>

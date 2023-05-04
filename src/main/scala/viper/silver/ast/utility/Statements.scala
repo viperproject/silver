@@ -79,9 +79,9 @@ object Statements {
     var writtenTo = Seq[LocalVar]()
 
     s visit {
-      case LocalVarAssign(lhs, _) => writtenTo = lhs +: writtenTo
-      case MethodCall(_, _, targets) => writtenTo = writtenTo ++ targets
-      case NewStmt(target, _) => writtenTo = target +: writtenTo
+      case Assign(lhs: LocalVar, _) => writtenTo = lhs +: writtenTo
+      case MethodCall(_, _, targets) => writtenTo = writtenTo ++ targets collect { case t: LocalVar => t }
+      case NewStmt(target: LocalVar, _) => writtenTo = target +: writtenTo
       case While(_, _, body) => writtenTo = writtenTo ++ (writtenVars(body) intersect s.undeclLocalVars)
     }
 

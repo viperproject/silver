@@ -750,20 +750,23 @@ class FastParser {
     val expander = StrategyBuilder.Ancestor[PNode] {
 
       // Handles macros on the left hand-side of assignments
-      case (PMacroAssign(call, exp), ctx) =>
-        if (!isMacro(call.opName))
-          throw ParseException("The only calls that can be on the left-hand side of an assignment statement are calls to macros", call.pos._1)
+      case (assign@PAssign(targets, rhs), ctx) =>
+        val expandedTargets = targets map {
+          case call: PCall => {
+            if (!isMacro(call.opName))
+              throw ParseException("The only calls that can be on the left-hand side of an assignment statement are calls to macros", call.pos._1)
+            val body = ExpandMacroIfValid(call, ctx)
 
-        val body = ExpandMacroIfValid(call, ctx)
-
-        // Check if macro's body can be the left-hand side of an assignment and,
-        // if that's the case, add it in a corresponding assignment statement
-        body match {
-          case fa: PFieldAccess =>
-            val node = PFieldAssign(fa, exp)(fa.pos)
-            (node, ctx)
-          case _ => throw ParseException("The body of this macro is not a suitable left-hand side for an assignment statement", call.pos._1)
+            // Check if macro's body can be the left-hand side of an assignment and,
+            // if that's the case, add it in a corresponding assignment statement
+            body match {
+              case target: PAssignTarget => target
+              case _ => throw ParseException("The body of this macro is not a suitable left-hand side for an assignment statement", call.pos._1)
+            }
+          }
+          case target => target
         }
+        (PAssign(expandedTargets, rhs)(assign.pos), ctx)
 
       // Handles all other calls to macros
       case (node, ctx) => (ExpandMacroIfValid(node, ctx), ctx)
@@ -800,7 +803,7 @@ class FastParser {
     | setTypedEmpty | explicitSetNonEmpty | multiSetTypedEmpty | explicitMultisetNonEmpty | seqTypedEmpty
     | size | explicitSeqNonEmpty | seqRange
     | mapTypedEmpty | explicitMapNonEmpty | mapDomain | mapRange
-    | fapp | idnuse | ParserExtension.newExpAtEnd(ctx))
+    | newExp | fapp | idnuse | ParserExtension.newExpAtEnd(ctx))
 
   def result[$: P]: P[PResultLit] = FP(keyword("result")).map { case (pos, _) => PResultLit()(pos) }
 
@@ -1085,6 +1088,10 @@ class FastParser {
     case (pos, e) => PMapRange(e)(pos)
   })
 
+  def newExp[$: P]: P[PNewExp] = FP("new" ~ "(" ~ newExpFields ~ ")").map { case (pos, fields) => PNewExp(fields)(pos) }
+
+  def newExpFields[$: P]: P[Option[Seq[PIdnUse]]] = P(idnuse.rep(sep = ",")).map(Some(_)) | P("*").map(_ => None)
+
   def fapp[$: P]: P[PCall] = FP(idnuse ~ parens(actualArgList)).map {
     case (pos, (func, args)) =>
       PCall(func, args, None)(pos)
@@ -1094,23 +1101,21 @@ class FastParser {
     case (pos, (func, args, typeGiven)) => PCall(func, args, Some(typeGiven))(pos)
   }
 
-  def stmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | macroassign | fieldassign | localassign | fold | unfold | exhale | assertP |
-    inhale | assume | ifthnels | whle | varDecl | defineDecl | newstmt | 
-    methodCall | goto | lbl | packageWand | applyWand | macroref | block |
+  def stmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | fold | unfold | exhale | assertP |
+    inhale | assume | ifthnels | whle | varDecl | defineDecl | 
+    goto | lbl | packageWand | applyWand | assign | macroref | block |
     quasihavoc | quasihavocall | ParserExtension.newStmtAtEnd(ctx))
 
-  def nodefinestmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | fieldassign | localassign | fold | unfold | exhale | assertP |
-    inhale | assume | ifthnels | whle | varDecl | newstmt |
-    methodCall | goto | lbl | packageWand | applyWand | macroref | block |
+  def nodefinestmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | fold | unfold | exhale | assertP |
+    inhale | assume | ifthnels | whle | varDecl |
+    goto | lbl | packageWand | applyWand | assign | macroref | block |
     quasihavoc | quasihavocall | ParserExtension.newStmtAtEnd(ctx))
 
   def macroref[$: P]: P[PMacroRef] = FP(idnuse).map { case (pos, a) => PMacroRef(a)(pos) }
 
-  def fieldassign[$: P]: P[PFieldAssign] = FP(fieldAcc ~ ":=" ~ exp).map { case (pos, (a, b)) => PFieldAssign(a, b)(pos) }
+  def assignTarget[$: P]: P[PAssignTarget] = fieldAcc | NoCut(fapp) | idnuse
 
-  def macroassign[$: P]: P[PMacroAssign] = FP(NoCut(fapp) ~ ":=" ~ exp).map { case (pos, (call, exp)) => PMacroAssign(call, exp)(pos) }
-
-  def localassign[$: P]: P[PVarAssign] = FP(idnuse ~ ":=" ~ exp).map { case (pos, (a, b)) => PVarAssign(a, b)(pos) }
+  def assign[$: P]: P[PAssign] = FP((assignTarget.rep(min = 1, sep = ",") ~ ":=").? ~ exp).map { case (pos, (targets, rhs)) => PAssign(targets.getOrElse(Seq()), rhs)(pos) }
 
   def fold[$: P]: P[PFold] = FP("fold" ~ predicateAccessPred).map{ case (pos, e) => PFold(e)(pos)}
 
@@ -1170,26 +1175,15 @@ class FastParser {
 
   def inv(implicit ctx : P[_]) : P[PExp] = P((keyword("invariant") ~ exp ~~~ ";".lw.?) | ParserExtension.invSpecification(ctx))
 
-  def varDecl[$: P]: P[PLocalVarDecl] = FP(keyword("var") ~/ idndef ~ ":" ~ typ ~~~ (":=" ~ exp).lw.?).map { case (pos, (a, b, c)) => PLocalVarDecl(a, b, c)(pos) }
+  def varDecl[$: P]: P[PLocalVarDecl] = FP(keyword("var") ~/ nonEmptyFormalArgList ~~~ (":=" ~ exp).lw.?).map {
+    case (pos, (a, b)) => PLocalVarDecl(a, b.map(i => PAssign(a.map(v => PIdnUse(v.idndef.name)(v.idndef.pos)), i)(pos)))(pos)
+  }
 
   def defineDecl[$: P]: P[PDefine] = FP(keyword("define") ~/ idndef ~ ("(" ~ idndef.rep(sep = ",") ~ ")").? ~ (exp | "{" ~ (nodefinestmt ~ ";".?).rep ~ "}")).map {
     case (pos, (a, b, c)) => c match {
       case e: PExp => PDefine(a, b, e)(pos)
       case ss: Seq[PStmt]@unchecked => PDefine(a, b, PSeqn(ss)(pos))(pos)
     }
-  }
-
-  def newstmt[$: P]: P[PNewStmt] = starredNewstmt | regularNewstmt
-
-  def regularNewstmt[$: P]: P[PRegularNewStmt] = FP(idnuse ~ ":=" ~ "new" ~ "(" ~ idnuse.rep(sep = ",") ~ ")").map { case (pos, (a, b)) => PRegularNewStmt(a, b)(pos) }
-
-  def starredNewstmt[$: P]: P[PStarredNewStmt] = FP(idnuse ~ ":=" ~ "new" ~ "(" ~ "*" ~ ")").map{ case (pos, e) => PStarredNewStmt(e)(pos) }
-
-  def methodCall[$: P]: P[PMethodCall] = FP((idnuse.rep(sep = ",") ~ ":=").? ~ idnuse ~ parens(exp.rep(sep = ","))).map {
-    case (pos, (None, method, args)) =>
-      PMethodCall(Nil, method, args)(pos)
-    case (pos, (Some(targets), method, args)) =>
-      PMethodCall(targets, method, args)(pos)
   }
 
   def goto[$: P]: P[PGoto] = FP("goto" ~/ idnuse).map{ case (pos, e) => PGoto(e)(pos) }
@@ -1263,8 +1257,6 @@ class FastParser {
   def anyFormalArgList[$: P]: P[Seq[PAnyFormalArgDecl]] = P((formalArg | unnamedFormalArg).rep(sep = ","))
 
   def unnamedFormalArg[$: P] = FP(typ).map{ case (pos, t) => PUnnamedFormalArgDecl(t)(pos) }
-
-  def functionSignature[$: P] = P("function" ~ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ)
 
   def formalArgList[$: P]: P[Seq[PFormalArgDecl]] = P(formalArg.rep(sep = ","))
 

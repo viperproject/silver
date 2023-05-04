@@ -38,40 +38,14 @@ sealed trait Stmt extends Hashable with Infoed with Positioned with Transformabl
 }
 
 /** A statement that creates a new object and assigns it to a local variable. */
-case class NewStmt(lhs: LocalVar, fields: Seq[Field])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
+case class NewStmt[T <: Lhs](lhs: T, fields: Seq[Field])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
     (if(!(Ref isSubtype lhs)) Seq(ConsistencyError(s"Left-hand side of New statement must be Ref type, but found ${lhs.typ}", lhs.pos)) else Seq())
-
 }
 
-/** An assignment to a field or a local variable */
-sealed trait AbstractAssign extends Stmt {
-
-  def lhs: Lhs
-
-  def rhs: Exp
-}
-
-object AbstractAssign {
-  def apply(lhs: Lhs, rhs: Exp)(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos) = lhs match {
-    case l: LocalVar => LocalVarAssign(l, rhs)(pos, info, errT)
-    case l: FieldAccess => FieldAssign(l, rhs)(pos, info, errT)
-  }
-
-  def unapply(a: AbstractAssign) = Some((a.lhs, a.rhs))
-}
-
-/** An assignment to a local variable. */
-case class LocalVarAssign(lhs: LocalVar, rhs: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractAssign{
-  override lazy val check : Seq[ConsistencyError] =
-    (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
-    Consistency.checkPure(rhs) ++
-    (if(!Consistency.isAssignable(rhs, lhs)) Seq(ConsistencyError(s"Right-hand side $rhs is not assignable to left-hand side $lhs.", lhs.pos)) else Seq())
-}
-
-/** An assignment to a field variable. */
-case class FieldAssign(lhs: FieldAccess, rhs: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractAssign{
+/** An assignment to a field or a local variable. */
+case class Assign[T <: Lhs](lhs: T, rhs: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
     Consistency.checkPure(rhs) ++
@@ -79,7 +53,7 @@ case class FieldAssign(lhs: FieldAccess, rhs: Exp)(val pos: Position = NoPositio
 }
 
 /** A method call. */
-case class MethodCall(methodName: String, args: Seq[Exp], targets: Seq[LocalVar])(val pos: Position, val info: Info, val errT: ErrorTrafo) extends Stmt {
+case class MethodCall(methodName: String, args: Seq[Exp], targets: Seq[Lhs])(val pos: Position, val info: Info, val errT: ErrorTrafo) extends Stmt {
   override lazy val check : Seq[ConsistencyError] = {
     var s = Seq.empty[ConsistencyError]
     if(!Consistency.noResult(this))
@@ -92,7 +66,7 @@ case class MethodCall(methodName: String, args: Seq[Exp], targets: Seq[LocalVar]
 }
 
 object MethodCall {
-  def apply(method: Method, args: Seq[Exp], targets: Seq[LocalVar])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos): MethodCall = {
+  def apply(method: Method, args: Seq[Exp], targets: Seq[Lhs])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos): MethodCall = {
     MethodCall(method.name, args, targets)(pos, info, errT)
   }
 }

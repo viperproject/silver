@@ -9,7 +9,7 @@ package viper.silver.plugin.standard.termination.transformation
 import viper.silver.ast.utility.Statements.EmptyStmt
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.{SimpleContext, Strategy, Traverse}
-import viper.silver.ast.{AccessPredicate, BinExp, CondExp, DomainFunc, DomainFuncApp, Exp, FieldAccessPredicate, If, Implies, Inhale, LocalVar, LocalVarAssign, LocalVarDecl, MagicWand, Node, Position, PredicateAccess, PredicateAccessPredicate, Seqn, SimpleInfo, Stmt, Type, TypeVar, UnExp, Unfold}
+import viper.silver.ast.{AccessPredicate, BinExp, CondExp, DomainFunc, DomainFuncApp, Exp, FieldAccessPredicate, If, Implies, Inhale, LocalVar, Assign, LocalVarDecl, MagicWand, Node, Position, PredicateAccess, PredicateAccessPredicate, Seqn, SimpleInfo, Stmt, Type, TypeVar, UnExp, Unfold}
 import viper.silver.plugin.standard.termination.DecreasesSpecification
 import viper.silver.plugin.standard.predicateinstance.PredicateInstance
 import viper.silver.verifier.ConsistencyError
@@ -130,9 +130,9 @@ trait NestedPredicates extends ProgramManager with ErrorReporter {
    * @param assLocation the variable, which should be assigned
    * @return an assignment of the given variable to the representation of a predicate with the corresponding arguments
    */
-  private def generatePredicateAssign(assLocation: LocalVar, pred: PredicateAccess): LocalVarAssign = {
+  private def generatePredicateAssign(assLocation: LocalVar, pred: PredicateAccess): Assign[LocalVar] = {
     val pi = PredicateInstance(pred.args, pred.predicateName)(pred.pos, pred.info, pred.errT)
-    LocalVarAssign(assLocation, pi)(pred.pos)
+    Assign(assLocation, pi)(pred.pos)
   }
 
 

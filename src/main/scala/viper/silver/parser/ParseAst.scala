@@ -149,7 +149,7 @@ trait PIdentifier {
 
 case class PIdnDef(name: String)(val pos: (Position, Position)) extends PNode with PIdentifier
 
-case class PIdnUse(name: String)(val pos: (Position, Position)) extends PExp with PIdentifier {
+case class PIdnUse(name: String)(val pos: (Position, Position)) extends PExp with PIdentifier with PAssignTarget {
   var decl: PDeclaration = null
   /* Should be set during resolving. Intended to preserve information
    * that is needed by the translator.
@@ -569,7 +569,7 @@ object POpApp {
   def pRes = PTypeVar(pResS)
 }
 
-case class PCall(func: PIdnUse, args: Seq[PExp], typeAnnotated: Option[PType] = None)(val pos: (Position, Position)) extends POpApp with PLocationAccess {
+case class PCall(func: PIdnUse, args: Seq[PExp], typeAnnotated: Option[PType] = None)(val pos: (Position, Position)) extends POpApp with PLocationAccess with PAssignTarget {
   override val idnuse = func
   override val opName = func.name
 
@@ -789,7 +789,7 @@ trait PLocationAccess extends PResourceAccess {
   def idnuse: PIdnUse
 }
 
-case class PFieldAccess(rcv: PExp, idnuse: PIdnUse)(val pos: (Position, Position)) extends PLocationAccess {
+case class PFieldAccess(rcv: PExp, idnuse: PIdnUse)(val pos: (Position, Position)) extends PLocationAccess with PAssignTarget {
   override final val opName = "."
   override final val args = Seq(rcv)
 
@@ -1224,17 +1224,13 @@ case class PAssume(e: PExp)(val pos: (Position, Position)) extends PStmt
 
 case class PInhale(e: PExp)(val pos: (Position, Position)) extends PStmt
 
-case class PVarAssign(idnuse: PIdnUse, rhs: PExp)(val pos: (Position, Position)) extends PStmt
-
-case class PFieldAssign(fieldAcc: PFieldAccess, rhs: PExp)(val pos: (Position, Position)) extends PStmt
-
-case class PMacroAssign(call: PCall, exp: PExp)(val pos: (Position, Position)) extends PStmt
+case class PAssign(targets: Seq[PAssignTarget], rhs: PExp)(val pos: (Position, Position)) extends PStmt
 
 case class PIf(cond: PExp, thn: PSeqn, els: PSeqn)(val pos: (Position, Position)) extends PStmt
 
 case class PWhile(cond: PExp, invs: Seq[PExp], body: PSeqn)(val pos: (Position, Position)) extends PStmt
 
-case class PLocalVarDecl(idndef: PIdnDef, typ: PType, init: Option[PExp])(val pos: (Position, Position)) extends PStmt with PTypedDeclaration with PLocalDeclaration
+case class PLocalVarDecl(vars: Seq[PFormalArgDecl], init: Option[PAssign])(val pos: (Position, Position)) extends PStmt
 
 case class PGlobalVarDecl(idndef: PIdnDef, typ: PType)(val pos: (Position, Position)) extends PTypedDeclaration with PUniversalDeclaration
 
@@ -1256,30 +1252,10 @@ case class PQuasihavoc(lhs: Option[PExp], e: PExp)(val pos: (Position, Position)
 
 case class PQuasihavocall(vars: Seq[PFormalArgDecl], lhs: Option[PExp], e: PExp)(val pos: (Position, Position)) extends PStmt with PScope
 
-sealed trait PNewStmt extends PStmt {
-  def target: PIdnUse
-}
-
-/* x := new(f1, ..., fn) */
-case class PRegularNewStmt(target: PIdnUse, fields: Seq[PIdnUse])(val pos: (Position, Position)) extends PNewStmt
-
-/* x := new(*) */
-case class PStarredNewStmt(target: PIdnUse)(val pos: (Position, Position)) extends PNewStmt
-
-object PNewStmt {
-  def apply(target: PIdnUse): PStarredNewStmt = PStarredNewStmt(target)(target.pos)
-
-  def apply(target: PIdnUse, fields: Seq[PIdnUse]): PRegularNewStmt = PRegularNewStmt(target, fields)(target.pos)
-
-  def apply(target: PIdnUse, fields: Option[Seq[PIdnUse]]): PNewStmt = fields match {
-    case None => PStarredNewStmt(target)(target.pos)
-    case Some(fs) => PRegularNewStmt(target, fs)(target.pos)
-  }
-
-  def unapply(s: PNewStmt): Option[(PIdnUse, Option[Seq[PIdnUse]])] = s match {
-    case PRegularNewStmt(target, fields) => Some((target, Some(fields)))
-    case PStarredNewStmt(_) => Some((s.target, None))
-  }
+/* new(f1, ..., fn) or new(*) */
+case class PNewExp(fields: Option[Seq[PIdnUse]])(val pos: (Position, Position)) extends PExp {
+  override final val typeSubstitutions = Seq(PTypeSubstitution.id)
+  def forceSubstitution(ts: PTypeSubstitution) = {}
 }
 
 sealed trait PScope extends PNode {
@@ -1297,6 +1273,9 @@ object PScope {
     id
   }
 }
+
+// Assignments
+sealed trait PAssignTarget extends PExp
 
 // Declarations
 
@@ -1505,17 +1484,14 @@ object Nodes {
       case PAssert(exp) => Seq(exp)
       case PInhale(exp) => Seq(exp)
       case PAssume(exp) => Seq(exp)
-      case PRegularNewStmt(target, fields) => Seq(target) ++ fields
-      case PStarredNewStmt(target) => Seq(target)
+      case PNewExp(fields) => fields.getOrElse(Seq())
       case PMethodCall(targets, method, args) => targets ++ Seq(method) ++ args
       case PLabel(name, invs) => Seq(name) ++ invs
       case PGoto(label) => Seq(label)
-      case PVarAssign(target, rhs) => Seq(target, rhs)
-      case PFieldAssign(field, rhs) => Seq(field, rhs)
-      case PMacroAssign(call, exp) => Seq(call, exp)
+      case PAssign(targets, rhs) => targets ++ Seq(rhs)
       case PIf(cond, thn, els) => Seq(cond, thn, els)
       case PWhile(cond, invs, body) => Seq(cond) ++ invs ++ Seq(body)
-      case PLocalVarDecl(idndef, typ, init) => Seq(idndef, typ) ++ (if (init.isDefined) Seq(init.get) else Nil)
+      case PLocalVarDecl(vars, init) => vars ++ (if (init.isDefined) Seq(init.get) else Nil)
       case PProgram(_, _, domains, fields, functions, predicates, methods, extensions, _) =>
         domains ++ fields ++ functions ++ predicates ++ methods ++ extensions
       case PLocalImport(_) =>

@@ -3,7 +3,7 @@ package viper.silver.testing
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.{BeforeAndAfterAllConfigMap, ConfigMap}
-import viper.silver.ast.{And, AnySetContains, Assert, BackendFuncApp, Domain, EqCmp, Exhale, Exp, Field, FieldAccess, FieldAccessPredicate, FieldAssign, Fold, Forall, FullPerm, Function, Implies, Inhale, IntLit, LocalVarAssign, LocalVarDecl, Method, NeCmp, Not, Predicate, PredicateAccess, PredicateAccessPredicate, Program, Ref, Result, Seqn, SetType, Stmt}
+import viper.silver.ast.{And, AnySetContains, Assign, Assert, BackendFuncApp, Domain, EqCmp, Exhale, Exp, Field, FieldAccess, FieldAccessPredicate, Fold, Forall, FullPerm, Function, Implies, Inhale, IntLit, LocalVarDecl, Method, NeCmp, Not, Predicate, PredicateAccess, PredicateAccessPredicate, Program, Ref, Result, Seqn, SetType, Stmt}
 import viper.silver.ast.utility.{BVFactory, FloatFactory, RoundingMode}
 import viper.silver.verifier.{Failure, Success, Verifier}
 import viper.silver.verifier.errors.{AssertFailed, PostconditionViolated}
@@ -156,7 +156,7 @@ trait BackendTypeTest extends AnyFunSuite with Matchers with BeforeAndAfterAllCo
 
     val inhale = Inhale(fieldAccPred)()
     val fpVal = BackendFuncApp(to_fp, Seq(BackendFuncApp(from_int, Seq(IntLit(value)()))()))()
-    val assign = FieldAssign(fieldAcc, fpVal)()
+    val assign = Assign(fieldAcc, fpVal)()
     val predAcc = PredicateAccess(Seq(selfVar.localVar), pred.name)()
     val predAccPred = PredicateAccessPredicate(predAcc, FullPerm()())()
     val fold = Fold(predAccPred)()
@@ -181,7 +181,7 @@ trait BackendTypeTest extends AnyFunSuite with Matchers with BeforeAndAfterAllCo
     val one = BackendFuncApp(from_int, Seq(one_lit))()
     val result_decl = LocalVarDecl("three", bv23.typ)()
     val result_ref = result_decl.localVar
-    val assign = LocalVarAssign(result_ref, if (success) three else one)()
+    val assign = Assign(result_ref, if (success) three else one)()
     val xor = bv23.xor("xorBV23")
     val xor_app = BackendFuncApp(xor, Seq(one, two))()
     val equality1 = EqCmp(result_ref, xor_app)()
@@ -219,22 +219,22 @@ trait BackendTypeTest extends AnyFunSuite with Matchers with BeforeAndAfterAllCo
     wrapInProgram(
       Seq(domain),
       Seq(
-        LocalVarAssign(res, BackendFuncApp(xor, Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(xnor, Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(and, Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(nand, Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(or, Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(nor, Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(add, Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(sub, Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(mul, Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(smod, Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(srem, Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(udiv, Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(urem, Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(shl, Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(lshr, Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(ashr, Seq(one, two))())(),
+        Assign(res, BackendFuncApp(xor, Seq(one, two))())(),
+        Assign(res, BackendFuncApp(xnor, Seq(one, two))())(),
+        Assign(res, BackendFuncApp(and, Seq(one, two))())(),
+        Assign(res, BackendFuncApp(nand, Seq(one, two))())(),
+        Assign(res, BackendFuncApp(or, Seq(one, two))())(),
+        Assign(res, BackendFuncApp(nor, Seq(one, two))())(),
+        Assign(res, BackendFuncApp(add, Seq(one, two))())(),
+        Assign(res, BackendFuncApp(sub, Seq(one, two))())(),
+        Assign(res, BackendFuncApp(mul, Seq(one, two))())(),
+        Assign(res, BackendFuncApp(smod, Seq(one, two))())(),
+        Assign(res, BackendFuncApp(srem, Seq(one, two))())(),
+        Assign(res, BackendFuncApp(udiv, Seq(one, two))())(),
+        Assign(res, BackendFuncApp(urem, Seq(one, two))())(),
+        Assign(res, BackendFuncApp(shl, Seq(one, two))())(),
+        Assign(res, BackendFuncApp(lshr, Seq(one, two))())(),
+        Assign(res, BackendFuncApp(ashr, Seq(one, two))())(),
       ), Seq(), Seq(res_decl))
   }
 

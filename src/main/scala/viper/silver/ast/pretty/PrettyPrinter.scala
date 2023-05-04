@@ -645,9 +645,8 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
   def showStmt(stmt: Stmt): Cont = {
     val stmtDoc = stmt match {
       case NewStmt(target, fields) =>
-        show(target) <+> ":=" <+> "new(" <> ssep(fields map (f => value(f.name)), char(',') <> space) <> ")"
-      case LocalVarAssign(lhs, rhs) => show(lhs) <+> ":=" <+> nest(defaultIndent, show(rhs))
-      case FieldAssign(lhs, rhs) => show(lhs) <+> ":=" <+> nest(defaultIndent, show(rhs))
+        show(target) <+> ":=" <+> text("new") <> parens(ssep(fields map (f => value(f.name)), char(',') <> space))
+      case Assign(lhs, rhs) => show(lhs) <+> ":=" <+> nest(defaultIndent, show(rhs))
       case Fold(e) => text("fold") <+> nest(defaultIndent, show(e))
       case Unfold(e) => text("unfold") <+> nest(defaultIndent, show(e))
       case Package(e, proofScript) => text("package") <+> show(e) <+> showBlock(proofScript)

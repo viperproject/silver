@@ -182,20 +182,20 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with NestedPredicat
 
               // copy all expression in the decreases tuple to be used later
               // equivalent to labeled old but including variables
-              val (oldTupleCondition, conditionAssign): (Exp, Option[LocalVarAssign]) = whileTuple.condition match {
+              val (oldTupleCondition, conditionAssign): (Exp, Option[Assign[LocalVar]]) = whileTuple.condition match {
                 case Some(condition) =>
                   val conditionCopy =
                     LocalVar(uniqueName(s"old_W${whileNumber}_C"), Bool)(condition.pos, condition.info, condition.errT)
-                  val assign = LocalVarAssign(conditionCopy, condition)(condition.pos, condition.info, condition.errT)
+                  val assign = Assign(conditionCopy, condition)(condition.pos, condition.info, condition.errT)
                   (conditionCopy, Some(assign))
                 case None => (TrueLit()(), None)
               }
 
-              val (oldTupleExps, tupleAssigns): (Seq[Exp], Seq[LocalVarAssign]) = whileTuple.tupleExpressions.zipWithIndex.map(exp_i => {
+              val (oldTupleExps, tupleAssigns): (Seq[Exp], Seq[Assign[LocalVar]]) = whileTuple.tupleExpressions.zipWithIndex.map(exp_i => {
                 val (exp, i) = (exp_i._1, exp_i._2)
                 val expCopy =
                   LocalVar(uniqueName(s"old_W${whileNumber}_T$i"), exp.typ)(exp.pos, exp.info, exp.errT)
-                val assign = LocalVarAssign(expCopy, exp)(expCopy.pos, expCopy.info, expCopy.errT)
+                val assign = Assign(expCopy, exp)(expCopy.pos, expCopy.info, expCopy.errT)
                 (expCopy, assign)
               }).unzip
 

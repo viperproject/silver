@@ -127,7 +127,7 @@ object Consistency {
   def nullValue[T](a: T, b: T) = if (a != null) a else b
 
   /**
-   * Checks that this boolean expression is pure i.e. it contains no magic wands, access predicates or ghost operations.
+   * Checks that this boolean expression is pure i.e. it contains no magic wands or access predicates.
    */
   def checkPure(e: Exp): Seq[ConsistencyError] = {
     if(!e.isPure){
@@ -165,13 +165,13 @@ object Consistency {
     val argVars = args.map(_.localVar).toSet
     var s = Seq.empty[ConsistencyError]
 
-    for (a@LocalVarAssign(l, _) <- b if argVars.contains(l)) {
+    for (a@Assign(l: LocalVar, _) <- b if argVars.contains(l)) {
       s :+= ConsistencyError(s"$a is a reassignment of formal argument $l.", a.pos)
     }
-    for (c@MethodCall(_, _, targets) <- b; t <- targets if argVars.contains(t)) {
+    for (c@MethodCall(_, _, targets) <- b; t@LocalVar(_, _) <- targets if argVars.contains(t)) {
       s :+= ConsistencyError(s"$c is a reassignment of formal argument $t.", c.pos)
     }
-    for (n@NewStmt(l, _) <- b if argVars.contains(l)){
+    for (n@NewStmt(l: LocalVar, _) <- b if argVars.contains(l)){
       s :+= ConsistencyError(s"$n is a reassignment of formal argument $l.", n.pos)
     }
     s
@@ -387,13 +387,13 @@ object Consistency {
 
   private def checkMagicWandProofScript(script: Stmt, locals: Seq[LocalVarDecl]): Seq[ConsistencyError] =
     script.shallowCollect({
-      case fa: FieldAssign =>
+      case Assign(fa: FieldAccess, _) =>
         Some(ConsistencyError("Field assignments are not allowed in magic wand proof scripts.", fa.pos))
-      case ne: NewStmt =>
-        Some(ConsistencyError("New statements statements are not allowed in magic wand proof scripts.", ne.pos))
+      case ne: NewStmt[_] =>
+        Some(ConsistencyError("New statements are not allowed in magic wand proof scripts.", ne.pos))
       case wh: While =>
         Some(ConsistencyError("While statements are not allowed in magic wand proof scripts.", wh.pos))
-      case loc @ LocalVarAssign(LocalVar(varName, _), _) if !locals.exists(_.name == varName) =>
+      case loc @ Assign(LocalVar(varName, _), _) if !locals.exists(_.name == varName) =>
         Some(ConsistencyError("Can only assign to local variables that were declared inside the proof script.", loc.pos))
       case _: Package => None
     }).flatten

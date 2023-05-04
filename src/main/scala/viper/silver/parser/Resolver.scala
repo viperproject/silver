@@ -199,56 +199,43 @@ case class TypeChecker(names: NameAnalyser) {
         check(e, Bool)
       case PAssume(e) =>
         check(e, Bool)
-      case p@PVarAssign(idnuse, PCall(func, args, _)) if names.definition(curMember)(func).get.isInstanceOf[PMethod] =>
-        /* This is a method call that got parsed in a slightly confusing way.
-         * TODO: Get rid of this case! There is a matching case in the translator.
-         */
-        val newnode: PStmt = PMethodCall(Seq(idnuse), func, args)(p.pos)
-        check(newnode)
-
-      case PVarAssign(idnuse, rhs) =>
-        names.definition(curMember)(idnuse) match {
-          case Some(PLocalVarDecl(_, typ, _)) =>
-            check(idnuse, typ)
-            check(rhs, typ)
-          case Some(PFormalArgDecl(_, typ)) =>
-            check(idnuse, typ)
-            check(rhs, typ)
-          case _ =>
-            messages ++= FastMessaging.message(stmt, "expected variable as lhs")
+      case PAssign(targets, PCall(func, args, _)) if names.definition(curMember)(func).get.isInstanceOf[PMethod] =>
+        val PMethod(_, formalArgs, formalTargets, _, _, _) = names.definition(curMember)(func).get.asInstanceOf[PMethod]
+        formalArgs.foreach(fa=>check(fa.typ))
+        if (formalArgs.length != args.length) {
+          messages ++= FastMessaging.message(stmt, "wrong number of arguments")
+        } else {
+          if (formalTargets.length != targets.length) {
+            messages ++= FastMessaging.message(stmt, "wrong number of targets")
+          } else {
+            for ((formal, actual) <- (formalArgs zip args) ++ (formalTargets zip targets)) {
+              check(actual, formal.typ)
+            }
+          }
         }
-      case PNewStmt(target, fields) =>
-        val msg = "expected variable as lhs"
-        acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](Seq(target), msg) { (v, _) => check(v, Ref) }
-        fields foreach (_.foreach(field =>
+      case PAssign(targets, _) if targets.length != 1 =>
+        messages ++= FastMessaging.message(stmt, "expected a method call")
+      case PAssign(Seq(target), PNewExp(fieldsOpt)) =>
+        check(target, Ref)
+        fieldsOpt map (_.foreach (field =>
           names.definition(curMember)(field) match {
             case Some(PField(_, typ)) =>
               check(field, typ)
             case _ =>
               messages ++= FastMessaging.message(stmt, "expected a field as argument")
           }))
-      case PMethodCall(targets, method, args) =>
-        names.definition(curMember)(method) match {
-          case Some(PMethod(_, formalArgs, formalTargets, _, _, _)) =>
-            formalArgs.foreach(fa => check(fa.typ))
-            if (formalArgs.length != args.length) {
-              messages ++= FastMessaging.message(stmt, "wrong number of arguments")
-            } else {
-              if (formalTargets.length != targets.length) {
-                messages ++= FastMessaging.message(stmt, "wrong number of targets")
-              } else {
-                for ((formal, actual) <- (formalArgs zip args) ++ (formalTargets zip targets)) {
-                  check(actual, formal.typ)
-                }
-              }
-            }
+      case PAssign(Seq(idnuse: PIdnUse), rhs) =>
+        names.definition(curMember)(idnuse) match {
+          case Some(PFormalArgDecl(_, typ)) =>
+            check(idnuse, typ)
+            check(rhs, typ)
           case _ =>
-            messages ++= FastMessaging.message(stmt, "expected a method")
+            messages ++= FastMessaging.message(stmt, "expected variable as lhs")
         }
       case PLabel(_, invs) =>
         invs foreach (check(_, Bool))
       case PGoto(_) =>
-      case PFieldAssign(field, rhs) =>
+      case PAssign(Seq(field: PFieldAccess), rhs) =>
         names.definition(curMember)(field.idnuse, Some(PField.getClass)) match {
           case Some(PField(_, typ)) =>
             check(field, typ)
@@ -264,12 +251,9 @@ case class TypeChecker(names: NameAnalyser) {
         check(cond, Bool)
         invs foreach (check(_, Bool))
         check(body)
-      case PLocalVarDecl(_, typ, init) =>
-        check(typ)
-        init match {
-          case Some(i) => check(i, typ)
-          case None =>
-        }
+      case PLocalVarDecl(vars, initial) =>
+        vars foreach (v => check(v.typ))
+        initial map check
       case _: PDefine =>
         /* Should have been removed right after parsing */
         sys.error(s"Unexpected node $stmt found")
@@ -767,7 +751,6 @@ case class TypeChecker(names: NameAnalyser) {
 
       case piu@PIdnUse(_) =>
         names.definition(curMember)(piu) match {
-          case Some(decl@PLocalVarDecl(_, typ, _)) => setPIdnUseTypeAndEntity(piu, typ, decl)
           case Some(decl@PFormalArgDecl(_, typ)) => setPIdnUseTypeAndEntity(piu, typ, decl)
           case Some(decl@PField(_, typ)) => setPIdnUseTypeAndEntity(piu, typ, decl)
           case Some(decl@PPredicate(_, _, _)) => setPIdnUseTypeAndEntity(piu, Pred, decl)
@@ -804,6 +787,8 @@ case class TypeChecker(names: NameAnalyser) {
         pq._typeSubstitutions = pq.body.typeSubstitutions.toList.distinct
         pq.typ = Bool
         curMember = oldCurMember
+      
+      case pne@PNewExp(_) => issueError(pne, s"expected direct assignment")
     }
   }
 

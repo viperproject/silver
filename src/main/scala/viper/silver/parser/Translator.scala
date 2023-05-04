@@ -179,29 +179,39 @@ case class Translator(program: PProgram) {
   def stmt(s: PStmt): Stmt = {
     val pos = s
     s match {
-      case p@PVarAssign(idnuse, PCall(func, args, _)) if members(func.name).isInstanceOf[Method] =>
-        /* This is a method call that got parsed in a slightly confusing way.
-         * TODO: Get rid of this case! There is a matching case in the resolver.
-         */
-        val call = PMethodCall(Seq(idnuse), func, args)(p.pos)
-        stmt(call)
-      case PVarAssign(idnuse, rhs) =>
-        LocalVarAssign(LocalVar(idnuse.name, ttyp(idnuse.typ))(pos), exp(rhs))(pos)
-      case PFieldAssign(field, rhs) =>
-        FieldAssign(FieldAccess(exp(field.rcv), findField(field.idnuse))(field), exp(rhs))(pos)
-      case PLocalVarDecl(idndef, t, Some(init)) =>
-        LocalVarAssign(LocalVar(idndef.name, ttyp(t))(pos), exp(init))(pos)
-      case PLocalVarDecl(_, _, None) =>
+      case PAssign(targets, PCall(method, args, _)) if members(method.name).isInstanceOf[Method] =>
+        val ts = (targets map (exp(_).asInstanceOf[Lhs]))
+        MethodCall(findMethod(method), args map exp, ts)(pos)
+      case PAssign(targets, _) if targets.length != 1 =>
+        sys.error(s"Found non-unary target of assignment")
+      case PAssign(Seq(target), PNewExp(fieldsOpt)) =>
+        val lhs = exp(target).asInstanceOf[Lhs]
+        val fields = fieldsOpt match {
+          case None => program.fields map translate
+            /* Slightly redundant since we already translated the fields when we
+             * translated the PProgram at the beginning of this class.
+             */
+          case Some(pfields) => pfields map findField
+        }
+        NewStmt(lhs, fields)(pos)
+      case PAssign(Seq(idnuse: PIdnUse), rhs) =>
+        Assign(LocalVar(idnuse.name, ttyp(idnuse.typ))(pos), exp(rhs))(pos)
+      case PAssign(Seq(field: PFieldAccess), rhs) =>
+        Assign(FieldAccess(exp(field.rcv), findField(field.idnuse))(field), exp(rhs))(pos)
+      case PLocalVarDecl(_, init) =>
         // there are no declarations in the Viper AST; rather they are part of the scope signature
-        Statements.EmptyStmt
+        init match {
+          case Some(assign) => stmt(assign)
+          case None => Statements.EmptyStmt
+        }
       case PSeqn(ss) =>
         val plocals = ss.collect {
           case l: PLocalVarDecl => Some(l)
           case _ => None
         }
         val locals = plocals.flatten.map {
-          case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(p)
-        }
+          case p@PLocalVarDecl(vars, _) => vars.map(v => LocalVarDecl(v.idndef.name, ttyp(v.typ))(p))
+        }.flatten
         Seqn(ss filterNot (_.isInstanceOf[PSkip]) map stmt, locals)(pos)
       case PFold(e) =>
         Fold(exp(e).asInstanceOf[PredicateAccessPredicate])(pos)
@@ -220,18 +230,6 @@ case class Translator(program: PProgram) {
         Exhale(exp(e))(pos)
       case PAssert(e) =>
         Assert(exp(e))(pos)
-      case PNewStmt(target, fieldsOpt) =>
-        val fields = fieldsOpt match {
-          case None => program.fields map translate
-            /* Slightly redundant since we already translated the fields when we
-             * translated the PProgram at the beginning of this class.
-             */
-          case Some(pfields) => pfields map findField
-        }
-        NewStmt(exp(target).asInstanceOf[LocalVar], fields)(pos)
-      case PMethodCall(targets, method, args) =>
-        val ts = (targets map exp).asInstanceOf[Seq[LocalVar]]
-        MethodCall(findMethod(method), args map exp, ts)(pos)
       case PLabel(name, invs) =>
         Label(name.name, invs map exp)(pos)
       case PGoto(label) =>
@@ -438,6 +436,7 @@ case class Translator(program: PProgram) {
             PredicateAccessPredicate(inner, fullPerm) (pos)
           case _ => sys.error("unexpected reference to non-function")
         }
+      case PNewExp(_) => sys.error("unexpected `new` expression")
       case PUnfolding(loc, e) =>
         Unfolding(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos)
       case PApplying(wand, e) =>
