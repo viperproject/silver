@@ -7,7 +7,6 @@
 package viper.silver.parser
 
 import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
-
 import viper.silver.ast.utility.Visitor
 import viper.silver.ast.utility.rewriter.{Rewritable, StrategyBuilder}
 import viper.silver.ast.{Exp, MagicWandOp, Member, NoPosition, Position, Stmt, Type}
@@ -243,6 +242,8 @@ case class PDomainType(domain: PIdnUse, args: Seq[PType])(val pos: (Position, Po
     r
   }
 
+  override def withTypeArguments(s: Seq[PType]) = copy(args = s)(pos)
+
   override def toString = domain.name + (if (args.isEmpty) "" else s"[${args.mkString(", ")}]")
 }
 
@@ -292,6 +293,8 @@ trait PGenericType extends PType {
   def typeArguments : Seq[PType]
   override def isGround = typeArguments.forall(_.isGround)
   override def toString = s"$genericName[${typeArguments.mkString(", ")}]"
+
+  def withTypeArguments(s: Seq[PType]) : PGenericType
 }
 
 sealed trait PGenericCollectionType extends PGenericType {
@@ -304,14 +307,20 @@ sealed trait PGenericCollectionType extends PGenericType {
 case class PSeqType(elementType: PType)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PType with PGenericCollectionType {
   override val genericName = "Seq"
   override def substitute(map: PTypeSubstitution) = PSeqType(elementType.substitute(map))(pos)
+
+  override def withTypeArguments(s: Seq[PType]) = copy(elementType = s.head)(pos)
 }
 case class PSetType(elementType: PType)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PType with PGenericCollectionType {
   override val genericName = "Set"
   override def substitute(map: PTypeSubstitution) = PSetType(elementType.substitute(map))(pos)
+
+  override def withTypeArguments(s: Seq[PType]) = copy(elementType = s.head)(pos)
 }
 case class PMultisetType(elementType: PType)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PType with PGenericCollectionType {
   override val genericName = "Multiset"
   override def substitute(map: PTypeSubstitution) = PMultisetType(elementType.substitute(map))(pos)
+
+  override def withTypeArguments(s: Seq[PType]): PMultisetType = copy(elementType = s.head)(pos)
 }
 
 case class PMapType(keyType : PType, valueType : PType)(val pos: (Position, Position) = (NoPosition, NoPosition)) extends PType with PGenericType {
@@ -321,6 +330,8 @@ case class PMapType(keyType : PType, valueType : PType)(val pos: (Position, Posi
 
   override def isValidOrUndeclared = typeArguments.forall(_.isValidOrUndeclared)
   override def substitute(map: PTypeSubstitution) = PMapType(keyType.substitute(map), valueType.substitute(map))(pos)
+
+  override def withTypeArguments(s: Seq[PType]): PMapType = copy(keyType = s.head, valueType = s(1))(pos)
 }
 
 /** Type used for internal nodes (e.g. typing predicate accesses) - should not be
@@ -382,27 +393,42 @@ class PTypeSubstitution(val m:Map[String,PType])  //extends Map[String,PType]()
     val ts = PTypeSubstitution(Map(a -> b))
     PTypeSubstitution(m.map(kv => kv._1 -> kv._2.substitute(ts)))
   }
-  def *(other:PTypeSubstitution) : Option[PTypeSubstitution] =
-    other.m.foldLeft(Some(this):Option[PTypeSubstitution])({
-      case (Some(s),p)=>s.add(PTypeVar(p._1),p._2);
-      case (None,_) => None })
 
-  def add(a:String,b:PType): Option[PTypeSubstitution] = add(PTypeVar(a),b)
+  // The following methods all return a type substitution if successful,
+  // otherwise a pair containing the expected and the found type.
+  def *(other:PTypeSubstitution) : Either[(PType, PType), PTypeSubstitution] =
+    other.m.foldLeft(Right(this):Either[(PType, PType), PTypeSubstitution])({
+      case (Right(s),p)=>s.add(PTypeVar(p._1),p._2);
+      case (l@Left(_),_) => l })
 
-  def add(a:PType,b:PType): Option[PTypeSubstitution] = {
+  def add(a:String,b:PType): Either[(PType, PType), PTypeSubstitution] = add(PTypeVar(a),b)
+
+  def add(a:PType,b:PType): Either[(PType, PType), PTypeSubstitution] = {
     val as = a.substitute(this)
     val bs = b.substitute(this)
     (as, bs) match {
-      case (aa,bb) if aa == bb => Some(this)
-      case (PTypeVar(name), t) if PTypeVar.isFreePTVName(name) => assert(!contains(name)); Some(substitute(name,t)+(name->t))
+      case (aa,bb) if aa == bb => Right(this)
+      case (PTypeVar(name), t) if PTypeVar.isFreePTVName(name) => assert(!contains(name)); Right(substitute(name,t)+(name->t))
       case (_, PTypeVar(name))    if PTypeVar.isFreePTVName(name) => add(bs,as)
       case (gt1: PGenericType, gt2: PGenericType) if gt1.genericName == gt2.genericName =>
-        ((gt1.typeArguments zip gt2.typeArguments).foldLeft[Option[PTypeSubstitution]](Some(this))
-          ((ss: Option[PTypeSubstitution], p: (PType, PType)) => ss match {
-            case Some(sss) => sss.add(p._1,p._2)
-            case None => None
+        val zippedArgs = gt1.typeArguments zip gt2.typeArguments
+        (zippedArgs.foldLeft[Either[(PType, PType), PTypeSubstitution]](Right(this))
+          ((ss: Either[(PType, PType), PTypeSubstitution], p: (PType, PType)) => ss match {
+            case Right(sss) => sss.add(p._1,p._2) match {
+              case l@Left(pair) =>
+                val problemArg = zippedArgs.zipWithIndex.find(_._1 == pair)
+                problemArg match {
+                  case None => l
+                  case Some((_, index)) =>
+                    val newArgs = zippedArgs.updated(index, pair)
+                    val (argsA, argsB) = newArgs.unzip
+                    Left(gt1.withTypeArguments(argsA), gt1.withTypeArguments(argsB))
+                }
+              case r => r
+            }
+            case Left((aa, bb)) => Left((aa, bb))
           }))
-      case _ => None
+      case (aa, bb) => Left((aa, bb))
     }
 
   }
@@ -516,7 +542,7 @@ case class PCall(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PType] =
         assert(s3.m.forall(_._2.isGround))
         domainSubstitution = Some(s3)
         dtr.mm.values.foldLeft(ots)(
-          (tss,s)=> if (tss.contains(s)) tss else tss.add(s, PTypeSubstitution.defaultType).get)
+          (tss,s)=> if (tss.contains(s)) tss else tss.add(s, PTypeSubstitution.defaultType).getOrElse(null))
       case _ => ots
     }
     super.forceSubstitution(ts)
