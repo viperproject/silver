@@ -596,7 +596,7 @@ class FastParser {
 
     val matchOnMacroCall: PartialFunction[PNode, MacroApp] = {
       case app: PMacroRef => MacroApp(app.idnuse.name, Nil, app)
-      case app: PMethodCall if isMacro(app.method.name) => MacroApp(app.method.name, app.args, app)
+      case app@PAssign(_, call: PCall) if isMacro(call.func.name) => MacroApp(call.func.name, call.args, app)
       case app: PCall if isMacro(app.func.name) => MacroApp(app.func.name, app.args, app)
       case app: PIdnUse if isMacro(app.name) => MacroApp(app.name, Nil, app)
     }
@@ -766,7 +766,8 @@ class FastParser {
           }
           case target => target
         }
-        (PAssign(expandedTargets, rhs)(assign.pos), ctx)
+        val expandedLhs = PAssign(expandedTargets, rhs)(assign.pos)
+        (ExpandMacroIfValid(expandedLhs, ctx), ctx)
 
       // Handles all other calls to macros
       case (node, ctx) => (ExpandMacroIfValid(node, ctx), ctx)
@@ -778,7 +779,6 @@ class FastParser {
        * Recursing into such PIdnUse nodes caused Silver issue #205.
        */
       case PMacroRef(_) => Seq.empty
-      case PMethodCall(targets, _, args) => Seq(targets, args)
       case PCall(_, args, typeAnnotated) => Seq(args, typeAnnotated)
     }.repeat
 
@@ -1090,7 +1090,7 @@ class FastParser {
 
   def newExp[$: P]: P[PNewExp] = FP("new" ~ "(" ~ newExpFields ~ ")").map { case (pos, fields) => PNewExp(fields)(pos) }
 
-  def newExpFields[$: P]: P[Option[Seq[PIdnUse]]] = P(idnuse.rep(sep = ",")).map(Some(_)) | P("*").map(_ => None)
+  def newExpFields[$: P]: P[Option[Seq[PIdnUse]]] = P(P("*").map(_ => None) | P(idnuse.rep(sep = ",")).map(Some(_)))
 
   def fapp[$: P]: P[PCall] = FP(idnuse ~ parens(actualArgList)).map {
     case (pos, (func, args)) =>
@@ -1113,7 +1113,7 @@ class FastParser {
 
   def macroref[$: P]: P[PMacroRef] = FP(idnuse).map { case (pos, a) => PMacroRef(a)(pos) }
 
-  def assignTarget[$: P]: P[PAssignTarget] = fieldAcc | NoCut(fapp) | idnuse
+  def assignTarget[$: P]: P[PAssignTarget] = P(fieldAcc | NoCut(fapp) | idnuse)
 
   def assign[$: P]: P[PAssign] = FP((assignTarget.rep(min = 1, sep = ",") ~ ":=").? ~ exp).map { case (pos, (targets, rhs)) => PAssign(targets.getOrElse(Seq()), rhs)(pos) }
 

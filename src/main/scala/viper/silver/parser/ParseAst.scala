@@ -1234,8 +1234,6 @@ case class PLocalVarDecl(vars: Seq[PFormalArgDecl], init: Option[PAssign])(val p
 
 case class PGlobalVarDecl(idndef: PIdnDef, typ: PType)(val pos: (Position, Position)) extends PTypedDeclaration with PUniversalDeclaration
 
-case class PMethodCall(targets: Seq[PIdnUse], method: PIdnUse, args: Seq[PExp])(val pos: (Position, Position)) extends PStmt
-
 case class PLabel(idndef: PIdnDef, invs: Seq[PExp])(val pos: (Position, Position)) extends PStmt with PLocalDeclaration
 
 case class PGoto(targets: PIdnUse)(val pos: (Position, Position)) extends PStmt
@@ -1485,7 +1483,6 @@ object Nodes {
       case PInhale(exp) => Seq(exp)
       case PAssume(exp) => Seq(exp)
       case PNewExp(fields) => fields.getOrElse(Seq())
-      case PMethodCall(targets, method, args) => targets ++ Seq(method) ++ args
       case PLabel(name, invs) => Seq(name) ++ invs
       case PGoto(label) => Seq(label)
       case PAssign(targets, rhs) => targets ++ Seq(rhs)

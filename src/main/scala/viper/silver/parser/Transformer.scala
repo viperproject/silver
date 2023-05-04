@@ -136,7 +136,6 @@ object Transformer {
         case p@PIf(cond, thn, els) => PIf(go(cond), go(thn), go(els))(p.pos)
         case p@PWhile(cond, invs, body) => PWhile(go(cond), invs map go, go(body))(p.pos)
         case p@PLocalVarDecl(vars, init) => PLocalVarDecl(vars map go, init map go)(p.pos)
-        case p@PMethodCall(targets, method, args) => PMethodCall(targets map go, go(method), args map go)(p.pos)
         case p@PLabel(idndef, invs) => PLabel(go(idndef), invs map go)(p.pos)
         case p@PGoto(target) => PGoto(go(target))(p.pos)
         case p@PDefine(idndef, optArgs, exp) => PDefine(go(idndef), optArgs map (_ map go) , go(exp))(p.pos)
