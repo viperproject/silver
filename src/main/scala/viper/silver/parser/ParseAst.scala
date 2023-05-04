@@ -393,6 +393,9 @@ class PTypeSubstitution(val m:Map[String,PType])  //extends Map[String,PType]()
     val ts = PTypeSubstitution(Map(a -> b))
     PTypeSubstitution(m.map(kv => kv._1 -> kv._2.substitute(ts)))
   }
+
+  // The following methods all return a type substitution if successful,
+  // otherwise a pair containing the expected and the found type.
   def *(other:PTypeSubstitution) : Either[(PType, PType), PTypeSubstitution] =
     other.m.foldLeft(Right(this):Either[(PType, PType), PTypeSubstitution])({
       case (Right(s),p)=>s.add(PTypeVar(p._1),p._2);
