@@ -473,13 +473,24 @@ case class TypeChecker(names: NameAnalyser) {
         pts2.map({ case (s: String, pt: PType) => s -> pt.substitute(pts1) }))
     cs.add(pt1,pt2)
   }
+
+  /*
+   * Parameters:
+   * rlts: local substitutions, refreshed
+   * argData: a sequence of tuples, one per op arguments, where
+   *          _1 is the fresh local argument type
+   *          _2 is the type of the argument expression
+   *          _3 is the set of substitutions of the argument expression
+   *          _4 is the argument expression itself (used to extract a precise position)
+   * Returns:
+   * Either a new type substitution (right case) or, in case of failure (left) a triple containing
+   *          _1 the expected type
+   *          _2 the found type
+   *          _3 the argument that caused the failure
+   */
   def unifySequenceWithSubstitutions(
-    rlts: Seq[PTypeSubstitution], //local substitutions, refreshed
-    argData: scala.collection.immutable.Seq[(PType, PType, Seq[PTypeSubstitution])]) : Either[(PType, PType), Seq[PTypeSubstitution]]
-    // a sequence of triples, one per op arguments, where
-    //_1 is the fresh local argument type
-    //_2 is the type of the argument expression
-    //_3 is the set of substitutions of the argument expression
+    rlts: Seq[PTypeSubstitution],
+    argData: scala.collection.immutable.Seq[(PType, PType, Seq[PTypeSubstitution], PExp)]) : Either[(PType, PType, PExp), Seq[PTypeSubstitution]]
       = {
     var pss = rlts
     for (tri <- argData){
@@ -488,12 +499,12 @@ case class TypeChecker(names: NameAnalyser) {
       val allBad = current.forall(e => e.isLeft)
       if (allBad) {
         val badMatch = current.find(e => e.isLeft)
-        return Left(badMatch.get.swap.toOption.get)
+        val badTypes = badMatch.get.swap.toOption.get
+        return Left(badTypes._1, badTypes._2, tri._4)
       }
       pss = current.flatMap(_.toOption)
     }
     Right(pss)
-    //(a:Set[PTypeSubstitution], e:Option[PTypeSubstitution])=>{
   }
 
   def ground(exp: PExp, pts: PTypeSubstitution) : PTypeSubstitution =
@@ -725,18 +736,18 @@ case class TypeChecker(names: NameAnalyser) {
               assert(rlts.nonEmpty)
               val rrt: PDomainType = POpApp.pRes.substitute(ltr).asInstanceOf[PDomainType] // return type (which is a dummy type variable) replaced with fresh type
               val flat = poa.args.indices map (i => POpApp.pArg(i).substitute(ltr)) //fresh local argument types
-              // the triples below are: (fresh argument type, argument type as used in domain of substitutions, substitutions)
-              val arg = flat.indices.map(i => (flat(i), poa.args(i).typ, poa.args(i).typeSubstitutions.distinct.toSeq)) ++
+              // the quadruples below are: (fresh argument type, argument type as used in domain of substitutions, substitutions, expression)
+              val argData = flat.indices.map(i => (flat(i), poa.args(i).typ, poa.args(i).typeSubstitutions.distinct.toSeq, poa.args(i))) ++
                 (
                   extraReturnTypeConstraint match {
                     case None => Nil
-                    case Some(t) => Seq((rrt, t, List(PTypeSubstitution.id)))
+                    case Some(t) => Seq((rrt, t, List(PTypeSubstitution.id), poa))
                   }
-                  )
-              val unifiedSequence = unifySequenceWithSubstitutions(rlts, arg)
+                )
+              val unifiedSequence = unifySequenceWithSubstitutions(rlts, argData)
               if (unifiedSequence.isLeft && poa.typeSubstitutions.isEmpty) {
                 val problem = unifiedSequence.swap.toOption.get
-                messages ++= FastMessaging.message(exp, s"Type error in the expression at ${exp.pos._1}. Expected ${problem._1} but got ${problem._2}.")
+                messages ++= FastMessaging.message(problem._3, s"Type error in the expression at ${problem._3.pos._1}. Expected type ${problem._1} but found ${problem._2}.")
               } else {
                 poa.typeSubstitutions ++= unifiedSequence.toOption.get
                 val ts = poa.typeSubstitutions.distinct

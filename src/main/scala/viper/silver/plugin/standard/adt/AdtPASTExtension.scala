@@ -380,12 +380,12 @@ object PAdtOpApp {
           assert(rlts.nonEmpty)
           val rrt: PDomainType = POpApp.pRes.substitute(ltr).asInstanceOf[PDomainType] // return type (which is a dummy type variable) replaced with fresh type
           val flat = poa.args.indices map (i => POpApp.pArg(i).substitute(ltr)) //fresh local argument types
-          // the triples below are: (fresh argument type, argument type as used in domain of substitutions, substitutions)
-          poa.typeSubstitutions ++= t.unifySequenceWithSubstitutions(rlts, flat.indices.map(i => (flat(i), poa.args(i).typ, poa.args(i).typeSubstitutions.distinct.toSeq)) ++
+          // the tuples below are: (fresh argument type, argument type as used in domain of substitutions, substitutions, the argument itself)
+          poa.typeSubstitutions ++= t.unifySequenceWithSubstitutions(rlts, flat.indices.map(i => (flat(i), poa.args(i).typ, poa.args(i).typeSubstitutions.distinct.toSeq, poa.args(i))) ++
             (
               extraReturnTypeConstraint match {
                 case None => Nil
-                case Some(t) => Seq((rrt, t, List(PTypeSubstitution.id)))
+                case Some(t) => Seq((rrt, t, List(PTypeSubstitution.id), poa))
               }
               )
           ).getOrElse(Seq())
