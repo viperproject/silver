@@ -595,10 +595,9 @@ class FastParser {
     case class MacroApp(name: String, arguments: Seq[PExp], node: PNode)
 
     val matchOnMacroCall: PartialFunction[PNode, MacroApp] = {
-      case app: PMacroRef => MacroApp(app.idnuse.name, Nil, app)
-      case app@PAssign(_, call: PCall) if isMacro(call.func.name) => MacroApp(call.func.name, call.args, app)
-      case app: PCall if isMacro(app.func.name) => MacroApp(app.func.name, app.args, app)
-      case app: PIdnUse if isMacro(app.name) => MacroApp(app.name, Nil, app)
+      case assign@PAssign(Seq(), app: PMacro) if isMacro(app.name) => MacroApp(app.name, app.args, assign)
+      case app: PMacro if isMacro(app.name) => MacroApp(app.name, app.args, app)
+      case app: PMacroType[_] => MacroApp(app.use.name, app.use.args, app)
     }
 
     def detectCyclicMacros(start: PNode, seen: Set[String]): Unit = {
@@ -706,11 +705,21 @@ class FastParser {
             throw ParseException("Number of macro arguments does not match", call.pos._1)
 
           (call, body) match {
-            case (_: PStmt, _: PExp) =>
-              throw ParseException("Expression macro used in statement position", call.pos._1)
-            case (_: PExp, _: PStmt) =>
-              throw ParseException("Statement macro used in expression position", call.pos._1)
+            case (_: PStmt, _: PStmt) | (_: PExp, _: PExp) | (_: PType, _: PType) =>
             case _ =>
+              val expandedType = body match {
+                case _: PExp => "Expression"
+                case _: PStmt => "Statement"
+                case _: PType => "Type"
+                case _ => "Unknown"
+              }
+              val callType = call match {
+                case _: PExp => "expression"
+                case _: PStmt => "statement"
+                case _: PType => "type"
+                case _ => "unknown"
+              }
+              throw ParseException(s"$expandedType macro used in $callType position", call.pos._1)
           }
 
           /* TODO: The current unsupported position detection is probably not exhaustive.
@@ -778,7 +787,6 @@ class FastParser {
        * to construct invalid AST nodes.
        * Recursing into such PIdnUse nodes caused Silver issue #205.
        */
-      case PMacroRef(_) => Seq.empty
       case PCall(_, args, typeAnnotated) => Seq(args, typeAnnotated)
     }.repeat
 
@@ -997,8 +1005,7 @@ class FastParser {
 
   def formalArg[$: P]: P[PFormalArgDecl] = FP(idndef ~ ":" ~ typ).map { case (pos, (a, b)) => PFormalArgDecl(a, b)(pos) }
 
-  def typ[$: P]: P[PType] = P(primitiveTyp | domainTyp | seqType | setType | multisetType | mapType)
-  // Maps: lazy val typ: P[PType] = P(primitiveTyp | domainTyp | seqType | setType | multisetType | mapType)
+  def typ[$: P]: P[PType] = P(primitiveTyp | domainTyp | seqType | setType | multisetType | mapType | macroType)
 
   def domainTyp[$: P]: P[PDomainType] = P(FP(idnuse ~ "[" ~ typ.rep(sep = ",") ~ "]").map { case (pos, (a, b)) => PDomainType(a, b)(pos) } |
     // domain type without type arguments (might also be a type variable)
@@ -1006,19 +1013,21 @@ class FastParser {
       PDomainType(name, Nil)(name.pos)
     }))
 
-  def seqType[$: P]: P[PType] = FP(keyword("Seq") ~ "[" ~ typ ~ "]").map{ case (pos, t) => PSeqType(t)(pos)}
+  def seqType[$: P]: P[PSeqType] = FP(keyword("Seq") ~ "[" ~ typ ~ "]").map{ case (pos, t) => PSeqType(t)(pos)}
 
-  def setType[$: P]: P[PType] = FP(keyword("Set") ~ "[" ~ typ ~ "]").map{ case (pos, t) => PSetType(t)(pos)}
+  def setType[$: P]: P[PSetType] = FP(keyword("Set") ~ "[" ~ typ ~ "]").map{ case (pos, t) => PSetType(t)(pos)}
 
-  def multisetType[$: P]: P[PType] = FP(keyword("Multiset") ~ "[" ~ typ ~ "]").map{ case (pos, t) => PMultisetType(t)(pos)}
+  def multisetType[$: P]: P[PMultisetType] = FP(keyword("Multiset") ~ "[" ~ typ ~ "]").map{ case (pos, t) => PMultisetType(t)(pos)}
 
   //def mapType[$: P]: P[PType] = FP(keyword("Map") ~ "[" ~ typ ~ "," ~ typ ~ "]").map{ case (pos, t) => PSeqType(t._3)(pos)}
   // Maps:
-  def mapType[$: P] : P[PType] = FP(keyword("Map") ~ "[" ~ typ ~ "," ~ typ ~ "]").map {
+  def mapType[$: P] : P[PMapType] = FP(keyword("Map") ~ "[" ~ typ ~ "," ~ typ ~ "]").map {
    case (pos, (keyType, valueType)) => PMapType(keyType, valueType)(pos)
   }
 
-  def primitiveTyp[$: P]: P[PType] = P(FP(keyword("Rational")).map{ case (pos, _) => PPrimitiv("Perm")(pos)}
+  def macroType[$: P] : P[PMacroType[_]] = idnuse.map(PMacroType(_)) | fapp.map(PMacroType(_))
+
+  def primitiveTyp[$: P]: P[PPrimitiv] = P(FP(keyword("Rational")).map{ case (pos, _) => PPrimitiv("Perm")(pos)}
     | FP((StringIn("Int", "Bool", "Perm", "Ref") ~~ !identContinues).!).map{ case (pos, name) => PPrimitiv(name)(pos)})
 /* Maps:
   lazy val primitiveTyp: P[PType] = P(keyword("Rational").map(_ => PPrimitiv("Perm"))
@@ -1101,17 +1110,15 @@ class FastParser {
     case (pos, (func, args, typeGiven)) => PCall(func, args, Some(typeGiven))(pos)
   }
 
-  def stmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | fold | unfold | exhale | assertP |
+  def stmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | assign | fold | unfold | exhale | assertP |
     inhale | assume | ifthnels | whle | varDecl | defineDecl | 
-    goto | lbl | packageWand | applyWand | assign | macroref | block |
+    goto | lbl | packageWand | applyWand | block |
     quasihavoc | quasihavocall | ParserExtension.newStmtAtEnd(ctx))
 
-  def nodefinestmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | fold | unfold | exhale | assertP |
+  def nodefinestmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | assign | fold | unfold | exhale | assertP |
     inhale | assume | ifthnels | whle | varDecl |
-    goto | lbl | packageWand | applyWand | assign | macroref | block |
+    goto | lbl | packageWand | applyWand | block |
     quasihavoc | quasihavocall | ParserExtension.newStmtAtEnd(ctx))
-
-  def macroref[$: P]: P[PMacroRef] = FP(idnuse).map { case (pos, a) => PMacroRef(a)(pos) }
 
   def assignTarget[$: P]: P[PAssignTarget] = P(fieldAcc | NoCut(fapp) | idnuse)
 

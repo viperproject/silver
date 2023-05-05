@@ -172,8 +172,6 @@ case class TypeChecker(names: NameAnalyser) {
 
   def check(stmt: PStmt): Unit = {
     stmt match {
-      case PMacroRef(id) =>
-        messages ++= FastMessaging.message(stmt, "unknown macro used: " + id.name)
       case s@PSeqn(ss) =>
         checkMember(s) {
           ss foreach check

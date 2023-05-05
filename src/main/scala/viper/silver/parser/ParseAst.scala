@@ -149,8 +149,9 @@ trait PIdentifier {
 
 case class PIdnDef(name: String)(val pos: (Position, Position)) extends PNode with PIdentifier
 
-case class PIdnUse(name: String)(val pos: (Position, Position)) extends PExp with PIdentifier with PAssignTarget {
+case class PIdnUse(name: String)(val pos: (Position, Position)) extends PExp with PIdentifier with PAssignTarget with PMacro {
   var decl: PDeclaration = null
+  override def args: Seq[PExp] = Seq()
   /* Should be set during resolving. Intended to preserve information
    * that is needed by the translator.
    */
@@ -366,6 +367,16 @@ case class PMapType(keyType: PType, valueType: PType)(val pos: (Position, Positi
   override def withTypeArguments(s: Seq[PType]): PMapType = copy(keyType = s.head, valueType = s(1))(pos)
 }
 
+case class PMacroType[T <: PMacro](use: T) extends PType {
+  override val pos: (Position, Position) = use.pos
+
+  override def isValidOrUndeclared: Boolean = ???
+
+  override def substitute(ts: PTypeSubstitution): PType = ???
+
+  override def subNodes: Seq[PType] = ???
+}
+
 /** Type used for internal nodes (e.g. typing predicate accesses) - should not be
   * the type of any expression whose value is meaningful in the translation.
   */
@@ -569,9 +580,10 @@ object POpApp {
   def pRes = PTypeVar(pResS)
 }
 
-case class PCall(func: PIdnUse, args: Seq[PExp], typeAnnotated: Option[PType] = None)(val pos: (Position, Position)) extends POpApp with PLocationAccess with PAssignTarget {
+case class PCall(func: PIdnUse, args: Seq[PExp], typeAnnotated: Option[PType] = None)(val pos: (Position, Position)) extends POpApp with PLocationAccess with PAssignTarget with PMacro {
   override val idnuse = func
   override val opName = func.name
+  override def name = func.name
 
   override def signatures = if (function != null && function.formalArgs.size == args.size) (function match {
     case _: PFunction => List(
@@ -1224,6 +1236,7 @@ case class PAssume(e: PExp)(val pos: (Position, Position)) extends PStmt
 
 case class PInhale(e: PExp)(val pos: (Position, Position)) extends PStmt
 
+/** Can also represent a method call or statement macro with no `:=` when `targets` is empty. */
 case class PAssign(targets: Seq[PAssignTarget], rhs: PExp)(val pos: (Position, Position)) extends PStmt
 
 case class PIf(cond: PExp, thn: PSeqn, els: PSeqn)(val pos: (Position, Position)) extends PStmt
@@ -1239,8 +1252,6 @@ case class PLabel(idndef: PIdnDef, invs: Seq[PExp])(val pos: (Position, Position
 case class PGoto(targets: PIdnUse)(val pos: (Position, Position)) extends PStmt
 
 case class PTypeVarDecl(idndef: PIdnDef)(val pos: (Position, Position)) extends PLocalDeclaration
-
-case class PMacroRef(idnuse: PIdnUse)(val pos: (Position, Position)) extends PStmt
 
 case class PDefine(idndef: PIdnDef, parameters: Option[Seq[PIdnDef]], body: PNode)(val pos: (Position, Position)) extends PStmt with PLocalDeclaration
 
@@ -1270,6 +1281,12 @@ object PScope {
 
     id
   }
+}
+
+// Macros
+sealed trait PMacro extends PExp {
+  def name: String
+  def args: Seq[PExp]
 }
 
 // Assignments
@@ -1467,7 +1484,6 @@ object Nodes {
       case PExplicitSet(elems) => elems
       case PEmptyMultiset(t) => Seq(t)
       case PExplicitMultiset(elems) => elems
-      case PMacroRef(_) => Nil
       case PEmptyMap(k, v) => Seq(k, v)
       case PExplicitMap(elems) => elems
       case PMapRange(base) => Seq(base)
