@@ -159,6 +159,15 @@ case class EntityFailureMessage(verifier: String, concerning: Entity,
       s"time=${verificationTime.toString}, result=${result.toString}, cached=$cached)"
 }
 
+case class BranchFailureMessage(verifier: String, concerning: Entity,
+                                result: Failure, cached: Boolean = false)
+  extends VerificationResultMessage {
+
+  override def toString: String = s"branch_failure_message(" +
+    s"verifier=$verifier, concerning=${print(concerning)}, " +
+    s"result=${result.toString}, cached=$cached)"
+}
+
 case class StatisticsReport(nOfMethods: Int, nOfFunctions: Int, nOfPredicates: Int, 
                             nOfDomains: Int, nOfFields: Int)
   extends Message {

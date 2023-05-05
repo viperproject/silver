@@ -30,6 +30,8 @@ object Triggers {
     /* True iff the given node is a possible trigger */
     protected def isPossibleTrigger(e: Exp): Boolean = (customIsPossibleTrigger orElse {
       case _: PossibleTrigger => true
+      case Old(_: PossibleTrigger) => true
+      case LabelledOld(_: PossibleTrigger, _) => true
       case _ => false
     }: PartialFunction[Exp, Boolean])(e)
 
@@ -43,12 +45,16 @@ object Triggers {
     protected def withArgs(e: Exp, args: Seq[Exp]): Exp = e match {
       case pt: PossibleTrigger => pt.withArgs(args)
       case fa: FieldAccess => fa.withArgs(args)
+      case o@Old(pt: PossibleTrigger) => Old(pt.withArgs(args))(o.pos, o.info, o.errT)
+      case o@LabelledOld(pt: PossibleTrigger, lbl) => LabelledOld(pt.withArgs(args), lbl)(o.pos, o.info, o.errT)
       case _ => sys.error(s"Unexpected expression $e")
     }
 
     protected def getArgs(e: Exp): Seq[Exp] = e match {
       case pt: PossibleTrigger => pt.getArgs
       case fa: FieldAccess => fa.getArgs
+      case Old(pt: PossibleTrigger) => pt.getArgs
+      case LabelledOld(pt: PossibleTrigger, _) => pt.getArgs
       case _ => sys.error(s"Unexpected expression $e")
     }
   }
