@@ -1,0 +1,17 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field n: Ref
+
+method get_refs() returns (x: Ref, y: Ref)
+    ensures acc(x.n)
+
+method foo() {
+  var a: Ref, b: Ref
+
+  var c: Ref, d: Ref := get_refs()
+  var e: Ref := new(n)
+
+  c.n, e := get_refs()
+  c.n.n := new(n)
+}
