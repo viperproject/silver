@@ -805,7 +805,7 @@ class FastParser {
 
   def stringLiteral[$: P]: P[String] = P("\"" ~ CharsWhile(_ != '\"').! ~ "\"")
 
-  def annotation[$: P]: P[(String, Seq[String])] = P("@" ~~ ident ~ parens(stringLiteral.rep(sep = ",")))
+  def annotation[$: P]: P[(String, Seq[String])] = P("@" ~~ annotationIdentifier ~ parens(stringLiteral.rep(sep = ",")))
 
   def annotatedAtom[$: P]: P[PExp] = FP(annotation ~ atom).map{
     case (pos, (key, value, exp)) => PAnnotatedExp(exp, (key, value))(pos)
@@ -826,6 +826,8 @@ class FastParser {
   def nul[$: P]: P[PNullLit] = FP(keyword("null")).map { case (pos, _) => PNullLit()(pos) }
 
   def identifier[$: P]: P[Unit] = CharIn("A-Z", "a-z", "$_") ~~ CharIn("0-9", "A-Z", "a-z", "$_").repX
+
+  def annotationIdentifier[$: P]: P[String] = (CharIn("A-Z", "a-z", "$_") ~~ CharIn("0-9", "A-Z", "a-z", "$_.").repX).!
 
   def ident[$: P]: P[String] = identifier.!.filter(a => !keywords.contains(a)).opaque("invalid identifier (could be a keyword)")
 

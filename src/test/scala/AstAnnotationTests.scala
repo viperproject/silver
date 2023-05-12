@@ -88,7 +88,7 @@ class AstAnnotationTests extends AnyFunSuite {
         |    var tmp: Int
         |    @annotatingastatement("the assignment", "12")
         |    @annotatingastatement("34")
-        |    @suchannotations()
+        |    @such.annotations()
         |    tmp := @asd("test 123") fun02(x, @ann("this is ugly") y, true)
         |    y.f := 1
         |    assert tmp == fun02(x, y, true)
@@ -108,7 +108,7 @@ class AstAnnotationTests extends AnyFunSuite {
 
     val assignment = res.methods.head.body.get.ss(1)
     val assignmentAnn = assignment.info.getUniqueInfo[AnnotationInfo].get
-    assert(assignmentAnn.values == Map("annotatingastatement" -> Seq("the assignment", "12", "34"), "suchannotations" -> Seq()))
+    assert(assignmentAnn.values == Map("annotatingastatement" -> Seq("the assignment", "12", "34"), "such.annotations" -> Seq()))
 
     val rhs = assignment.asInstanceOf[LocalVarAssign].rhs
     val rhsAnn = rhs.info.getUniqueInfo[AnnotationInfo].get

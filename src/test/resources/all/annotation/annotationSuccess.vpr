@@ -35,7 +35,7 @@ method m(x: Ref, y: Ref)
     requires acc(y.f)
 {
     var tmp: Int
-    @annotatingastatement("the assignment")
+    @annotating.a.statement("the assignment")
     tmp := @asd("test 123") fun02(x, @ann("this is ugly") y, true)
     y.f := 1
     assert tmp == fun02(x, y, true)
