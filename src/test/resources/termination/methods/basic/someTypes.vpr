@@ -34,3 +34,28 @@ method predicateTest2(xs: Ref)
     //:: ExpectedOutput(termination.failed:tuple.false)
     predicateTest2(xs)
 }
+
+method predicateTest3(xs: Ref)
+    requires acc(list(xs), 2/3)
+    decreases acc(list(xs), 2/3)
+    ensures acc(list(xs), 2/3)
+{
+    unfold acc(list(xs), 2/3)
+    if (xs.next != null) {
+        predicateTest3(xs.next)
+    }
+    fold acc(list(xs), 2/3)
+}
+
+method predicateTest4(xs: Ref)
+    requires acc(list(xs), 2/3)
+    decreases acc(list(xs), 2/3)
+    ensures acc(list(xs), 2/3)
+{
+    unfold acc(list(xs), 2/3)
+    if (xs.next != null) {
+    }
+    fold acc(list(xs), 2/3)
+    //:: ExpectedOutput(termination.failed:tuple.false)
+    predicateTest4(xs)
+}

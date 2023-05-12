@@ -38,7 +38,7 @@ class PredicateInstancePlugin(@unused reporter: viper.silver.reporter.Reporter,
    * Parser for declaring predicate instances.
    *
    */
-  def predicateInstance[_: P]: P[PPredicateInstance] = FP(PredicateInstanceMarker ~/ P(predAcc)).map{ case (pos, p) => PPredicateInstance(p.args, p.idnuse)(pos) }
+  def predicateInstance[$: P]: P[PPredicateInstance] = FP(PredicateInstanceMarker ~/ P(predAcc)).map{ case (pos, p) => PPredicateInstance(p.args, p.idnuse)(pos) }
 
   /** Called before any processing happened.
    *

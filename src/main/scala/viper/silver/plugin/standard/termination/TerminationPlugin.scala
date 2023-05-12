@@ -13,7 +13,7 @@ import viper.silver.parser._
 import viper.silver.plugin.standard.predicateinstance.PPredicateInstance
 import viper.silver.plugin.standard.termination.transformation.Trafo
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
-import viper.silver.verifier.errors.{AssertFailed, PreconditionInAppFalse}
+import viper.silver.verifier.errors.AssertFailed
 import viper.silver.verifier._
 import fastparse._
 import viper.silver.parser.FastParserCompanion.whitespace
@@ -43,13 +43,13 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
    * or
    * decreases *
    */
-  def decreases[_: P]: P[PDecreasesClause] =
+  def decreases[$: P]: P[PDecreasesClause] =
     P(keyword(decreasesKeyword) ~/ (decreasesWildcard | decreasesStar | decreasesTuple) ~ ";".?)
-  def decreasesTuple[_: P]: P[PDecreasesTuple] =
+  def decreasesTuple[$: P]: P[PDecreasesTuple] =
     FP(exp.rep(sep = ",") ~/ condition.?).map { case (pos, (a, c)) => PDecreasesTuple(a, c)(pos) }
-  def decreasesWildcard[_: P]: P[PDecreasesWildcard] = FP("_" ~/ condition.?).map{ case (pos, c) => PDecreasesWildcard(c)(pos) }
-  def decreasesStar[_: P]: P[PDecreasesStar] = FP("*").map{ case (pos, _) => PDecreasesStar()(pos)}
-  def condition[_: P]: P[PExp] = P("if" ~/ exp)
+  def decreasesWildcard[$: P]: P[PDecreasesWildcard] = FP("_" ~/ condition.?).map{ case (pos, c) => PDecreasesWildcard(c)(pos) }
+  def decreasesStar[$: P]: P[PDecreasesStar] = FP("*").map{ case (pos, _) => PDecreasesStar()(pos)}
+  def condition[$: P]: P[PExp] = P("if" ~/ exp)
 
 
   /**
@@ -78,6 +78,9 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
       case pa@PPredicateAccess(args, idnuse) => PPredicateInstance(args, idnuse)(pa.pos)
       case pc@PCall(idnUse, args, None) if input.predicates.exists(_.idndef.name == idnUse.name) =>
         // PCall represents the predicate access before the translation into the AST
+        PPredicateInstance(args, idnUse)(pc.pos)
+      case PAccPred(pa@PPredicateAccess(args, idnuse), _) => PPredicateInstance(args, idnuse)(pa.pos)
+      case PAccPred(pc@PCall(idnUse, args, None), _) if input.predicates.exists(_.idndef.name == idnUse.name) =>
         PPredicateInstance(args, idnUse)(pc.pos)
       case d => d
     }).recurseFunc({

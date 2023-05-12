@@ -34,7 +34,7 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
     */
   private var derivesImported: Boolean = false
 
-  def adtDerivingFunc[_: P]: P[PIdnUse] = FP(StringIn("contains").!).map { case (pos, id) => PIdnUse(id)(pos) }
+  def adtDerivingFunc[$: P]: P[PIdnUse] = FP(StringIn("contains").!).map { case (pos, id) => PIdnUse(id)(pos) }
 
   override def beforeParse(input: String, isImported: Boolean): String = {
     if (deactivated) {
@@ -69,7 +69,7 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
     * }
     *
     */
-  def adtDecl[_: P]: P[PAdt] = FP(AdtKeyword ~/ idndef ~ typeParams ~ "{" ~ adtConstructorDecl.rep ~
+  def adtDecl[$: P]: P[PAdt] = FP(AdtKeyword ~/ idndef ~ typeParams ~ "{" ~ adtConstructorDecl.rep ~
     "}" ~ adtDerivingDecl.?).map {
     case (pos, (name, typparams, constructors, dec)) =>
       PAdt(
@@ -80,22 +80,22 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
       )(pos)
   }
 
-  def adtDerivingDecl[_: P]: P[Seq[PAdtDerivingInfo]] = P(AdtDerivesKeyword ~/ "{" ~ adtDerivingDeclBody.rep ~ "}")
+  def adtDerivingDecl[$: P]: P[Seq[PAdtDerivingInfo]] = P(AdtDerivesKeyword ~/ "{" ~ adtDerivingDeclBody.rep ~ "}")
 
-  def adtDerivingDeclBody[_: P]: P[PAdtDerivingInfo] = FP(
+  def adtDerivingDeclBody[$: P]: P[PAdtDerivingInfo] = FP(
     idnuse ~ ("[" ~ typ ~ "]").? ~ (AdtDerivesWithoutKeyword ~/ idnuse.rep(sep = ",", min = 1)).?).map {
     case (pos, (func, ttyp, bl)) => PAdtDerivingInfo(func, ttyp, bl.getOrElse(Seq.empty).toSet)(pos)
   }
 
-  def adtConstructorDecl[_: P]: P[PAdtConstructor1] = FP(adtConstructorSignature ~ ";".?).map {
+  def adtConstructorDecl[$: P]: P[PAdtConstructor1] = FP(adtConstructorSignature ~ ";".?).map {
     case (pos, cdecl) => cdecl match {
       case (name, formalArgs) => PAdtConstructor1(name, formalArgs)(pos)
     }
   }
 
-  def adtConstructorSignature[_: P]: P[(PIdnDef, Seq[PFormalArgDecl])] = P(idndef ~ "(" ~ formalArgList ~ ")")
+  def adtConstructorSignature[$: P]: P[(PIdnDef, Seq[PFormalArgDecl])] = P(idndef ~ "(" ~ formalArgList ~ ")")
 
-  def formalArgList[_: P]: P[Seq[PFormalArgDecl]] = P(formalArg.rep(sep = ","))
+  def formalArgList[$: P]: P[Seq[PFormalArgDecl]] = P(formalArg.rep(sep = ","))
 
   override def beforeResolve(input: PProgram): PProgram = {
     if (deactivated) {
