@@ -126,19 +126,6 @@ class FastParser {
   var _file: Path = null
 
   def parse(s: String, f: Path, plugins: Option[SilverPluginManager] = None) = {
-    _file = f.toAbsolutePath
-
-    // Add an empty line at the end to make `computeFrom(s.length)` return `(lines.length, 1)`, as the old
-    // implementation of `computeFrom` used to do.
-    val lines = s.linesWithSeparators
-    _line_offset = (lines.map(_.length) ++ Seq(0)).toArray
-    var offset = 0
-    for (i <- _line_offset.indices) {
-      val line_length = _line_offset(i)
-      _line_offset(i) = offset
-      offset += line_length
-    }
-
     // Strategy to handle imports
     // Idea: Import every import reference and merge imported methods, functions, imports, .. into current program
     //       iterate until no new imports are present.
@@ -260,6 +247,19 @@ class FastParser {
   case class RecParser(file: Path) {
 
     def parses(s: String) = {
+      _file = file.toAbsolutePath
+
+      // Add an empty line at the end to make `computeFrom(s.length)` return `(lines.length, 1)`, as the old
+      // implementation of `computeFrom` used to do.
+      val lines = s.linesWithSeparators
+      _line_offset = (lines.map(_.length) ++ Seq(0)).toArray
+      var offset = 0
+      for (i <- _line_offset.indices) {
+        val line_length = _line_offset(i)
+        _line_offset(i) = offset
+        offset += line_length
+      }
+
       fastparse.parse(s, entireProgram(_))
     }
   }
