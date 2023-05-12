@@ -163,14 +163,7 @@ case class Translator(program: PProgram) {
     if (annotations.isEmpty) {
       NoInfo
     } else {
-      val keys = annotations.map(_._1)
-      val duplicates = keys.diff(keys.distinct).distinct
-      if (duplicates.nonEmpty) {
-        for (dupKey <- duplicates) {
-          Consistency.messages ++= FastMessaging.message(node, s"duplicate annotation $dupKey")
-        }
-      }
-      AnnotationInfo(annotations.toMap)
+      AnnotationInfo(annotations.groupBy(_._1).map{ case (k, v) => k -> v.unzip._2.flatten})
     }
   }
 
@@ -291,10 +284,12 @@ case class Translator(program: PProgram) {
     pexp match {
       case PAnnotatedExp(e, (key, value)) =>
         val (resPexp, innerMap) = extractAnnotation(e)
-        if (innerMap.contains(key)) {
-          Consistency.messages ++= FastMessaging.message(pexp, s"duplicate annotation $key")
+        val combinedValue = if (innerMap.contains(key)) {
+          value ++ innerMap(key)
+        } else {
+          value
         }
-        (resPexp, innerMap.updated(key, value))
+        (resPexp, innerMap.updated(key, combinedValue))
       case _ => (pexp, Map())
     }
   }
@@ -303,10 +298,12 @@ case class Translator(program: PProgram) {
     pStmt match {
       case PAnnotatedStmt(s, (key, value)) =>
         val (resPStmt, innerMap) = extractAnnotationFromStmt(s)
-        if (innerMap.contains(key)) {
-          Consistency.messages ++= FastMessaging.message(pStmt, s"duplicate annotation $key")
+        val combinedValue = if (innerMap.contains(key)) {
+          value ++ innerMap(key)
+        } else {
+          value
         }
-        (resPStmt, innerMap.updated(key, value))
+        (resPStmt, innerMap.updated(key, combinedValue))
       case _ => (pStmt, Map())
     }
   }

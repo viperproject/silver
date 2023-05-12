@@ -10,6 +10,7 @@ function fun02(x: Ref, y: Ref, b: Bool): Int
   requires acc(y.f, !b ? write : none)
 
 @inline("never", "ever")
+@inline("ever")
 predicate P(x: Ref)
 
 @interp("some smtlib thingy")
@@ -35,7 +36,7 @@ method m(x: Ref, y: Ref)
 {
     var tmp: Int
     @annotatingastatement("the assignment")
-    tmp := @asd("test 123") fun02(x, @lul("this is ugly") y, true)
+    tmp := @asd("test 123") fun02(x, @ann("this is ugly") y, true)
     y.f := 1
     assert tmp == fun02(x, y, true)
 }
