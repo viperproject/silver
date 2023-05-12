@@ -172,6 +172,8 @@ case class TypeChecker(names: NameAnalyser) {
 
   def check(stmt: PStmt): Unit = {
     stmt match {
+      case PAnnotatedStmt(s, _) =>
+        check(s)
       case PMacroRef(id) =>
         messages ++= FastMessaging.message(stmt, "unknown macro used: " + id.name)
       case s@PSeqn(ss) =>
@@ -622,7 +624,10 @@ case class TypeChecker(names: NameAnalyser) {
 
       case t: PExtender => t.typecheck(this, names).getOrElse(Nil) foreach (message =>
         messages ++= FastMessaging.message(t, message))
-      case psl: PSimpleLiteral =>
+      case PAnnotatedExp(e, _) =>
+        checkInternal(e)
+        setType(e.typ)
+      case psl: PSimpleLiteral=>
         psl match {
           case r@PResultLit() =>
             if (resultAllowed)
