@@ -188,6 +188,7 @@ case class Translator(program: PProgram) {
     val pos = pStmt
     val (s, annotations) = extractAnnotationFromStmt(pStmt)
     val info = if (annotations.isEmpty) NoInfo else AnnotationInfo(annotations)
+    val subInfo = NoInfo
     s match {
       case p@PVarAssign(idnuse, PCall(func, args, _)) if members(func.name).isInstanceOf[Method] =>
         /* This is a method call that got parsed in a slightly confusing way.
@@ -197,11 +198,11 @@ case class Translator(program: PProgram) {
         val res = stmt(call)
         res.withMeta(res.pos, info, res.errT)
       case PVarAssign(idnuse, rhs) =>
-        LocalVarAssign(LocalVar(idnuse.name, ttyp(idnuse.typ))(pos, info), exp(rhs))(pos, info)
+        LocalVarAssign(LocalVar(idnuse.name, ttyp(idnuse.typ))(pos, subInfo), exp(rhs))(pos, info)
       case PFieldAssign(field, rhs) =>
         FieldAssign(FieldAccess(exp(field.rcv), findField(field.idnuse))(field), exp(rhs))(pos, info)
       case PLocalVarDecl(idndef, t, Some(init)) =>
-        LocalVarAssign(LocalVar(idndef.name, ttyp(t))(pos, info), exp(init))(pos, info)
+        LocalVarAssign(LocalVar(idndef.name, ttyp(t))(pos, subInfo), exp(init))(pos, info)
       case PLocalVarDecl(_, _, None) =>
         // there are no declarations in the Viper AST; rather they are part of the scope signature
         Statements.EmptyStmt

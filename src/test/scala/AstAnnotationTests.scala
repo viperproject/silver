@@ -56,7 +56,7 @@ class AstAnnotationTests extends AnyFunSuite {
         |function fun01(x: Ref, y: Ref, b: Bool): Int
         |  requires b ? acc(x.f) : acc(y.f)
         |
-        |function fun02(x: Ref, y: Ref, b: Bool): Int
+        |function fun02(x: Ref, y: Ref, b: Bool, i: Int): Int
         |  requires acc(x.f, b ? write : none)
         |  requires acc(y.f, !b ? write : none)
         |
@@ -89,13 +89,15 @@ class AstAnnotationTests extends AnyFunSuite {
         |    @annotatingastatement("the assignment", "12")
         |    @annotatingastatement("34")
         |    @such.annotations()
-        |    tmp := @asd("test 123") fun02(x, @ann("this is ugly") y, true)
+        |    tmp := @asd("test 123") fun02(x, @ann("this is ugly") y, true, @ann() ((@ann2() tmp) + tmp))
         |    y.f := 1
-        |    assert tmp == fun02(x, y, true)
+        |    assert tmp == fun02(x, y, true, 0)
         |}
         |""".stripMargin
 
-    val res: Program = generateViperAst(code).get
+    val origProgram: Program = generateViperAst(code).get
+    // Pretty print and reparse to make sure annotations are preserved correctly.
+    val res = generateViperAst(origProgram.toString()).get
 
     val fieldAnn = res.findField("f").info.getUniqueInfo[AnnotationInfo].get
     assert(fieldAnn.values == Map("isghost" -> Seq("nope")))
@@ -110,11 +112,27 @@ class AstAnnotationTests extends AnyFunSuite {
     val assignmentAnn = assignment.info.getUniqueInfo[AnnotationInfo].get
     assert(assignmentAnn.values == Map("annotatingastatement" -> Seq("the assignment", "12", "34"), "such.annotations" -> Seq()))
 
+    val lhs = assignment.asInstanceOf[LocalVarAssign].lhs
+    val lhsAnn = lhs.info.getUniqueInfo[AnnotationInfo]
+    assert(lhsAnn.isEmpty || lhsAnn.get.values.isEmpty)
+
     val rhs = assignment.asInstanceOf[LocalVarAssign].rhs
     val rhsAnn = rhs.info.getUniqueInfo[AnnotationInfo].get
     assert(rhsAnn.values == Map("asd" -> Seq("test 123")))
 
     val argAnn = rhs.asInstanceOf[FuncApp].args(1).info.getUniqueInfo[AnnotationInfo].get
     assert(argAnn.values == Map("ann" -> Seq("this is ugly")))
+
+    val lastArg = rhs.asInstanceOf[FuncApp].args(3)
+    val lastArgAnn = lastArg.info.getUniqueInfo[AnnotationInfo].get
+    assert(lastArgAnn.values == Map("ann" -> Seq()))
+
+    val lastArgLeft = lastArg.asInstanceOf[Add].left
+    val lastArgLeftAnn = lastArgLeft.info.getUniqueInfo[AnnotationInfo].get
+    assert(lastArgLeftAnn.values == Map("ann2" -> Seq()))
+
+    val lastArgRight = lastArg.asInstanceOf[Add].right
+    val lastArgRightAnn = lastArgRight.info.getUniqueInfo[AnnotationInfo]
+    assert(lastArgRightAnn.isEmpty || lastArgRightAnn.get.values == Map())
   }
 }
