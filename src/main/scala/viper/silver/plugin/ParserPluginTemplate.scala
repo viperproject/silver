@@ -6,7 +6,7 @@
 
 package viper.silver.plugin
 
-import viper.silver.parser.{NameAnalyser, PExp, PExtender, PStmt, PTypeSubstitution, Translator, TypeChecker}
+import viper.silver.parser.{NameAnalyser, PExp, PExtender, PKeyword, PStmt, PTypeSubstitution, Translator, TypeChecker}
 import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.ast.{Declaration, ErrorTrafo, Exp, ExtensionExp, ExtensionMember, ExtensionStmt, Info, Member, Node, Position, Stmt, Type}
 import viper.silver.verifier.VerificationResult
@@ -68,17 +68,20 @@ trait ParserPluginTemplate {
   /**
     * The specification rule provides an extension to the precondition expressions
     */
-  def preSpecification : Extension[PExp] = ParserPluginTemplate.defaultExpExtension
+  def preSpecification : Extension[(PKeyword, PExp)] =
+    fp => ParserPluginTemplate.defaultExpExtension(fp).map(x => (PKeyword.empty, x))
 
   /**
     * The specification rule provides an extension to the postcondition expressions
     */
-  def postSpecification : Extension[PExp] = ParserPluginTemplate.defaultExpExtension
+  def postSpecification : Extension[(PKeyword, PExp)] =
+    fp => ParserPluginTemplate.defaultExpExtension(fp).map(x => (PKeyword.empty, x))
 
   /**
     * The specification rule provides an extension to the loop invariant specification expressions
     */
-  def invSpecification : Extension[PExp] = ParserPluginTemplate.defaultExpExtension
+  def invSpecification : Extension[(PKeyword, PExp)] =
+    fp => ParserPluginTemplate.defaultExpExtension(fp).map(x => (PKeyword.empty, x))
 
   /**
     * This rule extends the keywords. So new strings added to the set will be considered as keywords.

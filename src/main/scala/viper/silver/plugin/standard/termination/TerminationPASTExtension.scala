@@ -56,8 +56,8 @@ case class PDecreasesWildcard(condition: Option[PExp] = None)(val pos: (Position
   }
 }
 
-case class PDecreasesStar()(val pos: (Position, Position)) extends PDecreasesClause {
-  override val getSubnodes: Seq[PNode] = Nil
+case class PDecreasesStar(star: POperator)(val pos: (Position, Position)) extends PDecreasesClause {
+  override val getSubnodes: Seq[PNode] = Seq(star)
 
   override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = {
     None

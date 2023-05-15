@@ -8,7 +8,7 @@ import java.nio.file.Paths
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast.{LocalVar, Perm, Program}
 import viper.silver.frontend.{SilFrontend, SilFrontendConfig}
-import viper.silver.parser.{PIdnDef, PPredicate, PProgram}
+import viper.silver.parser.{PIdnDef, PKeyword, PPredicate, PProgram}
 import viper.silver.plugin.{SilverPlugin, SilverPluginManager}
 import viper.silver.reporter.{Reporter, StdIOReporter}
 import viper.silver.verifier.errors.Internal
@@ -124,7 +124,7 @@ class TestPluginAddPredicate extends SilverPlugin {
       input.domains,
       input.fields,
       input.functions,
-      input.predicates :+ PPredicate(PIdnDef("testPredicate")(p), Seq(), None)(p, Seq()),
+      input.predicates :+ PPredicate(PKeyword("predicate")(p), PIdnDef("testPredicate")(p), Seq(), None)(p, Seq()),
       input.methods,
       input.extensions,
       input.errors

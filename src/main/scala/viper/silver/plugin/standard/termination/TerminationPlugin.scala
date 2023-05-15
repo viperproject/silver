@@ -25,7 +25,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
                         @unused logger: ch.qos.logback.classic.Logger,
                         config: viper.silver.frontend.SilFrontendConfig,
                         fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
-  import fp.{FP, keyword, exp, ParserExtension}
+  import fp.{FP, keyword, exp, operator, ParserExtension}
 
   private def deactivated: Boolean = config != null && config.terminationPlugin.toOption.getOrElse(false)
 
@@ -43,12 +43,12 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
    * or
    * decreases *
    */
-  def decreases[$: P]: P[PDecreasesClause] =
-    P(keyword(decreasesKeyword) ~/ (decreasesWildcard | decreasesStar | decreasesTuple) ~ ";".?)
+  def decreases[$: P]: P[(PKeyword, PDecreasesClause)] =
+    P(keyword(decreasesKeyword.!) ~/ (decreasesWildcard | decreasesStar | decreasesTuple) ~ ";".?)
   def decreasesTuple[$: P]: P[PDecreasesTuple] =
     FP(exp.rep(sep = ",") ~/ condition.?).map { case (pos, (a, c)) => PDecreasesTuple(a, c)(pos) }
   def decreasesWildcard[$: P]: P[PDecreasesWildcard] = FP("_" ~/ condition.?).map{ case (pos, c) => PDecreasesWildcard(c)(pos) }
-  def decreasesStar[$: P]: P[PDecreasesStar] = FP("*").map{ case (pos, _) => PDecreasesStar()(pos)}
+  def decreasesStar[$: P]: P[PDecreasesStar] = FP(operator("*".!)).map{ case (pos, op) => PDecreasesStar(op)(pos)}
   def condition[$: P]: P[PExp] = P("if" ~/ exp)
 
 
@@ -79,14 +79,14 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
       case pc@PCall(idnUse, args, None) if input.predicates.exists(_.idndef.name == idnUse.name) =>
         // PCall represents the predicate access before the translation into the AST
         PPredicateInstance(args, idnUse)(pc.pos)
-      case PAccPred(pa@PPredicateAccess(args, idnuse), _) => PPredicateInstance(args, idnuse)(pa.pos)
-      case PAccPred(pc@PCall(idnUse, args, None), _) if input.predicates.exists(_.idndef.name == idnUse.name) =>
+      case PAccPred(_, pa@PPredicateAccess(args, idnuse), _) => PPredicateInstance(args, idnuse)(pa.pos)
+      case PAccPred(_, pc@PCall(idnUse, args, None), _) if input.predicates.exists(_.idndef.name == idnUse.name) =>
         PPredicateInstance(args, idnUse)(pc.pos)
       case d => d
     }).recurseFunc({
-      case PUnfolding(_, exp) => // ignore predicate access when it is used for unfolding
+      case PUnfolding(_, _, exp) => // ignore predicate access when it is used for unfolding
         Seq(exp)
-      case PApplying(_, exp) => // ignore predicate access when it is in a magic wand
+      case PApplying(_, _, exp) => // ignore predicate access when it is in a magic wand
         Seq(exp)
       case PCurPerm(_) => // ignore predicate access when it is in perm
         // (However, anyways not supported in decreases clauses)

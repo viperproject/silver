@@ -7,6 +7,7 @@
 package viper.silver.plugin.standard.adt
 
 import viper.silver.FastMessaging
+import viper.silver.ast.utility.{HasSemanticTokens, SemanticHighlight, TokenType}
 import viper.silver.ast._
 import viper.silver.parser._
 import viper.silver.plugin.standard.adt.PAdtConstructor.findAdtConstructor
@@ -15,10 +16,12 @@ import scala.annotation.unused
 import scala.util.{Success, Try}
 
 
-case class PAdt(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], constructors: Seq[PAdtConstructor], derivingInfos: Seq[PAdtDerivingInfo])
-               (val pos: (Position, Position)) extends PExtender with PMember with PGlobalDeclaration {
+case class PAdt(adt: PKeyword, idndef: PIdnDef, typVars: Seq[PTypeVarDecl], constructors: Seq[PAdtConstructor], derivingInfos: Seq[PAdtDerivingInfo])
+               (val pos: (Position, Position)) extends PExtender with PMember with PGlobalDeclaration with PSemanticDeclaration {
 
-  override val getSubnodes: Seq[PNode] = Seq(idndef) ++ typVars ++ constructors ++ derivingInfos
+  override def tokenType = TokenType.Enum
+
+  override val getSubnodes: Seq[PNode] = Seq(adt, idndef) ++ typVars ++ constructors ++ derivingInfos
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
     t.checkMember(this) {
@@ -171,9 +174,12 @@ case class PAdtDerivingInfo(idnuse: PIdnUse, param: Option[PType], blockList: Se
 }
 
 case class PAdtType(adt: PIdnUse, args: Seq[PType])
-                   (val pos: (Position, Position)) extends PExtender with PGenericType {
+                   (val pos: (Position, Position)) extends PExtender with PGenericType with HasSemanticTokens {
 
   var kind: PAdtTypeKinds.Kind = PAdtTypeKinds.Unresolved
+
+  override val semanticTokens: Seq[SemanticHighlight] =
+    adt.filePos.map(pos => SemanticHighlight(pos._1, pos._2, TokenType.Enum)).toSeq
 
   override def genericName: String = adt.name
 
@@ -217,7 +223,7 @@ case class PAdtType(adt: PIdnUse, args: Seq[PType])
         }
 
         x match {
-          case PAdt(_, typVars, _, _) =>
+          case PAdt(_, _, typVars, _, _) =>
             t.ensure(args.length == typVars.length, this, "wrong number of type arguments")
             at.kind = PAdtTypeKinds.Adt
             None

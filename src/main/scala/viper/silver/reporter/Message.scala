@@ -8,6 +8,7 @@ package viper.silver.reporter
 
 import viper.silver.reporter.BackendSubProcessStages.BackendSubProcessStage
 import viper.silver.verifier._
+import viper.silver.ast.utility.SemanticHighlight
 import viper.silver.ast.{QuantifiedExp, Trigger}
 
 /**
@@ -189,6 +190,18 @@ case class ProgramDefinitionsReport(definitions: List[Definition]) extends Messa
 
   override lazy val toString: String = s"program_definitions_report(definitions=${definitions.toString}"
   override val name: String = "program_definitions"
+}
+
+case class ProgramImportsReport(imports: List[Import]) extends Message {
+
+  override lazy val toString: String = s"program_imports_report(imports=${imports.toString}"
+  override val name: String = "program_imports"
+}
+
+case class SemanticTokensReport(tokens: List[SemanticHighlight]) extends Message {
+
+  override lazy val toString: String = s"semantic_tokens_report(tokens=${tokens.toString}"
+  override val name: String = "semantic_tokens"
 }
 
 // TODO: Variable level of detail?

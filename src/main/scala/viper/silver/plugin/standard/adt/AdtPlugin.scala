@@ -21,7 +21,7 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
                 config: viper.silver.frontend.SilFrontendConfig,
                 fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
 
-  import fp.{FP, formalArg, idndef, idnuse, typ, typeParams, ParserExtension}
+  import fp.{FP, formalArg, idndef, idnuse, keyword, typ, typeParams, ParserExtension}
 
   /**
     * Keywords used to define ADT's
@@ -69,10 +69,11 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
     * }
     *
     */
-  def adtDecl[$: P]: P[PAdt] = FP(AdtKeyword ~/ idndef ~ typeParams ~ "{" ~ adtConstructorDecl.rep ~
+  def adtDecl[$: P]: P[PAdt] = FP(keyword(AdtKeyword.!) ~/ idndef ~ typeParams ~ "{" ~ adtConstructorDecl.rep ~
     "}" ~ adtDerivingDecl.?).map {
-    case (pos, (name, typparams, constructors, dec)) =>
+    case (pos, (k, name, typparams, constructors, dec)) =>
       PAdt(
+        k,
         name,
         typparams,
         constructors map (c => PAdtConstructor(c.idndef, c.formalArgs)(PIdnUse(name.name)(name.pos))(c.pos)),
@@ -111,7 +112,7 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
 
     def transformStrategy[T <: PNode](input: T): T = StrategyBuilder.Slim[PNode]({
       // If derives import is missing deriving info is ignored
-      case pa@PAdt(idndef, typVars, constructors, _) if !derivesImported => PAdt(idndef, typVars, constructors, Seq.empty)(pa.pos)
+      case pa@PAdt(adt, idndef, typVars, constructors, _) if !derivesImported => PAdt(adt, idndef, typVars, constructors, Seq.empty)(pa.pos)
       case pa@PDomainType(idnuse, args) if declaredAdtNames.contains(idnuse.name) => PAdtType(idnuse, args)(pa.pos)
       case pc@PCall(idnuse, args, typeAnnotated) if declaredConstructorNames.exists(_.name == idnuse.name) => PConstructorCall(idnuse, args, typeAnnotated)(pc.pos)
       // A destructor call or discriminator call might be parsed as left-hand side of a field assignment, which is illegal. Hence in this case

@@ -100,8 +100,8 @@ case class TypeChecker(names: NameAnalyser) {
 
   def checkBody(m: PMethod): Unit = {
     checkMember(m) {
-      m.pres foreach (check(_, Bool))
-      m.posts foreach (check(_, Bool))
+      m.pres foreach (p => check(p._2, Bool))
+      m.posts foreach (p => check(p._2, Bool))
       m.body.foreach(check)
     }
   }
@@ -120,9 +120,9 @@ case class TypeChecker(names: NameAnalyser) {
     checkMember(f) {
       assert(curFunction == null)
       curFunction = f
-      f.pres foreach (check(_, Bool))
+      f.pres foreach (p => check(p._2, Bool))
       resultAllowed = true
-      f.posts foreach (check(_, Bool))
+      f.pres foreach (p => check(p._2, Bool))
       f.body.foreach(check(_, f.typ)) //result in the function body gets the error message somewhere else
       resultAllowed = false
       curFunction = null
@@ -186,20 +186,20 @@ case class TypeChecker(names: NameAnalyser) {
       case PUnfold(e) =>
         acceptNonAbstractPredicateAccess(e, "abstract predicates cannot be unfolded")
         check(e, Bool)
-      case PPackageWand(e, proofScript) =>
+      case PPackageWand(_, e, proofScript) =>
         check(e, Wand)
         checkMagicWand(e)
         check(proofScript)
-      case PApplyWand(e) =>
+      case PApplyWand(_, e) =>
         check(e, Wand)
         checkMagicWand(e)
-      case PExhale(e) =>
+      case PExhale(_, e) =>
         check(e, Bool)
-      case PAssert(e) =>
+      case PAssert(_, e) =>
         check(e, Bool)
-      case PInhale(e) =>
+      case PInhale(_, e) =>
         check(e, Bool)
-      case PAssume(e) =>
+      case PAssume(_, e) =>
         check(e, Bool)
       case p@PVarAssign(idnuse, PCall(func, args, _)) if names.definition(curMember)(func).get.isInstanceOf[PMethod] =>
         /* This is a method call that got parsed in a slightly confusing way.
@@ -210,7 +210,7 @@ case class TypeChecker(names: NameAnalyser) {
 
       case PVarAssign(idnuse, rhs) =>
         names.definition(curMember)(idnuse) match {
-          case Some(PLocalVarDecl(_, typ, _)) =>
+          case Some(PLocalVarDecl(_, _, typ, _)) =>
             check(idnuse, typ)
             check(rhs, typ)
           case Some(PFormalArgDecl(_, typ)) =>
@@ -224,7 +224,7 @@ case class TypeChecker(names: NameAnalyser) {
         acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](Seq(target), msg) { (v, _) => check(v, Ref) }
         fields foreach (_.foreach(field =>
           names.definition(curMember)(field) match {
-            case Some(PField(_, typ)) =>
+            case Some(PField(_, _, typ)) =>
               check(field, typ)
             case _ =>
               messages ++= FastMessaging.message(stmt, "expected a field as argument")
@@ -247,26 +247,26 @@ case class TypeChecker(names: NameAnalyser) {
           case _ =>
             messages ++= FastMessaging.message(stmt, "expected a method")
         }
-      case PLabel(_, invs) =>
-        invs foreach (check(_, Bool))
+      case PLabel(_, _, invs) =>
+        invs foreach (inv => check(inv._2, Bool))
       case PGoto(_) =>
       case PFieldAssign(field, rhs) =>
         names.definition(curMember)(field.idnuse, Some(PField.getClass)) match {
-          case Some(PField(_, typ)) =>
+          case Some(PField(_, _, typ)) =>
             check(field, typ)
             check(rhs, typ)
           case _ =>
             messages ++= FastMessaging.message(stmt, "expected a field as lhs")
         }
-      case PIf(cond, thn, els) =>
+      case PIf(_, cond, thn, _, els) =>
         check(cond, Bool)
         check(thn)
         check(els)
-      case PWhile(cond, invs, body) =>
+      case PWhile(_, cond, invs, body) =>
         check(cond, Bool)
-        invs foreach (check(_, Bool))
+        invs foreach (inv => check(inv._2, Bool))
         check(body)
-      case PLocalVarDecl(_, typ, init) =>
+      case PLocalVarDecl(_, _, typ, init) =>
         check(typ)
         init match {
           case Some(i) => check(i, typ)
@@ -275,9 +275,9 @@ case class TypeChecker(names: NameAnalyser) {
       case _: PDefine =>
         /* Should have been removed right after parsing */
         sys.error(s"Unexpected node $stmt found")
-      case PQuasihavoc(lhs, e) =>
+      case PQuasihavoc(_, lhs, e) =>
         checkHavoc(stmt, lhs, e)
-      case havoc@PQuasihavocall(vars, lhs, e) =>
+      case havoc@PQuasihavocall(_, vars, _, lhs, e) =>
         vars foreach (v => check(v.typ))
         // update the curMember, which contains quantified variable information
         val oldCurMember = curMember
@@ -293,10 +293,10 @@ case class TypeChecker(names: NameAnalyser) {
     }
   }
 
-  def checkHavoc(stmt: PStmt, lhs: Option[PExp], e: PExp): Unit = {
+  def checkHavoc(stmt: PStmt, lhs: Option[(PExp, POperator)], e: PExp): Unit = {
     // If there is a condition, make sure that it is a Bool
     if (lhs.nonEmpty) {
-      check(lhs.get, Bool)
+      check(lhs.get._1, Bool)
     }
     // Make sure that the rhs is a resource
     val havocError = "Havoc statement must take a field access, predicate, or wand"
@@ -315,12 +315,12 @@ case class TypeChecker(names: NameAnalyser) {
 
   def acceptNonAbstractPredicateAccess(exp: PExp, messageIfAbstractPredicate: String): Unit = {
     exp match {
-      case PAccPred(PPredicateAccess(_, idnuse), _) =>
+      case PAccPred(_, PPredicateAccess(_, idnuse), _) =>
         acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate") { (_, _predicate) =>
           val predicate = _predicate.asInstanceOf[PPredicate]
           if (predicate.body.isEmpty) messages ++= FastMessaging.message(idnuse, messageIfAbstractPredicate)
         }
-      case PAccPred(PCall(idnuse, _, _), _) =>
+      case PAccPred(_, PCall(idnuse, _, _), _) =>
         val ad = names.definition(curMember)(idnuse)
         ad match {
           case Some(_: PPredicate) =>
@@ -336,7 +336,7 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   def checkMagicWand(e: PExp): Unit = e match {
-    case PBinExp(_, MagicWandOp.op, _) =>
+    case PBinExp(_, POperator(MagicWandOp.op), _) =>
     case _ =>
       messages ++= FastMessaging.message(e, "expected magic wand")
   }
@@ -415,13 +415,13 @@ case class TypeChecker(names: NameAnalyser) {
             dt.kind = PDomainTypeKinds.Undeclared
         }
 
-      case PSeqType(elemType) =>
+      case PSeqType(_, elemType) =>
         check(elemType)
-      case PSetType(elemType) =>
+      case PSetType(_, elemType) =>
         check(elemType)
-      case PMultisetType(elemType) =>
+      case PMultisetType(_, elemType) =>
         check(elemType)
-      case PMapType(keyType, valueType) =>
+      case PMapType(_, keyType, valueType) =>
         check(keyType)
         check(valueType)
       case t: PExtender =>
@@ -445,10 +445,10 @@ case class TypeChecker(names: NameAnalyser) {
       case (_, dt: PDomainType) if dt.isUndeclared => true
       case (PTypeVar(_), _) | (_, PTypeVar(_)) => true
       case (Bool, PWandType()) => true
-      case (PSeqType(e1), PSeqType(e2)) => isCompatible(e1, e2)
-      case (PSetType(e1), PSetType(e2)) => isCompatible(e1, e2)
-      case (PMultisetType(e1), PMultisetType(e2)) => isCompatible(e1, e2)
-      case (PMapType(k1, v1), PMapType(k2, v2)) => isCompatible(k1, k2) && isCompatible(v1, v2)
+      case (PSeqType(_, e1), PSeqType(_, e2)) => isCompatible(e1, e2)
+      case (PSetType(_, e1), PSetType(_, e2)) => isCompatible(e1, e2)
+      case (PMultisetType(_, e1), PMultisetType(_, e2)) => isCompatible(e1, e2)
+      case (PMapType(_, k1, v1), PMapType(_, k2, v2)) => isCompatible(k1, k2) && isCompatible(v1, v2)
       case (PDomainType(domain1, args1), PDomainType(domain2, args2))
         if domain1 == domain2 && args1.length == args2.length =>
         (args1 zip args2) forall (x => isCompatible(x._1, x._2))
@@ -629,7 +629,7 @@ case class TypeChecker(names: NameAnalyser) {
         setType(e.typ)
       case psl: PSimpleLiteral=>
         psl match {
-          case r@PResultLit() =>
+          case r@PResultLit(_) =>
             if (resultAllowed)
               setType(curFunction.typ)
             else
@@ -692,7 +692,7 @@ case class TypeChecker(names: NameAnalyser) {
                 }
                 acceptNonAbstractPredicateAccess(pu.acc, "abstract predicates cannot be unfolded")
 
-              case PApplying(wand, _) =>
+              case PApplying(_, wand, _) =>
                 checkMagicWand(wand)
 
               case PFieldAccess(rcv, idnuse) =>
@@ -710,7 +710,7 @@ case class TypeChecker(names: NameAnalyser) {
                 acceptAndCheckTypedEntity[PField, Nothing](Seq(idnuse), "expected field")(
                   (id, _) => checkInternal(id))
 
-              case PAccPred(loc, _) =>
+              case PAccPred(_, loc, _) =>
                 loc match {
                   case PFieldAccess(_, _) =>
                   case pc: PCall if pc.extfunction != null =>
@@ -772,10 +772,10 @@ case class TypeChecker(names: NameAnalyser) {
 
       case piu@PIdnUse(_) =>
         names.definition(curMember)(piu) match {
-          case Some(decl@PLocalVarDecl(_, typ, _)) => setPIdnUseTypeAndEntity(piu, typ, decl)
+          case Some(decl@PLocalVarDecl(_, _, typ, _)) => setPIdnUseTypeAndEntity(piu, typ, decl)
           case Some(decl@PFormalArgDecl(_, typ)) => setPIdnUseTypeAndEntity(piu, typ, decl)
-          case Some(decl@PField(_, typ)) => setPIdnUseTypeAndEntity(piu, typ, decl)
-          case Some(decl@PPredicate(_, _, _)) => setPIdnUseTypeAndEntity(piu, Pred, decl)
+          case Some(decl@PField(_, _, typ)) => setPIdnUseTypeAndEntity(piu, typ, decl)
+          case Some(decl@PPredicate(_, _, _, _)) => setPIdnUseTypeAndEntity(piu, Pred, decl)
           case x => issueError(piu, s"expected identifier, but got ${x.get}")
         }
 

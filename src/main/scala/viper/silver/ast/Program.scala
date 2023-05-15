@@ -268,7 +268,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
   lazy val groundTypeInstances = DomainInstances.findNecessaryTypeInstances(this)
 
-  lazy val members: Seq[Member with Serializable] = domains ++ fields ++ functions ++ predicates ++ methods
+  val members: Seq[Member with Serializable] = domains ++ fields ++ functions ++ predicates ++ methods ++ extensions
 
   def findFieldOptionally(name: String): Option[Field] = this.fieldsByName.get(name)
 
@@ -826,7 +826,7 @@ object BackendFunc {
 /**
   * The Extension Member trait provides the way to expand the Ast to include new Top Level declarations
   */
-trait ExtensionMember extends Member{
+trait ExtensionMember extends Member with Serializable {
   def extensionSubnodes: Seq[Node]
   def prettyPrint: PrettyPrintPrimitives#Cont
 }

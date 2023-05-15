@@ -6,7 +6,7 @@
 
 package viper.silver.plugin.standard.refute
 
-import fastparse.P
+import fastparse._
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast._
 import viper.silver.parser.FastParserCompanion.whitespace
@@ -30,7 +30,7 @@ class RefutePlugin(@unused reporter: viper.silver.reporter.Reporter,
 
   /** Parser for refute statements. */
   def refute[$: P]: P[PRefute] =
-    FP(keyword(refuteKeyword) ~/ exp).map{ case (pos, e) => PRefute(e)(pos) }
+    FP(keyword(refuteKeyword.!) ~/ exp).map{ case (pos, (k, e)) => PRefute(k, e)(pos) }
 
   /** Add refute to the parser. */
   override def beforeParse(input: String, isImported: Boolean): String = {

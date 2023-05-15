@@ -14,7 +14,7 @@ import scala.collection.mutable
 
 case class PPredicateInstance(args: Seq[PExp], idnuse: PIdnUse)(val pos: (Position, Position)) extends PExtender with PExp {
 
-  typ = PPrimitiv("PredicateInstance")()
+  typ = PPrimitiv(PKeyword("PredicateInstance")(NoPosition, NoPosition))(NoPosition, NoPosition)
 
   // TODO: Don't know if this is correct
   private val _typeSubstitutions = new scala.collection.mutable.ArrayDeque[PTypeSubstitution]()
