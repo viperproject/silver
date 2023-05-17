@@ -286,14 +286,14 @@ object AccessPredicate {
 /** An accessibility predicate for a field location. */
 case class FieldAccessPredicate(loc: FieldAccess, perm: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AccessPredicate {
   override lazy val check : Seq[ConsistencyError] =
-    if(!(perm isSubtype Perm)) Seq(ConsistencyError(s"Permission amount parameter of access predicate must be of Perm type, but found ${perm.typ}", perm.pos)) else Seq()
+    (if(!(perm isSubtype Perm)) Seq(ConsistencyError(s"Permission amount parameter of access predicate must be of Perm type, but found ${perm.typ}", perm.pos)) else Seq()) ++ Consistency.checkWildcardUsage(perm)
   val typ: Bool.type = Bool
 }
 
 /** An accessibility predicate for a predicate location. */
 case class PredicateAccessPredicate(loc: PredicateAccess, perm: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AccessPredicate {
   override lazy val check : Seq[ConsistencyError] =
-    if(!(perm isSubtype Perm)) Seq(ConsistencyError(s"Permission amount parameter of access predicate must be of Perm type, but found ${perm.typ}", perm.pos)) else Seq()
+    (if(!(perm isSubtype Perm)) Seq(ConsistencyError(s"Permission amount parameter of access predicate must be of Perm type, but found ${perm.typ}", perm.pos)) else Seq()) ++ Consistency.checkWildcardUsage(perm)
   val typ: Bool.type = Bool
 }
 
