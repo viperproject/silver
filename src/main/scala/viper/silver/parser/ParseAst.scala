@@ -1549,7 +1549,7 @@ object Nodes {
       case PAnnotatedStmt(s, _) => Seq(s)
       case t: PExtender => t.getSubnodes()
       case _: PSkip => Nil
-      case _: PUnnamedFormalArgDecl => Nil
+      case PUnnamedFormalArgDecl(typ) => Seq(typ)
     }
   }
 }
