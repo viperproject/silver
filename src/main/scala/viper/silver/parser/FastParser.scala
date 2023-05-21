@@ -499,9 +499,9 @@ class FastParser {
         var stmts = Seq.empty[PStmt]
         ss.foreach {
           case s: PMacroSeqn => stmts = stmts ++ linearizeSeqOfNestedStmt(s.ss)
-          case s@PSeqn(ss) => stmts :+ PSeqn(linearizeSeqOfNestedStmt(ss))(s.pos)
-          case i@PIf(cond, t@PSeqn(thn), e@PSeqn(els)) => stmts :+ PIf(cond, PSeqn(linearizeSeqOfNestedStmt(thn))(t.pos), PSeqn(linearizeSeqOfNestedStmt(els))(e.pos))(i.pos)
-          case w@PWhile(cond, invs, b@PSeqn(body)) => stmts :+ PWhile(cond, invs, PSeqn(linearizeSeqOfNestedStmt(body))(b.pos))(w.pos)
+          case s@PSeqn(ss) => stmts = stmts :+ PSeqn(linearizeSeqOfNestedStmt(ss))(s.pos)
+          case i@PIf(cond, t@PSeqn(thn), e@PSeqn(els)) => stmts = stmts :+ PIf(cond, PSeqn(linearizeSeqOfNestedStmt(thn))(t.pos), PSeqn(linearizeSeqOfNestedStmt(els))(e.pos))(i.pos)
+          case w@PWhile(cond, invs, b@PSeqn(body)) => stmts = stmts :+ PWhile(cond, invs, PSeqn(linearizeSeqOfNestedStmt(body))(b.pos))(w.pos)
           case v => stmts = stmts :+ v
         }
         stmts
