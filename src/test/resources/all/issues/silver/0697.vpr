@@ -23,7 +23,7 @@ method main2(b: Bool)
         x := 45
         assert x > 34
     }
-      //:: ExpectedOutput(typechecker.error)
+      //:: ExpectedOutput(consistency.error)
       var x: Int
       x := 45
       assert x > 34
