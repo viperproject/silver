@@ -541,10 +541,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
             case None =>
               nil
             case Some(actualBody) =>
-              braces(nest(defaultIndent,
-                lineIfSomeNonEmpty(actualBody.children) <>
-                ssep(Seq(showStmt(actualBody)), line)
-              ) <> line)
+              showBlock(actualBody)
           })
       case Predicate(name, formalArgs, body) =>
         text("predicate") <+> name <> nest(defaultIndent, parens(showVars(formalArgs))) <+> (body match {
@@ -634,11 +631,20 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
   }
 
   /** Show some node inside square braces (with nesting). */
-  def showBlock(stmt: Stmt): Cont = {
-    braces(nest(defaultIndent,
-      lineIfSomeNonEmpty(stmt match {case s: Seqn => s.scopedDecls; case _ => Seq()}, stmt.children) <>
-        showStmt(stmt)
-    ) <> line)
+  def showBlock(stmt: Stmt): Cont = stmt match {
+    case Seqn(stmts, scopedDecls) =>
+      val locals = scopedDecls.collect { case l: LocalVarDecl => l }
+      val nonEmptyStmts = stmts.filter {
+        case s@Seqn(ss, sd) => ss.nonEmpty || sd.nonEmpty || s.info.comment.nonEmpty
+        case _ => true
+      }
+      braces(nest(defaultIndent,
+        lineIfSomeNonEmpty(scopedDecls, stmts) <>
+          ssep((locals map (text("var") <+> showVar(_))) ++ (nonEmptyStmts map show), line)) <> line)
+    case s =>
+      braces(nest(defaultIndent,
+        line <> showStmt(s)
+      ))
   }
 
   /** Show a statement. */
@@ -662,6 +668,19 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
           case Nil => call
           case _ => ssep(targets map show, char(',') <> space) <+> ":=" <+> call
         }
+      case Seqn(stmts, scopedDecls) if scopedDecls.nonEmpty =>
+        val locals = scopedDecls.collect {case l: LocalVarDecl => l}
+        val nonEmptyStmts = stmts.filter{
+          case s@Seqn(ss, sd) => ss.nonEmpty || sd.nonEmpty || s.info.comment.nonEmpty
+          case _ => true
+        }
+        if (stmts.isEmpty && locals.isEmpty)
+          nil
+        else {
+          braces(nest(defaultIndent,
+            lineIfSomeNonEmpty(scopedDecls, stmts) <>
+            ssep((locals map (text("var") <+> showVar(_))) ++ (nonEmptyStmts map show), line)) <> line)
+        }
       case seqn@Seqn(stmts, scopedDecls) =>
         val locals = scopedDecls.collect {case l: LocalVarDecl => l}
         if (stmts.isEmpty && locals.isEmpty && seqn.info.comment.isEmpty)
@@ -677,10 +696,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
           nest(defaultIndent,
             showContracts("invariant", invs)
           ) <+> lineIfSomeNonEmpty(invs) <>
-          braces(nest(defaultIndent,
-            lineIfSomeNonEmpty(body.scopedDecls, body.children) <>
-              ssep(Seq(showStmt(body)), line)
-          ) <> line)
+          showBlock(body)
       case If(cond, thn, els) =>
         text("if") <+> parens(show(cond)) <+> showBlock(thn) <> showElse(els)
       case Label(name, invs) =>
