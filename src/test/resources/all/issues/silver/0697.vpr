@@ -19,11 +19,12 @@ method main1(b: Bool)
 method main2(b: Bool)
 {
     if (b) {
+        //:: ExpectedOutput(consistency.error)
         var x: Int
         x := 45
         assert x > 34
     }
-      //:: ExpectedOutput(consistency.error)
+
       var x: Int
       x := 45
       assert x > 34
