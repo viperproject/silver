@@ -15,5 +15,5 @@ function lenght(xs : List[Int]) : Int
     ensures (xs.isCons ==> lenght(xs) == lenght(xs.tail) + 2)
     ensures false
 {
-(xs.isNil ? 0 : (1 + lenght(xs.tail)))
+    (xs.isNil ? 0 : (1 + lenght(xs.tail)))
 }

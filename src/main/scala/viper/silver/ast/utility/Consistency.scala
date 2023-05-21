@@ -199,6 +199,20 @@ object Consistency {
     (if(!noLabelledOld(e)) Seq(ConsistencyError("Labelled-old expressions are not allowed in postconditions.", e.pos)) else Seq())
   }
 
+  def checkWildcardUsage(e: Exp): Seq[ConsistencyError] = {
+    val containedWildcards = e.shallowCollect{
+      case w: WildcardPerm => w
+    }
+    if (containedWildcards.nonEmpty) {
+      e match {
+        case _: WildcardPerm => Seq()
+        case _ => Seq(ConsistencyError("Wildcard occurs inside compound expression (should only occur directly in an accessibility predicate).", e.pos))
+      }
+    } else {
+      Seq()
+    }
+  }
+
   /** checks that all quantified variables appear in all triggers */
   def checkAllVarsMentionedInTriggers(variables: Seq[LocalVarDecl], triggers: Seq[Trigger]) : Seq[ConsistencyError] = {
     var s = Seq.empty[ConsistencyError]
@@ -232,6 +246,7 @@ object Consistency {
   def validTrigger(e: Exp, program: Program): Boolean = {
     e match {
       case Old(nested) => validTrigger(nested, program) // case corresponds to OldTrigger node
+      case LabelledOld(nested, _) => validTrigger(nested, program)
       case wand: MagicWand => wand.subexpressionsToEvaluate(program).forall(e => !e.existsDefined {case _: ForbiddenInTrigger => })
       case _ : PossibleTrigger | _: FieldAccess | _: PredicateAccess => !e.existsDefined { case _: ForbiddenInTrigger => }
       case _ => false
@@ -308,12 +323,23 @@ object Consistency {
 //    recordIfNot(wand, ok, s"Conditionals transitively reachable from a magic wand must be pure (see issue 16).")
 //  }
 
-  def checkNoFunctionRecursesViaPreconditions(program: Program): Seq[ConsistencyError] = {
+  def checkNoFunctionRecursesViaSpecifications(program: Program): Seq[ConsistencyError] = {
     var s = Seq.empty[ConsistencyError]
-    Functions.findFunctionCyclesViaPreconditions(program) foreach { case (func, cycleSet) =>
-      var msg = s"Function ${func.name} recurses via its precondition"
+    Functions.findFunctionCyclesViaSpecifications(program) foreach { case (func, cycleSet) =>
+      val callViaPre = cycleSet.exists(f => func.pres.exists(pre => !Consistency.noFuncApp(pre, f)))
+      val callViaPost = cycleSet.exists(f => func.posts.exists(post => !Consistency.noFuncApp(post, f)))
 
-      if (cycleSet.nonEmpty) {
+      var msg = if (callViaPre)
+        s"Function ${func.name} recurses via its precondition"
+      else {
+        assert(callViaPost)
+        if (cycleSet.size <= 1)
+          s"Function ${func.name} recurses via its postcondition. For self-references, use 'result' instead."
+        else
+          s"Function ${func.name} recurses via its postcondition"
+      }
+
+      if (cycleSet.size > 1) {
         msg = s"$msg: the cycle contains the function(s) ${cycleSet.map(_.name).mkString(", ")}"
       }
 

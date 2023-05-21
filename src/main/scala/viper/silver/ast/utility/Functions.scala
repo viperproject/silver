@@ -202,15 +202,15 @@ object Functions {
     result
   }
 
-  /** Returns all cycles formed by functions that (transitively) recurse via their precondition.
+  /** Returns all cycles formed by functions that (transitively) recurse via their specification.
     *
     * @param program The program that defines the functions to check for cycles.
     * @return A map from functions to sets of functions. If a function `f` maps to a set of
-    *         functions `fs`, then `f` (transitively) recurses via its precondition, and the
-    *         formed cycles involves the set of functions `fs`.
+    *         functions `fs`, then `f` (transitively) recurses via its pre- or postcondition,
+    *         and the formed cycles involves the set of functions `fs`.
     */
-  def findFunctionCyclesViaPreconditions(program: Program): Map[Function, Set[Function]] = {
-    findFunctionCyclesVia(program, func => func.pres, allSubexpressions)
+  def findFunctionCyclesViaSpecifications(program: Program): Map[Function, Set[Function]] = {
+    findFunctionCyclesVia(program, func => func.pres ++ func.posts, allSubexpressions)
   }
 
   /** Returns all cycles formed by functions that (transitively through certain subexpressions)

@@ -10,8 +10,6 @@
  * properties of functions over such a data type can proved.
  */
 
-//:: IgnoreFile(/carbon/issue/280/)
-
 domain list {
 
   /* Constructors */
