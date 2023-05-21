@@ -113,7 +113,9 @@ class PrettyPrinterTest extends AnyFunSuite with Matchers {
     val origProgram: Program = generateViperAst(code).get
     // Pretty print and reparse
     val res = generateViperAst(origProgram.toString()).get
-    assert(origProgram == res)
+    val origString = origProgram.toString()
+    val resString = res.toString()
+    assert(origString == resString)
   }
 
 

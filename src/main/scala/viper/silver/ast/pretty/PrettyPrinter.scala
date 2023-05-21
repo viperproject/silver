@@ -639,7 +639,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
         case _ => true
       }
       braces(nest(defaultIndent,
-        lineIfSomeNonEmpty(scopedDecls, stmts) <>
+        lineIfSomeNonEmpty(scopedDecls, nonEmptyStmts) <>
           ssep((locals map (text("var") <+> showVar(_))) ++ (nonEmptyStmts map show), line)) <> line)
     case s =>
       braces(nest(defaultIndent,
