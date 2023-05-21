@@ -210,7 +210,7 @@ object Functions {
     *         and the formed cycles involves the set of functions `fs`.
     */
   def findFunctionCyclesViaSpecifications(program: Program): Map[Function, Set[Function]] = {
-    findFunctionCyclesVia(program, func => func.pres ++ func.posts, allSubexpressions)
+    findFunctionCyclesVia(program, func => func.pres ++ (if (func.body.isDefined) func.posts else Seq()), allSubexpressions)
   }
 
   /** Returns all cycles formed by functions that (transitively through certain subexpressions)

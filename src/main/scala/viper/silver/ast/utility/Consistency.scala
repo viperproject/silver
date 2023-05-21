@@ -334,9 +334,9 @@ object Consistency {
       else {
         assert(callViaPost)
         if (cycleSet.size <= 1)
-          s"Function ${func.name} recurses via its postcondition. For self-references, use 'result' instead."
+          s"Non-abstract function ${func.name} recurses via its postcondition. For self-references, use 'result' instead."
         else
-          s"Function ${func.name} recurses via its postcondition"
+          s"Non-abstract function ${func.name} recurses via its postcondition"
       }
 
       if (cycleSet.size > 1) {
