@@ -13,7 +13,7 @@ method disjAlias(r1: Ref, r2: Ref, r3: Ref)
     requires acc(r2.f)
     requires r3 == r1 || r3 == r2
 {
-    //:: UnexpectedOutput(assign.failed:insufficient.permission, /silicon/issue/000/)
+    //:: UnexpectedOutput(assignment.failed:insufficient.permission, /silicon/issue/000/)
     r3.f := 4
 }
 
@@ -32,7 +32,7 @@ method disjAlias2(r1: Ref, r2: Ref, r3: Ref)
     requires acc(r2.f)
     requires r3 == r1 || r3 == r2
 {
-    //:: UnexpectedOutput(assign.failed:insufficient.permission, /silicon/issue/000/)
+    //:: UnexpectedOutput(assignment.failed:insufficient.permission, /silicon/issue/000/)
     r3.f := 4
 }
 
@@ -51,7 +51,7 @@ method disjAlias4(r1: Ref, r2: Ref, r3: Ref)
     requires acc(r2.f)
     requires r3 == r1 || r3 == r2
 {
-    //:: UnexpectedOutput(assign.failed:insufficient.permission, /silicon/issue/000/)
+    //:: UnexpectedOutput(assignment.failed:insufficient.permission, /silicon/issue/000/)
     r3.f := 4
 }
 
@@ -61,6 +61,6 @@ method disjAlias5(r1: Ref, r2: Ref, r3: Ref)
     requires acc(r2.f)
     requires r3 == r1 || r3 == r2
 {
-    //:: UnexpectedOutput(assign.failed:insufficient.permission, /silicon/issue/000/)
+    //:: UnexpectedOutput(assignment.failed:insufficient.permission, /silicon/issue/000/)
     r3.f := 4
 }
