@@ -152,7 +152,13 @@ case class Apply(exp: MagicWand)(val pos: Position = NoPosition, val info: Info 
 }
 
 /** A sequence of statements. */
-case class Seqn(ss: Seq[Stmt], scopedDecls: Seq[Declaration])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt with Scope
+case class Seqn(ss: Seq[Stmt], scopedSeqnDeclarations: Seq[Declaration])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt with Scope {
+  /** scoped declarations of extended statements (contributed by plugins) as well as the declarations of the sequence itself */
+  override lazy val scopedDecls: Seq[Declaration] = scopedSeqnDeclarations ++ ss.flatMap {
+    case es: ExtensionStmt => es.declarationsInParentScope
+    case _ => Seq.empty
+  }
+}
 
 /** An if control statement. */
 case class If(cond: Exp, thn: Seqn, els: Seqn)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
@@ -197,6 +203,34 @@ case class Goto(target: String)(val pos: Position = NoPosition, val info: Info =
   */
 case class LocalVarDeclStmt(decl: LocalVarDecl)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt
 
+/** Quasihavoc statement.
+  * Replaces the quasihavocked resource's snapshot with a fresh snapshot.
+  * The optional lhs provides a guard, under which the resource is quasihavocked. For example,
+  *   quasihavoc c ==> Pred(x)
+  * means that we only quasihavoc Pred(x) if the condition c is true.
+  * The quasihavocall variant of this statement allows one to quasihavoc an unbounded number of resources
+  */
+case class Quasihavoc(lhs: Option[Exp], exp: ResourceAccess)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
+  override lazy val check: Seq[ConsistencyError] = {
+    // Sanity checks of properties that should be guaranteed by earlier phases of the front end. These checks
+    // are similar to the ones provided by inhale and exhale statements.
+    (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
+    (if (lhs.nonEmpty && !(lhs.get isSubtype Bool)) Seq(ConsistencyError(s"Left side of quasihavoc implication must be of type Bool, but found ${exp.typ}", exp.pos)) else Seq())
+  }
+}
+
+/** Quasihavocall statement (see quasiavoc statement)
+  * Must extend Scope because it declares quantified variables.
+  */
+case class Quasihavocall(vars: Seq[LocalVarDecl], lhs: Option[Exp], exp: ResourceAccess)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt with Scope {
+  val scopedDecls: Seq[Declaration] = vars
+
+  override lazy val check : Seq[ConsistencyError] = {
+    (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
+    (if (lhs.nonEmpty && !(lhs.get isSubtype Bool)) Seq(ConsistencyError(s"Left side of quasihavocall implication must be of type Bool, but found ${exp.typ}", exp.pos)) else Seq())
+  }
+}
+
 
 /** Generic Statement type to use to extend the AST.
   * New statement-typed AST nodes can be defined by creating new case classes extending this trait.
@@ -205,4 +239,6 @@ case class LocalVarDeclStmt(decl: LocalVarDecl)(val pos: Position = NoPosition, 
 trait ExtensionStmt extends Stmt {
   def extensionSubnodes: Seq[Node]
   def prettyPrint: PrettyPrintPrimitives#Cont
+  /** declarations contributed by this statement that should be added to the parent scope */
+  def declarationsInParentScope: Seq[Declaration] = Seq.empty
 }

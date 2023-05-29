@@ -48,7 +48,7 @@ class SilverCfg(val blocks: Seq[SilverBlock], val edges: Seq[SilverEdge], val en
           case Left(stmt) => stmt.writtenVars
           case Right(_) => Seq.empty
         }
-        list.append(written: _*)
+        list.appendAll(written)
 
         // process successors
         outEdges(block).foreach { edge =>

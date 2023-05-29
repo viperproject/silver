@@ -1,0 +1,34 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <decreases/declaration.vpr>
+
+field f: Int
+
+predicate foo(x: Ref)
+{
+    acc(x.f) && x.f == 42
+}
+
+function test(x: Ref): Bool
+    decreases
+    requires foo(x)
+{
+    //:: ExpectedOutput(termination.failed:termination.condition.false)
+    unfolding foo(x) in nonTerminating(x)
+}
+
+function test2(x: Ref): Bool
+    decreases
+    requires foo(x)
+{
+    unfolding foo(x) in partiallyTerminating(x)
+}
+
+function nonTerminating(x: Ref): Bool
+    decreases *
+
+function partiallyTerminating(x: Ref): Bool
+    requires acc(x.f, wildcard)
+    decreases if x.f == 42
+    decreases *

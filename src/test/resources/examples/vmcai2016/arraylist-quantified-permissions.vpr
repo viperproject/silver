@@ -1,7 +1,6 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-//:: IgnoreFile(/carbon/issue/280/)
 
 domain Pair[T1,T2] {
   function first(p : Pair[T1,T2]): T1
@@ -109,7 +108,7 @@ method insert(this: Ref, elem: Int) returns (j: Int)
     invariant 0 <= j && j <= length(this)
     invariant j > 0 ==> itemAt(this,j-1) <= elem
     invariant length(this) == old(length(this))
-    invariant forall k: Int :: {itemAt(this,k)} 0 <= k && k < length(this) ==> itemAt(this,k) == old(itemAt(this,k))
+    invariant forall k: Int :: {old(itemAt(this,k))} 0 <= k && k < length(this) ==> itemAt(this,k) == old(itemAt(this,k))
   {
     unfold acc(AList(this))
     j := j + 1

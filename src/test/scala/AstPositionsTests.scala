@@ -111,44 +111,37 @@ class AstPositionsTests extends AnyFunSuite {
         fail("method posts must have start and end positions set")
     }
     // Check position of body
-    if (m.body.get.ss.length == 1) {
-      val block: Stmt = m.body.get.ss(0)
-      block.pos match {
-        case spos: AbstractSourcePosition => {
-          assert(spos.start.line === 5 && spos.end.get.line === 10)
-          assert(spos.start.column === 1 && spos.end.get.column === 2)
-        }
-        case _ =>
-          fail("statements must have start and end positions set")
+    val block = m.body.get
+    block.pos match {
+      case spos: AbstractSourcePosition => {
+        assert(spos.start.line === 5 && spos.end.get.line === 10)
+        assert(spos.start.column === 1 && spos.end.get.column === 2)
       }
-      if (block.isInstanceOf[Seqn]) {
-        // Check position of forall
-        assert(block.asInstanceOf[Seqn].ss.length === 4)
-        val forall: Stmt = block.asInstanceOf[Seqn].ss(0)
-        forall.pos match {
-          case spos: AbstractSourcePosition => {
-            assert(spos.start.line === 6 && spos.end.get.line === 6)
-            assert(spos.start.column === 3 && spos.end.get.column === 48)
-          }
-          case _ =>
-            fail("forall must have start and end positions set")
-        };
-        // Check position of assert
-        val assert_exp: Exp = block.asInstanceOf[Seqn].ss(1).asInstanceOf[Assert].exp
-        assert_exp.pos match {
-          case spos: AbstractSourcePosition => {
-            assert(spos.start.line === 7 && spos.end.get.line === 7)
-            assert(spos.start.column === 10 && spos.end.get.column === 20)
-          }
-          case _ =>
-            fail("forall must have start and end positions set")
-        }
-      } else {
-        fail("Failed to check position of statements in method body due to layout change")
-      }
-    } else {
-      fail("Failed to check position of statements in method body due to layout change")
+      case _ =>
+        fail("statements must have start and end positions set")
     }
+    // Check position of forall
+    assert(block.ss.length === 4)
+    val forall: Stmt = block.ss(0)
+    forall.pos match {
+      case spos: AbstractSourcePosition => {
+        assert(spos.start.line === 6 && spos.end.get.line === 6)
+        assert(spos.start.column === 3 && spos.end.get.column === 48)
+      }
+      case _ =>
+        fail("forall must have start and end positions set")
+    };
+    // Check position of assert
+    val assert_exp: Exp = block.ss(1).asInstanceOf[Assert].exp
+    assert_exp.pos match {
+      case spos: AbstractSourcePosition => {
+        assert(spos.start.line === 7 && spos.end.get.line === 7)
+        assert(spos.start.column === 10 && spos.end.get.column === 20)
+      }
+      case _ =>
+        fail("forall must have start and end positions set")
+    }
+
     // Check position of second method
     val m2: Method = res.methods(1);
     m2.pos match {

@@ -6,6 +6,7 @@
 
 package viper.silver.ast.utility
 
+import java.util.concurrent.atomic.AtomicInteger
 import reflect.ClassTag
 
 object GenericTriggerGenerator {
@@ -16,6 +17,7 @@ object GenericTriggerGenerator {
   * filters for accepting/rejecting possible triggers can be changed
   * (see, e.g. [[GenericTriggerGenerator.setCustomIsForbiddenInTrigger]]).
   */
+
 abstract class GenericTriggerGenerator[Node <: AnyRef,
                                        Type <: AnyRef,
                                        Exp  <: Node : ClassTag,
@@ -62,7 +64,7 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
   protected var customIsForbiddenInTrigger: PartialFunction[Exp, Boolean] = PartialFunction.empty
   def setCustomIsForbiddenInTrigger(f: PartialFunction[Exp, Boolean]): Unit = { customIsForbiddenInTrigger = f }
 
-  private var nextUniqueId = 0
+  private val nextUniqueId = new AtomicInteger(0)
 
   def generateTriggerSetGroup(vs: Seq[Var], toSearch: Exp): Option[(Seq[TriggerSet], Seq[Var])] =
     generateTriggerSetGroups(vs: Seq[Var], toSearch: Exp).headOption
@@ -175,8 +177,7 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
          */
         val processedArgs = getArgs(possibleTrigger) map (pt => transform(pt) {
           case e: Exp if isForbiddenInTrigger(e) =>
-            val newV = Var("fresh__" + nextUniqueId, Exp_typ(e))
-            nextUniqueId += 1
+            val newV = Var("fresh__" + nextUniqueId.getAndIncrement(), Exp_typ(e))
             extraVars +:= newV
 
             newV

@@ -1,40 +1,50 @@
 package viper.silver.verifier
 
 import fastparse._
-import viper.silver.parser.FastParser.whitespace
-
 object ModelParser {
+  
+  def modelEntry[$: P]: P[(String, ModelEntry)] = {
+    // Do not allow newlines between "->" and the definition.
+    // Otherwise, if there is no definition, we could parse the id in the next line as the value here.
+    implicit val ws = viper.silver.parser.FastParserCompanion.whitespaceWithoutNewlineOrComments
+    P(idnuse ~ "->" ~ definition.?).map {
+      case (i, Some(e)) => (i, e)
+      case (i, None) => (i, UnspecifiedEntry)
+    }
+  }
+
+  // Late import s.t. we can unambiguously use a different whitespace definition in the modelEntry rule above.
+  import viper.silver.parser.FastParserCompanion.whitespace
+
   // note that the dash/minus character '-' needs to be escaped by double backslashes such that it is not interpreted as a range
-  def identifier[_: P]: P[Unit] = P(CharIn("0-9", "A-Z", "a-z", "[]\"'#+\\-*/:=!$_@<>.%~").repX(1))
+  def identifier[$: P]: P[Unit] = P(CharIn("0-9", "A-Z", "a-z", "[]\"'#+\\-*/:=!$_@<>.%~").repX(1))
 
-  def idnuse[_: P]: P[String] = P(identifier).!.filter(a => a != "else" && a != "let" && a != "->")
+  def idnuse[$: P]: P[String] = P(identifier).!.filter(a => a != "else" && a != "let" && a != "->")
 
-  def numeral[_: P]: P[Unit] = P(CharIn("0-9").repX(1))
+  def numeral[$: P]: P[Unit] = P(CharIn("0-9").repX(1))
 
-  def modelEntry[_: P]: P[(String, ModelEntry)] = P(idnuse ~ "->" ~ definition)
+  def definition[$: P]: P[ModelEntry] = P(mapping | value)
 
-  def definition[_: P]: P[ModelEntry] = P(mapping | value)
+  def mapping[$: P]: P[MapEntry] = P("{" ~/ mappingContent ~ "}")
 
-  def mapping[_: P]: P[MapEntry] = P("{" ~/ mappingContent ~ "}")
-
-  def mappingContent[_: P]: P[MapEntry] = P(options | default)
+  def mappingContent[$: P]: P[MapEntry] = P(options | default)
 
   // options consists of at least one option. If there are no options but only a single default value, the `default`
   // parser in `mappingContent` handles this case.
-  def options[_: P]: P[MapEntry] = P(option.rep(1) ~ ("else" ~ "->" ~ value).?).map {
+  def options[$: P]: P[MapEntry] = P(option.rep(1) ~ ("else" ~ "->" ~ value).?).map {
     case (options, default) => MapEntry(options.toMap, default.getOrElse(UnspecifiedEntry))
   }
 
-  def option[_: P]: P[(Seq[ValueEntry], ValueEntry)] = P(value.rep(1) ~ "->" ~ value)
+  def option[$: P]: P[(Seq[ValueEntry], ValueEntry)] = P(value.rep(1) ~ "->" ~ value)
 
   // depending on Z3 options, we seem to get an "else ->" before the default value
   // or not, so we match both.
-  def default[_: P]: P[MapEntry] = P(("else" ~ "->").? ~ value)
+  def default[$: P]: P[MapEntry] = P(("else" ~ "->").? ~ value)
     .map { default => MapEntry(Map.empty, default).resolveFunctionDefinition }
 
-  def value[_: P]: P[ValueEntry] = P(unspecified | let | constant | application)
+  def value[$: P]: P[ValueEntry] = P(unspecified | let | constant | application)
 
-  def let[_: P]: P[ValueEntry] = {
+  def let[$: P]: P[ValueEntry] = {
     def substitute(entry: ValueEntry, binding: (String, ValueEntry)): ValueEntry =
       entry match {
         case UnspecifiedEntry =>
@@ -57,16 +67,16 @@ object ModelParser {
       }
   }
 
-  def binding[_: P]: P[(String, ValueEntry)] = P("(" ~ idnuse ~ value ~ ")")
+  def binding[$: P]: P[(String, ValueEntry)] = P("(" ~ idnuse ~ value ~ ")")
 
-  def unspecified[_: P]: P[ValueEntry] = P("(#unspecified)").map(_ => UnspecifiedEntry)
+  def unspecified[$: P]: P[ValueEntry] = P("(#unspecified)").map(_ => UnspecifiedEntry)
 
-  def constant[_: P]: P[ConstantEntry] = P(idnuse).map(ConstantEntry)
+  def constant[$: P]: P[ConstantEntry] = P(idnuse).map(ConstantEntry)
 
-  def application[_: P]: P[ApplicationEntry] = P("(" ~ idnuse ~ value.rep ~ ")")
+  def application[$: P]: P[ApplicationEntry] = P("(" ~ idnuse ~ value.rep ~ ")")
     .map { case (name, arguments) => ApplicationEntry(name, arguments) }
 
-  def model[_: P]: P[Model] = P(Start ~ modelEntry.rep ~ End)
+  def model[$: P]: P[Model] = P(Start ~ modelEntry.rep ~ End)
     .map { entries2Model }
 
   def entries2Model(entries: Seq[(String, ModelEntry)]): Model = {

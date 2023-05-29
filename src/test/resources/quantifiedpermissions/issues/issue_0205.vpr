@@ -20,7 +20,6 @@ method test01(x: Ref, y: Ref, b: Bool)
   y.f := 0
 
   assert fun01(x, y, true) == old(fun01(x, y, true))
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/205/)
   assert fun02(x, y, true) == old(fun02(x, y, true))
 }
 

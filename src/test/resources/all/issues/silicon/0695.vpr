@@ -1,0 +1,106 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field ref: Ref
+field f: Ref
+field n: Ref
+
+predicate List(x: Ref) {
+  x != null ==> acc(x.ref) && Node(x.ref)
+}
+predicate Node(x: Ref)
+
+define ref_List(x, lft, mut) (valid_lft(lft) && x in lft[tpListT] && (mut ==> lft[tpListT][x] == 1/1))
+
+predicate ListRef(x: Ref, lft: Map[Int, Map[Ref, Perm]], mut: Bool) {
+  x != null ==> acc(x.ref) && NodeRef(x.ref, lft, mut)
+}
+predicate NodeRef(x: Ref, lft: Map[Int, Map[Ref, Perm]], mut: Bool)
+
+define tpT 0
+define tpListT 1
+
+predicate lft_T(x: Ref)
+
+predicate lft_List(x: Ref) {
+  acc(x.ref) && List(x.ref)
+}
+define Lifetime(lft) (valid_lft(lft) && LifetimeP(lft))
+
+predicate LifetimeP(lft: Map[Int, Map[Ref, Perm]]) {
+  valid_lft(lft) &&
+  (forall x: Ref :: x in lft[tpT] ==> lft[tpT][x] > 0/1 && lft[tpT][x] <= 1/1 && acc(lft_T(x), lft[tpT][x])) &&
+  (forall x: Ref :: x in lft[tpListT] ==> lft[tpListT][x] > 0/1 && lft[tpListT][x] <= 1/1 && acc(lft_List(x), lft[tpListT][x]))
+}
+function valid_lft(lft: Map[Int, Map[Ref, Perm]]): Bool {
+  tpT in lft && tpListT in lft
+}
+
+function get_disc(x: Ref, lft: Map[Int, Map[Ref, Perm]]): Ref
+  requires Lifetime(lft)
+  requires ref_List(x, lft, false)
+{
+  unfolding LifetimeP(lft) in unfolding acc(lft_List(x), wildcard) in x.ref
+}
+
+method foo(x: Ref, lft: Map[Int, Map[Ref, Perm]]) returns (res: Ref, new_lft: Map[Int, Map[Ref, Perm]])
+  requires Lifetime(lft)
+  requires acc(x.ref) && ref_List(x.ref, lft, false)
+  ensures Lifetime(new_lft)
+  ensures acc(res.ref) && ListRef(res.ref, new_lft, false)
+{
+  new_lft := lft
+  inhale Lifetime(new_lft) --* Lifetime(lft)
+
+  inhale acc(res.ref)
+  res.ref := null
+  fold ListRef(res.ref, new_lft, false)
+
+  while (get_disc(x.ref, new_lft) != null)
+    invariant Lifetime(new_lft)
+    invariant acc(x.ref) && ref_List(x.ref, new_lft, false)
+    invariant acc(res.ref) && ListRef(res.ref, new_lft, false)
+  {
+    unfold LifetimeP(new_lft)
+    assert x.ref in new_lft[tpListT]
+    unfold acc(lft_List(x.ref), new_lft[tpListT][x.ref])
+    var x_nxt: Ref
+    x_nxt := sh_borrow(x.ref, new_lft[tpListT][x.ref])
+    assert x_nxt.ref == x.ref.ref
+
+    fold acc(lft_List(x.ref), new_lft[tpListT][x.ref]/2)
+
+    //:: ExpectedOutput(fold.failed:insufficient.permission)
+    fold LifetimeP(new_lft)
+
+    fold acc(lft_List(x_nxt), new_lft[tpListT][x.ref])
+
+    new_lft := new_lft
+  }
+}
+
+method sh_borrow(a: Ref, p: Perm) returns (bw: Ref)
+  requires p > 0/1 && acc(a.ref, p)
+  ensures acc(a.ref, p/2) && a.ref == old(a.ref)
+  ensures acc(bw.ref, p/2) && bw.ref == a.ref
+{
+  bw := a
+  package acc(bw.ref, p/2) --* acc(a.ref, p/2) && old[lhs](bw.ref) == a.ref
+}
+
+// Simpler way of triggering the bug:
+predicate P(x: Ref) { true }
+method simple()
+{
+  var y: Ref
+  var z: Ref
+  inhale acc(z.f, 1/2)
+  fold acc(P(y), 1/2)
+
+  //:: ExpectedOutput(exhale.failed:insufficient.permission)
+  exhale acc(z.f)
+
+  assume false
+  // force QP for P
+  inhale forall x: Ref :: x in Set[Ref]() ==> acc(P(x))
+}

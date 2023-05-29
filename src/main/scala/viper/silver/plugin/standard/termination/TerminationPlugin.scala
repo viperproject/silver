@@ -9,7 +9,6 @@ package viper.silver.plugin.standard.termination
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.{SimpleContext, Strategy, StrategyBuilder}
 import viper.silver.ast.{Applying, Assert, CondExp, CurrentPerm, Exp, Function, InhaleExhaleExp, MagicWand, Method, Node, Program, Unfolding, While}
-import viper.silver.parser.FastParser._
 import viper.silver.parser._
 import viper.silver.plugin.standard.predicateinstance.PPredicateInstance
 import viper.silver.plugin.standard.termination.transformation.Trafo
@@ -17,11 +16,16 @@ import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier.errors.AssertFailed
 import viper.silver.verifier._
 import fastparse._
-import viper.silver.parser.FastParser.whitespace
+import viper.silver.parser.FastParserCompanion.whitespace
+import viper.silver.reporter.Entity
 
-class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
-                        logger: ch.qos.logback.classic.Logger,
-                        config: viper.silver.frontend.SilFrontendConfig) extends SilverPlugin with ParserPluginTemplate {
+import scala.annotation.unused
+
+class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
+                        @unused logger: ch.qos.logback.classic.Logger,
+                        config: viper.silver.frontend.SilFrontendConfig,
+                        fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
+  import fp.{FP, keyword, exp, ParserExtension}
 
   private def deactivated: Boolean = config != null && config.terminationPlugin.toOption.getOrElse(false)
 
@@ -39,13 +43,13 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
    * or
    * decreases *
    */
-  def decreases[_: P]: P[PDecreasesClause] =
+  def decreases[$: P]: P[PDecreasesClause] =
     P(keyword(decreasesKeyword) ~/ (decreasesWildcard | decreasesStar | decreasesTuple) ~ ";".?)
-  def decreasesTuple[_: P]: P[PDecreasesTuple] =
+  def decreasesTuple[$: P]: P[PDecreasesTuple] =
     FP(exp.rep(sep = ",") ~/ condition.?).map { case (pos, (a, c)) => PDecreasesTuple(a, c)(pos) }
-  def decreasesWildcard[_: P]: P[PDecreasesWildcard] = FP("_" ~/ condition.?).map{ case (pos, c) => PDecreasesWildcard(c)(pos) }
-  def decreasesStar[_: P]: P[PDecreasesStar] = FP("*").map{ case (pos, _) => PDecreasesStar()(pos)}
-  def condition[_: P]: P[PExp] = P("if" ~/ exp)
+  def decreasesWildcard[$: P]: P[PDecreasesWildcard] = FP("_" ~/ condition.?).map{ case (pos, c) => PDecreasesWildcard(c)(pos) }
+  def decreasesStar[$: P]: P[PDecreasesStar] = FP("*").map{ case (pos, _) => PDecreasesStar()(pos)}
+  def condition[$: P]: P[PExp] = P("if" ~/ exp)
 
 
   /**
@@ -74,6 +78,9 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
       case pa@PPredicateAccess(args, idnuse) => PPredicateInstance(args, idnuse)(pa.pos)
       case pc@PCall(idnUse, args, None) if input.predicates.exists(_.idndef.name == idnUse.name) =>
         // PCall represents the predicate access before the translation into the AST
+        PPredicateInstance(args, idnUse)(pc.pos)
+      case PAccPred(pa@PPredicateAccess(args, idnuse), _) => PPredicateInstance(args, idnuse)(pa.pos)
+      case PAccPred(pc@PCall(idnUse, args, None), _) if input.predicates.exists(_.idndef.name == idnUse.name) =>
         PPredicateInstance(args, idnUse)(pc.pos)
       case d => d
     }).recurseFunc({
@@ -118,10 +125,16 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
     }
   }
 
+  override def mapEntityVerificationResult(entity: Entity, input: VerificationResult): VerificationResult =
+    translateVerificationResult(input)
+
   /**
-   * Call the error transformation on possibly termination related errors.
-   */
-  override def mapVerificationResult(input: VerificationResult): VerificationResult = {
+    * Call the error transformation on possibly termination related errors.
+    */
+  override def mapVerificationResult(@unused program: Program, input: VerificationResult): VerificationResult =
+    translateVerificationResult(input)
+
+  private def translateVerificationResult(input: VerificationResult): VerificationResult = {
     if (deactivated) return input // if decreases checks are deactivated no verification result mapping is required.
 
     input match {
@@ -143,30 +156,33 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
    */
   private lazy val extractDecreasesClauses: Strategy[Node, SimpleContext[Node]] = ViperStrategy.Slim({
     case f: Function =>
-      val (_, decreasesSpecification) = extractDecreasesClausesFromExps(f.pres ++ f.posts)
-      val (pres, _) = extractDecreasesClausesFromExps(f.pres)
-      val (posts, _) = extractDecreasesClausesFromExps(f.posts)
+      // decrease spec might occur as part of precondition, postcondition or both:
+      val (pres, preDecreasesSpecification) = extractDecreasesClausesFromExps(f.pres)
+      val (posts, postDecreasesSpecification) = extractDecreasesClausesFromExps(f.posts)
 
+      // remove decrease spec from function:
       val newFunction = f.copy(pres = pres, posts = posts)(f.pos, f.info, f.errT)
 
-      decreasesSpecification match {
-        case Some(dc) => dc.appendToFunction(newFunction)
-        case None => newFunction
+      // add it again as info nodes:
+      Seq(preDecreasesSpecification, postDecreasesSpecification).foldLeft(newFunction){
+        case (modifiedFunction, Some(dc)) => dc.appendToFunction(modifiedFunction)
+        case (modifiedFunction, _) => modifiedFunction
       }
 
     case m: Method =>
-      val (pres, decreasesSpecification) = extractDecreasesClausesFromExps(m.pres)
+      // decrease spec might occur as part of precondition, postcondition or both:
+      val (pres, preDecreasesSpecification) = extractDecreasesClausesFromExps(m.pres)
+      val (posts, postDecreasesSpecification) = extractDecreasesClausesFromExps(m.posts)
 
-      val newMethod =
-        if (pres != m.pres) {
-          m.copy(pres = pres)(m.pos, m.info, m.errT)
-        } else {
-          m
-        }
-      decreasesSpecification match {
-        case Some(dc) => dc.appendToMethod(newMethod)
-        case None => newMethod
+      // remove decrease spec from method:
+      val newMethod = m.copy(pres = pres, posts = posts)(m.pos, m.info, m.errT)
+
+      // add it again as info nodes:
+      Seq(preDecreasesSpecification, postDecreasesSpecification).foldLeft(newMethod){
+        case (modifiedMethod, Some(dc)) => dc.appendToMethod(modifiedMethod)
+        case (modifiedMethod, _) => modifiedMethod
       }
+
     case w: While =>
       val (invs, decreasesSpecification) = extractDecreasesClausesFromExps(w.invs)
 

@@ -7,6 +7,7 @@
 package viper.silver.ast.utility.rewriter
 import viper.silver.ast.utility.rewriter.Traverse.Traverse
 
+import scala.annotation.unused
 import scala.collection.mutable
 import scala.reflect.runtime.{universe => reflection}
 
@@ -92,7 +93,7 @@ trait StrategyInterface[N <: Rewritable] {
     *                          rewritten.
     * @return Updated node that will be built into the AST
     */
-  protected def preserveMetaData(old: N, now: N, directlyRewritten: Boolean): N = now
+  protected def preserveMetaData(@unused old: N, now: N, @unused directlyRewritten: Boolean): N = now
 }
 
 /**

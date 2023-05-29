@@ -47,6 +47,13 @@ sealed trait Exp extends Hashable with Typed with Positioned with Infoed with Tr
    */
  // lazy val proofObligations = Expressions.proofObligations(this)
 
+  override def toString() = {
+   // Carbon relies on expression pretty-printing resulting in a string without line breaks,
+   // so for the special case of directly converting an expression to a string, we remove all line breaks
+   // the pretty printer might have inserted.
+   super.toString.replaceAll("\n\\s*", " ")
+ }
+
 }
 
 // --- Simple integer and boolean expressions (binary and unary operations, literals)
@@ -279,14 +286,14 @@ object AccessPredicate {
 /** An accessibility predicate for a field location. */
 case class FieldAccessPredicate(loc: FieldAccess, perm: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AccessPredicate {
   override lazy val check : Seq[ConsistencyError] =
-    if(!(perm isSubtype Perm)) Seq(ConsistencyError(s"Permission amount parameter of access predicate must be of Perm type, but found ${perm.typ}", perm.pos)) else Seq()
+    (if(!(perm isSubtype Perm)) Seq(ConsistencyError(s"Permission amount parameter of access predicate must be of Perm type, but found ${perm.typ}", perm.pos)) else Seq()) ++ Consistency.checkWildcardUsage(perm)
   val typ: Bool.type = Bool
 }
 
 /** An accessibility predicate for a predicate location. */
 case class PredicateAccessPredicate(loc: PredicateAccess, perm: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AccessPredicate {
   override lazy val check : Seq[ConsistencyError] =
-    if(!(perm isSubtype Perm)) Seq(ConsistencyError(s"Permission amount parameter of access predicate must be of Perm type, but found ${perm.typ}", perm.pos)) else Seq()
+    (if(!(perm isSubtype Perm)) Seq(ConsistencyError(s"Permission amount parameter of access predicate must be of Perm type, but found ${perm.typ}", perm.pos)) else Seq()) ++ Consistency.checkWildcardUsage(perm)
   val typ: Bool.type = Bool
 }
 
@@ -389,7 +396,7 @@ case class DomainFuncApp(funcname: String, args: Seq[Exp], typVarMap: Map[TypeVa
   //Strangely, the copy method is not a member of the DomainFuncApp case class,
   //therefore, We need this method that does the copying manually
   def copy(funcname: String = this.funcname, args: Seq[Exp] = this.args, typVarMap: Map[TypeVar, Type] = this.typVarMap): (Position, Info, Type, String, ErrorTrafo) => DomainFuncApp ={
-    DomainFuncApp(this.funcname,args,typVarMap)
+    DomainFuncApp(funcname,args,typVarMap)
   }
 }
 object DomainFuncApp {
@@ -398,14 +405,17 @@ object DomainFuncApp {
 }
 
 // --- References to backend (i.e., SMTLIB or Boogie 'builtin') functions
-
-case class BackendFuncApp(backendFunc: BackendFunc, args: Seq[Exp])
-                         (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
+case class BackendFuncApp(backendFuncName: String, args: Seq[Exp])
+                         (val pos: Position, val info: Info, override val typ: Type, val interpretation: String, val errT: ErrorTrafo)
   extends AbstractDomainFuncApp {
   override lazy val check : Seq[ConsistencyError] = args.flatMap(Consistency.checkPure)
-  override def func = (p: Program) => backendFunc
-  def funcname = backendFunc.name
-  override def typ = backendFunc.typ
+  override def func = (p: Program) => p.findDomainFunction(backendFuncName)
+  def funcname = backendFuncName
+}
+
+object BackendFuncApp {
+  def apply(backendFunc: DomainFunc, args: Seq[Exp])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos): BackendFuncApp =
+    BackendFuncApp(backendFunc.name, args)(pos, info, backendFunc.typ, backendFunc.interpretation.get, errT)
 }
 
 // --- Field and predicate accesses
@@ -558,6 +568,7 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
   //require(isValid, s"Invalid quantifier: { $this } .")
   override lazy val check : Seq[ConsistencyError] =
     (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Body of universal quantifier must be of Bool type, but found ${exp.typ}", exp.pos)) else Seq()) ++
+    (if (variables.isEmpty) Seq(ConsistencyError("Quantifier must have at least one quantified variable.", pos)) else Seq()) ++
     Consistency.checkAllVarsMentionedInTriggers(variables, triggers) ++
     checkNoNestedQuantsForQuantPermissions ++
     checkQuantifiedPermission
@@ -624,7 +635,8 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
 /** Existential quantification. */
 case class Exists(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends QuantifiedExp {
   override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(exp) ++
-    (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Body of existential quantifier must be of Bool type, but found ${exp.typ}", exp.pos)) else Seq())
+    (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Body of existential quantifier must be of Bool type, but found ${exp.typ}", exp.pos)) else Seq()) ++
+    (if (variables.isEmpty) Seq(ConsistencyError("Quantifier must have at least one quantified variable.", pos)) else Seq())
 
   /** Returns an identical forall quantification that has some automatically generated triggers
     * if necessary and possible.
@@ -1173,7 +1185,7 @@ object FuncLikeApp {
   def apply(f: FuncLike, args: Seq[Exp], typVars: Map[TypeVar, Type]) = {
     f match {
       case f@Function(_, _, _, _, _, _) => FuncApp(f, args)()
-      case f@DomainFunc(_, _, _, _) => DomainFuncApp(f, args, typVars)()
+      case f@DomainFunc(_, _, _, _, _) => DomainFuncApp(f, args, typVars)()
       case _ => sys.error(s"should not occur: $f (${f.getClass})")
     }
   }

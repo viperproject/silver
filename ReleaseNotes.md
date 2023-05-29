@@ -1,3 +1,48 @@
+## Release 2023.1
+
+**Date 25/01/23**
+
+### Changes in Viper Language
+
+- Quasihavoc: New statements ``quasihavoc`` and ``quasihavocall`` allow explicitly losing information about a resource. E.g., ``quasihavoc c ==> P(x)`` havocs the snapshot of resource ``P(x)`` if ``c`` is true and some permission to ``P(x)`` is held, and does nothing otherwise. Semantically equivalent to (conditionally) exhaling the current permission amount to the given resource and inhaling it again, but implemented more efficiently. For more details, see [this report](https://ethz.ch/content/dam/ethz/special-interest/infk/chair-program-method/pm/documents/Education/Theses/Daniel_Zhang_PW.pdf) ([Silver#611](https://github.com/viperproject/silver/pull/611)). Currently, the Symbolic Execution backend (Silicon) fully supports ``quasihavoc`` and ``quasihavocall``, while the Verification Condition Generation backend (Carbon) only supports ``quasihavoc`` for field and predicate resources and does not suport ``quasihavocall``.
+- Syntax for backend types added in the form of domains with interpretations: Domains can be annotated with interpretations for different backends. E.g., 
+``domain myBV interpretation (SMTLIB: “(_ BitVec 32)”, Boogie: “bv32”) { ... }``
+will be interpreted by Silicon as the SMTLIB type ``(_ BitVec 32)`` and by Carbon as the Boogie type ``bv32``. Similarly, domain functions can be annotated with SMTLIB interpretations. ([Silver#638](https://github.com/viperproject/silver/pull/638))
+
+### Viper API Changes
+
+- **Breaking change**: The plugin API has been extended with a method to transform verification results for individual entities, in addition to the existing method to transform the verification result for the entire Viper program. Plugins should implement *both* methods; the former is used to transform verification results for individual members that are streamed via the Reporter interface ([Silver#641](https://github.com/viperproject/silver/pull/641)). Additionally, the signature of the existing method has been changed in order to remove the need for plugins to maintain state.
+- Experimental quantifier weight support: Quantifiers can be given a weight to be used by the SMT solver by annotating them with special WeightedQuantifier info objects  ([Silver#633](https://github.com/viperproject/silver/pull/633)). Currently only available on the AST level (without syntax support), and only supported in the Symbolic Execution backend.
+- **Breaking change**: AST nodes for BackendFunctions have been changed to accommodate the new syntax for interpreted domains (see above): Among other small changes, BackendFunc objects no longer exist, and are replaced by DomainFuncs with interpretations. ([Silver#638](https://github.com/viperproject/silver/pull/638))
+
+### Other Viper-level Improvements
+
+- Improved pretty-printing of ASTs ([Silver#616](https://github.com/viperproject/silver/pull/616))
+- Improved parsing and better consistency checks for invalid triggers, invalid predicate accesses, and invalid domain types ([Silver#601](https://github.com/viperproject/silver/pull/601)), ([Silver#614](https://github.com/viperproject/silver/pull/614)), ([Silver#626](https://github.com/viperproject/silver/pull/626)), ([Silver#643](https://github.com/viperproject/silver/pull/643))
+- Improved type checking performance for large methods ([Silver#631](https://github.com/viperproject/silver/pull/631))
+- Termination plugin generates simpler code ([Silver#613](https://github.com/viperproject/silver/pull/613)) and supports more complex expressions ([Silver#618](https://github.com/viperproject/silver/pull/618))
+- Several bug fixes ([Silver#607](https://github.com/viperproject/silver/pull/607)), ([Silver#590](https://github.com/viperproject/silver/pull/590)), ([Silver#636](https://github.com/viperproject/silver/pull/636)), ([Silver#635](https://github.com/viperproject/silver/pull/635))
+
+### Backend-specific Upgrades/Changes
+
+#### Symbolic Execution Backend (Silicon)
+
+- Parallel branch verification: Use option ``--parallelizeBranches`` to verify different branches of a method in parallel. Generally speeds up verification but may lead to non-deterministic verification time. ([Silicon#634](https://github.com/viperproject/silicon/pull/634))
+- Parallel Silicon instances: Multiple verifier instances can be used in parallel ([Silicon#635](https://github.com/viperproject/silicon/pull/635)), ([Silver#600](https://github.com/viperproject/silver/pull/600))
+- Soundness fixes for several long-standing soundness issues. As a result, standard Silicon currently has no known soundness issues outside of magic wands. Fixes include:
+  - Function encoding ([Silicon#376](https://github.com/viperproject/silicon/issues/376)), ([Silicon#369](https://github.com/viperproject/silicon/issues/369))
+  - Quantified permission encoding for finite domains ([Silicon#342](https://github.com/viperproject/silicon/issues/342)), ([Silicon#636](https://github.com/viperproject/silicon/issues/636))
+  - Quantifier encoding ([Silicon#560](https://github.com/viperproject/silicon/issues/560)), ([Silicon#652](https://github.com/viperproject/silicon/issues/652))
+- Improved SymbExLogger is now thread safe and reports records via a SymbLogListener interface ([Silicon#622](https://github.com/viperproject/silicon/pull/622)).
+- Multiple performance improvements, mostly related to quantified permissions ([Silicon#668](https://github.com/viperproject/silicon/pull/668)), ([Silicon#649](https://github.com/viperproject/silicon/pull/649)), ([Silicon#651](https://github.com/viperproject/silicon/pull/651)), ([Silver#604](https://github.com/viperproject/silver/pull/604)), ([Silver#605](https://github.com/viperproject/silver/pull/605))
+- Fixed crashes and other issues ([Silicon#648](https://github.com/viperproject/silicon/issues/648)), ([Silicon#321](https://github.com/viperproject/silicon/issues/321)), ([Silicon#641](https://github.com/viperproject/silicon/issues/641)), ([Silicon#665](https://github.com/viperproject/silicon/issues/665))
+
+#### Verification Condition Generation Backend (Carbon)
+
+- Boogie Version upgraded to 2.15.9 ([Carbon#441](https://github.com/viperproject/carbon/pull/441))
+- Inconsistent interpretation of division and modulo fixed ([Carbon#448](https://github.com/viperproject/carbon/pull/448))
+- Boogie and Z3 instances are now stopped if Carbon is interrupted ([Carbon#426](https://github.com/viperproject/carbon/pull/426))
+
 ## Release 2022.7
 
 **Date 29/07/22**

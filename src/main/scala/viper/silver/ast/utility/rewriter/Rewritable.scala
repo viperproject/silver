@@ -6,9 +6,9 @@
 
 package viper.silver.ast.utility.rewriter
 
-import viper.silver.parser.PDomainFunction
+import viper.silver.parser.{PDomain, PDomainFunction, PField, PFunction, PMethod, PPredicate}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
-import viper.silver.ast.{AtomicType, DomainFuncApp, ErrorTrafo, FuncApp, Info, Node, Position}
+import viper.silver.ast.{AtomicType, BackendFuncApp, DomainFuncApp, ErrorTrafo, FuncApp, Info, Node, Position}
 
 import scala.reflect.runtime.{universe => reflection}
 
@@ -47,10 +47,16 @@ trait Rewritable extends Product {
           case fa: FuncApp => secondArgList = Seq(fa.pos, fa.info, fa.typ, fa.errT)
           case df: DomainFunc => secondArgList = Seq(df.pos, df.info, df.domainName, df.errT)
           case df: DomainFuncApp => secondArgList = Seq(df.pos, df.info, df.typ, df.domainName, df.errT)
+          case ba: BackendFuncApp => secondArgList = Seq(ba.pos, ba.info, ba.typ, ba.interpretation, ba.errT)
           case no: Node => secondArgList = no.getMetadata
-          case pa: PAxiom => secondArgList = Seq(pa.domainName) ++ Seq(pos.getOrElse(pa.pos))
+          case pa: PAxiom => secondArgList = Seq(pa.domainName) ++ Seq(pos.getOrElse(pa.pos), pa.annotations)
           case pm: PMagicWandExp => firstArgList = Seq(children.head) ++ children.drop(2) ++ Seq(pos.getOrElse(pm.pos))
-          case pd: PDomainFunction => secondArgList = Seq(pd.domainName) ++ Seq(pos.getOrElse(pd.pos))
+          case pd: PDomainFunction => secondArgList = Seq(pd.domainName) ++ Seq(pos.getOrElse(pd.pos), pd.annotations)
+          case pd: PDomain => secondArgList = Seq(pos.getOrElse(pd.pos), pd.annotations)
+          case pm: PMethod => secondArgList = Seq(pos.getOrElse(pm.pos), pm.annotations)
+          case pp: PPredicate => secondArgList = Seq(pos.getOrElse(pp.pos), pp.annotations)
+          case pf: PFunction => secondArgList = Seq(pos.getOrElse(pf.pos), pf.annotations)
+          case pf: PField => secondArgList = Seq(pos.getOrElse(pf.pos), pf.annotations)
           case pn: PNode => secondArgList = Seq(pos.getOrElse(pn.pos))
           case _ =>
         }

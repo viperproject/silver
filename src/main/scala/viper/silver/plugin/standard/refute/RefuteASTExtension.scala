@@ -11,7 +11,7 @@ import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, text, toParenDoc}
 import viper.silver.ast.pretty.PrettyPrintPrimitives
 
 /** An `FailureExpectedInfo` info that tells us that this assert is a refute. */
-case object RefuteInfo extends FailureExpectedInfo
+case class RefuteInfo(refute: Refute) extends FailureExpectedInfo
 
 case class Refute(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionStmt {
   override lazy val prettyPrint: PrettyPrintPrimitives#Cont = text("refute") <+> toParenDoc(exp)
