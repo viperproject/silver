@@ -14,7 +14,7 @@ import scala.collection.mutable
 
 case class PPredicateInstance(args: Seq[PExp], idnuse: PIdnUse)(val pos: (Position, Position)) extends PExtender with PExp {
 
-  typ = PPrimitiv(PKeyword("PredicateInstance")(NoPosition, NoPosition))(NoPosition, NoPosition)
+  typ = PPrimitiv(PKeywordType("PredicateInstance")(NoPosition, NoPosition))(NoPosition, NoPosition)
 
   // TODO: Don't know if this is correct
   private val _typeSubstitutions = new scala.collection.mutable.ArrayDeque[PTypeSubstitution]()
@@ -29,7 +29,9 @@ case class PPredicateInstance(args: Seq[PExp], idnuse: PIdnUse)(val pos: (Positi
     n.definition(member = null)(idnuse) match {
       case Some(p: PPredicate) =>
         // type checking should be the same as for PPredicateAccess nodes
-        val predicateAccess = PPredicateAccess(args, idnuse)(p.pos)
+        val predicateAccess = PCall(idnuse, args, None)(p.pos)
+        predicateAccess.extfunction = p
+        // val predicateAccess = PPredicateAccess(args, idnuse)(p.pos)
         t.checkInternal(predicateAccess)
         None
       case _ => Some(Seq("expected predicate"))
@@ -39,4 +41,6 @@ case class PPredicateInstance(args: Seq[PExp], idnuse: PIdnUse)(val pos: (Positi
   override def translateExp(t: Translator): ExtensionExp = {
     PredicateInstance(args map t.exp, idnuse.name)(t.liftPos(this))
   }
+
+  override def prettyNoBrackets: String = s"#${idnuse.name}(${args.map(_.pretty()).mkString(", ")})"
 }

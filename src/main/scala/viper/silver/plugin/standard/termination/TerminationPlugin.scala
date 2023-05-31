@@ -25,7 +25,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
                         @unused logger: ch.qos.logback.classic.Logger,
                         config: viper.silver.frontend.SilFrontendConfig,
                         fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
-  import fp.{FP, keyword, exp, operator, ParserExtension}
+  import fp.{FP, keywordLang, exp, operator, ParserExtension}
 
   private def deactivated: Boolean = config != null && config.terminationPlugin.toOption.getOrElse(false)
 
@@ -43,8 +43,8 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
    * or
    * decreases *
    */
-  def decreases[$: P]: P[(PKeyword, PDecreasesClause)] =
-    P(keyword(decreasesKeyword.!) ~/ (decreasesWildcard | decreasesStar | decreasesTuple) ~ ";".?)
+  def decreases[$: P]: P[(PKeywordLang, PDecreasesClause)] =
+    P(keywordLang(decreasesKeyword) ~/ (decreasesWildcard | decreasesStar | decreasesTuple) ~ ";".?)
   def decreasesTuple[$: P]: P[PDecreasesTuple] =
     FP(exp.rep(sep = ",") ~/ condition.?).map { case (pos, (a, c)) => PDecreasesTuple(a, c)(pos) }
   def decreasesWildcard[$: P]: P[PDecreasesWildcard] = FP("_" ~/ condition.?).map{ case (pos, c) => PDecreasesWildcard(c)(pos) }
@@ -75,11 +75,11 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
     // Transform predicate accesses to predicate instances
     // (which are not used in the unfolding to predicate instances)
     val transformPredicateInstances = StrategyBuilder.Slim[PNode]({
-      case pa@PPredicateAccess(args, idnuse) => PPredicateInstance(args, idnuse)(pa.pos)
+      // case pa@PPredicateAccess(args, idnuse) => PPredicateInstance(args, idnuse)(pa.pos)
       case pc@PCall(idnUse, args, None) if input.predicates.exists(_.idndef.name == idnUse.name) =>
         // PCall represents the predicate access before the translation into the AST
         PPredicateInstance(args, idnUse)(pc.pos)
-      case PAccPred(_, pa@PPredicateAccess(args, idnuse), _) => PPredicateInstance(args, idnuse)(pa.pos)
+      // case PAccPred(_, pa@PPredicateAccess(args, idnuse), _) => PPredicateInstance(args, idnuse)(pa.pos)
       case PAccPred(_, pc@PCall(idnUse, args, None), _) if input.predicates.exists(_.idndef.name == idnUse.name) =>
         PPredicateInstance(args, idnUse)(pc.pos)
       case d => d
@@ -99,8 +99,8 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
       case d => d
     }).recurseFunc({ // decreases clauses can only appear in functions/methods pres and methods bodies
       case PProgram(_, _, _, _, functions, _, methods, _, _) => Seq(functions, methods)
-      case PFunction(_, _, _, pres, _, _) => Seq(pres)
-      case PMethod(_, _, _, pres, _, body) => Seq(pres, body)
+      case PFunction(_, _, _, _, _, pres, _, _) => Seq(pres)
+      case PMethod(_, _, _, _, _, pres, _, body) => Seq(pres, body)
     }).execute(input)
 
     newProgram

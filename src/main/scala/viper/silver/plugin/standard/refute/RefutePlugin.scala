@@ -23,14 +23,14 @@ class RefutePlugin(@unused reporter: viper.silver.reporter.Reporter,
                    @unused config: viper.silver.frontend.SilFrontendConfig,
                    fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
 
-  import fp.{FP, keyword, exp, ParserExtension}
+  import fp.{FP, keywordStmt, exp, ParserExtension}
 
   /** Keyword used to define refute statements. */
   private val refuteKeyword: String = "refute"
 
   /** Parser for refute statements. */
   def refute[$: P]: P[PRefute] =
-    FP(keyword(refuteKeyword.!) ~/ exp).map{ case (pos, (k, e)) => PRefute(k, e)(pos) }
+    FP(keywordStmt(refuteKeyword) ~/ exp).map{ case (pos, (k, e)) => PRefute(k, e)(pos) }
 
   /** Add refute to the parser. */
   override def beforeParse(input: String, isImported: Boolean): String = {

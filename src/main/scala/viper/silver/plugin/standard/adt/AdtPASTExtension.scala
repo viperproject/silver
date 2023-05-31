@@ -7,8 +7,8 @@
 package viper.silver.plugin.standard.adt
 
 import viper.silver.FastMessaging
-import viper.silver.ast.utility.{HasSemanticTokens, SemanticHighlight, TokenType}
 import viper.silver.ast._
+import viper.silver.ast.utility.lsp._
 import viper.silver.parser._
 import viper.silver.plugin.standard.adt.PAdtConstructor.findAdtConstructor
 
@@ -16,12 +16,10 @@ import scala.annotation.unused
 import scala.util.{Success, Try}
 
 
-case class PAdt(adt: PKeyword, idndef: PIdnDef, typVars: Seq[PTypeVarDecl], constructors: Seq[PAdtConstructor], derivingInfos: Seq[PAdtDerivingInfo])
-               (val pos: (Position, Position)) extends PExtender with PMember with PGlobalDeclaration with PSemanticDeclaration {
+case class PAdt(annotations: Seq[PAnnotation], adt: PKeywordLang, idndef: PIdnDef, typVars: Seq[PTypeVarDecl], constructors: Seq[PAdtConstructor], derive: Option[PKeywordLang], derivingInfos: Seq[PAdtDerivingInfo])
+               (val pos: (Position, Position)) extends PExtender with PMember with PGlobalDeclaration with PSemanticDeclaration with PGlobalSymbol with HasFoldingRanges {
 
-  override def tokenType = TokenType.Enum
-
-  override val getSubnodes: Seq[PNode] = Seq(adt, idndef) ++ typVars ++ constructors ++ derivingInfos
+  override val getSubnodes: Seq[PNode] = annotations ++ Seq(adt, idndef) ++ typVars ++ constructors ++ derive.toSeq ++ derivingInfos
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
     t.checkMember(this) {
@@ -60,7 +58,7 @@ case class PAdt(adt: PKeyword, idndef: PIdnDef, typVars: Seq[PTypeVarDecl], cons
       null,
       typVars map (t => TypeVar(t.idndef.name)),
       derivingInfos.map(a => (a.idnuse.name, (if (a.param.nonEmpty) Some(t.ttyp(a.param.get)) else None, a.blockList.map(_.name)))).toMap
-    )(t.liftPos(this))
+    )(t.liftPos(this), Translator.toInfo(this.annotations, this))
   }
 
   override def translateMember(t: Translator): Member = {
@@ -92,6 +90,13 @@ case class PAdt(adt: PKeyword, idndef: PIdnDef, typVars: Seq[PTypeVarDecl], cons
     adtType
   }
 
+  override def tokenType = TokenType.Enum
+  override def symbolKind = SymbolKind.Enum
+  override def hint = {
+    val tvsStr = if (typVars.isEmpty) "" else typVars.map(_.idndef.pretty()).mkString("[", ",", "]")
+    s"${adt.pretty()} ${idndef.pretty()}$tvsStr"
+  }
+  override def getFoldingRanges: Seq[FoldingRange] = RangePosition(this).map(FoldingRange(_)).toSeq
 }
 
 object PAdt {
@@ -106,10 +111,10 @@ object PAdt {
 
 }
 
-case class PAdtConstructor(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl])
-                          (val adtName: PIdnUse)(val pos: (Position, Position)) extends PExtender with PMember with PGlobalDeclaration {
+case class PAdtConstructor(annotations: Seq[PAnnotation], idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl])
+                          (val adtName: PIdnUse)(val pos: (Position, Position)) extends PExtender with PMember with PGlobalDeclaration with PSemanticDeclaration with PGlobalCallable {
 
-  override val getSubnodes: Seq[PNode] = Seq(idndef) ++ formalArgs
+  override val getSubnodes: Seq[PNode] = annotations ++ Seq(idndef) ++ formalArgs
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
     this.formalArgs foreach (a => t.check(a.typ))
@@ -131,7 +136,7 @@ case class PAdtConstructor(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl])
       adt,
       idndef.name,
       formalArgs map { arg => LocalVarDecl(arg.idndef.name, t.ttyp(arg.typ))(t.liftPos(arg.idndef)) }
-    )(t.liftPos(this))
+    )(t.liftPos(this), Translator.toInfo(annotations, this))
   }
 
   override def translateMember(t: Translator): AdtConstructor = {
@@ -142,12 +147,25 @@ case class PAdtConstructor(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl])
     if (!forceRewrite && this.children == children && pos.isEmpty)
       this
     else {
-      assert(children.length == 2, s"PAdtConstructor : expected length 2 but got ${children.length}")
-      val first = children.head.asInstanceOf[PIdnDef]
-      val second = children.tail.head.asInstanceOf[Seq[PFormalArgDecl]]
-      PAdtConstructor(first, second)(this.adtName)(pos.getOrElse(this.pos)).asInstanceOf[this.type]
+      assert(children.length == 3, s"PAdtConstructor : expected length 3 but got ${children.length}")
+      val first = children(0).asInstanceOf[Seq[PAnnotation]]
+      val second = children(1).asInstanceOf[PIdnDef]
+      val third = children(2).asInstanceOf[Seq[PFormalArgDecl]]
+      PAdtConstructor(first, second, third)(this.adtName)(pos.getOrElse(this.pos)).asInstanceOf[this.type]
     }
   }
+
+  override def tokenType = TokenType.EnumMember
+  override def symbolKind = SymbolKind.EnumMember
+  override def keyword: PKeywordLang = PKeywordLang(s"adt")(NoPosition, NoPosition)
+  override def bodyRange: Option[RangePosition] = None
+  override def returnString: Option[String] = Some(s": ${adtName.pretty()}")
+  override def pres: Seq[(PKeywordLang, PExp)] = Nil
+  override def posts: Seq[(PKeywordLang, PExp)] = Nil
+  override def getHoverHints: Seq[HoverHint] = super.getHoverHints ++
+    Seq(HoverHint(s"```\nadt ${adtName.pretty()}.is${idndef.name}: Bool\n```", SelectionBoundKeyword("is" + idndef.name))) ++
+    formalArgs.map(arg => HoverHint(s"\n```adt ${adtName.pretty()}.${arg.idndef.pretty()}: ${arg.typ.pretty()}\n```", SelectionBoundKeyword(arg.idndef.name)))
+  override def getGotoDefinitions: Seq[GotoDefinition] = RangePosition(idndef).map(rp => GotoDefinition(rp, scope)).toSeq
 }
 
 object PAdtConstructor {
@@ -161,11 +179,11 @@ object PAdtConstructor {
   def findAdtConstructor(id: PIdentifier, t: Translator): AdtConstructor = t.getMembers()(id.name).asInstanceOf[AdtConstructor]
 }
 
-case class PAdtConstructor1(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl])(val pos: (Position, Position))
+case class PAdtConstructor1(annotations: Seq[PAnnotation], idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl])(val pos: (Position, Position))
 
-case class PAdtDerivingInfo(idnuse: PIdnUse, param: Option[PType], blockList: Set[PIdnUse])(val pos: (Position, Position)) extends PExtender {
+case class PAdtDerivingInfo(idnuse: PIdnUse, param: Option[PType], without: Option[PKeywordLang], blockList: Set[PIdnUse])(val pos: (Position, Position)) extends PExtender {
 
-  override def getSubnodes(): Seq[PNode] = Seq(idnuse) ++ param.toSeq
+  override def getSubnodes(): Seq[PNode] = Seq(idnuse) ++ param.toSeq ++ without.toSeq ++ blockList.toSeq
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
     param.foreach(t.check)
@@ -174,12 +192,9 @@ case class PAdtDerivingInfo(idnuse: PIdnUse, param: Option[PType], blockList: Se
 }
 
 case class PAdtType(adt: PIdnUse, args: Seq[PType])
-                   (val pos: (Position, Position)) extends PExtender with PGenericType with HasSemanticTokens {
+                   (val pos: (Position, Position)) extends PExtender with PGenericType with HasSemanticHighlights {
 
   var kind: PAdtTypeKinds.Kind = PAdtTypeKinds.Unresolved
-
-  override val semanticTokens: Seq[SemanticHighlight] =
-    adt.filePos.map(pos => SemanticHighlight(pos._1, pos._2, TokenType.Enum)).toSeq
 
   override def genericName: String = adt.name
 
@@ -223,7 +238,7 @@ case class PAdtType(adt: PIdnUse, args: Seq[PType])
         }
 
         x match {
-          case PAdt(_, _, typVars, _, _) =>
+          case PAdt(_, _, _, typVars, _, _, _) =>
             t.ensure(args.length == typVars.length, this, "wrong number of type arguments")
             at.kind = PAdtTypeKinds.Adt
             None
@@ -248,8 +263,10 @@ case class PAdtType(adt: PIdnUse, args: Seq[PType])
 
   override def withTypeArguments(s: Seq[PType]): PGenericType = copy(args = s)(pos)
 
-  override def toString: String = adt.name + (if (args.isEmpty) "" else s"[${args.mkString(", ")}]")
+  override def pretty(): String = adt.pretty() + (if (args.isEmpty) "" else s"[${args.map(_.pretty()).mkString(", ")}]")
 
+  override def getSemanticHighlights: Seq[SemanticHighlight] =
+    RangePosition(adt).map(sp => SemanticHighlight(sp, TokenType.Enum)).toSeq
 }
 
 object PAdtTypeKinds {
@@ -410,7 +427,7 @@ object PAdtOpApp {
 }
 
 case class PConstructorCall(constr: PIdnUse, args: Seq[PExp], typeAnnotated: Option[PType] = None)
-                           (val pos: (Position, Position) = (NoPosition, NoPosition)) extends PAdtOpApp with PLocationAccess {
+                           (val pos: (Position, Position) = (NoPosition, NoPosition)) extends PAdtOpApp with PAnyCall with PLocationAccess with HasSemanticHighlights {
   // Following field is set during resolving, respectively in the typecheck method inherited from PAdtOpApp
   var constructor: PAdtConstructor = null
 
@@ -449,14 +466,16 @@ case class PConstructorCall(constr: PIdnUse, args: Seq[PExp], typeAnnotated: Opt
     }
   }
 
+  override def getSemanticHighlights: Seq[SemanticHighlight] =
+    RangePosition(constr).map(sp => SemanticHighlight(sp, TokenType.EnumMember)).toSeq
 }
 
-case class PDestructorCall(name: String, rcv: PExp)
-                          (val pos: (Position, Position) = (NoPosition, NoPosition)) extends PAdtOpApp {
+case class PDestructorCall(name: PIdnUse, rcv: PExp)
+                          (val pos: (Position, Position) = (NoPosition, NoPosition)) extends PAdtOpApp with HasSemanticHighlights {
   // Following field is set during resolving, respectively in the typecheck method inherited from PAdtOpApp
   var matchingConstructorArg: PFormalArgDecl = null
 
-  override def opName: String = name
+  override def opName: String = name.name
 
   override def getSubnodes(): Seq[PNode] = Seq(rcv)
 
@@ -481,14 +500,18 @@ case class PDestructorCall(name: String, rcv: PExp)
       case Some(s) =>
         val adt = t.getMembers()(this.adt.idndef.name).asInstanceOf[Adt]
         assert(s.keys.toSet == adt.typVars.toSet)
-        AdtDestructorApp(adt, name, actualRcv, s)(t.liftPos(this))
+        AdtDestructorApp(adt, name.name, actualRcv, s)(t.liftPos(this))
       case _ => sys.error("type unification error - should report and not crash")
     }
   }
+
+  override def getSemanticHighlights: Seq[SemanticHighlight] =
+    RangePosition(name).map(sp => SemanticHighlight(sp, TokenType.Method)).toSeq
+  override def prettyNoBrackets = s"${rcv.pretty()}.${name.pretty()}"
 }
 
 case class PDiscriminatorCall(name: PIdnUse, rcv: PExp)
-                             (val pos: (Position, Position) = (NoPosition, NoPosition)) extends PAdtOpApp {
+                             (val pos: (Position, Position) = (NoPosition, NoPosition)) extends PAdtOpApp with HasSemanticHighlights {
   override def opName: String = "is" + name.name
 
   override def getSubnodes(): Seq[PNode] = Seq(name, rcv)
@@ -518,4 +541,9 @@ case class PDiscriminatorCall(name: PIdnUse, rcv: PExp)
       case _ => sys.error("type unification error - should report and not crash")
     }
   }
+
+  override def getSemanticHighlights: Seq[SemanticHighlight] =
+    RangePosition(name).map(sp => SemanticHighlight(sp, TokenType.Method)).toSeq
+  override def prettyNoBrackets = s"${rcv.pretty()}.$opName"
+
 }

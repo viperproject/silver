@@ -43,7 +43,7 @@ case class Translator(program: PProgram) {
         /* [2022-03-14 Alessandro] Following signatures can be translated independently of each other but must be translated
          * after signatures of domains and extensions because of the above mentioned reasons.
          */
-        pdomains flatMap (_.funcs) foreach translateMemberSignature
+        pdomains flatMap (_.members.funcs) foreach translateMemberSignature
         (pfields ++ pfunctions ++ ppredicates ++ pmethods) foreach translateMemberSignature
 
         /* [2022-03-14 Alessandro] After the signatures are translated, the actual full translations can be done
@@ -77,7 +77,7 @@ case class Translator(program: PProgram) {
   }
 
   private def translate(m: PMethod): Method = m match {
-    case PMethod(name, _, _, pres, posts, body) =>
+    case PMethod(_, _, name, _, _, pres, posts, body) =>
       val m = findMethod(name)
 
       val newBody = body.map(actualBody => {
@@ -95,7 +95,7 @@ case class Translator(program: PProgram) {
   }
 
   private def translate(d: PDomain): Domain = d match {
-    case PDomain(name, _, functions, axioms, interpretation) =>
+    case PDomain(_, _, name, _, PDomainMembers(functions, axioms), interpretation) =>
       val d = findDomain(name)
       val dd = d.copy(functions = functions map (f => findDomainFunction(f.idndef)),
         axioms = axioms map translate, interpretations = interpretation)(d.pos, d.info, d.errT)
@@ -104,24 +104,24 @@ case class Translator(program: PProgram) {
   }
 
   private def translate(a: PAxiom): DomainAxiom = a match {
-    case pa@PAxiom(Some(name), e) =>
-      NamedDomainAxiom(name.name, exp(e))(a, toInfo(pa.annotations, pa), domainName = pa.domainName.name)
-    case pa@PAxiom(None, e) =>
-      AnonymousDomainAxiom(exp(e))(a, toInfo(pa.annotations, pa), domainName = pa.domainName.name)
+    case pa@PAxiom(anns, _, Some(name), e) =>
+      NamedDomainAxiom(name.name, exp(e.inner))(a, Translator.toInfo(anns, pa), domainName = pa.domainName.name)
+    case pa@PAxiom(anns, _, None, e) =>
+      AnonymousDomainAxiom(exp(e.inner))(a, Translator.toInfo(anns, pa), domainName = pa.domainName.name)
   }
 
   private def translate(f: PFunction): Function = f match {
-    case PFunction(name, _, _, pres, posts, body) =>
+    case PFunction(_, _, name, _, _, pres, posts, body) =>
       val f = findFunction(name)
-      val ff = f.copy( pres = pres map (p => exp(p._2)), posts = posts map (p => exp(p._2)), body = body map exp)(f.pos, f.info, f.errT)
+      val ff = f.copy( pres = pres map (p => exp(p._2)), posts = posts map (p => exp(p._2)), body = body map (_.inner) map exp)(f.pos, f.info, f.errT)
       members(f.name) = ff
       ff
   }
 
   private def translate(p: PPredicate): Predicate = p match {
-    case PPredicate(_, name, _, body) =>
+    case PPredicate(_, _, name, _, body) =>
       val p = findPredicate(name)
-      val pp = p.copy(body = body map exp)(p.pos, p.info, p.errT)
+      val pp = p.copy(body = body map (_.inner) map exp)(p.pos, p.info, p.errT)
       members(p.name) = pp
       pp
   }
@@ -143,28 +143,20 @@ case class Translator(program: PProgram) {
     val pos = p
     val name = p.idndef.name
     val t = p match {
-      case pf@PField(_, _, typ) =>
-        Field(name, ttyp(typ))(pos, toInfo(pf.annotations, pf))
-      case pf@PFunction(_, formalArgs, typ, _, _, _) =>
-        Function(name, formalArgs map liftVarDecl, ttyp(typ), null, null, null)(pos, toInfo(pf.annotations, pf))
-      case pdf@ PDomainFunction(_, args, typ, unique, interp) =>
-        DomainFunc(name, args map liftAnyVarDecl, ttyp(typ), unique, interp)(pos,toInfo(pdf.annotations, pdf),pdf.domainName.name)
-      case pd@PDomain(_, typVars, _, _, interp) =>
-        Domain(name, null, null, typVars map (t => TypeVar(t.idndef.name)), interp)(pos, toInfo(pd.annotations, pd))
-      case pp@PPredicate(_, _, formalArgs, _) =>
-        Predicate(name, formalArgs map liftVarDecl, null)(pos, toInfo(pp.annotations, pp))
-      case pm@PMethod(_, formalArgs, formalReturns, _, _, _) =>
-        Method(name, formalArgs map liftVarDecl, formalReturns map liftVarDecl, null, null, null)(pos, toInfo(pm.annotations, pm))
+      case pf@PField(anns, _, _, typ) =>
+        Field(name, ttyp(typ))(pos, Translator.toInfo(anns, pf))
+      case pf@PFunction(anns, _, _, formalArgs, typ, _, _, _) =>
+        Function(name, formalArgs map liftVarDecl, ttyp(typ), null, null, null)(pos, Translator.toInfo(anns, pf))
+      case pdf@ PDomainFunction(anns, _, _, args, typ, unique, interp) =>
+        DomainFunc(name, args map liftAnyVarDecl, ttyp(typ), unique, interp)(pos,Translator.toInfo(anns, pdf),pdf.domainName.name)
+      case pd@PDomain(anns, _, _, typVars, _, interp) =>
+        Domain(name, null, null, typVars map (t => TypeVar(t.idndef.name)), interp)(pos, Translator.toInfo(anns, pd))
+      case pp@PPredicate(anns, _, _, formalArgs, _) =>
+        Predicate(name, formalArgs map liftVarDecl, null)(pos, Translator.toInfo(anns, pp))
+      case pm@PMethod(anns, _, _, formalArgs, formalReturns, _, _, _) =>
+        Method(name, formalArgs map liftVarDecl, formalReturns map liftVarDecl, null, null, null)(pos, Translator.toInfo(anns, pm))
     }
     members.put(p.idndef.name, t)
-  }
-
-  def toInfo(annotations: Seq[(String, Seq[String])], node: PNode): Info = {
-    if (annotations.isEmpty) {
-      NoInfo
-    } else {
-      AnnotationInfo(annotations.groupBy(_._1).map{ case (k, v) => k -> v.unzip._2.flatten})
-    }
   }
 
   private def translateMemberSignature(p: PExtender): Unit ={
@@ -215,9 +207,9 @@ case class Translator(program: PProgram) {
           case p@PLocalVarDecl(_, idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(p)
         }
         Seqn(ss filterNot (_.isInstanceOf[PSkip]) map stmt, locals)(pos, info)
-      case PFold(e) =>
+      case PFold(_, e) =>
         Fold(exp(e).asInstanceOf[PredicateAccessPredicate])(pos, info)
-      case PUnfold(e) =>
+      case PUnfold(_, e) =>
         Unfold(exp(e).asInstanceOf[PredicateAccessPredicate])(pos, info)
       case PPackageWand(_, e, proofScript) =>
         val wand = exp(e).asInstanceOf[MagicWand]
@@ -246,7 +238,7 @@ case class Translator(program: PProgram) {
         MethodCall(findMethod(method), args map exp, ts)(pos, info)
       case PLabel(_, name, invs) =>
         Label(name.name, invs map (inv => exp(inv._2)))(pos, info)
-      case PGoto(label) =>
+      case PGoto(_, label) =>
         Goto(label.name)(pos, info)
       case PIf(_, cond, thn, _, els) =>
         If(exp(cond), stmt(thn).asInstanceOf[Seqn], stmt(els).asInstanceOf[Seqn])(pos, info)
@@ -283,28 +275,28 @@ case class Translator(program: PProgram) {
 
   def extractAnnotation(pexp: PExp): (PExp, Map[String, Seq[String]]) = {
     pexp match {
-      case PAnnotatedExp(e, (key, value)) =>
+      case PAnnotatedExp(e, ann) =>
         val (resPexp, innerMap) = extractAnnotation(e)
-        val combinedValue = if (innerMap.contains(key)) {
-          value ++ innerMap(key)
+        val combinedValue = if (innerMap.contains(ann.key)) {
+          ann.values ++ innerMap(ann.key)
         } else {
-          value
+          ann.values
         }
-        (resPexp, innerMap.updated(key, combinedValue))
+        (resPexp, innerMap.updated(ann.key, combinedValue))
       case _ => (pexp, Map())
     }
   }
 
   def extractAnnotationFromStmt(pStmt: PStmt): (PStmt, Map[String, Seq[String]]) = {
     pStmt match {
-      case PAnnotatedStmt(s, (key, value)) =>
+      case PAnnotatedStmt(s, ann) =>
         val (resPStmt, innerMap) = extractAnnotationFromStmt(s)
-        val combinedValue = if (innerMap.contains(key)) {
-          value ++ innerMap(key)
+        val combinedValue = if (innerMap.contains(ann.key)) {
+          ann.values ++ innerMap(ann.key)
         } else {
-          value
+          ann.values
         }
-        (resPStmt, innerMap.updated(key, combinedValue))
+        (resPStmt, innerMap.updated(ann.key, combinedValue))
       case _ => (pStmt, Map())
     }
   }
@@ -325,9 +317,9 @@ case class Translator(program: PProgram) {
           case _ =>
             sys.error("should not occur in type-checked program")
         }
-      case pbe @ PBinExp(left, POperator(op), right) =>
+      case pbe @ PBinExp(left, op, right) =>
         val (l, r) = (exp(left), exp(right))
-        op match {
+        op.operator match {
           case "+" =>
             r.typ match {
               case Int => Add(l, r)(pos, info)
@@ -418,9 +410,9 @@ case class Translator(program: PProgram) {
           case "setminus" => AnySetMinus(l, r)(pos, info)
           case _ => sys.error(s"unexpected operator $op")
         }
-      case PUnExp(POperator(op), pe) =>
+      case PUnExp(op, pe) =>
         val e = exp(pe)
-        op match {
+        op.operator match {
           case "-" =>
             e.typ match {
               case Int => Minus(e)(pos, info)
@@ -447,8 +439,8 @@ case class Translator(program: PProgram) {
         NullLit()(pos, info)
       case PFieldAccess(rcv, idn) =>
         FieldAccess(exp(rcv), findField(idn))(pos, info)
-      case PPredicateAccess(args, idn) =>
-        PredicateAccess(args map exp, findPredicate(idn).name)(pos, info)
+      // case PPredicateAccess(args, idn) =>
+      //   PredicateAccess(args map exp, findPredicate(idn).name)(pos, info)
       case PMagicWandExp(left, _, right) => MagicWand(exp(left), exp(right))(pos, info)
       case pfa@PCall(func, args, _) =>
         members(func.name) match {
@@ -530,13 +522,13 @@ case class Translator(program: PProgram) {
           case x: MagicWand => CurrentPerm(x)(pos, info)
           case other => sys.error(s"Unexpectedly found $other")
         }
-      case PNoPerm() =>
+      case PNoPerm(_) =>
         NoPerm()(pos, info)
-      case PFullPerm() =>
+      case PFullPerm(_) =>
         FullPerm()(pos, info)
-      case PWildcard() =>
+      case PWildcard(_) =>
         WildcardPerm()(pos, info)
-      case PEpsilon() =>
+      case PEpsilon(_) =>
         EpsilonPerm()(pos, info)
       case PAccPred(_, loc, perm) =>
         val p = exp(perm)
@@ -621,7 +613,7 @@ case class Translator(program: PProgram) {
 
   /** Takes a `PType` and turns it into a `Type`. */
   def ttyp(t: PType): Type = t match {
-    case PPrimitiv(PKeyword(name)) => name match {
+    case PPrimitiv(PKeywordType(name)) => name match {
       case "Int" => Int
       case "Bool" => Bool
       case "Ref" => Ref
@@ -679,6 +671,14 @@ object Translator {
     }
     else {
       SourcePosition(null, 0, 0)
+    }
+  }
+
+  def toInfo(annotations: Seq[PAnnotation], node: PNode): Info = {
+    if (annotations.isEmpty) {
+      NoInfo
+    } else {
+      AnnotationInfo(annotations.groupBy(_.key).map{ case (k, v) => k -> v.flatMap(_.values) })
     }
   }
 }

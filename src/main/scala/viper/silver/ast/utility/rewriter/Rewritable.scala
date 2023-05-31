@@ -49,14 +49,14 @@ trait Rewritable extends Product {
           case df: DomainFuncApp => secondArgList = Seq(df.pos, df.info, df.typ, df.domainName, df.errT)
           case ba: BackendFuncApp => secondArgList = Seq(ba.pos, ba.info, ba.typ, ba.interpretation, ba.errT)
           case no: Node => secondArgList = no.getMetadata
-          case pa: PAxiom => secondArgList = Seq(pa.domainName) ++ Seq(pos.getOrElse(pa.pos), pa.annotations)
+          case pa: PAxiom => secondArgList = Seq(pa.domainName) ++ Seq(pos.getOrElse(pa.pos))
           case pm: PMagicWandExp => firstArgList = Seq(children.head) ++ children.drop(2) ++ Seq(pos.getOrElse(pm.pos))
-          case pd: PDomainFunction => secondArgList = Seq(pd.domainName) ++ Seq(pos.getOrElse(pd.pos), pd.annotations)
-          case pd: PDomain => secondArgList = Seq(pos.getOrElse(pd.pos), pd.annotations)
-          case pm: PMethod => secondArgList = Seq(pos.getOrElse(pm.pos), pm.annotations)
-          case pp: PPredicate => secondArgList = Seq(pos.getOrElse(pp.pos), pp.annotations)
-          case pf: PFunction => secondArgList = Seq(pos.getOrElse(pf.pos), pf.annotations)
-          case pf: PField => secondArgList = Seq(pos.getOrElse(pf.pos), pf.annotations)
+          case pd: PDomainFunction => secondArgList = Seq(pd.domainName) ++ Seq(pos.getOrElse(pd.pos))
+          case pd: PDomain => secondArgList = Seq(pos.getOrElse(pd.pos))
+          case pm: PMethod => secondArgList = Seq(pos.getOrElse(pm.pos))
+          case pp: PPredicate => secondArgList = Seq(pos.getOrElse(pp.pos))
+          case pf: PFunction => secondArgList = Seq(pos.getOrElse(pf.pos))
+          case pf: PField => secondArgList = Seq(pos.getOrElse(pf.pos))
           case pn: PNode => secondArgList = Seq(pos.getOrElse(pn.pos))
           case _ =>
         }

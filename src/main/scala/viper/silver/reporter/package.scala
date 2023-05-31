@@ -73,5 +73,5 @@ package object reporter {
   case class Definition(name: String, typ: SymbolKind, location: DefPosition,
                         scope: Option[DefScope] = None)
 
-  case class Import(file: File, from: DefScope)
+  case class Import(file: File, from: Option[DefScope])
 }

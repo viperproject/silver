@@ -6,7 +6,7 @@
 
 package viper.silver.plugin
 
-import viper.silver.parser.{NameAnalyser, PExp, PExtender, PKeyword, PStmt, PTypeSubstitution, Translator, TypeChecker}
+import viper.silver.parser.{NameAnalyser, PExp, PExtender, PKeywordLang, PStmt, PTypeSubstitution, Translator, TypeChecker}
 import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.ast.{Declaration, ErrorTrafo, Exp, ExtensionExp, ExtensionMember, ExtensionStmt, Info, Member, Node, Position, Stmt, Type}
 import viper.silver.verifier.VerificationResult
@@ -68,20 +68,20 @@ trait ParserPluginTemplate {
   /**
     * The specification rule provides an extension to the precondition expressions
     */
-  def preSpecification : Extension[(PKeyword, PExp)] =
-    fp => ParserPluginTemplate.defaultExpExtension(fp).map(x => (PKeyword.empty, x))
+  def preSpecification : Extension[(PKeywordLang, PExp)] =
+    fp => ParserPluginTemplate.defaultExpExtension(fp).map(x => (PKeywordLang.empty, x))
 
   /**
     * The specification rule provides an extension to the postcondition expressions
     */
-  def postSpecification : Extension[(PKeyword, PExp)] =
-    fp => ParserPluginTemplate.defaultExpExtension(fp).map(x => (PKeyword.empty, x))
+  def postSpecification : Extension[(PKeywordLang, PExp)] =
+    fp => ParserPluginTemplate.defaultExpExtension(fp).map(x => (PKeywordLang.empty, x))
 
   /**
     * The specification rule provides an extension to the loop invariant specification expressions
     */
-  def invSpecification : Extension[(PKeyword, PExp)] =
-    fp => ParserPluginTemplate.defaultExpExtension(fp).map(x => (PKeyword.empty, x))
+  def invSpecification : Extension[(PKeywordLang, PExp)] =
+    fp => ParserPluginTemplate.defaultExpExtension(fp).map(x => (PKeywordLang.empty, x))
 
   /**
     * This rule extends the keywords. So new strings added to the set will be considered as keywords.
@@ -113,6 +113,8 @@ trait ParserPluginTemplate {
     override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = super.typecheck(t, n)
     // The translator function to translate the PAst node corresponding to the Ast node
     override def translateExp(t: Translator): Exp = super.translateExp(t)
+
+    override def prettyNoBrackets: String = ""
   }
 
   /**

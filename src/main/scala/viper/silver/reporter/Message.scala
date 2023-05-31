@@ -8,8 +8,9 @@ package viper.silver.reporter
 
 import viper.silver.reporter.BackendSubProcessStages.BackendSubProcessStage
 import viper.silver.verifier._
-import viper.silver.ast.utility.SemanticHighlight
+import viper.silver.ast.utility.lsp.SemanticHighlight
 import viper.silver.ast.{QuantifiedExp, Trigger}
+import viper.silver.parser.PProgram
 
 /**
   * The only possible messages for the reporter are defined in this file.
@@ -192,16 +193,10 @@ case class ProgramDefinitionsReport(definitions: List[Definition]) extends Messa
   override val name: String = "program_definitions"
 }
 
-case class ProgramImportsReport(imports: List[Import]) extends Message {
+case class PProgramReport(semanticAnalysisSuccess: Boolean, pProgram: PProgram) extends Message {
 
-  override lazy val toString: String = s"program_imports_report(imports=${imports.toString}"
-  override val name: String = "program_imports"
-}
-
-case class SemanticTokensReport(tokens: List[SemanticHighlight]) extends Message {
-
-  override lazy val toString: String = s"semantic_tokens_report(tokens=${tokens.toString}"
-  override val name: String = "semantic_tokens"
+  override lazy val toString: String = s"pprogram_report(semanticAnalysisSuccess=$semanticAnalysisSuccess, pProgram=${pProgram.toString})"
+  override val name: String = "pprogram"
 }
 
 // TODO: Variable level of detail?
@@ -310,10 +305,11 @@ case class QuantifierInstantiationsMessage(quantifier: String, instantiations: I
   override val name: String = "quantifier_instantiations_message"
 }
 
-case class QuantifierChosenTriggersMessage(quantifier: QuantifiedExp, triggers: Seq[Trigger]) extends Message {
-  override lazy val toString: String = s"quantifier_chosen_triggers_message(type=$quant_type, quantifier=${quantifier.toString}, triggers=$triggers_string)"
+case class QuantifierChosenTriggersMessage(quantifier: QuantifiedExp, triggers: Seq[Trigger], oldTriggers: Seq[Trigger]) extends Message {
+  override lazy val toString: String = s"quantifier_chosen_triggers_message(type=$quant_type, quantifier=${quantifier.toString}, triggers=$triggers_string), oldTriggers=$oldTriggers_string)"
   override val name: String = "quantifier_chosen_triggers_message"
   lazy val triggers_string: String = triggers.map((trigger) => trigger.exps.mkString("{", ", ", "}")).mkString("[", ", ", "]")
+  lazy val oldTriggers_string: String = oldTriggers.map((trigger) => trigger.exps.mkString("{", ", ", "}")).mkString("[", ", ", "]")
   val quant_type: String = quantifier.getClass.getSimpleName
 }
 

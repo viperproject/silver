@@ -39,6 +39,8 @@ case class PDecreasesTuple(tuple: Seq[PExp], condition: Option[PExp] = None)(val
   override def translateExp(t: Translator): ExtensionExp = {
     DecreasesTuple(tuple map t.exp, condition map t.exp)(t.liftPos(this))
   }
+
+  override def prettyNoBrackets: String = tuple.map(_.pretty()).mkString(", ") + condition.map(c => " if " + c.pretty()).getOrElse("")
 }
 
 case class PDecreasesWildcard(condition: Option[PExp] = None)(val pos: (Position, Position)) extends PDecreasesClause {
@@ -54,6 +56,8 @@ case class PDecreasesWildcard(condition: Option[PExp] = None)(val pos: (Position
   override def translateExp(t: Translator): ExtensionExp = {
     DecreasesWildcard(condition map t.exp)(t.liftPos(this))
   }
+
+  override def prettyNoBrackets: String = "_" + condition.map(c => " if " + c.pretty()).getOrElse("")
 }
 
 case class PDecreasesStar(star: POperator)(val pos: (Position, Position)) extends PDecreasesClause {
@@ -66,5 +70,7 @@ case class PDecreasesStar(star: POperator)(val pos: (Position, Position)) extend
   override def translateExp(t: Translator): ExtensionExp = {
     DecreasesStar()(t.liftPos(this))
   }
+
+  override def prettyNoBrackets: String = star.operator
 }
 

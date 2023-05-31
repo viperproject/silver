@@ -20,11 +20,26 @@ case class Resolver(p: PProgram) {
   val typechecker = TypeChecker(names)
 
   def run: Option[PProgram] = {
-    if (names.run(p))
-      if (typechecker.run(p))
-        return Some(p)
-
-    None
+    val nameSuccess = names.run(p)
+    // Run typechecker even if name resolution failed, to add more information to the
+    // program, and report any other errors. A name resolution error should not cause
+    // a typechecker error however!
+    val typeckSuccess = try {
+      typechecker.run(p)
+    } catch {
+      case e: Throwable =>
+        // TODO: remove this try/catch once all assumptions that name resolution
+        // succeeded are removed from the type checker
+        val frame = e.getStackTrace().tail.head
+        val msg = s"internal error during typechecking. Please file a bug report. Error \"${e.toString()}\" at \"${frame.toString()}\""
+        typechecker.messages ++= FastMessaging.message(p, msg)
+        e.printStackTrace()
+        false
+    }
+    if (nameSuccess && typeckSuccess)
+      Some(p)
+    else
+      None
   }
 
   def messages = names.messages ++ typechecker.messages // ++ Consistency.messages // shouldn't be needed - Consistency errors should be generated only in later phases.
@@ -43,10 +58,11 @@ case class TypeChecker(names: NameAnalyser) {
 
   /** to record error messages */
   var messages: FastMessaging.Messages = Nil
+  def success: Boolean = messages.isEmpty || messages.forall(m => !m.error)
 
   def run(p: PProgram): Boolean = {
     check(p)
-    messages.isEmpty || messages.forall(m => !m.error)
+    success
   }
 
   def check(p: PProgram): Unit = {
@@ -123,7 +139,7 @@ case class TypeChecker(names: NameAnalyser) {
       f.pres foreach (p => check(p._2, Bool))
       resultAllowed = true
       f.pres foreach (p => check(p._2, Bool))
-      f.body.foreach(check(_, f.typ)) //result in the function body gets the error message somewhere else
+      f.body.map(_.inner).foreach(check(_, f.typ)) //result in the function body gets the error message somewhere else
       resultAllowed = false
       curFunction = null
     }
@@ -137,7 +153,7 @@ case class TypeChecker(names: NameAnalyser) {
 
   def checkBody(p: PPredicate): Unit = {
     checkMember(p) {
-      p.body.foreach(check(_, Bool))
+      p.body.map(_.inner).foreach(check(_, Bool))
     }
   }
 
@@ -149,19 +165,19 @@ case class TypeChecker(names: NameAnalyser) {
 
   def checkFunctions(d: PDomain): Unit = {
     checkMember(d) {
-      d.funcs foreach check
+      d.members.funcs foreach check
     }
   }
 
   def checkAxioms(d: PDomain): Unit = {
     checkMember(d) {
-      d.axioms foreach check
+      d.members.axioms foreach check
     }
   }
 
   def check(a: PAxiom): Unit = {
     checkMember(a) {
-      check(a.exp, Bool)
+      check(a.exp.inner, Bool)
     }
   }
 
@@ -180,10 +196,10 @@ case class TypeChecker(names: NameAnalyser) {
         checkMember(s) {
           ss foreach check
         }
-      case PFold(e) =>
+      case PFold(_, e) =>
         acceptNonAbstractPredicateAccess(e, "abstract predicates cannot be folded")
         check(e, Bool)
-      case PUnfold(e) =>
+      case PUnfold(_, e) =>
         acceptNonAbstractPredicateAccess(e, "abstract predicates cannot be unfolded")
         check(e, Bool)
       case PPackageWand(_, e, proofScript) =>
@@ -201,10 +217,11 @@ case class TypeChecker(names: NameAnalyser) {
         check(e, Bool)
       case PAssume(_, e) =>
         check(e, Bool)
-      case p@PVarAssign(idnuse, PCall(func, args, _)) if names.definition(curMember)(func).get.isInstanceOf[PMethod] =>
+      case p@PVarAssign(idnuse, c@PCall(func, args, _)) if names.definition(curMember)(func).map(_.isInstanceOf[PMethod]).getOrElse(false) =>
         /* This is a method call that got parsed in a slightly confusing way.
          * TODO: Get rid of this case! There is a matching case in the translator.
          */
+        c.method = names.definition(curMember)(func).get.asInstanceOf[PMethod]
         val newnode: PStmt = PMethodCall(Seq(idnuse), func, args)(p.pos)
         check(newnode)
 
@@ -216,22 +233,25 @@ case class TypeChecker(names: NameAnalyser) {
           case Some(PFormalArgDecl(_, typ)) =>
             check(idnuse, typ)
             check(rhs, typ)
-          case _ =>
+          case Some(_) =>
             messages ++= FastMessaging.message(stmt, "expected variable as lhs")
+          case None => assert(!names.success)
         }
       case PNewStmt(target, fields) =>
         val msg = "expected variable as lhs"
         acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](Seq(target), msg) { (v, _) => check(v, Ref) }
         fields foreach (_.foreach(field =>
           names.definition(curMember)(field) match {
-            case Some(PField(_, _, typ)) =>
+            case Some(PField(_, _, _, typ)) =>
               check(field, typ)
-            case _ =>
+            case Some(_) =>
               messages ++= FastMessaging.message(stmt, "expected a field as argument")
+            case None => assert(!names.success)
           }))
-      case PMethodCall(targets, method, args) =>
+      case pm@PMethodCall(targets, method, args) =>
         names.definition(curMember)(method) match {
-          case Some(PMethod(_, formalArgs, formalTargets, _, _, _)) =>
+          case Some(m@PMethod(_, _, _, formalArgs, formalTargets, _, _, _)) =>
+            pm.resolved = m
             formalArgs.foreach(fa => check(fa.typ))
             if (formalArgs.length != args.length) {
               messages ++= FastMessaging.message(stmt, "wrong number of arguments")
@@ -244,15 +264,16 @@ case class TypeChecker(names: NameAnalyser) {
                 }
               }
             }
-          case _ =>
+          case Some(_) =>
             messages ++= FastMessaging.message(stmt, "expected a method")
+          case None => assert(!names.success)
         }
       case PLabel(_, _, invs) =>
         invs foreach (inv => check(inv._2, Bool))
-      case PGoto(_) =>
+      case PGoto(_, _) =>
       case PFieldAssign(field, rhs) =>
         names.definition(curMember)(field.idnuse, Some(PField.getClass)) match {
-          case Some(PField(_, _, typ)) =>
+          case Some(PField(_, _, _, typ)) =>
             check(field, typ)
             check(rhs, typ)
           case _ =>
@@ -315,11 +336,11 @@ case class TypeChecker(names: NameAnalyser) {
 
   def acceptNonAbstractPredicateAccess(exp: PExp, messageIfAbstractPredicate: String): Unit = {
     exp match {
-      case PAccPred(_, PPredicateAccess(_, idnuse), _) =>
-        acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate") { (_, _predicate) =>
-          val predicate = _predicate.asInstanceOf[PPredicate]
-          if (predicate.body.isEmpty) messages ++= FastMessaging.message(idnuse, messageIfAbstractPredicate)
-        }
+      // case PAccPred(_, PPredicateAccess(_, idnuse), _) =>
+      //   acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate") { (_, _predicate) =>
+      //     val predicate = _predicate.asInstanceOf[PPredicate]
+      //     if (predicate.body.isEmpty) messages ++= FastMessaging.message(idnuse, messageIfAbstractPredicate)
+      //   }
       case PAccPred(_, PCall(idnuse, _, _), _) =>
         val ad = names.definition(curMember)(idnuse)
         ad match {
@@ -336,7 +357,7 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   def checkMagicWand(e: PExp): Unit = e match {
-    case PBinExp(_, POperator(MagicWandOp.op), _) =>
+    case PBinExp(_, op, _) if op.operator == MagicWandOp.op =>
     case _ =>
       messages ++= FastMessaging.message(e, "expected magic wand")
   }
@@ -373,13 +394,17 @@ case class TypeChecker(names: NameAnalyser) {
     val acceptedClasses = Seq[Class[_]](classTag[T1].runtimeClass, classTag[T2].runtimeClass)
 
     idnUses.foreach { use =>
-      val decl = names.definition(curMember)(use).get
+      val decl = names.definition(curMember)(use)
 
-      acceptedClasses.find(_.isInstance(decl)) match {
-        case Some(_) =>
-          handle(use, decl.asInstanceOf[PTypedDeclaration])
-        case None =>
-          messages ++= FastMessaging.message(use, errorMessage)
+      if (decl.isDefined) {
+        acceptedClasses.find(_.isInstance(decl.get)) match {
+          case Some(_) =>
+            handle(use, decl.get.asInstanceOf[PTypedDeclaration])
+          case None =>
+            messages ++= FastMessaging.message(use, errorMessage)
+        }
+      } else {
+        assert(!names.success)
       }
     }
   }
@@ -397,19 +422,11 @@ case class TypeChecker(names: NameAnalyser) {
 
         args foreach check
 
-        var x: Any = null
-
-        try {
-          x = names.definition(curMember)(domain).get
-        } catch {
-          case _: Throwable =>
-        }
-
-        x match {
-          case PDomain(_, typVars, _, _, _) =>
+        names.definition(curMember)(domain) match {
+          case Some(PDomain(_, _, _, typVars, _, _)) =>
             ensure(args.length == typVars.length, typ, "wrong number of type arguments")
             dt.kind = PDomainTypeKinds.Domain
-          case PTypeVarDecl(_) =>
+          case Some(PTypeVarDecl(_)) =>
             dt.kind = PDomainTypeKinds.TypeVar
           case _ =>
             dt.kind = PDomainTypeKinds.Undeclared
@@ -658,7 +675,7 @@ case class TypeChecker(names: NameAnalyser) {
                       pfa.function = fd
                       ensure(fd.formalArgs.size == args.size, pfa, "wrong number of arguments")
                       fd match {
-                        case PFunction(_, _, _, _, _, _) =>
+                        case PFunction(_, _, _, _, _, _, _, _) =>
                           checkMember(fd) {
                             check(fd.typ)
                             fd.formalArgs foreach (a => check(a.typ))
@@ -666,16 +683,15 @@ case class TypeChecker(names: NameAnalyser) {
                           if (inAxiomScope(Some(pfa)))
                             issueError(func, func.name + " is not a domain function")
 
-                        case pdf@PDomainFunction(_, _, _, _, _) =>
+                        case pdf@PDomainFunction(_, _, _, _, _, _, _) =>
                           val domain = names.definition(curMember)(pdf.domainName).get.asInstanceOf[PDomain]
                           val fdtv = PTypeVar.freshTypeSubstitution((domain.typVars map (tv => tv.idndef.name)).distinct) //fresh domain type variables
                           pfa.domainTypeRenaming = Some(fdtv)
                           pfa._extraLocalTypeVariables = (domain.typVars map (tv => PTypeVar(tv.idndef.name))).toSet
                           extraReturnTypeConstraint = explicitType
                       }
-                    case Some(ppa: PPredicate) =>
-                      pfa.extfunction = ppa
-                      val predicate = names.definition(curMember)(func).get.asInstanceOf[PPredicate]
+                    case Some(predicate: PPredicate) =>
+                      pfa.extfunction = predicate
                       acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(func), "expected predicate") { (id, _) =>
                         checkInternal(id)
                         if (args.length != predicate.formalArgs.length)
@@ -718,15 +734,15 @@ case class TypeChecker(names: NameAnalyser) {
                     issueError(loc, "specified location is not a field nor a predicate")
                 }
 
-              case ppa@PPredicateAccess(args, idnuse) =>
-                val predicate = names.definition(curMember)(ppa.idnuse).get.asInstanceOf[PPredicate]
-                acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate") { (id, _) =>
-                  checkInternal(id)
-                  if (args.length != predicate.formalArgs.length)
-                    issueError(idnuse, "predicate arity doesn't match")
-                  else
-                    ppa.predicate = predicate
-                }
+              // case ppa@PPredicateAccess(args, idnuse) =>
+              //   val predicate = names.definition(curMember)(idnuse).get.asInstanceOf[PPredicate]
+              //   acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate") { (id, _) =>
+              //     checkInternal(id)
+              //     if (args.length != predicate.formalArgs.length)
+              //       issueError(idnuse, "predicate arity doesn't match")
+              //     else
+              //       ppa.predicate = predicate
+              //   }
               case pecl: PEmptyCollectionLiteral if !pecl.pElementType.isValidOrUndeclared =>
                 check(pecl.pElementType)
 
@@ -774,9 +790,10 @@ case class TypeChecker(names: NameAnalyser) {
         names.definition(curMember)(piu) match {
           case Some(decl@PLocalVarDecl(_, _, typ, _)) => setPIdnUseTypeAndEntity(piu, typ, decl)
           case Some(decl@PFormalArgDecl(_, typ)) => setPIdnUseTypeAndEntity(piu, typ, decl)
-          case Some(decl@PField(_, _, typ)) => setPIdnUseTypeAndEntity(piu, typ, decl)
-          case Some(decl@PPredicate(_, _, _, _)) => setPIdnUseTypeAndEntity(piu, Pred, decl)
-          case x => issueError(piu, s"expected identifier, but got ${x.get}")
+          case Some(decl@PField(_, _, _, typ)) => setPIdnUseTypeAndEntity(piu, typ, decl)
+          case Some(decl@PPredicate(_, _, _, _, _)) => setPIdnUseTypeAndEntity(piu, Pred, decl)
+          case Some(x) => issueError(piu, s"expected identifier, but got ${x}")
+          case None => assert(!names.success)
         }
 
       case pl@PLet(e, ns) =>
@@ -830,7 +847,7 @@ case class NameAnalyser() {
 
   /** To record error messages */
   var messages: FastMessaging.Messages = Nil
-
+  def success: Boolean = messages.isEmpty || messages.forall(m => !m.error)
 
   /** Resolves the declaration to which the given identifier `idnuse` refers.
     *
@@ -946,18 +963,17 @@ case class NameAnalyser() {
             }
           case i@PIdnUse(name) =>
             // look up in both maps (if we are not in a method currently, we look in the same map twice, but that is ok)
-            getCurrentMap.getOrElse(name, globalDeclarationMap.getOrElse(name, PUnknownEntity())) match {
-              case PUnknownEntity() =>
-                // domain types can also be type variables, which need not be declared
-                // goto and state labels may exist out of scope (but must exist in method, this is checked in final AST in checkIdentifiers)
-                if (i.parent.isDefined) {
-                  val parent = i.parent.get
-                  if (!parent.isInstanceOf[PDomainType] && !parent.isInstanceOf[PGoto] &&
-                    !(parent.isInstanceOf[PLabelledOld] && i == parent.asInstanceOf[PLabelledOld].label) &&
-                    !(name == LabelledOld.LhsOldLabel && parent.isInstanceOf[PLabelledOld])) {
-                    messages ++= FastMessaging.message(i, s"identifier $name not defined.")
-                  }
+            val resolved = getCurrentMap.getOrElse(name, globalDeclarationMap.getOrElse(name, PUnknownEntity()))
+            (i.parent, resolved) match {
+              case (Some(parent), PUnknownEntity()) =>
+                if (!parent.isInstanceOf[PDomainType] && !parent.isInstanceOf[PGoto] &&
+                  !(parent.isInstanceOf[PLabelledOld] && i == parent.asInstanceOf[PLabelledOld].label) &&
+                  !(name == LabelledOld.LhsOldLabel && parent.isInstanceOf[PLabelledOld])) {
+                  messages ++= FastMessaging.message(i, s"identifier $name not defined.")
                 }
+              // domain types can also be type variables, which need not be declared
+              // goto and state labels may exist out of scope (but must exist in method, this is checked in final AST in checkIdentifiers)
+              case (None, _) =>
               case _ =>
             }
           case _ =>
@@ -1010,7 +1026,7 @@ case class NameAnalyser() {
         // find all global names first
         for (d <- prog.domains) {
           nodeDownNameCollectorVisitor(d)
-          d.funcs.foreach(f => {
+          d.members.funcs.foreach(f => {
             nodeDownNameCollectorVisitor(f);
             nodeUpNameCollectorVisitor(f)
           })
@@ -1046,7 +1062,7 @@ case class NameAnalyser() {
 
   def run(p: PProgram): Boolean = {
     check(p, None)
-    messages.isEmpty || messages.forall(m => !m.error)
+    success
   }
 
   def namesInScope(n: PNode, target: Option[PNode] = None): Set[String] = {
