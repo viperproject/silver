@@ -418,6 +418,11 @@ trait PExp extends PNode {
   def forceSubstitution(ts: PTypeSubstitution): Unit
 }
 
+case class PAnnotatedExp(e: PExp, annotation: (String, Seq[String]))(val pos: (Position, Position)) extends PExp {
+  override def typeSubstitutions: collection.Seq[PTypeSubstitution] = e.typeSubstitutions
+  override def forceSubstitution(ts: PTypeSubstitution): Unit = e.forceSubstitution(ts)
+}
+
 case class PMagicWandExp(override val left: PExp, override val right: PExp)(val posi: (Position, Position)) extends PBinExp(left, MagicWandOp.op, right)(posi) with PResourceAccess
 
 class PTypeSubstitution(val m: Map[String, PType]) //extends Map[String,PType]()
@@ -1218,6 +1223,8 @@ trait PStmt extends PNode {
   }
 }
 
+case class PAnnotatedStmt(stmt: PStmt, annotation: (String, Seq[String]))(val pos: (Position, Position)) extends PStmt
+
 case class PSeqn(ss: Seq[PStmt])(val pos: (Position, Position)) extends PStmt with PScope
 
 case class PFold(e: PExp)(val pos: (Position, Position)) extends PStmt
@@ -1319,7 +1326,9 @@ abstract class PErrorEntity extends PEntity {
 
 
 // a member (like method or axiom) that is its own name scope
-trait PMember extends PDeclaration with PScope
+trait PMember extends PDeclaration with PScope {
+
+}
 
 trait PAnyFunction extends PMember with PGlobalDeclaration with PTypedDeclaration {
   def idndef: PIdnDef
@@ -1337,46 +1346,46 @@ case class PLocalImport(file: String)(val pos: (Position, Position)) extends PIm
 
 case class PStandardImport(file: String)(val pos: (Position, Position)) extends PImport()
 
-case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: Option[PStmt])(val pos: (Position, Position)) extends PMember with PGlobalDeclaration {
+case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: Option[PStmt])
+                  (val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PMember with PGlobalDeclaration {
   def deepCopy(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, formalReturns: Seq[PFormalArgDecl] = this.formalReturns, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, body: Option[PStmt] = this.body): PMethod = {
     StrategyBuilder.Slim[PNode]({
-      case p: PMethod => PMethod(idndef, formalArgs, formalReturns, pres, posts, body)(p.pos)
+      case p: PMethod => PMethod(idndef, formalArgs, formalReturns, pres, posts, body)(p.pos, p.annotations)
     }).execute[PMethod](this)
   }
 
   def deepCopyWithNameSubstitution(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, formalReturns: Seq[PFormalArgDecl] = this.formalReturns, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, body: Option[PStmt] = this.body)
                                   (idn_generic_name: String, idn_substitution: String): PMethod = {
     StrategyBuilder.Slim[PNode]({
-      case p: PMethod => PMethod(idndef, formalArgs, formalReturns, pres, posts, body)(p.pos)
+      case p: PMethod => PMethod(idndef, formalArgs, formalReturns, pres, posts, body)(p.pos, p.annotations)
       case p@PIdnDef(name) if name == idn_generic_name => PIdnDef(idn_substitution)(p.pos)
       case p@PIdnUse(name) if name == idn_generic_name => PIdnUse(idn_substitution)(p.pos)
     }).execute[PMethod](this)
   }
 }
 
-case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom], interpretations: Option[Map[String, String]])(val pos: (Position, Position)) extends PMember with PGlobalDeclaration
-
-case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp])(val pos: (Position, Position)) extends PAnyFunction {
+case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom], interpretations: Option[Map[String, String]])
+                  (val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PMember with PGlobalDeclaration
+case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp])
+                    (val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PAnyFunction {
   def deepCopy(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, typ: PType = this.typ, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, body: Option[PExp] = this.body): PFunction = {
     StrategyBuilder.Slim[PNode]({
-      case p: PFunction => PFunction(idndef, formalArgs, typ, pres, posts, body)(p.pos)
+      case p: PFunction => PFunction(idndef, formalArgs, typ, pres, posts, body)(p.pos, p.annotations)
     }).execute[PFunction](this)
   }
 }
 
-case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl], typ: PType, unique: Boolean, interpretation: Option[String])(val domainName: PIdnUse)(val pos: (Position, Position)) extends PAnyFunction
-
-case class PAxiom(idndef: Option[PIdnDef], exp: PExp)(val domainName: PIdnUse)(val pos: (Position, Position)) extends PScope
-
-case class PField(idndef: PIdnDef, typ: PType)(val pos: (Position, Position)) extends PMember with PTypedDeclaration with PGlobalDeclaration
-
-case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: Option[PExp])(val pos: (Position, Position)) extends PMember with PTypedDeclaration with PGlobalDeclaration {
+case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl], typ: PType, unique: Boolean, interpretation: Option[String])
+                          (val domainName:PIdnUse)(val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PAnyFunction
+case class PAxiom(idndef: Option[PIdnDef], exp: PExp)(val domainName:PIdnUse)(val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PScope
+case class PField(idndef: PIdnDef, typ: PType)(val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PMember with PTypedDeclaration with PGlobalDeclaration
+case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: Option[PExp])
+                     (val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PMember with PTypedDeclaration with PGlobalDeclaration{
   val typ = PPredicateType()()
 }
 
-case class PDomainFunction1(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl], typ: PType, unique: Boolean, interpretation: Option[String])(val pos: (Position, Position))
-
-case class PAxiom1(idndef: Option[PIdnDef], exp: PExp)(val pos: (Position, Position))
+case class PDomainFunction1(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl], typ: PType, unique: Boolean, interpretation: Option[String])(val pos: (Position, Position), val annotations: Seq[(String, Seq[String])])
+case class PAxiom1(idndef: Option[PIdnDef], exp: PExp)(val pos: (Position, Position), val annotations: Seq[(String, Seq[String])])
 
 /**
   * A entity represented by names for whom we have seen more than one
@@ -1525,9 +1534,11 @@ object Nodes {
       case PDefine(idndef, optArgs, body) => Seq(idndef) ++ optArgs.getOrElse(Nil) ++ Seq(body)
       case PQuasihavoc(lhs, e) => lhs.toSeq :+ e
       case PQuasihavocall(vars, lhs, e) => vars ++ lhs.toSeq :+ e
+      case PAnnotatedExp(e, _) => Seq(e)
+      case PAnnotatedStmt(s, _) => Seq(s)
       case t: PExtender => t.getSubnodes()
       case _: PSkip => Nil
-      case _: PUnnamedFormalArgDecl => Nil
+      case PUnnamedFormalArgDecl(typ) => Seq(typ)
     }
   }
 }

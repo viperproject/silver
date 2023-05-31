@@ -510,7 +510,7 @@ class FastParser {
       }
 
       if (body != method.body) {
-        PMethod(method.idndef, method.formalArgs, method.formalReturns, method.pres, method.posts, body)(method.pos)
+        PMethod(method.idndef, method.formalArgs, method.formalReturns, method.pres, method.posts, body)(method.pos, method.annotations)
       } else {
         method
       }
@@ -803,15 +803,24 @@ class FastParser {
 
   lazy val keywords = FastParserCompanion.basicKeywords | ParserExtension.extendedKeywords
 
-  // Note that `typedFapp` is before `"(" ~ exp ~ ")"` to ensure that the latter doesn't gobble up the brackets for the former
-  // and then look like an `fapp` up untill the `: type` part, after which we need to backtrack all the way back (or error if cut)
-  def atom(implicit ctx : P[_]) : P[PExp] = P(ParserExtension.newExpAtStart(ctx) | integer | booltrue | boolfalse | nul | old
-    | result | unExp | typedFapp
+  // Note that `typedfuncApp` is before `"(" ~ exp ~ ")"` to ensure that the latter doesn't gobble up the brackets for the former
+  // and then look like an `funcApp` up untill the `: type` part, after which we need to backtrack all the way back (or error if cut)
+  def atom(implicit ctx : P[_]) : P[PExp] = P(ParserExtension.newExpAtStart(ctx) | annotatedAtom
+    | integer | booltrue | boolfalse | nul | old
+    | result | unExp | typedFuncApp
     | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | applying
     | setTypedEmpty | explicitSetNonEmpty | multiSetTypedEmpty | explicitMultisetNonEmpty | seqTypedEmpty
     | size | explicitSeqNonEmpty | seqRange
     | mapTypedEmpty | explicitMapNonEmpty | mapDomain | mapRange
-    | newExp | fapp | idnuse | ParserExtension.newExpAtEnd(ctx))
+    | newExp | funcApp | idnuse | ParserExtension.newExpAtEnd(ctx))
+
+  def stringLiteral[$: P]: P[String] = P("\"" ~ CharsWhile(_ != '\"').! ~ "\"")
+
+  def annotation[$: P]: P[(String, Seq[String])] = P("@" ~~ annotationIdentifier ~ parens(stringLiteral.rep(sep = ",")))
+
+  def annotatedAtom[$: P]: P[PExp] = FP(annotation ~ atom).map{
+    case (pos, (key, value, exp)) => PAnnotatedExp(exp, (key, value))(pos)
+  }
 
   def result[$: P]: P[PResultLit] = FP(keyword("result")).map { case (pos, _) => PResultLit()(pos) }
 
@@ -829,7 +838,9 @@ class FastParser {
 
   def identifier[$: P]: P[Unit] = CharIn("A-Z", "a-z", "$_") ~~ CharIn("0-9", "A-Z", "a-z", "$_").repX
 
-  def ident[$: P]: P[String] = identifier.!.filter(a => !keywords.contains(a)).opaque("invalid identifier (could be a keyword)")
+  def annotationIdentifier[$: P]: P[String] = (CharIn("A-Z", "a-z", "$_") ~~ CharIn("0-9", "A-Z", "a-z", "$_.").repX).!
+
+  def ident[$: P]: P[String] = identifier.!.filter(a => !keywords.contains(a)).opaque("identifier")
 
   def idnuse[$: P]: P[PIdnUse] = FP(ident).map { case (pos, id) => PIdnUse(id)(pos) }
 
@@ -851,7 +862,7 @@ class FastParser {
     case (pos, (a, b)) => PMagicWandExp(a, b)(pos)
   }
 
-  def implExp[$: P]: P[PExp] = FP(magicWandExp ~~~ (StringIn("==>").! ~ implExp).lw.?).map {
+  def implExp[$: P]: P[PExp] = FP(magicWandExp ~~~ ("==>".! ~ implExp).lw.?).map {
     case (pos, (a, b)) => b match {
       case Some(c) => PBinExp(a, c._1, c._2)(pos)
       case None => a
@@ -959,7 +970,7 @@ class FastParser {
       case other => sys.error(s"Unexpectedly found $other")
     })
 
-  def predAcc[$: P]: P[PLocationAccess] = fapp
+  def predAcc[$: P]: P[PLocationAccess] = funcApp
 
   def actualArgList[$: P]: P[Seq[PExp]] = exp.rep(sep = ",")
 
@@ -975,7 +986,7 @@ class FastParser {
       FP("perm" ~ parens(resAcc)).map{ case (pos, r) => PCurPerm(r)(pos)})
 
   def let[$: P]: P[PExp] =
-    FP("let" ~/ FP(idndef) ~ "==" ~ "(" ~ exp ~ ")" ~ "in" ~ FP(exp)).map {
+    FP("let" ~ FP(idndef) ~ "==" ~/ "(" ~ exp ~ ")" ~ "in" ~ FP(exp)).map {
       case (pos, (idpos, id, exp1, (e2pos, exp2))) =>
       /* Type unresolvedType is expected to be replaced with the type of exp1
        * after the latter has been resolved
@@ -1025,7 +1036,7 @@ class FastParser {
    case (pos, (keyType, valueType)) => PMapType(keyType, valueType)(pos)
   }
 
-  def macroType[$: P] : P[PMacroType[_]] = idnuse.map(PMacroType(_)) | fapp.map(PMacroType(_))
+  def macroType[$: P] : P[PMacroType[_]] = idnuse.map(PMacroType(_)) | funcApp.map(PMacroType(_))
 
   def primitiveTyp[$: P]: P[PPrimitiv] = P(FP(keyword("Rational")).map{ case (pos, _) => PPrimitiv("Perm")(pos)}
     | FP((StringIn("Int", "Bool", "Perm", "Ref") ~~ !identContinues).!).map{ case (pos, name) => PPrimitiv(name)(pos)})
@@ -1101,26 +1112,26 @@ class FastParser {
 
   def newExpFields[$: P]: P[Option[Seq[PIdnUse]]] = P(P("*").map(_ => None) | P(idnuse.rep(sep = ",")).map(Some(_)))
 
-  def fapp[$: P]: P[PCall] = FP(idnuse ~ parens(actualArgList)).map {
+  def funcApp[$: P]: P[PCall] = FP(idnuse ~ parens(actualArgList)).map {
     case (pos, (func, args)) =>
       PCall(func, args, None)(pos)
   }
 
-  def typedFapp[$: P]: P[PExp] = FP(parens(idnuse ~ parens(actualArgList) ~ ":" ~ typ)).map {
+  def typedFuncApp[$: P]: P[PExp] = FP(parens(idnuse ~ parens(actualArgList) ~ ":" ~ typ)).map {
     case (pos, (func, args, typeGiven)) => PCall(func, args, Some(typeGiven))(pos)
   }
 
-  def stmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | assign | fold | unfold | exhale | assertP |
-    inhale | assume | ifthnels | whle | varDecl | defineDecl | 
-    goto | lbl | packageWand | applyWand | block |
+  def stmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | assign | fold | unfold | exhale | assertStmt |
+    inhale | assume | ifThenElse | whileStmt | varDecl | defineDecl |
+    goto | label | packageWand | applyWand | block |
     quasihavoc | quasihavocall | ParserExtension.newStmtAtEnd(ctx))
 
-  def nodefinestmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | assign | fold | unfold | exhale | assertP |
-    inhale | assume | ifthnels | whle | varDecl |
-    goto | lbl | packageWand | applyWand | block |
+  def nodefinestmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | assign | fold | unfold | exhale | assertStmt |
+    inhale | assume | ifThenElse | whileStmt | varDecl |
+    goto | label | packageWand | applyWand | block |
     quasihavoc | quasihavocall | ParserExtension.newStmtAtEnd(ctx))
 
-  def assignTarget[$: P]: P[PAssignTarget] = P(fieldAcc | NoCut(fapp) | idnuse)
+  def assignTarget[$: P]: P[PAssignTarget] = P(fieldAcc | NoCut(funcApp) | idnuse)
 
   def assign[$: P]: P[PAssign] = FP((assignTarget.rep(min = 1, sep = ",") ~ ":=").? ~ exp).map { case (pos, (targets, rhs)) => PAssign(targets.getOrElse(Seq()), rhs)(pos) }
 
@@ -1130,7 +1141,7 @@ class FastParser {
 
   def exhale[$: P]: P[PExhale] = FP(keyword("exhale") ~/ exp).map{ case (pos, e) => PExhale(e)(pos) }
 
-  def assertP[$: P]: P[PAssert] = FP(keyword("assert") ~/ exp).map{ case (pos, e) => PAssert(e)(pos) }
+  def assertStmt[$: P]: P[PAssert] = FP(keyword("assert") ~/ exp).map{ case (pos, e) => PAssert(e)(pos) }
 
   def inhale[$: P]: P[PInhale] = FP(keyword("inhale") ~/ exp).map{ case (pos, e) => PInhale(e)(pos) }
 
@@ -1158,29 +1169,29 @@ class FastParser {
     case (pos, (vars, lhs, rhs)) => PQuasihavocall(vars, lhs, rhs)(pos)
   }
 
-  def ifthnels[$: P]: P[PIf] = FP("if" ~ "(" ~ exp ~ ")" ~ block ~~~ elsifEls).map {
+  def ifThenElse[$: P]: P[PIf] = FP("if" ~ "(" ~ exp ~ ")" ~ block ~~~ elseIfOrElse).map {
     case (pos, (cond, thn, ele)) => PIf(cond, thn, ele)(pos)
   }
 
   // No need for `.lw` here since we have `FP("{" ~ ... ~ "}")`
   def block[$: P]: P[PSeqn] = FP("{" ~/ (stmt ~/ ";".?).rep ~ "}").map{ case (pos, e) => PSeqn(e)(pos)}
 
-  def elsifEls[$: P]: LW[PSeqn] = elsif.lw | els
+  def elseIfOrElse[$: P]: LW[PSeqn] = elseIf.lw | elseBlock
 
-  def elsif[$: P]: P[PSeqn] = FP("elseif" ~/ "(" ~ exp ~ ")" ~ block ~~~ elsifEls).map {
+  def elseIf[$: P]: P[PSeqn] = FP("elseif" ~/ "(" ~ exp ~ ")" ~ block ~~~ elseIfOrElse).map {
     case (pos, (cond, thn, ele)) => PSeqn(Seq(PIf(cond, thn, ele)(pos)))(pos)
   }
 
-  def els[$: P]: LW[PSeqn] = ((keyword("else") ~/ block) | FP(Pass).map {
+  def elseBlock[$: P]: LW[PSeqn] = ((keyword("else") ~/ block) | FP(Pass).map {
     case (pos, _) => PSeqn(Nil)(pos)
   }).lw
 
-  def whle[$: P]: P[PWhile] = FP(keyword("while") ~/ "(" ~ exp ~ ")" ~ inv.rep ~ block).map {
+  def whileStmt[$: P]: P[PWhile] = FP(keyword("while") ~/ "(" ~ exp ~ ")" ~ invariant.rep ~ block).map {
     case (pos, (cond, invs, body)) =>
       PWhile(cond, invs, body)(pos)
   }
 
-  def inv(implicit ctx : P[_]) : P[PExp] = P((keyword("invariant") ~ exp ~~~ ";".lw.?) | ParserExtension.invSpecification(ctx))
+  def invariant(implicit ctx : P[_]) : P[PExp] = P((keyword("invariant") ~ exp ~~~ ";".lw.?) | ParserExtension.invSpecification(ctx))
 
   def varDecl[$: P]: P[PLocalVarDecl] = FP(keyword("var") ~/ nonEmptyFormalArgList ~~~ (":=" ~ exp).lw.?).map {
     case (pos, (a, b)) => PLocalVarDecl(a, b.map(i => PAssign(a.map(v => PIdnUse(v.idndef.name)(v.idndef.pos)), i)(pos)))(pos)
@@ -1195,7 +1206,7 @@ class FastParser {
 
   def goto[$: P]: P[PGoto] = FP("goto" ~/ idnuse).map{ case (pos, e) => PGoto(e)(pos) }
 
-  def lbl[$: P]: P[PLabel] = FP(keyword("label") ~/ idndef ~~~ (keyword("invariant") ~/ exp).lw.rep).map {
+  def label[$: P]: P[PLabel] = FP(keyword("label") ~/ idndef ~~~ (keyword("invariant") ~/ exp).lw.rep).map {
     case (pos, (name, invs)) => PLabel(name, invs)(pos) }
 
   def packageWand[$: P]: P[PPackageWand] = FP(keyword("package") ~/ magicWandExp ~~~ block.lw.?).map {
@@ -1211,7 +1222,8 @@ class FastParser {
 
   def applying[$: P]: P[PExp] = FP(keyword("applying") ~/ "(" ~ magicWandExp ~ ")" ~ "in" ~ exp).map { case (pos, (a, b)) => PApplying(a, b)(pos) }
 
-  def programDecl(implicit ctx : P[_]) : P[PProgram] = P(FP((ParserExtension.newDeclAtStart(ctx) | preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl | ParserExtension.newDeclAtEnd(ctx)).rep).map {
+  def programDecl(implicit ctx : P[_]) : P[PProgram] =
+    P(FP((ParserExtension.newDeclAtStart(ctx) | preambleImport | defineDecl | fieldDecl | methodDecl | domainDecl | functionDecl | predicateDecl | ParserExtension.newDeclAtEnd(ctx)).rep).map {
     case (pos, decls) => {
       PProgram(
         decls.collect { case i: PImport => i }, // Imports
@@ -1236,26 +1248,26 @@ class FastParser {
 
   def anyString[$: P]: P[String] = P(CharPred(c => c !='\"').rep(1).!)
 
-  def domainDecl[$: P]: P[PDomain] = FP("domain" ~/ idndef ~ typeParams ~ ("interpretation" ~ parens((ident ~ ":" ~ quoted(anyString.!)).rep(sep = ","))).? ~ "{" ~ (domainFunctionDecl | axiomDecl).rep ~
+  def domainDecl[$: P]: P[PDomain] = FP(annotation.rep(0) ~ "domain" ~/ idndef ~ typeParams ~ ("interpretation" ~ parens((ident ~ ":" ~ quoted(anyString.!)).rep(sep = ","))).? ~ "{" ~ (domainFunctionDecl | axiomDecl).rep ~
     "}").map {
-    case (pos, (name, typparams, interpretations, members)) =>
+    case (pos, (anns, name, typparams, interpretations, members)) =>
       val funcs = members collect { case m: PDomainFunction1 => m }
       val axioms = members collect { case m: PAxiom1 => m }
       PDomain(
         name,
         typparams,
-        funcs map (f => PDomainFunction(f.idndef, f.formalArgs, f.typ, f.unique, f.interpretation)(PIdnUse(name.name)(name.pos))(f.pos)),
-        axioms map (a => PAxiom(a.idndef, a.exp)(PIdnUse(name.name)(name.pos))(a.pos)),
-        interpretations.map(i => i.toMap))(pos)
+        funcs map (f => PDomainFunction(f.idndef, f.formalArgs, f.typ, f.unique, f.interpretation)(PIdnUse(name.name)(name.pos))(f.pos, f.annotations)),
+        axioms map (a => PAxiom(a.idndef, a.exp)(PIdnUse(name.name)(name.pos))(a.pos, a.annotations)),
+        interpretations.map(i => i.toMap))(pos, anns)
   }
 
   def domainTypeVarDecl[$: P]: P[PTypeVarDecl] = FP(idndef).map{ case (pos, i) => PTypeVarDecl(i)(pos) }
 
   def typeParams[$: P]: P[Seq[PTypeVarDecl]] = P(("[" ~ domainTypeVarDecl.rep(sep = ",") ~ "]").?).map(_.getOrElse(Nil))
 
-  def domainFunctionDecl[$: P]: P[PDomainFunction1] = FP("unique".!.? ~ domainFunctionSignature ~ ("interpretation" ~ quoted(anyString.!)).? ~~~ ";".lw.?).map {
-    case (pos, (unique, fdecl, interpretation)) => fdecl match {
-      case (name, formalArgs, t) => PDomainFunction1(name, formalArgs, t, unique.isDefined, interpretation)(pos)
+  def domainFunctionDecl[$: P]: P[PDomainFunction1] = FP(annotation.rep(0) ~ "unique".!.? ~ domainFunctionSignature ~ ("interpretation" ~ quoted(anyString.!)).? ~~~ ";".lw.?).map {
+    case (pos, (anns, unique, fdecl, interpretation)) => fdecl match {
+      case (name, formalArgs, t) => PDomainFunction1(name, formalArgs, t, unique.isDefined, interpretation)(pos, anns)
     }
   }
 
@@ -1267,32 +1279,30 @@ class FastParser {
 
   def formalArgList[$: P]: P[Seq[PFormalArgDecl]] = P(formalArg.rep(sep = ","))
 
-  def axiomDecl[$: P]: P[PAxiom1] = FP(keyword("axiom") ~ idndef.? ~ "{" ~ exp ~ "}" ~~~ ";".lw.?).map { case (pos, (a, b)) => PAxiom1(a, b)(pos) }
+  def axiomDecl[$: P]: P[PAxiom1] = FP(annotation.rep(0) ~ keyword("axiom") ~ idndef.? ~ "{" ~ exp ~ "}" ~~~ ";".lw.?).map { case (pos, (anns, a, b)) => PAxiom1(a, b)(pos, anns) }
 
-  def fieldDecl[$: P]: P[PField] = FP(keyword("field") ~/ idndef ~ ":" ~ typ ~~~ ";".lw.?).map {
-    case (pos, (a, b)) => PField(a, b)(pos)
+  def fieldDecl[$: P]: P[PField] = FP(annotation.rep(0) ~ keyword("field") ~/ idndef ~ ":" ~ typ ~~~ ";".lw.?).map {
+    case (pos, (anns, a, b)) => PField(a, b)(pos, anns)
   }
 
-  def functionDecl[$: P]: P[PFunction] = FP("function" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~~~ pre.lw.rep ~~~
-    post.lw.rep ~~~ ("{" ~ exp ~ "}").lw.?).map({ case (pos, (a, b, c, d, e, f)) =>
-      PFunction(a, b, c, d, e, f)(pos)
+  def functionDecl[$: P]: P[PFunction] = FP(annotation.rep(0) ~ "function" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~~~ precondition.lw.rep ~~~
+    postcondition.lw.rep ~~~ ("{" ~ exp ~ "}").lw.?).map({ case (pos, (anns, a, b, c, d, e, f)) =>
+      PFunction(a, b, c, d, e, f)(pos, anns)
   })
 
 
-  def pre(implicit ctx : P[_]) : P[PExp] = P(("requires" ~/ exp ~~~ ";".lw.?) | ParserExtension.preSpecification(ctx))
+  def precondition(implicit ctx : P[_]) : P[PExp] = P(("requires" ~/ exp ~~~ ";".lw.?) | ParserExtension.preSpecification(ctx))
 
-  def post(implicit ctx : P[_]) : P[PExp] = P(("ensures" ~/ exp ~~~ ";".lw.?) | ParserExtension.postSpecification(ctx))
+  def postcondition(implicit ctx : P[_]) : P[PExp] = P(("ensures" ~/ exp ~~~ ";".lw.?) | ParserExtension.postSpecification(ctx))
 
-  def decCl[$: P]: P[Seq[PExp]] = P(exp.rep(sep = ","))
-
-  def predicateDecl[$: P]: P[PPredicate] = FP(keyword("predicate") ~/ idndef ~ "(" ~ formalArgList ~ ")" ~~~ ("{" ~ exp ~ "}").lw.?).map {
-    case (pos, (a, b, c)) =>
-      PPredicate(a, b, c)(pos)
+  def predicateDecl[$: P]: P[PPredicate] = FP(annotation.rep(0) ~ keyword("predicate") ~/ idndef ~ "(" ~ formalArgList ~ ")" ~~~ ("{" ~ exp ~ "}").lw.?).map {
+    case (pos, (anns, a, b, c)) =>
+      PPredicate(a, b, c)(pos, anns)
   }
 
-  def methodDecl[$: P]: P[PMethod] = FP(methodSignature ~~~/ pre.lw.rep ~~~ post.lw.rep ~~~ block.lw.?).map {
-    case (pos, (name, args, rets, pres, posts, body)) =>
-      PMethod(name, args, rets.getOrElse(Nil), pres, posts, body)(pos)
+  def methodDecl[$: P]: P[PMethod] = FP(annotation.rep(0) ~ methodSignature ~~~/ precondition.lw.rep ~~~ postcondition.lw.rep ~~~ block.lw.?).map {
+    case (pos, (anns, (name, args, rets), pres, posts, body)) =>
+      PMethod(name, args, rets.getOrElse(Nil), pres, posts, body)(pos, anns)
   }
 
   def methodSignature[$: P] = P("method" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~~~ ("returns" ~ "(" ~ formalArgList ~ ")").lw.?)
