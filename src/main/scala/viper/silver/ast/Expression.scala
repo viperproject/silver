@@ -446,8 +446,6 @@ case class FieldAccess(rcv: Exp, field: Field)
   def getArgs: Seq[Exp] = Seq(rcv)
   def withArgs(args: Seq[Exp]): FieldAccess = copy(rcv = args.head, field)(pos, info, errT)
 //  def asManifestation: Exp = this
-
-  override def name: String = field.name
 }
 
 /** A predicate access expression. See also companion object below for an alternative creation signature */
@@ -1259,9 +1257,7 @@ sealed abstract class DomainUnExp(val funct: UnOp) extends PrettyUnaryExpression
 }
 
 /** Expressions which can appear on the left hand side of an assignment */
-sealed trait Lhs extends Exp {
-  def name: String
-}
+sealed trait Lhs extends Exp
 
 /** Generic Expression to use to extend the AST.
   * New expression-typed AST nodes can be defined by creating new case classes extending this trait.

@@ -273,15 +273,15 @@ object errors {
   def Internal(offendingNode: ErrorNode = DummyNode): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => Internal(offendingNode, reason))
 
-  case class AssignmentFailed(offendingNode: Stmt, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
+  case class AssignmentFailed(offendingNode: AbstractAssign, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "assignment.failed"
     val text = "Assignment might fail."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = AssignmentFailed(offendingNode.asInstanceOf[Stmt], this.reason, this.cached)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = AssignmentFailed(offendingNode.asInstanceOf[AbstractAssign], this.reason, this.cached)
     def withReason(r: ErrorReason) = AssignmentFailed(offendingNode, r, cached)
   }
 
-  def AssignmentFailed(offendingNode: Stmt): PartialVerificationError =
+  def AssignmentFailed(offendingNode: AbstractAssign): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => AssignmentFailed(offendingNode, reason))
 
   case class CallFailed(offendingNode: MethodCall, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
@@ -524,15 +524,15 @@ object errors {
   def MagicWandNotWellformed(offendingNode: MagicWand): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => MagicWandNotWellformed(offendingNode, reason))
 
-  case class LetWandFailed(offendingNode: Assign[LocalVar], reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
+  case class LetWandFailed(offendingNode: LocalVarAssign, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "letwand.failed"
     val text = s"Referencing a wand might fail."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = LetWandFailed(offendingNode.asInstanceOf[Assign[LocalVar]], this.reason, this.cached)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = LetWandFailed(offendingNode.asInstanceOf[LocalVarAssign], this.reason, this.cached)
     def withReason(r: ErrorReason) = LetWandFailed(offendingNode, r, cached)
   }
 
-  def LetWandFailed(offendingNode: Assign[LocalVar]): PartialVerificationError =
+  def LetWandFailed(offendingNode: LocalVarAssign): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => LetWandFailed(offendingNode, reason))
 
   case class QuasihavocFailed(offendingNode: Quasihavoc, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {

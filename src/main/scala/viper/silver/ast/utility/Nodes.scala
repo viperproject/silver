@@ -49,7 +49,8 @@ object Nodes {
       case s: Stmt =>
         s match {
           case NewStmt(target, fields) => Seq(target) ++ fields
-          case Assign(lhs, rhs) => Seq(lhs, rhs)
+          case LocalVarAssign(lhs, rhs) => Seq(lhs, rhs)
+          case FieldAssign(lhs, rhs) => Seq(lhs, rhs)
           case Fold(e) => Seq(e)
           case Unfold(e) => Seq(e)
           case Package(e, proofScript) => Seq(e, proofScript)

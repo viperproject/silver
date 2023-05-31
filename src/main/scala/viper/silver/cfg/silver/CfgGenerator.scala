@@ -215,7 +215,8 @@ object CfgGenerator {
         val label = TmpLabel(name)
         addLabel(label)
         addStatement(WrappedStmt(stmt))
-      case _: Assign[_] |
+      case _: LocalVarAssign |
+           _: FieldAssign |
            _: Inhale |
            _: Exhale |
            _: Fold |
@@ -223,7 +224,7 @@ object CfgGenerator {
            _: Package |
            _: Apply |
            _: MethodCall |
-           _: NewStmt[_] |
+           _: NewStmt |
            _: Assert |
            _: LocalVarDeclStmt |
            _: Assume |

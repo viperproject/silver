@@ -191,12 +191,10 @@ case class Translator(program: PProgram) {
     val subInfo = NoInfo
     s match {
       case PAssign(targets, PCall(method, args, _)) if members(method.name).isInstanceOf[Method] =>
-        val ts = (targets map (exp(_).asInstanceOf[Lhs]))
-        MethodCall(findMethod(method), args map exp, ts)(pos, info)
+        fieldAssignStmt(targets, ts => MethodCall(findMethod(method), args map exp, ts)(pos, info))
       case PAssign(targets, _) if targets.length != 1 =>
         sys.error(s"Found non-unary target of assignment")
       case PAssign(Seq(target), PNewExp(fieldsOpt)) =>
-        val lhs = exp(target).asInstanceOf[Lhs]
         val fields = fieldsOpt match {
           case None => program.fields map translate
             /* Slightly redundant since we already translated the fields when we
@@ -204,11 +202,11 @@ case class Translator(program: PProgram) {
              */
           case Some(pfields) => pfields map findField
         }
-        NewStmt(lhs, fields)(pos, info)
+        fieldAssignStmt(Seq(target), lv => NewStmt(lv.head, fields)(pos, info))
       case PAssign(Seq(idnuse: PIdnUse), rhs) =>
-        Assign(LocalVar(idnuse.name, ttyp(idnuse.typ))(pos, subInfo), exp(rhs))(pos, info)
+        LocalVarAssign(LocalVar(idnuse.name, ttyp(idnuse.typ))(pos, subInfo), exp(rhs))(pos, info)
       case PAssign(Seq(field: PFieldAccess), rhs) =>
-        Assign(FieldAccess(exp(field.rcv), findField(field.idnuse))(field), exp(rhs))(pos, info)
+        FieldAssign(FieldAccess(exp(field.rcv), findField(field.idnuse))(field), exp(rhs))(pos, info)
       case PLocalVarDecl(_, init) =>
         // there are no declarations in the Viper AST; rather they are part of the scope signature
         init match {
@@ -260,6 +258,32 @@ case class Translator(program: PProgram) {
       case _: PDefine | _: PSkip =>
         sys.error(s"Found unexpected intermediate statement $s (${s.getClass.getName}})")
     }
+  }
+
+  def fieldAssignStmt(targets: Seq[PAssignTarget], assign: Seq[LocalVar] => Stmt): Stmt = {
+    val tTargets = targets map exp
+    val ts = tTargets.zipWithIndex.map {
+      case (lv: LocalVar, _) => (None, lv)
+      case (fa: FieldAccess, i) => {
+        val rcv = LocalVar(s"__silver_rcv_$i", fa.typ)()
+        val tgt = LocalVar(s"__silver_tgt_$i", fa.typ)()
+        val rcvFa = FieldAccess(rcv, fa.field)(fa.pos, fa.info, fa.errT)
+        (Some((rcv, fa.rcv, rcvFa, tgt)), tgt)
+      }
+      case _ => sys.error(s"Found invalid target of assignment")
+    }
+    val assn = assign(ts.map(_._2))
+    val tmps = ts.flatMap(_._1)
+    if (tmps.isEmpty)
+      return assn
+    if (!Consistency.noDuplicates(tmps.map(_._3.field)))
+      Consistency.messages ++= FastMessaging.message(tmps.head._3, s"target fields are not allowed to have duplicates")
+    Seqn(
+      tmps.map { case (rcv, e, _, _) => LocalVarAssign(rcv, e)() } ++
+      Seq(assn) ++
+      tmps.map { case (_, _, rcvFa, tgt) => FieldAssign(rcvFa, tgt)() },
+      tmps.flatMap(t => Seq(t._1, t._4)).map(lv => LocalVarDecl(lv.name, lv.typ)())
+    )(assn.pos, assn.info)
   }
 
   /** Helper function that translates subexpressions common to a Havoc or Havocall statement */

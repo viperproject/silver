@@ -415,7 +415,7 @@ class RewriterTests extends AnyFunSuite with FileComparisonHelper {
     val strat = ViperStrategy.Slim({
       case i:IntLit if i.i % 2 == 0 => IntLit(i.i)()
     }) traverse Traverse.BottomUp recurseFunc {
-      case _: Assign[_] => Seq() // Don't modify anything during assignments
+      case _: LocalVarAssign => Seq() // Don't modify anything during assignments
     }
 
     val strat2 = ViperStrategy.Slim({
@@ -441,8 +441,8 @@ class RewriterTests extends AnyFunSuite with FileComparisonHelper {
     val map = collection.mutable.Map.empty[LocalVar, BigInt]
     val collect = ViperStrategy.Slim({
       case p: Program => map.clear(); p // Reset map at start
-      case ass@Assign(l: LocalVar, i: IntLit) => map += (l -> i.i); ass
-    }) recurseFunc { case l: Assign[_] => Seq(l.rhs) }
+      case ass@LocalVarAssign(l: LocalVar, i: IntLit) => map += (l -> i.i); ass
+    }) recurseFunc { case l: LocalVarAssign => Seq(l.rhs) }
 
     val replace = ViperStrategy.Slim({
       case l: LocalVar =>
@@ -494,18 +494,18 @@ class RewriterTests extends AnyFunSuite with FileComparisonHelper {
 
     // Initial program
     val localVarDecl = LocalVarDecl("y", Int)()
-    val assign1 = Assign(LocalVar("y", Int)(), IntLit(4)())()
-    val assign2 = Assign(LocalVar("y", Int)(), IntLit(4)())()
+    val assign1 = LocalVarAssign(LocalVar("y", Int)(), IntLit(4)())()
+    val assign2 = LocalVarAssign(LocalVar("y", Int)(), IntLit(4)())()
     val methodBefore = Method("m", Seq(), Seq(), Seq(), Seq(), Some(Seqn(Seq(assign1, assign2), Seq(localVarDecl))()))()
     val programBefore = Program(Seq(), Seq(), Seq(), Seq(), Seq(methodBefore), Seq())()
 
     // Program transformer or rewriter
     val programTransformed = StrategyBuilder.Ancestor[Node]({
-      case (l@Assign(lhs, rhs), ctx) =>
+      case (l@LocalVarAssign(lhs, rhs), ctx) =>
         (Seqn(
           Seq(
             Assert(NeCmp(lhs, rhs)())(),
-            ctx.noRec[Assign[LocalVar]](l)
+            ctx.noRec[LocalVarAssign](l)
           ),
           Seq()
         )(), ctx)

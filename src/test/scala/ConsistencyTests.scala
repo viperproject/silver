@@ -29,7 +29,7 @@ class ConsistencyTests extends AnyFunSuite with Matchers {
     val funcapp1 : FuncApp = FuncApp("f1", Seq())(NoPosition, NoInfo, Int, NoTrafos)
     val methodcall1: MethodCall = MethodCall("m2", Seq(), Seq())(NoPosition, NoInfo, NoTrafos)
     val method1 : Method = Method("m1", Seq(), Seq(), Seq(), Seq(),
-      Some(Seqn(Seq[Stmt](Assign(LocalVar("i", Int)(NoPosition, NoInfo, NoTrafos), funcapp1)(NoPosition, NoInfo,
+      Some(Seqn(Seq[Stmt](LocalVarAssign(LocalVar("i", Int)(NoPosition, NoInfo, NoTrafos), funcapp1)(NoPosition, NoInfo,
         NoTrafos), Goto("lbl1")(NoPosition, NoInfo, NoTrafos), methodcall1), Seq())(NoPosition, NoInfo, NoTrafos)))(NoPosition, NoInfo, NoTrafos)
     val prog : Program = Program(Seq(), Seq(Field("j", Int)(NoPosition, NoInfo, NoTrafos), Field("j", Bool)(NoPosition, NoInfo, NoTrafos)), Seq(), Seq(), Seq(method1), Seq())(NoPosition, NoInfo, NoTrafos)
 
@@ -44,8 +44,8 @@ class ConsistencyTests extends AnyFunSuite with Matchers {
   test("Type mismatched identifiers"){
     val funcapp1 : FuncApp = FuncApp("f1", Seq())(NoPosition, NoInfo, Int, NoTrafos)
     val method1 : Method = Method("m1", Seq(), Seq(), Seq(), Seq(),
-      Some(Seqn(Seq[Stmt](Assign(LocalVar("i", Int)(NoPosition, NoInfo, NoTrafos), funcapp1)(NoPosition, NoInfo,
-        NoTrafos), Assign(LocalVar("j", Int)(NoPosition, NoInfo, NoTrafos), IntLit(5)(NoPosition))(NoPosition, NoInfo,
+      Some(Seqn(Seq[Stmt](LocalVarAssign(LocalVar("i", Int)(NoPosition, NoInfo, NoTrafos), funcapp1)(NoPosition, NoInfo,
+        NoTrafos), LocalVarAssign(LocalVar("j", Int)(NoPosition, NoInfo, NoTrafos), IntLit(5)(NoPosition))(NoPosition, NoInfo,
         NoTrafos)), Seq(LocalVarDecl("i", Bool)(NoPosition)))(NoPosition, NoInfo, NoTrafos)))(NoPosition, NoInfo, NoTrafos)
     val method2: Method = Method("j", Seq(), Seq(), Seq(), Seq(), Some(Seqn(Seq(), Seq())(NoPosition)))(NoPosition)
     val prog : Program = Program(Seq(), Seq(Field("f1", Int)(NoPosition, NoInfo, NoTrafos)), Seq(), Seq(), Seq(method1, method2), Seq())(NoPosition, NoInfo, NoTrafos)
@@ -66,7 +66,7 @@ class ConsistencyTests extends AnyFunSuite with Matchers {
   }
 
   test("Field assignment"){
-    val fieldassign1 = Assign(FieldAccess(IntLit(5)(NoPosition, NoInfo, NoTrafos),
+    val fieldassign1 : FieldAssign = FieldAssign(FieldAccess(IntLit(5)(NoPosition, NoInfo, NoTrafos),
       Field("i", Int)(NoPosition, NoInfo, NoTrafos))(NoPosition, NoInfo, NoTrafos),
       BoolLit(false)(NoPosition, NoInfo, NoTrafos))(NoPosition, NoInfo, NoTrafos)
 
@@ -143,13 +143,13 @@ class ConsistencyTests extends AnyFunSuite with Matchers {
       Seqn(
         Seq(
           // Wrong: function name
-          Assign(callerIntVar, FuncApp("g", Seq(callerIntVar))(NoPosition, NoInfo, Int, NoTrafos))(),
+          LocalVarAssign(callerIntVar, FuncApp("g", Seq(callerIntVar))(NoPosition, NoInfo, Int, NoTrafos))(),
           // Wrong: zero arguments
-          Assign(callerIntVar, FuncApp("f", Seq())(NoPosition, NoInfo, Int, NoTrafos))(),
+          LocalVarAssign(callerIntVar, FuncApp("f", Seq())(NoPosition, NoInfo, Int, NoTrafos))(),
           // Wrong: wrong return type
-          Assign(callerBoolVar, FuncApp("f", Seq(callerIntVar))(NoPosition, NoInfo, Bool, NoTrafos))(),
+          LocalVarAssign(callerBoolVar, FuncApp("f", Seq(callerIntVar))(NoPosition, NoInfo, Bool, NoTrafos))(),
           // Wrong: wrong argument type
-          Assign(callerIntVar, FuncApp("f", Seq(callerBoolVar))(NoPosition, NoInfo, Int, NoTrafos))()
+          LocalVarAssign(callerIntVar, FuncApp("f", Seq(callerBoolVar))(NoPosition, NoInfo, Int, NoTrafos))()
         ),
         Seq()
       )()
@@ -211,15 +211,15 @@ class ConsistencyTests extends AnyFunSuite with Matchers {
       Seqn(
         Seq(
           // Wrong: function name
-          Assign(callerIntVar, DomainFuncApp(funcname="g", Seq(callerIntVar), Map())(NoPosition, NoInfo, Int, "MyDomain", NoTrafos))(),
+          LocalVarAssign(callerIntVar, DomainFuncApp(funcname="g", Seq(callerIntVar), Map())(NoPosition, NoInfo, Int, "MyDomain", NoTrafos))(),
           // Wrong: domain name
-          Assign(callerIntVar, DomainFuncApp(funcname="f", Seq(callerIntVar), Map())(NoPosition, NoInfo, Int, "WrongDomain", NoTrafos))(),
+          LocalVarAssign(callerIntVar, DomainFuncApp(funcname="f", Seq(callerIntVar), Map())(NoPosition, NoInfo, Int, "WrongDomain", NoTrafos))(),
           // Wrong: zero arguments
-          Assign(callerIntVar, DomainFuncApp(funcname="f", Seq(), Map())(NoPosition, NoInfo, Int, "MyDomain", NoTrafos))(),
+          LocalVarAssign(callerIntVar, DomainFuncApp(funcname="f", Seq(), Map())(NoPosition, NoInfo, Int, "MyDomain", NoTrafos))(),
           // Wrong: wrong return type
-          Assign(callerBoolVar, DomainFuncApp(funcname="f", Seq(callerIntVar), Map())(NoPosition, NoInfo, Bool, "MyDomain", NoTrafos))(),
+          LocalVarAssign(callerBoolVar, DomainFuncApp(funcname="f", Seq(callerIntVar), Map())(NoPosition, NoInfo, Bool, "MyDomain", NoTrafos))(),
           // Wrong: wrong argument type
-          Assign(callerIntVar, DomainFuncApp(funcname="f", Seq(callerBoolVar), Map())(NoPosition, NoInfo, Int, "MyDomain", NoTrafos))()
+          LocalVarAssign(callerIntVar, DomainFuncApp(funcname="f", Seq(callerBoolVar), Map())(NoPosition, NoInfo, Int, "MyDomain", NoTrafos))()
         ),
         Seq()
       )()
