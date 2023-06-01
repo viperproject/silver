@@ -42,6 +42,8 @@ case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv
         deps.foreach(dep =>
           csv_file.write(s"ExternalDependenciesReport,${dep.name} ${dep.version} located at ${dep.location}\n")
         )
+      case AnnotationWarning(text) =>
+        csv_file.write(s"AnnotationWarning,${text}\n")
       case WarningsDuringParsing(warnings) =>
         warnings.foreach(report => {
           csv_file.write(s"WarningsDuringParsing,${report}\n")
@@ -49,6 +51,10 @@ case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv
       case WarningsDuringTypechecking(warnings) =>
         warnings.foreach(report => {
           csv_file.write(s"WarningsDuringTypechecking,${report}\n")
+        })
+      case WarningsDuringVerification(warnings) =>
+        warnings.foreach(report => {
+          csv_file.write(s"WarningsDuringVerification,${report}\n")
         })
       case InvalidArgumentsReport(_, errors) =>
         errors.foreach(error => {
@@ -140,6 +146,12 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
 
       case WarningsDuringTypechecking(warnings) =>
         warnings.foreach(println)
+
+      case WarningsDuringVerification(warnings) =>
+        warnings.foreach(println)
+
+      case AnnotationWarning(text) =>
+        println(s"Annotation warning: ${text}")
 
       case InvalidArgumentsReport(_, errors) =>
         errors.foreach(e => println(s"  ${e.readableMessage}"))

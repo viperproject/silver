@@ -8,12 +8,9 @@ define macro {
 
 method main()
 {
-    {
-        var x: Bool := true
-        assert(x)
-    }
-    {
-        var x$0: Bool := true
-        assert(x$0)
-    }
+    var x: Bool := true
+    assert(x)
+
+    var x$0: Bool := true
+    assert(x$0)
 }
