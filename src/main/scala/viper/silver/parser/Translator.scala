@@ -54,7 +54,7 @@ case class Translator(program: PProgram) {
         val fields = (pfields map translate) ++ extensions filter (t => t.isInstanceOf[Field])
         val functions = (pfunctions map translate) ++ extensions filter (t => t.isInstanceOf[Function])
         val predicates = (ppredicates map translate) ++ extensions filter (t => t.isInstanceOf[Predicate])
-        val methods = (pmethods map translate)  ++ extensions filter (t => t.isInstanceOf[Method])
+        val methods = (pmethods map translate) ++ extensions filter (t => t.isInstanceOf[Method])
 
 
 
@@ -196,10 +196,8 @@ case class Translator(program: PProgram) {
         sys.error(s"Found non-unary target of assignment")
       case PAssign(Seq(target), PNewExp(fieldsOpt)) =>
         val fields = fieldsOpt match {
+          // Note that this will not use any fields that extensions declare
           case None => program.fields map translate
-            /* Slightly redundant since we already translated the fields when we
-             * translated the PProgram at the beginning of this class.
-             */
           case Some(pfields) => pfields map findField
         }
         fieldAssignStmt(Seq(target), lv => NewStmt(lv.head, fields)(pos, info))
