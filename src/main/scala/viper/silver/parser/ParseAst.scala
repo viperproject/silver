@@ -1215,6 +1215,14 @@ case class PAnnotatedStmt(stmt: PStmt, annotation: (String, Seq[String]))(val po
 
 case class PSeqn(ss: Seq[PStmt])(val pos: (Position, Position)) extends PStmt with PScope
 
+/**
+  * PSeqn representing the expanded body of a statement macro.
+  * Unlike a normal PSeqn, it does not represent its own scope.
+  * Is created only temporarily during macro expansion and eliminated (i.e., expanded into the surrounding scope)
+  * before translation.
+  */
+case class PMacroSeqn(ss: Seq[PStmt])(val pos: (Position, Position)) extends PStmt
+
 case class PFold(e: PExp)(val pos: (Position, Position)) extends PStmt
 
 case class PUnfold(e: PExp)(val pos: (Position, Position)) extends PStmt
@@ -1549,7 +1557,7 @@ object Nodes {
       case PAnnotatedStmt(s, _) => Seq(s)
       case t: PExtender => t.getSubnodes()
       case _: PSkip => Nil
-      case _: PUnnamedFormalArgDecl => Nil
+      case PUnnamedFormalArgDecl(typ) => Seq(typ)
     }
   }
 }

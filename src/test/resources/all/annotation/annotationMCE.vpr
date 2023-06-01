@@ -1,0 +1,66 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+// Methods that have disjunctive aliasing.
+// Since this is run as part of Silicon's test suite *without* MCE, only the methods annotated to use MCE
+// are expected to pass. So the reported errors are expected in greedy, but we use UnexpectedOutput annotations
+// to mark that they're not actual errors, and that Carbon should not report them.
+
+method disjAlias(r1: Ref, r2: Ref, r3: Ref)
+    requires acc(r1.f)
+    requires acc(r2.f)
+    requires r3 == r1 || r3 == r2
+{
+    //:: UnexpectedOutput(assignment.failed:insufficient.permission, /silicon/issue/000/)
+    r3.f := 4
+}
+
+@exhaleMode("1")
+method disjAlias1(r1: Ref, r2: Ref, r3: Ref)
+    requires acc(r1.f)
+    requires acc(r2.f)
+    requires r3 == r1 || r3 == r2
+{
+    r3.f := 4
+}
+
+@exhaleMode("invalid")
+method disjAlias2(r1: Ref, r2: Ref, r3: Ref)
+    requires acc(r1.f)
+    requires acc(r2.f)
+    requires r3 == r1 || r3 == r2
+{
+    //:: UnexpectedOutput(assignment.failed:insufficient.permission, /silicon/issue/000/)
+    r3.f := 4
+}
+
+@exhaleMode("moreCompleteExhale")
+method disjAlias3(r1: Ref, r2: Ref, r3: Ref)
+    requires acc(r1.f)
+    requires acc(r2.f)
+    requires r3 == r1 || r3 == r2
+{
+    r3.f := 4
+}
+
+@exhaleMode("0")
+method disjAlias4(r1: Ref, r2: Ref, r3: Ref)
+    requires acc(r1.f)
+    requires acc(r2.f)
+    requires r3 == r1 || r3 == r2
+{
+    //:: UnexpectedOutput(assignment.failed:insufficient.permission, /silicon/issue/000/)
+    r3.f := 4
+}
+
+@exhaleMode("greedy")
+method disjAlias5(r1: Ref, r2: Ref, r3: Ref)
+    requires acc(r1.f)
+    requires acc(r2.f)
+    requires r3 == r1 || r3 == r2
+{
+    //:: UnexpectedOutput(assignment.failed:insufficient.permission, /silicon/issue/000/)
+    r3.f := 4
+}
