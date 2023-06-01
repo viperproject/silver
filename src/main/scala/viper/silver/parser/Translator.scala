@@ -212,6 +212,7 @@ case class Translator(program: PProgram) {
             val tgts = vars.map(v => {
               val idnuse = PIdnUse(v.idndef.name)(v.idndef.pos)
               idnuse.typ = v.typ
+              idnuse.decl = v
               idnuse
             })
             stmt(PAssign(tgts, assign)(lv.pos))
@@ -342,7 +343,7 @@ case class Translator(program: PProgram) {
     pexp match {
       case piu @ PIdnUse(name) =>
         piu.decl match {
-          case _: PLocalVarDecl | _: PVarDecl => LocalVar(name, ttyp(pexp.typ))(pos, info)
+          case _: PVarDecl => LocalVar(name, ttyp(pexp.typ))(pos, info)
           case pf: PField =>
             /* A malformed AST where a field is dereferenced without a receiver */
             Consistency.messages ++= FastMessaging.message(piu, s"expected expression but found field $name")
