@@ -199,50 +199,11 @@ case class TypeChecker(names: NameAnalyser) {
         check(e, Bool)
       case PAssume(e) =>
         check(e, Bool)
-      case PAssign(targets, PCall(func, args, _)) if names.definition(curMember)(func).get.isInstanceOf[PMethod] =>
-        val PMethod(_, formalArgs, formalTargets, _, _, _) = names.definition(curMember)(func).get.asInstanceOf[PMethod]
-        formalArgs.foreach(fa=>check(fa.typ))
-        if (formalArgs.length != args.length) {
-          messages ++= FastMessaging.message(stmt, "wrong number of arguments")
-        } else {
-          if (formalTargets.length != targets.length) {
-            messages ++= FastMessaging.message(stmt, "wrong number of targets")
-          } else {
-            for ((formal, actual) <- (formalArgs zip args) ++ (formalTargets zip targets)) {
-              check(actual, formal.typ)
-            }
-          }
-        }
-      case PAssign(targets, _) if targets.length != 1 =>
-        messages ++= FastMessaging.message(stmt, "expected a method call")
-      case PAssign(Seq(target), PNewExp(fieldsOpt)) =>
-        check(target, Ref)
-        fieldsOpt map (_.foreach (field =>
-          names.definition(curMember)(field) match {
-            case Some(PField(_, typ)) =>
-              check(field, typ)
-            case _ =>
-              messages ++= FastMessaging.message(stmt, "expected a field as argument")
-          }))
-      case PAssign(Seq(idnuse: PIdnUse), rhs) =>
-        names.definition(curMember)(idnuse) match {
-          case Some(PVarDecl(_, typ)) =>
-            check(idnuse, typ)
-            check(rhs, typ)
-          case _ =>
-            messages ++= FastMessaging.message(stmt, "expected variable as lhs")
-        }
+      case assign: PAssign =>
+        checkAssign(assign)
       case PLabel(_, invs) =>
         invs foreach (check(_, Bool))
       case PGoto(_) =>
-      case PAssign(Seq(field: PFieldAccess), rhs) =>
-        names.definition(curMember)(field.idnuse, Some(PField.getClass)) match {
-          case Some(PField(_, typ)) =>
-            check(field, typ)
-            check(rhs, typ)
-          case _ =>
-            messages ++= FastMessaging.message(stmt, "expected a field as lhs")
-        }
       case PIf(cond, thn, els) =>
         check(cond, Bool)
         check(thn)
@@ -251,7 +212,7 @@ case class TypeChecker(names: NameAnalyser) {
         check(cond, Bool)
         invs foreach (check(_, Bool))
         check(body)
-      case PLocalVarDecl(vars, initial) =>
+      case PVars(vars, initial) =>
         vars foreach (v => check(v.typ))
         initial.map(i => check(PAssign(vars.map(v => PIdnUse(v.idndef.name)(v.idndef.pos)), i)(i.pos)))
       case _: PDefine =>
@@ -272,6 +233,52 @@ case class TypeChecker(names: NameAnalyser) {
       case t: PExtender => t.typecheck(this, names).getOrElse(Nil) foreach (message =>
         messages ++= FastMessaging.message(t, message))
       case _: PSkip =>
+    }
+  }
+
+  def checkAssign(stmt: PAssign): Unit = {
+    // Check targets
+    stmt.targets foreach {
+      case idnuse: PIdnUse => names.definition(curMember)(idnuse) match {
+          case Some(decl: PAssignableVarDecl) =>
+            check(idnuse, decl.typ)
+          case _ =>
+            messages ++= FastMessaging.message(idnuse, "expected an assignable identifier as lhs")
+        }
+      case fa@PFieldAccess(_, field) => names.definition(curMember)(field, Some(PField.getClass)) match {
+          case Some(PField(_, typ)) =>
+            check(fa, typ)
+          case _ =>
+            messages ++= FastMessaging.message(field, "expected a field as lhs")
+        }
+      case call: PCall => sys.error(s"Unexpected node $call found")
+    }
+    // Check rhs
+    stmt match {
+      case PAssign(targets, PCall(func, args, _)) if names.definition(curMember)(func).get.isInstanceOf[PMethod] =>
+        val PMethod(_, formalArgs, formalTargets, _, _, _) = names.definition(curMember)(func).get.asInstanceOf[PMethod]
+        formalArgs.foreach(fa => check(fa.typ))
+        if (formalArgs.length != args.length) {
+          messages ++= FastMessaging.message(stmt, "wrong number of arguments")
+        } else if (formalTargets.length != targets.length) {
+            messages ++= FastMessaging.message(stmt, "wrong number of targets")
+        } else {
+          for ((formal, actual) <- (formalArgs zip args) ++ (formalTargets zip targets)) {
+            check(actual, formal.typ)
+          }
+        }
+      case PAssign(Seq(target), PNewExp(fieldsOpt)) =>
+        check(target, Ref)
+        fieldsOpt map (_.foreach (field =>
+          names.definition(curMember)(field) match {
+            case Some(PField(_, typ)) =>
+              check(field, typ)
+            case _ =>
+              messages ++= FastMessaging.message(stmt, "expected a field as argument")
+          }))
+      case PAssign(Seq(lhs), rhs) => check(rhs, lhs.typ)
+      // Case `targets.length != 1`:
+      case _ => messages ++= FastMessaging.message(stmt, "expected a method call")
     }
   }
 
@@ -684,7 +691,7 @@ case class TypeChecker(names: NameAnalyser) {
                  */
                 rcv match {
                   case p: PIdnUse =>
-                    acceptAndCheckTypedEntity[PLocalVarDecl, PVarDecl](Seq(p), "expected local variable")()
+                    acceptAndCheckTypedEntity[PAnyVarDecl, Nothing](Seq(p), "expected local variable")()
                   case _ =>
                   /* More complicated expressions should be ok if of type Ref, which is checked next */
                 }
@@ -754,9 +761,7 @@ case class TypeChecker(names: NameAnalyser) {
 
       case piu@PIdnUse(_) =>
         names.definition(curMember)(piu) match {
-          case Some(decl@PVarDecl(_, typ)) => setPIdnUseTypeAndEntity(piu, typ, decl)
-          case Some(decl@PField(_, typ)) => setPIdnUseTypeAndEntity(piu, typ, decl)
-          case Some(decl@PPredicate(_, _, _)) => setPIdnUseTypeAndEntity(piu, Pred, decl)
+          case Some(decl: PTypedDeclaration) => setPIdnUseTypeAndEntity(piu, decl.typ, decl)
           case x => issueError(piu, s"expected identifier, but got ${x.get}")
         }
 
@@ -791,7 +796,7 @@ case class TypeChecker(names: NameAnalyser) {
         pq.typ = Bool
         curMember = oldCurMember
       
-      case pne@PNewExp(_) => issueError(pne, s"expected direct assignment")
+      case pne@PNewExp(_) => issueError(pne, s"unexpected use of `new` as an expression")
     }
   }
 
@@ -825,7 +830,7 @@ case class NameAnalyser() {
     * refer to a field, but there is a local variable with the same name in the
     * member scope that shadows the field, then the `expected` class can be
     * provided (e.g., `PField`), with the result that the shadowing local
-    * variable will be ignored because its class (`PLocalVarDecl`) doesn't
+    * variable will be ignored because its class (`PVars`) doesn't
     * match.
     *
     * @param member   Current scope in which to start the resolving.

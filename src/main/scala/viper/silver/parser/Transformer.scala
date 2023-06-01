@@ -24,7 +24,10 @@ object Transformer {
       val newNode = parent match {
         case _: PIdnDef => parent
         case _: PIdnUse => parent
-        case p@PVarDecl(idndef, typ) => PVarDecl(go(idndef), go(typ))(p.pos)
+        case p@PFormalArgDecl(idndef, typ) => PFormalArgDecl(go(idndef), go(typ))(p.pos)
+        case p@PFormalReturnDecl(idndef, typ) => PFormalReturnDecl(go(idndef), go(typ))(p.pos)
+        case p@PLogicalVarDecl(idndef, typ) => PLogicalVarDecl(go(idndef), go(typ))(p.pos)
+        case p@PLocalVarDecl(idndef, typ) => PLocalVarDecl(go(idndef), go(typ))(p.pos)
         case p@PTypeVarDecl(idndef) => PTypeVarDecl(go(idndef))(p.pos)
         case _: PPrimitiv => parent
         case pdt@PDomainType(domain, args) =>
@@ -134,7 +137,7 @@ object Transformer {
         case p@PAssign(targets, rhs) => PAssign(targets map go, go(rhs))(p.pos)
         case p@PIf(cond, thn, els) => PIf(go(cond), go(thn), go(els))(p.pos)
         case p@PWhile(cond, invs, body) => PWhile(go(cond), invs map go, go(body))(p.pos)
-        case p@PLocalVarDecl(vars, init) => PLocalVarDecl(vars map go, init map go)(p.pos)
+        case p@PVars(vars, init) => PVars(vars map go, init map go)(p.pos)
         case p@PLabel(idndef, invs) => PLabel(go(idndef), invs map go)(p.pos)
         case p@PGoto(target) => PGoto(go(target))(p.pos)
         case p@PDefine(idndef, optArgs, exp) => PDefine(go(idndef), optArgs map (_ map go) , go(exp))(p.pos)

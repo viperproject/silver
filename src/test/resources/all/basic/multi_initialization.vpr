@@ -1,7 +1,7 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-field n: Ref
+field n: Ref, m: Ref
 
 method get_refs() returns (x: Ref, y: Ref)
     ensures acc(x.n)
@@ -19,9 +19,9 @@ predicate P(x: Ref) { acc(x.n) }
 method foo(x: Ref) returns (a: Ref, b: Ref)
   requires P(x)
 method test2(x: Ref)
-  requires P(x) && acc((unfolding P(x) in x.n).n)
+  requires P(x) && acc((unfolding P(x) in x.n).n) && acc((unfolding P(x) in x.n).m)
 {
-  (unfolding P(x) in x.n).n, (unfolding P(x) in x.n).n := foo(x)
+  (unfolding P(x) in x.n).n, (unfolding P(x) in x.n).m := foo(x)
 }
 
 method bar(x: Ref) returns (a: Ref)

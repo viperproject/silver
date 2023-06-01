@@ -25,7 +25,7 @@ case class PAdt(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], constructors: Seq[P
       constructors foreach (_.typecheck(t, n))
     }
     // Check that formalArg identifiers among all constructors are unique
-    val allFormalArgs = constructors flatMap (_.formalArgs collect { case fad: PVarDecl => fad })
+    val allFormalArgs = constructors flatMap (_.formalArgs collect { case fad: PFormalArgDecl => fad })
     val duplicateArgs = allFormalArgs.groupBy(_.idndef.name).collect { case (_, ys) if ys.size > 1 => ys.head }.toSeq
     t.messages ++= duplicateArgs.flatMap { arg =>
       FastMessaging.message(arg.idndef, "Duplicate argument identifier `" + arg.idndef.name + "' among adt constructors at " + arg.idndef.pos._1)
@@ -103,7 +103,7 @@ object PAdt {
 
 }
 
-case class PAdtConstructor(idndef: PIdnDef, formalArgs: Seq[PVarDecl])
+case class PAdtConstructor(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl])
                           (val adtName: PIdnUse)(val pos: (Position, Position)) extends PExtender with PMember with PGlobalDeclaration {
 
   override val getSubnodes: Seq[PNode] = Seq(idndef) ++ formalArgs
@@ -141,7 +141,7 @@ case class PAdtConstructor(idndef: PIdnDef, formalArgs: Seq[PVarDecl])
     else {
       assert(children.length == 2, s"PAdtConstructor : expected length 2 but got ${children.length}")
       val first = children.head.asInstanceOf[PIdnDef]
-      val second = children.tail.head.asInstanceOf[Seq[PVarDecl]]
+      val second = children.tail.head.asInstanceOf[Seq[PFormalArgDecl]]
       PAdtConstructor(first, second)(this.adtName)(pos.getOrElse(this.pos)).asInstanceOf[this.type]
     }
   }
@@ -158,7 +158,7 @@ object PAdtConstructor {
   def findAdtConstructor(id: PIdentifier, t: Translator): AdtConstructor = t.getMembers()(id.name).asInstanceOf[AdtConstructor]
 }
 
-case class PAdtConstructor1(idndef: PIdnDef, formalArgs: Seq[PVarDecl])(val pos: (Position, Position))
+case class PAdtConstructor1(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl])(val pos: (Position, Position))
 
 case class PAdtDerivingInfo(idnuse: PIdnUse, param: Option[PType], blockList: Set[PIdnUse])(val pos: (Position, Position)) extends PExtender {
 
@@ -343,7 +343,7 @@ object PAdtOpApp {
               case at: PAdtType =>
                 val adt = t.names.definition(t.curMember)(at.adt).get.asInstanceOf[PAdt]
                 pdc.adt = adt
-                val matchingConstructorArgs: Seq[PVarDecl] = adt.constructors flatMap (c => c.formalArgs.collect { case fad@PVarDecl(idndef, _) if idndef.name == name => fad })
+                val matchingConstructorArgs: Seq[PFormalArgDecl] = adt.constructors flatMap (c => c.formalArgs.collect { case fad@PFormalArgDecl(idndef, _) if idndef.name == name => fad })
                 if (matchingConstructorArgs.nonEmpty) {
                   pdc.matchingConstructorArg = matchingConstructorArgs.head
                   val fdtv = PTypeVar.freshTypeSubstitution((adt.typVars map (tv => tv.idndef.name)).distinct) //fresh domain type variables
@@ -448,7 +448,7 @@ case class PConstructorCall(constr: PIdnUse, args: Seq[PExp], typeAnnotated: Opt
 case class PDestructorCall(name: String, rcv: PExp)
                           (val pos: (Position, Position) = (NoPosition, NoPosition)) extends PAdtOpApp {
   // Following field is set during resolving, respectively in the typecheck method inherited from PAdtOpApp
-  var matchingConstructorArg: PVarDecl = null
+  var matchingConstructorArg: PFormalArgDecl = null
 
   override def opName: String = name
 

@@ -146,15 +146,15 @@ case class Translator(program: PProgram) {
       case pf@PField(_, typ) =>
         Field(name, ttyp(typ))(pos, toInfo(pf.annotations, pf))
       case pf@PFunction(_, formalArgs, typ, _, _, _) =>
-        Function(name, formalArgs map liftVarDecl, ttyp(typ), null, null, null)(pos, toInfo(pf.annotations, pf))
+        Function(name, formalArgs map liftArgDecl, ttyp(typ), null, null, null)(pos, toInfo(pf.annotations, pf))
       case pdf@ PDomainFunction(_, args, typ, unique, interp) =>
-        DomainFunc(name, args map liftAnyVarDecl, ttyp(typ), unique, interp)(pos,toInfo(pdf.annotations, pdf),pdf.domainName.name)
+        DomainFunc(name, args map liftAnyArgDecl, ttyp(typ), unique, interp)(pos,toInfo(pdf.annotations, pdf),pdf.domainName.name)
       case pd@PDomain(_, typVars, _, _, interp) =>
         Domain(name, null, null, typVars map (t => TypeVar(t.idndef.name)), interp)(pos, toInfo(pd.annotations, pd))
       case pp@PPredicate(_, formalArgs, _) =>
-        Predicate(name, formalArgs map liftVarDecl, null)(pos, toInfo(pp.annotations, pp))
+        Predicate(name, formalArgs map liftArgDecl, null)(pos, toInfo(pp.annotations, pp))
       case pm@PMethod(_, formalArgs, formalReturns, _, _, _) =>
-        Method(name, formalArgs map liftVarDecl, formalReturns map liftVarDecl, null, null, null)(pos, toInfo(pm.annotations, pm))
+        Method(name, formalArgs map liftArgDecl, formalReturns map liftReturnDecl, null, null, null)(pos, toInfo(pm.annotations, pm))
     }
     members.put(p.idndef.name, t)
   }
@@ -205,7 +205,7 @@ case class Translator(program: PProgram) {
         LocalVarAssign(LocalVar(idnuse.name, ttyp(idnuse.typ))(pos, subInfo), exp(rhs))(pos, info)
       case PAssign(Seq(field: PFieldAccess), rhs) =>
         FieldAssign(FieldAccess(exp(field.rcv), findField(field.idnuse))(field), exp(rhs))(pos, info)
-      case lv@PLocalVarDecl(vars, init) =>
+      case lv@PVars(vars, init) =>
         // there are no declarations in the Viper AST; rather they are part of the scope signature
         init match {
           case Some(assign) =>
@@ -220,11 +220,11 @@ case class Translator(program: PProgram) {
         }
       case PSeqn(ss) =>
         val plocals = ss.collect {
-          case l: PLocalVarDecl => Some(l)
+          case l: PVars => Some(l)
           case _ => None
         }
         val locals = plocals.flatten.map {
-          case p@PLocalVarDecl(vars, _) => vars.map(v => LocalVarDecl(v.idndef.name, ttyp(v.typ))(p))
+          case p@PVars(vars, _) => vars.map(v => LocalVarDecl(v.idndef.name, ttyp(v.typ))(p))
         }.flatten
         Seqn(ss filterNot (_.isInstanceOf[PSkip]) map stmt, locals)(pos, info)
       case PFold(e) =>
@@ -256,7 +256,7 @@ case class Translator(program: PProgram) {
         val (newLhs, newE) = havocStmtHelper(lhs, e)
         Quasihavoc(newLhs, newE)(pos, info)
       case PQuasihavocall(vars, lhs, e) =>
-        val newVars = vars map liftVarDecl
+        val newVars = vars map liftLogicalDecl
         val (newLhs, newE) = havocStmtHelper(lhs, e)
         Quasihavocall(newVars, newLhs, newE)(pos, info)
       case t: PExtender =>   t.translateStmt(this)
@@ -343,7 +343,7 @@ case class Translator(program: PProgram) {
     pexp match {
       case piu @ PIdnUse(name) =>
         piu.decl match {
-          case _: PVarDecl => LocalVar(name, ttyp(pexp.typ))(pos, info)
+          case _: PAssignableVarDecl => LocalVar(name, ttyp(pexp.typ))(pos, info)
           case pf: PField =>
             /* A malformed AST where a field is dereferenced without a receiver */
             Consistency.messages ++= FastMessaging.message(piu, s"expected expression but found field $name")
@@ -511,7 +511,7 @@ case class Translator(program: PProgram) {
       case PApplying(wand, e) =>
         Applying(exp(wand).asInstanceOf[MagicWand], exp(e))(pos, info)
       case PLet(exp1, PLetNestedScope(variable, body)) =>
-        Let(liftVarDecl(variable), exp(exp1), exp(body))(pos, info)
+        Let(liftLogicalDecl(variable), exp(exp1), exp(body))(pos, info)
       case _: PLetNestedScope =>
         sys.error("unexpected node PLetNestedScope, should only occur as a direct child of PLet nodes")
       case PExists(vars, triggers, e) =>
@@ -519,13 +519,13 @@ case class Translator(program: PProgram) {
           case PredicateAccessPredicate(inner, _) => inner
           case _ => e
         }))(t))
-        Exists(vars map liftVarDecl, ts, exp(e))(pos, info)
+        Exists(vars map liftLogicalDecl, ts, exp(e))(pos, info)
       case PForall(vars, triggers, e) =>
         val ts = triggers map (t => Trigger((t.exp map exp) map (e => e match {
           case PredicateAccessPredicate(inner, _) => inner
           case _ => e
         }))(t))
-        val fa = Forall(vars map liftVarDecl, ts, exp(e))(pos, info)
+        val fa = Forall(vars map liftLogicalDecl, ts, exp(e))(pos, info)
         if (fa.isPure) {
           fa
         } else {
@@ -534,7 +534,7 @@ case class Translator(program: PProgram) {
             And(conjuncts, forall)(fa.pos, fa.info, fa.errT))
         }
       case PForPerm(vars, res, e) =>
-        val varList = vars map liftVarDecl
+        val varList = vars map liftLogicalDecl
         exp(res) match {
           case PredicateAccessPredicate(inner, _) => ForPerm(varList, inner, exp(e))(pos, info)
           case f : FieldAccess => ForPerm(varList, f, exp(e))(pos, info)
@@ -651,15 +651,23 @@ case class Translator(program: PProgram) {
   }
 
   /** Takes a `PAnyFormalArgDecl` and turns it into a `AnyLocalVarDecl`. */
-  def liftAnyVarDecl(formal: PAnyFormalArgDecl) =
+  def liftAnyArgDecl(formal: PAnyFormalArgDecl) =
     formal match {
-      case f: PVarDecl => LocalVarDecl(f.idndef.name, ttyp(f.typ))(f.idndef)
+      case f: PFormalArgDecl => liftArgDecl(f)
       case u: PUnnamedFormalArgDecl => UnnamedLocalVarDecl(ttyp(u.typ))(u.typ)
     }
 
-  /** Takes a `PVarDecl` and turns it into a `LocalVarDecl`. */
-  def liftVarDecl(formal: PVarDecl) =
+  /** Takes a `PFormalArgDecl` and turns it into a `LocalVarDecl`. */
+  def liftArgDecl(formal: PFormalArgDecl) =
       LocalVarDecl(formal.idndef.name, ttyp(formal.typ))(formal.idndef)
+
+  /** Takes a `PFormalReturnDecl` and turns it into a `LocalVarDecl`. */
+  def liftReturnDecl(formal: PFormalReturnDecl) =
+      LocalVarDecl(formal.idndef.name, ttyp(formal.typ))(formal.idndef)
+
+  /** Takes a `PLogicalVarDecl` and turns it into a `LocalVarDecl`. */
+  def liftLogicalDecl(logical: PLogicalVarDecl) =
+      LocalVarDecl(logical.idndef.name, ttyp(logical.typ))(logical.idndef)
 
   /** Takes a `PType` and turns it into a `Type`. */
   def ttyp(t: PType): Type = t match {

@@ -999,8 +999,8 @@ class FastParser {
        * after the latter has been resolved
        * */
       val unresolvedType = PUnknown()(idpos)
-      val formalArgDecl = PVarDecl(id, unresolvedType)(idpos)
-      val nestedScope = PLetNestedScope(formalArgDecl, exp2)(e2pos)
+      val logicalVar = PLogicalVarDecl(id, unresolvedType)(idpos)
+      val nestedScope = PLetNestedScope(logicalVar, exp2)(e2pos)
 
       PLet(exp1, nestedScope)(pos)
     }
@@ -1010,18 +1010,18 @@ class FastParser {
       PIdnDef(s)(pos)
     }
 
-  def quant[$: P]: P[PExp] = P(FP(keyword("forall") ~ nonEmptyFormalArgList ~ "::" ~ trigger.rep ~ exp).map {
+  def quant[$: P]: P[PExp] = P(FP(keyword("forall") ~ nonEmptyVarDeclList ~ "::" ~ trigger.rep ~ exp).map {
     case (pos, (a, b, c)) =>
-      PForall(a, b, c)(pos)
+      PForall(a.map(PLogicalVarDecl(_)), b, c)(pos)
     } |
-    FP(keyword("exists") ~ nonEmptyFormalArgList ~ "::" ~ trigger.rep ~ exp).map {
+    FP(keyword("exists") ~ nonEmptyVarDeclList ~ "::" ~ trigger.rep ~ exp).map {
       case (pos, (a, b, c)) =>
-        PExists(a, b, c)(pos)
+        PExists(a.map(PLogicalVarDecl(_)), b, c)(pos)
     })
 
-  def nonEmptyFormalArgList[$: P]: P[Seq[PVarDecl]] = P(formalArg.rep(min = 1, sep = ","))
+  def nonEmptyVarDeclList[$: P]: P[Seq[PVarDecl]] = P(varDecl.rep(min = 1, sep = ","))
 
-  def formalArg[$: P]: P[PVarDecl] = FP(idndef ~ ":" ~ typ).map { case (pos, (a, b)) => PVarDecl(a, b)(pos) }
+  def varDecl[$: P]: P[PVarDecl] = FP(idndef ~ ":" ~ typ).map { case (pos, (a, b)) => PVarDecl(a, b)(pos) }
 
   def typ[$: P]: P[PType] = P(primitiveTyp | domainTyp | seqType | setType | multisetType | mapType | macroType)
 
@@ -1057,8 +1057,8 @@ class FastParser {
     case (pos, s) => PTrigger(s)(pos)
   }
 
-  def forperm[$: P]: P[PExp] = FP(keyword("forperm") ~ nonEmptyFormalArgList ~ "[" ~ resAcc ~ "]" ~ "::" ~ exp).map {
-    case (pos, (args, res, body)) => PForPerm(args, res, body)(pos)
+  def forperm[$: P]: P[PExp] = FP(keyword("forperm") ~ nonEmptyVarDeclList ~ "[" ~ resAcc ~ "]" ~ "::" ~ exp).map {
+    case (pos, (args, res, body)) => PForPerm(args.map(PLogicalVarDecl(_)), res, body)(pos)
   }
 
   def unfolding[$: P]: P[PExp] = FP(keyword("unfolding") ~ predicateAccessPred ~ "in" ~ exp).map {
@@ -1131,7 +1131,7 @@ class FastParser {
 
   def stmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | annotatedStmt |
     assign | fold | unfold | exhale | assertStmt |
-    inhale | assume | ifThenElse | whileStmt | varDecl | defineDecl |
+    inhale | assume | ifThenElse | whileStmt | localVars | defineDecl |
     goto | label | packageWand | applyWand | block |
     quasihavoc | quasihavocall | ParserExtension.newStmtAtEnd(ctx))
 
@@ -1141,7 +1141,7 @@ class FastParser {
 
   def nodefinestmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | annotatedStmt |
     assign | fold | unfold | exhale | assertStmt |
-    inhale | assume | ifThenElse | whileStmt | varDecl |
+    inhale | assume | ifThenElse | whileStmt | localVars |
     goto | label | packageWand | applyWand | block |
     quasihavoc | quasihavocall | ParserExtension.newStmtAtEnd(ctx))
 
@@ -1179,8 +1179,8 @@ class FastParser {
   }
 
   def quasihavocall[$: P]: P[PQuasihavocall] = FP(keyword("quasihavocall") ~/
-    nonEmptyFormalArgList ~ "::" ~ (magicWandExp ~ "==>").? ~ exp).map {
-    case (pos, (vars, lhs, rhs)) => PQuasihavocall(vars, lhs, rhs)(pos)
+    nonEmptyVarDeclList ~ "::" ~ (magicWandExp ~ "==>").? ~ exp).map {
+    case (pos, (vars, lhs, rhs)) => PQuasihavocall(vars.map(PLogicalVarDecl(_)), lhs, rhs)(pos)
   }
 
   def ifThenElse[$: P]: P[PIf] = FP("if" ~ "(" ~ exp ~ ")" ~ block ~~~ elseIfOrElse).map {
@@ -1207,8 +1207,8 @@ class FastParser {
 
   def invariant(implicit ctx : P[_]) : P[PExp] = P((keyword("invariant") ~ exp ~~~ ";".lw.?) | ParserExtension.invSpecification(ctx))
 
-  def varDecl[$: P]: P[PLocalVarDecl] = FP(keyword("var") ~/ nonEmptyFormalArgList ~~~ (":=" ~ exp).lw.?).map {
-    case (pos, (a, b)) => PLocalVarDecl(a, b)(pos)
+  def localVars[$: P]: P[PVars] = FP(keyword("var") ~/ nonEmptyVarDeclList ~~~ (":=" ~ exp).lw.?).map {
+    case (pos, (a, b)) => PVars(a.map(PLocalVarDecl(_)), b)(pos)
   }
 
   def defineDecl[$: P]: P[PDefine] = FP(keyword("define") ~/ idndef ~ ("(" ~ idndef.rep(sep = ",") ~ ")").? ~ (exp | "{" ~ (nodefinestmt ~ ";".?).rep ~ "}")).map {
@@ -1289,14 +1289,18 @@ class FastParser {
 
   def anyFormalArgList[$: P]: P[Seq[PAnyFormalArgDecl]] = P((formalArg | unnamedFormalArg).rep(sep = ","))
 
+  def formalArg[$: P]: P[PFormalArgDecl] = P(varDecl.map(PFormalArgDecl(_)))
+
   def unnamedFormalArg[$: P] = FP(typ).map{ case (pos, t) => PUnnamedFormalArgDecl(t)(pos) }
 
-  def formalArgList[$: P]: P[Seq[PVarDecl]] = P(formalArg.rep(sep = ","))
+  def formalArgList[$: P]: P[Seq[PFormalArgDecl]] = P(formalArg.rep(sep = ","))
+
+  def formalReturnList[$: P]: P[Seq[PFormalReturnDecl]] = P(varDecl.map(PFormalReturnDecl(_)).rep(sep = ","))
 
   def axiomDecl[$: P]: P[PAxiom1] = FP(annotation.rep(0) ~ keyword("axiom") ~ idndef.? ~ "{" ~ exp ~ "}" ~~~ ";".lw.?).map { case (pos, (anns, a, b)) => PAxiom1(a, b)(pos, anns) }
 
-  def fieldDecl[$: P]: P[PField] = FP(annotation.rep(0) ~ keyword("field") ~/ idndef ~ ":" ~ typ ~~~ ";".lw.?).map {
-    case (pos, (anns, a, b)) => PField(a, b)(pos, anns)
+  def fieldDecl[$: P]: P[Seq[PField]] = FP(annotation.rep(0) ~ keyword("field") ~/ nonEmptyVarDeclList ~~~ ";".lw.?).map {
+    case (pos, (anns, a)) => a.map(PField(_)(pos, anns))
   }
 
   def functionDecl[$: P]: P[PFunction] = FP(annotation.rep(0) ~ "function" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~~~ precondition.lw.rep ~~~
@@ -1319,7 +1323,7 @@ class FastParser {
       PMethod(name, args, rets.getOrElse(Nil), pres, posts, body)(pos, anns)
   }
 
-  def methodSignature[$: P] = P("method" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~~~ ("returns" ~ "(" ~ formalArgList ~ ")").lw.?)
+  def methodSignature[$: P] = P("method" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~~~ ("returns" ~ "(" ~ formalReturnList ~ ")").lw.?)
 
   def entireProgram[$: P]: P[PProgram] = P(Start ~ programDecl ~ End)
 

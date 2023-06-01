@@ -21,7 +21,7 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
                 config: viper.silver.frontend.SilFrontendConfig,
                 fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
 
-  import fp.{FP, formalArg, idndef, idnuse, typ, typeParams, ParserExtension}
+  import fp.{FP, formalArgList, idndef, idnuse, typ, typeParams, ParserExtension}
 
   /**
     * Keywords used to define ADT's
@@ -93,9 +93,7 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
     }
   }
 
-  def adtConstructorSignature[$: P]: P[(PIdnDef, Seq[PVarDecl])] = P(idndef ~ "(" ~ formalArgList ~ ")")
-
-  def formalArgList[$: P]: P[Seq[PVarDecl]] = P(formalArg.rep(sep = ","))
+  def adtConstructorSignature[$: P]: P[(PIdnDef, Seq[PFormalArgDecl])] = P(idndef ~ "(" ~ formalArgList ~ ")")
 
   override def beforeResolve(input: PProgram): PProgram = {
     if (deactivated) {
@@ -106,7 +104,7 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
     val declaredAdtNames = input.extensions.collect { case a: PAdt => a.idndef.name }.toSet
     val declaredConstructorNames = input.extensions.collect { case a: PAdt => a.constructors.map(c => c.idndef) }.flatten.toSet
     val declaredConstructorArgsNames = input.extensions.collect { case a: PAdt =>
-      a.constructors flatMap (c => c.formalArgs collect { case PVarDecl(idndef, _) => idndef.name })
+      a.constructors flatMap (c => c.formalArgs collect { case PFormalArgDecl(idndef, _) => idndef.name })
     }.flatten.toSet
 
     def transformStrategy[T <: PNode](input: T): T = StrategyBuilder.Slim[PNode]({
