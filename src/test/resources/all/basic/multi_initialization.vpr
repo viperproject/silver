@@ -5,8 +5,7 @@ field n: Ref
 
 method get_refs() returns (x: Ref, y: Ref)
     ensures acc(x.n)
-
-method foo() {
+method test1() {
   var a: Ref, b: Ref
 
   var c: Ref, d: Ref := get_refs()
@@ -14,4 +13,28 @@ method foo() {
 
   c.n, e := get_refs()
   c.n.n := new(n)
+}
+
+predicate P(x: Ref) { acc(x.n) }
+method foo(x: Ref) returns (a: Ref, b: Ref)
+  requires P(x)
+method test2(x: Ref)
+  requires P(x) && acc((unfolding P(x) in x.n).n)
+{
+  (unfolding P(x) in x.n).n, (unfolding P(x) in x.n).n := foo(x)
+}
+
+method bar(x: Ref) returns (a: Ref)
+  ensures acc(x.n)
+method test3(x: Ref) {
+  x.n := bar(x)
+}
+
+method baz(x: Ref) returns (a: Ref)
+  requires acc(x.n)
+method test4(x: Ref)
+    requires acc(x.n)
+{
+  //:: ExpectedOutput(assignment.failed:insufficient.permission)
+  x.n := baz(x)
 }
