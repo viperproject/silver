@@ -595,9 +595,10 @@ class FastParser {
     case class MacroApp(name: String, arguments: Seq[PExp], node: PNode)
 
     val matchOnMacroCall: PartialFunction[PNode, MacroApp] = {
-      case assign@PAssign(Seq(), app: PMacro) if isMacro(app.name) => MacroApp(app.name, app.args, assign)
-      case app: PMacro if isMacro(app.name) => MacroApp(app.name, app.args, app)
-      case app: PMacroType[_] => MacroApp(app.use.name, app.use.args, app)
+      case assign@PAssign(Seq(), app: PMaybeMacroExp) if isMacro(app.name) => MacroApp(app.name, app.macroArgs, assign)
+      case app: PMaybeMacroExp if isMacro(app.name) => MacroApp(app.name, app.macroArgs, app)
+      case typ@PDomainType(domain, Seq()) if isMacro(domain.name) => MacroApp(domain.name, Seq(), typ)
+      case app: PMacroType => MacroApp(app.use.name, app.use.macroArgs, app)
     }
 
     def detectCyclicMacros(start: PNode, seen: Set[String]): Unit = {
@@ -1036,7 +1037,8 @@ class FastParser {
    case (pos, (keyType, valueType)) => PMapType(keyType, valueType)(pos)
   }
 
-  def macroType[$: P] : P[PMacroType[_]] = idnuse.map(PMacroType(_)) | funcApp.map(PMacroType(_))
+  /** Only for call-like macros, `idnuse`-like ones are parsed by `domainTyp`. */
+  def macroType[$: P] : P[PMacroType] = funcApp.map(PMacroType(_))
 
   def primitiveTyp[$: P]: P[PPrimitiv] = P(FP(keyword("Rational")).map{ case (pos, _) => PPrimitiv("Perm")(pos)}
     | FP((StringIn("Int", "Bool", "Perm", "Ref") ~~ !identContinues).!).map{ case (pos, name) => PPrimitiv(name)(pos)})

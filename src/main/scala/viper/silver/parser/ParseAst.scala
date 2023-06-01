@@ -149,9 +149,9 @@ trait PIdentifier {
 
 case class PIdnDef(name: String)(val pos: (Position, Position)) extends PNode with PIdentifier
 
-case class PIdnUse(name: String)(val pos: (Position, Position)) extends PExp with PIdentifier with PAssignTarget with PMacro {
+case class PIdnUse(name: String)(val pos: (Position, Position)) extends PExp with PIdentifier with PAssignTarget with PMaybeMacroExp {
   var decl: PDeclaration = null
-  override def args: Seq[PExp] = Seq()
+  override def macroArgs: Seq[PExp] = Seq()
   /* Should be set during resolving. Intended to preserve information
    * that is needed by the translator.
    */
@@ -370,7 +370,7 @@ case class PMapType(keyType: PType, valueType: PType)(val pos: (Position, Positi
 /** Exists temporarily after parsing and is replaced with
  * a real type by macro expansion.
  */
-case class PMacroType[T <: PMacro](use: T) extends PType {
+case class PMacroType(use: PCall) extends PType {
   override val pos: (Position, Position) = use.pos
   override def isValidOrUndeclared: Boolean = ???
   override def substitute(ts: PTypeSubstitution): PType = ???
@@ -585,10 +585,11 @@ object POpApp {
   def pRes = PTypeVar(pResS)
 }
 
-case class PCall(func: PIdnUse, args: Seq[PExp], typeAnnotated: Option[PType] = None)(val pos: (Position, Position)) extends POpApp with PLocationAccess with PAssignTarget with PMacro {
+case class PCall(func: PIdnUse, args: Seq[PExp], typeAnnotated: Option[PType] = None)(val pos: (Position, Position)) extends POpApp with PLocationAccess with PAssignTarget with PMaybeMacroExp {
   override val idnuse = func
   override val opName = func.name
   override def name = func.name
+  override def macroArgs = args
 
   override def signatures = if (function != null && function.formalArgs.size == args.size) (function match {
     case _: PFunction => List(
@@ -1291,9 +1292,9 @@ object PScope {
 }
 
 // Macros
-sealed trait PMacro extends PExp {
+sealed trait PMaybeMacroExp extends PExp {
   def name: String
-  def args: Seq[PExp]
+  def macroArgs: Seq[PExp]
 }
 
 // Assignments
