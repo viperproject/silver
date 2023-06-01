@@ -367,13 +367,13 @@ case class PMapType(keyType: PType, valueType: PType)(val pos: (Position, Positi
   override def withTypeArguments(s: Seq[PType]): PMapType = copy(keyType = s.head, valueType = s(1))(pos)
 }
 
+/** Exists temporarily after parsing and is replaced with
+ * a real type by macro expansion.
+ */
 case class PMacroType[T <: PMacro](use: T) extends PType {
   override val pos: (Position, Position) = use.pos
-
   override def isValidOrUndeclared: Boolean = ???
-
   override def substitute(ts: PTypeSubstitution): PType = ???
-
   override def subNodes: Seq[PType] = ???
 }
 

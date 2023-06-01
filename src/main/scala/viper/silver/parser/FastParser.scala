@@ -1121,12 +1121,18 @@ class FastParser {
     case (pos, (func, args, typeGiven)) => PCall(func, args, Some(typeGiven))(pos)
   }
 
-  def stmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | assign | fold | unfold | exhale | assertStmt |
+  def stmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | annotatedStmt |
+    assign | fold | unfold | exhale | assertStmt |
     inhale | assume | ifThenElse | whileStmt | varDecl | defineDecl |
     goto | label | packageWand | applyWand | block |
     quasihavoc | quasihavocall | ParserExtension.newStmtAtEnd(ctx))
 
-  def nodefinestmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | assign | fold | unfold | exhale | assertStmt |
+  def annotatedStmt(implicit ctx : P[_]): P[PStmt] = (FP(annotation ~ stmt).map{
+    case (pos, (key, value, pStmt)) => PAnnotatedStmt(pStmt, (key, value))(pos)
+  })
+
+  def nodefinestmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | annotatedStmt |
+    assign | fold | unfold | exhale | assertStmt |
     inhale | assume | ifThenElse | whileStmt | varDecl |
     goto | label | packageWand | applyWand | block |
     quasihavoc | quasihavocall | ParserExtension.newStmtAtEnd(ctx))
