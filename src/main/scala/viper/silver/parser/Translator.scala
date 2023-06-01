@@ -191,7 +191,7 @@ case class Translator(program: PProgram) {
     val subInfo = NoInfo
     s match {
       case PAssign(targets, PCall(method, args, _)) if members(method.name).isInstanceOf[Method] =>
-        fieldAssignStmt(targets, ts => MethodCall(findMethod(method), args map exp, ts)(pos, info))
+        fieldAssignStmt(s, targets, ts => MethodCall(findMethod(method), args map exp, ts)(pos, info))
       case PAssign(targets, _) if targets.length != 1 =>
         sys.error(s"Found non-unary target of assignment")
       case PAssign(Seq(target), PNewExp(fieldsOpt)) =>
@@ -200,7 +200,7 @@ case class Translator(program: PProgram) {
           case None => program.fields map translate
           case Some(pfields) => pfields map findField
         }
-        fieldAssignStmt(Seq(target), lv => NewStmt(lv.head, fields)(pos, info))
+        fieldAssignStmt(s, Seq(target), lv => NewStmt(lv.head, fields)(pos, info))
       case PAssign(Seq(idnuse: PIdnUse), rhs) =>
         LocalVarAssign(LocalVar(idnuse.name, ttyp(idnuse.typ))(pos, subInfo), exp(rhs))(pos, info)
       case PAssign(Seq(field: PFieldAccess), rhs) =>
@@ -265,7 +265,7 @@ case class Translator(program: PProgram) {
     }
   }
 
-  def fieldAssignStmt(targets: Seq[PAssignTarget], assign: Seq[LocalVar] => Stmt): Stmt = {
+  def fieldAssignStmt(errorNode: PNode, targets: Seq[PAssignTarget], assign: Seq[LocalVar] => Stmt): Stmt = {
     val tTargets = targets map exp
     val ts = tTargets.zipWithIndex.map {
       case (lv: LocalVar, _) => (None, lv)
@@ -282,7 +282,7 @@ case class Translator(program: PProgram) {
     if (tmps.isEmpty)
       return assn
     if (!Consistency.noDuplicates(tmps.map(_._3.field)))
-      Consistency.messages ++= FastMessaging.message(tmps.head._3, s"target fields are not allowed to have duplicates")
+      Consistency.messages ++= FastMessaging.message(errorNode, s"target fields are not allowed to have duplicates")
     Seqn(
       tmps.map { case (rcv, e, _, _) => LocalVarAssign(rcv, e)() } ++
       Seq(assn) ++
