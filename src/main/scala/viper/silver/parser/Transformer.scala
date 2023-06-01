@@ -24,7 +24,7 @@ object Transformer {
       val newNode = parent match {
         case _: PIdnDef => parent
         case _: PIdnUse => parent
-        case p@PFormalArgDecl(idndef, typ) => PFormalArgDecl(go(idndef), go(typ))(p.pos)
+        case p@PVarDecl(idndef, typ) => PVarDecl(go(idndef), go(typ))(p.pos)
         case p@PTypeVarDecl(idndef) => PTypeVarDecl(go(idndef))(p.pos)
         case _: PPrimitiv => parent
         case pdt@PDomainType(domain, args) =>

@@ -205,10 +205,16 @@ case class Translator(program: PProgram) {
         LocalVarAssign(LocalVar(idnuse.name, ttyp(idnuse.typ))(pos, subInfo), exp(rhs))(pos, info)
       case PAssign(Seq(field: PFieldAccess), rhs) =>
         FieldAssign(FieldAccess(exp(field.rcv), findField(field.idnuse))(field), exp(rhs))(pos, info)
-      case PLocalVarDecl(_, init) =>
+      case lv@PLocalVarDecl(vars, init) =>
         // there are no declarations in the Viper AST; rather they are part of the scope signature
         init match {
-          case Some(assign) => stmt(assign)
+          case Some(assign) =>
+            val tgts = vars.map(v => {
+              val idnuse = PIdnUse(v.idndef.name)(v.idndef.pos)
+              idnuse.typ = v.typ
+              idnuse
+            })
+            stmt(PAssign(tgts, assign)(lv.pos))
           case None => Statements.EmptyStmt
         }
       case PSeqn(ss) =>
@@ -336,7 +342,7 @@ case class Translator(program: PProgram) {
     pexp match {
       case piu @ PIdnUse(name) =>
         piu.decl match {
-          case _: PLocalVarDecl | _: PFormalArgDecl => LocalVar(name, ttyp(pexp.typ))(pos, info)
+          case _: PLocalVarDecl | _: PVarDecl => LocalVar(name, ttyp(pexp.typ))(pos, info)
           case pf: PField =>
             /* A malformed AST where a field is dereferenced without a receiver */
             Consistency.messages ++= FastMessaging.message(piu, s"expected expression but found field $name")
@@ -646,12 +652,12 @@ case class Translator(program: PProgram) {
   /** Takes a `PAnyFormalArgDecl` and turns it into a `AnyLocalVarDecl`. */
   def liftAnyVarDecl(formal: PAnyFormalArgDecl) =
     formal match {
-      case f: PFormalArgDecl => LocalVarDecl(f.idndef.name, ttyp(f.typ))(f.idndef)
+      case f: PVarDecl => LocalVarDecl(f.idndef.name, ttyp(f.typ))(f.idndef)
       case u: PUnnamedFormalArgDecl => UnnamedLocalVarDecl(ttyp(u.typ))(u.typ)
     }
 
-  /** Takes a `PFormalArgDecl` and turns it into a `LocalVarDecl`. */
-  def liftVarDecl(formal: PFormalArgDecl) =
+  /** Takes a `PVarDecl` and turns it into a `LocalVarDecl`. */
+  def liftVarDecl(formal: PVarDecl) =
       LocalVarDecl(formal.idndef.name, ttyp(formal.typ))(formal.idndef)
 
   /** Takes a `PType` and turns it into a `Type`. */

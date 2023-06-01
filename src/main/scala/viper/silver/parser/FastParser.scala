@@ -999,7 +999,7 @@ class FastParser {
        * after the latter has been resolved
        * */
       val unresolvedType = PUnknown()(idpos)
-      val formalArgDecl = PFormalArgDecl(id, unresolvedType)(idpos)
+      val formalArgDecl = PVarDecl(id, unresolvedType)(idpos)
       val nestedScope = PLetNestedScope(formalArgDecl, exp2)(e2pos)
 
       PLet(exp1, nestedScope)(pos)
@@ -1019,9 +1019,9 @@ class FastParser {
         PExists(a, b, c)(pos)
     })
 
-  def nonEmptyFormalArgList[$: P]: P[Seq[PFormalArgDecl]] = P(formalArg.rep(min = 1, sep = ","))
+  def nonEmptyFormalArgList[$: P]: P[Seq[PVarDecl]] = P(formalArg.rep(min = 1, sep = ","))
 
-  def formalArg[$: P]: P[PFormalArgDecl] = FP(idndef ~ ":" ~ typ).map { case (pos, (a, b)) => PFormalArgDecl(a, b)(pos) }
+  def formalArg[$: P]: P[PVarDecl] = FP(idndef ~ ":" ~ typ).map { case (pos, (a, b)) => PVarDecl(a, b)(pos) }
 
   def typ[$: P]: P[PType] = P(primitiveTyp | domainTyp | seqType | setType | multisetType | mapType | macroType)
 
@@ -1208,7 +1208,7 @@ class FastParser {
   def invariant(implicit ctx : P[_]) : P[PExp] = P((keyword("invariant") ~ exp ~~~ ";".lw.?) | ParserExtension.invSpecification(ctx))
 
   def varDecl[$: P]: P[PLocalVarDecl] = FP(keyword("var") ~/ nonEmptyFormalArgList ~~~ (":=" ~ exp).lw.?).map {
-    case (pos, (a, b)) => PLocalVarDecl(a, b.map(i => PAssign(a.map(v => PIdnUse(v.idndef.name)(v.idndef.pos)), i)(pos)))(pos)
+    case (pos, (a, b)) => PLocalVarDecl(a, b)(pos)
   }
 
   def defineDecl[$: P]: P[PDefine] = FP(keyword("define") ~/ idndef ~ ("(" ~ idndef.rep(sep = ",") ~ ")").? ~ (exp | "{" ~ (nodefinestmt ~ ";".?).rep ~ "}")).map {
@@ -1291,7 +1291,7 @@ class FastParser {
 
   def unnamedFormalArg[$: P] = FP(typ).map{ case (pos, t) => PUnnamedFormalArgDecl(t)(pos) }
 
-  def formalArgList[$: P]: P[Seq[PFormalArgDecl]] = P(formalArg.rep(sep = ","))
+  def formalArgList[$: P]: P[Seq[PVarDecl]] = P(formalArg.rep(sep = ","))
 
   def axiomDecl[$: P]: P[PAxiom1] = FP(annotation.rep(0) ~ keyword("axiom") ~ idndef.? ~ "{" ~ exp ~ "}" ~~~ ";".lw.?).map { case (pos, (anns, a, b)) => PAxiom1(a, b)(pos, anns) }
 

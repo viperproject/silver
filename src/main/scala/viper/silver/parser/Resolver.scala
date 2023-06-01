@@ -226,7 +226,7 @@ case class TypeChecker(names: NameAnalyser) {
           }))
       case PAssign(Seq(idnuse: PIdnUse), rhs) =>
         names.definition(curMember)(idnuse) match {
-          case Some(PFormalArgDecl(_, typ)) =>
+          case Some(PVarDecl(_, typ)) =>
             check(idnuse, typ)
             check(rhs, typ)
           case _ =>
@@ -253,7 +253,7 @@ case class TypeChecker(names: NameAnalyser) {
         check(body)
       case PLocalVarDecl(vars, initial) =>
         vars foreach (v => check(v.typ))
-        initial map check
+        initial.map(i => check(PAssign(vars.map(v => PIdnUse(v.idndef.name)(v.idndef.pos)), i)(i.pos)))
       case _: PDefine =>
         /* Should have been removed right after parsing */
         sys.error(s"Unexpected node $stmt found")
@@ -684,7 +684,7 @@ case class TypeChecker(names: NameAnalyser) {
                  */
                 rcv match {
                   case p: PIdnUse =>
-                    acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](Seq(p), "expected local variable")()
+                    acceptAndCheckTypedEntity[PLocalVarDecl, PVarDecl](Seq(p), "expected local variable")()
                   case _ =>
                   /* More complicated expressions should be ok if of type Ref, which is checked next */
                 }
@@ -754,7 +754,7 @@ case class TypeChecker(names: NameAnalyser) {
 
       case piu@PIdnUse(_) =>
         names.definition(curMember)(piu) match {
-          case Some(decl@PFormalArgDecl(_, typ)) => setPIdnUseTypeAndEntity(piu, typ, decl)
+          case Some(decl@PVarDecl(_, typ)) => setPIdnUseTypeAndEntity(piu, typ, decl)
           case Some(decl@PField(_, typ)) => setPIdnUseTypeAndEntity(piu, typ, decl)
           case Some(decl@PPredicate(_, _, _)) => setPIdnUseTypeAndEntity(piu, Pred, decl)
           case x => issueError(piu, s"expected identifier, but got ${x.get}")
