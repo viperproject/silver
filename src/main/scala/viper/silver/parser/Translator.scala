@@ -344,12 +344,12 @@ case class Translator(program: PProgram) {
       case piu @ PIdnUse(name) =>
         piu.decl match {
           case _: PAnyVarDecl => LocalVar(name, ttyp(pexp.typ))(pos, info)
-          case pf: PField =>
-            /* A malformed AST where a field is dereferenced without a receiver */
-            Consistency.messages ++= FastMessaging.message(piu, s"expected expression but found field $name")
-            LocalVar(pf.idndef.name, ttyp(pf.typ))(pos, info)
-          case _ =>
-            sys.error("should not occur in type-checked program")
+          case null => sys.error("should not occur in type-checked program")
+          /* A malformed AST where a field, function or other declaration is used as a variable */
+          case decl =>
+            Consistency.messages ++= FastMessaging.message(piu, s"expected variable identifier but found `${decl.idndef.name}`")
+            // Avoid translating `pexp.typ` here since it may be invalid (e.g. `PFunctionType`)
+            LocalVar(name, InternalType)(pos, info)
         }
       case pbe @ PBinExp(left, op, right) =>
         val (l, r) = (exp(left), exp(right))
@@ -466,7 +466,7 @@ case class Translator(program: PProgram) {
           if (par == null) sys.error("cannot use 'result' outside of function")
           par = par.parent.get
         }
-        Result(ttyp(par.asInstanceOf[PFunction].typ))(pos, info)
+        Result(ttyp(par.asInstanceOf[PFunction].typ.resultType))(pos, info)
       case PBoolLit(b) =>
         if (b) TrueLit()(pos, info) else FalseLit()(pos, info)
       case PNullLit() =>
@@ -709,6 +709,8 @@ case class Translator(program: PProgram) {
     case t: PExtender => t.translateType(this)
     case PUnknown() =>
       sys.error("unknown type unexpected here")
+    case PFunctionType(_) =>
+      sys.error("unexpected use of internal typ")
     case PPredicateType() =>
       sys.error("unexpected use of internal typ")
   }

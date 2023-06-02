@@ -123,7 +123,7 @@ case class TypeChecker(names: NameAnalyser) {
       f.pres foreach (check(_, Bool))
       resultAllowed = true
       f.posts foreach (check(_, Bool))
-      f.body.foreach(check(_, f.typ)) //result in the function body gets the error message somewhere else
+      f.body.foreach(check(_, f.typ.resultType)) //result in the function body gets the error message somewhere else
       resultAllowed = false
       curFunction = null
     }
@@ -413,6 +413,8 @@ case class TypeChecker(names: NameAnalyser) {
       case PMapType(keyType, valueType) =>
         check(keyType)
         check(valueType)
+      case PFunctionType(resultType) =>
+        check(resultType)
       case t: PExtender =>
         t.typecheck(this, names).getOrElse(Nil) foreach (message =>
           messages ++= FastMessaging.message(t, message))
@@ -620,7 +622,7 @@ case class TypeChecker(names: NameAnalyser) {
         psl match {
           case r@PResultLit() =>
             if (resultAllowed)
-              setType(curFunction.typ)
+              setType(curFunction.typ.resultType)
             else
               issueError(r, "'result' can only be used in function postconditions")
           case _ =>

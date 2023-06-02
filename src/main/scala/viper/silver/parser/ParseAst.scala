@@ -436,6 +436,16 @@ case class PWandType()(val pos: (Position, Position)) extends PInternalType {
   override def isValidOrUndeclared = true
 }
 
+/** 
+ */
+case class PFunctionType(resultType: PType) extends PType {
+  override val pos: (Position, Position) = resultType.pos
+  override def isValidOrUndeclared: Boolean = resultType.isValidOrUndeclared
+  override def substitute(ts: PTypeSubstitution): PType = this.copy(resultType = resultType.substitute(ts))
+  override def subNodes: Seq[PType] = Seq(resultType)
+  override def toString = "$fn:" + resultType.toString
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////
 // Expressions
 // typeSubstitutions are the possible substitutions used for type checking and inference
@@ -622,14 +632,14 @@ case class PCall(func: PIdnUse, args: Seq[PExp], typeAnnotated: Option[PType] = 
   override def macroArgs = args
 
   override def signatures = if (function != null && function.formalArgs.size == args.size) (function match {
-    case _: PFunction => List(
-      new PTypeSubstitution(args.indices.map(i => POpApp.pArg(i).domain.name -> function.formalArgs(i).typ) :+ (POpApp.pRes.domain.name -> function.typ))
+    case pf: PFunction => List(
+      new PTypeSubstitution(args.indices.map(i => POpApp.pArg(i).domain.name -> pf.formalArgs(i).typ) :+ (POpApp.pRes.domain.name -> pf.typ.resultType))
     )
     case pdf: PDomainFunction =>
       List(
         new PTypeSubstitution(
-          args.indices.map(i => POpApp.pArg(i).domain.name -> function.formalArgs(i).typ.substitute(domainTypeRenaming.get)) :+
-            (POpApp.pRes.domain.name -> pdf.typ.substitute(domainTypeRenaming.get)))
+          args.indices.map(i => POpApp.pArg(i).domain.name -> pdf.formalArgs(i).typ.substitute(domainTypeRenaming.get)) :+
+            (POpApp.pRes.domain.name -> pdf.typ.resultType.substitute(domainTypeRenaming.get)))
       )
 
   })
@@ -1380,7 +1390,8 @@ trait PAnyFunction extends PSingleMember with PTypedDeclaration {
 
   def formalArgs: Seq[PAnyFormalArgDecl]
 
-  def typ: PType
+  def resultType: PType
+  override def typ: PFunctionType = PFunctionType(resultType)
 }
 
 case class PProgram(imports: Seq[PImport], macros: Seq[PDefine], domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod], extensions: Seq[PExtender], errors: Seq[ParseReport])(val pos: (Position, Position)) extends PNode
@@ -1411,16 +1422,16 @@ case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalRetur
 
 case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom], interpretations: Option[Map[String, String]])
                   (val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PSingleMember
-case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp])
+case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], resultType: PType, pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp])
                     (val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PAnyFunction {
-  def deepCopy(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, typ: PType = this.typ, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, body: Option[PExp] = this.body): PFunction = {
+  def deepCopy(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, resultType: PType = this.resultType, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, body: Option[PExp] = this.body): PFunction = {
     StrategyBuilder.Slim[PNode]({
-      case p: PFunction => PFunction(idndef, formalArgs, typ, pres, posts, body)(p.pos, p.annotations)
+      case p: PFunction => PFunction(idndef, formalArgs, resultType, pres, posts, body)(p.pos, p.annotations)
     }).execute[PFunction](this)
   }
 }
 
-case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl], typ: PType, unique: Boolean, interpretation: Option[String])
+case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl], resultType: PType, unique: Boolean, interpretation: Option[String])
                           (val domainName:PIdnUse)(val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PAnyFunction
 case class PAxiom(idndef: Option[PIdnDef], exp: PExp)(val domainName:PIdnUse)(val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PScope
 case class PField(fields: Seq[PFieldDecl])(val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PMember {
