@@ -344,12 +344,9 @@ case class Translator(program: PProgram) {
       case piu @ PIdnUse(name) =>
         piu.decl match {
           case _: PAnyVarDecl => LocalVar(name, ttyp(pexp.typ))(pos, info)
-          case null => sys.error("should not occur in type-checked program")
-          /* A malformed AST where a field, function or other declaration is used as a variable */
-          case decl =>
-            Consistency.messages ++= FastMessaging.message(piu, s"expected variable identifier but found `${decl.idndef.name}`")
-            // Avoid translating `pexp.typ` here since it may be invalid (e.g. `PFunctionType`)
-            LocalVar(name, InternalType)(pos, info)
+          // A malformed AST where a field, function or other declaration is used as a variable.
+          // Should have been caught by the type checker.
+          case _ => sys.error("should not occur in type-checked program")
         }
       case pbe @ PBinExp(left, op, right) =>
         val (l, r) = (exp(left), exp(right))
