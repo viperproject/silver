@@ -89,6 +89,18 @@ case class PAdt(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], constructors: Seq[P
     adtType
   }
 
+  override def withChildren(children: Seq[Any], pos: Option[(Position, Position)] = None, forceRewrite: Boolean = false): this.type = {
+    if (!forceRewrite && this.children == children && pos.isEmpty)
+      this
+    else {
+      assert(children.length == 4, s"PAdt : expected length 4 but got ${children.length}")
+      val first = children(0).asInstanceOf[PIdnDef]
+      val second = children(1).asInstanceOf[Seq[PTypeVarDecl]]
+      val third = children(2).asInstanceOf[Seq[PAdtConstructor]]
+      val fourth = children(3).asInstanceOf[Seq[PAdtDerivingInfo]]
+      PAdt(first, second, third, fourth)(pos.getOrElse(this.pos), annotations).asInstanceOf[this.type]
+    }
+  }
 }
 
 object PAdt {
