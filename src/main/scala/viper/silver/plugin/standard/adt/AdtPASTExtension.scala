@@ -16,7 +16,7 @@ import scala.util.{Success, Try}
 
 
 case class PAdt(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], constructors: Seq[PAdtConstructor], derivingInfos: Seq[PAdtDerivingInfo])
-               (val pos: (Position, Position)) extends PExtender with PMember with PGlobalDeclaration {
+               (val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PExtender with PSingleMember {
 
   override val getSubnodes: Seq[PNode] = Seq(idndef) ++ typVars ++ constructors ++ derivingInfos
 
@@ -104,7 +104,7 @@ object PAdt {
 }
 
 case class PAdtConstructor(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl])
-                          (val adtName: PIdnUse)(val pos: (Position, Position)) extends PExtender with PMember with PGlobalDeclaration {
+                          (val adtName: PIdnUse)(val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PExtender with PSingleMember {
 
   override val getSubnodes: Seq[PNode] = Seq(idndef) ++ formalArgs
 
@@ -142,7 +142,7 @@ case class PAdtConstructor(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl])
       assert(children.length == 2, s"PAdtConstructor : expected length 2 but got ${children.length}")
       val first = children.head.asInstanceOf[PIdnDef]
       val second = children.tail.head.asInstanceOf[Seq[PFormalArgDecl]]
-      PAdtConstructor(first, second)(this.adtName)(pos.getOrElse(this.pos)).asInstanceOf[this.type]
+      PAdtConstructor(first, second)(this.adtName)(pos.getOrElse(this.pos), annotations).asInstanceOf[this.type]
     }
   }
 }
@@ -158,7 +158,7 @@ object PAdtConstructor {
   def findAdtConstructor(id: PIdentifier, t: Translator): AdtConstructor = t.getMembers()(id.name).asInstanceOf[AdtConstructor]
 }
 
-case class PAdtConstructor1(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl])(val pos: (Position, Position))
+case class PAdtConstructor1(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl])(val pos: (Position, Position), val annotations: Seq[(String, Seq[String])])
 
 case class PAdtDerivingInfo(idnuse: PIdnUse, param: Option[PType], blockList: Set[PIdnUse])(val pos: (Position, Position)) extends PExtender {
 

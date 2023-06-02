@@ -28,6 +28,7 @@ object Transformer {
         case p@PFormalReturnDecl(idndef, typ) => PFormalReturnDecl(go(idndef), go(typ))(p.pos)
         case p@PLogicalVarDecl(idndef, typ) => PLogicalVarDecl(go(idndef), go(typ))(p.pos)
         case p@PLocalVarDecl(idndef, typ) => PLocalVarDecl(go(idndef), go(typ))(p.pos)
+        case p@PFieldDecl(idndef, typ) => PFieldDecl(go(idndef), go(typ))(p.pos)
         case p@PTypeVarDecl(idndef) => PTypeVarDecl(go(idndef))(p.pos)
         case _: PPrimitiv => parent
         case pdt@PDomainType(domain, args) =>
@@ -150,7 +151,7 @@ object Transformer {
         case p@PStandardImport(file) => PStandardImport(file)(p.pos)
         case p@PMethod(idndef, formalArgs, formalReturns, pres, posts, body) => PMethod(go(idndef), formalArgs map go, formalReturns map go, pres map go, posts map go, body map go)(p.pos, p.annotations)
         case p@PDomain(idndef, typVars, funcs, axioms, interp) => PDomain(go(idndef), typVars map go, funcs map go, axioms map go, interp)(p.pos, p.annotations)
-        case p@PField(idndef, typ) => PField(go(idndef), go(typ))(p.pos, p.annotations)
+        case p@PField(fields) => PField(fields map go)(p.pos, p.annotations)
         case p@PFunction(idndef, formalArgs, typ, pres, posts, body) => PFunction(go(idndef), formalArgs map go, go(typ), pres map go, posts map go, body map go)(p.pos, p.annotations)
         case pdf@PDomainFunction(idndef, formalArgs, typ, unique, interp) => PDomainFunction(go(idndef), formalArgs map go, go(typ), unique, interp)(domainName = pdf.domainName)(pdf.pos, pdf.annotations)
         case p@PPredicate(idndef, formalArgs, body) => PPredicate(go(idndef), formalArgs map go, body map go)(p.pos, p.annotations)

@@ -150,7 +150,7 @@ trait PIdentifier {
 case class PIdnDef(name: String)(val pos: (Position, Position)) extends PNode with PIdentifier
 
 case class PIdnUse(name: String)(val pos: (Position, Position)) extends PExp with PIdentifier with PAssignTarget with PMaybeMacroExp {
-  var decl: PDeclaration = null
+  var decl: PTypedDeclaration = null
   override def macroArgs: Seq[PExp] = Seq()
   /* Should be set during resolving. Intended to preserve information
    * that is needed by the translator.
@@ -170,18 +170,18 @@ case class PUnnamedFormalArgDecl(var typ: PType)(val pos: (Position, Position)) 
 /** Any `var: Type` style binding, only useful during parsing and therefore not a `PNode`. */
 case class PVarDecl(idndef: PIdnDef, typ: PType)(val pos: (Position, Position))
 
-/** Anything that can be `PIdnUse`d as the receiver of a `PFieldAccess`. */
+/** Anything that can be `PIdnUse`d as an expression (e.g. the receiver of a `PFieldAccess`). */
 trait PAnyVarDecl extends PTypedDeclaration
 /** Anything that can be `PIdnUse`d as the target of a `PAssign`. */
 trait PAssignableVarDecl extends PAnyVarDecl
 
 /** Any argument to a method, function or predicate. */
-case class PFormalArgDecl(idndef: PIdnDef, typ: PType)(val pos: (Position, Position)) extends PAnyFormalArgDecl with PTypedDeclaration with PLocalDeclaration with PAnyVarDecl
+case class PFormalArgDecl(idndef: PIdnDef, typ: PType)(val pos: (Position, Position)) extends PAnyFormalArgDecl with PAnyVarDecl with PLocalDeclaration 
 object PFormalArgDecl {
   def apply(d: PVarDecl): PFormalArgDecl = PFormalArgDecl(d.idndef, d.typ)(d.pos)
 }
 /** The return arguments of methods. */
-case class PFormalReturnDecl(idndef: PIdnDef, typ: PType)(val pos: (Position, Position)) extends PTypedDeclaration with PLocalDeclaration with PAssignableVarDecl
+case class PFormalReturnDecl(idndef: PIdnDef, typ: PType)(val pos: (Position, Position)) extends PAssignableVarDecl with PLocalDeclaration
 object PFormalReturnDecl {
   def apply(d: PVarDecl): PFormalReturnDecl = PFormalReturnDecl(d.idndef, d.typ)(d.pos)
 }
@@ -191,14 +191,18 @@ object PFormalReturnDecl {
  * explicit type in the binding of the variable, i.e., "let x: T = e1 in e2",
  * would be rather cumbersome.
  */
-case class PLogicalVarDecl(idndef: PIdnDef, var typ: PType)(val pos: (Position, Position)) extends PTypedDeclaration with PLocalDeclaration with PAnyVarDecl
+case class PLogicalVarDecl(idndef: PIdnDef, var typ: PType)(val pos: (Position, Position)) extends PAnyVarDecl with PLocalDeclaration 
 object PLogicalVarDecl {
   def apply(d: PVarDecl): PLogicalVarDecl = PLogicalVarDecl(d.idndef, d.typ)(d.pos)
 }
 /** Declaration of a local variable. */
-case class PLocalVarDecl(idndef: PIdnDef, typ: PType)(val pos: (Position, Position)) extends PTypedDeclaration with PLocalDeclaration with PAssignableVarDecl
+case class PLocalVarDecl(idndef: PIdnDef, typ: PType)(val pos: (Position, Position)) extends PAssignableVarDecl with PLocalDeclaration 
 object PLocalVarDecl {
   def apply(d: PVarDecl): PLocalVarDecl = PLocalVarDecl(d.idndef, d.typ)(d.pos)
+}
+case class PFieldDecl(idndef: PIdnDef, typ: PType)(val pos: (Position, Position)) extends PTypedDeclaration with PGlobalDeclaration
+object PFieldDecl {
+  def apply(d: PVarDecl): PFieldDecl = PFieldDecl(d.idndef, d.typ)(d.pos)
 }
 
 // Types
@@ -1357,13 +1361,21 @@ abstract class PErrorEntity extends PEntity {
   def name: String
 }
 
-
-// a member (like method or axiom) that is its own name scope
-trait PMember extends PDeclaration with PScope {
-
+trait PAnnotated {
+  def annotations: Seq[(String, Seq[String])]
 }
 
-trait PAnyFunction extends PMember with PGlobalDeclaration with PTypedDeclaration {
+// a member (like method or axiom) that is its own name scope
+trait PMember extends PScope with PAnnotated {
+  def declares: Seq[PGlobalDeclaration]
+}
+
+/** Anything that is a PMember and declares only a single thing (itself) */
+trait PSingleMember extends PMember with PGlobalDeclaration {
+  override def declares = Seq(this)
+}
+
+trait PAnyFunction extends PSingleMember with PTypedDeclaration {
   def idndef: PIdnDef
 
   def formalArgs: Seq[PAnyFormalArgDecl]
@@ -1380,7 +1392,7 @@ case class PLocalImport(file: String)(val pos: (Position, Position)) extends PIm
 case class PStandardImport(file: String)(val pos: (Position, Position)) extends PImport()
 
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalReturnDecl], pres: Seq[PExp], posts: Seq[PExp], body: Option[PStmt])
-                  (val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PMember with PGlobalDeclaration {
+                  (val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PSingleMember {
   def deepCopy(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, formalReturns: Seq[PFormalReturnDecl] = this.formalReturns, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, body: Option[PStmt] = this.body): PMethod = {
     StrategyBuilder.Slim[PNode]({
       case p: PMethod => PMethod(idndef, formalArgs, formalReturns, pres, posts, body)(p.pos, p.annotations)
@@ -1398,7 +1410,7 @@ case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalRetur
 }
 
 case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom], interpretations: Option[Map[String, String]])
-                  (val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PMember with PGlobalDeclaration
+                  (val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PSingleMember
 case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp])
                     (val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PAnyFunction {
   def deepCopy(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, typ: PType = this.typ, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, body: Option[PExp] = this.body): PFunction = {
@@ -1411,12 +1423,11 @@ case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PTyp
 case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl], typ: PType, unique: Boolean, interpretation: Option[String])
                           (val domainName:PIdnUse)(val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PAnyFunction
 case class PAxiom(idndef: Option[PIdnDef], exp: PExp)(val domainName:PIdnUse)(val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PScope
-case class PField(idndef: PIdnDef, typ: PType)(val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PMember with PTypedDeclaration with PGlobalDeclaration
-object PField {
-  def apply(d: PVarDecl): ((Position, Position), Seq[(String, Seq[String])]) => PField = PField(d.idndef, d.typ) _
+case class PField(fields: Seq[PFieldDecl])(val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PMember {
+  override def declares: Seq[PGlobalDeclaration] = fields
 }
 case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: Option[PExp])
-                     (val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PMember with PTypedDeclaration with PGlobalDeclaration{
+                     (val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PSingleMember with PTypedDeclaration {
   val typ = PPredicateType()()
 }
 
@@ -1479,6 +1490,7 @@ object Nodes {
       case PFormalReturnDecl(idndef, typ) => Seq(idndef, typ)
       case PLogicalVarDecl(idndef, typ) => Seq(idndef, typ)
       case PLocalVarDecl(idndef, typ) => Seq(idndef, typ)
+      case PFieldDecl(idndef, typ) => Seq(idndef, typ)
       case PPrimitiv(_) => Nil
       case PDomainType(domain, args) => Seq(domain) ++ args
       case PSeqType(elemType) => Seq(elemType)
@@ -1560,7 +1572,7 @@ object Nodes {
         Seq()
       case PStandardImport(_) => Seq()
       case PDomain(idndef, typVars, funcs, axioms, _) => Seq(idndef) ++ typVars ++ funcs ++ axioms
-      case PField(idndef, typ) => Seq(idndef, typ)
+      case PField(fields) => fields
       case PMethod(idndef, args, rets, pres, posts, body) =>
         Seq(idndef) ++ args ++ rets ++ pres ++ posts ++ body.toSeq
       case PFunction(name, args, typ, pres, posts, body) =>

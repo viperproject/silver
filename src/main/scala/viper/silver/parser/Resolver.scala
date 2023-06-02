@@ -143,7 +143,7 @@ case class TypeChecker(names: NameAnalyser) {
 
   def check(f: PField): Unit = {
     checkMember(f) {
-      check(f.typ)
+      f.fields foreach (fd => check(fd.typ))
     }
   }
 
@@ -246,7 +246,7 @@ case class TypeChecker(names: NameAnalyser) {
             messages ++= FastMessaging.message(idnuse, "expected an assignable identifier as lhs")
         }
       case fa@PFieldAccess(_, field) => names.definition(curMember)(field, Some(PField.getClass)) match {
-          case Some(PField(_, typ)) =>
+          case Some(PFieldDecl(_, typ)) =>
             check(fa, typ)
           case _ =>
             messages ++= FastMessaging.message(field, "expected a field as lhs")
@@ -271,7 +271,7 @@ case class TypeChecker(names: NameAnalyser) {
         check(target, Ref)
         fieldsOpt map (_.foreach (field =>
           names.definition(curMember)(field) match {
-            case Some(PField(_, typ)) =>
+            case Some(PFieldDecl(_, typ)) =>
               check(field, typ)
             case _ =>
               messages ++= FastMessaging.message(stmt, "expected a field as argument")
@@ -577,7 +577,7 @@ case class TypeChecker(names: NameAnalyser) {
       setType(PUnknown()())
     }
 
-    def setPIdnUseTypeAndEntity(piu: PIdnUse, typ: PType, entity: PDeclaration): Unit = {
+    def setPIdnUseTypeAndEntity(piu: PIdnUse, typ: PType, entity: PTypedDeclaration): Unit = {
       setType(typ)
       piu.decl = entity
     }
@@ -696,7 +696,7 @@ case class TypeChecker(names: NameAnalyser) {
                   /* More complicated expressions should be ok if of type Ref, which is checked next */
                 }
 
-                acceptAndCheckTypedEntity[PField, Nothing](Seq(idnuse), "expected field")(
+                acceptAndCheckTypedEntity[PFieldDecl, Nothing](Seq(idnuse), "expected field")(
                   (id, _) => checkInternal(id))
 
               case PAccPred(loc, _) =>

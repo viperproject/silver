@@ -1299,8 +1299,8 @@ class FastParser {
 
   def axiomDecl[$: P]: P[PAxiom1] = FP(annotation.rep(0) ~ keyword("axiom") ~ idndef.? ~ "{" ~ exp ~ "}" ~~~ ";".lw.?).map { case (pos, (anns, a, b)) => PAxiom1(a, b)(pos, anns) }
 
-  def fieldDecl[$: P]: P[Seq[PField]] = FP(annotation.rep(0) ~ keyword("field") ~/ nonEmptyVarDeclList ~~~ ";".lw.?).map {
-    case (pos, (anns, a)) => a.map(PField(_)(pos, anns))
+  def fieldDecl[$: P]: P[PField] = FP(annotation.rep(0) ~ keyword("field") ~/ nonEmptyVarDeclList ~~~ ";".lw.?).map {
+    case (pos, (anns, a)) => PField(a.map(PFieldDecl(_)))(pos, anns)
   }
 
   def functionDecl[$: P]: P[PFunction] = FP(annotation.rep(0) ~ "function" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~~~ precondition.lw.rep ~~~

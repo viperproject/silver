@@ -51,7 +51,7 @@ case class Translator(program: PProgram) {
          */
         val extensions = pextensions map translate
         val domain = (pdomains map translate) ++ extensions filter (t => t.isInstanceOf[Domain])
-        val fields = (pfields map translate) ++ extensions filter (t => t.isInstanceOf[Field])
+        val fields = (pfields flatMap (_.fields map translate)) ++ extensions filter (t => t.isInstanceOf[Field])
         val functions = (pfunctions map translate) ++ extensions filter (t => t.isInstanceOf[Function])
         val predicates = (ppredicates map translate) ++ extensions filter (t => t.isInstanceOf[Predicate])
         val methods = (pmethods map translate) ++ extensions filter (t => t.isInstanceOf[Method])
@@ -126,7 +126,7 @@ case class Translator(program: PProgram) {
       pp
   }
 
-  private def translate(f: PField) = findField(f.idndef)
+  private def translate(f: PFieldDecl) = findField(f.idndef)
 
   private val members = collection.mutable.HashMap[String, Node]()
   def getMembers() = members
@@ -139,24 +139,24 @@ case class Translator(program: PProgram) {
     *           method call no longer needs the method node, the method name (as a string)
     *           suffices
     */
-  private def translateMemberSignature(p: PMember): Unit = {
-    val pos = p
-    val name = p.idndef.name
-    val t = p match {
-      case pf@PField(_, typ) =>
-        Field(name, ttyp(typ))(pos, toInfo(pf.annotations, pf))
+  private def translateMemberSignature(p: PMember): Unit = p.declares foreach { decl =>
+    val pos = decl
+    val name = decl.idndef.name
+    val t = decl match {
+      case pf@PFieldDecl(_, typ) =>
+        Field(name, ttyp(typ))(pos, toInfo(p.annotations, pf))
       case pf@PFunction(_, formalArgs, typ, _, _, _) =>
-        Function(name, formalArgs map liftArgDecl, ttyp(typ), null, null, null)(pos, toInfo(pf.annotations, pf))
+        Function(name, formalArgs map liftArgDecl, ttyp(typ), null, null, null)(pos, toInfo(p.annotations, pf))
       case pdf@ PDomainFunction(_, args, typ, unique, interp) =>
-        DomainFunc(name, args map liftAnyArgDecl, ttyp(typ), unique, interp)(pos,toInfo(pdf.annotations, pdf),pdf.domainName.name)
+        DomainFunc(name, args map liftAnyArgDecl, ttyp(typ), unique, interp)(pos,toInfo(p.annotations, pdf),pdf.domainName.name)
       case pd@PDomain(_, typVars, _, _, interp) =>
-        Domain(name, null, null, typVars map (t => TypeVar(t.idndef.name)), interp)(pos, toInfo(pd.annotations, pd))
+        Domain(name, null, null, typVars map (t => TypeVar(t.idndef.name)), interp)(pos, toInfo(p.annotations, pd))
       case pp@PPredicate(_, formalArgs, _) =>
-        Predicate(name, formalArgs map liftArgDecl, null)(pos, toInfo(pp.annotations, pp))
+        Predicate(name, formalArgs map liftArgDecl, null)(pos, toInfo(p.annotations, pp))
       case pm@PMethod(_, formalArgs, formalReturns, _, _, _) =>
-        Method(name, formalArgs map liftArgDecl, formalReturns map liftReturnDecl, null, null, null)(pos, toInfo(pm.annotations, pm))
+        Method(name, formalArgs map liftArgDecl, formalReturns map liftReturnDecl, null, null, null)(pos, toInfo(p.annotations, pm))
     }
-    members.put(p.idndef.name, t)
+    members.put(decl.idndef.name, t)
   }
 
   def toInfo(annotations: Seq[(String, Seq[String])], node: PNode): Info = {
@@ -169,9 +169,9 @@ case class Translator(program: PProgram) {
 
   private def translateMemberSignature(p: PExtender): Unit ={
     p match {
-      case t: PMember =>
+      case _: PMember =>
         val l = p.translateMemberSignature(this)
-        members.put(t.idndef.name, l)
+        members.put(l.name, l)
     }
   }
 
@@ -197,7 +197,7 @@ case class Translator(program: PProgram) {
       case PAssign(Seq(target), PNewExp(fieldsOpt)) =>
         val fields = fieldsOpt match {
           // Note that this will not use any fields that extensions declare
-          case None => program.fields map translate
+          case None => program.fields flatMap (_.fields map translate)
           case Some(pfields) => pfields map findField
         }
         fieldAssignStmt(s, Seq(target), lv => NewStmt(lv.head, fields)(pos, info))
@@ -343,7 +343,7 @@ case class Translator(program: PProgram) {
     pexp match {
       case piu @ PIdnUse(name) =>
         piu.decl match {
-          case _: PAssignableVarDecl => LocalVar(name, ttyp(pexp.typ))(pos, info)
+          case _: PAnyVarDecl => LocalVar(name, ttyp(pexp.typ))(pos, info)
           case pf: PField =>
             /* A malformed AST where a field is dereferenced without a receiver */
             Consistency.messages ++= FastMessaging.message(piu, s"expected expression but found field $name")
