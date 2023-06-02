@@ -269,13 +269,7 @@ case class TypeChecker(names: NameAnalyser) {
         }
       case PAssign(Seq(target), PNewExp(fieldsOpt)) =>
         check(target, Ref)
-        fieldsOpt map (_.foreach (field =>
-          names.definition(curMember)(field) match {
-            case Some(PFieldDecl(_, typ)) =>
-              check(field, typ)
-            case _ =>
-              messages ++= FastMessaging.message(stmt, "expected a field as argument")
-          }))
+        fieldsOpt map (acceptAndCheckTypedEntity[PFieldDecl, Nothing](_, "expected a field as argument"))
       case PAssign(Seq(lhs), rhs) => check(rhs, lhs.typ)
       // Case `targets.length != 1`:
       case _ => messages ++= FastMessaging.message(stmt, "expected a method call")
@@ -304,19 +298,11 @@ case class TypeChecker(names: NameAnalyser) {
 
   def acceptNonAbstractPredicateAccess(exp: PExp, messageIfAbstractPredicate: String): Unit = {
     exp match {
-      case PAccPred(PPredicateAccess(_, idnuse), _) =>
-        acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate") { (_, _predicate) =>
-          val predicate = _predicate.asInstanceOf[PPredicate]
-          if (predicate.body.isEmpty) messages ++= FastMessaging.message(idnuse, messageIfAbstractPredicate)
-        }
       case PAccPred(PCall(idnuse, _, _), _) =>
         val ad = names.definition(curMember)(idnuse)
         ad match {
-          case Some(_: PPredicate) =>
-            acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate") { (_, _predicate) =>
-              val predicate = _predicate.asInstanceOf[PPredicate]
-              if (predicate.body.isEmpty) messages ++= FastMessaging.message(idnuse, messageIfAbstractPredicate)
-            }
+          case Some(predicate: PPredicate) =>
+            if (predicate.body.isEmpty) messages ++= FastMessaging.message(idnuse, messageIfAbstractPredicate)
           case _ => messages ++= FastMessaging.message(exp, "expected predicate access")
         }
 
@@ -355,8 +341,7 @@ case class TypeChecker(names: NameAnalyser) {
     *            TODO: If only a single T is taken, let handle be (PIdnUse, T) => Unit
     */
   def acceptAndCheckTypedEntity[T1: ClassTag, T2: ClassTag]
-  (idnUses: Seq[PIdnUse], errorMessage: String)
-  (handle: (PIdnUse, PTypedDeclaration) => Unit = (_, _) => ()): Unit = {
+  (idnUses: Seq[PIdnUse], errorMessage: => String): Unit = {
 
     /* TODO: Ensure that the ClassTags denote subtypes of TypedEntity */
     val acceptedClasses = Seq[Class[_]](classTag[T1].runtimeClass, classTag[T2].runtimeClass)
@@ -366,7 +351,9 @@ case class TypeChecker(names: NameAnalyser) {
 
       acceptedClasses.find(_.isInstance(decl)) match {
         case Some(_) =>
-          handle(use, decl.asInstanceOf[PTypedDeclaration])
+          val td = decl.asInstanceOf[PTypedDeclaration]
+          use.typ = td.typ
+          use.decl = td
         case None =>
           messages ++= FastMessaging.message(use, errorMessage)
       }
@@ -579,11 +566,6 @@ case class TypeChecker(names: NameAnalyser) {
       setType(PUnknown()())
     }
 
-    def setPIdnUseTypeAndEntity(piu: PIdnUse, typ: PType, entity: PTypedDeclaration): Unit = {
-      setType(typ)
-      piu.decl = entity
-    }
-
     def getFreshTypeSubstitution(tvs: Seq[PDomainType]): PTypeRenaming =
       PTypeVar.freshTypeSubstitutionPTVs(tvs)
 
@@ -667,11 +649,10 @@ case class TypeChecker(names: NameAnalyser) {
                     case Some(ppa: PPredicate) =>
                       pfa.extfunction = ppa
                       val predicate = names.definition(curMember)(func).get.asInstanceOf[PPredicate]
-                      acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(func), "expected predicate") { (id, _) =>
-                        checkInternal(id)
-                        if (args.length != predicate.formalArgs.length)
-                          issueError(func, "predicate arity doesn't match")
-                      }
+                      acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(func), "expected predicate")
+                      if (args.length != predicate.formalArgs.length)
+                        issueError(func, "predicate arity doesn't match")
+                      //}
                     case _ =>
                       issueError(func, "expected function or predicate ")
                   }
@@ -686,20 +667,9 @@ case class TypeChecker(names: NameAnalyser) {
               case PApplying(wand, _) =>
                 checkMagicWand(wand)
 
-              case PFieldAccess(rcv, idnuse) =>
-                /* For a field access of the type rcv.fld we have to ensure that the
-                 * receiver denotes a local variable. Just checking that it is of type
-                 * Ref is not sufficient, since it could also denote a Ref-typed field.
-                 */
-                rcv match {
-                  case p: PIdnUse =>
-                    acceptAndCheckTypedEntity[PAnyVarDecl, Nothing](Seq(p), "expected local variable")()
-                  case _ =>
-                  /* More complicated expressions should be ok if of type Ref, which is checked next */
-                }
-
-                acceptAndCheckTypedEntity[PFieldDecl, Nothing](Seq(idnuse), "expected field")(
-                  (id, _) => checkInternal(id))
+              // We checked that the `rcv` is valid above with `poa.args.foreach(checkInternal)`
+              case PFieldAccess(_, idnuse) =>
+                acceptAndCheckTypedEntity[PFieldDecl, Nothing](Seq(idnuse), "expected field")
 
               case PAccPred(loc, _) =>
                 loc match {
@@ -709,15 +679,6 @@ case class TypeChecker(names: NameAnalyser) {
                     issueError(loc, "specified location is not a field nor a predicate")
                 }
 
-              case ppa@PPredicateAccess(args, idnuse) =>
-                val predicate = names.definition(curMember)(ppa.idnuse).get.asInstanceOf[PPredicate]
-                acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate") { (id, _) =>
-                  checkInternal(id)
-                  if (args.length != predicate.formalArgs.length)
-                    issueError(idnuse, "predicate arity doesn't match")
-                  else
-                    ppa.predicate = predicate
-                }
               case pecl: PEmptyCollectionLiteral if !pecl.pElementType.isValidOrUndeclared =>
                 check(pecl.pElementType)
 
@@ -761,11 +722,8 @@ case class TypeChecker(names: NameAnalyser) {
           }
         }
 
-      case piu@PIdnUse(_) =>
-        names.definition(curMember)(piu) match {
-          case Some(decl: PTypedDeclaration) => setPIdnUseTypeAndEntity(piu, decl.typ, decl)
-          case x => issueError(piu, s"expected identifier, but got ${x.get}")
-        }
+      case piu: PIdnUse =>
+        acceptAndCheckTypedEntity[PAnyVarDecl, Nothing](Seq(piu), "expected variable identifier")
 
       case pl@PLet(e, ns) =>
         val oldCurMember = curMember

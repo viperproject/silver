@@ -270,8 +270,8 @@ case class Translator(program: PProgram) {
     val ts = tTargets.zipWithIndex.map {
       case (lv: LocalVar, _) => (None, lv)
       case (fa: FieldAccess, i) => {
-        val rcv = LocalVar(s"__silver_rcv_$i", fa.typ)()
-        val tgt = LocalVar(s"__silver_tgt_$i", fa.typ)()
+        val rcv = LocalVar(s"__silver_rcv_$i", fa.typ)(fa.rcv.pos)
+        val tgt = LocalVar(s"__silver_tgt_$i", fa.typ)(fa.pos)
         val rcvFa = FieldAccess(rcv, fa.field)(fa.pos, fa.info, fa.errT)
         (Some((rcv, fa.rcv, rcvFa, tgt)), tgt)
       }
@@ -284,9 +284,9 @@ case class Translator(program: PProgram) {
     if (!Consistency.noDuplicates(tmps.map(_._3.field)))
       Consistency.messages ++= FastMessaging.message(errorNode, s"target fields are not allowed to have duplicates")
     Seqn(
-      tmps.map { case (rcv, e, _, _) => LocalVarAssign(rcv, e)() } ++
+      tmps.map { case (rcv, e, _, _) => LocalVarAssign(rcv, e)(e.pos) } ++
       Seq(assn) ++
-      tmps.map { case (_, _, rcvFa, tgt) => FieldAssign(rcvFa, tgt)() },
+      tmps.map { case (_, _, rcvFa, tgt) => FieldAssign(rcvFa, tgt)(rcvFa.pos) },
       tmps.flatMap(t => Seq(t._1, t._4)).map(lv => LocalVarDecl(lv.name, lv.typ)())
     )(assn.pos, assn.info)
   }
@@ -414,7 +414,7 @@ case class Translator(program: PProgram) {
             l.typ match {
               case Int => GtCmp(l, r)(pos, info)
               case Perm => PermGtCmp(l, r)(pos, info)
-              case _ => sys.error("unexpected type")
+              case _ => sys.error("unexpected type " + l.typ.toString())
             }
           case ">=" =>
             l.typ match {
@@ -473,8 +473,6 @@ case class Translator(program: PProgram) {
         NullLit()(pos, info)
       case PFieldAccess(rcv, idn) =>
         FieldAccess(exp(rcv), findField(idn))(pos, info)
-      case PPredicateAccess(args, idn) =>
-        PredicateAccess(args map exp, findPredicate(idn).name)(pos, info)
       case PMagicWandExp(left, right) => MagicWand(exp(left), exp(right))(pos, info)
       case pfa@PCall(func, args, _) =>
         members(func.name) match {

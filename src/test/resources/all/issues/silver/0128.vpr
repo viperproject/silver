@@ -9,6 +9,6 @@ method deposit()
 {}
 
 method deposit2()
-  //:: ExpectedOutput(consistency.error)
+  //:: ExpectedOutput(typechecker.error)
   ensures  balance == balance
 {}

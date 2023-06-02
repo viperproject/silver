@@ -54,7 +54,6 @@ object Transformer {
         case _: PBoolLit => parent
         case _: PNullLit => parent
         case p@PFieldAccess(rcv, idnuse) => PFieldAccess(go(rcv), go(idnuse))(p.pos)
-        case p@PPredicateAccess(args, idnuse) => PPredicateAccess(args map go, go(idnuse))(p.pos)
         case p@PCall(func, args, explicitType) =>
           PCall(go(func), args map go, explicitType match {
             case Some(t) => Some(go(t))

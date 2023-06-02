@@ -859,16 +859,6 @@ case class PFieldAccess(rcv: PExp, idnuse: PIdnUse)(val pos: (Position, Position
   //setType()
 }
 
-case class PPredicateAccess(args: Seq[PExp], idnuse: PIdnUse)(val pos: (Position, Position)) extends PLocationAccess {
-  override final val opName = "acc"
-  var predicate: PPredicate = null
-
-  override def signatures = if (predicate == null) List() else
-    List(new PTypeSubstitution(
-      args.indices.map(i => POpApp.pArg(i).domain.name -> predicate.formalArgs(i).typ) :+
-        (POpApp.pRes.domain.name -> Pred)))
-}
-
 case class PUnfolding(acc: PAccPred, exp: PExp)(val pos: (Position, Position)) extends PHeapOpApp {
   override final val opName = "unfolding"
   override val args = Seq(acc, exp)
@@ -1520,7 +1510,6 @@ object Nodes {
       case PWandType() => Nil
       case PResultLit() => Nil
       case PFieldAccess(rcv, field) => Seq(rcv, field)
-      case PPredicateAccess(args, pred) => args ++ Seq(pred)
       case PCall(func, args, optType) => Seq(func) ++ args ++ (optType match {
         case Some(t) => Seq(t)
         case None => Nil
