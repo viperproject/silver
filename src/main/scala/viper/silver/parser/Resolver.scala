@@ -730,9 +730,8 @@ case class TypeChecker(names: NameAnalyser) {
         curMember = ns
         checkInternal(e)
         ns.variable.typ = e.typ
-        checkInternal(pl.body)
-        pl.typ = pl.body.typ
-        pl._typeSubstitutions = (for (ts1 <- pl.body.typeSubstitutions; ts2 <- e.typeSubstitutions) yield (ts1 * ts2).toOption).flatten.toList.distinct
+        checkInternal(ns.body)
+        pl.typ = ns.body.typ
         curMember = oldCurMember
 
       case pq: PForPerm =>

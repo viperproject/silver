@@ -151,6 +151,7 @@ case class PIdnDef(name: String)(val pos: (Position, Position)) extends PNode wi
 
 case class PIdnUse(name: String)(val pos: (Position, Position)) extends PExp with PIdentifier with PAssignTarget with PMaybeMacroExp {
   var decl: PTypedDeclaration = null
+  override def possibleMacro = Some(this)
   override def macroArgs: Seq[PExp] = Seq()
   /* Should be set during resolving. Intended to preserve information
    * that is needed by the translator.
@@ -637,7 +638,7 @@ object POpApp {
 case class PCall(func: PIdnUse, args: Seq[PExp], typeAnnotated: Option[PType] = None)(val pos: (Position, Position)) extends POpApp with PLocationAccess with PAssignTarget with PMaybeMacroExp {
   override val idnuse = func
   override val opName = func.name
-  override def name = func.name
+  override def possibleMacro = if (typeAnnotated.isEmpty) Some(idnuse) else None
   override def macroArgs = args
 
   override def signatures = if (function != null && function.formalArgs.size == args.size) (function match {
@@ -886,7 +887,9 @@ case class PApplying(wand: PExp, exp: PExp)(val pos: (Position, Position)) exten
     List(Map(POpApp.pArgS(0) -> Wand, POpApp.pResS -> POpApp.pArg(1)))
 }
 
-sealed trait PBinder extends PExp {
+sealed trait PBinder extends PExp with PScope {
+  def boundVars: Seq[PLogicalVarDecl]
+
   def body: PExp
 
   var _typeSubstitutions: List[PTypeSubstitution] = null
@@ -900,10 +903,10 @@ sealed trait PBinder extends PExp {
   }
 }
 
-sealed trait PQuantifier extends PBinder with PScope {
+sealed trait PQuantifier extends PBinder {
   def vars: Seq[PLogicalVarDecl]
-
   def triggers: Seq[PTrigger]
+  override def boundVars = vars
 }
 
 case class PExists(vars: Seq[PLogicalVarDecl], triggers: Seq[PTrigger], body: PExp)(val pos: (Position, Position)) extends PQuantifier
@@ -924,18 +927,18 @@ case class PForPerm(vars: Seq[PLogicalVarDecl], accessRes: PResourceAccess, body
  * by a flat `PLet(x, e1, e2) <: PScope`, then the let-bound variable `x` would
  * already be in scope while checking `e1`, which wouldn't be correct.
  */
-case class PLet(exp: PExp, nestedScope: PLetNestedScope)(val pos: (Position, Position)) extends PBinder {
-  override val body = nestedScope.body
-
+case class PLet(exp: PExp, nestedScope: PLetNestedScope)(val pos: (Position, Position)) extends PExp {
+  override def typeSubstitutions = (for (ts1 <- nestedScope.body.typeSubstitutions; ts2 <- exp.typeSubstitutions) yield (ts1 * ts2).toOption).flatten.toList.distinct
   override def forceSubstitution(ts: PTypeSubstitution) = {
-    super.forceSubstitution(ts)
     exp.forceSubstitution(ts)
-    body.forceSubstitution(ts)
     nestedScope.variable.typ = exp.typ
+    nestedScope.forceSubstitution(ts)
   }
 }
 
-case class PLetNestedScope(variable: PLogicalVarDecl, body: PExp)(val pos: (Position, Position)) extends PNode with PScope
+case class PLetNestedScope(variable: PLogicalVarDecl, body: PExp)(val pos: (Position, Position)) extends PNode with PBinder {
+  override val boundVars = Seq(variable)
+}
 
 case class PInhaleExhaleExp(in: PExp, ex: PExp)(val pos: (Position, Position)) extends PHeapOpApp {
   override val opName = "#inhale#exhale"
@@ -1338,7 +1341,7 @@ object PScope {
 
 // Macros
 sealed trait PMaybeMacroExp extends PExp {
-  def name: String
+  def possibleMacro: Option[PIdnUse]
   def macroArgs: Seq[PExp]
 }
 

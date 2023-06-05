@@ -38,3 +38,16 @@ method test4(x: Ref)
   //:: ExpectedOutput(assignment.failed:insufficient.permission)
   x.n := baz(x)
 }
+
+define Macro1(x, y, z) {
+  x.n, y.m := z()
+}
+define Macro2(z) {
+  var c: Ref, d: Ref := z()
+}
+method test5() {
+  var a: Ref, b: Ref
+  inhale acc(a.n) && acc(b.m)
+  Macro1(a, b, get_refs)
+  Macro2(get_refs)
+}
