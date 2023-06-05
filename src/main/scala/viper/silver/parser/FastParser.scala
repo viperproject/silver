@@ -1010,18 +1010,18 @@ class FastParser {
       PIdnDef(s)(pos)
     }
 
-  def quant[$: P]: P[PExp] = P(FP(keyword("forall") ~ nonEmptyVarDeclList ~ "::" ~ trigger.rep ~ exp).map {
+  def quant[$: P]: P[PExp] = P(FP(keyword("forall") ~ nonEmptyIdnTypeList ~ "::" ~ trigger.rep ~ exp).map {
     case (pos, (a, b, c)) =>
       PForall(a.map(PLogicalVarDecl(_)), b, c)(pos)
     } |
-    FP(keyword("exists") ~ nonEmptyVarDeclList ~ "::" ~ trigger.rep ~ exp).map {
+    FP(keyword("exists") ~ nonEmptyIdnTypeList ~ "::" ~ trigger.rep ~ exp).map {
       case (pos, (a, b, c)) =>
         PExists(a.map(PLogicalVarDecl(_)), b, c)(pos)
     })
 
-  def nonEmptyVarDeclList[$: P]: P[Seq[PVarDecl]] = P(varDecl.rep(min = 1, sep = ","))
+  def nonEmptyIdnTypeList[$: P]: P[Seq[PIdnTypeBinding]] = P(idnTypeBinding.rep(min = 1, sep = ","))
 
-  def varDecl[$: P]: P[PVarDecl] = FP(idndef ~ ":" ~ typ).map { case (pos, (a, b)) => PVarDecl(a, b)(pos) }
+  def idnTypeBinding[$: P]: P[PIdnTypeBinding] = FP(idndef ~ ":" ~ typ).map { case (pos, (a, b)) => PIdnTypeBinding(a, b)(pos) }
 
   def typ[$: P]: P[PType] = P(primitiveTyp | domainTyp | seqType | setType | multisetType | mapType | macroType)
 
@@ -1057,7 +1057,7 @@ class FastParser {
     case (pos, s) => PTrigger(s)(pos)
   }
 
-  def forperm[$: P]: P[PExp] = FP(keyword("forperm") ~ nonEmptyVarDeclList ~ "[" ~ resAcc ~ "]" ~ "::" ~ exp).map {
+  def forperm[$: P]: P[PExp] = FP(keyword("forperm") ~ nonEmptyIdnTypeList ~ "[" ~ resAcc ~ "]" ~ "::" ~ exp).map {
     case (pos, (args, res, body)) => PForPerm(args.map(PLogicalVarDecl(_)), res, body)(pos)
   }
 
@@ -1179,7 +1179,7 @@ class FastParser {
   }
 
   def quasihavocall[$: P]: P[PQuasihavocall] = FP(keyword("quasihavocall") ~/
-    nonEmptyVarDeclList ~ "::" ~ (magicWandExp ~ "==>").? ~ exp).map {
+    nonEmptyIdnTypeList ~ "::" ~ (magicWandExp ~ "==>").? ~ exp).map {
     case (pos, (vars, lhs, rhs)) => PQuasihavocall(vars.map(PLogicalVarDecl(_)), lhs, rhs)(pos)
   }
 
@@ -1207,7 +1207,7 @@ class FastParser {
 
   def invariant(implicit ctx : P[_]) : P[PExp] = P((keyword("invariant") ~ exp ~~~ ";".lw.?) | ParserExtension.invSpecification(ctx))
 
-  def localVars[$: P]: P[PVars] = FP(keyword("var") ~/ nonEmptyVarDeclList ~~~ (":=" ~ exp).lw.?).map {
+  def localVars[$: P]: P[PVars] = FP(keyword("var") ~/ nonEmptyIdnTypeList ~~~ (":=" ~ exp).lw.?).map {
     case (pos, (a, b)) => PVars(a.map(PLocalVarDecl(_)), b)(pos)
   }
 
@@ -1243,7 +1243,7 @@ class FastParser {
         decls.collect { case i: PImport => i }, // Imports
         decls.collect { case d: PDefine => d }, // Macros
         decls.collect { case d: PDomain => d }, // Domains
-        decls.collect { case f: PField => f }, // Fields
+        decls.collect { case f: PFields => f }, // Fields
         decls.collect { case f: PFunction => f }, // Functions
         decls.collect { case p: PPredicate => p }, // Predicates
         decls.collect { case m: PMethod => m }, // Methods
@@ -1289,18 +1289,18 @@ class FastParser {
 
   def anyFormalArgList[$: P]: P[Seq[PAnyFormalArgDecl]] = P((formalArg | unnamedFormalArg).rep(sep = ","))
 
-  def formalArg[$: P]: P[PFormalArgDecl] = P(varDecl.map(PFormalArgDecl(_)))
+  def formalArg[$: P]: P[PFormalArgDecl] = P(idnTypeBinding.map(PFormalArgDecl(_)))
 
   def unnamedFormalArg[$: P] = FP(typ).map{ case (pos, t) => PUnnamedFormalArgDecl(t)(pos) }
 
   def formalArgList[$: P]: P[Seq[PFormalArgDecl]] = P(formalArg.rep(sep = ","))
 
-  def formalReturnList[$: P]: P[Seq[PFormalReturnDecl]] = P(varDecl.map(PFormalReturnDecl(_)).rep(sep = ","))
+  def formalReturnList[$: P]: P[Seq[PFormalReturnDecl]] = P(idnTypeBinding.map(PFormalReturnDecl(_)).rep(sep = ","))
 
   def axiomDecl[$: P]: P[PAxiom1] = FP(annotation.rep(0) ~ keyword("axiom") ~ idndef.? ~ "{" ~ exp ~ "}" ~~~ ";".lw.?).map { case (pos, (anns, a, b)) => PAxiom1(a, b)(pos, anns) }
 
-  def fieldDecl[$: P]: P[PField] = FP(annotation.rep(0) ~ keyword("field") ~/ nonEmptyVarDeclList ~~~ ";".lw.?).map {
-    case (pos, (anns, a)) => PField(a.map(PFieldDecl(_)))(pos, anns)
+  def fieldDecl[$: P]: P[PFields] = FP(annotation.rep(0) ~ keyword("field") ~/ nonEmptyIdnTypeList ~~~ ";".lw.?).map {
+    case (pos, (anns, a)) => PFields(a.map(PFieldDecl(_)))(pos, anns)
   }
 
   def functionDecl[$: P]: P[PFunction] = FP(annotation.rep(0) ~ "function" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~~~ precondition.lw.rep ~~~

@@ -46,6 +46,7 @@ object Transformer {
         case p@PMapType(keyType, valueType) => PMapType(go(keyType), go(valueType))(p.pos)
         case _: PUnknown => parent
         case _: PPredicateType | _: PWandType => parent
+        case PFunctionType(argTypes, resultType) => PFunctionType(argTypes map go, go(resultType))
         case p@PMagicWandExp(left, right) => PMagicWandExp(go(left), go(right))(p.pos)
         case p@PBinExp(left, op, right) => PBinExp(go(left), op, go(right))(p.pos)
         case p@PUnExp(op, exp) => PUnExp(op, go(exp))(p.pos)
@@ -150,7 +151,7 @@ object Transformer {
         case p@PStandardImport(file) => PStandardImport(file)(p.pos)
         case p@PMethod(idndef, formalArgs, formalReturns, pres, posts, body) => PMethod(go(idndef), formalArgs map go, formalReturns map go, pres map go, posts map go, body map go)(p.pos, p.annotations)
         case p@PDomain(idndef, typVars, funcs, axioms, interp) => PDomain(go(idndef), typVars map go, funcs map go, axioms map go, interp)(p.pos, p.annotations)
-        case p@PField(fields) => PField(fields map go)(p.pos, p.annotations)
+        case p@PFields(fields) => PFields(fields map go)(p.pos, p.annotations)
         case p@PFunction(idndef, formalArgs, typ, pres, posts, body) => PFunction(go(idndef), formalArgs map go, go(typ), pres map go, posts map go, body map go)(p.pos, p.annotations)
         case pdf@PDomainFunction(idndef, formalArgs, typ, unique, interp) => PDomainFunction(go(idndef), formalArgs map go, go(typ), unique, interp)(domainName = pdf.domainName)(pdf.pos, pdf.annotations)
         case p@PPredicate(idndef, formalArgs, body) => PPredicate(go(idndef), formalArgs map go, body map go)(p.pos, p.annotations)

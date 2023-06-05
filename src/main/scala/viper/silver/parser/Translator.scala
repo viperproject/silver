@@ -191,7 +191,7 @@ case class Translator(program: PProgram) {
     val subInfo = NoInfo
     s match {
       case PAssign(targets, PCall(method, args, _)) if members(method.name).isInstanceOf[Method] =>
-        fieldAssignStmt(s, targets, ts => MethodCall(findMethod(method), args map exp, ts)(pos, info))
+        methodCallAssign(s, targets, ts => MethodCall(findMethod(method), args map exp, ts)(pos, info))
       case PAssign(targets, _) if targets.length != 1 =>
         sys.error(s"Found non-unary target of assignment")
       case PAssign(Seq(target), PNewExp(fieldsOpt)) =>
@@ -200,7 +200,7 @@ case class Translator(program: PProgram) {
           case None => program.fields flatMap (_.fields map translate)
           case Some(pfields) => pfields map findField
         }
-        fieldAssignStmt(s, Seq(target), lv => NewStmt(lv.head, fields)(pos, info))
+        methodCallAssign(s, Seq(target), lv => NewStmt(lv.head, fields)(pos, info))
       case PAssign(Seq(idnuse: PIdnUse), rhs) =>
         LocalVarAssign(LocalVar(idnuse.name, ttyp(idnuse.typ))(pos, subInfo), exp(rhs))(pos, info)
       case PAssign(Seq(field: PFieldAccess), rhs) =>
@@ -209,12 +209,7 @@ case class Translator(program: PProgram) {
         // there are no declarations in the Viper AST; rather they are part of the scope signature
         init match {
           case Some(assign) =>
-            val tgts = vars.map(v => {
-              val idnuse = PIdnUse(v.idndef.name)(v.idndef.pos)
-              idnuse.typ = v.typ
-              idnuse.decl = v
-              idnuse
-            })
+            val tgts = vars.map(_.toIdnUse)
             stmt(PAssign(tgts, assign)(lv.pos))
           case None => Statements.EmptyStmt
         }
@@ -265,15 +260,40 @@ case class Translator(program: PProgram) {
     }
   }
 
-  def fieldAssignStmt(errorNode: PNode, targets: Seq[PAssignTarget], assign: Seq[LocalVar] => Stmt): Stmt = {
+  /**
+    * Translates a simple PAst `a, b, c := methodCall(...)` to an Ast `a, b, c := methodCall(...)`. But if any
+    * targets are field accesses, then the translation is from `(exprA).f, b, (exprC).g := methodCall(...)` to
+    * ```
+    * {(scopedDecls: _receiver0, _target0, _receiver2, _target2)
+    *   _receiver0 := exprA
+    *   _receiver2 := exprC
+    *   _target0, b, _target2 := methodCall(...)
+    *   _receiver0.f := _target0
+    *   _receiver2.g := _target2
+    * }
+    * ```
+    */
+  def methodCallAssign(errorNode: PNode, targets: Seq[PAssignTarget], assign: Seq[LocalVar] => Stmt): Stmt = {
     val tTargets = targets map exp
     val ts = tTargets.zipWithIndex.map {
       case (lv: LocalVar, _) => (None, lv)
       case (fa: FieldAccess, i) => {
-        val rcv = LocalVar(s"__silver_rcv_$i", fa.typ)(fa.rcv.pos)
-        val tgt = LocalVar(s"__silver_tgt_$i", fa.typ)(fa.pos)
-        val rcvFa = FieldAccess(rcv, fa.field)(fa.pos, fa.info, fa.errT)
-        (Some((rcv, fa.rcv, rcvFa, tgt)), tgt)
+        // --- Before the call ---
+        val rcvDecl = LocalVarDecl(s"_receiver$i", fa.rcv.typ)()
+        val tgtDecl = LocalVarDecl(s"_target$i", fa.typ)()
+        // From the example translation above for the first target the values are:
+        // rcvUse: `_receiver0`
+        val rcvUse = LocalVar(rcvDecl.name, rcvDecl.typ)(fa.rcv.pos)
+        // rcvInit: `_receiver0 := exprA`
+        val rcvInit = LocalVarAssign(rcvUse, fa.rcv)(fa.rcv.pos)
+        // --- After the call ---
+        // tgtUse: `_target0`
+        val tgtUse = LocalVar(tgtDecl.name, tgtDecl.typ)(fa.pos)
+        // rcvFa: `_receiver0.f`
+        val rcvFa = FieldAccess(rcvUse, fa.field)(fa.pos, fa.info, fa.errT)
+        // faAssign: `_receiver0.f := _target0`
+        val faAssign = FieldAssign(rcvFa, tgtUse)(rcvFa.pos)
+        (Some((rcvDecl, tgtDecl, rcvInit, faAssign)), tgtUse)
       }
       case _ => sys.error(s"Found invalid target of assignment")
     }
@@ -281,13 +301,13 @@ case class Translator(program: PProgram) {
     val tmps = ts.flatMap(_._1)
     if (tmps.isEmpty)
       return assn
-    if (!Consistency.noDuplicates(tmps.map(_._3.field)))
-      Consistency.messages ++= FastMessaging.message(errorNode, s"target fields are not allowed to have duplicates")
+    if (!Consistency.noDuplicates(tmps.map(_._4.lhs.field)))
+      Consistency.messages ++= FastMessaging.message(errorNode, s"multiple targets which access the same field are not allowed")
     Seqn(
-      tmps.map { case (rcv, e, _, _) => LocalVarAssign(rcv, e)(e.pos) } ++
+      tmps.map(_._3) ++
       Seq(assn) ++
-      tmps.map { case (_, _, rcvFa, tgt) => FieldAssign(rcvFa, tgt)(rcvFa.pos) },
-      tmps.flatMap(t => Seq(t._1, t._4)).map(lv => LocalVarDecl(lv.name, lv.typ)())
+      tmps.map(_._4),
+      tmps.flatMap(t => Seq(t._1, t._2))
     )(assn.pos, assn.info)
   }
 
@@ -704,7 +724,7 @@ case class Translator(program: PProgram) {
     case t: PExtender => t.translateType(this)
     case PUnknown() =>
       sys.error("unknown type unexpected here")
-    case PFunctionType(_) =>
+    case _: PFunctionType =>
       sys.error("unexpected use of internal typ")
     case PPredicateType() =>
       sys.error("unexpected use of internal typ")

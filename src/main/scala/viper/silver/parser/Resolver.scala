@@ -141,7 +141,7 @@ case class TypeChecker(names: NameAnalyser) {
     }
   }
 
-  def check(f: PField): Unit = {
+  def check(f: PFields): Unit = {
     checkMember(f) {
       f.fields foreach (fd => check(fd.typ))
     }
@@ -212,9 +212,9 @@ case class TypeChecker(names: NameAnalyser) {
         check(cond, Bool)
         invs foreach (check(_, Bool))
         check(body)
-      case PVars(vars, initial) =>
+      case v@PVars(vars, initial) =>
         vars foreach (v => check(v.typ))
-        initial.map(i => check(PAssign(vars.map(v => PIdnUse(v.idndef.name)(v.idndef.pos)), i)(i.pos)))
+        initial.map(i => checkAssign(PAssign(vars.map(_.toIdnUse), i)(v.pos)))
       case _: PDefine =>
         /* Should have been removed right after parsing */
         sys.error(s"Unexpected node $stmt found")
@@ -245,7 +245,7 @@ case class TypeChecker(names: NameAnalyser) {
           case _ =>
             messages ++= FastMessaging.message(idnuse, "expected an assignable identifier as lhs")
         }
-      case fa@PFieldAccess(_, field) => names.definition(curMember)(field, Some(PField.getClass)) match {
+      case fa@PFieldAccess(_, field) => names.definition(curMember)(field, Some(PFields.getClass)) match {
           case Some(PFieldDecl(_, typ)) =>
             check(fa, typ)
           case _ =>
@@ -261,7 +261,7 @@ case class TypeChecker(names: NameAnalyser) {
         if (formalArgs.length != args.length) {
           messages ++= FastMessaging.message(stmt, "wrong number of arguments")
         } else if (formalTargets.length != targets.length) {
-            messages ++= FastMessaging.message(stmt, "wrong number of targets")
+          messages ++= FastMessaging.message(stmt, "wrong number of targets")
         } else {
           for ((formal, actual) <- (formalArgs zip args) ++ (formalTargets zip targets)) {
             check(actual, formal.typ)
@@ -400,7 +400,8 @@ case class TypeChecker(names: NameAnalyser) {
       case PMapType(keyType, valueType) =>
         check(keyType)
         check(valueType)
-      case PFunctionType(resultType) =>
+      case PFunctionType(argTypes, resultType) =>
+        argTypes map check
         check(resultType)
       case t: PExtender =>
         t.typecheck(this, names).getOrElse(Nil) foreach (message =>
@@ -652,7 +653,6 @@ case class TypeChecker(names: NameAnalyser) {
                       acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(func), "expected predicate")
                       if (args.length != predicate.formalArgs.length)
                         issueError(func, "predicate arity doesn't match")
-                      //}
                     case _ =>
                       issueError(func, "expected function or predicate ")
                   }
@@ -789,7 +789,7 @@ case class NameAnalyser() {
     * In order to resolve name clashes, e.g., if the identifier is expected to
     * refer to a field, but there is a local variable with the same name in the
     * member scope that shadows the field, then the `expected` class can be
-    * provided (e.g., `PField`), with the result that the shadowing local
+    * provided (e.g., `PFields`), with the result that the shadowing local
     * variable will be ignored because its class (`PVars`) doesn't
     * match.
     *

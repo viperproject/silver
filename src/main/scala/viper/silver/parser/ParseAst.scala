@@ -168,7 +168,7 @@ trait PAnyFormalArgDecl extends PNode with PUnnamedTypedDeclaration
 case class PUnnamedFormalArgDecl(var typ: PType)(val pos: (Position, Position)) extends PAnyFormalArgDecl
 
 /** Any `var: Type` style binding, only useful during parsing and therefore not a `PNode`. */
-case class PVarDecl(idndef: PIdnDef, typ: PType)(val pos: (Position, Position))
+case class PIdnTypeBinding(idndef: PIdnDef, typ: PType)(val pos: (Position, Position))
 
 /** Anything that can be `PIdnUse`d as an expression (e.g. the receiver of a `PFieldAccess`). */
 trait PAnyVarDecl extends PTypedDeclaration
@@ -176,14 +176,14 @@ trait PAnyVarDecl extends PTypedDeclaration
 trait PAssignableVarDecl extends PAnyVarDecl
 
 /** Any argument to a method, function or predicate. */
-case class PFormalArgDecl(idndef: PIdnDef, typ: PType)(val pos: (Position, Position)) extends PAnyFormalArgDecl with PAnyVarDecl with PLocalDeclaration 
+case class PFormalArgDecl(idndef: PIdnDef, typ: PType)(val pos: (Position, Position)) extends PAnyFormalArgDecl with PAnyVarDecl with PLocalDeclaration
 object PFormalArgDecl {
-  def apply(d: PVarDecl): PFormalArgDecl = PFormalArgDecl(d.idndef, d.typ)(d.pos)
+  def apply(d: PIdnTypeBinding): PFormalArgDecl = PFormalArgDecl(d.idndef, d.typ)(d.pos)
 }
 /** The return arguments of methods. */
 case class PFormalReturnDecl(idndef: PIdnDef, typ: PType)(val pos: (Position, Position)) extends PAssignableVarDecl with PLocalDeclaration
 object PFormalReturnDecl {
-  def apply(d: PVarDecl): PFormalReturnDecl = PFormalReturnDecl(d.idndef, d.typ)(d.pos)
+  def apply(d: PIdnTypeBinding): PFormalReturnDecl = PFormalReturnDecl(d.idndef, d.typ)(d.pos)
 }
 /** Any immutable variable binding, e.g. under quantifiers, let expressions.
  * [2014-11-13 Malte] Changed type to be a var, so that it can be updated
@@ -191,18 +191,25 @@ object PFormalReturnDecl {
  * explicit type in the binding of the variable, i.e., "let x: T = e1 in e2",
  * would be rather cumbersome.
  */
-case class PLogicalVarDecl(idndef: PIdnDef, var typ: PType)(val pos: (Position, Position)) extends PAnyVarDecl with PLocalDeclaration 
+case class PLogicalVarDecl(idndef: PIdnDef, var typ: PType)(val pos: (Position, Position)) extends PAnyVarDecl with PLocalDeclaration
 object PLogicalVarDecl {
-  def apply(d: PVarDecl): PLogicalVarDecl = PLogicalVarDecl(d.idndef, d.typ)(d.pos)
+  def apply(d: PIdnTypeBinding): PLogicalVarDecl = PLogicalVarDecl(d.idndef, d.typ)(d.pos)
 }
 /** Declaration of a local variable. */
-case class PLocalVarDecl(idndef: PIdnDef, typ: PType)(val pos: (Position, Position)) extends PAssignableVarDecl with PLocalDeclaration 
+case class PLocalVarDecl(idndef: PIdnDef, typ: PType)(val pos: (Position, Position)) extends PAssignableVarDecl with PLocalDeclaration {
+  def toIdnUse: PIdnUse = {
+    val use = PIdnUse(idndef.name)(idndef.pos)
+    use.typ = typ
+    use.decl = this
+    use
+  }
+}
 object PLocalVarDecl {
-  def apply(d: PVarDecl): PLocalVarDecl = PLocalVarDecl(d.idndef, d.typ)(d.pos)
+  def apply(d: PIdnTypeBinding): PLocalVarDecl = PLocalVarDecl(d.idndef, d.typ)(d.pos)
 }
 case class PFieldDecl(idndef: PIdnDef, typ: PType)(val pos: (Position, Position)) extends PTypedDeclaration with PGlobalDeclaration
 object PFieldDecl {
-  def apply(d: PVarDecl): PFieldDecl = PFieldDecl(d.idndef, d.typ)(d.pos)
+  def apply(d: PIdnTypeBinding): PFieldDecl = PFieldDecl(d.idndef, d.typ)(d.pos)
 }
 
 // Types
@@ -436,14 +443,16 @@ case class PWandType()(val pos: (Position, Position)) extends PInternalType {
   override def isValidOrUndeclared = true
 }
 
-/** 
+/** The type of a `PIdnUse` which refers to a function. Ensures that we get a
+ * typecheck error if we try to use a function as a value.
  */
-case class PFunctionType(resultType: PType) extends PType {
+case class PFunctionType(argTypes: Seq[PType], resultType: PType) extends PType {
   override val pos: (Position, Position) = resultType.pos
-  override def isValidOrUndeclared: Boolean = resultType.isValidOrUndeclared
-  override def substitute(ts: PTypeSubstitution): PType = this.copy(resultType = resultType.substitute(ts))
-  override def subNodes: Seq[PType] = Seq(resultType)
-  override def toString = "$fn:" + resultType.toString
+  override def isValidOrUndeclared: Boolean = subNodes.forall(_.isValidOrUndeclared)
+  override def substitute(ts: PTypeSubstitution): PType =
+    PFunctionType(argTypes.map(_.substitute(ts)), resultType.substitute(ts))
+  override def subNodes: Seq[PType] = argTypes ++ Seq(resultType)
+  override def toString = argTypes.mkString("(", ",", ")") + ":" + resultType.toString
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -1381,10 +1390,10 @@ trait PAnyFunction extends PSingleMember with PTypedDeclaration {
   def formalArgs: Seq[PAnyFormalArgDecl]
 
   def resultType: PType
-  override def typ: PFunctionType = PFunctionType(resultType)
+  override def typ: PFunctionType = PFunctionType(formalArgs.map(_.typ), resultType)
 }
 
-case class PProgram(imports: Seq[PImport], macros: Seq[PDefine], domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod], extensions: Seq[PExtender], errors: Seq[ParseReport])(val pos: (Position, Position)) extends PNode
+case class PProgram(imports: Seq[PImport], macros: Seq[PDefine], domains: Seq[PDomain], fields: Seq[PFields], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod], extensions: Seq[PExtender], errors: Seq[ParseReport])(val pos: (Position, Position)) extends PNode
 
 abstract class PImport() extends PNode
 
@@ -1424,7 +1433,7 @@ case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], resultTyp
 case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl], resultType: PType, unique: Boolean, interpretation: Option[String])
                           (val domainName:PIdnUse)(val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PAnyFunction
 case class PAxiom(idndef: Option[PIdnDef], exp: PExp)(val domainName:PIdnUse)(val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PScope
-case class PField(fields: Seq[PFieldDecl])(val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PMember {
+case class PFields(fields: Seq[PFieldDecl])(val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PMember {
   override def declares: Seq[PGlobalDeclaration] = fields
 }
 case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: Option[PExp])
@@ -1499,6 +1508,9 @@ object Nodes {
       case PMultisetType(elemType) => Seq(elemType)
       case PMapType(keyType, valueType) => Seq(keyType, valueType)
       case PUnknown() => Nil
+      case PPredicateType() => Nil
+      case PWandType() => Nil
+      case PFunctionType(args, result) => args ++ Seq(result)
       case PBinExp(left, _, right) => Seq(left, right)
       case PMagicWandExp(left, right) => Seq(left, right)
       case PUnExp(_, exp) => Seq(exp)
@@ -1506,8 +1518,6 @@ object Nodes {
       case PIntLit(_) => Nil
       case PBoolLit(_) => Nil
       case PNullLit() => Nil
-      case PPredicateType() => Nil
-      case PWandType() => Nil
       case PResultLit() => Nil
       case PFieldAccess(rcv, field) => Seq(rcv, field)
       case PCall(func, args, optType) => Seq(func) ++ args ++ (optType match {
@@ -1572,7 +1582,7 @@ object Nodes {
         Seq()
       case PStandardImport(_) => Seq()
       case PDomain(idndef, typVars, funcs, axioms, _) => Seq(idndef) ++ typVars ++ funcs ++ axioms
-      case PField(fields) => fields
+      case PFields(fields) => fields
       case PMethod(idndef, args, rets, pres, posts, body) =>
         Seq(idndef) ++ args ++ rets ++ pres ++ posts ++ body.toSeq
       case PFunction(name, args, typ, pres, posts, body) =>
