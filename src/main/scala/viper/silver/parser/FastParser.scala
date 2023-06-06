@@ -495,17 +495,20 @@ class FastParser {
       })
 
     def linearizeMethod(method: PMethod): PMethod = {
-      def linearizeSeqOfNestedStmt(pseqn: PSeqn): Seq[PStmt] = {
+      def linearizeSeqOfNestedStmt(ss: Seq[PStmt]): Seq[PStmt] = {
         var stmts = Seq.empty[PStmt]
-        pseqn.ss.foreach {
-          case s: PSeqn => stmts = stmts ++ linearizeSeqOfNestedStmt(s)
+        ss.foreach {
+          case s: PMacroSeqn => stmts = stmts ++ linearizeSeqOfNestedStmt(s.ss)
+          case s@PSeqn(ss) => stmts = stmts :+ PSeqn(linearizeSeqOfNestedStmt(ss))(s.pos)
+          case i@PIf(cond, t@PSeqn(thn), e@PSeqn(els)) => stmts = stmts :+ PIf(cond, PSeqn(linearizeSeqOfNestedStmt(thn))(t.pos), PSeqn(linearizeSeqOfNestedStmt(els))(e.pos))(i.pos)
+          case w@PWhile(cond, invs, b@PSeqn(body)) => stmts = stmts :+ PWhile(cond, invs, PSeqn(linearizeSeqOfNestedStmt(body))(b.pos))(w.pos)
           case v => stmts = stmts :+ v
         }
         stmts
       }
 
       val body = method.body match {
-        case Some(s: PSeqn) => Some(PSeqn(linearizeSeqOfNestedStmt(s))(method.pos))
+        case Some(s: PSeqn) => Some(PSeqn(linearizeSeqOfNestedStmt(s.ss))(method.pos))
         case v => v
       }
 
@@ -678,7 +681,10 @@ class FastParser {
     def replacerOnBody(body: PNode, paramToArgMap: Map[String, PExp], pos: (Position, Position)): PNode = {
 
       // Duplicate the body of the macro to allow for differing type checks depending on the context
-      val replicatedBody = body.deepCopyAll
+      val replicatedBody = body.deepCopyAll match {
+        case s@PSeqn(ss) => PMacroSeqn(ss)(s.pos)
+        case b => b
+      }
 
       // Rename locally bound variables in macro's body
       var bodyWithRenamedVars = renamer.execute[PNode](replicatedBody)
@@ -975,7 +981,7 @@ class FastParser {
       FP("perm" ~ parens(resAcc)).map{ case (pos, r) => PCurPerm(r)(pos)})
 
   def let[$: P]: P[PExp] =
-    FP("let" ~/ FP(idndef) ~ "==" ~ "(" ~ exp ~ ")" ~ "in" ~ FP(exp)).map {
+    FP("let" ~ FP(idndef) ~ "==" ~/ "(" ~ exp ~ ")" ~ "in" ~ FP(exp)).map {
       case (pos, (idpos, id, exp1, (e2pos, exp2))) =>
       /* Type unresolvedType is expected to be replaced with the type of exp1
        * after the latter has been resolved
