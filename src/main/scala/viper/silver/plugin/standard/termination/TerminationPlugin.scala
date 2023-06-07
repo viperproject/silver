@@ -116,7 +116,8 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
   }
 
   override def beforeTranslate(input: PProgram): PProgram = {
-    val allClauses = decreasesClauses.flatMap{
+    val allClauses: Set[Any] = decreasesClauses.flatMap{
+      case PDecreasesTuple(Seq(), _) => Seq(())
       case PDecreasesTuple(exps, _) => exps.map(e => e.typ match {
         case PUnknown() if e.isInstanceOf[PCall] => e.asInstanceOf[PCall].idnuse.typ
         case _ => e.typ
@@ -135,6 +136,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
       case PSetType(_) if !presentDomains.contains("SetWellFoundedOrder") => Some("import <decreases/set.vpr>")
       case PPredicateType() if !presentDomains.contains("PredicateInstancesWellFoundedOrder") =>
         Some("import <decreases/predicate_instance.vpr>")
+      case _ if !presentDomains.contains("WellFoundedOrder") => Some("import <decreases/declaration.vpr>")
       case _ => None
     }
     if (importStmts.nonEmpty) {
