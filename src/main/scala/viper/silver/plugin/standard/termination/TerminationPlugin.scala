@@ -31,7 +31,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
 
   private def deactivated: Boolean = config != null && config.terminationPlugin.toOption.getOrElse(false)
 
-  private var decreasesClauses: Set[PDecreasesClause] = Set.empty
+  private var decreasesClauses: Seq[PDecreasesClause] = Seq.empty
 
   /**
    * Keyword used to define decreases clauses
@@ -100,10 +100,10 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
     // Apply the predicate access to instance transformation only to decreases clauses.
     val newProgram: PProgram = StrategyBuilder.Slim[PNode]({
       case dt: PDecreasesTuple =>
-        decreasesClauses = decreasesClauses + dt
+        decreasesClauses = decreasesClauses :+ dt
         transformPredicateInstances.execute(dt): PDecreasesTuple
       case dc : PDecreasesClause =>
-        decreasesClauses = decreasesClauses + dc
+        decreasesClauses = decreasesClauses :+ dc
         dc
       case d => d
     }).recurseFunc({ // decreases clauses can only appear in functions/methods pres and methods bodies
@@ -116,17 +116,17 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
   }
 
   override def beforeTranslate(input: PProgram): PProgram = {
-    val allClauses: Set[Any] = decreasesClauses.flatMap{
+    val allClauseTypes: Set[Any] = decreasesClauses.flatMap{
       case PDecreasesTuple(Seq(), _) => Seq(())
       case PDecreasesTuple(exps, _) => exps.map(e => e.typ match {
         case PUnknown() if e.isInstanceOf[PCall] => e.asInstanceOf[PCall].idnuse.typ
         case _ => e.typ
       })
       case _ => Seq()
-    }
+    }.toSet
     val presentDomains = input.domains.map(_.idndef.name).toSet
 
-    val importStmts = allClauses flatMap {
+    val importStmts = allClauseTypes flatMap {
       case TypeHelper.Int if !presentDomains.contains("IntWellFoundedOrder") => Some("import <decreases/int.vpr>")
       case TypeHelper.Ref if !presentDomains.contains("RefWellFoundedOrder") => Some("import <decreases/ref.vpr>")
       case TypeHelper.Bool if !presentDomains.contains("BoolWellFoundedOrder") => Some("import <decreases/bool.vpr>")
