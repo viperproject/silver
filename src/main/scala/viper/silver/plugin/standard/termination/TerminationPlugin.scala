@@ -16,8 +16,10 @@ import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier.errors.AssertFailed
 import viper.silver.verifier._
 import fastparse._
+import viper.silver.frontend.{DefaultStates, ViperPAstProvider}
+import viper.silver.logger.SilentLogger
 import viper.silver.parser.FastParserCompanion.whitespace
-import viper.silver.reporter.Entity
+import viper.silver.reporter.{Entity, NoopReporter}
 
 import scala.annotation.unused
 
@@ -28,6 +30,8 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
   import fp.{FP, keyword, exp, ParserExtension}
 
   private def deactivated: Boolean = config != null && config.terminationPlugin.toOption.getOrElse(false)
+
+  private var decreasesClauses: Set[PDecreasesClause] = Set.empty
 
   /**
    * Keyword used to define decreases clauses
@@ -95,7 +99,12 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
 
     // Apply the predicate access to instance transformation only to decreases clauses.
     val newProgram: PProgram = StrategyBuilder.Slim[PNode]({
-      case dt: PDecreasesTuple => transformPredicateInstances.execute(dt): PDecreasesTuple
+      case dt: PDecreasesTuple =>
+        decreasesClauses = decreasesClauses + dt
+        transformPredicateInstances.execute(dt): PDecreasesTuple
+      case dc : PDecreasesClause =>
+        decreasesClauses = decreasesClauses + dc
+        dc
       case d => d
     }).recurseFunc({ // decreases clauses can only appear in functions/methods pres and methods bodies
       case PProgram(_, _, _, _, functions, _, methods, _, _) => Seq(functions, methods)
@@ -104,6 +113,73 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
     }).execute(input)
 
     newProgram
+  }
+
+  override def beforeTranslate(input: PProgram): PProgram = {
+    val allClauses = decreasesClauses.flatMap{
+      case PDecreasesTuple(exps, _) => exps.map(e => e.typ match {
+        case PUnknown() if e.isInstanceOf[PCall] => e.asInstanceOf[PCall].idnuse.typ
+        case _ => e.typ
+      })
+      case _ => Seq()
+    }
+    val presentDomains = input.domains.map(_.idndef.name).toSet
+
+    val importStmts = allClauses flatMap {
+      case TypeHelper.Int if !presentDomains.contains("IntWellFoundedOrder") => Some("import <decreases/int.vpr>")
+      case TypeHelper.Ref if !presentDomains.contains("RefWellFoundedOrder") => Some("import <decreases/ref.vpr>")
+      case TypeHelper.Bool if !presentDomains.contains("BoolWellFoundedOrder") => Some("import <decreases/bool.vpr>")
+      case TypeHelper.Perm if !presentDomains.contains("RationalWellFoundedOrder") => Some("import <decreases/rational.vpr>")
+      case PMultisetType(_) if !presentDomains.contains("MultiSetWellFoundedOrder") => Some("import <decreases/multiset.vpr>")
+      case PSeqType(_) if !presentDomains.contains("SeqWellFoundedOrder") => Some("import <decreases/seq.vpr>")
+      case PSetType(_) if !presentDomains.contains("SetWellFoundedOrder") => Some("import <decreases/set.vpr>")
+      case PPredicateType() if !presentDomains.contains("PredicateInstancesWellFoundedOrder") =>
+        Some("import <decreases/predicate_instance.vpr>")
+      case _ => None
+    }
+    if (importStmts.nonEmpty) {
+      val importOnlyProgram = importStmts.mkString("\n")
+      val importPProgram = PAstProvider.generateViperPAst(importOnlyProgram)
+      val mergedDomains = input.domains.filter(_.idndef.name != "WellFoundedOrder") ++ importPProgram.get.domains
+
+      val mergedProgram = input.copy(domains = mergedDomains)(input.pos)
+      super.beforeTranslate(mergedProgram)
+    } else {
+      super.beforeTranslate(input)
+    }
+  }
+
+  object PAstProvider extends ViperPAstProvider(NoopReporter, SilentLogger().get) {
+    def generateViperPAst(code: String): Option[PProgram] = {
+      val code_id = code.hashCode.asInstanceOf[Short].toString
+      _input = Some(code)
+      execute(Array("--ignoreFile", code_id))
+
+      if (errors.isEmpty) {
+        Some(semanticAnalysisResult)
+      } else {
+        None
+      }
+    }
+
+    def setCode(code: String): Unit = {
+      _input = Some(code)
+    }
+
+    override def reset(input: java.nio.file.Path): Unit = {
+      if (state < DefaultStates.Initialized) sys.error("The translator has not been initialized.")
+      _state = DefaultStates.InputSet
+      _inputFile = Some(input)
+
+      /** must be set by [[setCode]] */
+      // _input = None
+      _errors = Seq()
+      _parsingResult = None
+      _semanticAnalysisResult = None
+      _verificationResult = None
+      _program = None
+      resetMessages()
+    }
   }
 
 
