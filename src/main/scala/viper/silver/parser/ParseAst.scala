@@ -17,9 +17,8 @@ import viper.silver.verifier.ParseReport
 import scala.collection.Set
 import scala.language.implicitConversions
 import java.nio.file.Path
-import viper.silver.ast.utility.lsp.{HasHoverHints, HoverHint, SelectionBoundTrait}
-import viper.silver.ast.utility.lsp.{HasDocumentSymbol, SymbolKind, SymbolTag}
-import viper.silver.ast.utility.lsp.{HasSemanticHighlights, SemanticHighlight, TokenType, TokenModifier}
+import viper.silver.ast.utility.lsp.{HasGotoDefinitions, GotoDefinition}
+import viper.silver.ast.utility.lsp.{HasReferenceTos, ReferenceTo}
 
 trait Where {
   val pos: (Position, Position)
@@ -170,12 +169,14 @@ trait PIdentifier {
   def name: String
 }
 
-case class PIdnDef(name: String)(val pos: (Position, Position)) extends PNode with PIdentifier with PPrettyPrint {
+case class PIdnDef(name: String)(val pos: (Position, Position)) extends PNode with PIdentifier with PPrettyPrint with HasReferenceTos {
   override def pretty(): String = name
+
+  override def getReferenceTos: Seq[ReferenceTo] = RangePosition(this).map(rp => ReferenceTo(rp, rp)).toSeq
 }
 
 case class PIdnUse(name: String)(val pos: (Position, Position))
-  extends PExp with PIdentifier with HasSemanticHighlights with HasHoverHints with HasGotoDefinitions {
+  extends PExp with PIdentifier with HasSemanticHighlights with HasHoverHints with HasGotoDefinitions with HasReferenceTos {
 
   var decl: PDeclaration = null
   /* Should be set during resolving. Intended to preserve information
@@ -193,18 +194,25 @@ case class PIdnUse(name: String)(val pos: (Position, Position))
   override def getSemanticHighlights: Seq[SemanticHighlight] = (decl, RangePosition(this)) match {
     case (_: PLocalVarDecl, Some(sp)) => Seq(SemanticHighlight(sp, TokenType.Variable))
     case (_: PFormalArgDecl, Some(sp)) => Seq(SemanticHighlight(sp, TokenType.Parameter))
-    case _ => Seq()
+    case _ => Nil
   }
 
   override def getHoverHints: Seq[HoverHint] = (decl, RangePosition(this)) match {
     case (decl: PLocalSymbol, Some(sp)) => Seq(HoverHint(decl.finalHint, SelectionBoundScope(sp)))
-    case _ => Seq()
+    case _ => Nil
   }
 
   override def getGotoDefinitions: Seq[GotoDefinition] = (decl, RangePosition(this)) match {
-    case (decl: PLocalSymbol, Some(sp)) =>
-      RangePosition(decl.idndef).map(d => GotoDefinition(d, SelectionBoundScope(sp))).toSeq
-    case _ => Seq()
+    case (decl: PLocalSymbol, Some(sp)) => (RangePosition(decl), RangePosition(decl.idndef)) match {
+      case (Some(dp), Some(dnp)) => Seq(GotoDefinition(dp, dnp, SelectionBoundScope(sp)))
+      case _ => Nil
+    }
+    case _ => Nil
+  }
+
+  override def getReferenceTos: Seq[ReferenceTo] = if (decl == null) Nil else (RangePosition(decl.idndef), RangePosition(this)) match {
+    case (Some(dp), Some(tp)) => Seq(ReferenceTo(dp, tp))
+    case _ => Nil
   }
 }
 
@@ -418,7 +426,7 @@ trait PGenericType extends PType {
 
   override def isGround = typeArguments.forall(_.isGround)
 
-  override def pretty() = s"$genericName[${typeArguments.mkString(", ")}]"
+  override def pretty() = s"$genericName[${typeArguments.map(_.pretty()).mkString(", ")}]"
 
   def withTypeArguments(s: Seq[PType]): PGenericType
 }
@@ -704,19 +712,19 @@ case class PCall(func: PIdnUse, args: Seq[PExp], typeAnnotated: Option[PType] = 
   override val opName = func.name
 
   override def getSemanticHighlights: Seq[SemanticHighlight] = (RangePosition(func), function, extfunction, method) match {
-    case (_, null, null, null) => Seq()
+    case (_, null, null, null) => Nil
     case (Some(sp), _: PDomainFunction, null, null) => Seq(SemanticHighlight(sp, TokenType.Function))
     case (Some(sp), _: PFunction, null, null) => Seq(SemanticHighlight(sp, TokenType.Function))
     case (Some(sp), null, _, null) => Seq(SemanticHighlight(sp, TokenType.Struct))
     case (Some(sp), null, null, _) => Seq(SemanticHighlight(sp, TokenType.Method))
-    case _ => Seq()
+    case _ => Nil
   }
   def getFormalArgs: Seq[PAnyFormalArgDecl] = (function, extfunction, method) match {
-    case (null, null, null) => Seq()
+    case (null, null, null) => Nil
     case (function, null, null) => function.formalArgs
     case (null, predicate, null) => predicate.formalArgs
     case (null, null, method) => method.formalArgs
-    case _ => Seq()
+    case _ => Nil
   }
   def idnUseMatchesArg(decl: String, use: String): Boolean = {
     val d = decl.toLowerCase()
@@ -1602,13 +1610,13 @@ sealed trait PTypedDeclaration extends PDeclaration with PUnnamedTypedDeclaratio
 
 trait PSemanticDeclaration extends PDeclaration with HasSemanticHighlights {
   def tokenType: TokenType.TokenType
-  def tokenModifier: Seq[TokenModifier.TokenModifier] = Seq()
+  def tokenModifier: Seq[TokenModifier.TokenModifier] = Nil
   override def getSemanticHighlights: Seq[SemanticHighlight] = RangePosition(idndef).map(sp => SemanticHighlight(sp, tokenType, tokenModifier)).toSeq
 }
 
 trait PIsSemanticToken extends PNode with HasSemanticHighlights {
   def tokenType: TokenType.TokenType
-  def tokenModifier: Seq[TokenModifier.TokenModifier] = Seq()
+  def tokenModifier: Seq[TokenModifier.TokenModifier] = Nil
   override def getSemanticHighlights: Seq[SemanticHighlight] = RangePosition(this).map(sp => SemanticHighlight(sp, tokenType, tokenModifier)).toSeq
 }
 
@@ -1620,8 +1628,8 @@ trait PIsSemanticToken extends PNode with HasSemanticHighlights {
 //   def isDeprecated: Boolean = false
 //   override def symbolDefns: Seq[CanGotoDefinition] = (idndef.sourcePos, sourcePos) match {
 //     case (Some(selectionRange), Some(range)) => 
-//       Seq(GotoDefinition(hint, idndef.name, selectionRange, range, kind, scope, detail, if (isDeprecated) Seq(SymbolTag.Deprecated) else Seq()))
-//     case _ => Seq()
+//       Seq(GotoDefinition(hint, idndef.name, selectionRange, range, kind, scope, detail, if (isDeprecated) Seq(SymbolTag.Deprecated) else Nil))
+//     case _ => Nil
 //   }
 // }
 
@@ -1631,7 +1639,7 @@ trait PDeclarationSymbol extends PDeclaration with HasDocumentSymbol {
   def detail: Option[String] = None
   def isDeprecated: Boolean = false
   def imports: Option[Path] = None
-  def tags: Seq[SymbolTag.SymbolTag] = if (isDeprecated) Seq(SymbolTag.Deprecated) else Seq()
+  def tags: Seq[SymbolTag.SymbolTag] = if (isDeprecated) Seq(SymbolTag.Deprecated) else Nil
 
   override def getSymbol: Option[DocumentSymbol] = (RangePosition(this), RangePosition(idndef)) match {
     case (Some(range), Some(selectionRange)) => Some(DocumentSymbol(idndef.pretty(), detail, range, selectionRange, symbolKind, tags, None, getSymbolChildren))
@@ -1641,13 +1649,16 @@ trait PDeclarationSymbol extends PDeclaration with HasDocumentSymbol {
 
 trait PGlobalSymbol extends PGlobalDeclaration with PDeclarationSymbol with HasHoverHints with HasGotoDefinitions {
   def hint: String
+  def documentation: String = annotations.filter(_.key == "doc").map(_.values.mkString("\n")).mkString("\n---\n")
   def finalHint: String = {
-    val documentation = annotations.filter(_.key == "doc").map(_.values.mkString("\n")).mkString("\n---\n")
     s"```\n$hint\n```\n$documentation"
   }
   def scope: SelectionBoundTrait = SelectionBoundKeyword(idndef.name)
   override def getHoverHints: Seq[HoverHint] = Seq(HoverHint(finalHint, scope))
-  override def getGotoDefinitions: Seq[GotoDefinition] = RangePosition(idndef).map(rp => GotoDefinition(rp, scope)).toSeq
+  override def getGotoDefinitions: Seq[GotoDefinition] = (RangePosition(this), RangePosition(idndef)) match {
+    case (Some(tp), Some(ip)) => Seq(GotoDefinition(tp, ip, scope))
+    case _ => Nil
+  }
 }
 
 trait PGlobalCallable extends PGlobalSymbol with HasFoldingRanges with HasSignatureHelps {
@@ -1663,7 +1674,17 @@ trait PGlobalCallable extends PGlobalSymbol with HasFoldingRanges with HasSignat
     val bodyString = bodyRange.map(_ => if (contract.length > 0) "\n{ ... }" else " { ... }").getOrElse("")
     s"$firstLine${contract.mkString}$bodyString"
   }
-  override def getSignatureHelps: Seq[SignatureHelp] = ???
+  override def getSignatureHelps: Seq[SignatureHelp] = {
+    val bound = SelectionBoundKeyword(idndef.name)
+    val start = SignatureHelpPart(false, s"${keyword.pretty()} ${idndef.pretty()}(", None)
+    val args = formalArgs.map(fa => SignatureHelpPart(true, fa.pretty(), None))
+    val tail = SignatureHelpPart(false, ")" + returnString.getOrElse(""), None)
+    def addCommas(args: Seq[SignatureHelpPart]): Seq[SignatureHelpPart] = if (args.length <= 1) args :+ tail else {
+      args.head +: SignatureHelpPart(false, ", ", None) +: addCommas(args.drop(1))
+    }
+    val help = start +: addCommas(args)
+    Seq(SignatureHelp(bound, help, Some(documentation)))
+  }
   override def getFoldingRanges: Seq[FoldingRange] = {
     val thisRange = RangePosition(this).filter(rp => rp.start.line != rp._end.line)
     val bodyRangeFilter = bodyRange.filter(rp => rp.start.line != rp._end.line)
@@ -1676,10 +1697,12 @@ trait PGlobalCallable extends PGlobalSymbol with HasFoldingRanges with HasSignat
 trait PLocalSymbol extends PLocalDeclaration with PDeclarationSymbol with HasHoverHints with HasGotoDefinitions {
   def hint: String
   def finalHint: String = s"```\n$hint\n```"
-  // TODO: should this be `RangePosition(this)` or `RangePosition(idndef)`?
-  def scope: Option[(RangePosition, SelectionBoundTrait)] = RangePosition(idndef).map(rp => (rp, SelectionBoundScope(rp)))
-  override def getHoverHints: Seq[HoverHint] = scope.map(scope => HoverHint(finalHint, scope._2)).toSeq
-  override def getGotoDefinitions: Seq[GotoDefinition] = scope.map(scope => GotoDefinition(scope._1, scope._2)).toSeq
+  def scope: Option[(RangePosition, RangePosition, SelectionBoundTrait)] = (RangePosition(this), RangePosition(idndef)) match {
+    case (Some(tp), Some(ip)) => Some((tp, ip, SelectionBoundScope(ip)))
+    case _ => None
+  }
+  override def getHoverHints: Seq[HoverHint] = scope.map(scope => HoverHint(finalHint, scope._3)).toSeq
+  override def getGotoDefinitions: Seq[GotoDefinition] = scope.map(scope => GotoDefinition(scope._1, scope._2, scope._3)).toSeq
 }
 
 abstract class PErrorEntity extends PEntity {
@@ -1699,7 +1722,7 @@ trait PAnyFunction extends PMember with PGlobalDeclaration with PTypedDeclaratio
 }
 
 case class PProgram(imports: Seq[PImport], macros: Seq[PDefine], domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod], extensions: Seq[PExtender], errors: Seq[ParseReport])(val pos: (Position, Position))
-  extends PNode with HasSemanticHighlights with HasGotoDefinitions with HasHoverHints with HasFoldingRanges with HasInlayHints with HasCodeLens with HasSignatureHelps {
+  extends PNode with HasSemanticHighlights with HasGotoDefinitions with HasHoverHints with HasFoldingRanges with HasInlayHints with HasCodeLens with HasSignatureHelps with HasReferenceTos {
 
   override def getSemanticHighlights: Seq[SemanticHighlight] = subnodes.flatMap(_ deepCollect { case sn: HasSemanticHighlights => sn.getSemanticHighlights }).flatten
   override def getGotoDefinitions: Seq[GotoDefinition] = subnodes.flatMap(_ deepCollect { case sn: HasGotoDefinitions => sn.getGotoDefinitions }).flatten
@@ -1708,22 +1731,21 @@ case class PProgram(imports: Seq[PImport], macros: Seq[PDefine], domains: Seq[PD
   override def getInlayHints: Seq[InlayHint] = subnodes.flatMap(_ deepCollect { case sn: HasInlayHints => sn.getInlayHints }).flatten
   override def getCodeLens: Seq[CodeLens] = subnodes.flatMap(_ deepCollect { case sn: HasCodeLens => sn.getCodeLens }).flatten
   override def getSignatureHelps: Seq[SignatureHelp] = subnodes.flatMap(_ deepCollect { case sn: HasSignatureHelps => sn.getSignatureHelps }).flatten
+  override def getReferenceTos: Seq[ReferenceTo] = subnodes.flatMap(_ deepCollect { case sn: HasReferenceTos => sn.getReferenceTos }).flatten
 }
 
-abstract class PImport() extends PNode with Where {
+case class PFilePath(file: String)(val pos: (Position, Position)) extends PNode
+
+case class PImport(imprt: PKeywordLang, var local: Boolean, file: PFilePath)(val pos: (Position, Position)) extends PNode {
   var resolved: Path = null
-  override def getSymbol: Option[DocumentSymbol] = RangePosition(this) match {
-    case Some(rp) if resolved != null =>
+  override def getSymbol: Option[DocumentSymbol] = (RangePosition(this), RangePosition(file)) match {
+    case (Some(tp), Some(fp)) if resolved != null =>
       // We avoid any circular dependencies since `resolved` is only set for imports which caused a
       // file to actually be imported.
-      Some(DocumentSymbol(resolved.getFileName.toString(), None, rp, rp, SymbolKind.File, Seq(), Some(resolved)))
+      Some(DocumentSymbol(resolved.getFileName.toString(), None, tp, fp, SymbolKind.File, Nil, Some(resolved)))
     case _ => None
   }
 }
-
-case class PLocalImport(imprt: PKeywordLang, file: String)(val pos: (Position, Position)) extends PImport()
-
-case class PStandardImport(imprt: PKeywordLang, file: String)(val pos: (Position, Position)) extends PImport()
 
 case class PMethod(annotations: Seq[PAnnotation], method: PKeywordLang, idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[(PKeywordLang, PExp)], posts: Seq[(PKeywordLang, PExp)], body: Option[PSeqn])
                   (val pos: (Position, Position)) extends PMember with PGlobalDeclaration with PSemanticDeclaration with PGlobalCallable {
@@ -1776,8 +1798,8 @@ case class PDomainFunction(annotations: Seq[PAnnotation], function: PKeywordLang
                           (val domainName:PIdnUse)(val pos: (Position, Position)) extends PAnyFunction {
 
   override def keyword: PKeywordLang = function
-  override def pres: Seq[(PKeywordLang, PExp)] = Seq()
-  override def posts: Seq[(PKeywordLang, PExp)] = Seq()
+  override def pres: Seq[(PKeywordLang, PExp)] = Nil
+  override def posts: Seq[(PKeywordLang, PExp)] = Nil
   override def bodyRange: Option[RangePosition] = None
 }
 case class PAxiom(annotations: Seq[PAnnotation], axiom: PKeywordLang, idndef: Option[PIdnDef], exp: PBlock[PExp])(val domainName:PIdnUse)(val pos: (Position, Position)) extends PScope with HasFoldingRanges {
@@ -1800,8 +1822,8 @@ case class PPredicate(annotations: Seq[PAnnotation], predicate: PKeywordLang, id
   override def tokenType = TokenType.Struct
   override def symbolKind: SymbolKind.SymbolKind = SymbolKind.Struct
   override def keyword: PKeywordLang = predicate
-  override def pres: Seq[(PKeywordLang, PExp)] = Seq()
-  override def posts: Seq[(PKeywordLang, PExp)] = Seq()
+  override def pres: Seq[(PKeywordLang, PExp)] = Nil
+  override def posts: Seq[(PKeywordLang, PExp)] = Nil
   override def returnString: Option[String] = None
   override def bodyRange: Option[RangePosition] = body.flatMap(RangePosition(_))
 }
@@ -1815,7 +1837,7 @@ case class PAnnotation(key: String, values: Seq[String])(val pos: (Position, Pos
 
   override def getSemanticHighlights: Seq[SemanticHighlight] = (key, RangePosition(this)) match {
     case ("doc", Some(sp)) => Seq(SemanticHighlight(sp, TokenType.Comment))
-    case _ => Seq()
+    case _ => Nil
   }
 }
 
@@ -1961,8 +1983,8 @@ object Nodes {
       case PLocalVarDecl(keyword, idndef, typ, init) => Seq(keyword, idndef, typ) ++ (if (init.isDefined) Seq(init.get) else Nil)
       case PProgram(imports, macros, domains, fields, functions, predicates, methods, extensions, _) =>
         imports ++ macros ++ domains ++ fields ++ functions ++ predicates ++ methods ++ extensions
-      case PLocalImport(imprt, _) => Seq(imprt)
-      case PStandardImport(imprt, _) => Seq(imprt)
+      case PFilePath(_) => Nil
+      case PImport(imprt, _, file) => Seq(imprt, file)
       case PDomain(anns, domain, idndef, typVars, members, _) => anns ++ Seq(domain, idndef) ++ typVars ++ Seq(members)
       case PDomainMembers(funcs, axioms) => funcs ++ axioms
       case PField(anns, field, idndef, typ) => anns ++ Seq(field, idndef, typ)

@@ -19,7 +19,7 @@ case class InlayHint(
   paddingLeft: Boolean = false,
   paddingRight: Boolean = false,
 ) extends HasRangePositions with BelongsToFile {
-  override def rangePositions: Seq[RangePosition] = Seq(position) ++ label.flatMap(_.rangePositions)
+  override def rangePositions: Seq[RangePosition] = position +: label.flatMap(_.rangePositions)
   override def file = position.file
 }
 

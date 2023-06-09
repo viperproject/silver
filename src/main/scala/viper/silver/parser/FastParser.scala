@@ -138,9 +138,9 @@ class FastParser {
 
     def resolveImports(p: PProgram) = {
       val localsToImport = new mutable.ArrayBuffer[Path]()
-      val localImportStatements = new mutable.HashMap[Path, PLocalImport]()
+      val localImportStatements = new mutable.HashMap[Path, PImport]()
       val standardsToImport = new mutable.ArrayBuffer[Path]()
-      val standardImportStatements = new mutable.HashMap[Path, PStandardImport]()
+      val standardImportStatements = new mutable.HashMap[Path, PImport]()
 
       // assume p is a program from the user space (local).
       val filePath = f.toAbsolutePath.normalize()
@@ -159,23 +159,24 @@ class FastParser {
       def appendNewImports(imports: Seq[PImport], current: Path, fromLocal: Boolean): Unit = {
         for (ip <- imports) {
           ip match {
-            case localImport: PLocalImport if fromLocal =>
-              val localPath = current.resolveSibling(localImport.file).normalize()
+            case localImport@PImport(_, true, path) if fromLocal =>
+              val localPath = current.resolveSibling(path.file).normalize()
               if(!localsToImport.contains(localPath)){
                 localImport.resolved = localPath
                 localsToImport.append(localPath)
                 localImportStatements.update(localPath, localImport)
               }
-            case localImport: PLocalImport if !fromLocal =>
+            case localImport@PImport(_, true, path) if !fromLocal =>
               // local import get transformed to standard imports
-              val localPath = current.resolveSibling(localImport.file).normalize()
+              val localPath = current.resolveSibling(path.file).normalize()
               if (!standardsToImport.contains(localPath)) {
                 localImport.resolved = localPath
+                localImport.local = false
                 standardsToImport.append(localPath)
-                standardImportStatements.update(localPath, PStandardImport(localImport.imprt, localPath.toString)(localImport.pos))
+                standardImportStatements.update(localPath, localImport)
               }
-            case standardImport: PStandardImport =>
-              val standardPath = Paths.get(standardImport.file).normalize()
+            case standardImport@PImport(_, false, path) =>
+              val standardPath = Paths.get(path.file).normalize()
               if(!standardsToImport.contains(standardPath)){
                 standardImport.resolved = standardPath
                 standardsToImport.append(standardPath)
@@ -350,7 +351,7 @@ class FastParser {
     * @param importStmt Import statement.
     * @return `PProgram` node corresponding to the imported program.
     */
-  def importStandard(path: Path, importStmt: PStandardImport, plugins: Option[SilverPluginManager]): PProgram = {
+  def importStandard(path: Path, importStmt: PImport, plugins: Option[SilverPluginManager]): PProgram = {
     /* Prefix the standard library import (`path`) with the directory in which standard library
      * files are expected (`standard_import_directory`). The result is a OS-specific path, e.g.
      * "import\my\stdlib.vpr".
@@ -1229,13 +1230,14 @@ class FastParser {
   })
 
   def preambleImport[$: P]: P[PImport] = FP(keywordLang("import") ~/
-    (quoted(relativeFilePath.!).map((true, _)) | angles(relativeFilePath.!).map((false, _)))
+    (quoted(relativeFilePath).map((true, _)) | angles(relativeFilePath).map((false, _)))
   ).map {
-    case (pos, (k, (true, filename))) => PLocalImport(k, filename)(pos)
-    case (pos, (k, (false, filename))) => PStandardImport(k, filename)(pos)
+    case (pos, (k, (local, filename))) => PImport(k, local, filename)(pos)
   }
 
-  def relativeFilePath[$: P]: P[String] = P(CharIn("~.").?.! ~~ (CharIn("/").? ~~ CharIn(".", "A-Z", "a-z", "0-9", "_\\- \n\t")).rep(1))
+  def relativeFilePath[$: P]: P[PFilePath] = FP((CharIn("~.").? ~~ (CharIn("/").? ~~ CharIn(".", "A-Z", "a-z", "0-9", "_\\- \n\t")).rep(1)).!).map {
+    case (pos, path) => PFilePath(path)(pos)
+  }
 
   def anyString[$: P]: P[String] = P(CharPred(c => c !='\"').rep(1).!)
 

@@ -14,8 +14,9 @@ trait HasSignatureHelps {
 case class SignatureHelp(
   bound: SelectionBoundTrait,
   help: Seq[SignatureHelpPart],
+  documentation: Option[String],
 ) extends SelectableInBound with HasRangePositions {
   override def rangePositions: Seq[RangePosition] = bound.rangePositions
 }
 
-case class SignatureHelpPart(isArgument: Boolean, text: String)
+case class SignatureHelpPart(isArgument: Boolean, text: String, documentation: Option[String])

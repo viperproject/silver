@@ -26,7 +26,7 @@ case class HoverHint(
  * If both are `None`, then *any* position will match!
 */
 sealed trait SelectionBoundTrait extends HasRangePositions
-case class SelectionBound() extends SelectionBoundTrait {
+case object SelectionBound extends SelectionBoundTrait {
   def rangePositions: Seq[RangePosition] = Nil
 }
 

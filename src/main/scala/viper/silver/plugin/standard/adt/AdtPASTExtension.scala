@@ -14,6 +14,7 @@ import viper.silver.plugin.standard.adt.PAdtConstructor.findAdtConstructor
 
 import scala.annotation.unused
 import scala.util.{Success, Try}
+import viper.silver.ast.utility.lsp.GotoDefinition
 
 
 case class PAdt(annotations: Seq[PAnnotation], adt: PKeywordLang, idndef: PIdnDef, typVars: Seq[PTypeVarDecl], constructors: Seq[PAdtConstructor], derive: Option[PKeywordLang], derivingInfos: Seq[PAdtDerivingInfo])
@@ -165,7 +166,10 @@ case class PAdtConstructor(annotations: Seq[PAnnotation], idndef: PIdnDef, forma
   override def getHoverHints: Seq[HoverHint] = super.getHoverHints ++
     Seq(HoverHint(s"```\nadt ${adtName.pretty()}.is${idndef.name}: Bool\n```", SelectionBoundKeyword("is" + idndef.name))) ++
     formalArgs.map(arg => HoverHint(s"\n```adt ${adtName.pretty()}.${arg.idndef.pretty()}: ${arg.typ.pretty()}\n```", SelectionBoundKeyword(arg.idndef.name)))
-  override def getGotoDefinitions: Seq[GotoDefinition] = RangePosition(idndef).map(rp => GotoDefinition(rp, scope)).toSeq
+  override def getGotoDefinitions: Seq[GotoDefinition] = (RangePosition(this), RangePosition(idndef)) match {
+    case (Some(tp), Some(ip)) => Seq(GotoDefinition(tp, ip, scope))
+    case _ => Nil
+  }
 }
 
 object PAdtConstructor {

@@ -123,8 +123,8 @@ object Transformer {
         case _: PSkip => parent
 
         case p@PProgram(files, macros, domains, fields, functions, predicates, methods, extensions, errors) => PProgram(files, macros map go, domains map go, fields map go, functions map go, predicates map go, methods map go, extensions map go, errors)(p.pos)
-        case p@PLocalImport(imprt, file) => PLocalImport(go(imprt), file)(p.pos)
-        case p@PStandardImport(imprt, file) => PStandardImport(go(imprt), file)(p.pos)
+        case _: PFilePath => parent
+        case p@PImport(imprt, local, file) => PImport(go(imprt), local, go(file))(p.pos)
         case p@PMethod(anns, method, idndef, formalArgs, formalReturns, pres, posts, body) => PMethod(anns map go, go(method), go(idndef), formalArgs map go, formalReturns map go, pres map goPair, posts map goPair, body map go)(p.pos)
         case p@PDomain(anns, domain, idndef, typVars, members, interp) => PDomain(anns map go, go(domain), go(idndef), typVars map go, go(members), interp)(p.pos)
         case p@PDomainMembers(funcs, axioms) => PDomainMembers(funcs map go, axioms map go)(p.pos)

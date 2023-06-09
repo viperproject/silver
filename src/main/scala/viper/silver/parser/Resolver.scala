@@ -222,6 +222,7 @@ case class TypeChecker(names: NameAnalyser) {
          * TODO: Get rid of this case! There is a matching case in the translator.
          */
         c.method = names.definition(curMember)(func).get.asInstanceOf[PMethod]
+        func.decl = c.method
         val newnode: PStmt = PMethodCall(Seq(idnuse), func, args)(p.pos)
         check(newnode)
 
@@ -673,6 +674,7 @@ case class TypeChecker(names: NameAnalyser) {
                   ad match {
                     case Some(fd: PAnyFunction) =>
                       pfa.function = fd
+                      func.decl = fd
                       ensure(fd.formalArgs.size == args.size, pfa, "wrong number of arguments")
                       fd match {
                         case PFunction(_, _, _, _, _, _, _, _) =>
@@ -692,6 +694,7 @@ case class TypeChecker(names: NameAnalyser) {
                       }
                     case Some(predicate: PPredicate) =>
                       pfa.extfunction = predicate
+                      func.decl = predicate
                       acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(func), "expected predicate") { (id, _) =>
                         checkInternal(id)
                         if (args.length != predicate.formalArgs.length)

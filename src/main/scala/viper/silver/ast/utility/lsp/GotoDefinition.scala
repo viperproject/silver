@@ -13,10 +13,11 @@ trait HasGotoDefinitions {
 }
 
 case class GotoDefinition(
-  /** The position to go to when clicked */
-  definition: RangePosition,
-  /** Display the hover hint when this bound is met */
+  /** The range enclosing this symbol (e.g. a function signature and body) */
+  target: RangePosition,
+  /** The position to go to when clicked (must be contained in `range`) */
+  targetSelection: RangePosition,
   bound: SelectionBoundTrait,
 ) extends SelectableInBound with HasRangePositions {
-  override def rangePositions: Seq[RangePosition] = Seq(definition) ++ bound.rangePositions
+  override def rangePositions: Seq[RangePosition] = Seq(target, targetSelection) ++ bound.rangePositions
 }
