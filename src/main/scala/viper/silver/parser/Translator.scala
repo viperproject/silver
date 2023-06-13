@@ -290,7 +290,7 @@ case class Translator(program: PProgram) {
         // tgtUse: `_target0`
         val tgtUse = LocalVar(tgtDecl.name, tgtDecl.typ)(fa.pos)
         // rcvFa: `_receiver0.f`
-        val rcvFa = FieldAccess(rcvUse, fa.field)(fa.pos, fa.info, fa.errT)
+        val rcvFa = FieldAccess(rcvUse, fa.field)(fa.pos, fa.info, NodeTrafo(fa) + fa.errT)
         // faAssign: `_receiver0.f := _target0`
         val faAssign = FieldAssign(rcvFa, tgtUse)(rcvFa.pos)
         (Some((rcvDecl, tgtDecl, rcvInit, faAssign)), tgtUse)
