@@ -1,0 +1,17 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+function interp(i: Int): Int
+  requires i > 5
+{
+    i + 1
+}
+
+domain d {
+    function unint(i: Int): Int
+
+    axiom {
+        //:: ExpectedOutput(typechecker.error)
+        forall i: Int :: {unint(i)} unint(i) == interp(i) + 1
+    }
+}
