@@ -658,13 +658,13 @@ case class TypeChecker(names: NameAnalyser) {
                       pfa.function = fd
                       ensure(fd.formalArgs.size == args.size, pfa, "wrong number of arguments")
                       fd match {
-                        case PFunction(_, _, _, _, _, _) =>
+                        case PFunction(_, _, _, pres, _, _) =>
                           checkMember(fd) {
                             check(fd.typ)
                             fd.formalArgs foreach (a => check(a.typ))
                           }
-                          if (inAxiomScope(Some(pfa)))
-                            issueError(func, func.name + " is not a domain function")
+                          if (inAxiomScope(Some(pfa)) && pres.nonEmpty)
+                            issueError(func, s"Cannot use function ${func.name}, which has preconditions, inside axiom")
 
                         case pdf@PDomainFunction(_, _, _, _, _) =>
                           val domain = names.definition(curMember)(pdf.domainName).get.asInstanceOf[PDomain]

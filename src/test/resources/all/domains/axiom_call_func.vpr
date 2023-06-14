@@ -1,0 +1,23 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+function interp(i: Int): Int
+{
+    i + 1
+}
+
+domain d {
+    function unint(i: Int): Int
+
+    axiom {
+        forall i: Int :: {unint(i)} unint(i) == interp(i) + 1
+    }
+}
+
+method huh()
+{
+  assert unint(4) == 6
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert unint(14) == 14
+}

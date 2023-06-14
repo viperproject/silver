@@ -1,0 +1,62 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+function interp(i: Int): Int
+{
+    i + 1
+}
+
+function uninterp(i: Int): Int
+    ensures result == i + 4
+
+function heapDep(r: Ref): Int
+    requires acc(r.f)
+{
+    r.f + 2
+}
+
+function heapDep2(r: Ref): Int
+    requires acc(r.f)
+{
+    heapDep(r) + heapDepUnint(r) + 10
+}
+
+function heapDepUnint(r: Ref): Int
+    requires acc(r.f)
+    ensures result == r.f + 3
+
+domain d {
+    function dfunc(i: Int): Int
+
+    function dfunc2(i: Int): Int
+
+    axiom {
+        forall i: Int :: {dfunc(i)} dfunc(i) == interp(i) + 5
+    }
+
+    axiom {
+        forall i: Int :: {dfunc2(i)} dfunc2(i) == uninterp(i) + 7
+    }
+}
+
+method main()
+{
+  var x: Ref
+  x := new(f)
+  var y: Ref
+  y := new(f)
+
+  x.f := 20
+  y.f := 3
+  assert dfunc2(x.f) == 31
+  assert heapDep2(x) == 15 + 20 + 20
+
+  assert dfunc(x.f + 1) == 27
+  assert interp(34) == 35
+  assert heapDep(y) + dfunc2(x.f + 5) == 41
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert heapDepUnint(x) == 24
+}
