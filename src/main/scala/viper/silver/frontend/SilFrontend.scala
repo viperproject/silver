@@ -246,7 +246,8 @@ trait SilFrontend extends DefaultFrontend {
   }
 
   def finish(): Unit = {
-    val res = plugins.beforeFinish(result)
+    val tRes = result.transformedResult()
+    val res = plugins.beforeFinish(tRes)
     _verificationResult = Some(res)
     res match {
       case Success =>
