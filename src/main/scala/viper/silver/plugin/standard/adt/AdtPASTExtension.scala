@@ -240,6 +240,8 @@ case class PAdtType(adt: PIdnUse, args: Seq[PType])
     }
   }
 
+  override def withTypeArguments(s: Seq[PType]): PGenericType = copy(args = s)(pos)
+
   override def toString: String = adt.name + (if (args.isEmpty) "" else s"[${args.mkString(", ")}]")
 
 }
@@ -282,7 +284,7 @@ sealed trait PAdtOpApp extends PExtender with POpApp {
         assert(s3.m.forall(_._2.isGround))
         adtSubstitution = Some(s3)
         dtr.mm.values.foldLeft(ots)(
-          (tss, s) => if (tss.contains(s)) tss else tss.add(s, PTypeSubstitution.defaultType).get)
+          (tss, s) => if (tss.contains(s)) tss else tss.add(s, PTypeSubstitution.defaultType).toOption.get)
       case _ => ots
     }
     super.forceSubstitution(ts)
@@ -378,15 +380,15 @@ object PAdtOpApp {
           assert(rlts.nonEmpty)
           val rrt: PDomainType = POpApp.pRes.substitute(ltr).asInstanceOf[PDomainType] // return type (which is a dummy type variable) replaced with fresh type
           val flat = poa.args.indices map (i => POpApp.pArg(i).substitute(ltr)) //fresh local argument types
-          // the triples below are: (fresh argument type, argument type as used in domain of substitutions, substitutions)
-          poa.typeSubstitutions ++= t.unifySequenceWithSubstitutions(rlts, flat.indices.map(i => (flat(i), poa.args(i).typ, poa.args(i).typeSubstitutions.distinct.toSeq)) ++
+          // the tuples below are: (fresh argument type, argument type as used in domain of substitutions, substitutions, the argument itself)
+          poa.typeSubstitutions ++= t.unifySequenceWithSubstitutions(rlts, flat.indices.map(i => (flat(i), poa.args(i).typ, poa.args(i).typeSubstitutions.distinct.toSeq, poa.args(i))) ++
             (
               extraReturnTypeConstraint match {
                 case None => Nil
-                case Some(t) => Seq((rrt, t, List(PTypeSubstitution.id)))
+                case Some(t) => Seq((rrt, t, List(PTypeSubstitution.id), poa))
               }
               )
-          )
+          ).getOrElse(Seq())
           val ts = poa.typeSubstitutions.distinct
           if (ts.isEmpty)
             t.typeError(poa)

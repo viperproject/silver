@@ -17,16 +17,16 @@ field Integer__item: Int
 
 // check that all elements in given Seq are bounded by maxLen
 function CheckBounded(order: Seq[Int], maxLen: Int): Bool
-ensures |order| <= maxLen && (forall i: Int :: 0 <= i && i < |order| ==> 0 <= order[i] && order[i] < maxLen)
+ensures |order| <= maxLen && (forall i: Int :: {order[i]} 0 <= i && i < |order| ==> 0 <= order[i] && order[i] < maxLen)
 
 
 // check that newL is a reordered version of origL with given order newO, i.e. newL[i] == origL[order[i]]
 function IsReordered(origL: VCTArray[Ref], newO: Seq[Int], newL: VCTArray[Ref], maxLen: Int): Bool
-  requires (forall i: Int :: 0 <= i && i < alen(origL) ==> acc(loc(origL, i).Integer__item, 1 / 2))
-  requires origL != newL ==> (forall i: Int :: 0 <= i && i < alen(newL) ==> acc(loc(newL, i).Integer__item, 1 / 2))
-  ensures result == (maxLen <= alen(origL) && maxLen <= alen(newL) && CheckBounded(newO, maxLen) && (forall i: Int :: 0 <= i && i < |newO| ==> loc(newL, i).Integer__item == loc(origL, newO[i]).Integer__item))
+  requires (forall i: Int :: {loc(origL, i)} 0 <= i && i < alen(origL) ==> acc(loc(origL, i).Integer__item, 1 / 2))
+  requires origL != newL ==> (forall i: Int :: {loc(newL, i)} 0 <= i && i < alen(newL) ==> acc(loc(newL, i).Integer__item, 1 / 2))
+  ensures result == (maxLen <= alen(origL) && maxLen <= alen(newL) && CheckBounded(newO, maxLen) && (forall i: Int :: {loc(origL, newO[i])} 0 <= i && i < |newO| ==> loc(newL, i).Integer__item == loc(origL, newO[i]).Integer__item))
 {
-    (maxLen <= alen(origL) && maxLen <= alen(newL) && CheckBounded(newO, maxLen) && (forall i: Int :: 0 <= i && i < |newO| ==> loc(newL, i).Integer__item == loc(origL, newO[i]).Integer__item))
+    (maxLen <= alen(origL) && maxLen <= alen(newL) && CheckBounded(newO, maxLen) && (forall i: Int :: {loc(origL, newO[i])} 0 <= i && i < |newO| ==> loc(newL, i).Integer__item == loc(origL, newO[i]).Integer__item))
 }
 
 // Lemma proving that a reordering is a permutation if given order has no gaps
@@ -37,8 +37,8 @@ method PermutationLemma(origL: VCTArray[Ref], order: Seq[Int], newL: VCTArray[Re
   var rep__1: Bool
   rep__1 := IsReordered(origL, order, newL, |order|)
 
-          assert (rep__1 ==> (forall i__2: Int :: 0 <= i__2 && i__2 < |order| ==> loc(newL, i__2).Integer__item == loc(origL, order[i__2]).Integer__item))
-  sys__result := (rep__1 ==> (forall i__2: Int :: 0 <= i__2 && i__2 < |order| ==> loc(newL, i__2).Integer__item == loc(origL, order[i__2]).Integer__item))
-          assert (rep__1 ==> (forall i__2: Int :: 0 <= i__2 && i__2 < |order| ==> loc(newL, i__2).Integer__item == loc(origL, order[i__2]).Integer__item))
+          assert (rep__1 ==> (forall i__2: Int :: {loc(origL, order[i__2])} 0 <= i__2 && i__2 < |order| ==> loc(newL, i__2).Integer__item == loc(origL, order[i__2]).Integer__item))
+  sys__result := (rep__1 ==> (forall i__2: Int :: {loc(origL, order[i__2])} 0 <= i__2 && i__2 < |order| ==> loc(newL, i__2).Integer__item == loc(origL, order[i__2]).Integer__item))
+          assert (rep__1 ==> (forall i__2: Int :: {loc(origL, order[i__2])} 0 <= i__2 && i__2 < |order| ==> loc(newL, i__2).Integer__item == loc(origL, order[i__2]).Integer__item))
   assert sys__result
 }

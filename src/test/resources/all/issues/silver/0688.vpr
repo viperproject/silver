@@ -1,0 +1,24 @@
+adt Unit {
+  unit()
+}
+
+domain Exe67 {
+	function F67(x : Int, y : Int) : Int
+
+	function L67() : Int
+	function R67() : Int
+
+	axiom LeftUnit67 {
+		forall x : Int :: {F67(L67(), x)} F67(L67(), x) == L67()
+	}
+
+	axiom RightUnit67 {
+		forall x : Int :: {F67(x, R67())} F67(x, R67()) == R67()
+	}
+}
+
+function functionUnit(x : Int) : Unit
+
+function lemmaLEqualR67() : Unit
+	ensures L67() == R67()
+{let x == (F67(L67(), R67())) in unit() }
