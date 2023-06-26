@@ -308,3 +308,22 @@ case class VerificationTerminationMessage() extends Message {
   override val toString: String = "verification_termination_message"
   override val name: String = "verification_termination_message"
 }
+
+trait BenchmarkingMessage extends Message {
+  override val name: String = "benchmarking_message"
+}
+
+case class BenchmarkingPhase(phase: String) extends BenchmarkingMessage {
+  override val name: String = "benchmarking_phase"
+  override def toString: String = phase
+}
+
+case class BenchmarkingAccumulator(accum: String, id: Int) extends BenchmarkingMessage {
+  override val name: String = "benchmarking_accumulator"
+  override def toString: String = s"accumulating times"
+}
+
+case class BenchmarkingReport(message: String, id: String) extends BenchmarkingMessage {
+  override val name: String = "benchmarking_report"
+  override def toString: String = "report an accumulator"
+}

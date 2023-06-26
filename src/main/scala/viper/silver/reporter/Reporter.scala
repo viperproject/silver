@@ -176,10 +176,49 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
       case _: QuantifierInstantiationsMessage => // too verbose, do not print
       case _: QuantifierChosenTriggersMessage => // too verbose, do not print
       case _: VerificationTerminationMessage =>
+      case _: BenchmarkingMessage =>
       case _ =>
         println( s"Cannot properly print message of unsupported type: $msg" )
     }
     counter = counter + 1
+  }
+}
+
+object ProverActionIDs {
+  private var _id : Int = 0
+
+  def getID : Int = {
+    _id += 1
+    _id
+  }
+}
+
+case class BenchmarkingReporter(name: String = "benchmarking_reporter") extends Reporter {
+  private val _initial_time = System.currentTimeMillis()
+  private var _accumulators: scala.collection.mutable.Map[String, scala.collection.mutable.Map[Int, Long]] = Map.empty
+  private var _previous_phase: Long = _initial_time
+
+  def report(msg: Message): Unit = {
+    msg match {
+      case BenchmarkingPhase(phase) =>
+        val t = System.currentTimeMillis()
+        println(s"[Benchmarking] Phase $phase at ${t - _initial_time} ms and took ${t - _previous_phase} ms")
+        _previous_phase = t
+      case BenchmarkingAccumulator(accum, id) =>
+        if (_accumulators contains accum) {
+          if (_accumulators(accum) contains id) {
+            _accumulators(accum)(-1) += (System.currentTimeMillis() - _accumulators(accum)(id))
+            _accumulators(accum) remove id
+          } else {
+            _accumulators(accum)(id) = System.currentTimeMillis()
+          }
+        } else {
+          _accumulators(accum) = Map((-1, 0), (id, System.currentTimeMillis()))
+        }
+      case BenchmarkingReport(msg, accum) if _accumulators contains accum =>
+        println(s"[Benchmarking] Accumulated time for '$msg' took ${_accumulators(accum)(-1)} ms")
+      case _ =>
+    }
   }
 }
 
