@@ -917,12 +917,19 @@ class FastParser {
 
   def cmpOp[$: P] = P(StringIn("<=", ">=", "<", ">").! | keyword("in").!)
 
-  def cmpExp[$: P]: P[PExp] = FP(sum ~~~ (cmpOp ~ cmpExp).lw.?).map {
-    case (pos, (a, b)) => b match {
-      case Some(c) => PBinExp(a, c._1, c._2)(pos)
-      case None => a
-    }
+  val cmpOps = Set("<=", ">=", "<", ">", "in")
+
+  def cmpd[$: P]: P[SuffixedExpressionGenerator[PBinExp]] = FP(cmpOp ~ sum).map {
+    case (pos, (op, id)) => SuffixedExpressionGenerator[PBinExp](chainComp(op, id, pos))
   }
+
+  def chainComp(op: String, right: PExp, pos: (FilePosition, FilePosition))(e: PExp) = e match {
+    case outer@PBinExp(_, "&&", PBinExp(_, op0, r)) if cmpOps.contains(op0) => PBinExp(outer, "&&", PBinExp(r, op, right)(pos))(outer.pos)
+    case l@PBinExp(_, op0, r) if cmpOps.contains(op0) => PBinExp(l, "&&", PBinExp(r, op, right)(pos))(l.pos)
+    case e: PExp => PBinExp(e, op, right)(pos)
+  }
+
+  def cmpExp[$: P]: P[PExp] = P((sum ~~~ cmpd.lw.rep).map { case (a, ss) => foldPExp[PBinExp](a, ss) })
 
   def eqOp[$: P] = P(StringIn("==", "!=").!)
 
