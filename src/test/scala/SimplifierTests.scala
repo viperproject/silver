@@ -50,5 +50,11 @@ class SimplifierTests extends AnyFunSuite with Matchers {
     simplify(Mod(-3, -8)()) should be (5: IntLit)
   }
 
+  test("equality") {
+    val seqAcc = SeqIndex(EmptySeq(Int)(), 0: IntLit)()
+    // Do not simplify away definedness issues.
+    simplify(EqCmp(seqAcc, seqAcc)()) should be(EqCmp(seqAcc, seqAcc)())
+  }
+
   implicit def int2IntLit(i: Int): IntLit = IntLit(i)()
 }
