@@ -128,6 +128,7 @@ class FastParser {
 
   var _line_offset: Array[Int] = null
   var _file: Path = null
+  var _warnings: Seq[ParseWarning] = Seq()
 
   def parse(s: String, f: Path, plugins: Option[SilverPluginManager] = None) = {
     // Strategy to handle imports
@@ -542,8 +543,9 @@ class FastParser {
 
       linearizeMethod(doExpandDefines(localMacros ++ globalMacros, methodWithoutMacros, p))
     })
-
-    PProgram(p.imports, p.macros, domains, p.fields, functions, predicates, methods, p.extensions, p.errors ++ warnings)(p.pos)
+    val allWarnings = warnings ++ _warnings
+    _warnings = Seq()
+    PProgram(p.imports, p.macros, domains, p.fields, functions, predicates, methods, p.extensions, p.errors ++ allWarnings)(p.pos)
   }
 
 
@@ -1049,8 +1051,11 @@ class FastParser {
    case (pos, (keyType, valueType)) => PMapType(keyType, valueType)(pos)
   }
 
-  def primitiveTyp[$: P]: P[PType] = P(FP(keyword("Rational")).map{ case (pos, _) => PPrimitiv("Perm")(pos)}
-    | FP((StringIn("Int", "Bool", "Perm", "Ref") ~~ !identContinues).!).map{ case (pos, name) => PPrimitiv(name)(pos)})
+  def primitiveTyp[$: P]: P[PType] = P(FP(keyword("Rational")).map{
+    case (pos, _) =>
+      _warnings = _warnings :+ ParseWarning("Rational is deprecated, use Perm instead", SourcePosition(_file, pos._1.line, pos._1.column))
+      PPrimitiv("Perm")(pos)
+  } | FP((StringIn("Int", "Bool", "Perm", "Ref") ~~ !identContinues).!).map{ case (pos, name) => PPrimitiv(name)(pos)})
 /* Maps:
   lazy val primitiveTyp: P[PType] = P(keyword("Rational").map(_ => PPrimitiv("Perm"))
     | (StringIn("Int", "Bool", "Perm", "Ref") ~~ !identContinues).!.map(PPrimitiv))
