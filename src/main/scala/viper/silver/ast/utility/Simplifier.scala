@@ -21,7 +21,7 @@ object Simplifier {
    * 0 are not treated. Note that an expression with non-terminating evaluation due to endless recursion
    * might be transformed to terminating expression.
    */
-  def simplify[N <: Node](n: N, p: Program): N = {
+  def simplify[N <: Node](n: N): N = {
     /* Always simplify children first, then treat parent. */
     StrategyBuilder.Slim[Node]({
       // expression simplifications
