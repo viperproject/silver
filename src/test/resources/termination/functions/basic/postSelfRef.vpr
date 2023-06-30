@@ -1,0 +1,84 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <decreases/int.vpr>
+
+// Testing consistency checks for functions with self-references in their postconditions.
+
+// w/o decreases
+function fac(i: Int): Int
+    requires i >= 0
+    //:: ExpectedOutput(consistency.error)
+    ensures fac(i) >= 1
+{
+    i == 0 ? 1 : i * fac(i - 1)
+}
+
+function faca(i: Int): Int
+    requires i >= 0
+    //:: ExpectedOutput(consistency.error)
+    ensures faca(i + 1) >= 1
+
+
+function fac1(i: Int): Int
+    requires i >= 0
+    //:: ExpectedOutput(consistency.error)
+    ensures fac2(i) >= 1
+{
+    i == 0 ? 1 : i * fac2(i - 1)
+}
+
+function fac2(i: Int): Int
+    requires i >= 0
+    //:: ExpectedOutput(consistency.error)
+    ensures fac1(i - 1) >= 1
+{
+    i == 0 ? 1 : i * fac1(i - 1)
+}
+
+function lol(i: Int): Int
+    //:: ExpectedOutput(consistency.error)
+    ensures lol(0) > 0
+{
+    i + 1
+}
+
+
+// same with all kinds of decreases clauses
+
+function dfac(i: Int): Int
+    requires i >= 0
+    ensures dfac(i) >= 1  // would raise a termination error if this file got to the verification stage
+    decreases i
+{
+    i == 0 ? 1 : i * dfac(i - 1)
+}
+
+function dfaca(i: Int): Int
+    requires i >= 0
+    ensures dfaca(i + 1) >= 1
+    decreases _
+
+
+function dfac1(i: Int): Int
+    requires i >= 0
+    ensures dfac2(i) >= 1  // would raise a termination error if this file got to the verification stage
+    decreases i
+{
+    i == 0 ? 1 : i * dfac2(i - 1)
+}
+
+function dfac2(i: Int): Int
+    decreases *
+    requires i >= 0
+    ensures dfac1(i - 1) >= 1  // would raise a termination error if this file got to the verification stage
+{
+    i == 0 ? 1 : i * dfac1(i - 1)
+}
+
+function dlol(i: Int): Int
+    ensures dlol(0) > 0  // would raise a termination error if this file got to the verification stage
+    decreases
+{
+    i + 1
+}
