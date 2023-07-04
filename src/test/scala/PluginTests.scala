@@ -124,7 +124,7 @@ class TestPluginAddPredicate extends SilverPlugin {
       input.domains,
       input.fields,
       input.functions,
-      input.predicates :+ PPredicate(PIdnDef("testPredicate")(p), Seq(), None)(p),
+      input.predicates :+ PPredicate(PIdnDef("testPredicate")(p), Seq(), None)(p, Seq()),
       input.methods,
       input.extensions,
       input.errors

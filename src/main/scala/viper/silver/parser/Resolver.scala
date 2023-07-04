@@ -172,6 +172,8 @@ case class TypeChecker(names: NameAnalyser) {
 
   def check(stmt: PStmt): Unit = {
     stmt match {
+      case PAnnotatedStmt(s, _) =>
+        check(s)
       case PMacroRef(id) =>
         messages ++= FastMessaging.message(stmt, "unknown macro used: " + id.name)
       case s@PSeqn(ss) =>
@@ -622,7 +624,10 @@ case class TypeChecker(names: NameAnalyser) {
 
       case t: PExtender => t.typecheck(this, names).getOrElse(Nil) foreach (message =>
         messages ++= FastMessaging.message(t, message))
-      case psl: PSimpleLiteral =>
+      case PAnnotatedExp(e, _) =>
+        checkInternal(e)
+        setType(e.typ)
+      case psl: PSimpleLiteral=>
         psl match {
           case r@PResultLit() =>
             if (resultAllowed)
@@ -653,13 +658,13 @@ case class TypeChecker(names: NameAnalyser) {
                       pfa.function = fd
                       ensure(fd.formalArgs.size == args.size, pfa, "wrong number of arguments")
                       fd match {
-                        case PFunction(_, _, _, _, _, _) =>
+                        case PFunction(_, _, _, pres, _, _) =>
                           checkMember(fd) {
                             check(fd.typ)
                             fd.formalArgs foreach (a => check(a.typ))
                           }
-                          if (inAxiomScope(Some(pfa)))
-                            issueError(func, func.name + " is not a domain function")
+                          if (inAxiomScope(Some(pfa)) && pres.nonEmpty)
+                            issueError(func, s"Cannot use function ${func.name}, which has preconditions, inside axiom")
 
                         case pdf@PDomainFunction(_, _, _, _, _) =>
                           val domain = names.definition(curMember)(pdf.domainName).get.asInstanceOf[PDomain]
