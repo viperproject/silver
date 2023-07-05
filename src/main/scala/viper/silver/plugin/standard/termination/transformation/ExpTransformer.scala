@@ -64,7 +64,7 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
       val inhaleEq = Inhale(EqCmp(localVarDecl.localVar, letExp.exp)())()
 
       val bodyStmt = transformExp(letExp.body, c)
-      println(bodystmt)
+      println(bodyStmt)
       println(letExp.body)
 
       Seqn(Seq(expressionStmt, inhaleEq, bodyStmt), Seq(localVarDecl))()
