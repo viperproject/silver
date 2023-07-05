@@ -11,7 +11,6 @@ import viper.silver.ast.utility.Statements.EmptyStmt
 import viper.silver.ast.utility.{Expressions, ViperStrategy}
 import viper.silver.ast.utility.rewriter.{ContextCustom, Strategy, Traverse}
 import viper.silver.verifier.ConsistencyError
-import viper.silver.ast.utility.rewriter.StrategyBuilder
 
 /**
  * A basic interface which helps to rewrite an expression (e.g. a function body) into a stmt (e.g. for a method body).
@@ -73,7 +72,7 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
       val right = transformExp(b.right, c)
 
       // Short circuit evaluation
-      val pureLeft: Exp = removeLets(toPureBooleanExp(c).execute(b.left))
+      val pureLeft: Exp = toPureBooleanExp(c).execute(b.left)
       val rightSCE = b match {
         case _: Or =>
           If(Not(pureLeft)(), Seqn(Seq(right), Nil)(), EmptyStmt)()
@@ -131,13 +130,6 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
     case _ =>
       val sub = e.subExps.map(transformExp(_, c))
       Seqn(sub, Nil)()
-  }
-
-  def removeLets(exp: Exp): Exp = {
-    StrategyBuilder.Slim[Node]({
-      case letExp: Let => letExp.body
-      case e => e      
-    }, Traverse.BottomUp) execute exp
   }
 
   /**
