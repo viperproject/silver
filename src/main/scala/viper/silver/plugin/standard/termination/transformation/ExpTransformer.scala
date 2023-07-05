@@ -60,21 +60,16 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
       }
     case letExp: Let =>
       val expressionStmt = transformExp(letExp.exp, c)
-      println(s"expressionstmt: $expressionStmt")
       val localVarDecl = letExp.variable
 
       val inhaleEq = Inhale(EqCmp(localVarDecl.localVar, letExp.exp)())()
 
       val bodyStmt = transformExp(letExp.body, c)
-      println(s"bodystmt: $bodyStmt")
-      println(s"real body: ${letExp.body}")
-      println(s"inhaling: $inhaleEq")
 
       Seqn(Seq(expressionStmt, inhaleEq, bodyStmt), Seq(localVarDecl))()
 
     case b: BinExp =>
       val left = transformExp(b.left, c)
-      println(s"left $left")
       val right = transformExp(b.right, c)
 
       // Short circuit evaluation
@@ -83,7 +78,6 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
         case _: Or =>
           If(Not(pureLeft)(), Seqn(Seq(right), Nil)(), EmptyStmt)()
         case _: And =>
-          println(s"pureleft: $pureLeft")
           If(pureLeft, Seqn(Seq(right), Nil)(), EmptyStmt)()
         case _: Implies =>
           If(pureLeft, Seqn(Seq(right), Nil)(), EmptyStmt)()
