@@ -11,6 +11,7 @@ import viper.silver.ast.utility.Statements.EmptyStmt
 import viper.silver.ast.utility.{Expressions, ViperStrategy}
 import viper.silver.ast.utility.rewriter.{ContextCustom, Strategy, Traverse}
 import viper.silver.verifier.ConsistencyError
+import viper.silver.ast.utility.rewriter.StrategyBuilder
 
 /**
  * A basic interface which helps to rewrite an expression (e.g. a function body) into a stmt (e.g. for a method body).
@@ -59,26 +60,30 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
       }
     case letExp: Let =>
       val expressionStmt = transformExp(letExp.exp, c)
+      println(s"expressionstmt: $expressionStmt")
       val localVarDecl = letExp.variable
 
       val inhaleEq = Inhale(EqCmp(localVarDecl.localVar, letExp.exp)())()
 
       val bodyStmt = transformExp(letExp.body, c)
-      println(bodyStmt)
-      println(letExp.body)
+      println(s"bodystmt: $bodyStmt")
+      println(s"real body: ${letExp.body}")
+      println(s"inhaling: $inhaleEq")
 
       Seqn(Seq(expressionStmt, inhaleEq, bodyStmt), Seq(localVarDecl))()
 
     case b: BinExp =>
       val left = transformExp(b.left, c)
+      println(s"left $left")
       val right = transformExp(b.right, c)
 
       // Short circuit evaluation
-      val pureLeft: Exp = toPureBooleanExp(c).execute(b.left)
+      val pureLeft: Exp = removeLets(toPureBooleanExp(c).execute(b.left))
       val rightSCE = b match {
         case _: Or =>
           If(Not(pureLeft)(), Seqn(Seq(right), Nil)(), EmptyStmt)()
         case _: And =>
+          println(s"pureleft: $pureLeft")
           If(pureLeft, Seqn(Seq(right), Nil)(), EmptyStmt)()
         case _: Implies =>
           If(pureLeft, Seqn(Seq(right), Nil)(), EmptyStmt)()
@@ -132,6 +137,13 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
     case _ =>
       val sub = e.subExps.map(transformExp(_, c))
       Seqn(sub, Nil)()
+  }
+
+  def removeLets(exp: Exp): Exp = {
+    StrategyBuilder.Slim[Node]({
+      case letExp: Let => letExp.body
+      case e => e      
+    }, Traverse.BottomUp) execute exp
   }
 
   /**
