@@ -37,7 +37,7 @@ method swap(a: IArray, i: Int, j: Int)
  * axiom again, causing a matching loop.
  */
 define permuted(a, left, right, pw)
-  forall i: Int :: {old(pw[i])} left <= i && i <= right ==> loc(a, i).val == old(loc(a, pw[i]).val)
+  forall i: Int :: {pw[i]} left <= i && i <= right ==> loc(a, i).val == old(loc(a, pw[i]).val)
 
 method partition(a: IArray, left: Int, right: Int, pivotIndex: Int) returns (storeIndex: Int, pw: Seq[Int])
   /* All indices are valid and their relative order is satisfied */
@@ -150,7 +150,6 @@ method select_rec(a: IArray, left: Int, right: Int, n: Int) returns (storeIndex:
 {
   var pwPar: Seq[Int]
   var pwRec: Seq[Int]
-
   if (left == right) {
     /* If the list contains only one element, return it */
     storeIndex := left
