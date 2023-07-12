@@ -45,7 +45,7 @@ object Functions {
     subexpressions
   }
 
-  /** Returns the call graph of a given program (also considering specifications as calls). Call graphs are memoized.
+  /** Returns the call graph of a given program (also considering specifications as calls).
     *
     * TODO: Memoize invocations of `getFunctionCallgraph`. Note that it's unclear how to derive a useful key from `subs`
     */
