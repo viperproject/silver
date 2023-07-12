@@ -7,13 +7,12 @@
 package viper.silver.frontend
 
 import viper.silver.ast.utility.Consistency
-import viper.silver.ast.{SourcePosition, _}
+import viper.silver.ast._
 import viper.silver.parser._
 import viper.silver.plugin.SilverPluginManager
 import viper.silver.plugin.SilverPluginManager.PluginException
 import viper.silver.reporter._
 import viper.silver.verifier._
-import fastparse.Parsed
 import java.nio.file.{Path, Paths}
 import viper.silver.FastMessaging
 
@@ -247,7 +246,8 @@ trait SilFrontend extends DefaultFrontend {
   }
 
   def finish(): Unit = {
-    val res = plugins.beforeFinish(result)
+    val tRes = result.transformedResult()
+    val res = plugins.beforeFinish(tRes)
     _verificationResult = Some(res)
     res match {
       case Success =>
@@ -266,22 +266,11 @@ trait SilFrontend extends DefaultFrontend {
     plugins.beforeParse(input, isImported = false) match {
       case Some(inputPlugin) =>
         val result = fp.parse(inputPlugin, file, Some(plugins))
-          result match {
-            case Parsed.Success(e@ PProgram(_, _, _, _, _, _, _, _, err_list), _) =>
-              if (err_list.isEmpty || err_list.forall(p => p.isInstanceOf[ParseWarning])) {
-                reporter report WarningsDuringParsing(err_list)
-                Succ({e.initProperties(); e})
-              }
-              else Fail(err_list)
-            case fail @ Parsed.Failure(_, index, _) =>
-              val msg = fail.trace().aggregateMsg
-              val (line, col) = fp.lineCol.getPos(index)
-              Fail(List(ParseError(msg, SourcePosition(file, line, col))))
-            //? val pos = extra.input.prettyIndex(index).split(":").map(_.toInt)
-              //? Fail(List(ParseError(s"Expected $msg", SourcePosition(file, pos(0), pos(1)))))
-            case error: ParseError => Fail(List(error))
-          }
-
+        if (result.errors.forall(p => p.isInstanceOf[ParseWarning])) {
+          reporter report WarningsDuringParsing(result.errors)
+          Succ({result.initProperties(); result})
+        }
+        else Fail(result.errors)
       case None => Fail(plugins.errors)
     }
   }

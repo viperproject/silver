@@ -53,12 +53,12 @@ object FastMessaging {
    /**
     * Makes a message list if cond is true. Stored with the position of the value
     */
-  def message (value : Any, msg : String, cond : Boolean = true, error : Boolean = true) : Messages =
+  def message (value : PNode, msg : String, cond : Boolean = true, error : Boolean = true) : Messages =
     if (cond) {
       // Warning: Potential scala.MatchError here if position info is lost!
-      val valuePos: SourcePosition = value.asInstanceOf[PNode].pos._1 match {
+      val valuePos: SourcePosition = value.pos._1 match {
         case slc: FilePosition => {
-          value.asInstanceOf[PNode].pos._2 match {
+          value.pos._2 match {
             case flc: HasLineColumn => {
               SourcePosition(slc.file, slc, flc)
             }

@@ -85,7 +85,7 @@ case class MethodCall(methodName: String, args: Seq[Exp], targets: Seq[LocalVar]
     if(!Consistency.noResult(this))
       s :+= ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)
     if (!Consistency.noDuplicates(targets))
-      s :+= ConsistencyError("Targets are not allowed to have duplicates", targets.head.pos)
+      s :+= ConsistencyError("Targets are not allowed to have duplicates", pos)
     s ++= args.flatMap(Consistency.checkPure)
     s
   }

@@ -63,7 +63,7 @@ object ImpureAssumeRewriter {
         val insideWand = c.ancestorList.foldLeft[Boolean](false)((b, n) => b || n.isInstanceOf[MagicWand])
         val dummyVars = (LazyList.from(0) map (i => placeholderVar(i, pred.loc.loc(program).formalArgs(i).typ))) take pred.loc.args.length
         val eqs = (pred.loc.args zip dummyVars) map (a => EqCmp(a._1, a._2)())
-        val cond = eqs.tail.foldLeft[Exp](eqs.head)((a, e) => And(a,e)())
+        val cond = if (eqs.isEmpty) TrueLit()() else eqs.tail.foldLeft[Exp](eqs.head)((a, e) => And(a,e)())
         val newCtxFrame =  ((And(c.c, cond)(), dummyVars), pred.perm)
         val oldCtxFrames = collCont.getOrElse(pred.loc.loc(program), Seq())
         collCont += (pred.loc.loc(program) -> (oldCtxFrames :+ newCtxFrame))
