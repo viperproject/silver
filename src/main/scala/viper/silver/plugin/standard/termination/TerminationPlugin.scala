@@ -6,9 +6,9 @@
 
 package viper.silver.plugin.standard.termination
 
-import viper.silver.ast.utility.ViperStrategy
+import viper.silver.ast.utility.{Functions, ViperStrategy}
 import viper.silver.ast.utility.rewriter.{SimpleContext, Strategy, StrategyBuilder}
-import viper.silver.ast.{Applying, Assert, CondExp, CurrentPerm, Exp, Function, InhaleExhaleExp, MagicWand, Method, Node, Program, Unfolding, While}
+import viper.silver.ast.{Applying, Assert, CondExp, CurrentPerm, Exp, FuncApp, Function, InhaleExhaleExp, MagicWand, Method, Node, Program, Unfolding, While}
 import viper.silver.parser._
 import viper.silver.plugin.standard.predicateinstance.PPredicateInstance
 import viper.silver.plugin.standard.termination.transformation.Trafo
@@ -109,6 +109,34 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
    * Remove decreases clauses from the AST and add them as information to the AST nodes
    */
   override def beforeVerify(input: Program): Program = {
+    // Prevent potentially unsafe (mutually) recursive function calls in function postcondtions
+    // for all functions that don't have a decreases clause
+    lazy val cycles = Functions.findFunctionCyclesVia(input, func => func.body.toSeq, func => func.body.toSeq)
+    for (f <- input.functions) {
+      val hasDecreasesClause = (f.pres ++ f.posts).exists(p => p.shallowCollect {
+        case dc: DecreasesClause => dc
+      }.nonEmpty)
+      if (!hasDecreasesClause) {
+        val funcCycles = cycles.get(f)
+        val problematicFuncApps = f.posts.flatMap(p => p.shallowCollect {
+          case fa: FuncApp if fa.func(input) == f => fa
+          case fa: FuncApp if funcCycles.isDefined && funcCycles.get.contains(fa.func(input)) => fa
+        }).toSet
+        for (fa <- problematicFuncApps) {
+          val calledFunc = fa.func(input)
+          if (calledFunc == f) {
+            if (fa.args == f.formalArgs.map(_.localVar)) {
+              reportError(ConsistencyError(s"Function ${f.name} has a self-reference in its postcondition and must be proven to be well-founded. Use \"result\" instead to refer to the result of the function.", fa.pos))
+            } else {
+              reportError(ConsistencyError(s"Function ${f.name} has a self-reference in its postcondition and must be proven to be well-founded. Add a \"decreases\" clause to prove well-foundedness.", fa.pos))
+            }
+          } else {
+            reportError(ConsistencyError(s"Function ${f.name} has a call to mutually-recursive function ${calledFunc.name} in its postcondition and must be proven to be well-founded. Add a \"decreases\" clause to prove well-foundedness.", fa.pos))
+          }
+        }
+      }
+    }
+
     // extract all decreases clauses from the program
     val newProgram: Program = extractDecreasesClauses.execute(input)
 
