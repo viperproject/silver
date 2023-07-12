@@ -111,7 +111,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
   override def beforeVerify(input: Program): Program = {
     // Prevent potentially unsafe (mutually) recursive function calls in function postcondtions
     // for all functions that don't have a decreases clause
-    lazy val cycles = Functions.findFunctionCyclesVia(input, func => func.body.toSeq, func => func.body.toSeq)
+    lazy val cycles = Functions.findFunctionCyclesViaOptimized(input, func => func.body.toSeq)
     for (f <- input.functions) {
       val hasDecreasesClause = (f.pres ++ f.posts).exists(p => p.shallowCollect {
         case dc: DecreasesClause => dc

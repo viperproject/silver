@@ -12,7 +12,7 @@ import org.jgrapht.alg.connectivity.GabowStrongConnectivityInspector
 import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 import org.jgrapht.traverse.TopologicalOrderIterator
 
-import scala.collection.mutable.{Set => MSet, ListBuffer}
+import scala.collection.mutable.{ListBuffer, Set => MSet}
 import scala.jdk.CollectionConverters._
 
 /**
@@ -47,11 +47,10 @@ object Functions {
 
   /** Returns the call graph of a given program (also considering specifications as calls).
     *
-    * TODO: Memoize invocations of `getFunctionCallgraph`.
+    * TODO: Memoize invocations of `getFunctionCallgraph`. Note that it's unclear how to derive a useful key from `subs`
     */
   def getFunctionCallgraph(program: Program, subs: Function => Seq[Exp] = allSubexpressions)
                           : DefaultDirectedGraph[Function, DefaultEdge] = {
-
     val graph = new DefaultDirectedGraph[Function, DefaultEdge](classOf[DefaultEdge])
 
     for (f <- program.functions) {
@@ -214,7 +213,7 @@ object Functions {
   }
 
   /** Returns all cycles formed by functions that (transitively through certain subexpressions)
-    * recurses via certain expressions.
+    * recurse via certain expressions.
     *
     * @param program The program that defines the functions to check for cycles.
     * @param via The expression the cycle has to go through.
@@ -233,12 +232,34 @@ object Functions {
 
     program.functions.flatMap(func => {
       val graph = getFunctionCallgraph(program, viaSubs(func))
-      val cycleDetector = new CycleDetector(graph)
-      val cycle = cycleDetector.findCyclesContainingVertex(func).asScala
-      if (cycle.isEmpty)
-        None
-      else
-        Some(func -> cycle.toSet)
+      findCycles(graph, func)
     }).toMap[Function, Set[Function]]
+  }
+
+  /** Returns all cycles formed by functions that (transitively through certain subexpressions)
+    * recurse via certain expressions. This is an optimized version of `findFunctionCyclesVia` in case
+    * `via` and `subs` are equivalent.
+    *
+    * @param program The program that defines the functions to check for cycles.
+    * @param via     The expression the cycle has to go through.
+    * @return A map from functions to sets of functions. If a function `f` maps to a set of
+    *         functions `fs`, then `f` (transitively) recurses via, and the
+    *         formed cycles involves the set of functions `fs`.
+    */
+  def findFunctionCyclesViaOptimized(program: Program, via: Function => Seq[Exp])
+  : Map[Function, Set[Function]] = {
+    val graph = getFunctionCallgraph(program, via)
+    program.functions.flatMap(func => {
+      findCycles(graph, func)
+    }).toMap[Function, Set[Function]]
+  }
+
+  private def findCycles(graph: DefaultDirectedGraph[Function, DefaultEdge], func: Function): Option[(Function, Set[Function])] = {
+    val cycleDetector = new CycleDetector(graph)
+    val cycle = cycleDetector.findCyclesContainingVertex(func).asScala
+    if (cycle.isEmpty)
+      None
+    else
+      Some(func -> cycle.toSet)
   }
 }
