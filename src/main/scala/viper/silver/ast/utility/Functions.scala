@@ -12,7 +12,6 @@ import org.jgrapht.alg.connectivity.GabowStrongConnectivityInspector
 import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 import org.jgrapht.traverse.TopologicalOrderIterator
 
-import scala.collection.mutable
 import scala.collection.mutable.{ListBuffer, Set => MSet}
 import scala.jdk.CollectionConverters._
 
@@ -46,31 +45,30 @@ object Functions {
     subexpressions
   }
 
-  val functionCallGraphCache: mutable.Map[(Program, Function => Seq[Exp]), DefaultDirectedGraph[Function, DefaultEdge]] = mutable.SeqMap.empty
   /** Returns the call graph of a given program (also considering specifications as calls). Call graphs are memoized.
+    *
+    * TODO: Memoize invocations of `getFunctionCallgraph`. Note that it's unclear how to derive a useful key from `subs`
     */
   def getFunctionCallgraph(program: Program, subs: Function => Seq[Exp] = allSubexpressions)
                           : DefaultDirectedGraph[Function, DefaultEdge] = {
-    functionCallGraphCache.getOrElseUpdate((program, subs), {
-      val graph = new DefaultDirectedGraph[Function, DefaultEdge](classOf[DefaultEdge])
+    val graph = new DefaultDirectedGraph[Function, DefaultEdge](classOf[DefaultEdge])
 
-      for (f <- program.functions) {
-        graph.addVertex(f)
+    for (f <- program.functions) {
+      graph.addVertex(f)
+    }
+
+    def process(f: Function, e: Exp): Unit = {
+      e visit {
+        case FuncApp(f2name, _) =>
+          graph.addEdge(f, program.findFunction(f2name))
       }
+    }
 
-      def process(f: Function, e: Exp): Unit = {
-        e visit {
-          case FuncApp(f2name, _) =>
-            graph.addEdge(f, program.findFunction(f2name))
-        }
-      }
+    for (f <- program.functions) {
+      subs(f) foreach (process(f, _))
+    }
 
-      for (f <- program.functions) {
-        subs(f) foreach (process(f, _))
-      }
-
-      graph
-    })
+    graph
   }
   /**
     * Computes the height of every function.  If the height h1 of a function f1 is
