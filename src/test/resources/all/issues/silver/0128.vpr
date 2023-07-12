@@ -7,3 +7,8 @@ method deposit()
   //:: ExpectedOutput(typechecker.error)
   ensures  balance == 5
 {}
+
+method deposit2()
+  //:: ExpectedOutput(typechecker.error)
+  ensures  balance == balance
+{}

@@ -239,7 +239,7 @@ abstract class AbstractVerificationError extends VerificationError {
   }
 
   /** Transform the error back according to the specified error transformations */
-  def transformedError(): AbstractVerificationError = {
+  override def transformedError(): AbstractVerificationError = {
     val errorT = offendingNode.transformError(this)
     val reasonT = errorT.reason.offendingNode.transformReason(errorT.reason)
 

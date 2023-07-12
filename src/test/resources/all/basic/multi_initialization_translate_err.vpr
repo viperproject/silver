@@ -1,0 +1,13 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field n: Ref, m: Ref
+
+method foo() returns (x: Ref, y: Ref, z: Int)
+method test1() {
+  var a: Ref, b: Int
+  //:: ExpectedOutput(typechecker.error)
+  a.n, a.n, b := foo()
+
+  a.n, a.m, b := foo()
+}
