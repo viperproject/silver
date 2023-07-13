@@ -17,12 +17,8 @@ import scala.collection.{immutable, mutable}
 
 case class ParseException(msg: String, pos: (Position, Position)) extends Exception
 
-case class SuffixedExpressionGenerator[E <: PExp](func: PExp => E) extends (PExp => PExp) {
+case class SuffixedExpressionGenerator[+E <: PExp](func: PExp => E) extends (PExp => PExp) {
   override def apply(v1: PExp): E = func(v1)
-}
-
-case class SuffixedExpressionFromGenerator[E <: PExp](func: (PExp, PExp) => E) extends ((PExp, PExp) => PExp) {
-  override def apply(from: PExp, suffixedExp: PExp): E = func(from, suffixedExp)
 }
 
 object FastParserCompanion {
@@ -394,13 +390,8 @@ class FastParser {
 
   def quoted[$: P, T](p: => P[T]) = "\"" ~ p ~ "\""
 
-  def foldPExp[E <: PExp](e: PExp, es: Seq[SuffixedExpressionGenerator[E]]): E =
-    es.foldLeft(e) { (t, a) => a(t)
-    }.asInstanceOf[E]
-
-  def foldPExpFrom[E <: PExp](e: PExp, es: Seq[SuffixedExpressionFromGenerator[E]]): E =
-    es.foldLeft(e) { (t, a) => a(e, t)
-    }.asInstanceOf[E]
+  def foldPExp[E <: PExp](e: E, es: Seq[SuffixedExpressionGenerator[E]]): E =
+    es.foldLeft(e) { (t, a) => a(t) }
 
   def isFieldAccess(obj: Any) = {
     obj.isInstanceOf[PFieldAccess]
@@ -489,57 +480,46 @@ class FastParser {
   def exp[$: P]: P[PExp] = P(iteExpr)
 
   def suffix[$: P]: P[SuffixedExpressionGenerator[PExp]] =
-    P(FP("." ~ idnuse).map { case (pos, id) => SuffixedExpressionGenerator[PExp]((e: PExp) => PFieldAccess(e, id)((e.pos._1, pos._2))) } |
-      FP("[" ~ Pass ~ ".." ~/ exp ~ "]").map { case (pos, n) => SuffixedExpressionGenerator[PExp]((e: PExp) => PSeqTake(e, n)((e.pos._1, pos._2))) } |
-      FP("[" ~ exp ~ ".." ~ Pass ~ "]").map { case (pos, n) => SuffixedExpressionGenerator[PExp]((e: PExp) => PSeqDrop(e, n)((e.pos._1, pos._2))) } |
-      FP("[" ~ exp ~ ".." ~ exp ~ "]").map { case (pos, (n, m)) => SuffixedExpressionGenerator[PExp]((e: PExp) => PSeqDrop(PSeqTake(e, m)((e.pos._1, pos._2)), n)((e.pos._1, pos._2))) } |
-      FP("[" ~ exp ~ "]").map { case (pos, e1) => SuffixedExpressionGenerator[PExp]((e0: PExp) => PLookup(e0, e1)((e0.pos._1, pos._2))) } |
-      FP("[" ~ exp ~ ":=" ~ exp ~ "]").map { case (pos, (i, v)) => SuffixedExpressionGenerator[PExp]((e: PExp) => PUpdate(e, i, v)((e.pos._1, pos._2))) })
+    P(FP("." ~ idnuse).map { case (pos, id) => SuffixedExpressionGenerator[PExp](e => PFieldAccess(e, id)(e.pos._1, pos._2)) } |
+      FP("[" ~ Pass ~ ".." ~/ exp ~ "]").map { case (pos, n) => SuffixedExpressionGenerator[PExp](e => PSeqTake(e, n)(e.pos._1, pos._2)) } |
+      FP("[" ~ exp ~ ".." ~ Pass ~ "]").map { case (pos, n) => SuffixedExpressionGenerator[PExp](e => PSeqDrop(e, n)(e.pos._1, pos._2)) } |
+      FP("[" ~ exp ~ ".." ~ exp ~ "]").map { case (pos, (n, m)) => SuffixedExpressionGenerator[PExp](e => PSeqDrop(PSeqTake(e, m)(e.pos._1, pos._2), n)(e.pos._1, pos._2)) } |
+      FP("[" ~ exp ~ "]").map { case (pos, e1) => SuffixedExpressionGenerator[PExp](e0 => PLookup(e0, e1)(e0.pos._1, pos._2)) } |
+      FP("[" ~ exp ~ ":=" ~ exp ~ "]").map { case (pos, (i, v)) => SuffixedExpressionGenerator[PExp](e => PUpdate(e, i, v)(e.pos._1, pos._2)) })
 
-  /*
-  Maps:
-  def suffix[$: P]: P[SuffixedExpressionGenerator[PExp]] =
-    P(FP("." ~ idnuse).map { case (pos, id) => SuffixedExpressionGenerator[PExp]((e: PExp) => {
-      PFieldAccess(e, id)(pos)
-    }) } |
-      FP("[" ~ Pass ~ ".." ~/ exp ~ "]").map { case (pos, n) => SuffixedExpressionGenerator[PExp]((e: PExp) => PSeqTake(e, n)(pos)) } |
-      FP("[" ~ exp ~ ".." ~ Pass ~ "]").map { case (pos, n) => SuffixedExpressionGenerator[PExp]((e: PExp) => PSeqDrop(e, n)(pos)) } |
-      FP("[" ~ exp ~ ".." ~ exp ~ "]").map { case (pos, (n, m)) => SuffixedExpressionGenerator[PExp]((e: PExp) => PSeqDrop(PSeqTake(e, m)(), n)(pos)) } |
-      FP("[" ~ exp ~ "]").map { case (pos, e1) => SuffixedExpressionGenerator[PExp]((e0: PExp) => PSeqIndex(e0, e1)(pos)) } |
-      FP("[" ~ exp ~ ":=" ~ exp ~ "]").map { case (pos, (i, v)) => SuffixedExpressionGenerator[PExp]((e: PExp) => PSeqUpdate(e, i, v)(pos)) })
-   */
-
-  def suffixExpr[$: P]: P[PExp] = P((atom ~~~ suffix.lw.rep).map { case (fac, ss) => foldPExp[PExp](fac, ss) })
+  def suffixExpr[$: P]: P[PExp] = P((atom ~~~ suffix.lw.rep).map { case (fac, ss) => foldPExp(fac, ss) })
 
   def termOp[$: P]: P[String] = P(StringIn("*", "/", "\\", "%").!)
 
-  def term[$: P]: P[PExp] = P((suffixExpr ~~~ termd.lw.rep).map { case (a, ss) => foldPExp[PExp](a, ss) })
+  def term[$: P]: P[PExp] = P((suffixExpr ~~~ termd.lw.rep).map { case (a, ss) => foldPExp(a, ss) })
 
-  def termd[$: P]: P[SuffixedExpressionGenerator[PExp]] = FP(termOp ~ suffixExpr).map { case (pos, (op, id)) => SuffixedExpressionGenerator[PExp]((e: PExp) => PBinExp(e, op, id)((e.pos._1, pos._2))) }
+  def termd[$: P]: P[SuffixedExpressionGenerator[PBinExp]] = FP(termOp ~ suffixExpr).map { case (pos, (op, id)) => SuffixedExpressionGenerator(e => PBinExp(e, op, id)(e.pos._1, pos._2)) }
 
   def sumOp[$: P]: P[String] = P(StringIn("++", "+", "-").! | keyword("union").! | keyword("intersection").! | keyword("setminus").! | keyword("subset").!)
 
-  def sum[$: P]: P[PExp] = P((term ~~~ sumd.lw.rep).map { case (a, ss) => foldPExp[PBinExp](a, ss) })
+  def sum[$: P]: P[PExp] = P((term ~~~ sumd.lw.rep).map { case (a, ss) => foldPExp(a, ss) })
 
-  def sumd[$: P]: P[SuffixedExpressionGenerator[PBinExp]] = FP(sumOp ~ term).map { case (pos, (op, id)) => SuffixedExpressionGenerator[PBinExp]((e: PExp) => PBinExp(e, op, id)((e.pos._1, pos._2))) }
+  def sumd[$: P]: P[SuffixedExpressionGenerator[PBinExp]] = FP(sumOp ~ term).map { case (pos, (op, id)) => SuffixedExpressionGenerator(e => PBinExp(e, op, id)(e.pos._1, pos._2)) }
 
   def cmpOp[$: P] = P(StringIn("<=", ">=", "<", ">").! | keyword("in").!)
 
   val cmpOps = Set("<=", ">=", "<", ">", "in")
 
-  def cmpd[$: P]: P[SuffixedExpressionFromGenerator[PBinExp]] = FP(cmpOp ~ sum).map {
-    case (pos, (op, id)) => SuffixedExpressionFromGenerator[PBinExp](chainComp(op, id, pos))
+  def cmpd[$: P]: P[PExp => SuffixedExpressionGenerator[PBinExp]] = FP(cmpOp ~ sum).map {
+    case (pos, (op, right)) => chainComp(op, right, pos)
   }
 
-  def chainComp(op: String, right: PExp, pos: (FilePosition, FilePosition))(from: PExp, e: PExp) = e match {
-    case outer@PBinExp(_, "&&", PBinExp(_, op0, r)) if cmpOps.contains(op0) && outer != from =>
-      PBinExp(outer, "&&", PBinExp(r, op, right)((r.pos._1, pos._2)))((outer.pos._1, pos._2))
-    case l@PBinExp(_, op0, r) if cmpOps.contains(op0) && l != from =>
-      PBinExp(l, "&&", PBinExp(r, op, right)((r.pos._1, pos._2)))((l.pos._1, pos._2))
-    case e: PExp => PBinExp(e, op, right)((e.pos._1, pos._2))
-  }
+  def chainComp(op: String, right: PExp, pos: (FilePosition, FilePosition))(from: PExp) = SuffixedExpressionGenerator(_ match {
+      case left@PBinExp(_, op0, middle) if cmpOps.contains(op0) && left != from =>
+        PBinExp(left, "&&", PBinExp(middle, op, right)(middle.pos._1, pos._2))(left.pos._1, pos._2)
+      case left@PBinExp(_, "&&", PBinExp(_, op0, middle)) if cmpOps.contains(op0) && left != from =>
+        PBinExp(left, "&&", PBinExp(middle, op, right)(middle.pos._1, pos._2))(left.pos._1, pos._2)
+      case left => PBinExp(left, op, right)(left.pos._1, pos._2)
+  })
 
-  def cmpExp[$: P]: P[PExp] = P((sum ~~~ cmpd.lw.rep).map { case (a, ss) => foldPExpFrom[PBinExp](a, ss) })
+  def cmpExp[$: P]: P[PExp] = P((sum ~~~ cmpd.lw.rep).map {
+    case (from, others) => foldPExp(from, others.map(_(from)))
+  })
 
   def eqOp[$: P] = P(StringIn("==", "!=").!)
 
