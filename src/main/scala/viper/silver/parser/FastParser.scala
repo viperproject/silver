@@ -124,7 +124,7 @@ class FastParser {
   var _line_offset: Array[Int] = null
   /** The file we are currently parsing (for creating positions later). */
   var _file: Path = null
-  var _warnings: Seq[ParseWarning] = Seq()
+  private var _warnings: Seq[ParseWarning] = Seq()
 
   def parse(s: String, f: Path, plugins: Option[SilverPluginManager] = None) = {
     // Strategy to handle imports
@@ -830,6 +830,8 @@ class FastParser {
   def programDecl(implicit ctx : P[_]) : P[PProgram] =
     P(FP((ParserExtension.newDeclAtStart(ctx) | preambleImport | defineDecl | fieldDecl | methodDecl | domainDecl | functionDecl | predicateDecl | ParserExtension.newDeclAtEnd(ctx)).rep).map {
     case (pos, decls) => {
+      val warnings = _warnings
+      _warnings = Seq()
       PProgram(
         decls.collect { case i: PImport => i }, // Imports
         decls.collect { case d: PDefine => d }, // Macros
@@ -839,7 +841,7 @@ class FastParser {
         decls.collect { case p: PPredicate => p }, // Predicates
         decls.collect { case m: PMethod => m }, // Methods
         decls.collect { case e: PExtender => e }, // Extensions
-        Seq() // Parse Errors
+        warnings // Parse Warnings
       )(pos)
     }
   })
