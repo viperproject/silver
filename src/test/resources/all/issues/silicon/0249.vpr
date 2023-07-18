@@ -2,6 +2,7 @@
 // http://creativecommons.org/publicdomain/zero/1.0/
 
 function int___box__(int: Int): Ref
+  decreases *
   ensures (forall other: Int ::  (int___box__(other) == result) == (other == int))
 
 method test(i: Int, j: Int) {

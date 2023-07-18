@@ -2,12 +2,12 @@
 // http://creativecommons.org/publicdomain/zero/1.0/
 
 method foo(b: Int) returns (r: Int) {
-    //:: ExpectedOutput(consistency.error)
+    //:: ExpectedOutput(typechecker.error)
     b := foo(0)
 }
 
 method bar(r: Ref)
 {
-    //:: ExpectedOutput(consistency.error)
+    //:: ExpectedOutput(typechecker.error)
     r := new(*)
 }

@@ -1,9 +1,8 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-define outer
-{
-//:: ExpectedOutput(parser.error)
-  define inner {
-  }
+predicate p()
+
+method client() {
+    assume p()
 }

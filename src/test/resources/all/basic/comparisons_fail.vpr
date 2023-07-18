@@ -1,0 +1,26 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+method chain(i1: Int, i2: Ref, i3: Int, i4: Int)
+    //:: ExpectedOutput(typechecker.error)
+    requires i1 < i2 <= i3 > i4
+{
+}
+
+method chain1In(s1: Seq[Int], s2: Seq[Seq[Int]], s3: Seq[Seq[Seq[Ref]]], s4: Set[Seq[Seq[Seq[Int]]]])
+    //:: ExpectedOutput(typechecker.error)
+    requires s1 in s2 in s3 in s4
+{
+}
+
+method chainParen(i1: Int, i2: Int, i3: Int, i4: Int)
+    //:: ExpectedOutput(typechecker.error)
+    requires (i1 < i2) <= i3 > i4
+{
+}
+
+method chainParen2(i1: Int, i2: Int, i3: Int, i4: Int)
+    //:: ExpectedOutput(typechecker.error)
+    requires i1 < i2 <= (i3 > i4)
+{
+}

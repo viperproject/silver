@@ -18,7 +18,7 @@ import viper.silver.ast.utility.lsp.GotoDefinition
 
 
 case class PAdt(annotations: Seq[PAnnotation], adt: PKeywordLang, idndef: PIdnDef, typVars: Seq[PTypeVarDecl], constructors: Seq[PAdtConstructor], derive: Option[PKeywordLang], derivingInfos: Seq[PAdtDerivingInfo])
-               (val pos: (Position, Position)) extends PExtender with PMember with PGlobalDeclaration with PSemanticDeclaration with PGlobalSymbol with HasFoldingRanges {
+               (val pos: (Position, Position)) extends PExtender with PSingleMember with PGlobalDeclaration with PSemanticDeclaration with PGlobalSymbol with HasFoldingRanges {
 
   override val getSubnodes: Seq[PNode] = annotations ++ Seq(adt, idndef) ++ typVars ++ constructors ++ derive.toSeq ++ derivingInfos
 
@@ -98,6 +98,18 @@ case class PAdt(annotations: Seq[PAnnotation], adt: PKeywordLang, idndef: PIdnDe
     s"${adt.pretty()} ${idndef.pretty()}$tvsStr"
   }
   override def getFoldingRanges: Seq[FoldingRange] = RangePosition(this).map(FoldingRange(_)).toSeq
+  // override def withChildren(children: Seq[Any], pos: Option[(Position, Position)] = None, forceRewrite: Boolean = false): this.type = {
+  //   if (!forceRewrite && this.children == children && pos.isEmpty)
+  //     this
+  //   else {
+  //     assert(children.length == 4, s"PAdt : expected length 4 but got ${children.length}")
+  //     val first = children(0).asInstanceOf[PIdnDef]
+  //     val second = children(1).asInstanceOf[Seq[PTypeVarDecl]]
+  //     val third = children(2).asInstanceOf[Seq[PAdtConstructor]]
+  //     val fourth = children(3).asInstanceOf[Seq[PAdtDerivingInfo]]
+  //     PAdt(first, second, third, fourth)(pos.getOrElse(this.pos), annotations).asInstanceOf[this.type]
+  //   }
+  // }
 }
 
 object PAdt {
@@ -113,7 +125,7 @@ object PAdt {
 }
 
 case class PAdtConstructor(annotations: Seq[PAnnotation], idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl])
-                          (val adtName: PIdnUse)(val pos: (Position, Position)) extends PExtender with PMember with PGlobalDeclaration with PSemanticDeclaration with PGlobalCallable {
+                          (val adtName: PIdnUse)(val pos: (Position, Position)) extends PExtender with PSingleMember with PGlobalDeclaration with PSemanticDeclaration with PGlobalCallable {
 
   override val getSubnodes: Seq[PNode] = annotations ++ Seq(idndef) ++ formalArgs
 

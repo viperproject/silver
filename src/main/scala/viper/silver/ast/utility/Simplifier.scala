@@ -45,7 +45,9 @@ object Simplifier {
         FalseLit()(root.pos, root.info)
       case Implies(TrueLit(), consequent) => consequent
 
-      case root @ EqCmp(left, right) if left == right => TrueLit()(root.pos, root.info)
+      // ME: Disabled since it is not equivalent in case the expression is not well-defined.
+      // TODO: Consider checking if Expressions.proofObligations(left) is empty (requires adding the program as parameter).
+      // case root @ EqCmp(left, right) if left == right => TrueLit()(root.pos, root.info)
       case root @ EqCmp(BoolLit(left), BoolLit(right)) =>
         BoolLit(left == right)(root.pos, root.info)
       case root @ EqCmp(FalseLit(), right) => Not(right)(root.pos, root.info)

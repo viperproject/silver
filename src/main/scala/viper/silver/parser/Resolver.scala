@@ -138,8 +138,8 @@ case class TypeChecker(names: NameAnalyser) {
       curFunction = f
       f.pres foreach (p => check(p._2, Bool))
       resultAllowed = true
-      f.pres foreach (p => check(p._2, Bool))
-      f.body.map(_.inner).foreach(check(_, f.typ)) //result in the function body gets the error message somewhere else
+      f.posts foreach (p => check(p._2, Bool))
+      f.body.map(_.inner).foreach(check(_, f.typ.resultType)) //result in the function body gets the error message somewhere else
       resultAllowed = false
       curFunction = null
     }
@@ -157,9 +157,9 @@ case class TypeChecker(names: NameAnalyser) {
     }
   }
 
-  def check(f: PField): Unit = {
+  def check(f: PFields): Unit = {
     checkMember(f) {
-      check(f.typ)
+      f.fields foreach (fd => check(fd.typ))
     }
   }
 
@@ -190,8 +190,6 @@ case class TypeChecker(names: NameAnalyser) {
     stmt match {
       case PAnnotatedStmt(s, _) =>
         check(s)
-      case PMacroRef(id) =>
-        messages ++= FastMessaging.message(stmt, "unknown macro used: " + id.name)
       case s@PSeqn(ss) =>
         checkMember(s) {
           ss foreach check
@@ -217,69 +215,11 @@ case class TypeChecker(names: NameAnalyser) {
         check(e, Bool)
       case PAssume(_, e) =>
         check(e, Bool)
-      case p@PVarAssign(idnuse, c@PCall(func, args, _)) if names.definition(curMember)(func).map(_.isInstanceOf[PMethod]).getOrElse(false) =>
-        /* This is a method call that got parsed in a slightly confusing way.
-         * TODO: Get rid of this case! There is a matching case in the translator.
-         */
-        c.method = names.definition(curMember)(func).get.asInstanceOf[PMethod]
-        func.decl = c.method
-        val newnode: PStmt = PMethodCall(Seq(idnuse), func, args)(p.pos)
-        check(newnode)
-
-      case PVarAssign(idnuse, rhs) =>
-        names.definition(curMember)(idnuse) match {
-          case Some(PLocalVarDecl(_, _, typ, _)) =>
-            check(idnuse, typ)
-            check(rhs, typ)
-          case Some(PFormalArgDecl(_, typ)) =>
-            check(idnuse, typ)
-            check(rhs, typ)
-          case Some(_) =>
-            messages ++= FastMessaging.message(stmt, "expected variable as lhs")
-          case None => assert(!names.success)
-        }
-      case PNewStmt(target, fields) =>
-        val msg = "expected variable as lhs"
-        acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](Seq(target), msg) { (v, _) => check(v, Ref) }
-        fields foreach (_.foreach(field =>
-          names.definition(curMember)(field) match {
-            case Some(PField(_, _, _, typ)) =>
-              check(field, typ)
-            case Some(_) =>
-              messages ++= FastMessaging.message(stmt, "expected a field as argument")
-            case None => assert(!names.success)
-          }))
-      case pm@PMethodCall(targets, method, args) =>
-        names.definition(curMember)(method) match {
-          case Some(m@PMethod(_, _, _, formalArgs, formalTargets, _, _, _)) =>
-            pm.resolved = m
-            formalArgs.foreach(fa => check(fa.typ))
-            if (formalArgs.length != args.length) {
-              messages ++= FastMessaging.message(stmt, "wrong number of arguments")
-            } else {
-              if (formalTargets.length != targets.length) {
-                messages ++= FastMessaging.message(stmt, "wrong number of targets")
-              } else {
-                for ((formal, actual) <- (formalArgs zip args) ++ (formalTargets zip targets)) {
-                  check(actual, formal.typ)
-                }
-              }
-            }
-          case Some(_) =>
-            messages ++= FastMessaging.message(stmt, "expected a method")
-          case None => assert(!names.success)
-        }
+      case assign: PAssign =>
+        checkAssign(assign)
       case PLabel(_, _, invs) =>
-        invs foreach (inv => check(inv._2, Bool))
+        invs foreach (check(_, Bool))
       case PGoto(_, _) =>
-      case PFieldAssign(field, rhs) =>
-        names.definition(curMember)(field.idnuse, Some(PField.getClass)) match {
-          case Some(PField(_, _, _, typ)) =>
-            check(field, typ)
-            check(rhs, typ)
-          case _ =>
-            messages ++= FastMessaging.message(stmt, "expected a field as lhs")
-        }
       case PIf(_, cond, thn, _, els) =>
         check(cond, Bool)
         check(thn)
@@ -288,12 +228,9 @@ case class TypeChecker(names: NameAnalyser) {
         check(cond, Bool)
         invs foreach (inv => check(inv._2, Bool))
         check(body)
-      case PLocalVarDecl(_, _, typ, init) =>
-        check(typ)
-        init match {
-          case Some(i) => check(i, typ)
-          case None =>
-        }
+      case v@PVars(_, _, vars, initial) =>
+        vars foreach (v => check(v.typ))
+        initial.map(i => checkAssign(PAssign(vars.map(_.toIdnUse), i)(v.pos)))
       case _: PDefine =>
         /* Should have been removed right after parsing */
         sys.error(s"Unexpected node $stmt found")
@@ -315,7 +252,47 @@ case class TypeChecker(names: NameAnalyser) {
     }
   }
 
-  def checkHavoc(stmt: PStmt, lhs: Option[(PExp, POperator)], e: PExp): Unit = {
+  def checkAssign(stmt: PAssign): Unit = {
+    // Check targets
+    stmt.targets foreach {
+      case idnuse: PIdnUse => names.definition(curMember)(idnuse) match {
+          case Some(decl: PAssignableVarDecl) =>
+            check(idnuse, decl.typ)
+          case _ =>
+            messages ++= FastMessaging.message(idnuse, "expected an assignable identifier as lhs")
+        }
+      case fa@PFieldAccess(_, field) => names.definition(curMember)(field, Some(PFields.getClass)) match {
+          case Some(PFieldDecl(_, typ)) =>
+            check(fa, typ)
+          case _ =>
+            messages ++= FastMessaging.message(field, "expected a field as lhs")
+        }
+      case call: PCall => sys.error(s"Unexpected node $call found")
+    }
+    // Check rhs
+    stmt match {
+      case PAssign(targets, PCall(func, args, _)) if names.definition(curMember)(func).get.isInstanceOf[PMethod] =>
+        val PMethod(_, formalArgs, formalTargets, _, _, _) = names.definition(curMember)(func).get.asInstanceOf[PMethod]
+        formalArgs.foreach(fa => check(fa.typ))
+        if (formalArgs.length != args.length) {
+          messages ++= FastMessaging.message(stmt, "wrong number of arguments")
+        } else if (formalTargets.length != targets.length) {
+          messages ++= FastMessaging.message(stmt, "wrong number of targets")
+        } else {
+          for ((formal, actual) <- (formalArgs zip args) ++ (formalTargets zip targets)) {
+            check(actual, formal.typ)
+          }
+        }
+      case PAssign(Seq(target), PNewExp(fieldsOpt)) =>
+        check(target, Ref)
+        fieldsOpt map (acceptAndCheckTypedEntity[PFieldDecl, Nothing](_, "expected a field as argument"))
+      case PAssign(Seq(lhs), rhs) => check(rhs, lhs.typ)
+      // Case `targets.length != 1`:
+      case _ => messages ++= FastMessaging.message(stmt, "expected a method call")
+    }
+  }
+
+  def checkHavoc(stmt: PStmt, lhs: Option[PExp], e: PExp): Unit = {
     // If there is a condition, make sure that it is a Bool
     if (lhs.nonEmpty) {
       check(lhs.get._1, Bool)
@@ -337,19 +314,11 @@ case class TypeChecker(names: NameAnalyser) {
 
   def acceptNonAbstractPredicateAccess(exp: PExp, messageIfAbstractPredicate: String): Unit = {
     exp match {
-      // case PAccPred(_, PPredicateAccess(_, idnuse), _) =>
-      //   acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate") { (_, _predicate) =>
-      //     val predicate = _predicate.asInstanceOf[PPredicate]
-      //     if (predicate.body.isEmpty) messages ++= FastMessaging.message(idnuse, messageIfAbstractPredicate)
-      //   }
       case PAccPred(_, PCall(idnuse, _, _), _) =>
         val ad = names.definition(curMember)(idnuse)
         ad match {
-          case Some(_: PPredicate) =>
-            acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate") { (_, _predicate) =>
-              val predicate = _predicate.asInstanceOf[PPredicate]
-              if (predicate.body.isEmpty) messages ++= FastMessaging.message(idnuse, messageIfAbstractPredicate)
-            }
+          case Some(predicate: PPredicate) =>
+            if (predicate.body.isEmpty) messages ++= FastMessaging.message(idnuse, messageIfAbstractPredicate)
           case _ => messages ++= FastMessaging.message(exp, "expected predicate access")
         }
 
@@ -388,8 +357,7 @@ case class TypeChecker(names: NameAnalyser) {
     *            TODO: If only a single T is taken, let handle be (PIdnUse, T) => Unit
     */
   def acceptAndCheckTypedEntity[T1: ClassTag, T2: ClassTag]
-  (idnUses: Seq[PIdnUse], errorMessage: String)
-  (handle: (PIdnUse, PTypedDeclaration) => Unit = (_, _) => ()): Unit = {
+  (idnUses: Seq[PIdnUse], errorMessage: => String): Unit = {
 
     /* TODO: Ensure that the ClassTags denote subtypes of TypedEntity */
     val acceptedClasses = Seq[Class[_]](classTag[T1].runtimeClass, classTag[T2].runtimeClass)
@@ -398,9 +366,11 @@ case class TypeChecker(names: NameAnalyser) {
       val decl = names.definition(curMember)(use)
 
       if (decl.isDefined) {
-        acceptedClasses.find(_.isInstance(decl.get)) match {
+        acceptedClasses.find(_.isInstance(decl)) match {
           case Some(_) =>
-            handle(use, decl.get.asInstanceOf[PTypedDeclaration])
+            val td = decl.asInstanceOf[PTypedDeclaration]
+            use.typ = td.typ
+            use.decl = td
           case None =>
             messages ++= FastMessaging.message(use, errorMessage)
         }
@@ -442,6 +412,9 @@ case class TypeChecker(names: NameAnalyser) {
       case PMapType(_, keyType, valueType) =>
         check(keyType)
         check(valueType)
+      case PFunctionType(argTypes, resultType) =>
+        argTypes map check
+        check(resultType)
       case t: PExtender =>
         t.typecheck(this, names).getOrElse(Nil) foreach (message =>
           messages ++= FastMessaging.message(t, message))
@@ -606,11 +579,6 @@ case class TypeChecker(names: NameAnalyser) {
       setType(PUnknown()())
     }
 
-    def setPIdnUseTypeAndEntity(piu: PIdnUse, typ: PType, entity: PDeclaration): Unit = {
-      setType(typ)
-      piu.decl = entity
-    }
-
     def getFreshTypeSubstitution(tvs: Seq[PDomainType]): PTypeRenaming =
       PTypeVar.freshTypeSubstitutionPTVs(tvs)
 
@@ -649,7 +617,7 @@ case class TypeChecker(names: NameAnalyser) {
         psl match {
           case r@PResultLit(_) =>
             if (resultAllowed)
-              setType(curFunction.typ)
+              setType(curFunction.typ.resultType)
             else
               issueError(r, "'result' can only be used in function postconditions")
           case _ =>
@@ -677,13 +645,13 @@ case class TypeChecker(names: NameAnalyser) {
                       func.decl = fd
                       ensure(fd.formalArgs.size == args.size, pfa, "wrong number of arguments")
                       fd match {
-                        case PFunction(_, _, _, _, _, _, _, _) =>
+                        case PFunction(_, _, _, _, _, pres, _, _) =>
                           checkMember(fd) {
                             check(fd.typ)
                             fd.formalArgs foreach (a => check(a.typ))
                           }
-                          if (inAxiomScope(Some(pfa)))
-                            issueError(func, func.name + " is not a domain function")
+                          if (inAxiomScope(Some(pfa)) && pres.nonEmpty)
+                            issueError(func, s"Cannot use function ${func.name}, which has preconditions, inside axiom")
 
                         case pdf@PDomainFunction(_, _, _, _, _, _, _) =>
                           val domain = names.definition(curMember)(pdf.domainName).get.asInstanceOf[PDomain]
@@ -714,20 +682,9 @@ case class TypeChecker(names: NameAnalyser) {
               case PApplying(_, wand, _) =>
                 checkMagicWand(wand)
 
-              case PFieldAccess(rcv, idnuse) =>
-                /* For a field access of the type rcv.fld we have to ensure that the
-                 * receiver denotes a local variable. Just checking that it is of type
-                 * Ref is not sufficient, since it could also denote a Ref-typed field.
-                 */
-                rcv match {
-                  case p: PIdnUse =>
-                    acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](Seq(p), "expected local variable")()
-                  case _ =>
-                  /* More complicated expressions should be ok if of type Ref, which is checked next */
-                }
-
-                acceptAndCheckTypedEntity[PField, Nothing](Seq(idnuse), "expected field")(
-                  (id, _) => checkInternal(id))
+              // We checked that the `rcv` is valid above with `poa.args.foreach(checkInternal)`
+              case PFieldAccess(_, idnuse) =>
+                acceptAndCheckTypedEntity[PFieldDecl, Nothing](Seq(idnuse), "expected field")
 
               case PAccPred(_, loc, _) =>
                 loc match {
@@ -737,15 +694,6 @@ case class TypeChecker(names: NameAnalyser) {
                     issueError(loc, "specified location is not a field nor a predicate")
                 }
 
-              // case ppa@PPredicateAccess(args, idnuse) =>
-              //   val predicate = names.definition(curMember)(idnuse).get.asInstanceOf[PPredicate]
-              //   acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate") { (id, _) =>
-              //     checkInternal(id)
-              //     if (args.length != predicate.formalArgs.length)
-              //       issueError(idnuse, "predicate arity doesn't match")
-              //     else
-              //       ppa.predicate = predicate
-              //   }
               case pecl: PEmptyCollectionLiteral if !pecl.pElementType.isValidOrUndeclared =>
                 check(pecl.pElementType)
 
@@ -789,24 +737,16 @@ case class TypeChecker(names: NameAnalyser) {
           }
         }
 
-      case piu@PIdnUse(_) =>
-        names.definition(curMember)(piu) match {
-          case Some(decl@PLocalVarDecl(_, _, typ, _)) => setPIdnUseTypeAndEntity(piu, typ, decl)
-          case Some(decl@PFormalArgDecl(_, typ)) => setPIdnUseTypeAndEntity(piu, typ, decl)
-          case Some(decl@PField(_, _, _, typ)) => setPIdnUseTypeAndEntity(piu, typ, decl)
-          case Some(decl@PPredicate(_, _, _, _, _)) => setPIdnUseTypeAndEntity(piu, Pred, decl)
-          case Some(x) => issueError(piu, s"expected identifier, but got ${x}")
-          case None => assert(!names.success)
-        }
+      case piu: PIdnUse =>
+        acceptAndCheckTypedEntity[PAnyVarDecl, Nothing](Seq(piu), "expected variable identifier")
 
       case pl@PLet(e, ns) =>
         val oldCurMember = curMember
         curMember = ns
         checkInternal(e)
         ns.variable.typ = e.typ
-        checkInternal(pl.body)
-        pl.typ = pl.body.typ
-        pl._typeSubstitutions = (for (ts1 <- pl.body.typeSubstitutions; ts2 <- e.typeSubstitutions) yield (ts1 * ts2).toOption).flatten.toList.distinct
+        checkInternal(ns.body)
+        pl.typ = ns.body.typ
         curMember = oldCurMember
 
       case pq: PForPerm =>
@@ -829,6 +769,8 @@ case class TypeChecker(names: NameAnalyser) {
         pq._typeSubstitutions = pq.body.typeSubstitutions.toList.distinct
         pq.typ = Bool
         curMember = oldCurMember
+      
+      case pne@PNewExp(_) => issueError(pne, s"unexpected use of `new` as an expression")
     }
   }
 
@@ -861,8 +803,8 @@ case class NameAnalyser() {
     * In order to resolve name clashes, e.g., if the identifier is expected to
     * refer to a field, but there is a local variable with the same name in the
     * member scope that shadows the field, then the `expected` class can be
-    * provided (e.g., `PField`), with the result that the shadowing local
-    * variable will be ignored because its class (`PLocalVarDecl`) doesn't
+    * provided (e.g., `PFields`), with the result that the shadowing local
+    * variable will be ignored because its class (`PVars`) doesn't
     * match.
     *
     * @param member   Current scope in which to start the resolving.

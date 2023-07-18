@@ -26,7 +26,6 @@ function q2(s:Int) : Bool
 // Example 3
 domain A3 {
   axiom x3 {
-    //:: ExpectedOutput(typechecker.error)
     g3()
   }
 }
@@ -45,6 +44,7 @@ domain A4 {
 }
 
 function g4(): Bool
+  requires true
 
 // Example 5
 domain A5 {

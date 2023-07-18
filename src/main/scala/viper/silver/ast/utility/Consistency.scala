@@ -196,6 +196,20 @@ object Consistency {
     (if(!noLabelledOld(e)) Seq(ConsistencyError("Labelled-old expressions are not allowed in postconditions.", e.pos)) else Seq())
   }
 
+  def checkWildcardUsage(e: Exp): Seq[ConsistencyError] = {
+    val containedWildcards = e.shallowCollect{
+      case w: WildcardPerm => w
+    }
+    if (containedWildcards.nonEmpty) {
+      e match {
+        case _: WildcardPerm => Seq()
+        case _ => Seq(ConsistencyError("Wildcard occurs inside compound expression (should only occur directly in an accessibility predicate).", e.pos))
+      }
+    } else {
+      Seq()
+    }
+  }
+
   /** checks that all quantified variables appear in all triggers */
   def checkAllVarsMentionedInTriggers(variables: Seq[LocalVarDecl], triggers: Seq[Trigger]) : Seq[ConsistencyError] = {
     var s = Seq.empty[ConsistencyError]
@@ -229,6 +243,7 @@ object Consistency {
   def validTrigger(e: Exp, program: Program): Boolean = {
     e match {
       case Old(nested) => validTrigger(nested, program) // case corresponds to OldTrigger node
+      case LabelledOld(nested, _) => validTrigger(nested, program)
       case wand: MagicWand => wand.subexpressionsToEvaluate(program).forall(e => !e.existsDefined {case _: ForbiddenInTrigger => })
       case _ : PossibleTrigger | _: FieldAccess | _: PredicateAccess => !e.existsDefined { case _: ForbiddenInTrigger => }
       case _ => false

@@ -269,6 +269,11 @@ case class WarningsDuringTypechecking(warnings: Seq[TypecheckerWarning]) extends
   override val name: String = "warnings_during_typechecking"
 }
 
+case class WarningsDuringVerification(warnings: Seq[VerifierWarning]) extends Message {
+  override lazy val toString: String = s"warnings_during_verification(warnings=${warnings.toString})"
+  override val name: String = "warnings_during_verification"
+}
+
 abstract class SimpleMessage(val text: String) extends Message {
   override lazy val toString: String = s"$name(text=$text)"
   override val name: String = "simple_message"
@@ -276,6 +281,10 @@ abstract class SimpleMessage(val text: String) extends Message {
 
 case class ConfigurationConfirmation(override val text: String) extends SimpleMessage(text) {
   override val name: String = "configuration_confirmation"
+}
+
+case class AnnotationWarning(override val text: String) extends SimpleMessage(text) {
+  override val name: String = "annotation_warning"
 }
 
 case class InternalWarningMessage(override val text: String) extends SimpleMessage(text) {

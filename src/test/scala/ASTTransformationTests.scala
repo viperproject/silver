@@ -145,7 +145,7 @@ class ASTTransformationTests extends AnyFunSuite {
     import viper.silver.parser._
 
     val p = (NoPosition, NoPosition)
-    val requires = PForall(PKeywordLang("forall")(p), Seq(PFormalArgDecl(PIdnDef("y")(p), TypeHelper.Int)(p)), Seq(), PBinExp(PIdnUse("y")(p), POperatorSymbol("==")(p), PIdnUse("y")(p))(p))(p)
+    val requires = PForall(PKeywordLang("forall")(p), Seq(PLogicalVarDecl(PIdnDef("y")(p), TypeHelper.Int)(p)), Seq(), PBinExp(PIdnUse("y")(p), POperatorSymbol("==")(p), PIdnUse("y")(p))(p))(p)
     val function = PFunction(Seq(), PKeywordLang("function")(p), PIdnDef("f")(p), Seq(PFormalArgDecl(PIdnDef("x")(p), TypeHelper.Ref)(p)), TypeHelper.Bool, Seq((PKeywordLang("requires")(p), requires)), Seq(), None)(p)
     val program = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(function), Seq(), Seq(), Seq(), Seq())(p)
 

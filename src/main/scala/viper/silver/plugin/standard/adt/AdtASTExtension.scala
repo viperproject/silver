@@ -26,6 +26,13 @@ case class Adt(name: String, constructors: Seq[AdtConstructor], typVars: Seq[Typ
 
   override def extensionSubnodes: Seq[Node] = constructors ++ typVars ++ derivingInfo.map(_._2._1).collect { case Some(v) => v }
 
+  override lazy val check: Seq[ConsistencyError] = {
+    if (constructors.isEmpty)
+      Seq(ConsistencyError( s"ADT $name must have at least one constructor.", pos))
+    else
+      Seq()
+  }
+
   override def prettyPrint: PrettyPrintPrimitives#Cont = {
 
     def showDerivingInfo(di: (String, (Option[Type], Set[String]))): PrettyPrintPrimitives#Cont = {
