@@ -479,13 +479,17 @@ class FastParser {
 
   def exp[$: P]: P[PExp] = P(iteExpr)
 
+  def indexSuffix[$: P]: P[((Position, Position), PExp) => SuffixedExpressionGenerator[PExp]] = P(
+    (":=" ~ exp).map(v => (pos: (Position, Position), i: PExp) => SuffixedExpressionGenerator[PExp](e => PUpdate(e, i, v)(e.pos._1, pos._2))) |
+    // Need to have `".." ~ exp` before `".." ~ Pass` and both of those before `Pass` to avoid issues due to some implicit cut when `indexSuffix` succeeds
+    (".." ~ exp).map(m => (pos: (Position, Position), n: PExp) => SuffixedExpressionGenerator[PExp](e => PSeqDrop(PSeqTake(e, m)(e.pos._1, pos._2), n)(e.pos._1, pos._2))) |
+    (".." ~ Pass).map(_ => (pos: (Position, Position), n: PExp) => SuffixedExpressionGenerator[PExp](e => PSeqDrop(e, n)(e.pos._1, pos._2))) |
+    Pass.map(_ => (pos: (Position, Position), e1: PExp) => SuffixedExpressionGenerator[PExp](e0 => PLookup(e0, e1)(e0.pos._1, pos._2))))
+
   def suffix[$: P]: P[SuffixedExpressionGenerator[PExp]] =
     P(FP("." ~ idnuse).map { case (pos, id) => SuffixedExpressionGenerator[PExp](e => PFieldAccess(e, id)(e.pos._1, pos._2)) } |
       FP("[" ~ Pass ~ ".." ~/ exp ~ "]").map { case (pos, n) => SuffixedExpressionGenerator[PExp](e => PSeqTake(e, n)(e.pos._1, pos._2)) } |
-      FP("[" ~ exp ~ ".." ~ Pass ~ "]").map { case (pos, n) => SuffixedExpressionGenerator[PExp](e => PSeqDrop(e, n)(e.pos._1, pos._2)) } |
-      FP("[" ~ exp ~ ".." ~ exp ~ "]").map { case (pos, (n, m)) => SuffixedExpressionGenerator[PExp](e => PSeqDrop(PSeqTake(e, m)(e.pos._1, pos._2), n)(e.pos._1, pos._2)) } |
-      FP("[" ~ exp ~ "]").map { case (pos, e1) => SuffixedExpressionGenerator[PExp](e0 => PLookup(e0, e1)(e0.pos._1, pos._2)) } |
-      FP("[" ~ exp ~ ":=" ~ exp ~ "]").map { case (pos, (i, v)) => SuffixedExpressionGenerator[PExp](e => PUpdate(e, i, v)(e.pos._1, pos._2)) })
+      FP("[" ~ exp ~ indexSuffix ~ "]").map { case (pos, (e, s)) => s(pos, e) })
 
   def suffixExpr[$: P]: P[PExp] = P((atom ~~~ suffix.lw.rep).map { case (fac, ss) => foldPExp(fac, ss) })
 
@@ -595,11 +599,11 @@ class FastParser {
       PIdnDef(s)(pos)
     }
 
-  def quant[$: P]: P[PExp] = P(FP(keyword("forall") ~ nonEmptyIdnTypeList ~ "::" ~ trigger.rep ~ exp).map {
+  def quant[$: P]: P[PExp] = P(FP(keyword("forall") ~/ nonEmptyIdnTypeList ~ "::" ~ trigger.rep ~ exp).map {
     case (pos, (a, b, c)) =>
       PForall(a.map(PLogicalVarDecl(_)), b, c)(pos)
     } |
-    FP(keyword("exists") ~ nonEmptyIdnTypeList ~ "::" ~ trigger.rep ~ exp).map {
+    FP(keyword("exists") ~/ nonEmptyIdnTypeList ~ "::" ~ trigger.rep ~ exp).map {
       case (pos, (a, b, c)) =>
         PExists(a.map(PLogicalVarDecl(_)), b, c)(pos)
     })
@@ -642,11 +646,11 @@ class FastParser {
     | (StringIn("Int", "Bool", "Perm", "Ref") ~~ !identContinues).!.map(PPrimitiv))
  */
 
-  def trigger[$: P]: P[PTrigger] = FP("{" ~/ exp.rep(sep = ",") ~ "}").map{
+  def trigger[$: P]: P[PTrigger] = FP("{" ~/ exp.rep(sep = ",") ~ "}"./).map{
     case (pos, s) => PTrigger(s)(pos)
   }
 
-  def forperm[$: P]: P[PExp] = FP(keyword("forperm") ~ nonEmptyIdnTypeList ~ "[" ~ resAcc ~ "]" ~ "::" ~ exp).map {
+  def forperm[$: P]: P[PExp] = FP(keyword("forperm") ~/ nonEmptyIdnTypeList ~ "[" ~ resAcc ~ "]" ~ "::" ~ exp).map {
     case (pos, (args, res, body)) => PForPerm(args.map(PLogicalVarDecl(_)), res, body)(pos)
   }
 
@@ -779,7 +783,7 @@ class FastParser {
   }
 
   // No need for `.lw` here since we have `FP("{" ~ ... ~ "}")`
-  def block[$: P]: P[PSeqn] = FP("{" ~/ (stmt ~/ ";".?).rep ~ "}").map{ case (pos, e) => PSeqn(e)(pos)}
+  def block[$: P]: P[PSeqn] = FP("{" ~/ (stmt ~/ ";".?).rep ~ "}"./).map{ case (pos, e) => PSeqn(e)(pos)}
 
   def elseIfOrElse[$: P]: LW[PSeqn] = elseIf.lw | elseBlock
 
@@ -796,13 +800,13 @@ class FastParser {
       PWhile(cond, invs, body)(pos)
   }
 
-  def invariant(implicit ctx : P[_]) : P[PExp] = P((keyword("invariant") ~ exp ~~~ ";".lw.?) | ParserExtension.invSpecification(ctx))
+  def invariant(implicit ctx : P[_]) : P[PExp] = P((keyword("invariant") ~/ exp ~~~ ";".lw.?) | ParserExtension.invSpecification(ctx))
 
   def localVars[$: P]: P[PVars] = FP(keyword("var") ~/ nonEmptyIdnTypeList ~~~ (":=" ~ exp).lw.?).map {
     case (pos, (a, b)) => PVars(a.map(PLocalVarDecl(_)), b)(pos)
   }
 
-  def defineDecl[$: P]: P[PDefine] = FP(keyword("define") ~/ idndef ~ ("(" ~ idndef.rep(sep = ",") ~ ")").? ~ ("{" ~/ (nodefinestmt ~ ";".?).rep ~ "}" | exp)).map {
+  def defineDecl[$: P]: P[PDefine] = FP(keyword("define") ~/ idndef ~ ("(" ~ idndef.rep(sep = ",") ~ ")").? ~ ("{" ~/ (nodefinestmt ~ ";".?).rep ~ "}"./ | exp)).map {
     case (pos, (a, b, c)) => c match {
       case e: PExp => PDefine(a, b, e)(pos)
       case ss: Seq[PStmt]@unchecked => PDefine(a, b, PSeqn(ss)(pos))(pos)
@@ -855,8 +859,8 @@ class FastParser {
 
   def anyString[$: P]: P[String] = P(CharPred(c => c !='\"').rep(1).!)
 
-  def domainDecl[$: P]: P[PDomain] = FP(annotation.rep(0) ~ "domain" ~/ idndef ~ typeParams ~ ("interpretation" ~ parens((ident ~ ":" ~ quoted(anyString.!)).rep(sep = ","))).? ~ "{" ~ (domainFunctionDecl | axiomDecl).rep ~
-    "}").map {
+  def domainDecl[$: P]: P[PDomain] = FP(annotation.rep(0) ~ "domain" ~/ idndef ~ typeParams ~ ("interpretation" ~ parens((ident ~ ":" ~ quoted(anyString.!)).rep(sep = ","))).? ~ "{" ~/ (domainFunctionDecl | axiomDecl).rep ~
+    "}"./).map {
     case (pos, (anns, name, typparams, interpretations, members)) =>
       val funcs = members collect { case m: PDomainFunction1 => m }
       val axioms = members collect { case m: PAxiom1 => m }
@@ -890,14 +894,14 @@ class FastParser {
 
   def formalReturnList[$: P]: P[Seq[PFormalReturnDecl]] = P(idnTypeBinding.map(PFormalReturnDecl(_)).rep(sep = ","))
 
-  def axiomDecl[$: P]: P[PAxiom1] = FP(annotation.rep(0) ~ keyword("axiom") ~ idndef.? ~ "{" ~ exp ~ "}" ~~~ ";".lw.?).map { case (pos, (anns, a, b)) => PAxiom1(a, b)(pos, anns) }
+  def axiomDecl[$: P]: P[PAxiom1] = FP(annotation.rep(0) ~ keyword("axiom") ~/ idndef.? ~ "{" ~/ exp ~ "}"./ ~~~ ";".lw.?).map { case (pos, (anns, a, b)) => PAxiom1(a, b)(pos, anns) }
 
   def fieldDecl[$: P]: P[PFields] = FP(annotation.rep(0) ~ keyword("field") ~/ nonEmptyIdnTypeList ~~~ ";".lw.?).map {
     case (pos, (anns, a)) => PFields(a.map(PFieldDecl(_)))(pos, anns)
   }
 
   def functionDecl[$: P]: P[PFunction] = FP(annotation.rep(0) ~ "function" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~~~ precondition.lw.rep ~~~
-    postcondition.lw.rep ~~~ ("{" ~ exp ~ "}").lw.?).map({ case (pos, (anns, a, b, c, d, e, f)) =>
+    postcondition.lw.rep ~~~ ("{" ~/ exp ~ "}"./).lw.?).map({ case (pos, (anns, a, b, c, d, e, f)) =>
       PFunction(a, b, c, d, e, f)(pos, anns)
   })
 
@@ -906,7 +910,7 @@ class FastParser {
 
   def postcondition(implicit ctx : P[_]) : P[PExp] = P(("ensures" ~/ exp ~~~ ";".lw.?) | ParserExtension.postSpecification(ctx))
 
-  def predicateDecl[$: P]: P[PPredicate] = FP(annotation.rep(0) ~ keyword("predicate") ~/ idndef ~ "(" ~ formalArgList ~ ")" ~~~ ("{" ~ exp ~ "}").lw.?).map {
+  def predicateDecl[$: P]: P[PPredicate] = FP(annotation.rep(0) ~ keyword("predicate") ~/ idndef ~ "(" ~ formalArgList ~ ")" ~~~ ("{" ~/ exp ~ "}"./).lw.?).map {
     case (pos, (anns, a, b, c)) =>
       PPredicate(a, b, c)(pos, anns)
   }
