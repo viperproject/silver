@@ -10,7 +10,6 @@ import java.net.URL
 import java.nio.file.{Path, Paths}
 import viper.silver.ast.{FilePosition, LabelledOld, LineCol, NoPosition, Position, SourcePosition}
 import viper.silver.ast.utility.{DiskLoader, FileLoader}
-import viper.silver.ast.utility.rewriter.{ContextA, PartialContextC, StrategyBuilder}
 import viper.silver.parser.FastParserCompanion.{LW, LeadingWhitespace}
 import viper.silver.plugin.{ParserPluginTemplate, SilverPluginManager}
 import viper.silver.verifier.{ParseError, ParseWarning}
@@ -113,9 +112,6 @@ class FastParser {
     implicit ctx: ParsingRun[_] =>
       NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
   }
-  import scala.language.implicitConversions
-  implicit def LeadingWhitespaceStr(p: String)(implicit ctx: P[Any]): LeadingWhitespace[Unit] = new LeadingWhitespace(() => P(p))
-  implicit def LeadingWhitespace[T](p: => P[T]) = new LeadingWhitespace(() => p)
 
   val lineCol = new LineCol(this)
 
@@ -160,30 +156,30 @@ class FastParser {
 
       def appendNewImports(imports: Seq[PImport], current: Path, fromLocal: Boolean): Unit = {
         for (ip <- imports) {
-          ip match {
-            case localImport@PImport(_, true, path) if fromLocal =>
-              val localPath = current.resolveSibling(path.file).normalize()
+          if (ip.local) {
+            val localPath = current.resolveSibling(ip.file.file).normalize()
+            if (fromLocal) {
               if(!localsToImport.contains(localPath)){
-                localImport.resolved = localPath
+                ip.resolved = localPath
                 localsToImport.append(localPath)
-                localImportStatements.update(localPath, localImport)
+                localImportStatements.update(localPath, ip)
               }
-            case localImport@PImport(_, true, path) if !fromLocal =>
+            } else {
               // local import get transformed to standard imports
-              val localPath = current.resolveSibling(path.file).normalize()
               if (!standardsToImport.contains(localPath)) {
-                localImport.resolved = localPath
-                localImport.local = false
+                ip.resolved = localPath
+                ip.local = false
                 standardsToImport.append(localPath)
-                standardImportStatements.update(localPath, localImport)
+                standardImportStatements.update(localPath, ip)
               }
-            case standardImport@PImport(_, false, path) =>
-              val standardPath = Paths.get(path.file).normalize()
-              if(!standardsToImport.contains(standardPath)){
-                standardImport.resolved = standardPath
-                standardsToImport.append(standardPath)
-                standardImportStatements.update(standardPath, standardImport)
-              }
+            }
+          } else {
+            val standardPath = Paths.get(ip.file.file).normalize()
+            if(!standardsToImport.contains(standardPath)){
+              ip.resolved = standardPath
+              standardsToImport.append(standardPath)
+              standardImportStatements.update(standardPath, ip)
+            }
           }
         }
       }
@@ -373,6 +369,10 @@ class FastParser {
 
   lazy val keywords = FastParserCompanion.basicKeywords | ParserExtension.extendedKeywords
 
+  import scala.language.implicitConversions
+  implicit def LeadingWhitespaceStr(p: String)(implicit ctx: P[Any]): LeadingWhitespace[Unit] = new LeadingWhitespace(() => P(p))
+  implicit def LeadingWhitespace[T](p: => P[T]) = new LeadingWhitespace(() => p)
+
   // Actual Parser starts from here
   def identStarts[$: P] = CharIn("A-Z", "a-z", "$_")
   def identContinues[$: P] = CharIn("0-9", "A-Z", "a-z", "$_")
@@ -382,6 +382,9 @@ class FastParser {
   def keywordConst[$: P](check: => P[_]): P[PKeywordConstant] = FP(check.!).map { case (pos, k) => PKeywordConstant(k)(pos) } ~~ !identContinues
   def keywordType[$: P](check: => P[_]): P[PKeywordType] = FP(check.!).map { case (pos, k) => PKeywordType(k)(pos) } ~~ !identContinues
 
+  def keywordOp[$: P](check: => P[_]): P[PKeywordOperator] = FP(check.!).map { case (pos, op) => PKeywordOperator(op)(pos) } ~~ !identContinues
+  def operator[$: P](check: => P[_]): P[POperatorSymbol] = FP(check.!).map { case (pos, op) => POperatorSymbol(op)(pos) }
+  
   def parens[$: P, T](p: => P[T]) = "(" ~ p ~ ")"
 
   def angles[$: P, T](p: => P[T]) = "<" ~ p ~ ">"
@@ -491,6 +494,8 @@ class FastParser {
 
   def suffixExpr[$: P]: P[PExp] = P((atom ~~~ suffix.lw.rep).map { case (fac, ss) => foldPExp(fac, ss) })
 
+  def termOp[$: P]: P[POperatorSymbol] = operator(StringIn("*", "/", "\\", "%"))
+
   def term[$: P]: P[PExp] = P((suffixExpr ~~~ termd.lw.rep).map { case (a, ss) => foldPExp(a, ss) })
 
   def termd[$: P]: P[SuffixedExpressionGenerator[PBinExp]] = FP(termOp ~ suffixExpr).map { case (pos, (op, id)) => SuffixedExpressionGenerator(e => PBinExp(e, op, id)(e.pos._1, pos._2)) }
@@ -509,11 +514,11 @@ class FastParser {
     case (pos, (op, right)) => chainComp(op, right, pos)
   }
 
-  def chainComp(op: String, right: PExp, pos: (FilePosition, FilePosition))(from: PExp) = SuffixedExpressionGenerator(_ match {
-      case left@PBinExp(_, op0, middle) if cmpOps.contains(op0) && left != from =>
-        PBinExp(left, "&&", PBinExp(middle, op, right)(middle.pos._1, pos._2))(left.pos._1, pos._2)
-      case left@PBinExp(_, "&&", PBinExp(_, op0, middle)) if cmpOps.contains(op0) && left != from =>
-        PBinExp(left, "&&", PBinExp(middle, op, right)(middle.pos._1, pos._2))(left.pos._1, pos._2)
+  def chainComp(op: POperator, right: PExp, pos: (FilePosition, FilePosition))(from: PExp) = SuffixedExpressionGenerator(_ match {
+      case left@PBinExp(_, op0, middle) if cmpOps.contains(op0.operator) && left != from =>
+        PBinExp(left, POperatorSymbol("&&")(NoPosition, NoPosition), PBinExp(middle, op, right)(middle.pos._1, pos._2))(left.pos._1, pos._2)
+      case left@PBinExp(_, POperatorSymbol("&&"), PBinExp(_, op0, middle)) if cmpOps.contains(op0.operator) && left != from =>
+        PBinExp(left, POperatorSymbol("&&")(NoPosition, NoPosition), PBinExp(middle, op, right)(middle.pos._1, pos._2))(left.pos._1, pos._2)
       case left => PBinExp(left, op, right)(left.pos._1, pos._2)
   })
 
@@ -595,13 +600,13 @@ class FastParser {
       PIdnDef(s)(pos)
     }
 
-  def quant[$: P]: P[PExp] = P(FP(keyword("forall") ~ nonEmptyIdnTypeList ~ "::" ~ trigger.rep ~ exp).map {
-    case (pos, (a, b, c)) =>
-      PForall(a.map(PLogicalVarDecl(_)), b, c)(pos)
+  def quant[$: P]: P[PExp] = P(FP(keywordLang("forall") ~ nonEmptyIdnTypeList ~ "::" ~ trigger.rep ~ exp).map {
+    case (pos, (k, a, b, c)) =>
+      PForall(k, a.map(PLogicalVarDecl(_)), b, c)(pos)
     } |
-    FP(keyword("exists") ~ nonEmptyIdnTypeList ~ "::" ~ trigger.rep ~ exp).map {
-      case (pos, (a, b, c)) =>
-        PExists(a.map(PLogicalVarDecl(_)), b, c)(pos)
+    FP(keywordLang("exists") ~ nonEmptyIdnTypeList ~ "::" ~ trigger.rep ~ exp).map {
+      case (pos, (k, a, b, c)) =>
+        PExists(k, a.map(PLogicalVarDecl(_)), b, c)(pos)
     })
 
   def nonEmptyIdnTypeList[$: P]: P[Seq[PIdnTypeBinding]] = P(idnTypeBinding.rep(min = 1, sep = ","))
@@ -629,8 +634,8 @@ class FastParser {
 
   def primitiveTyp[$: P]: P[PPrimitiv] = P(FP(keywordType("Rational")).map {
     case (pos, _) =>
-      _warnings = _warnings :+ ParseWarning("Rational is deprecated, use Perm instead", SourcePosition(_file, pos._1.line, pos._1.column))
-      PPrimitiv("Perm")(pos)
+      _warnings = _warnings :+ ParseWarning("Rational is deprecated, use Perm instead", SourcePosition(_file, pos._1, pos._2))
+      PPrimitiv(PKeywordType("Perm")(pos))(pos)
   } | FP(keywordType(StringIn("Int", "Bool", "Perm", "Ref") ~~ !identContinues)).map { case (pos, name) => PPrimitiv(name)(pos) })
 
   /** Only for call-like macros, `idnuse`-like ones are parsed by `domainTyp`. */
@@ -641,7 +646,7 @@ class FastParser {
   }
 
   def forperm[$: P]: P[PExp] = FP(keywordLang("forperm") ~ nonEmptyIdnTypeList ~ "[" ~ resAcc ~ "]" ~ "::" ~ exp).map {
-    case (pos, (args, res, body)) => PForPerm(args.map(PLogicalVarDecl(_)), res, body)(pos)
+    case (pos, (k, args, res, body)) => PForPerm(k, args.map(PLogicalVarDecl(_)), res, body)(pos)
   }
 
   def unfolding[$: P]: P[PExp] = FP(keywordOp("unfolding") ~ predicateAccessPred ~ "in" ~ exp).map {
@@ -699,7 +704,7 @@ class FastParser {
     case (pos, e) => PMapRange(e)(pos)
   })
 
-  def newExp[$: P]: P[PNewExp] = FP("new" ~ "(" ~ newExpFields ~ ")").map { case (pos, fields) => PNewExp(fields)(pos) }
+  def newExp[$: P]: P[PNewExp] = FP(keywordStmt("new") ~ "(" ~ newExpFields ~ ")").map { case (pos, (k, fields)) => PNewExp(k, fields)(pos) }
 
   def newExpFields[$: P]: P[Option[Seq[PIdnUse]]] = P(P("*").map(_ => None) | P(idnuse.rep(sep = ",")).map(Some(_)))
 
@@ -715,7 +720,7 @@ class FastParser {
   def stmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | annotatedStmt |
     assign | methodCall | fold | unfold | exhale | assertStmt |
     inhale | assume | ifThenElse | whileStmt | localVars | defineDecl |
-    goto | label | packageWand | applyWand | block |
+    goto | label | packageWand | applyWand | stmtBlock |
     quasihavoc | quasihavocall | ParserExtension.newStmtAtEnd(ctx))
 
   def annotatedStmt(implicit ctx : P[_]): P[PStmt] = (FP(annotation ~ stmt).map{
@@ -725,7 +730,7 @@ class FastParser {
   def nodefinestmt(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | annotatedStmt |
     assign | methodCall | fold | unfold | exhale | assertStmt |
     inhale | assume | ifThenElse | whileStmt | localVars |
-    goto | label | packageWand | applyWand | block |
+    goto | label | packageWand | applyWand | stmtBlock |
     quasihavoc | quasihavocall | ParserExtension.newStmtAtEnd(ctx))
 
   def assignTarget[$: P]: P[PAssignTarget] = P(fieldAcc | NoCut(funcApp) | idnuse)
@@ -764,8 +769,8 @@ class FastParser {
   }
 
   def quasihavocall[$: P]: P[PQuasihavocall] = FP(keywordStmt("quasihavocall") ~/
-    nonEmptyFormalArgList ~ operator("::") ~ (magicWandExp ~ operator("==>")).? ~ exp).map {
-    case (pos, (k, vars, c, lhs, rhs)) => PQuasihavocall(k, vars, c, lhs, rhs)(pos)
+    nonEmptyIdnTypeList ~ operator("::") ~ (magicWandExp ~ operator("==>")).? ~ exp).map {
+    case (pos, (k, vars, c, lhs, rhs)) => PQuasihavocall(k, vars.map(PLogicalVarDecl(_)), c, lhs, rhs)(pos)
   }
 
   def ifThenElse[$: P]: P[PIf] = FP(keywordStmt("if") ~ "(" ~ exp ~ ")" ~ stmtBlock ~~~ elseIfOrElse).map {
@@ -805,7 +810,7 @@ class FastParser {
 
   def goto[$: P]: P[PGoto] = FP(keywordStmt("goto") ~/ idnuse).map{ case (pos, (k, e)) => PGoto(k, e)(pos) }
 
-  def lbl[$: P]: P[PLabel] = FP(keywordStmt("label") ~/ idndef ~~~ (keywordLang("invariant") ~/ exp).lw.rep).map {
+  def label[$: P]: P[PLabel] = FP(keywordStmt("label") ~/ idndef ~~~ (keywordLang("invariant") ~/ exp).lw.rep).map {
     case (pos, (k, name, invs)) => PLabel(k, name, invs)(pos) }
 
   def packageWand[$: P]: P[PPackageWand] = FP(keywordStmt("package") ~/ magicWandExp ~~~ stmtBlock.lw.?).map {
@@ -889,9 +894,11 @@ class FastParser {
 
   def formalArgList[$: P]: P[Seq[PFormalArgDecl]] = P(formalArg.rep(sep = ","))
 
+  def formalReturnList[$: P]: P[Seq[PFormalReturnDecl]] = P(idnTypeBinding.map(PFormalReturnDecl(_)).rep(sep = ","))
+
   def axiomDecl[$: P]: P[PAxiom1] = FP(annotation.rep(0) ~ keywordLang("axiom") ~ idndef.? ~ block(exp) ~~~ ";".lw.?).map { case (pos, (anns, k, a, b)) => PAxiom1(anns, k, a, b)(pos) }
 
-  def fieldDecl[$: P]: P[PField] = FP(annotation.rep(0) ~ keywordLang("field") ~/ nonEmptyIdnTypeList ~~~ ";".lw.?).map {
+  def fieldDecl[$: P]: P[PFields] = FP(annotation.rep(0) ~ keywordLang("field") ~/ nonEmptyIdnTypeList ~~~ ";".lw.?).map {
     case (pos, (anns, k, a)) => PFields(anns, k, a.map(PFieldDecl(_)))(pos)
   }
 

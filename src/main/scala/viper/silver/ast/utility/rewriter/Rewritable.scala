@@ -37,10 +37,10 @@ trait Rewritable extends Product {
         val constructorMirror = classMirror.reflectConstructor(constructorSymbol)
 
         // Add additional arguments to constructor call, besides children
-        var firstArgList = children
+        val firstArgList = children
         var secondArgList = Seq.empty[Any]
         import viper.silver.ast.{DomainType, DomainAxiom, FuncApp, DomainFunc, DomainFuncApp}
-        import viper.silver.parser.{PAxiom, PMagicWandExp, PNode, PDomainType}
+        import viper.silver.parser.{PAxiom, PNode, PDomainType}
         this match {
           case dt: DomainType => secondArgList = Seq(dt.typeParameters)
           case da: DomainAxiom => secondArgList = Seq(da.pos, da.info, da.domainName, da.errT)
@@ -50,7 +50,6 @@ trait Rewritable extends Product {
           case ba: BackendFuncApp => secondArgList = Seq(ba.pos, ba.info, ba.typ, ba.interpretation, ba.errT)
           case no: Node => secondArgList = no.getMetadata
           case pa: PAxiom => secondArgList = Seq(pa.domainName) ++ Seq(pos.getOrElse(pa.pos))
-          case pm: PMagicWandExp => firstArgList = Seq(children.head) ++ children.drop(2) ++ Seq(pos.getOrElse(pm.pos))
           case pd: PDomainFunction => secondArgList = Seq(pd.domainName) ++ Seq(pos.getOrElse(pd.pos))
           case pd: PDomain => secondArgList = Seq(pos.getOrElse(pd.pos))
           case pm: PMethod => secondArgList = Seq(pos.getOrElse(pm.pos))

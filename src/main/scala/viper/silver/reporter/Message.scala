@@ -8,7 +8,6 @@ package viper.silver.reporter
 
 import viper.silver.reporter.BackendSubProcessStages.BackendSubProcessStage
 import viper.silver.verifier._
-import viper.silver.ast.utility.lsp.SemanticHighlight
 import viper.silver.ast.{QuantifiedExp, Trigger}
 import viper.silver.parser.PProgram
 

@@ -118,7 +118,7 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
       // we simply treat the calls as an ordinary field access, which results in an identifier not found error.
       case pfa@PAssign(Seq(fieldAcc: PFieldAccess), rhs) if declaredConstructorArgsNames.contains(fieldAcc.idnuse.name) ||
         declaredConstructorNames.exists("is" + _.name == fieldAcc.idnuse.name) =>
-        PFieldAssign(PFieldAccess(transformStrategy(fieldAcc.rcv), fieldAcc.idnuse)(fieldAcc.pos), transformStrategy(rhs))(pfa.pos)
+        PAssign(Seq(PFieldAccess(transformStrategy(fieldAcc.rcv), fieldAcc.idnuse)(fieldAcc.pos)), transformStrategy(rhs))(pfa.pos)
       case pfa@PFieldAccess(rcv, idnuse) if declaredConstructorArgsNames.contains(idnuse.name) => PDestructorCall(idnuse, rcv)(pfa.pos)
       case pfa@PFieldAccess(rcv, idnuse) if declaredConstructorNames.exists("is" + _.name == idnuse.name) => PDiscriminatorCall(PIdnUse(idnuse.name.substring(2))(idnuse.pos), rcv)(pfa.pos)
     }).recurseFunc({

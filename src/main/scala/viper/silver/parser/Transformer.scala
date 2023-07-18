@@ -28,6 +28,8 @@ object Transformer {
       val newNode = parent match {
         case _: PIdnDef => parent
         case _: PIdnUse => parent
+        case _: PKeyword => parent
+        case _: POperator => parent
         case p@PFormalArgDecl(idndef, typ) => PFormalArgDecl(go(idndef), go(typ))(p.pos)
         case p@PFormalReturnDecl(idndef, typ) => PFormalReturnDecl(go(idndef), go(typ))(p.pos)
         case p@PLogicalVarDecl(idndef, typ) => PLogicalVarDecl(go(idndef), go(typ))(p.pos)
@@ -111,12 +113,12 @@ object Transformer {
         case p@PMaplet(key, value) => PMaplet(go(key), go(value))(p.pos)
         case p@PMapDomain(base) => PMapDomain(go(base))(p.pos)
         case p@PMapRange(base) => PMapRange(go(base))(p.pos)
-        case p@PNewExp(fields) => PNewExp(fields map (_.map(go)))(p.pos)
+        case p@PNewExp(k, fields) => PNewExp(go(k), fields map (_.map(go)))(p.pos)
         case p@PAssign(targets, rhs) => PAssign(targets map go, go(rhs))(p.pos)
         case p@PIf(keyword, cond, thn, elsKw, els) => PIf(go(keyword), go(cond), go(thn), elsKw map go, go(els))(p.pos)
-        case p@PWhile(keyword, cond, invs, body) => PWhile(go(keyword), go(cond), invs map go, go(body))(p.pos)
+        case p@PWhile(keyword, cond, invs, body) => PWhile(go(keyword), go(cond), invs map goPair, go(body))(p.pos)
         case p@PVars(keyword, vars, init) => PVars(go(keyword), vars map go, init map go)(p.pos)
-        case p@PLabel(label, idndef, invs) => PLabel(go(label), go(idndef), invs map go)(p.pos)
+        case p@PLabel(label, idndef, invs) => PLabel(go(label), go(idndef), invs map goPair)(p.pos)
         case p@PGoto(goto, target) => PGoto(go(goto), go(target))(p.pos)
         case p@PDefine(define, idndef, optArgs, exp) => PDefine(go(define), go(idndef), optArgs map (_ map go) , go(exp))(p.pos)
         case p@PLet(exp, nestedScope) => PLet(go(exp), go(nestedScope))(p.pos)
@@ -125,13 +127,14 @@ object Transformer {
 
         case p@PProgram(files, macros, domains, fields, functions, predicates, methods, extensions, errors) => PProgram(files, macros map go, domains map go, fields map go, functions map go, predicates map go, methods map go, extensions map go, errors)(p.pos)
         case p@PImport(imprt, local, file) => PImport(go(imprt), local, go(file))(p.pos)
-        case p@PMethod(anns, idndef, formalArgs, formalReturns, pres, posts, body) => PMethod(anns map go, go(idndef), formalArgs map go, formalReturns map go, pres map go, posts map go, body map go)(p.pos)
-        case p@PDomain(anns, idndef, typVars, funcs, axioms, interp) => PDomain(anns map go, go(idndef), typVars map go, funcs map go, axioms map go, interp)(p.pos)
-        case p@PFields(anns, fields) => PFields(anns map go, fields map go)(p.pos)
-        case p@PFunction(anns, idndef, formalArgs, typ, pres, posts, body) => PFunction(anns map go, go(idndef), formalArgs map go, go(typ), pres map go, posts map go, body map go)(p.pos)
-        case pdf@PDomainFunction(anns, idndef, formalArgs, typ, unique, interp) => PDomainFunction(anns map go, go(idndef), formalArgs map go, go(typ), unique, interp)(domainName = pdf.domainName)(pdf.pos)
-        case p@PPredicate(anns, idndef, formalArgs, body) => PPredicate(anns map go, go(idndef), formalArgs map go, body map go)(p.pos)
-        case pda@PAxiom(anns, idndef, exp) => PAxiom(anns map go, idndef map go, go(exp))(domainName = pda.domainName)(pda.pos)
+        case p@PMethod(anns, k, idndef, formalArgs, formalReturns, pres, posts, body) => PMethod(anns map go, go(k), go(idndef), formalArgs map go, formalReturns map go, pres map goPair, posts map goPair, body map go)(p.pos)
+        case p@PDomain(anns, k, idndef, typVars, members, interp) => PDomain(anns map go, go(k), go(idndef), typVars map go, go(members), interp)(p.pos)
+        case p@PDomainMembers(funcs, axioms) => PDomainMembers(funcs map go, axioms map go)(p.pos)
+        case p@PFields(anns, k, fields) => PFields(anns map go, go(k), fields map go)(p.pos)
+        case p@PFunction(anns, k, idndef, formalArgs, typ, pres, posts, body) => PFunction(anns map go, go(k), go(idndef), formalArgs map go, go(typ), pres map goPair, posts map goPair, body map go)(p.pos)
+        case pdf@PDomainFunction(anns, k, idndef, formalArgs, typ, unique, interp) => PDomainFunction(anns map go, go(k), go(idndef), formalArgs map go, go(typ), unique, interp)(domainName = pdf.domainName)(pdf.pos)
+        case p@PPredicate(anns, k, idndef, formalArgs, body) => PPredicate(anns map go, go(k), go(idndef), formalArgs map go, body map go)(p.pos)
+        case pda@PAxiom(anns, k, idndef, exp) => PAxiom(anns map go, go(k), idndef map go, go(exp))(domainName = pda.domainName)(pda.pos)
         case p@PBlock(inner) => PBlock(go(inner))(p.pos)
         case pe:PExtender => pe.transformExtension(this)
       }

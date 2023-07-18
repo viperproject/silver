@@ -144,17 +144,17 @@ case class Translator(program: PProgram) {
     val name = decl.idndef.name
     val t = decl match {
       case pf@PFieldDecl(_, typ) =>
-        Field(name, ttyp(typ))(pos, toInfo(p.annotations, pf))
-      case pf@PFunction(_, _, formalArgs, typ, _, _, _) =>
-        Function(name, formalArgs map liftArgDecl, ttyp(typ), null, null, null)(pos, toInfo(p.annotations, pf))
-      case pdf@PDomainFunction(_, _, args, typ, unique, interp) =>
-        DomainFunc(name, args map liftAnyArgDecl, ttyp(typ), unique, interp)(pos,toInfo(p.annotations, pdf),pdf.domainName.name)
-      case pd@PDomain(_, _, typVars, _, _, interp) =>
-        Domain(name, null, null, typVars map (t => TypeVar(t.idndef.name)), interp)(pos, toInfo(p.annotations, pd))
-      case pp@PPredicate(_, _, formalArgs, _) =>
-        Predicate(name, formalArgs map liftArgDecl, null)(pos, toInfo(p.annotations, pp))
-      case pm@PMethod(_, _, formalArgs, formalReturns, _, _, _) =>
-        Method(name, formalArgs map liftArgDecl, formalReturns map liftReturnDecl, null, null, null)(pos, toInfo(p.annotations, pm))
+        Field(name, ttyp(typ))(pos, Translator.toInfo(p.annotations, pf))
+      case pf@PFunction(_, _, _, formalArgs, typ, _, _, _) =>
+        Function(name, formalArgs map liftArgDecl, ttyp(typ), null, null, null)(pos, Translator.toInfo(p.annotations, pf))
+      case pdf@PDomainFunction(_, _, _, args, typ, unique, interp) =>
+        DomainFunc(name, args map liftAnyArgDecl, ttyp(typ), unique, interp)(pos, Translator.toInfo(p.annotations, pdf),pdf.domainName.name)
+      case pd@PDomain(_, _, _, typVars, _, interp) =>
+        Domain(name, null, null, typVars map (t => TypeVar(t.idndef.name)), interp)(pos, Translator.toInfo(p.annotations, pd))
+      case pp@PPredicate(_, _, _, formalArgs, _) =>
+        Predicate(name, formalArgs map liftArgDecl, null)(pos, Translator.toInfo(p.annotations, pp))
+      case pm@PMethod(_, _, _, formalArgs, formalReturns, _, _, _) =>
+        Method(name, formalArgs map liftArgDecl, formalReturns map liftReturnDecl, null, null, null)(pos, Translator.toInfo(p.annotations, pm))
     }
     members.put(decl.idndef.name, t)
   }
@@ -186,7 +186,7 @@ case class Translator(program: PProgram) {
         methodCallAssign(s, targets, ts => MethodCall(findMethod(method), args map exp, ts)(pos, info))
       case PAssign(targets, _) if targets.length != 1 =>
         sys.error(s"Found non-unary target of assignment")
-      case PAssign(Seq(target), PNewExp(fieldsOpt)) =>
+      case PAssign(Seq(target), PNewExp(_, fieldsOpt)) =>
         val fields = fieldsOpt match {
           // Note that this will not use any fields that extensions declare
           case None => program.fields flatMap (_.fields map translate)
@@ -232,7 +232,7 @@ case class Translator(program: PProgram) {
       case PAssert(_, e) =>
         Assert(exp(e))(pos, info)
       case PLabel(_, name, invs) =>
-        Label(name.name, invs map exp)(pos, info)
+        Label(name.name, invs map (_._2) map exp)(pos, info)
       case PGoto(_, label) =>
         Goto(label.name)(pos, info)
       case PIf(_, cond, thn, _, els) =>
@@ -512,7 +512,7 @@ case class Translator(program: PProgram) {
             PredicateAccessPredicate(inner, fullPerm) (pos, info)
           case _ => sys.error("unexpected reference to non-function")
         }
-      case PNewExp(_) => sys.error("unexpected `new` expression")
+      case PNewExp(_, _) => sys.error("unexpected `new` expression")
       case PUnfolding(_, loc, e) =>
         Unfolding(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos, info)
       case PApplying(_, wand, e) =>

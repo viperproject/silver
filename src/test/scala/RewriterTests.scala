@@ -64,7 +64,7 @@ class RewriterTests extends AnyFunSuite with FileComparisonHelper {
 
     val strategy = StrategyBuilder.Slim[PNode](
       {
-        case PBinExp(a, op, b) if op == ">" => PBinExp(a, POperatorSymbol("<=")(p), b)(p)
+        case PBinExp(a, op, b) if op.operator == ">" => PBinExp(a, POperatorSymbol("<=")(p), b)(p)
       })
 
     val res = strategy.execute[PNode](original)

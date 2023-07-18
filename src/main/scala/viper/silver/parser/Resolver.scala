@@ -159,7 +159,10 @@ case class TypeChecker(names: NameAnalyser) {
 
   def check(f: PFields): Unit = {
     checkMember(f) {
-      f.fields foreach (fd => check(fd.typ))
+      f.fields foreach (fd => {
+        fd.decl = f
+        check(fd.typ)
+      })
     }
   }
 
@@ -218,7 +221,7 @@ case class TypeChecker(names: NameAnalyser) {
       case assign: PAssign =>
         checkAssign(assign)
       case PLabel(_, _, invs) =>
-        invs foreach (check(_, Bool))
+        invs foreach (i => check(i._2, Bool))
       case PGoto(_, _) =>
       case PIf(_, cond, thn, _, els) =>
         check(cond, Bool)
@@ -228,21 +231,21 @@ case class TypeChecker(names: NameAnalyser) {
         check(cond, Bool)
         invs foreach (inv => check(inv._2, Bool))
         check(body)
-      case v@PVars(_, _, vars, initial) =>
+      case v@PVars(_, vars, initial) =>
         vars foreach (v => check(v.typ))
         initial.map(i => checkAssign(PAssign(vars.map(_.toIdnUse), i)(v.pos)))
       case _: PDefine =>
         /* Should have been removed right after parsing */
         sys.error(s"Unexpected node $stmt found")
       case PQuasihavoc(_, lhs, e) =>
-        checkHavoc(stmt, lhs, e)
+        checkHavoc(stmt, lhs.map(_._1), e)
       case havoc@PQuasihavocall(_, vars, _, lhs, e) =>
         vars foreach (v => check(v.typ))
         // update the curMember, which contains quantified variable information
         val oldCurMember = curMember
         curMember = havoc
         // Actually type check the havoc
-        checkHavoc(stmt, lhs, e)
+        checkHavoc(stmt, lhs.map(_._1), e)
         // restore the previous curMember
         curMember = oldCurMember
 
@@ -271,8 +274,10 @@ case class TypeChecker(names: NameAnalyser) {
     }
     // Check rhs
     stmt match {
-      case PAssign(targets, PCall(func, args, _)) if names.definition(curMember)(func).get.isInstanceOf[PMethod] =>
-        val PMethod(_, formalArgs, formalTargets, _, _, _) = names.definition(curMember)(func).get.asInstanceOf[PMethod]
+      case PAssign(targets, c@PCall(func, args, _)) if names.definition(curMember)(func).get.isInstanceOf[PMethod] =>
+        val m@PMethod(_, _, _, formalArgs, formalTargets, _, _, _) = names.definition(curMember)(func).get.asInstanceOf[PMethod]
+        c.method = m
+        func.decl = m
         formalArgs.foreach(fa => check(fa.typ))
         if (formalArgs.length != args.length) {
           messages ++= FastMessaging.message(stmt, "wrong number of arguments")
@@ -283,7 +288,7 @@ case class TypeChecker(names: NameAnalyser) {
             check(actual, formal.typ)
           }
         }
-      case PAssign(Seq(target), PNewExp(fieldsOpt)) =>
+      case PAssign(Seq(target), PNewExp(_, fieldsOpt)) =>
         check(target, Ref)
         fieldsOpt map (acceptAndCheckTypedEntity[PFieldDecl, Nothing](_, "expected a field as argument"))
       case PAssign(Seq(lhs), rhs) => check(rhs, lhs.typ)
@@ -295,7 +300,7 @@ case class TypeChecker(names: NameAnalyser) {
   def checkHavoc(stmt: PStmt, lhs: Option[PExp], e: PExp): Unit = {
     // If there is a condition, make sure that it is a Bool
     if (lhs.nonEmpty) {
-      check(lhs.get._1, Bool)
+      check(lhs.get, Bool)
     }
     // Make sure that the rhs is a resource
     val havocError = "Havoc statement must take a field access, predicate, or wand"
@@ -366,9 +371,9 @@ case class TypeChecker(names: NameAnalyser) {
       val decl = names.definition(curMember)(use)
 
       if (decl.isDefined) {
-        acceptedClasses.find(_.isInstance(decl)) match {
+        acceptedClasses.find(_.isInstance(decl.get)) match {
           case Some(_) =>
-            val td = decl.asInstanceOf[PTypedDeclaration]
+            val td = decl.get.asInstanceOf[PTypedDeclaration]
             use.typ = td.typ
             use.decl = td
           case None =>
@@ -663,11 +668,9 @@ case class TypeChecker(names: NameAnalyser) {
                     case Some(predicate: PPredicate) =>
                       pfa.extfunction = predicate
                       func.decl = predicate
-                      acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(func), "expected predicate") { (id, _) =>
-                        checkInternal(id)
-                        if (args.length != predicate.formalArgs.length)
-                          issueError(func, "predicate arity doesn't match")
-                      }
+                      acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(func), "expected predicate")
+                      if (args.length != predicate.formalArgs.length)
+                        issueError(func, "predicate arity doesn't match")
                     case _ =>
                       issueError(func, "expected function or predicate ")
                   }
@@ -770,7 +773,7 @@ case class TypeChecker(names: NameAnalyser) {
         pq.typ = Bool
         curMember = oldCurMember
       
-      case pne@PNewExp(_) => issueError(pne, s"unexpected use of `new` as an expression")
+      case pne: PNewExp => issueError(pne, s"unexpected use of `new` as an expression")
     }
   }
 
@@ -891,7 +894,8 @@ case class NameAnalyser() {
           namesInScope ++= getCurrentMap.map(_._1)
         n match {
           case d: PDeclaration =>
-            getMap(d).get(d.idndef.name) match {
+            val map = getMap(d)
+            map.get(d.idndef.name) match {
               case Some(m: PMember) if d eq m =>
               // We re-encountered a member we already looked at in the previous run.
               // This is expected, nothing to do.
@@ -901,10 +905,10 @@ case class NameAnalyser() {
                 globalDeclarationMap.get(d.idndef.name) match {
                   case Some(e: PDeclaration) =>
                     if (!(d.parent.isDefined && d.parent.get.isInstanceOf[PDomainFunction]))
-                      messages ++= FastMessaging.message(e, "Identifier shadowing `" + e.idndef.name + "' at " + e.idndef.pos._1 + " and at " + d.idndef.pos._1)
+                      messages ++= FastMessaging.message(d.idndef, "Identifier shadowing `" + e.idndef.name + "' at " + e.idndef.pos._1 + " and at " + d.idndef.pos._1)
                   case None =>
-                    getMap(d).put(d.idndef.name, d)
                 }
+                map.put(d.idndef.name, d)
             }
           case i@PIdnUse(name) =>
             // look up in both maps (if we are not in a method currently, we look in the same map twice, but that is ok)

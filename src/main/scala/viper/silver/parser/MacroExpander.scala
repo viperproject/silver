@@ -102,8 +102,8 @@ object MacroExpander {
         ss.foreach {
           case s: PMacroSeqn => stmts = stmts ++ linearizeSeqOfNestedStmt(s.ss)
           case s@PSeqn(ss) => stmts = stmts :+ PSeqn(linearizeSeqOfNestedStmt(ss))(s.pos)
-          case i@PIf(cond, t@PSeqn(thn), e@PSeqn(els)) => stmts = stmts :+ PIf(cond, PSeqn(linearizeSeqOfNestedStmt(thn))(t.pos), PSeqn(linearizeSeqOfNestedStmt(els))(e.pos))(i.pos)
-          case w@PWhile(cond, invs, b@PSeqn(body)) => stmts = stmts :+ PWhile(cond, invs, PSeqn(linearizeSeqOfNestedStmt(body))(b.pos))(w.pos)
+          case i@PIf(k, cond, t@PSeqn(thn), elsKw, e@PSeqn(els)) => stmts = stmts :+ PIf(k, cond, PSeqn(linearizeSeqOfNestedStmt(thn))(t.pos), elsKw, PSeqn(linearizeSeqOfNestedStmt(els))(e.pos))(i.pos)
+          case w@PWhile(k, cond, invs, b@PSeqn(body)) => stmts = stmts :+ PWhile(k, cond, invs, PSeqn(linearizeSeqOfNestedStmt(body))(b.pos))(w.pos)
           case v => stmts = stmts :+ v
         }
         stmts
@@ -115,7 +115,7 @@ object MacroExpander {
       }
 
       if (body != method.body) {
-        PMethod(method.idndef, method.formalArgs, method.formalReturns, method.pres, method.posts, body)(method.pos, method.annotations)
+        method.copy(body = body)(method.pos)
       } else {
         method
       }
@@ -322,7 +322,7 @@ object MacroExpander {
            *       Seems difficult to concisely and precisely match all (il)legal cases, however.
            */
           (ctx.parent, body) match {
-            case (PAccPred(loc, _), _) if (loc eq call) && !body.isInstanceOf[PLocationAccess] =>
+            case (PAccPred(_, loc, _), _) if (loc eq call) && !body.isInstanceOf[PLocationAccess] =>
               throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + body.toString, call.pos)
             case (_: PCurPerm, _) if !body.isInstanceOf[PLocationAccess] =>
               throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + body.toString, call.pos)
