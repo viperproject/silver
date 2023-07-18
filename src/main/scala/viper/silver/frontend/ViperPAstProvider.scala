@@ -57,7 +57,7 @@ class ViperPAstProvider(override val reporter: Reporter,
     override def reporter: Reporter = rep
   }
 
-  // All phases after sematic analysis omitted
+  // All phases after semantic analysis omitted
   override val phases: Seq[Phase] = Seq(Parsing, SemanticAnalysis)
 
   override def result: VerificationResult = {
