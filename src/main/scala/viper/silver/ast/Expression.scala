@@ -455,6 +455,7 @@ case class PredicateAccess(args: Seq[Exp], predicateName: String)
 
   def loc(p:Program) = p.findPredicate(predicateName)
   lazy val typ = Bool
+  override lazy val check : Seq[ConsistencyError] = args.flatMap(Consistency.checkPure)
 
   /** The body of the predicate with the arguments instantiated correctly. */
   def predicateBody(program : Program, scope: Set[String]) = {

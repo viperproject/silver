@@ -53,6 +53,7 @@ class AstPositionsTests extends AnyFunSuite {
         |method sum(x: Ref, g: Set[Ref])
         |  returns (res: Bool)
         |  ensures false && 4/x.foo > 0
+        |  ensures 3 < 4 < 5
         |{
         |  inhale forall r: Ref :: r in g ==> acc(r.foo)
         |  assert acc(x.foo)
@@ -82,7 +83,7 @@ class AstPositionsTests extends AnyFunSuite {
     val m: Method = res.methods(0)
     m.pos match {
       case spos: AbstractSourcePosition => {
-        assert(spos.start.line === 2 && spos.end.get.line === 10)
+        assert(spos.start.line === 2 && spos.end.get.line === 11)
         assert(spos.start.column === 1 && spos.end.get.column === 2)
       }
       case _ =>
@@ -99,13 +100,38 @@ class AstPositionsTests extends AnyFunSuite {
       case _ =>
         fail("method args must have start and end positions set")
     }
-    // Check position of method post
-    assert(m.posts.length === 1)
-    val post: Exp = m.posts(0).asInstanceOf[BinExp].args(1);
-    post.pos match {
+    // Check positions of method posts
+    assert(m.posts.length === 2)
+    val post1: Exp = m.posts(0).asInstanceOf[BinExp].args(1);
+    post1.pos match {
       case spos: AbstractSourcePosition => {
         assert(spos.start.line === 4 && spos.end.get.line === 4)
         assert(spos.start.column === 20 && spos.end.get.column === 31)
+      }
+      case _ =>
+        fail("method posts must have start and end positions set")
+    }
+    val post2: BinExp = m.posts(1).asInstanceOf[BinExp]
+    post2.pos match {
+      case spos: AbstractSourcePosition => {
+        assert(spos.start.line === 5 && spos.end.get.line === 5)
+        assert(spos.start.column === 11 && spos.end.get.column === 20)
+      }
+      case _ =>
+        fail("method posts must have start and end positions set")
+    }
+    post2.left.pos match {
+      case spos: AbstractSourcePosition => {
+        assert(spos.start.line === 5 && spos.end.get.line === 5)
+        assert(spos.start.column === 11 && spos.end.get.column === 16)
+      }
+      case _ =>
+        fail("method posts must have start and end positions set")
+    }
+    post2.right.pos match {
+      case spos: AbstractSourcePosition => {
+        assert(spos.start.line === 5 && spos.end.get.line === 5)
+        assert(spos.start.column === 15 && spos.end.get.column === 20)
       }
       case _ =>
         fail("method posts must have start and end positions set")
@@ -114,7 +140,7 @@ class AstPositionsTests extends AnyFunSuite {
     val block = m.body.get
     block.pos match {
       case spos: AbstractSourcePosition => {
-        assert(spos.start.line === 5 && spos.end.get.line === 10)
+        assert(spos.start.line === 6 && spos.end.get.line === 11)
         assert(spos.start.column === 1 && spos.end.get.column === 2)
       }
       case _ =>
@@ -125,7 +151,7 @@ class AstPositionsTests extends AnyFunSuite {
     val forall: Stmt = block.ss(0)
     forall.pos match {
       case spos: AbstractSourcePosition => {
-        assert(spos.start.line === 6 && spos.end.get.line === 6)
+        assert(spos.start.line === 7 && spos.end.get.line === 7)
         assert(spos.start.column === 3 && spos.end.get.column === 48)
       }
       case _ =>
@@ -135,7 +161,7 @@ class AstPositionsTests extends AnyFunSuite {
     val assert_exp: Exp = block.ss(1).asInstanceOf[Assert].exp
     assert_exp.pos match {
       case spos: AbstractSourcePosition => {
-        assert(spos.start.line === 7 && spos.end.get.line === 7)
+        assert(spos.start.line === 8 && spos.end.get.line === 8)
         assert(spos.start.column === 10 && spos.end.get.column === 20)
       }
       case _ =>
@@ -146,7 +172,7 @@ class AstPositionsTests extends AnyFunSuite {
     val m2: Method = res.methods(1);
     m2.pos match {
       case spos: AbstractSourcePosition => {
-        assert(spos.start.line === 11 && spos.end.get.line === 12)
+        assert(spos.start.line === 12 && spos.end.get.line === 13)
         assert(spos.start.column === 1 && spos.end.get.column === 26)
       }
       case _ =>
@@ -156,7 +182,7 @@ class AstPositionsTests extends AnyFunSuite {
     val pre: Exp = m2.pres(0);
     pre.pos match {
       case spos: AbstractSourcePosition => {
-        assert(spos.start.line === 12 && spos.end.get.line === 12)
+        assert(spos.start.line === 13 && spos.end.get.line === 13)
         assert(spos.start.column === 13 && spos.end.get.column === 26)
       }
       case _ =>
