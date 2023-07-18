@@ -75,11 +75,9 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
     // Transform predicate accesses to predicate instances
     // (which are not used in the unfolding to predicate instances)
     val transformPredicateInstances = StrategyBuilder.Slim[PNode]({
-      case pa@PPredicateAccess(args, idnuse) => PPredicateInstance(args, idnuse)(pa.pos)
       case pc@PCall(idnUse, args, None) if input.predicates.exists(_.idndef.name == idnUse.name) =>
         // PCall represents the predicate access before the translation into the AST
         PPredicateInstance(args, idnUse)(pc.pos)
-      case PAccPred(pa@PPredicateAccess(args, idnuse), _) => PPredicateInstance(args, idnuse)(pa.pos)
       case PAccPred(pc@PCall(idnUse, args, None), _) if input.predicates.exists(_.idndef.name == idnUse.name) =>
         PPredicateInstance(args, idnUse)(pc.pos)
       case d => d
@@ -113,7 +111,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
   override def beforeVerify(input: Program): Program = {
     // Prevent potentially unsafe (mutually) recursive function calls in function postcondtions
     // for all functions that don't have a decreases clause
-    lazy val cycles = Functions.findFunctionCyclesVia(input, func => func.body.toSeq, func => func.body.toSeq)
+    lazy val cycles = Functions.findFunctionCyclesViaOptimized(input, func => func.body.toSeq)
     for (f <- input.functions) {
       val hasDecreasesClause = (f.pres ++ f.posts).exists(p => p.shallowCollect {
         case dc: DecreasesClause => dc

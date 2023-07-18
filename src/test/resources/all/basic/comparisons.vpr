@@ -1,0 +1,55 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+method chain(i1: Int, i2: Int, i3: Int, i4: Int)
+    requires i1 < i2 <= i3 > i4
+{
+    assert i1 < i2
+    assert i2 <= i3
+    assert i3 > i4
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert i2 < i3
+}
+
+method chain1In(s1: Seq[Int], s2: Seq[Seq[Int]], s3: Seq[Seq[Seq[Int]]], s4: Set[Seq[Seq[Seq[Int]]]])
+    requires s1 in s2 in s3 in s4
+{
+    assert s1 in s2
+    assert s3 in s4
+    assert s2 in s3
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert 3 in s1
+}
+
+
+method chainEq(i1: Int, i2: Int, i3: Int, i4: Int)
+    requires i1 < i2 == i3 > i4
+{
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert i1 < i2
+}
+
+method nonChain(i1: Int, i2: Int, i3: Int, i4: Int)
+    requires i1 < i2 && i3 > i4
+{
+    assert i1 < i2
+    assert i3 > i4
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert i2 <= i3
+}
+
+method chainParen(i1: Int, i2: Multiset[Int], i3: Int, i4: Int)
+    requires (i1 in i2) <= i3 > i4
+{
+    assert i3 > i4
+    assume (i1 in i2) == 3
+    assert 3 <= i3
+}
+
+method chainParen2(i1: Int, i2: Int, i3: Int, i4: Multiset[Int])
+    requires i1 < i2 <= (i3 in i4)
+{
+    assert i1 < i2
+    assume (i3 in i4) == 3
+    assert i2 <= 3
+}
