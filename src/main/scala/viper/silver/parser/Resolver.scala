@@ -876,20 +876,21 @@ case class NameAnalyser() {
           namesInScope ++= getCurrentMap.map(_._1)
         n match {
           case d: PDeclaration =>
-            getMap(d).get(d.idndef.name) match {
+            val map = getMap(d)
+            map.get(d.idndef.name) match {
               case Some(m: PMember) if d eq m =>
               // We re-encountered a member we already looked at in the previous run.
               // This is expected, nothing to do.
               case Some(e: PDeclaration) =>
-                messages ++= FastMessaging.message(e.idndef, "Duplicate identifier `" + e.idndef.name + "' at " + e.idndef.pos._1 + " and at " + d.idndef.pos._1)
+                messages ++= FastMessaging.message(d.idndef, "Duplicate identifier `" + e.idndef.name + "' at " + e.idndef.pos._1 + " and at " + d.idndef.pos._1)
               case None =>
                 globalDeclarationMap.get(d.idndef.name) match {
                   case Some(e: PDeclaration) =>
                     if (!(d.parent.isDefined && d.parent.get.isInstanceOf[PDomainFunction]))
-                      messages ++= FastMessaging.message(e, "Identifier shadowing `" + e.idndef.name + "' at " + e.idndef.pos._1 + " and at " + d.idndef.pos._1)
+                      messages ++= FastMessaging.message(d.idndef, "Identifier shadowing `" + e.idndef.name + "' at " + e.idndef.pos._1 + " and at " + d.idndef.pos._1)
                   case None =>
-                    getMap(d).put(d.idndef.name, d)
                 }
+                map.put(d.idndef.name, d)
             }
           case i@PIdnUse(name) =>
             // look up in both maps (if we are not in a method currently, we look in the same map twice, but that is ok)

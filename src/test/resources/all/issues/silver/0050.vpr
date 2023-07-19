@@ -2,13 +2,14 @@
 // http://creativecommons.org/publicdomain/zero/1.0/
 
 field f: Int
-//:: ExpectedOutput(typechecker.error)
 field x: Int
 
+//:: ExpectedOutput(typechecker.error)
 method test1(x: Ref)
   requires acc(x.x) // error: expected field
 {}
 
+//:: ExpectedOutput(typechecker.error)
 method test2(x: Ref)
   requires acc(x.f) // no error
 {}
