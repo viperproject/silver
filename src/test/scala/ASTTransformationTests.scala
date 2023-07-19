@@ -83,11 +83,11 @@ class ASTTransformationTests extends AnyFunSuite {
 
      val p = (NoPosition, NoPosition)
      val binExp1 = PBinExp(PIntLit(1)(p), POperatorSymbol("==")(p), PIntLit(1)(p))(p)
-     val method1 = PMethod(Seq(), PKeywordLang("method")(p), PIdnDef("m")(p), Seq(), Seq(), Seq(), Seq(), Some(PSeqn(Seq(PAssert(PKeywordStmt("assert")(p), binExp1)(p)))(p)))(p)
+     val method1 = PMethod(Seq(), PKeywordLang("method")(p), PIdnDef("m")(p), Seq(), None, Seq(), Seq(), Seq(), Some(PSeqn(Seq(PAssert(PKeywordStmt("assert")(p), binExp1)(p)))(p)))(p)
      val original = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(method1), Seq(), Seq())(p)
 
      val binExp2 = PBinExp(PIntLit(3)(p), POperatorSymbol("==")(p), PIntLit(3)(p))(p)
-     val method2 = PMethod(Seq(), PKeywordLang("method")(p), PIdnDef("m")(p), Seq(), Seq(), Seq(), Seq(), Some(PSeqn(Seq(PAssert(PKeywordStmt("assert")(p), binExp2)(p)))(p)))(p)
+     val method2 = PMethod(Seq(), PKeywordLang("method")(p), PIdnDef("m")(p), Seq(), None, Seq(), Seq(), Seq(), Some(PSeqn(Seq(PAssert(PKeywordStmt("assert")(p), binExp2)(p)))(p)))(p)
      val target = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(method2),  Seq(), Seq())(p)
 
      case class Context(increment: Int)
@@ -121,11 +121,11 @@ class ASTTransformationTests extends AnyFunSuite {
     val p = (NoPosition, NoPosition)
     val function = PFunction(Seq(), PKeywordLang("function")(p), PIdnDef("f")(p), Seq(PFormalArgDecl(PIdnDef("x")(p), TypeHelper.Int)(p), PFormalArgDecl(PIdnDef("y")(p), TypeHelper.Int)(p)), TypeHelper.Int, Seq(), Seq(), None)(p)
     val assume1 = PAssume(PKeywordStmt("assume")(p), PBinExp(PCall(PIdnUse("f")(p), Seq(PIntLit(1)(p), PIntLit(1)(p)))(p), POperatorSymbol("==")(p), PCall(PIdnUse("f")(p), Seq(PIntLit(1)(p), PCall(PIdnUse("f")(p), Seq(PIntLit(1)(p), PCall(PIdnUse("f")(p), Seq(PIntLit(1)(p), PIntLit(1)(p)))(p)))(p)))(p))(p))(p)
-    val method1 = PMethod(Seq(), PKeywordLang("method")(p), PIdnDef("m")(p), Seq(), Seq(), Seq(), Seq(), Some(PSeqn(Seq(assume1))(p)))(p)
+    val method1 = PMethod(Seq(), PKeywordLang("method")(p), PIdnDef("m")(p), Seq(), None, Seq(), Seq(), Seq(), Some(PSeqn(Seq(assume1))(p)))(p)
     val original = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(function), Seq(), Seq(method1),  Seq(), Seq())(p)
 
     val assume2 = PAssume(PKeywordStmt("assume")(p), PBinExp(PCall(PIdnUse("f")(p), Seq(PIntLit(2)(p), PIntLit(1)(p)))(p), POperatorSymbol("==")(p), PCall(PIdnUse("f")(p), Seq(PIntLit(2)(p), PCall(PIdnUse("f")(p), Seq(PIntLit(3)(p), PCall(PIdnUse("f")(p), Seq(PIntLit(4)(p), PIntLit(1)(p)))(p)))(p)))(p))(p))(p)
-    val method2 = PMethod(Seq(), PKeywordLang("method")(p), PIdnDef("m")(p), Seq(), Seq(), Seq(), Seq(), Some(PSeqn(Seq(assume2))(p)))(p)
+    val method2 = PMethod(Seq(), PKeywordLang("method")(p), PIdnDef("m")(p), Seq(), None, Seq(), Seq(), Seq(), Some(PSeqn(Seq(assume2))(p)))(p)
     val target = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(function), Seq(), Seq(method2),  Seq(), Seq())(p)
 
     case class Context(increment: Int)
@@ -145,7 +145,7 @@ class ASTTransformationTests extends AnyFunSuite {
     import viper.silver.parser._
 
     val p = (NoPosition, NoPosition)
-    val requires = PForall(PKeywordLang("forall")(p), Seq(PLogicalVarDecl(PIdnDef("y")(p), TypeHelper.Int)(p)), Seq(), PBinExp(PIdnUse("y")(p), POperatorSymbol("==")(p), PIdnUse("y")(p))(p))(p)
+    val requires = PForall(PKeywordLang("forall")(p), Seq(PLogicalVarDecl(PIdnDef("y")(p), TypeHelper.Int)(p)), POperatorSymbol("::")(p), Seq(), PBinExp(PIdnUse("y")(p), POperatorSymbol("==")(p), PIdnUse("y")(p))(p))(p)
     val function = PFunction(Seq(), PKeywordLang("function")(p), PIdnDef("f")(p), Seq(PFormalArgDecl(PIdnDef("x")(p), TypeHelper.Ref)(p)), TypeHelper.Bool, Seq((PKeywordLang("requires")(p), requires)), Seq(), None)(p)
     val program = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(function), Seq(), Seq(), Seq(), Seq())(p)
 

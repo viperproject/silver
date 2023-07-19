@@ -197,7 +197,7 @@ object MacroExpander {
     case class MacroApp(idnuse: PIdnUse, arguments: Seq[PExp], node: PNode)
 
     val matchOnMacroCall: PartialFunction[PNode, MacroApp] = {
-      case assign@PAssign(Seq(), app: PMaybeMacroExp) if isMacro(app.possibleMacro) =>
+      case assign@PAssign(Seq(), _, app: PMaybeMacroExp) if isMacro(app.possibleMacro) =>
         MacroApp(app.possibleMacro.get, app.macroArgs, assign)
       case app: PMaybeMacroExp if isMacro(app.possibleMacro) => MacroApp(app.possibleMacro.get, app.macroArgs, app)
       case typ@PDomainType(domain, Seq()) if isMacro(Some(domain)) => MacroApp(domain, Seq(), typ)
@@ -355,7 +355,7 @@ object MacroExpander {
     val expander = StrategyBuilder.Ancestor[PNode] {
 
       // Handles macros on the left hand-side of assignments
-      case (assign@PAssign(targets, rhs), ctx) =>
+      case (assign@PAssign(targets, op, rhs), ctx) =>
         val expandedTargets = targets map {
           case call: PCall => {
             if (!isMacro(call.possibleMacro))
@@ -371,7 +371,7 @@ object MacroExpander {
           }
           case target => target
         }
-        val expandedLhs = PAssign(expandedTargets, rhs)(assign.pos)
+        val expandedLhs = PAssign(expandedTargets, op, rhs)(assign.pos)
         (ExpandMacroIfValid(expandedLhs, ctx), ctx)
 
       // Handles all other calls to macros

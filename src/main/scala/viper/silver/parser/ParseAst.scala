@@ -247,7 +247,7 @@ trait POperator extends PIsSemanticToken {
   def operator: String
 }
 
-/** Keywords such a `union`, `in`, `intersect`, `acc`, etc. */
+/** Keywords such a `union`, `in`, `intersect`, `acc`, `new`, `perm`, etc. */
 case class PKeywordOperator(keyword: String)(val pos: (Position, Position)) extends PKeyword with POperator {
   override def tokenType = TokenType.Keyword
   override def operator = keyword
@@ -597,7 +597,7 @@ trait PExp extends PNode with PPrettyPrint {
   override def pretty(): String = if (bracketed) s"($prettyNoBrackets)" else prettyNoBrackets
 }
 
-case class PAnnotatedExp(e: PExp, annotation: PAnnotation)(val pos: (Position, Position)) extends PExp {
+case class PAnnotatedExp(annotation: PAnnotation, e: PExp)(val pos: (Position, Position)) extends PExp {
   override def typeSubstitutions: collection.Seq[PTypeSubstitution] = e.typeSubstitutions
   override def forceSubstitution(ts: PTypeSubstitution): Unit = e.forceSubstitution(ts)
   override def prettyNoBrackets = e.pretty()
@@ -1054,14 +1054,14 @@ case class PFieldAccess(rcv: PExp, idnuse: PIdnUse)(val pos: (Position, Position
   //setType()
 }
 
-case class PUnfolding(op: PKeywordOperator, acc: PAccPred, exp: PExp)(val pos: (Position, Position)) extends PHeapOpApp with POpAppKeyword {
+case class PUnfolding(op: PKeywordOperator, acc: PAccPred, in: PKeywordOperator, exp: PExp)(val pos: (Position, Position)) extends PHeapOpApp with POpAppKeyword {
   override val args = Seq(acc, exp)
   override val signatures: List[PTypeSubstitution] =
     List(Map(POpApp.pArgS(0) -> Bool, POpApp.pResS -> POpApp.pArg(1)))
   override def prettyNoBrackets = s"${op.pretty()} ${acc.pretty()} in ${exp.pretty()}"
 }
 
-case class PApplying(op: PKeywordOperator, wand: PExp, exp: PExp)(val pos: (Position, Position)) extends PHeapOpApp with POpAppKeyword {
+case class PApplying(op: PKeywordOperator, wand: PExp, in: PKeywordOperator, exp: PExp)(val pos: (Position, Position)) extends PHeapOpApp with POpAppKeyword {
   override val args = Seq(wand, exp)
   override val signatures: List[PTypeSubstitution] =
     List(Map(POpApp.pArgS(0) -> Wand, POpApp.pResS -> POpApp.pArg(1)))
@@ -1096,11 +1096,11 @@ sealed trait PQuantifier extends PBinder with PScope {
   }
 }
 
-case class PExists(keyword: PKeywordLang, vars: Seq[PLogicalVarDecl], triggers: Seq[PTrigger], body: PExp)(val pos: (Position, Position)) extends PQuantifier
+case class PExists(keyword: PKeywordLang, vars: Seq[PLogicalVarDecl], colons: POperatorSymbol, triggers: Seq[PTrigger], body: PExp)(val pos: (Position, Position)) extends PQuantifier
 
-case class PForall(keyword: PKeywordLang, vars: Seq[PLogicalVarDecl], triggers: Seq[PTrigger], body: PExp)(val pos: (Position, Position)) extends PQuantifier
+case class PForall(keyword: PKeywordLang, vars: Seq[PLogicalVarDecl], colons: POperatorSymbol, triggers: Seq[PTrigger], body: PExp)(val pos: (Position, Position)) extends PQuantifier
 
-case class PForPerm(keyword: PKeywordLang, vars: Seq[PLogicalVarDecl], accessRes: PResourceAccess, body: PExp)(val pos: (Position, Position)) extends PQuantifier {
+case class PForPerm(keyword: PKeywordLang, vars: Seq[PLogicalVarDecl], accessRes: PResourceAccess, colons: POperatorSymbol, body: PExp)(val pos: (Position, Position)) extends PQuantifier {
   val triggers: Seq[PTrigger] = Seq()
 }
 
@@ -1114,7 +1114,7 @@ case class PForPerm(keyword: PKeywordLang, vars: Seq[PLogicalVarDecl], accessRes
  * by a flat `PLet(x, e1, e2) <: PScope`, then the let-bound variable `x` would
  * already be in scope while checking `e1`, which wouldn't be correct.
  */
-case class PLet(exp: PExp, nestedScope: PLetNestedScope)(val pos: (Position, Position)) extends PExp {
+case class PLet(k: PKeywordOperator, exp: PExp, in: PKeywordOperator, nestedScope: PLetNestedScope)(val pos: (Position, Position)) extends PExp {
   override def prettyNoBrackets = s"let ${nestedScope.variable.pretty()} == (${exp.pretty()}) in ${nestedScope.pretty()}"
   override def typeSubstitutions = (for (ts1 <- nestedScope.body.typeSubstitutions; ts2 <- exp.typeSubstitutions) yield (ts1 * ts2).toOption).flatten.toList.distinct
   override def forceSubstitution(ts: PTypeSubstitution) = {
@@ -1138,7 +1138,7 @@ case class PInhaleExhaleExp(in: PExp, ex: PExp)(val pos: (Position, Position)) e
   override def prettyNoBrackets = s"[${in.pretty()}, ${ex.pretty()}]"
 }
 
-case class PCurPerm(res: PResourceAccess)(val pos: (Position, Position)) extends PHeapOpApp {
+case class PCurPerm(perm: PKeywordOperator, res: PResourceAccess)(val pos: (Position, Position)) extends PHeapOpApp {
   override val opName = "#perm"
   override val args = Seq(res)
   val signatures: List[PTypeSubstitution] = List(
@@ -1173,24 +1173,29 @@ case class PAccPred(op: PKeywordOperator, loc: PLocationAccess, perm: PExp)(val 
   override def prettyNoBrackets = s"${op.pretty()}(${loc.pretty()}, ${perm.pretty()})"
 }
 
-sealed trait POldExp extends PHeapOpApp {
-  def e: PExp
+// sealed trait POldExp extends PHeapOpApp {
+//   def e: PExp
 
+//   override val args = Seq(e)
+//   override val signatures: List[PTypeSubstitution] = List(
+//     Map(POpApp.pResS -> POpApp.pArg(0)))
+// }
+
+case class POldExp(old: PKeywordOperator, label: Option[PIdnUse], e: PExp)(val pos: (Position, Position)) extends PHeapOpApp with HasSemanticHighlights {
+  override val opName = "old"
   override val args = Seq(e)
   override val signatures: List[PTypeSubstitution] = List(
     Map(POpApp.pResS -> POpApp.pArg(0)))
+  override def prettyNoBrackets = s"old${label.map(l => s"[${l.pretty()}]").getOrElse("")}(${e.pretty()})"
+
+  override def getSemanticHighlights: Seq[SemanticHighlight] = label.toSeq.flatMap(RangePosition(_).map(sp => SemanticHighlight(sp, TokenType.Event)))
 }
 
-case class POld(e: PExp)(val pos: (Position, Position)) extends POldExp {
-  override val opName = "old"
-  override def prettyNoBrackets = s"old(${e.pretty()})"
-}
-
-case class PLabelledOld(label: PIdnUse, e: PExp)(val pos: (Position, Position)) extends POldExp with HasSemanticHighlights {
-  override val opName = "old#labeled"
-  override def getSemanticHighlights: Seq[SemanticHighlight] = RangePosition(label).map(sp => SemanticHighlight(sp, TokenType.Event)).toSeq
-  override def prettyNoBrackets = s"old[${label.pretty()}](${e.pretty()})"
-}
+// case class PLabelledOld(old: PKeywordOperator, label: PIdnUse, e: PExp)(val pos: (Position, Position)) extends POldExp with HasSemanticHighlights {
+//   override val opName = "old#labeled"
+//   override def getSemanticHighlights: Seq[SemanticHighlight] = RangePosition(label).map(sp => SemanticHighlight(sp, TokenType.Event)).toSeq
+//   override def prettyNoBrackets = s"old[${label.pretty()}](${e.pretty()})"
+// }
 
 sealed trait PCollectionLiteral extends POpApp {
   def pElementType: PType
@@ -1241,9 +1246,9 @@ sealed trait PSeqLiteral extends PCollectionLiteral {
   override def collectionName: String = "Seq"
 }
 
-case class PEmptySeq(pElementType: PType)(val pos: (Position, Position)) extends PSeqLiteral with PEmptyCollectionLiteral
+case class PEmptySeq(op: PKeywordOperator, pElementType: PType)(val pos: (Position, Position)) extends PSeqLiteral with PEmptyCollectionLiteral
 
-case class PExplicitSeq(override val args: Seq[PExp])(val pos: (Position, Position)) extends PSeqLiteral with PExplicitCollectionLiteral
+case class PExplicitSeq(op: PKeywordOperator, override val args: Seq[PExp])(val pos: (Position, Position)) extends PSeqLiteral with PExplicitCollectionLiteral
 
 case class PRangeSeq(low: PExp, high: PExp)(val pos: (Position, Position)) extends POpApp {
   override val opName = "Seq#RangeSeq"
@@ -1375,9 +1380,9 @@ sealed trait PSetLiteral extends PCollectionLiteral {
   def collectionName: String = "Set"
 }
 
-case class PEmptySet(pElementType: PType)(val pos: (Position, Position)) extends PSetLiteral with PEmptyCollectionLiteral
+case class PEmptySet(op: PKeywordOperator, pElementType: PType)(val pos: (Position, Position)) extends PSetLiteral with PEmptyCollectionLiteral
 
-case class PExplicitSet(args: Seq[PExp])(val pos: (Position, Position)) extends PSetLiteral with PExplicitCollectionLiteral
+case class PExplicitSet(op: PKeywordOperator, args: Seq[PExp])(val pos: (Position, Position)) extends PSetLiteral with PExplicitCollectionLiteral
 
 sealed trait PMultiSetLiteral extends PCollectionLiteral {
   override val opName = "Multiset#Multiset"
@@ -1387,9 +1392,9 @@ sealed trait PMultiSetLiteral extends PCollectionLiteral {
   def collectionName: String = "Multiset"
 }
 
-case class PEmptyMultiset(override val pElementType: PType)(val pos: (Position, Position)) extends PMultiSetLiteral with PEmptyCollectionLiteral
+case class PEmptyMultiset(op: PKeywordOperator, override val pElementType: PType)(val pos: (Position, Position)) extends PMultiSetLiteral with PEmptyCollectionLiteral
 
-case class PExplicitMultiset(override val args: Seq[PExp])(val pos: (Position, Position)) extends PMultiSetLiteral with PExplicitCollectionLiteral
+case class PExplicitMultiset(op: PKeywordOperator, override val args: Seq[PExp])(val pos: (Position, Position)) extends PMultiSetLiteral with PExplicitCollectionLiteral
 
 
 /* ** Maps */
@@ -1406,7 +1411,7 @@ sealed trait PMapLiteral extends POpApp {
     else MakeMap(keyType, valueType)
 }
 
-case class PEmptyMap(override val pKeyType: PType, override val pValueType: PType)(val pos: (Position, Position)) extends PMapLiteral {
+case class PEmptyMap(op: PKeywordOperator, override val pKeyType: PType, override val pValueType: PType)(val pos: (Position, Position)) extends PMapLiteral {
   override val args = Seq()
 
   override val extraLocalTypeVariables: Set[PDomainType] =
@@ -1426,7 +1431,7 @@ case class PEmptyMap(override val pKeyType: PType, override val pValueType: PTyp
   }
 }
 
-case class PExplicitMap(override val args: Seq[PMaplet])(val pos: (Position, Position)) extends PMapLiteral {
+case class PExplicitMap(op: PKeywordOperator, override val args: Seq[PMaplet])(val pos: (Position, Position)) extends PMapLiteral {
   override def pKeyType: PType = args.head.key.typ
 
   override def pValueType: PType = args.head.value.typ
@@ -1459,7 +1464,7 @@ case class PMaplet(key: PExp, value: PExp)(val pos: (Position, Position)) extend
   override def prettyNoBrackets = s"${key.pretty()} := ${value.pretty()}"
 }
 
-case class PMapDomain(base: PExp)(val pos: (Position, Position)) extends POpApp {
+case class PMapDomain(keyword: PKeywordOperator, base: PExp)(val pos: (Position, Position)) extends POpApp {
   val keyType: PDomainType = PTypeVar("#K")
   val valueType: PDomainType = PTypeVar("#E")
 
@@ -1475,7 +1480,7 @@ case class PMapDomain(base: PExp)(val pos: (Position, Position)) extends POpApp 
   override def prettyNoBrackets = s"domain(${base.pretty()})"
 }
 
-case class PMapRange(base: PExp)(val pos: (Position, Position)) extends POpApp {
+case class PMapRange(keyword: PKeywordOperator, base: PExp)(val pos: (Position, Position)) extends POpApp {
   val keyType: PDomainType = PTypeVar("#K")
   val valueType: PDomainType = PTypeVar("#E")
 
@@ -1509,7 +1514,7 @@ trait PStmt extends PNode {
   }
 }
 
-case class PAnnotatedStmt(stmt: PStmt, annotation: PAnnotation)(val pos: (Position, Position)) extends PStmt
+case class PAnnotatedStmt(annotation: PAnnotation, stmt: PStmt)(val pos: (Position, Position)) extends PStmt
 
 case class PSeqn(ss: Seq[PStmt])(val pos: (Position, Position)) extends PStmt with PScope
 
@@ -1538,13 +1543,13 @@ case class PAssume(assume: PKeywordStmt, e: PExp)(val pos: (Position, Position))
 case class PInhale(inhale: PKeywordStmt, e: PExp)(val pos: (Position, Position)) extends PStmt
 
 /** Can also represent a method call or statement macro with no `:=` when `targets` is empty. */
-case class PAssign(targets: Seq[PAssignTarget], rhs: PExp)(val pos: (Position, Position)) extends PStmt
+case class PAssign(targets: Seq[PAssignTarget], op: Option[POperatorSymbol], rhs: PExp)(val pos: (Position, Position)) extends PStmt
 
 case class PIf(keyword: PKeywordStmt, cond: PExp, thn: PSeqn, elsKw: Option[PKeywordStmt], els: PSeqn)(val pos: (Position, Position)) extends PStmt
 
 case class PWhile(keyword: PKeywordStmt, cond: PExp, invs: Seq[(PKeywordLang, PExp)], body: PSeqn)(val pos: (Position, Position)) extends PStmt
 
-case class PVars(keyword: PKeywordStmt, vars: Seq[PLocalVarDecl], init: Option[PExp])(val pos: (Position, Position)) extends PStmt
+case class PVars(keyword: PKeywordStmt, vars: Seq[PLocalVarDecl], init: Option[(POperatorSymbol, PExp)])(val pos: (Position, Position)) extends PStmt
 
 //   override def getSemanticHighlights: Seq[SemanticHighlight] = RangePosition(method).map(SemanticHighlight(_, TokenType.Method)).toSeq
 
@@ -1588,7 +1593,7 @@ case class PTypeVarDecl(idndef: PIdnDef)(val pos: (Position, Position)) extends 
   override def tokenType = TokenType.TypeParameter
 }
 
-case class PDefine(define: PKeywordLang, idndef: PIdnDef, parameters: Option[Seq[PIdnDef]], body: PNode)(val pos: (Position, Position)) extends PStmt with PLocalDeclaration with PSemanticDeclaration {
+case class PDefine(annotations: Seq[PAnnotation], define: PKeywordLang, idndef: PIdnDef, parameters: Option[Seq[PIdnDef]], body: PNode)(val pos: (Position, Position)) extends PSingleMember with PStmt with PAnnotated with PLocalDeclaration with PSemanticDeclaration {
   override def tokenType = TokenType.Macro
 }
 
@@ -1599,7 +1604,7 @@ case class PQuasihavoc(quasihavoc: PKeywordStmt, lhs: Option[(PExp, POperatorSym
 case class PQuasihavocall(quasihavocall: PKeywordStmt, vars: Seq[PLogicalVarDecl], colons: POperatorSymbol, lhs: Option[(PExp, POperatorSymbol)], e: PExp)(val pos: (Position, Position)) extends PStmt with PScope
 
 /* new(f1, ..., fn) or new(*) */
-case class PNewExp(keyword: PKeywordStmt, fields: Option[Seq[PIdnUse]])(val pos: (Position, Position)) extends PExp {
+case class PNewExp(keyword: PKeywordOperator, fields: Option[Seq[PIdnUse]])(val pos: (Position, Position)) extends PExp {
   override def prettyNoBrackets: String = s"${keyword.pretty()}${fields.map(_.map(_.pretty())).getOrElse(Seq("*")).mkString("(", ", ", ")")}"
   override final val typeSubstitutions = Seq(PTypeSubstitution.id)
   def forceSubstitution(ts: PTypeSubstitution) = {}
@@ -1780,7 +1785,7 @@ case class PProgram(imports: Seq[PImport], macros: Seq[PDefine], domains: Seq[PD
 
 case class PFilePath(file: String)(val pos: (Position, Position)) extends PNode
 
-case class PImport(imprt: PKeywordLang, var local: Boolean, file: PFilePath)(val pos: (Position, Position)) extends PNode {
+case class PImport(annotations: Seq[PAnnotation], imprt: PKeywordLang, var local: Boolean, file: PFilePath)(val pos: (Position, Position)) extends PNode {
   var resolved: Path = null
   override def getSymbol: Option[DocumentSymbol] = (RangePosition(this), RangePosition(file)) match {
     case (Some(tp), Some(fp)) if resolved != null =>
@@ -1791,18 +1796,18 @@ case class PImport(imprt: PKeywordLang, var local: Boolean, file: PFilePath)(val
   }
 }
 
-case class PMethod(annotations: Seq[PAnnotation], method: PKeywordLang, idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalReturnDecl], pres: Seq[(PKeywordLang, PExp)], posts: Seq[(PKeywordLang, PExp)], body: Option[PStmt])
+case class PMethod(annotations: Seq[PAnnotation], method: PKeywordLang, idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], returns: Option[PKeywordLang], formalReturns: Seq[PFormalReturnDecl], pres: Seq[(PKeywordLang, PExp)], posts: Seq[(PKeywordLang, PExp)], body: Option[PStmt])
                   (val pos: (Position, Position)) extends PSingleMember with PGlobalDeclaration with PSemanticDeclaration with PGlobalCallable {
-  def deepCopy(annotations: Seq[PAnnotation] = this.annotations, method: PKeywordLang = this.method, idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, formalReturns: Seq[PFormalReturnDecl] = this.formalReturns, pres: Seq[(PKeywordLang, PExp)] = this.pres, posts: Seq[(PKeywordLang, PExp)] = this.posts, body: Option[PStmt] = this.body): PMethod = {
+  def deepCopy(annotations: Seq[PAnnotation] = this.annotations, method: PKeywordLang = this.method, idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, returns: Option[PKeywordLang] = this.returns, formalReturns: Seq[PFormalReturnDecl] = this.formalReturns, pres: Seq[(PKeywordLang, PExp)] = this.pres, posts: Seq[(PKeywordLang, PExp)] = this.posts, body: Option[PStmt] = this.body): PMethod = {
     StrategyBuilder.Slim[PNode]({
-      case p: PMethod => PMethod(annotations, method, idndef, formalArgs, formalReturns, pres, posts, body)(p.pos)
+      case p: PMethod => PMethod(annotations, method, idndef, formalArgs, returns, formalReturns, pres, posts, body)(p.pos)
     }).execute[PMethod](this)
   }
 
-  def deepCopyWithNameSubstitution(annotations: Seq[PAnnotation] = this.annotations, method: PKeywordLang = this.method, idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, formalReturns: Seq[PFormalReturnDecl] = this.formalReturns, pres: Seq[(PKeywordLang, PExp)] = this.pres, posts: Seq[(PKeywordLang, PExp)] = this.posts, body: Option[PStmt] = this.body)
+  def deepCopyWithNameSubstitution(annotations: Seq[PAnnotation] = this.annotations, method: PKeywordLang = this.method, idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, returns: Option[PKeywordLang] = this.returns, formalReturns: Seq[PFormalReturnDecl] = this.formalReturns, pres: Seq[(PKeywordLang, PExp)] = this.pres, posts: Seq[(PKeywordLang, PExp)] = this.posts, body: Option[PStmt] = this.body)
                                   (idn_generic_name: String, idn_substitution: String): PMethod = {
     StrategyBuilder.Slim[PNode]({
-      case p: PMethod => PMethod(annotations, method, idndef, formalArgs, formalReturns, pres, posts, body)(p.pos)
+      case p: PMethod => PMethod(annotations, method, idndef, formalArgs, returns, formalReturns, pres, posts, body)(p.pos)
       case p@PIdnDef(name) if name == idn_generic_name => PIdnDef(idn_substitution)(p.pos)
       case p@PIdnUse(name) if name == idn_generic_name => PIdnUse(idn_substitution)(p.pos)
     }).execute[PMethod](this)
@@ -1815,7 +1820,7 @@ case class PMethod(annotations: Seq[PAnnotation], method: PKeywordLang, idndef: 
   override def bodyRange: Option[RangePosition] = body.flatMap(RangePosition(_))
 }
 
-case class PDomain(annotations: Seq[PAnnotation], domain: PKeywordLang, idndef: PIdnDef, typVars: Seq[PTypeVarDecl], members: PDomainMembers, interpretations: Option[Map[String, String]])
+case class PDomain(annotations: Seq[PAnnotation], domain: PKeywordLang, idndef: PIdnDef, typVars: Seq[PTypeVarDecl], members: PDomainMembers, interpretations: Option[(PKeywordLang, Map[String, String])])
                   (val pos: (Position, Position)) extends PSingleMember with PGlobalDeclaration with PSemanticDeclaration with PGlobalSymbol with HasFoldingRanges {
   override def tokenType = TokenType.Interface
   override def symbolKind = SymbolKind.Interface
@@ -1837,7 +1842,7 @@ case class PFunction(annotations: Seq[PAnnotation], function: PKeywordLang, idnd
   override def bodyRange: Option[RangePosition] = body.flatMap(RangePosition(_))
 }
 
-case class PDomainFunction(annotations: Seq[PAnnotation], function: PKeywordLang, idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl], resultType: PType, unique: Boolean, interpretation: Option[String])
+case class PDomainFunction(annotations: Seq[PAnnotation], unique: Option[PKeywordLang], function: PKeywordLang, idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl], resultType: PType, interpretation: Option[(PKeywordLang, String)])
                           (val domainName:PIdnUse)(val pos: (Position, Position)) extends PAnyFunction {
 
   override def keyword: PKeywordLang = function
@@ -1867,11 +1872,15 @@ case class PPredicate(annotations: Seq[PAnnotation], predicate: PKeywordLang, id
 }
 
 trait PDomainMember1 extends PNode
-case class PDomainFunction1(annotations: Seq[PAnnotation], function: PKeywordLang, idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl], typ: PType, unique: Boolean, interpretation: Option[String])(val pos: (Position, Position)) extends PDomainMember1
+case class PDomainFunction1(annotations: Seq[PAnnotation], unique: Option[PKeywordLang], function: PKeywordLang, idndef: PIdnDef, formalArgs: Seq[PAnyFormalArgDecl], typ: PType, interpretation: Option[(PKeywordLang, String)])(val pos: (Position, Position)) extends PDomainMember1
 case class PAxiom1(annotations: Seq[PAnnotation], axiom: PKeywordLang, idndef: Option[PIdnDef], exp: PBlock[PExp])(val pos: (Position, Position)) extends PDomainMember1
 case class PDomainMembers1(members: Seq[PDomainMember1])(val pos: (Position, Position)) extends PNode
 
-case class PAnnotation(key: String, values: Seq[String])(val pos: (Position, Position)) extends PNode with HasSemanticHighlights {
+/**
+  * Used for parsing annotation for top level members. Passed as an argument to the members to construct them.
+  */
+case class PAnnotationsPosition(annotations: Seq[PAnnotation], pos: (Position, Position))
+case class PAnnotation(at: POperatorSymbol, key: String, values: Seq[String])(val pos: (Position, Position)) extends PNode with HasSemanticHighlights {
 
   override def getSemanticHighlights: Seq[SemanticHighlight] = (key, RangePosition(this)) match {
     case ("doc", Some(sp)) => Seq(SemanticHighlight(sp, TokenType.Comment))
@@ -1967,26 +1976,25 @@ object Nodes {
         case Some(t) => Seq(t)
         case None => Nil
       })
-      case PUnfolding(unfolding, acc, exp) => Seq(unfolding, acc, exp)
-      case PApplying(applying, wand, exp) => Seq(applying, wand, exp)
-      case PExists(exists, vars, triggers, exp) => Seq(exists) ++ vars ++ triggers ++ Seq(exp)
-      case PLabelledOld(id, e) => Seq(id, e)
-      case po: POldExp => Seq(po.e)
-      case PLet(exp, nestedScope) => Seq(exp, nestedScope)
+      case PUnfolding(unfolding, acc, in, exp) => Seq(unfolding, acc, in, exp)
+      case PApplying(applying, wand, in, exp) => Seq(applying, wand, in, exp)
+      case PExists(exists, vars, cs, triggers, exp) => Seq(exists) ++ vars ++ Seq(cs) ++ triggers ++ Seq(exp)
+      case POldExp(k, id, e) => Seq(k) ++ id.toSeq ++ Seq(e)
+      case PLet(op, exp, in, nestedScope) => Seq(op, exp, in, nestedScope)
       case PLetNestedScope(variable, body) => Seq(variable, body)
-      case PForall(forall, vars, triggers, exp) => Seq(forall) ++ vars ++ triggers ++ Seq(exp)
-      case PForPerm(forperm, vars, res, expr) => Seq(forperm) ++ vars ++ Seq(res, expr)
+      case PForall(forall, vars, cs, triggers, exp) => Seq(forall) ++ vars ++ Seq(cs) ++ triggers ++ Seq(exp)
+      case PForPerm(forperm, vars, res, cs, expr) => Seq(forperm) ++ vars ++ Seq(res, cs, expr)
       case PCondExp(cond, q, thn, c, els) => Seq(cond, q, thn, c, els)
       case PInhaleExhaleExp(in, ex) => Seq(in, ex)
-      case PCurPerm(loc) => Seq(loc)
+      case PCurPerm(k, loc) => Seq(k, loc)
       case PNoPerm(k) => Seq(k)
       case PFullPerm(k) => Seq(k)
       case PWildcard(k) => Seq(k)
       case PEpsilon(k) => Seq(k)
       case PAccPred(acc, loc, perm) => Seq(acc, loc, perm)
-      case PEmptySeq(_) => Nil
+      case PEmptySeq(k, t) => Seq(k, t)
       // case PSeqIndex(seq, idx) => Seq(seq, idx)
-      case PExplicitSeq(elems) => elems
+      case PExplicitSeq(k, elems) => Seq(k) ++ elems
       case PRangeSeq(low, high) => Seq(low, high)
       case PSeqTake(seq, nn) => Seq(seq, nn)
       case PSeqDrop(seq, nn) => Seq(seq, nn)
@@ -1994,14 +2002,14 @@ object Nodes {
       case PLookup(seq, idx) => Seq(seq, idx)
       case PUpdate(seq, idx, elem) => Seq(seq, idx, elem)
       case PSize(seq) => Seq(seq)
-      case PEmptySet(t) => Seq(t)
-      case PExplicitSet(elems) => elems
-      case PEmptyMultiset(t) => Seq(t)
-      case PExplicitMultiset(elems) => elems
-      case PEmptyMap(k, v) => Seq(k, v)
-      case PExplicitMap(elems) => elems
-      case PMapRange(base) => Seq(base)
-      case PMapDomain(base) => Seq(base)
+      case PEmptySet(k, t) => Seq(k, t)
+      case PExplicitSet(k, elems) => Seq(k) ++ elems
+      case PEmptyMultiset(k, t) => Seq(k, t)
+      case PExplicitMultiset(k, elems) => Seq(k) ++ elems
+      case PEmptyMap(kw, k, v) => Seq(kw, k, v)
+      case PExplicitMap(k, elems) => Seq(k) ++ elems
+      case PMapRange(op, base) => Seq(op, base)
+      case PMapDomain(op, base) => Seq(op, base)
       case PMaplet(key, value) => Seq(key, value)
       case PSeqn(ss) => ss
       case PFold(fold, exp) => Seq(fold, exp)
@@ -2015,34 +2023,34 @@ object Nodes {
       case PNewExp(k, fields) => Seq(k) ++ fields.getOrElse(Seq())
       case PLabel(label, name, invs) => Seq(label, name) ++ invs.flatMap(inv => Seq(inv._1, inv._2))
       case PGoto(goto, label) => Seq(goto, label)
-      case PAssign(targets, rhs) => targets ++ Seq(rhs)
+      case PAssign(targets, op, rhs) => targets ++ op.toSeq ++ Seq(rhs)
       case PIf(keyword, cond, thn, elsKw, els) => Seq(keyword, cond, thn) ++ elsKw.toSeq ++ Seq(els)
       case PWhile(keyword, cond, invs, body) => Seq(keyword, cond) ++ invs.flatMap(inv => Seq(inv._1, inv._2)) ++ Seq(body)
-      case PVars(k, vars, init) => Seq(k) ++ vars ++ (if (init.isDefined) Seq(init.get) else Nil)
+      case PVars(k, vars, init) => Seq(k) ++ vars ++ init.toSeq.flatMap(i => Seq(i._1, i._2))
       case PProgram(imports, macros, domains, fields, functions, predicates, methods, extensions, _) =>
         imports ++ macros ++ domains ++ fields ++ functions ++ predicates ++ methods ++ extensions
       case PFilePath(_) => Nil
-      case PImport(imprt, _, file) => Seq(imprt, file)
-      case PDomain(anns, domain, idndef, typVars, members, _) => anns ++ Seq(domain, idndef) ++ typVars ++ Seq(members)
+      case PImport(anns, imprt, _, file) => anns ++ Seq(imprt, file)
+      case PDomain(anns, domain, idndef, typVars, members, i) => anns ++ Seq(domain, idndef) ++ typVars ++ Seq(members) ++ i.map(_._1).toSeq
       case PDomainMembers(funcs, axioms) => funcs ++ axioms
       case PFields(anns, field, fields) => anns ++ Seq(field) ++ fields
-      case PMethod(anns, method, idndef, args, rets, pres, posts, body) =>
-        anns ++ Seq(method, idndef) ++ args ++ rets ++ pres.flatMap(c => Seq(c._1, c._2)) ++ posts.flatMap(c => Seq(c._1, c._2)) ++ body.toSeq
+      case PMethod(anns, method, idndef, args, returns, rets, pres, posts, body) =>
+        anns ++ Seq(method, idndef) ++ args ++ returns.toSeq ++ rets ++ pres.flatMap(c => Seq(c._1, c._2)) ++ posts.flatMap(c => Seq(c._1, c._2)) ++ body.toSeq
       case PFunction(anns, function, name, args, typ, pres, posts, body) =>
         anns ++ Seq(function, name) ++ args ++ Seq(typ) ++ pres.flatMap(c => Seq(c._1, c._2)) ++ posts.flatMap(c => Seq(c._1, c._2)) ++ body
-      case PDomainFunction(anns, function, name, args, typ, _, _) =>
-        anns ++ Seq(function, name) ++ args ++ Seq(typ)
+      case PDomainFunction(anns, unique, function, name, args, typ, i) =>
+        anns ++ unique.toSeq ++ Seq(function, name) ++ args ++ Seq(typ) ++ i.map(_._1).toSeq
       case PPredicate(anns, predicate, name, args, body) =>
         anns ++ Seq(predicate, name) ++ args ++ body
       case PAxiom(anns, axiom, idndef, exp) => anns ++ Seq(axiom) ++ idndef.toSeq ++ Seq(exp)
       case PTypeVarDecl(name) => Seq(name)
-      case PDefine(define, idndef, optArgs, body) => Seq(define, idndef) ++ optArgs.getOrElse(Nil) ++ Seq(body)
+      case PDefine(anns, define, idndef, optArgs, body) => anns ++ Seq(define, idndef) ++ optArgs.getOrElse(Nil) ++ Seq(body)
       case PQuasihavoc(quasihavoc, lhs, e) =>
         Seq(quasihavoc) ++ lhs.toSeq.flatMap(lhs => Seq(lhs._1, lhs._2)) ++ Seq(e)
       case PQuasihavocall(quasihavocall, vars, cc, lhs, e) =>
         Seq(quasihavocall) ++ vars ++ Seq(cc) ++ lhs.toSeq.flatMap(lhs => Seq(lhs._1, lhs._2)) ++ Seq(e)
-      case PAnnotatedExp(e, ann) => Seq(e, ann)
-      case PAnnotatedStmt(s, ann) => Seq(s, ann)
+      case PAnnotatedExp(ann, e) => Seq(ann, e)
+      case PAnnotatedStmt(ann, s) => Seq(ann, s)
       case PBlock(inner) => Seq(inner)
       case _: PAnnotation => Nil
       case t: PExtender => t.getSubnodes()

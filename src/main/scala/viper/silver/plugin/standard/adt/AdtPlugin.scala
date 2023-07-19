@@ -69,18 +69,18 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
     * }
     *
     */
-  def adtDecl[$: P]: P[PAdt] = FP(annotation.rep(0) ~ keywordLang(AdtKeyword) ~/ idndef ~ typeParams ~ "{" ~ adtConstructorDecl.rep ~
+  def adtDecl[$: P]: P[PAnnotationsPosition => PAdt] = P(keywordLang(AdtKeyword) ~ idndef ~ typeParams ~ "{" ~ adtConstructorDecl.rep ~
     "}" ~ adtDerivingDecl.?).map {
-    case (pos, (anns, k, name, typparams, constructors, dec)) =>
-      PAdt(
-        anns,
+    case (k, name, typparams, constructors, dec) =>
+      ap: PAnnotationsPosition => PAdt(
+        ap.annotations,
         k,
         name,
         typparams,
         constructors map (c => PAdtConstructor(c.annotations, c.idndef, c.formalArgs)(PIdnUse(name.name)(name.pos))(c.pos)),
         dec.map(_._1),
         dec.map(_._2).getOrElse(Seq.empty)
-      )(pos)
+      )(ap.pos)
   }
 
   def adtDerivingDecl[$: P]: P[(PKeywordLang, Seq[PAdtDerivingInfo])] = P(keywordLang(AdtDerivesKeyword) ~/ "{" ~ adtDerivingDeclBody.rep ~ "}")
@@ -116,14 +116,14 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
       case pc@PCall(idnuse, args, typeAnnotated) if declaredConstructorNames.exists(_.name == idnuse.name) => PConstructorCall(idnuse, args, typeAnnotated)(pc.pos)
       // A destructor call or discriminator call might be parsed as left-hand side of a field assignment, which is illegal. Hence in this case
       // we simply treat the calls as an ordinary field access, which results in an identifier not found error.
-      case pfa@PAssign(Seq(fieldAcc: PFieldAccess), rhs) if declaredConstructorArgsNames.contains(fieldAcc.idnuse.name) ||
+      case pfa@PAssign(Seq(fieldAcc: PFieldAccess), op, rhs) if declaredConstructorArgsNames.contains(fieldAcc.idnuse.name) ||
         declaredConstructorNames.exists("is" + _.name == fieldAcc.idnuse.name) =>
-        PAssign(Seq(PFieldAccess(transformStrategy(fieldAcc.rcv), fieldAcc.idnuse)(fieldAcc.pos)), transformStrategy(rhs))(pfa.pos)
+        PAssign(Seq(PFieldAccess(transformStrategy(fieldAcc.rcv), fieldAcc.idnuse)(fieldAcc.pos)), op, transformStrategy(rhs))(pfa.pos)
       case pfa@PFieldAccess(rcv, idnuse) if declaredConstructorArgsNames.contains(idnuse.name) => PDestructorCall(idnuse, rcv)(pfa.pos)
       case pfa@PFieldAccess(rcv, idnuse) if declaredConstructorNames.exists("is" + _.name == idnuse.name) => PDiscriminatorCall(PIdnUse(idnuse.name.substring(2))(idnuse.pos), rcv)(pfa.pos)
     }).recurseFunc({
       // Stop the recursion if a destructor call or discriminator call is parsed as left-hand side of a field assignment
-      case PAssign(Seq(fieldAcc: PFieldAccess), _) if declaredConstructorArgsNames.contains(fieldAcc.idnuse.name) ||
+      case PAssign(Seq(fieldAcc: PFieldAccess), _, _) if declaredConstructorArgsNames.contains(fieldAcc.idnuse.name) ||
         declaredConstructorNames.exists("is" + _.name == fieldAcc.idnuse.name) => Seq()
       case n: PNode => n.children collect { case ar: AnyRef => ar }
     }).execute(input)

@@ -191,7 +191,7 @@ case class TypeChecker(names: NameAnalyser) {
 
   def check(stmt: PStmt): Unit = {
     stmt match {
-      case PAnnotatedStmt(s, _) =>
+      case PAnnotatedStmt(_, s) =>
         check(s)
       case s@PSeqn(ss) =>
         checkMember(s) {
@@ -233,7 +233,7 @@ case class TypeChecker(names: NameAnalyser) {
         check(body)
       case v@PVars(_, vars, initial) =>
         vars foreach (v => check(v.typ))
-        initial.map(i => checkAssign(PAssign(vars.map(_.toIdnUse), i)(v.pos)))
+        initial.map(i => checkAssign(PAssign(vars.map(_.toIdnUse), Some(i._1), i._2)(v.pos)))
       case _: PDefine =>
         /* Should have been removed right after parsing */
         sys.error(s"Unexpected node $stmt found")
@@ -274,8 +274,8 @@ case class TypeChecker(names: NameAnalyser) {
     }
     // Check rhs
     stmt match {
-      case PAssign(targets, c@PCall(func, args, _)) if names.definition(curMember)(func).get.isInstanceOf[PMethod] =>
-        val m@PMethod(_, _, _, formalArgs, formalTargets, _, _, _) = names.definition(curMember)(func).get.asInstanceOf[PMethod]
+      case PAssign(targets, _, c@PCall(func, args, _)) if names.definition(curMember)(func).get.isInstanceOf[PMethod] =>
+        val m@PMethod(_, _, _, formalArgs, _, formalTargets, _, _, _) = names.definition(curMember)(func).get.asInstanceOf[PMethod]
         c.method = m
         func.decl = m
         formalArgs.foreach(fa => check(fa.typ))
@@ -288,10 +288,10 @@ case class TypeChecker(names: NameAnalyser) {
             check(actual, formal.typ)
           }
         }
-      case PAssign(Seq(target), PNewExp(_, fieldsOpt)) =>
+      case PAssign(Seq(target), _, PNewExp(_, fieldsOpt)) =>
         check(target, Ref)
         fieldsOpt map (acceptAndCheckTypedEntity[PFieldDecl, Nothing](_, "expected a field as argument"))
-      case PAssign(Seq(lhs), rhs) => check(rhs, lhs.typ)
+      case PAssign(Seq(lhs), _, rhs) => check(rhs, lhs.typ)
       // Case `targets.length != 1`:
       case _ => messages ++= FastMessaging.message(stmt, "expected a method call")
     }
@@ -615,7 +615,7 @@ case class TypeChecker(names: NameAnalyser) {
 
       case t: PExtender => t.typecheck(this, names).getOrElse(Nil) foreach (message =>
         messages ++= FastMessaging.message(t, message))
-      case PAnnotatedExp(e, _) =>
+      case PAnnotatedExp(_, e) =>
         checkInternal(e)
         setType(e.typ)
       case psl: PSimpleLiteral=>
@@ -682,7 +682,7 @@ case class TypeChecker(names: NameAnalyser) {
                 }
                 acceptNonAbstractPredicateAccess(pu.acc, "abstract predicates cannot be unfolded")
 
-              case PApplying(_, wand, _) =>
+              case PApplying(_, wand, _, _) =>
                 checkMagicWand(wand)
 
               // We checked that the `rcv` is valid above with `poa.args.foreach(checkInternal)`
@@ -743,7 +743,7 @@ case class TypeChecker(names: NameAnalyser) {
       case piu: PIdnUse =>
         acceptAndCheckTypedEntity[PAnyVarDecl, Nothing](Seq(piu), "expected variable identifier")
 
-      case pl@PLet(e, ns) =>
+      case pl@PLet(_, e, _, ns) =>
         val oldCurMember = curMember
         curMember = ns
         checkInternal(e)
@@ -900,7 +900,7 @@ case class NameAnalyser() {
               // We re-encountered a member we already looked at in the previous run.
               // This is expected, nothing to do.
               case Some(e: PDeclaration) =>
-                messages ++= FastMessaging.message(e.idndef, "Duplicate identifier `" + e.idndef.name + "' at " + e.idndef.pos._1 + " and at " + d.idndef.pos._1)
+                messages ++= FastMessaging.message(d.idndef, "Duplicate identifier `" + e.idndef.name + "' at " + e.idndef.pos._1 + " and at " + d.idndef.pos._1)
               case None =>
                 globalDeclarationMap.get(d.idndef.name) match {
                   case Some(e: PDeclaration) =>
@@ -916,8 +916,8 @@ case class NameAnalyser() {
             (i.parent, resolved) match {
               case (Some(parent), PUnknownEntity()) =>
                 if (!parent.isInstanceOf[PDomainType] && !parent.isInstanceOf[PGoto] &&
-                  !(parent.isInstanceOf[PLabelledOld] && i == parent.asInstanceOf[PLabelledOld].label) &&
-                  !(name == LabelledOld.LhsOldLabel && parent.isInstanceOf[PLabelledOld])) {
+                  !(parent.isInstanceOf[POldExp] && parent.asInstanceOf[POldExp].label.map(_ == i).getOrElse(false)) &&
+                  !(name == LabelledOld.LhsOldLabel && parent.isInstanceOf[POldExp] && parent.asInstanceOf[POldExp].label.isDefined)) {
                   messages ++= FastMessaging.message(i, s"identifier $name not defined.")
                 }
               // domain types can also be type variables, which need not be declared

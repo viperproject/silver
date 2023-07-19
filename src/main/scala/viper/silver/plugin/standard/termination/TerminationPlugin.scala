@@ -82,11 +82,11 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
         PPredicateInstance(args, idnUse)(pc.pos)
       case d => d
     }).recurseFunc({
-      case PUnfolding(_, _, exp) => // ignore predicate access when it is used for unfolding
+      case PUnfolding(_, _, _, exp) => // ignore predicate access when it is used for unfolding
         Seq(exp)
-      case PApplying(_, _, exp) => // ignore predicate access when it is in a magic wand
+      case PApplying(_, _, _, exp) => // ignore predicate access when it is in a magic wand
         Seq(exp)
-      case PCurPerm(_) => // ignore predicate access when it is in perm
+      case PCurPerm(_, _) => // ignore predicate access when it is in perm
         // (However, anyways not supported in decreases clauses)
         Nil
     })
@@ -98,7 +98,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
     }).recurseFunc({ // decreases clauses can only appear in functions/methods pres and methods bodies
       case PProgram(_, _, _, _, functions, _, methods, _, _) => Seq(functions, methods)
       case PFunction(_, _, _, _, _, pres, _, _) => Seq(pres)
-      case PMethod(_, _, _, _, _, pres, _, body) => Seq(pres, body)
+      case PMethod(_, _, _, _, _, _, pres, _, body) => Seq(pres, body)
     }).execute(input)
 
     newProgram
