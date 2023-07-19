@@ -1309,7 +1309,7 @@ case class PGoto(targets: PIdnUse)(val pos: (Position, Position)) extends PStmt
 
 case class PTypeVarDecl(idndef: PIdnDef)(val pos: (Position, Position)) extends PLocalDeclaration
 
-case class PDefine(idndef: PIdnDef, parameters: Option[Seq[PIdnDef]], body: PNode)(val pos: (Position, Position)) extends PStmt with PLocalDeclaration
+case class PDefine(idndef: PIdnDef, parameters: Option[Seq[PIdnDef]], body: PNode)(val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PStmt with PLocalDeclaration
 
 case class PSkip()(val pos: (Position, Position)) extends PStmt
 
@@ -1400,9 +1400,9 @@ case class PProgram(imports: Seq[PImport], macros: Seq[PDefine], domains: Seq[PD
 
 abstract class PImport() extends PNode
 
-case class PLocalImport(file: String)(val pos: (Position, Position)) extends PImport()
+case class PLocalImport(file: String)(val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PImport()
 
-case class PStandardImport(file: String)(val pos: (Position, Position)) extends PImport()
+case class PStandardImport(file: String)(val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PImport()
 
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalReturnDecl], pres: Seq[PExp], posts: Seq[PExp], body: Option[PStmt])
                   (val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PSingleMember {

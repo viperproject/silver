@@ -141,14 +141,14 @@ object Transformer {
         case p@PVars(vars, init) => PVars(vars map go, init map go)(p.pos)
         case p@PLabel(idndef, invs) => PLabel(go(idndef), invs map go)(p.pos)
         case p@PGoto(target) => PGoto(go(target))(p.pos)
-        case p@PDefine(idndef, optArgs, exp) => PDefine(go(idndef), optArgs map (_ map go) , go(exp))(p.pos)
+        case p@PDefine(idndef, optArgs, exp) => PDefine(go(idndef), optArgs map (_ map go) , go(exp))(p.pos, p.annotations)
         case p@PLet(exp, nestedScope) => PLet(go(exp), go(nestedScope))(p.pos)
         case p@PLetNestedScope(idndef, body) => PLetNestedScope(go(idndef), go(body))(p.pos)
         case _: PSkip => parent
 
         case p@PProgram(files, macros, domains, fields, functions, predicates, methods, extensions, errors) => PProgram(files, macros map go, domains map go, fields map go, functions map go, predicates map go, methods map go, extensions map go, errors)(p.pos)
-        case p@PLocalImport(file) => PLocalImport(file)(p.pos)
-        case p@PStandardImport(file) => PStandardImport(file)(p.pos)
+        case p@PLocalImport(file) => PLocalImport(file)(p.pos, p.annotations)
+        case p@PStandardImport(file) => PStandardImport(file)(p.pos, p.annotations)
         case p@PMethod(idndef, formalArgs, formalReturns, pres, posts, body) => PMethod(go(idndef), formalArgs map go, formalReturns map go, pres map go, posts map go, body map go)(p.pos, p.annotations)
         case p@PDomain(idndef, typVars, funcs, axioms, interp) => PDomain(go(idndef), typVars map go, funcs map go, axioms map go, interp)(p.pos, p.annotations)
         case p@PFields(fields) => PFields(fields map go)(p.pos, p.annotations)
