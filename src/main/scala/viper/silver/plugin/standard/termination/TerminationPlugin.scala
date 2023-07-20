@@ -131,17 +131,17 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
         return false
       if (wfTypeName.isEmpty)
         return true
-      val typeName = t match {
-        case PPrimitiv("Perm") => "Rational"
-        case PPrimitiv(n) => n
-        case PSeqType(_) => "Seq"
-        case PSetType(_) => "Set"
-        case PMultisetType(_) => "MultiSet"
-        case PMapType(_, _) => "Map"
-        case PDomainType(d, _) if d.name == "PredicateInstance" => "PredicateInstances"
-        case PDomainType(d, _) => d.name
+      val typeNames = t match {
+        case PPrimitiv("Perm") => Seq("Rational", "Perm")
+        case PPrimitiv(n) => Seq(n)
+        case PSeqType(_) => Seq("Seq")
+        case PSetType(_) => Seq("Set")
+        case PMultisetType(_) => Seq("MultiSet")
+        case PMapType(_, _) => Seq("Map")
+        case PDomainType(d, _) if d.name == "PredicateInstance" => Seq("PredicateInstances")
+        case PDomainType(d, _) => Seq(d.name)
       }
-      !wfTypeName.contains(typeName)
+      !typeNames.exists(tn => wfTypeName.contains(tn))
     }
 
     ax.exp.shallowCollect{
@@ -179,7 +179,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
       case TypeHelper.Int if !presentDomains.contains("IntWellFoundedOrder") => Some("import <decreases/int.vpr>")
       case TypeHelper.Ref if !presentDomains.contains("RefWellFoundedOrder") => Some("import <decreases/ref.vpr>")
       case TypeHelper.Bool if !presentDomains.contains("BoolWellFoundedOrder") => Some("import <decreases/bool.vpr>")
-      case TypeHelper.Perm if !presentDomains.contains("RationalWellFoundedOrder") => Some("import <decreases/rational.vpr>")
+      case TypeHelper.Perm if !presentDomains.contains("RationalWellFoundedOrder") && !presentDomains.contains("PermWellFoundedOrder") => Some("import <decreases/perm.vpr>")
       case PMultisetType(_) if !presentDomains.contains("MultiSetWellFoundedOrder") => Some("import <decreases/multiset.vpr>")
       case PSeqType(_) if !presentDomains.contains("SeqWellFoundedOrder") => Some("import <decreases/seq.vpr>")
       case PSetType(_) if !presentDomains.contains("SetWellFoundedOrder") => Some("import <decreases/set.vpr>")
