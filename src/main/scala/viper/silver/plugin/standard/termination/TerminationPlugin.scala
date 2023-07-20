@@ -19,7 +19,7 @@ import fastparse._
 import viper.silver.frontend.{DefaultStates, ViperPAstProvider}
 import viper.silver.logger.SilentLogger
 import viper.silver.parser.FastParserCompanion.whitespace
-import viper.silver.reporter.{Entity, NoopReporter}
+import viper.silver.reporter.{Entity, NoopReporter, WarningsDuringTypechecking}
 
 import scala.annotation.unused
 
@@ -113,6 +113,45 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
     newProgram
   }
 
+  private def constrainsWellfoundednessUnexpectedly(ax: PAxiom, wfTypeName: Option[String]): Seq[PType] = {
+
+    def isWellFoundedFunctionCall(c: PCall): Boolean = {
+      if (!c.isDomainFunction)
+        return false
+      if (!(c.idnuse.name == "decreases" || c.idnuse.name == "bounded"))
+        return false
+      c.function match {
+        case df: PDomainFunction => df.domainName.name == "WellFoundedOrder"
+        case _ => false
+      }
+    }
+
+    def isNotExpectedConstrainedType(t: PType): Boolean = {
+      if (!t.isValidOrUndeclared)
+        return false
+      if (wfTypeName.isEmpty)
+        return true
+      val typeName = t match {
+        case PPrimitiv("Perm") => "Rational"
+        case PPrimitiv(n) => n
+        case PSeqType(_) => "Seq"
+        case PSetType(_) => "Set"
+        case PMultisetType(_) => "MultiSet"
+        case PMapType(_, _) => "Map"
+        case PDomainType(d, _) if d.name == "PredicateInstance" => "PredicateInstances"
+        case PDomainType(d, _) => d.name
+      }
+      !wfTypeName.contains(typeName)
+    }
+
+    ax.exp.shallowCollect{
+      case c: PCall if isWellFoundedFunctionCall(c) && c.domainSubstitution.isDefined &&
+        c.domainSubstitution.get.contains("T") &&
+        isNotExpectedConstrainedType(c.domainSubstitution.get.get("T").get) =>
+        c.domainSubstitution.get.get("T").get
+    }
+  }
+
   override def beforeTranslate(input: PProgram): PProgram = {
     val allClauseTypes: Set[Any] = decreasesClauses.flatMap{
       case PDecreasesTuple(Seq(), _) => Seq(())
@@ -123,6 +162,18 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
       case _ => Seq()
     }.toSet
     val presentDomains = input.domains.map(_.idndef.name).toSet
+
+    // Check if the program contains any domains that define decreasing and bounded functions that do *not* have the expected names.
+    for (d <- input.domains) {
+      val name = d.idndef.name
+      val typeName = if (name.endsWith("WellFoundedOrder"))
+        Some(name.substring(0, name.length - 16))
+      else
+        None
+      val wronglyConstrainedTypes = d.axioms.flatMap(a => constrainsWellfoundednessUnexpectedly(a, typeName))
+      reporter.report(WarningsDuringTypechecking(wronglyConstrainedTypes.map(t =>
+        TypecheckerWarning(s"Domain ${d.idndef.name} constrains well-foundedness functions for type ${t} and should be named <Type>WellFoundedOrder instead.", d.pos._1))))
+    }
 
     val importStmts = allClauseTypes flatMap {
       case TypeHelper.Int if !presentDomains.contains("IntWellFoundedOrder") => Some("import <decreases/int.vpr>")
