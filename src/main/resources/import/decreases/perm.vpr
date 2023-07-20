@@ -1,0 +1,16 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import "declaration.vpr"
+
+domain PermWellFoundedOrder{
+	//Rationals
+    axiom rational_ax_dec{
+        forall int1: Perm, int2: Perm :: {decreasing(int1, int2)}
+            (int1 <= int2 - 1/1) ==> decreasing(int1, int2)
+    }
+    axiom rational_ax_bound{
+        forall int1: Perm :: {bounded(int1)}
+            int1 >= 0/1 ==> bounded(int1)
+    }
+}
