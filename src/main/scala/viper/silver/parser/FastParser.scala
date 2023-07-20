@@ -492,8 +492,11 @@ class FastParser {
     Pass.map(_ => (pos: (Position, Position), e1: PExp) => SuffixedExpressionGenerator[PExp](e0 => PLookup(e0, e1)(e0.pos._1, pos._2))))
 
   def suffix[$: P]: P[SuffixedExpressionGenerator[PExp]] =
+    // Field access (e.g. `x`~`.f`)
     P(FP((!".." ~~ ".") ~/ idnuse).map { case (pos, id) => SuffixedExpressionGenerator[PExp](e => PFieldAccess(e, id)(e.pos._1, pos._2)) } |
-      FP("[" ~ Pass ~ ".." ~/ exp ~ "]").map { case (pos, n) => SuffixedExpressionGenerator[PExp](e => PSeqTake(e, n)(e.pos._1, pos._2)) } |
+    // A sequence take (e.g. `s`~`[..10]`)
+      FP("[" ~ ".." ~/ exp ~ "]").map { case (pos, n) => SuffixedExpressionGenerator[PExp](e => PSeqTake(e, n)(e.pos._1, pos._2)) } |
+    // Any one of the following operations: map update (e.g. `m`~`[2 := 3]`), seq drop (e.g. `s`~`[2..]`), seq drop+take (e.g. `s`~`[2..10]`)
       FP("[" ~ exp ~ indexSuffix ~ "]").map { case (pos, (e, s)) => s(pos, e) })
 
   def suffixExpr[$: P](bracketed: Boolean = false): P[PExp] = P((atomParen(bracketed) ~~~ suffix.lw.rep).map { case (fac, ss) => foldPExp(fac, ss) })
@@ -707,7 +710,7 @@ class FastParser {
       PCall(func, args, None)(pos)
   }
 
-  def maybeTypedFuncApp[$: P](bracketed: Boolean): P[PCall] = P(if (!bracketed) funcApp else FP(funcApp ~~ (Pass ~ ":" ~/ typ).?).map {
+  def maybeTypedFuncApp[$: P](bracketed: Boolean): P[PCall] = P(if (!bracketed) funcApp else FP(funcApp ~~~ (":" ~/ typ).lw.?).map {
     case (pos, (func, typeGiven)) => func.copy(typeAnnotated = typeGiven)(pos)
   })
 
