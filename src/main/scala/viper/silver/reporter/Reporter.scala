@@ -220,15 +220,16 @@ case class BenchmarkingReporter(name: String = "benchmarking_reporter") extends 
         if (_accumulators contains accum) {
           if (_accumulators(accum) contains id) {
             _accumulators(accum)(-1) += (System.currentTimeMillis() - _accumulators(accum)(id))
+            _accumulators(accum)(-2) += 1
             _accumulators(accum) remove id
           } else {
             _accumulators(accum)(id) = System.currentTimeMillis()
           }
         } else {
-          _accumulators(accum) = Map((-1, 0), (id, System.currentTimeMillis()))
+          _accumulators(accum) = Map((-1, 0), (-2, 0), (id, System.currentTimeMillis()))
         }
       case BenchmarkingReport(msg, accum) if _accumulators contains accum =>
-        println(s"[Benchmarking] Accumulated time for '$msg' took ${_accumulators(accum)(-1)} ms")
+        println(s"[Benchmarking] Accumulated time for '$msg' took ${_accumulators(accum)(-1)} ms across ${_accumulators(accum)(-2)} instances")
       case _ =>
     }
   }
