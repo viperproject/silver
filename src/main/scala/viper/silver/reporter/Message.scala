@@ -327,7 +327,7 @@ case class BenchmarkingPhase(phase: String) extends BenchmarkingMessage {
   override def toString: String = phase
 }
 
-case class BenchmarkingAccumulator(accum: String, id: Int) extends BenchmarkingMessage {
+case class BenchmarkingAccumulator(accum: String, id: Int, recursive: Boolean = false) extends BenchmarkingMessage {
   override val name: String = "benchmarking_accumulator"
   override def toString: String = s"accumulating times"
 }
