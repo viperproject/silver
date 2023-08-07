@@ -183,15 +183,22 @@ trait SilFrontend extends DefaultFrontend {
   override def reset(input: Path): Unit = {
     super.reset(input)
 
-    if(_config != null) {
+    resetPlugins()
+  }
 
+  def resetPlugins(): Unit = {
+    val pluginsArg: Option[String] = if (_config != null) {
       // concat defined plugins and default plugins
-      val pluginsArg: Option[String] = {
-        val list = _config.plugin.toOption ++ defaultPlugins
-        if (list.isEmpty) { None } else { Some(list.mkString(":")) }
+      val list = _config.plugin.toOption ++ defaultPlugins
+      if (list.isEmpty) {
+        None
+      } else {
+        Some(list.mkString(":"))
       }
-      _plugins = SilverPluginManager(pluginsArg)(reporter, logger, _config, fp)
+    } else {
+      None
     }
+    _plugins = SilverPluginManager(pluginsArg)(reporter, logger, _config, fp)
   }
 
   def setStartTime(): Unit = {
