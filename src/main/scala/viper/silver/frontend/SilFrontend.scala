@@ -183,7 +183,8 @@ trait SilFrontend extends DefaultFrontend {
   override def reset(input: Path): Unit = {
     super.reset(input)
 
-    resetPlugins()
+    if (_config != null)
+      resetPlugins()
   }
 
   def resetPlugins(): Unit = {
