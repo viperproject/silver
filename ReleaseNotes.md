@@ -1,3 +1,80 @@
+## Release 2023.7
+
+**Date 31/07/23**
+
+### Changes in Viper Language
+
+- Improved language flexibility ([Silver#685](https://github.com/viperproject/silver/pull/685)): The syntax of declarations and assignments is now more permissive, allowing, for example, multiple declarations at once:
+  ```
+  field n: Ref, m: Ref  // Declare multiple fields at once
+  var a: Ref, b: Ref, c: Int  // Declare multiple locals at once
+  ```
+  Additionally, method calls and new statements can now have fields or newly-declared local variables on their left hand side:
+  ```
+  var f: Ref := new(n)                   // Declare and initialise locals with `new`
+  a, f.n := get_refs()                   // Assign to field from method call
+  f.n := new(n)                          // Assign to field with `new`
+  ```
+  The Viper AST remains unchanged; the newly-supported syntax is desugared into equivalent code that uses the existing Viper AST.
+- Annotations ([Silver#666](https://github.com/viperproject/silver/pull/666)): The Viper language now has support for annotations on statements, expressions, and top-level declarations. The syntax for an annotation is ``@key("value", "value2", ...)``, i.e., they have a key which is preceded by an ``@`` sign and a sequence of values written as comma-separated string literals. A single expression/statement/declaration can have multiple annotations. If there are two annotations of the same key, their value sequences are concatenated. In the AST, annotations are represented in the ``info`` field of the annotated AST node using an ``AnnotationInfo`` object.
+  Currently, there are two supported annotations: ``@weight("n")`` on quantifiers, where ``n`` is a positive integer, sets the weight of the quantifier in the SMT solver.
+  The second annotation is exclusive to the Symbolic Execution backend (see below).
+  Unknown annotations are ignored.
+- Domain axioms may now refer to non-domain functions that do not have any preconditions ([Silver#698](https://github.com/viperproject/silver/pull/698)).
+- Support for chained comparisons ([Silver#713](https://github.com/viperproject/silver/pull/713)): expressions like ``e1 < e2 <= e3 > e4`` can now be parsed and will be desugared to ``(e1 < e2) && (e2 <= e3) && (e3 > e4)``. The AST nodes for comparison operations remain unchanged.
+- Two important changes in the termination plugin:
+  - The termination plugin now enforces that functions that refer to themselves (or to other functions that call the original function in a mutually-recursive way) in their own postconditions have a ``decreases`` clause ([Silver#711](https://github.com/viperproject/silver/pull/711)). That is, for such functions, one must either prove termination using a ``decreases`` clause, or explicitly state that termination should be assumed by writing ``decreases *``.
+    This change addresses frequent issues where users wrote functions that are not well-defined using such postconditions and subsequently reported seemingly unsound behavior (e.g., ([Silver#525](https://github.com/viperproject/silver/issues/525)) and ([Silver#668](https://github.com/viperproject/silver/issues/668))).
+  - The termination plugin now automatically imports the default definitions of well-founded orders if ``decreases``-clauses are used but no such definitions are present in the program ([Silver#710](https://github.com/viperproject/silver/pull/710)). That is, it is not longer necessary (but still possible) to write an import statement like ``import <decreases/int.vpr>`` when using a termination measure of type integer.
+- The ``Rational`` type, an alias for ``Perm``, is deprecated. Viper issues a warning whenever the type is used.
+
+### Other Viper-level Improvements
+
+- Improved error messages for parse errors ([Silver#702](https://github.com/viperproject/silver/pull/702)) and type errors (([Silver#684](https://github.com/viperproject/silver/pull/684)), ([Silver#724](https://github.com/viperproject/silver/pull/724)))
+- Fixed parsing and pretty-printing of scopes ([Silver#704](https://github.com/viperproject/silver/pull/704)), which were previously ommitted under some circumstances by both the pretty-printer and the parser, which could make otherwise valid Viper code invalid. 
+- Introduced caching to improve performance of common lookups on the AST (([Silver#659](https://github.com/viperproject/silver/pull/659)) and ([Silver#719](https://github.com/viperproject/silver/pull/719)))
+- Viper now reports inferred quantifiers using a ``QuantifierInstantiationsMessage`` ([Silver#653](https://github.com/viperproject/silver/pull/653))
+- Introduced various new consistency checks for invalid code that used to crash the backends or lead to unexpected behavior:
+  - ``perm``-expressions are no longer allowed in function postconditions ([Silver#681](https://github.com/viperproject/silver/pull/681))
+  - ``wildcard`` is no longer allowed as part of compound expressions ([Silver#700](https://github.com/viperproject/silver/pull/700))
+  - empty ADTs are rejected ([Silver#696](https://github.com/viperproject/silver/pull/696))
+  - predicate argument expressions must be pure ([Silver#721](https://github.com/viperproject/silver/pull/721))
+- Labelled ``old``-expressions may now be used as triggers ([Silver#695](https://github.com/viperproject/silver/pull/695))
+- Various small fixes for crashes or other incorrect behavior.
+
+### Backend-specific Upgrades/Changes
+
+#### Symbolic Execution Backend (Silicon)
+
+- The previously experimental mode ``--moreCompleteExhale`` is no longer experimental, but is now a supported mode that performs exhales and heap lookups in a way that is usually more complete (but possibly slower). However, Silicon's previous exhale mode remains the default. ([Silicon#682](https://github.com/viperproject/silicon/pull/682))
+  - The new flag ``--exhaleMode=n``, where ``n`` is 0, 1, or 2, can now be used to select the exhale mode. 0 is the default, 1 is the previous ``moreCompleteExhale`` mode.
+  - The new ``exhaleMode`` 2 uses the default exhale mode 0 throughout the program, until it encounters a verification error. When it does, it retries proving the failing assertion using the (more complete) mode 1. Since mode 0 is usually faster than mode 1, mode 2 often results in the best mix of performance and completeness.
+  - Additionally, one can now override the exhale mode selected via command line for individual methods using an annotation ``@exhaleMode("n")`` on the method ([Silicon#724](https://github.com/viperproject/silicon/pull/724))
+- Via the option ``--prover=Z3-API``, Silicon can now use Z3 as a library via its Java API (([Silicon#633](https://github.com/viperproject/silicon/pull/633)) and ([Silicon#692](https://github.com/viperproject/silicon/pull/692))). Note that this requires a native version of ``libz3java`` to be present on the path Java uses to look for native libraries (which can be set, e.g., via the environment variable``LD_LIBRARY_PATH`` on Linux or ``DYLD_LIBRARY_PATH`` on MacOS).
+  Depending on the OS and the Viper program, this option can lead to a significant speedup.
+- Silicon now emits warnings in cases where it cannot use the triggers specified by the user ([Silicon#687](https://github.com/viperproject/silicon/pull/687))
+- ``old``-expressions in triggers are now interpreted correctly ([Silicon#710](https://github.com/viperproject/silicon/pull/710)); previously, they were sometimes ignored.
+- Changed default options used for Z3; the new options have similar performance and completeness characteristics with the supported Z3 version 4.8.7, but perform better with newer versions (tested in particular with 4.12.1) ([Silicon#694](https://github.com/viperproject/silicon/pull/694))
+- Silicon no longer creates a ``tmp`` directory containing ``.smt2`` files that log its prover interactions by default ([Silicon#709](https://github.com/viperproject/silicon/pull/709)). The flag ``--disableTempDirectory`` no longer exists. Instead, one can use the new flag ``--enableTempDirectory`` or the flag ``--proverLogFile``. 
+- Improved heuristics for handling of quantified permissions, which improves performance in some cases ([Silicon#704](https://github.com/viperproject/silicon/pull/704))
+- Fixed some incorrect (too short) timeouts, which could lead to unstable verification results in some cases ([Silicon#705](https://github.com/viperproject/silicon/pull/705))
+- Added a new command line flag ``--reportReasonUnknown``, which instructs Silicon to report the reason the SMT solver names for not being able to prove a property (per error)  ([Silicon#701](https://github.com/viperproject/silicon/pull/701)). This flag can be useful to find out whether an error occurred due to non-linear arithmetic or timeouts.
+- Fixed four unsoundnesses:
+  - Incorrect handling of ``old``-expressions in postconditions of methods called inside a ``package`` statement ([Silicon#699](https://github.com/viperproject/silicon/pull/699))
+  - Incorrect handling of ``fold`` statements for predicates that are used inside a quantified permission in the current method ([Silicon#696](https://github.com/viperproject/silicon/pull/696))
+  - Incorrect behavior for quantifiers whose bodies have unreachable branches ([Silicon#690](https://github.com/viperproject/silicon/pull/690))
+  - Exhale mode 1 now correctly checks permission amounts in function preconditions ([Silicon#682](https://github.com/viperproject/silicon/pull/682))
+- Fixed and generalized the experimental mode ``--conditionalizePermissions``, which avoids branching on conditional permission assertions (e.g., ``b ==> acc(x.f)``) by rewriting them to unconditional assertions with conditional permission amounts (e.g., ``acc(x.f, b ? write : none)`` whenever possible ([Silicon#685](https://github.com/viperproject/silicon/pull/685)). For programs with many branches, this option can improve performance.
+- Resource triggers on existentials now work correctly ([Silicon#679](https://github.com/viperproject/silicon/pull/679))
+- More complete computation of function footprints ([Silicon#684](https://github.com/viperproject/silicon/pull/684))
+- Various smaller bug fixes
+
+#### Verification Condition Generation Backend (Carbon)
+
+- Improved encoding of well-definedness checks for field accesses and permission division ([Carbon#451](https://github.com/viperproject/carbon/pull/451)). As a result, Carbon now emits well-definedness errors in the expected order in some cases where this was previously not the case.
+- Improved encoding of definedness checks during exhale ([Carbon#457](https://github.com/viperproject/carbon/pull/457)). This fixed both possible unsoundness and incompleteness issues.
+- Using stdin instead of a temporary file to communicate with Boogie ([Carbon#456](https://github.com/viperproject/carbon/pull/456))
+
 ## Release 2023.1
 
 **Date 25/01/23**
