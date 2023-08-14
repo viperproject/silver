@@ -5,6 +5,18 @@ import viper.silver.verifier.VerificationResult
 
 import java.nio.file.Paths
 
+/**
+  * Trait that can be mixed into SilFrontends to make them easily usable by actual Viper frontends that do not use
+  * Viper's parser, type checker, etc., but instead directly consistency-check and verify a Viper AST.
+  * Compared to working directly with an instance of [[viper.silver.verifier.Verifier]], SilFrontend manages plugins
+  * automatically.
+  * To use it:
+  * - create an instance f of a specific SilFrontend with ViperFrontendAPI mixed in
+  * - call f.initialize(args), where args are the command line arguments without any file name.
+  * - (potentially repeatedly) call f.verify(p), where p is the program to verify
+  * Plugin usage must be managed via command line arguments.
+  * Existing implementations are SiliconFrontendAPI and CarbonFrontendAPI
+  */
 trait ViperFrontendAPI extends SilFrontend {
 
   private var initialized = false
@@ -28,11 +40,22 @@ trait ViperFrontendAPI extends SilFrontend {
 
   def verify(p: Program): VerificationResult = {
     if (!initialized)
-      println("Not initialized")
+      throw new IllegalStateException("Not initialized")
     setStartingState()
     _program = Some(p)
     runAllPhases()
     result
   }
 
+}
+
+/**
+  * Version of ViperFrontendAPI that skips the consistency check phase.
+  */
+trait MinimalViperFrontendAPI extends ViperFrontendAPI {
+  override val phases: Seq[Phase] = Seq(Verification)
+
+  override protected def setStartingState() = {
+    _state = DefaultStates.ConsistencyCheck
+  }
 }
