@@ -140,6 +140,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
         case PMapType(_, _) => Seq("Map")
         case PDomainType(d, _) if d.name == "PredicateInstance" => Seq("PredicateInstances")
         case PDomainType(d, _) => Seq(d.name)
+        case gt: PGenericType => Seq(gt.genericName)
       }
       !typeNames.exists(tn => wfTypeName.contains(tn))
     }
