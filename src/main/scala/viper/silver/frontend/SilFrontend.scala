@@ -52,6 +52,21 @@ trait SilFrontend extends DefaultFrontend {
     }
   }
 
+  def resetPlugins(): Unit = {
+    val pluginsArg: Option[String] = if (_config != null) {
+      // concat defined plugins and default plugins
+      val list = _config.plugin.toOption ++ (if (_config.disableDefaultPlugins()) Seq() else defaultPlugins)
+      if (list.isEmpty) {
+        None
+      } else {
+        Some(list.mkString(":"))
+      }
+    } else {
+      None
+    }
+    _plugins = SilverPluginManager(pluginsArg)(reporter, logger, _config, fp)
+  }
+
   /**
    * Create the verifier. The full command is parsed for debugging purposes only,
    * since the command line arguments will be passed later on via
