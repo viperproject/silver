@@ -3,7 +3,6 @@ package viper.silver.frontend
 import viper.silver.ast.Program
 import viper.silver.verifier.VerificationResult
 
-import java.nio.file.Paths
 
 /**
   * Trait that can be mixed into SilFrontends to make them easily usable by actual Viper frontends that do not use
@@ -14,6 +13,7 @@ import java.nio.file.Paths
   * - create an instance f of a specific SilFrontend with ViperFrontendAPI mixed in
   * - call f.initialize(args), where args are the command line arguments without any file name.
   * - (potentially repeatedly) call f.verify(p), where p is the program to verify
+  * - call f.stop() when done
   * Plugin usage must be managed via command line arguments.
   * Existing implementations are SiliconFrontendAPI and CarbonFrontendAPI
   */
@@ -45,6 +45,12 @@ trait ViperFrontendAPI extends SilFrontend {
     _program = Some(p)
     runAllPhases()
     result
+  }
+
+  def stop(): Unit = {
+    if (!initialized)
+      throw new IllegalStateException("Not initialized")
+    _verifier.foreach(_.stop())
   }
 
 }
