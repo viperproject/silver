@@ -28,6 +28,10 @@
   - The termination plugin now automatically imports the default definitions of well-founded orders if ``decreases``-clauses are used but no such definitions are present in the program ([Silver#710](https://github.com/viperproject/silver/pull/710)). That is, it is not longer necessary (but still possible) to write an import statement like ``import <decreases/int.vpr>`` when using a termination measure of type integer.
 - The ``Rational`` type, an alias for ``Perm``, is deprecated. Viper issues a warning whenever the type is used.
 
+### Viper API Changes
+
+- Introduced a new API for frontends to interact with Viper ([Silver#732](https://github.com/viperproject/silver/pull/732)). Frontends can create instances of ``ViperFrontendAPI``  and interact exclusively through those (instead of instances of ``Verifier`` or ``SilFrontend``), which saves some boilerplate code and lets Viper manage plugins. 
+
 ### Other Viper-level Improvements
 
 - Improved error messages for parse errors ([Silver#702](https://github.com/viperproject/silver/pull/702)) and type errors (([Silver#684](https://github.com/viperproject/silver/pull/684)), ([Silver#724](https://github.com/viperproject/silver/pull/724)))
@@ -59,10 +63,11 @@
 - Improved heuristics for handling of quantified permissions, which improves performance in some cases ([Silicon#704](https://github.com/viperproject/silicon/pull/704))
 - Fixed some incorrect (too short) timeouts, which could lead to unstable verification results in some cases ([Silicon#705](https://github.com/viperproject/silicon/pull/705))
 - Added a new command line flag ``--reportReasonUnknown``, which instructs Silicon to report the reason the SMT solver names for not being able to prove a property (per error)  ([Silicon#701](https://github.com/viperproject/silicon/pull/701)). This flag can be useful to find out whether an error occurred due to non-linear arithmetic or timeouts.
-- Fixed four unsoundnesses:
+- Fixed five unsoundnesses:
   - Incorrect handling of ``old``-expressions in postconditions of methods called inside a ``package`` statement ([Silicon#699](https://github.com/viperproject/silicon/pull/699))
   - Incorrect handling of ``fold`` statements for predicates that are used inside a quantified permission in the current method ([Silicon#696](https://github.com/viperproject/silicon/pull/696))
   - Incorrect behavior for quantifiers whose bodies have unreachable branches ([Silicon#690](https://github.com/viperproject/silicon/pull/690))
+  - Incorrectly terminating verification after using a ``refute`` ([Silicon#741](https://github.com/viperproject/silicon/pull/741))
   - Exhale mode 1 now correctly checks permission amounts in function preconditions ([Silicon#682](https://github.com/viperproject/silicon/pull/682))
 - Fixed and generalized the experimental mode ``--conditionalizePermissions``, which avoids branching on conditional permission assertions (e.g., ``b ==> acc(x.f)``) by rewriting them to unconditional assertions with conditional permission amounts (e.g., ``acc(x.f, b ? write : none)`` whenever possible ([Silicon#685](https://github.com/viperproject/silicon/pull/685)). For programs with many branches, this option can improve performance.
 - Resource triggers on existentials now work correctly ([Silicon#679](https://github.com/viperproject/silicon/pull/679))
