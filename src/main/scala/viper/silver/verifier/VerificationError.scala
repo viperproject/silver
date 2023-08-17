@@ -93,7 +93,7 @@ case class MapEntry(options: Map[Seq[ValueEntry], ValueEntry], default: ValueEnt
         val indices = args.map(_.get._1)
         // We expect the arguments in the order 0, 1, ..., n-1; if we get something else, reject.
         // TODO: Find out if this order is always guaranteed,
-        if (indices != (0 until indices.size))
+        if (indices != (0 until indices.size).map(_.toString))
           None
         else
           Some(args.map(_.get._2))
