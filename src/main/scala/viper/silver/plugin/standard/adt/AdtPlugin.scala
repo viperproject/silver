@@ -34,6 +34,8 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
     */
   private var derivesImported: Boolean = false
 
+  private def isTerminationPluginActive: Boolean = true // config != null && config.terminationPlugin.toOption.getOrElse(false)
+
   def adtDerivingFunc[$: P]: P[PIdnUse] = FP(StringIn("contains").!).map { case (pos, id) => PIdnUse(id)(pos) }
 
   override def beforeParse(input: String, isImported: Boolean): String = {
@@ -131,7 +133,7 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
     if (deactivated) {
       return input
     }
-    new AdtEncoder(input).encode()
+    new AdtEncoder(input).encode(isTerminationPluginActive)
   }
 
 }
