@@ -50,6 +50,12 @@ trait BelongsToFile {
 trait SelectableInBound {
   val bound: SelectionBoundTrait
 }
+
+trait SuggestableInBound extends SelectableInBound {
+  val suggestionBound: SuggestionBound
+  val bound: SelectionBoundTrait = suggestionBound.bound
+}
+
 // trait SelectableInBound[+A <: SelectableInBound[A, T], +T <: SelectionBoundTrait] { this: A =>
 //   val bound: T
 //   def get: A = this
@@ -60,3 +66,28 @@ trait SelectableInBound {
 trait HasRangePositions {
   def rangePositions: Seq[RangePosition]
 }
+
+/** A position over the keyword within the scope will match.
+ * A keyword of `None` implies that anything in the scope will match.
+ * A scope of `None` implies that anything with the keyword will match.
+ * If both are `None`, then *any* position will match!
+*/
+sealed trait SelectionBoundTrait extends HasRangePositions
+case object SelectionBound extends SelectionBoundTrait {
+  def rangePositions: Seq[RangePosition] = Nil
+}
+
+sealed trait SelectionBoundKeywordTrait extends SelectionBoundTrait {
+  def keyword: String
+}
+case class SelectionBoundKeyword(keyword: String) extends SelectionBoundKeywordTrait {
+  def rangePositions: Seq[RangePosition] = Nil
+}
+
+sealed trait SelectionBoundScopeTrait extends SelectionBoundTrait {
+  def scope: RangePosition
+  def rangePositions: Seq[RangePosition] = Seq(scope)
+}
+case class SelectionBoundScope(scope: RangePosition) extends SelectionBoundScopeTrait
+
+case class SelectionBoundBoth(keyword: String, scope: RangePosition) extends SelectionBoundKeywordTrait with SelectionBoundScopeTrait

@@ -46,7 +46,7 @@ object Transformer {
         case p@PMultisetType(multiset, elementType) => PMultisetType(go(multiset), go(elementType))(p.pos)
         case p@PMapType(map, keyType, valueType) => PMapType(map, go(keyType), go(valueType))(p.pos)
         case _: PUnknown => parent
-        case _: PPredicateType | _: PWandType => parent
+        case _: PWandType => parent
         case PFunctionType(argTypes, resultType) => PFunctionType(argTypes map go, go(resultType))
         case p@PMagicWandExp(left, op, right) => PMagicWandExp(go(left), go(op), go(right))(p.pos)
         case p@PBinExp(left, op, right) => PBinExp(go(left), go(op), go(right))(p.pos)
@@ -55,7 +55,7 @@ object Transformer {
         case p@PResultLit(result) => PResultLit(go(result))(p.pos)
         case p@PBoolLit(keyword, b) => PBoolLit(go(keyword), b)(p.pos)
         case p@PNullLit(nul) => PNullLit(go(nul))(p.pos)
-        case p@PFieldAccess(rcv, idnuse) => PFieldAccess(go(rcv), go(idnuse))(p.pos)
+        case p@PFieldAccess(rcv, dot, idnuse) => PFieldAccess(go(rcv), go(dot), go(idnuse))(p.pos)
         case p@PCall(func, args, explicitType) =>
           PCall(go(func), args map go, explicitType match {
             case Some(t) => Some(go(t))
@@ -71,7 +71,7 @@ object Transformer {
         case p@PTrigger(exp) => PTrigger(exp map go)(p.pos)
         case p@PForPerm(forperm, vars, res, cs, exp) => PForPerm(go(forperm), vars map go, go(res), go(cs), go(exp))(p.pos)
         case p@PCondExp(cond, q, thn, c, els) => PCondExp(go(cond), go(q), go(thn), go(c), go(els))(p.pos)
-        case p@PInhaleExhaleExp(in, ex) => PInhaleExhaleExp(go(in), go(ex))(p.pos)
+        case p@PInhaleExhaleExp(l, in, c, ex, r) => PInhaleExhaleExp(go(l), go(in), go(c), go(ex), go(r))(p.pos)
         case p@PCurPerm(k, loc) => PCurPerm(go(k), go(loc))(p.pos)
         case _: PNoPerm => parent
         case _: PFullPerm => parent
@@ -81,15 +81,12 @@ object Transformer {
         case p@POldExp(k, l, e) => POldExp(go(k), l map go, go(e))(p.pos)
         case p@PEmptySeq(k, t) => PEmptySeq(go(k), go(t))(p.pos)
         case p@PExplicitSeq(k, elems) => PExplicitSeq(go(k), elems map go)(p.pos)
-        case p@PRangeSeq(low, high) => PRangeSeq(go(low), go(high))(p.pos)
-        // case p@PSeqIndex(seq, idx) => PSeqIndex(go(seq), go(idx))(p.pos)
-        case p@PSeqTake(seq, n) => PSeqTake(go(seq), go(n))(p.pos)
-        case p@PSeqDrop(seq, n) => PSeqDrop(go(seq), go(n))(p.pos)
-        // case p@PSeqUpdate(seq, idx, elem) => PSeqUpdate(go(seq), go(idx), go(elem))(p.pos)
+        case p@PRangeSeq(l, low, ds, high, r) => PRangeSeq(go(l), go(low), go(ds), go(high), go(r))(p.pos)
+        case p@PSeqSlice(seq, l, s, ds, e, r) => PSeqSlice(go(seq), go(l), s map go, go(ds), e map go, go(r))(p.pos)
         case p@PSize(seq) => PSize(go(seq))(p.pos)
         case p@PEmptySet(k, t) => PEmptySet(go(k), go(t))(p.pos)
-        case p@PLookup(seq, idx) => PLookup(go(seq), go(idx))(p.pos)
-        case p@PUpdate(seq, idx, elem) => PUpdate(go(seq), go(idx), go(elem))(p.pos)
+        case p@PLookup(seq, l, idx, r) => PLookup(go(seq), go(l), go(idx), go(r))(p.pos)
+        case p@PUpdate(seq, l, idx, a, elem, r) => PUpdate(go(seq), go(l), go(idx), go(a), go(elem), go(r))(p.pos)
         case p@PExplicitSet(k, elems) => PExplicitSet(go(k), elems map go)(p.pos)
         case p@PEmptyMultiset(k, t) => PEmptyMultiset(go(k), go(t))(p.pos)
         case p@PExplicitMultiset(k, elems) => PExplicitMultiset(go(k), elems map go)(p.pos)
@@ -120,8 +117,8 @@ object Transformer {
         case p@PLabel(label, idndef, invs) => PLabel(go(label), go(idndef), invs map goPair)(p.pos)
         case p@PGoto(goto, target) => PGoto(go(goto), go(target))(p.pos)
         case p@PDefine(anns, define, idndef, optArgs, exp) => PDefine(anns map go, go(define), go(idndef), optArgs map (_ map go) , go(exp))(p.pos)
-        case p@PLet(op, exp, in, nestedScope) => PLet(go(op), go(exp), go(in), go(nestedScope))(p.pos)
-        case p@PLetNestedScope(idndef, body) => PLetNestedScope(go(idndef), go(body))(p.pos)
+        case p@PLet(op, idndef, eq, exp, in, nestedScope) => PLet(go(op), go(idndef), go(eq), go(exp), go(in), go(nestedScope))(p.pos)
+        case p@PLetNestedScope(body) => PLetNestedScope(go(body))(p.pos)
         case _: PSkip => parent
 
         case p@PProgram(files, macros, domains, fields, functions, predicates, methods, extensions, errors) => PProgram(files, macros map go, domains map go, fields map go, functions map go, predicates map go, methods map go, extensions map go, errors)(p.pos)

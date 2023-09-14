@@ -21,20 +21,12 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
                 config: viper.silver.frontend.SilFrontendConfig,
                 fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
 
-  import fp.{annotation, FP, formalArgList, idndef, idnuse, keywordLang, typ, typeParams, ParserExtension}
+  import fp.{annotation, FP, formalArgList, idndef, idnuse, reservedKw, typ, typeParams, ParserExtension}
 
-  /**
-    * Keywords used to define ADT's
-    */
-  private val AdtKeyword: String = "adt"
-  private val AdtDerivesKeyword: String = "derives"
-  private val AdtDerivesWithoutKeyword: String = "without"
   /**
     * This field is set during the beforeParse method
     */
   private var derivesImported: Boolean = false
-
-  def adtDerivingFunc[$: P]: P[PIdnUse] = FP(StringIn("contains").!).map { case (pos, id) => PIdnUse(id)(pos) }
 
   override def beforeParse(input: String, isImported: Boolean): String = {
     if (deactivated) {
@@ -43,7 +35,7 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
 
     if (!isImported) {
       // Add new parser adt declaration keyword
-      ParserExtension.addNewKeywords(Set[String](AdtKeyword))
+      ParserExtension.addNewKeywords(Set[String](PAdtKeyword.keyword, PDeriveKeyword.keyword, PWithoutKeyword.keyword))
       // Add new parser for adt declaration
       ParserExtension.addNewDeclAtEnd(adtDecl(_))
     }
@@ -69,7 +61,7 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
     * }
     *
     */
-  def adtDecl[$: P]: P[PAnnotationsPosition => PAdt] = P(keywordLang(AdtKeyword) ~ idndef ~ typeParams ~ "{" ~ adtConstructorDecl.rep ~
+  def adtDecl[$: P]: P[PAnnotationsPosition => PAdt] = P(reservedKw(PAdtKeyword) ~ idndef ~ typeParams ~ "{" ~ adtConstructorDecl.rep ~
     "}" ~ adtDerivingDecl.?).map {
     case (k, name, typparams, constructors, dec) =>
       ap: PAnnotationsPosition => PAdt(
@@ -77,16 +69,16 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
         k,
         name,
         typparams,
-        constructors map (c => PAdtConstructor(c.annotations, c.idndef, c.formalArgs)(PIdnUse(name.name)(name.pos))(c.pos)),
+        constructors map (c => PAdtConstructor(c.annotations, c.idndef, c.formalArgs)(PIdnRef(name.name)(name.pos))(c.pos)),
         dec.map(_._1),
         dec.map(_._2).getOrElse(Seq.empty)
       )(ap.pos)
   }
 
-  def adtDerivingDecl[$: P]: P[(PKeywordLang, Seq[PAdtDerivingInfo])] = P(keywordLang(AdtDerivesKeyword) ~/ "{" ~ adtDerivingDeclBody.rep ~ "}")
+  def adtDerivingDecl[$: P] = P(reservedKw(PDeriveKeyword) ~/ "{" ~ adtDerivingDeclBody.rep ~ "}")
 
   def adtDerivingDeclBody[$: P]: P[PAdtDerivingInfo] =
-    FP(idnuse ~ ("[" ~ typ ~ "]").? ~ (keywordLang(AdtDerivesWithoutKeyword) ~/ idnuse.rep(sep = ",", min = 1)).?).map {
+    FP(idnuse ~ ("[" ~ typ ~ "]").? ~ (reservedKw(PWithoutKeyword) ~/ idnuse.rep(sep = ",", min = 1)).?).map {
     case (pos, (func, ttyp, Some((without, bl)))) => PAdtDerivingInfo(func, ttyp, Some(without), bl.toSet)(pos)
     case (pos, (func, ttyp, None)) => PAdtDerivingInfo(func, ttyp, None, Set.empty)(pos)
   }
@@ -118,9 +110,9 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
       // we simply treat the calls as an ordinary field access, which results in an identifier not found error.
       case pfa@PAssign(Seq(fieldAcc: PFieldAccess), op, rhs) if declaredConstructorArgsNames.contains(fieldAcc.idnuse.name) ||
         declaredConstructorNames.exists("is" + _.name == fieldAcc.idnuse.name) =>
-        PAssign(Seq(PFieldAccess(transformStrategy(fieldAcc.rcv), fieldAcc.idnuse)(fieldAcc.pos)), op, transformStrategy(rhs))(pfa.pos)
-      case pfa@PFieldAccess(rcv, idnuse) if declaredConstructorArgsNames.contains(idnuse.name) => PDestructorCall(idnuse, rcv)(pfa.pos)
-      case pfa@PFieldAccess(rcv, idnuse) if declaredConstructorNames.exists("is" + _.name == idnuse.name) => PDiscriminatorCall(PIdnUse(idnuse.name.substring(2))(idnuse.pos), rcv)(pfa.pos)
+        PAssign(Seq(fieldAcc.copy(rcv = transformStrategy(fieldAcc.rcv))(fieldAcc.pos)), op, transformStrategy(rhs))(pfa.pos)
+      case pfa@PFieldAccess(rcv, _, idnuse) if declaredConstructorArgsNames.contains(idnuse.name) => PDestructorCall(idnuse, rcv)(pfa.pos)
+      case pfa@PFieldAccess(rcv, _, idnuse) if declaredConstructorNames.exists("is" + _.name == idnuse.name) => PDiscriminatorCall(PIdnRef(idnuse.name.substring(2))(idnuse.pos), rcv)(pfa.pos)
     }).recurseFunc({
       // Stop the recursion if a destructor call or discriminator call is parsed as left-hand side of a field assignment
       case PAssign(Seq(fieldAcc: PFieldAccess), _, _) if declaredConstructorArgsNames.contains(fieldAcc.idnuse.name) ||

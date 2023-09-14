@@ -255,7 +255,7 @@ object MacroExpander {
       // Macro's parameters are not renamed, since they will be replaced by
       // their respective arguments in the following steps (by replacer)
       case varUse: PIdnUse if renamesMap.contains(varUse.name) =>
-        PIdnUse(renamesMap(varUse.name))(varUse.pos)
+        varUse.rename(renamesMap(varUse.name))
     })
 
     val (replacer, _) = makeReplacer()

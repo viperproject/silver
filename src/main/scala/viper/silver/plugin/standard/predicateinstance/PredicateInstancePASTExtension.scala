@@ -7,14 +7,19 @@
 package viper.silver.plugin.standard.predicateinstance
 
 import viper.silver.ast._
+import viper.silver.ast.utility.lsp.BuiltinFeature
 import viper.silver.parser._
 
 import scala.collection.mutable
 
+case object PPredicateInstanceKeyword extends PKw("PredicateInstance", TODOPredicateInstanceDoc) with PKeywordType
+case object TODOPredicateInstanceDoc extends BuiltinFeature(
+  """TODO""".stripMargin.replaceAll("\n", " ")
+)
 
-case class PPredicateInstance(args: Seq[PExp], idnuse: PIdnUse)(val pos: (Position, Position)) extends PExtender with PExp {
+case class PPredicateInstance(args: Seq[PExp], idnuse: PIdnRef)(val pos: (Position, Position)) extends PExtender with PExp {
 
-  typ = PPrimitiv(PKeywordType("PredicateInstance")(NoPosition, NoPosition))(NoPosition, NoPosition)
+  typ = PPrimitiv(PReserved(PPredicateInstanceKeyword)(NoPosition, NoPosition))(NoPosition, NoPosition)
 
   // TODO: Don't know if this is correct
   private val _typeSubstitutions = new scala.collection.mutable.ArrayDeque[PTypeSubstitution]()
@@ -30,7 +35,7 @@ case class PPredicateInstance(args: Seq[PExp], idnuse: PIdnUse)(val pos: (Positi
       case Some(p: PPredicate) =>
         // type checking should be the same as for PPredicateAccess nodes
         val predicateAccess = PCall(idnuse, args, None)(p.pos)
-        predicateAccess.extfunction = p
+        predicateAccess.funcDecl = Some(p)
         t.checkInternal(predicateAccess)
         None
       case _ => Some(Seq("expected predicate"))
@@ -41,5 +46,5 @@ case class PPredicateInstance(args: Seq[PExp], idnuse: PIdnUse)(val pos: (Positi
     PredicateInstance(args map t.exp, idnuse.name)(t.liftPos(this))
   }
 
-  override def prettyNoBrackets: String = s"#${idnuse.name}(${args.map(_.pretty()).mkString(", ")})"
+  override def prettyNoBrackets: String = s"#${idnuse.name}(${args.map(_.pretty).mkString(", ")})"
 }

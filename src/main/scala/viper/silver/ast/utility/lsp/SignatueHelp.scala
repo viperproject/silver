@@ -12,11 +12,27 @@ trait HasSignatureHelps {
 }
 
 case class SignatureHelp(
-  bound: SelectionBoundTrait,
+  /** This sequence is concatenated to form the help which is
+   * displayed when typing a call to the signature. */
   help: Seq[SignatureHelpPart],
+  /** The documentation that is displayed under the signature help. */
   documentation: Option[String],
-) extends SelectableInBound with HasRangePositions {
+  /** Where this signature help is displayed. A `SelectionBoundKeywordTrait`
+   * or above is highly recommended. */
+  bound: SelectionBoundTrait,
+) extends HasRangePositions with SelectableInBound {
   override def rangePositions: Seq[RangePosition] = bound.rangePositions
 }
 
-case class SignatureHelpPart(isArgument: Boolean, text: String, documentation: Option[String])
+case class SignatureHelpPart(
+  /** If this should be highlighted as an argument. The index of the
+   * argument is calculated as the sum of all prior `SignatureHelp.help`s
+   * which have `isArgument` set. */
+  isArgument: Boolean,
+  /** The text fragment to display, the concatenation of all of theses forms
+   * the overall signature help displayed. */
+  text: String,
+  /** The documentation displayed when this argument is active. Used only
+   * when `isArgument` is true. */
+  documentation: Option[String]
+)

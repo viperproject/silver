@@ -63,8 +63,8 @@ object Sanitizer {
       case (idn@PIdnDef(name), c) if c.renames.contains(name) =>
         (PIdnDef(c.renames(name))(idn.pos), c)
 
-      case (idn@PIdnUse(name), c) if c.renames.contains(name) =>
-        (PIdnUse(c.renames(name))(idn.pos), c)
+      case (idn: PIdnUse, c) if c.renames.contains(idn.name) =>
+        (idn.rename(c.renames(idn.name)), c)
 
     }, Context()).execute(program)
   }

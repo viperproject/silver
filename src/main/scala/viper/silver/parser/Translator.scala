@@ -304,7 +304,7 @@ case class Translator(program: PProgram) {
   }
 
   /** Helper function that translates subexpressions common to a Havoc or Havocall statement */
-  def havocStmtHelper(lhs: Option[(PExp, POperator)], e: PExp): (Option[Exp], ResourceAccess) = {
+  def havocStmtHelper(lhs: Option[(PExp, _)], e: PExp): (Option[Exp], ResourceAccess) = {
     val newLhs = lhs.map(lhs => exp(lhs._1))
     exp(e) match {
       case exp: FieldAccess => (newLhs, exp)
@@ -323,12 +323,12 @@ case class Translator(program: PProgram) {
     pexp match {
       case PAnnotatedExp(ann, e) =>
         val (resPexp, innerMap) = extractAnnotation(e)
-        val combinedValue = if (innerMap.contains(ann.key)) {
-          ann.values ++ innerMap(ann.key)
+        val combinedValue = if (innerMap.contains(ann.key.name)) {
+          ann.values ++ innerMap(ann.key.name)
         } else {
           ann.values
         }
-        (resPexp, innerMap.updated(ann.key, combinedValue))
+        (resPexp, innerMap.updated(ann.key.name, combinedValue))
       case _ => (pexp, Map())
     }
   }
@@ -337,12 +337,12 @@ case class Translator(program: PProgram) {
     pStmt match {
       case PAnnotatedStmt(ann, s) =>
         val (resPStmt, innerMap) = extractAnnotationFromStmt(s)
-        val combinedValue = if (innerMap.contains(ann.key)) {
-          ann.values ++ innerMap(ann.key)
+        val combinedValue = if (innerMap.contains(ann.key.name)) {
+          ann.values ++ innerMap(ann.key.name)
         } else {
           ann.values
         }
-        (resPStmt, innerMap.updated(ann.key, combinedValue))
+        (resPStmt, innerMap.updated(ann.key.name, combinedValue))
       case _ => (pStmt, Map())
     }
   }
@@ -353,29 +353,29 @@ case class Translator(program: PProgram) {
     val (pexp, annotationMap) = extractAnnotation(parseExp)
     val info = if (annotationMap.isEmpty) NoInfo else AnnotationInfo(annotationMap)
     pexp match {
-      case piu @ PIdnUse(name) =>
+      case piu @ PIdnUseExp(name) =>
         piu.decl match {
-          case _: PAnyVarDecl => LocalVar(name, ttyp(pexp.typ))(pos, info)
+          case Some(_: PAnyVarDecl) => LocalVar(name, ttyp(pexp.typ))(pos, info)
           // A malformed AST where a field, function or other declaration is used as a variable.
           // Should have been caught by the type checker.
           case _ => sys.error("should not occur in type-checked program")
         }
       case pbe @ PBinExp(left, op, right) =>
         val (l, r) = (exp(left), exp(right))
-        op.operator match {
-          case "+" =>
+        op.rs match {
+          case PSymOp.Plus =>
             r.typ match {
               case Int => Add(l, r)(pos, info)
               case Perm => PermAdd(l, r)(pos, info)
               case _ => sys.error("should not occur in type-checked program")
             }
-          case "-" =>
+          case PSymOp.Minus =>
             r.typ match {
               case Int => Sub(l, r)(pos, info)
               case Perm => PermSub(l, r)(pos, info)
               case _ => sys.error("should not occur in type-checked program")
             }
-          case "*" =>
+          case PSymOp.Mul =>
             r.typ match {
               case Int =>
                 l.typ match {
@@ -391,7 +391,7 @@ case class Translator(program: PProgram) {
                 }
               case _ => sys.error("should not occur in type-checked program")
             }
-          case "/" =>
+          case PSymOp.Div =>
             l.typ match {
               case Perm => r.typ match {
                 case Int => PermDiv(l, r)(pos, info)
@@ -405,66 +405,66 @@ case class Translator(program: PProgram) {
                   FractionalPerm(l, r)(pos, info)
               case _    => sys.error("should not occur in type-checked program")
             }
-          case "\\" => Div(l, r)(pos, info)
-          case "%" => Mod(l, r)(pos, info)
-          case "<" =>
+          case PSymOp.ArithDiv => Div(l, r)(pos, info)
+          case PSymOp.Mod => Mod(l, r)(pos, info)
+          case PSymOp.Lt =>
             l.typ match {
               case Int => LtCmp(l, r)(pos, info)
               case Perm => PermLtCmp(l, r)(pos, info)
               case _ => sys.error("unexpected type")
             }
-          case "<=" =>
+          case PSymOp.Le =>
             l.typ match {
               case Int => LeCmp(l, r)(pos, info)
               case Perm => PermLeCmp(l, r)(pos, info)
               case _ => sys.error("unexpected type")
             }
-          case ">" =>
+          case PSymOp.Gt =>
             l.typ match {
               case Int => GtCmp(l, r)(pos, info)
               case Perm => PermGtCmp(l, r)(pos, info)
               case _ => sys.error("unexpected type " + l.typ.toString())
             }
-          case ">=" =>
+          case PSymOp.Ge =>
             l.typ match {
               case Int => GeCmp(l, r)(pos, info)
               case Perm => PermGeCmp(l, r)(pos, info)
               case _ => sys.error("unexpected type")
             }
-          case "==" => EqCmp(l, r)(pos, info)
-          case "!=" => NeCmp(l, r)(pos, info)
-          case "==>" => Implies(l, r)(pos, info)
-          case "--*" => MagicWand(l, r)(pos, info)
-          case "<==>" => EqCmp(l, r)(pos, info)
-          case "&&" => And(l, r)(pos, info)
-          case "||" => Or(l, r)(pos, info)
+          case PSymOp.EqEq => EqCmp(l, r)(pos, info)
+          case PSymOp.Ne => NeCmp(l, r)(pos, info)
+          case PSymOp.Implies => Implies(l, r)(pos, info)
+          case PSymOp.Wand => MagicWand(l, r)(pos, info)
+          case PSymOp.Iff => EqCmp(l, r)(pos, info)
+          case PSymOp.AndAnd => And(l, r)(pos, info)
+          case PSymOp.OrOr => Or(l, r)(pos, info)
 
-          case "in" => right.typ match {
+          case PKwOp.In => right.typ match {
             case _: PSeqType => SeqContains(l, r)(pos, info)
             case _: PMapType => MapContains(l, r)(pos, info)
             case _: PSetType | _: PMultisetType => AnySetContains(l, r)(pos, info)
             case t => sys.error(s"unexpected type $t")
           }
 
-          case "++" => SeqAppend(l, r)(pos, info)
-          case "subset" => AnySetSubset(l, r)(pos, info)
-          case "intersection" => AnySetIntersection(l, r)(pos, info)
-          case "union" => AnySetUnion(l, r)(pos, info)
-          case "setminus" => AnySetMinus(l, r)(pos, info)
+          case PSymOp.Append => SeqAppend(l, r)(pos, info)
+          case PKwOp.Subset => AnySetSubset(l, r)(pos, info)
+          case PKwOp.Intersection => AnySetIntersection(l, r)(pos, info)
+          case PKwOp.Union => AnySetUnion(l, r)(pos, info)
+          case PKwOp.Setminus => AnySetMinus(l, r)(pos, info)
           case _ => sys.error(s"unexpected operator $op")
         }
       case PUnExp(op, pe) =>
         val e = exp(pe)
-        op.operator match {
-          case "-" =>
+        op.rs match {
+          case PSymOp.Minus =>
             e.typ match {
               case Int => Minus(e)(pos, info)
               case Perm => PermMinus(e)(pos, info)
               case _ => sys.error("unexpected type")
             }
-          case "!" => Not(e)(pos, info)
+          case PSymOp.Not => Not(e)(pos, info)
         }
-      case PInhaleExhaleExp(in, ex) =>
+      case PInhaleExhaleExp(_, in, _, ex, _) =>
         InhaleExhaleExp(exp(in), exp(ex))(pos, info)
       case PIntLit(i) =>
         IntLit(i)(pos, info)
@@ -480,7 +480,7 @@ case class Translator(program: PProgram) {
         if (b) TrueLit()(pos, info) else FalseLit()(pos, info)
       case PNullLit(_) =>
         NullLit()(pos, info)
-      case PFieldAccess(rcv, idn) =>
+      case PFieldAccess(rcv, _, idn) =>
         FieldAccess(exp(rcv), findField(idn))(pos, info)
       case PMagicWandExp(left, _, right) => MagicWand(exp(left), exp(right))(pos, info)
       case pfa@PCall(func, args, _) =>
@@ -517,7 +517,7 @@ case class Translator(program: PProgram) {
         Unfolding(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos, info)
       case PApplying(_, wand, _, e) =>
         Applying(exp(wand).asInstanceOf[MagicWand], exp(e))(pos, info)
-      case PLet(_, exp1, _, PLetNestedScope(variable, body)) =>
+      case PLet(_, variable, _, exp1, _, PLetNestedScope(body)) =>
         Let(liftLogicalDecl(variable), exp(exp1), exp(body))(pos, info)
       case _: PLetNestedScope =>
         sys.error("unexpected node PLetNestedScope, should only occur as a direct child of PLet nodes")
@@ -585,21 +585,21 @@ case class Translator(program: PProgram) {
         EmptySeq(ttyp(pexp.typ.asInstanceOf[PSeqType].elementType))(pos, info)
       case PExplicitSeq(_, elems) =>
         ExplicitSeq(elems map exp)(pos, info)
-      case PRangeSeq(low, high) =>
+      case PRangeSeq(_, low, _, high, _) =>
         RangeSeq(exp(low), exp(high))(pos, info)
 
-      case PLookup(base, index) => base.typ match {
+      case PLookup(base, _, index, _) => base.typ match {
         case _: PSeqType => SeqIndex(exp(base), exp(index))(pos, info)
         case _: PMapType => MapLookup(exp(base), exp(index))(pos, info)
         case t => sys.error(s"unexpected type $t")
       }
 
-      case PSeqTake(seq, n) =>
-        SeqTake(exp(seq), exp(n))(pos, info)
-      case PSeqDrop(seq, n) =>
-        SeqDrop(exp(seq), exp(n))(pos, info)
+      case PSeqSlice(seq, _, s, _, e, _) =>
+        val es = exp(seq)
+        val ss = s.map(exp).map(SeqTake(es, _)(pos, info)).getOrElse(es)
+        e.map(exp).map(SeqDrop(ss, _)(pos, info)).getOrElse(ss)
 
-      case PUpdate(base, key, value) => base.typ match {
+      case PUpdate(base, _, key, _, value, _) => base.typ match {
         case _: PSeqType => SeqUpdate(exp(base), exp(key), exp(value))(pos, info)
         case _: PMapType => MapUpdate(exp(base), exp(key), exp(value))(pos, info)
         case t => sys.error(s"unexpected type $t")
@@ -661,11 +661,11 @@ case class Translator(program: PProgram) {
 
   /** Takes a `PType` and turns it into a `Type`. */
   def ttyp(t: PType): Type = t match {
-    case PPrimitiv(PKeywordType(name)) => name match {
-      case "Int" => Int
-      case "Bool" => Bool
-      case "Ref" => Ref
-      case "Perm" => Perm
+    case PPrimitiv(name) => name.rs match {
+      case PKw.Int => Int
+      case PKw.Bool => Bool
+      case PKw.Ref => Ref
+      case PKw.Perm => Perm
     }
     case PSeqType(_, elemType) =>
       SeqType(ttyp(elemType))
@@ -701,8 +701,6 @@ case class Translator(program: PProgram) {
       sys.error("unknown type unexpected here")
     case _: PFunctionType =>
       sys.error("unexpected use of internal typ")
-    case PPredicateType() =>
-      sys.error("unexpected use of internal typ")
   }
 }
 
@@ -728,7 +726,7 @@ object Translator {
     if (annotations.isEmpty) {
       NoInfo
     } else {
-      AnnotationInfo(annotations.groupBy(_.key).map{ case (k, v) => k -> v.flatMap(_.values) })
+      AnnotationInfo(annotations.groupBy(_.key).map{ case (k, v) => k.name -> v.flatMap(_.values) })
     }
   }
 }

@@ -15,10 +15,20 @@ import viper.silver.plugin.standard.adt.PAdtConstructor.findAdtConstructor
 import scala.annotation.unused
 import scala.util.{Success, Try}
 import viper.silver.ast.utility.lsp.GotoDefinition
+import viper.silver.ast.utility.lsp.SymbolKind
 
+/**
+  * Keywords used to define ADT's
+  */
+case object PAdtKeyword extends PKw("adt", TODOAdtDoc) with PKeywordLang
+case object PDeriveKeyword extends PKw("derive", TODOAdtDoc) with PKeywordLang
+case object PWithoutKeyword extends PKw("without", TODOAdtDoc) with PKeywordLang
+case object TODOAdtDoc extends BuiltinFeature(
+  """TODO""".stripMargin.replaceAll("\n", " ")
+)
 
-case class PAdt(annotations: Seq[PAnnotation], adt: PKeywordLang, idndef: PIdnDef, typVars: Seq[PTypeVarDecl], constructors: Seq[PAdtConstructor], derive: Option[PKeywordLang], derivingInfos: Seq[PAdtDerivingInfo])
-               (val pos: (Position, Position)) extends PExtender with PSingleMember with PGlobalDeclaration with PSemanticDeclaration with PGlobalSymbol with HasFoldingRanges {
+case class PAdt(annotations: Seq[PAnnotation], adt: PReserved[PAdtKeyword.type], idndef: PIdnDef, typVars: Seq[PTypeVarDecl], constructors: Seq[PAdtConstructor], derive: Option[PReserved[PDeriveKeyword.type]], derivingInfos: Seq[PAdtDerivingInfo])
+               (val pos: (Position, Position)) extends PExtender with PSingleMember with PGlobalDeclaration with HasFoldingRanges { // with PSemanticDeclaration with PGlobalSymbol
 
   override val getSubnodes: Seq[PNode] = annotations ++ Seq(adt, idndef) ++ typVars ++ constructors ++ derive.toSeq ++ derivingInfos
 
@@ -35,7 +45,7 @@ case class PAdt(annotations: Seq[PAnnotation], adt: PKeywordLang, idndef: PIdnDe
 
     // Check validity blocklisted identifiers
     derivingInfos.foreach { di =>
-      val diff = di.blockList.filterNot(allFormalArgs.map(fad => PIdnUse(fad.idndef.name)(fad.idndef.pos)).toSet)
+      val diff = di.blockList.filterNot(allFormalArgs.map(_.toIdnUse).toSet)
       if (diff.nonEmpty) {
         t.messages ++= FastMessaging.message(diff.head, "Invalid identifier `" + diff.head.name + "' at " + diff.head.pos._1)
       }
@@ -82,8 +92,8 @@ case class PAdt(annotations: Seq[PAnnotation], adt: PKeywordLang, idndef: PIdnDe
     * @return An AdtType that corresponds to the ADTs signature
     */
   def getAdtType: PAdtType = {
-    val adtType = PAdtType(PIdnUse(idndef.name)(NoPosition, NoPosition), typVars map { t =>
-      val typeVar = PDomainType(PIdnUse(t.idndef.name)(NoPosition, NoPosition), Nil)(NoPosition, NoPosition)
+    val adtType = PAdtType(PIdnRef(idndef.name)(NoPosition, NoPosition), typVars map { t =>
+      val typeVar = PDomainType(PIdnRef(t.idndef.name)(NoPosition, NoPosition), Nil)(NoPosition, NoPosition)
       typeVar.kind = PDomainTypeKinds.TypeVar
       typeVar
     })(NoPosition, NoPosition)
@@ -94,8 +104,8 @@ case class PAdt(annotations: Seq[PAnnotation], adt: PKeywordLang, idndef: PIdnDe
   override def tokenType = TokenType.Enum
   override def symbolKind = SymbolKind.Enum
   override def hint = {
-    val tvsStr = if (typVars.isEmpty) "" else typVars.map(_.idndef.pretty()).mkString("[", ",", "]")
-    s"${adt.pretty()} ${idndef.pretty()}$tvsStr"
+    val tvsStr = if (typVars.isEmpty) "" else typVars.map(_.idndef.pretty).mkString("[", ",", "]")
+    s"${adt.pretty} ${idndef.pretty}$tvsStr"
   }
   override def getFoldingRanges: Seq[FoldingRange] = RangePosition(this).map(FoldingRange(_)).toSeq
   // override def withChildren(children: Seq[Any], pos: Option[(Position, Position)] = None, forceRewrite: Boolean = false): this.type = {
@@ -110,6 +120,9 @@ case class PAdt(annotations: Seq[PAnnotation], adt: PKeywordLang, idndef: PIdnDe
   //     PAdt(first, second, third, fourth)(pos.getOrElse(this.pos), annotations).asInstanceOf[this.type]
   //   }
   // }
+  override def completionScope: Map[SuggestionScope,Byte] = Map(TypeScope -> 0)
+  override def completionKind: CompletionKind.CompletionKind = CompletionKind.Enum
+  override def description: String = "Adt"
 }
 
 object PAdt {
@@ -125,7 +138,7 @@ object PAdt {
 }
 
 case class PAdtConstructor(annotations: Seq[PAnnotation], idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl])
-                          (val adtName: PIdnUse)(val pos: (Position, Position)) extends PExtender with PSingleMember with PGlobalDeclaration with PSemanticDeclaration with PGlobalCallable {
+                          (val adtName: PIdnUse)(val pos: (Position, Position)) extends PExtender with PSingleMember with PGlobalDeclaration with PGlobalCallable { // with PSemanticDeclaration
 
   override val getSubnodes: Seq[PNode] = annotations ++ Seq(idndef) ++ formalArgs
 
@@ -134,7 +147,7 @@ case class PAdtConstructor(annotations: Seq[PAnnotation], idndef: PIdnDef, forma
 
     // Check if there are name clashes for the corresponding discriminator, if so we raise a type-check error
     Try {
-      n.definition(t.curMember)(PIdnUse("is" + idndef.name)(idndef.pos))
+      n.definition(t.curMember)(PIdnRef("is" + idndef.name)(idndef.pos))
     } match {
       case Success(Some(decl)) =>
         t.messages ++= FastMessaging.message(idndef, "corresponding adt discriminator identifier `" + decl.idndef.name + "' at " + idndef.pos._1 + " is shadowed at " + decl.idndef.pos._1)
@@ -170,18 +183,18 @@ case class PAdtConstructor(annotations: Seq[PAnnotation], idndef: PIdnDef, forma
 
   override def tokenType = TokenType.EnumMember
   override def symbolKind = SymbolKind.EnumMember
-  override def keyword: PKeywordLang = PKeywordLang(s"adt")(NoPosition, NoPosition)
+  override def keyword = PReserved(PAdtKeyword)(NoPosition, NoPosition)
   override def bodyRange: Option[RangePosition] = None
-  override def returnString: Option[String] = Some(s": ${adtName.pretty()}")
-  override def pres: Seq[(PKeywordLang, PExp)] = Nil
-  override def posts: Seq[(PKeywordLang, PExp)] = Nil
-  override def getHoverHints: Seq[HoverHint] = super.getHoverHints ++
-    Seq(HoverHint(s"```\nadt ${adtName.pretty()}.is${idndef.name}: Bool\n```", SelectionBoundKeyword("is" + idndef.name))) ++
-    formalArgs.map(arg => HoverHint(s"\n```adt ${adtName.pretty()}.${arg.idndef.pretty()}: ${arg.typ.pretty()}\n```", SelectionBoundKeyword(arg.idndef.name)))
-  override def getGotoDefinitions: Seq[GotoDefinition] = (RangePosition(this), RangePosition(idndef)) match {
-    case (Some(tp), Some(ip)) => Seq(GotoDefinition(tp, ip, scope))
-    case _ => Nil
-  }
+  override def returnString: Option[String] = Some(s": ${adtName.pretty}")
+  override def pres = Nil
+  override def posts = Nil
+  // TODO:
+  // override def getHoverHints: Seq[HoverHint] = super.getHoverHints ++
+  //   Seq(HoverHint(s"```\nadt ${adtName.pretty}.is${idndef.name}: Bool\n```", None, SelectionBoundKeyword("is" + idndef.name))) ++
+  //   formalArgs.map(arg => HoverHint(s"\n```adt ${adtName.pretty}.${arg.idndef.pretty}: ${arg.typ.pretty}\n```", None, SelectionBoundKeyword(arg.idndef.name)))
+  override def completionScope: Map[SuggestionScope,Byte] = Map(ExpressionScope -> 0, StatementScope -> -50)
+  override def completionKind: CompletionKind.CompletionKind = CompletionKind.EnumMember
+  override def description: String = "Adt Constructor"
 }
 
 object PAdtConstructor {
@@ -197,7 +210,7 @@ object PAdtConstructor {
 
 case class PAdtConstructor1(annotations: Seq[PAnnotation], idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl])(val pos: (Position, Position))
 
-case class PAdtDerivingInfo(idnuse: PIdnUse, param: Option[PType], without: Option[PKeywordLang], blockList: Set[PIdnUse])(val pos: (Position, Position)) extends PExtender {
+case class PAdtDerivingInfo(idnuse: PIdnUse, param: Option[PType], without: Option[PReserved[PWithoutKeyword.type]], blockList: Set[PIdnUse])(val pos: (Position, Position)) extends PExtender {
 
   override def getSubnodes(): Seq[PNode] = Seq(idnuse) ++ param.toSeq ++ without.toSeq ++ blockList.toSeq
 
@@ -279,7 +292,7 @@ case class PAdtType(adt: PIdnUse, args: Seq[PType])
 
   override def withTypeArguments(s: Seq[PType]): PGenericType = copy(args = s)(pos)
 
-  override def pretty(): String = adt.pretty() + (if (args.isEmpty) "" else s"[${args.map(_.pretty()).mkString(", ")}]")
+  override def pretty(): String = adt.pretty + (if (args.isEmpty) "" else s"[${args.map(_.pretty).mkString(", ")}]")
 
   override def getSemanticHighlights: Seq[SemanticHighlight] =
     RangePosition(adt).map(sp => SemanticHighlight(sp, TokenType.Enum)).toSeq
@@ -523,7 +536,7 @@ case class PDestructorCall(name: PIdnUse, rcv: PExp)
 
   override def getSemanticHighlights: Seq[SemanticHighlight] =
     RangePosition(name).map(sp => SemanticHighlight(sp, TokenType.Method)).toSeq
-  override def prettyNoBrackets = s"${rcv.pretty()}.${name.pretty()}"
+  override def prettyNoBrackets = s"${rcv.pretty}.${name.pretty}"
 }
 
 case class PDiscriminatorCall(name: PIdnUse, rcv: PExp)
@@ -560,6 +573,6 @@ case class PDiscriminatorCall(name: PIdnUse, rcv: PExp)
 
   override def getSemanticHighlights: Seq[SemanticHighlight] =
     RangePosition(name).map(sp => SemanticHighlight(sp, TokenType.Method)).toSeq
-  override def prettyNoBrackets = s"${rcv.pretty()}.$opName"
+  override def prettyNoBrackets = s"${rcv.pretty}.$opName"
 
 }

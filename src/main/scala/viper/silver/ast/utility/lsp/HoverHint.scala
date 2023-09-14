@@ -12,35 +12,18 @@ trait HasHoverHints {
 }
 
 case class HoverHint(
-  /** The text hint to show when hovering */
+  /** The code hint to show when hovering (e.g. function signature).
+   * Displayed in a code block. */
   hint: String,
+  /** The text hint to show when hovering (e.g. documentation) */
+  documentation: Option[String],
+  // TODO: improve wording
+  /** The range to highlight when hovering. If `None` then
+    either the range of the hovered keyword (matching `bound`) is used
+    or if the range of `bound` is met instead that is used. */
+  highlight: Option[RangePosition],
   /** Display the hover hint when this bound is met */
   bound: SelectionBoundTrait,
 ) extends SelectableInBound with HasRangePositions {
-  override def rangePositions: Seq[RangePosition] = bound.rangePositions
+  override def rangePositions: Seq[RangePosition] = highlight.toSeq ++ bound.rangePositions
 }
-
-/** A position over the keyword within the scope will match.
- * A keyword of `None` implies that anything in the scope will match.
- * A scope of `None` implies that anything with the keyword will match.
- * If both are `None`, then *any* position will match!
-*/
-sealed trait SelectionBoundTrait extends HasRangePositions
-case object SelectionBound extends SelectionBoundTrait {
-  def rangePositions: Seq[RangePosition] = Nil
-}
-
-sealed trait SelectionBoundKeywordTrait extends SelectionBoundTrait {
-  def keyword: String
-}
-case class SelectionBoundKeyword(keyword: String) extends SelectionBoundKeywordTrait {
-  def rangePositions: Seq[RangePosition] = Nil
-}
-
-sealed trait SelectionBoundScopeTrait extends SelectionBoundTrait {
-  def scope: RangePosition
-  def rangePositions: Seq[RangePosition] = Seq(scope)
-}
-case class SelectionBoundScope(scope: RangePosition) extends SelectionBoundScopeTrait
-
-case class SelectionBoundBoth(keyword: String, scope: RangePosition) extends SelectionBoundKeywordTrait with SelectionBoundScopeTrait

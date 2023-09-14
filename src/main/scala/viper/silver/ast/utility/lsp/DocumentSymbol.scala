@@ -7,6 +7,7 @@
 package viper.silver.ast.utility.lsp
 
 import java.nio.file.Path
+import viper.silver.ast.utility.lsp.{SymbolKind, SymbolTag}
 
 trait HasDocumentSymbol {
   def getSymbolChildren: Seq[DocumentSymbol]

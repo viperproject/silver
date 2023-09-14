@@ -7,10 +7,17 @@
 package viper.silver.plugin.standard.refute
 
 import viper.silver.ast.{Position, Stmt}
+import viper.silver.ast.utility.lsp.BuiltinFeature
 import viper.silver.parser.TypeHelper.Bool
 import viper.silver.parser._
 
-case class PRefute(refute: PKeywordStmt, e: PExp)(val pos: (Position, Position)) extends PExtender with PStmt {
+/** Keyword used to define refute statements. */
+case object PRefuteKeyword extends PKw("refute", TODORefuteDoc) with PKeywordStmt
+case object TODORefuteDoc extends BuiltinFeature(
+  """TODO""".stripMargin.replaceAll("\n", " ")
+)
+
+case class PRefute(refute: PReserved[PRefuteKeyword.type], e: PExp)(val pos: (Position, Position)) extends PExtender with PStmt {
   override val getSubnodes: Seq[PNode] = Seq(refute, e)
 
   override def typecheck(t: TypeChecker, n: NameAnalyser):Option[Seq[String]] = {

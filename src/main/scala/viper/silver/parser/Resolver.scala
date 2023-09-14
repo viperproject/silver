@@ -28,10 +28,10 @@ case class Resolver(p: PProgram) {
       typechecker.run(p)
     } catch {
       case e: Throwable =>
-        // TODO: remove this try/catch once all assumptions that name resolution
-        // succeeded are removed from the type checker
-        val frame = e.getStackTrace().tail.head
-        val msg = s"internal error during typechecking. Please file a bug report. Error \"${e.toString()}\" at \"${frame.toString()}\""
+        // TODO: remove this try/catch once all assumptions that
+        // name resolution succeeded are removed from the type checker
+        val frame = e.getStackTrace().find(!_.getClassName().startsWith("scala")).map(_.toString()).getOrElse("")
+        val msg = s"internal error during typechecking. Please file a bug report at https://github.com/viperproject/silver. Error \"${e.toString()}\" at \"$frame\""
         typechecker.messages ++= FastMessaging.message(p, msg)
         e.printStackTrace()
         false
@@ -160,7 +160,7 @@ case class TypeChecker(names: NameAnalyser) {
   def check(f: PFields): Unit = {
     checkMember(f) {
       f.fields foreach (fd => {
-        fd.decl = f
+        fd.decl = Some(f)
         check(fd.typ)
       })
     }
@@ -258,13 +258,17 @@ case class TypeChecker(names: NameAnalyser) {
   def checkAssign(stmt: PAssign): Unit = {
     // Check targets
     stmt.targets foreach {
-      case idnuse: PIdnUse => names.definition(curMember)(idnuse) match {
+      case idnuse: PIdnUse =>
+        idnuse.assignUse = true
+        names.definition(curMember)(idnuse) match {
           case Some(decl: PAssignableVarDecl) =>
             check(idnuse, decl.typ)
           case _ =>
             messages ++= FastMessaging.message(idnuse, "expected an assignable identifier as lhs")
         }
-      case fa@PFieldAccess(_, field) => names.definition(curMember)(field, Some(PFields.getClass)) match {
+      case fa@PFieldAccess(_, _, field) =>
+        field.assignUse = true
+        names.definition(curMember)(field, Some(PFields.getClass)) match {
           case Some(PFieldDecl(_, typ)) =>
             check(fa, typ)
           case _ =>
@@ -276,8 +280,8 @@ case class TypeChecker(names: NameAnalyser) {
     stmt match {
       case PAssign(targets, _, c@PCall(func, args, _)) if names.definition(curMember)(func).get.isInstanceOf[PMethod] =>
         val m@PMethod(_, _, _, formalArgs, _, formalTargets, _, _, _) = names.definition(curMember)(func).get.asInstanceOf[PMethod]
-        c.method = m
-        func.decl = m
+        c.methodDecl = Some(m)
+        func.decl = Some(m)
         formalArgs.foreach(fa => check(fa.typ))
         if (formalArgs.length != args.length) {
           messages ++= FastMessaging.message(stmt, "wrong number of arguments")
@@ -309,7 +313,7 @@ case class TypeChecker(names: NameAnalyser) {
       case pc: PCall =>
         check(e, Bool)
         // make sure that this is in fact a predicate
-        if (pc.extfunction == null) {
+        if (!pc.isPredicate) {
           messages ++= FastMessaging.message(stmt, havocError)
         }
       case _: PMagicWandExp => check(e, Bool)
@@ -332,7 +336,7 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   def checkMagicWand(e: PExp): Unit = e match {
-    case PBinExp(_, op, _) if op.operator == MagicWandOp.op =>
+    case PBinExp(_, PReserved(PSymOp.Wand), _) =>
     case _ =>
       messages ++= FastMessaging.message(e, "expected magic wand")
   }
@@ -374,8 +378,9 @@ case class TypeChecker(names: NameAnalyser) {
         acceptedClasses.find(_.isInstance(decl.get)) match {
           case Some(_) =>
             val td = decl.get.asInstanceOf[PTypedDeclaration]
-            use.typ = td.typ
-            use.decl = td
+            if (use.isInstanceOf[PIdnUseExp])
+              use.asInstanceOf[PIdnUseExp].typ = td.typ
+            use.decl = Some(td)
           case None =>
             messages ++= FastMessaging.message(use, errorMessage)
         }
@@ -387,7 +392,7 @@ case class TypeChecker(names: NameAnalyser) {
 
   def check(typ: PType): Unit = {
     typ match {
-      case _: PPredicateType | _: PWandType =>
+      case _: PWandType =>
         sys.error("unexpected use of internal typ")
       case PPrimitiv(_) =>
       /* Nothing to type check (or resolve) */
@@ -550,7 +555,7 @@ case class TypeChecker(names: NameAnalyser) {
               exp.typ.substitute(selectAndGroundTypeSubstitution(exp, exp.typeSubstitutions))
             }
             messages ++= FastMessaging.message(exp,
-              s"Expected type ${expected.toString}, but found ${reportedActual} at the expression at ${exp.pos._1}")
+              s"Expected type ${expected.pretty}, but found ${reportedActual.pretty} at the expression at ${exp.pos._1}")
           case None =>
             typeError(exp)
         }
@@ -632,122 +637,118 @@ case class TypeChecker(names: NameAnalyser) {
         if (poa.typeSubstitutions.isEmpty) {
           poa.args.foreach(checkInternal)
           var nestedTypeError = !poa.args.forall(a => a.typ.isValidOrUndeclared)
-          if (!nestedTypeError) {
-            poa match {
-              case pfa@PCall(func, args, explicitType) =>
-                explicitType match {
-                  case Some(t) =>
-                    check(t)
-                    if (!t.isValidOrUndeclared) nestedTypeError = true
-                  case None =>
-                }
-
-                if (!nestedTypeError) {
-                  val ad = names.definition(curMember)(func)
-                  ad match {
-                    case Some(fd: PAnyFunction) =>
-                      pfa.function = fd
-                      func.decl = fd
-                      ensure(fd.formalArgs.size == args.size, pfa, "wrong number of arguments")
-                      fd match {
-                        case PFunction(_, _, _, _, _, pres, _, _) =>
-                          checkMember(fd) {
-                            check(fd.typ)
-                            fd.formalArgs foreach (a => check(a.typ))
-                          }
-                          if (inAxiomScope(Some(pfa)) && pres.nonEmpty)
-                            issueError(func, s"Cannot use function ${func.name}, which has preconditions, inside axiom")
-
-                        case pdf@PDomainFunction(_, _, _, _, _, _, _) =>
-                          val domain = names.definition(curMember)(pdf.domainName).get.asInstanceOf[PDomain]
-                          val fdtv = PTypeVar.freshTypeSubstitution((domain.typVars map (tv => tv.idndef.name)).distinct) //fresh domain type variables
-                          pfa.domainTypeRenaming = Some(fdtv)
-                          pfa._extraLocalTypeVariables = (domain.typVars map (tv => PTypeVar(tv.idndef.name))).toSet
-                          extraReturnTypeConstraint = explicitType
-                      }
-                    case Some(predicate: PPredicate) =>
-                      pfa.extfunction = predicate
-                      func.decl = predicate
-                      acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(func), "expected predicate")
-                      if (args.length != predicate.formalArgs.length)
-                        issueError(func, "predicate arity doesn't match")
-                    case _ =>
-                      issueError(func, "expected function or predicate ")
-                  }
-                }
-
-              case pu: PUnfolding =>
-                if (!isCompatible(pu.acc.loc.typ, Bool)) {
-                  messages ++= FastMessaging.message(pu, "expected predicate access")
-                }
-                acceptNonAbstractPredicateAccess(pu.acc, "abstract predicates cannot be unfolded")
-
-              case PApplying(_, wand, _, _) =>
-                checkMagicWand(wand)
-
-              // We checked that the `rcv` is valid above with `poa.args.foreach(checkInternal)`
-              case PFieldAccess(_, idnuse) =>
-                acceptAndCheckTypedEntity[PFieldDecl, Nothing](Seq(idnuse), "expected field")
-
-              case PAccPred(_, loc, _) =>
-                loc match {
-                  case PFieldAccess(_, _) =>
-                  case pc: PCall if pc.extfunction != null =>
-                  case _ =>
-                    issueError(loc, "specified location is not a field nor a predicate")
-                }
-
-              case pecl: PEmptyCollectionLiteral if !pecl.pElementType.isValidOrUndeclared =>
-                check(pecl.pElementType)
-
-              case pem: PEmptyMap if !pem.pKeyType.isValidOrUndeclared || !pem.pValueType.isValidOrUndeclared =>
-                if (!pem.pKeyType.isValidOrUndeclared)
-                  check(pem.pKeyType)
-                if (!pem.pValueType.isValidOrUndeclared)
-                  check(pem.pValueType)
-
-              case _ =>
-            }
-
-            if (poa.signatures.nonEmpty && poa.args.forall(_.typeSubstitutions.nonEmpty) && !nestedTypeError) {
-              val ltr = getFreshTypeSubstitution(poa.localScope.toList) //local type renaming - fresh versions
-              val rlts = poa.signatures map (ts => refreshWith(ts, ltr)) //local substitutions refreshed
-              assert(rlts.nonEmpty)
-              val rrt: PDomainType = POpApp.pRes.substitute(ltr).asInstanceOf[PDomainType] // return type (which is a dummy type variable) replaced with fresh type
-              val flat = poa.args.indices map (i => POpApp.pArg(i).substitute(ltr)) //fresh local argument types
-              // the quadruples below are: (fresh argument type, argument type as used in domain of substitutions, substitutions, expression)
-              val argData = flat.indices.map(i => (flat(i), poa.args(i).typ, poa.args(i).typeSubstitutions.distinct.toSeq, poa.args(i))) ++
-                (
-                  extraReturnTypeConstraint match {
-                    case None => Nil
-                    case Some(t) => Seq((rrt, t, List(PTypeSubstitution.id), poa))
-                  }
-                  )
-              val unifiedSequence = unifySequenceWithSubstitutions(rlts, argData)
-              if (unifiedSequence.isLeft && poa.typeSubstitutions.isEmpty) {
-                val problem = unifiedSequence.swap.toOption.get
-                messages ++= FastMessaging.message(problem._3,
-                  s"Type error in the expression at ${problem._3.pos._1}. Expected type ${problem._1} but found ${problem._2}.")
-              } else {
-                poa.typeSubstitutions ++= unifiedSequence.toOption.get
-                val ts = poa.typeSubstitutions.distinct
-                poa.typ = if (ts.size == 1) rrt.substitute(ts.head) else rrt
+          poa match {
+            case pfa@PCall(func, args, explicitType) =>
+              explicitType match {
+                case Some(t) =>
+                  check(t)
+                  if (!t.isValidOrUndeclared) nestedTypeError = true
+                case None =>
               }
+              val ad = names.definition(curMember)(func)
+              ad match {
+                case Some(fd: PAnyFunction) =>
+                  func.decl = Some(fd)
+                  pfa.funcDecl = Some(fd)
+                  ensure(fd.formalArgs.length == args.length, pfa, "wrong number of arguments")
+                  fd match {
+                    case PFunction(_, _, _, _, _, pres, _, _) =>
+                      checkMember(fd) {
+                        check(fd.typ)
+                        fd.formalArgs foreach (a => check(a.typ))
+                      }
+                      if (inAxiomScope(Some(pfa)) && pres.nonEmpty)
+                        issueError(func, s"Cannot use function ${func.name}, which has preconditions, inside axiom")
+
+                    case pdf@PDomainFunction(_, _, _, _, _, _, _) =>
+                      val domain = names.definition(curMember)(pdf.domainName).get.asInstanceOf[PDomain]
+                      val fdtv = PTypeVar.freshTypeSubstitution((domain.typVars map (tv => tv.idndef.name)).distinct) //fresh domain type variables
+                      pfa.domainTypeRenaming = Some(fdtv)
+                      pfa._extraLocalTypeVariables = (domain.typVars map (tv => PTypeVar(tv.idndef.name))).toSet
+                      extraReturnTypeConstraint = explicitType
+                    case _: PPredicate =>
+                  }
+                case _ =>
+                  issueError(func, "expected function or predicate ")
+              }
+
+            case pu: PUnfolding =>
+              if (!isCompatible(pu.acc.loc.typ, Bool)) {
+                messages ++= FastMessaging.message(pu, "expected predicate access")
+              }
+              acceptNonAbstractPredicateAccess(pu.acc, "abstract predicates cannot be unfolded")
+
+            case PApplying(_, wand, _, _) =>
+              checkMagicWand(wand)
+
+            // We checked that the `rcv` is valid above with `poa.args.foreach(checkInternal)`
+            case PFieldAccess(_, _, idnuse) =>
+              acceptAndCheckTypedEntity[PFieldDecl, Nothing](Seq(idnuse), "expected field")
+
+            case PAccPred(_, loc, _) =>
+              loc match {
+                case _: PFieldAccess =>
+                case pc: PCall if pc.isPredicate =>
+                case _ =>
+                  issueError(loc, "specified location is not a field nor a predicate")
+              }
+
+            case pecl: PEmptyCollectionLiteral if !pecl.pElementType.isValidOrUndeclared =>
+              check(pecl.pElementType)
+
+            case pem: PEmptyMap if !pem.pKeyType.isValidOrUndeclared || !pem.pValueType.isValidOrUndeclared =>
+              if (!pem.pKeyType.isValidOrUndeclared)
+                check(pem.pKeyType)
+              if (!pem.pValueType.isValidOrUndeclared)
+                check(pem.pValueType)
+
+            case _ =>
+          }
+
+          val ltr = getFreshTypeSubstitution(poa.localScope.toList) //local type renaming - fresh versions
+          val rlts = poa.signatures map (ts => refreshWith(ts, ltr)) //local substitutions refreshed
+          val rrt: PDomainType = POpApp.pRes.substitute(ltr).asInstanceOf[PDomainType] // return type (which is a dummy type variable) replaced with fresh type
+          // Continue only if there was no error in the arguments
+          if (rlts.nonEmpty && poa.args.forall(_.typeSubstitutions.nonEmpty) && !nestedTypeError) {
+            val flat = poa.args.indices map (i => POpApp.pArg(i).substitute(ltr)) //fresh local argument types
+            // the quadruples below are: (fresh argument type, argument type as used in domain of substitutions, substitutions, expression)
+            val argData = flat.indices.map(i => (flat(i), poa.args(i).typ, poa.args(i).typeSubstitutions.distinct.toSeq, poa.args(i))) ++
+              (
+                extraReturnTypeConstraint match {
+                  case None => Nil
+                  case Some(t) => Seq((rrt, t, List(PTypeSubstitution.id), poa))
+                }
+                )
+            val unifiedSequence = unifySequenceWithSubstitutions(rlts, argData)
+            if (unifiedSequence.isLeft && poa.typeSubstitutions.isEmpty) {
+              val problem = unifiedSequence.left.toOption.get
+              messages ++= FastMessaging.message(problem._3,
+                s"Expected type ${problem._1.pretty}, but found ${problem._2.pretty} at the expression at ${problem._3.pos._1}.")
             } else {
-              poa.typeSubstitutions.clear()
-              poa.typ = PUnknown()()
+              poa.typeSubstitutions ++= unifiedSequence.toOption.get
+              val ts = poa.typeSubstitutions.distinct
+              poa.typ = if (ts.size == 1) rrt.substitute(ts.head) else rrt
             }
+          } else {
+            poa.typeSubstitutions.clear()
+            // Try to get a correct type even though the
+            val ts = rlts.map(rrt.substitute(_)).distinct
+            if (ts.size == 1) {
+              poa.typeSubstitutions += rlts.find(_.contains(rrt)).get
+              poa.typ = ts.head
+            } else
+              poa.typ = PUnknown()()
           }
         }
 
       case piu: PIdnUse =>
         acceptAndCheckTypedEntity[PAnyVarDecl, Nothing](Seq(piu), "expected variable identifier")
 
-      case pl@PLet(_, e, _, ns) =>
+      case pl@PLet(_, variable, _, e, _, ns) =>
         val oldCurMember = curMember
         curMember = ns
         checkInternal(e)
-        ns.variable.typ = e.typ
+        variable.typ = e.typ
         checkInternal(ns.body)
         pl.typ = ns.body.typ
         curMember = oldCurMember
@@ -910,15 +911,15 @@ case class NameAnalyser() {
                 }
                 map.put(d.idndef.name, d)
             }
-          case i@PIdnUse(name) =>
+          case i: PIdnUse =>
             // look up in both maps (if we are not in a method currently, we look in the same map twice, but that is ok)
-            val resolved = getCurrentMap.getOrElse(name, globalDeclarationMap.getOrElse(name, PUnknownEntity()))
+            val resolved = getCurrentMap.getOrElse(i.name, globalDeclarationMap.getOrElse(i.name, PUnknownEntity()))
             (i.parent, resolved) match {
               case (Some(parent), PUnknownEntity()) =>
                 if (!parent.isInstanceOf[PDomainType] && !parent.isInstanceOf[PGoto] &&
                   !(parent.isInstanceOf[POldExp] && parent.asInstanceOf[POldExp].label.map(_ == i).getOrElse(false)) &&
-                  !(name == LabelledOld.LhsOldLabel && parent.isInstanceOf[POldExp] && parent.asInstanceOf[POldExp].label.isDefined)) {
-                  messages ++= FastMessaging.message(i, s"identifier $name not defined.")
+                  !(i.name == LabelledOld.LhsOldLabel && parent.isInstanceOf[POldExp] && parent.asInstanceOf[POldExp].label.isDefined)) {
+                  messages ++= FastMessaging.message(i, s"identifier ${i.name} not defined.")
                 }
               // domain types can also be type variables, which need not be declared
               // goto and state labels may exist out of scope (but must exist in method, this is checked in final AST in checkIdentifiers)

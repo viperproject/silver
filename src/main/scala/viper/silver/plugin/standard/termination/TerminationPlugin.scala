@@ -25,7 +25,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
                         @unused logger: ch.qos.logback.classic.Logger,
                         config: viper.silver.frontend.SilFrontendConfig,
                         fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
-  import fp.{FP, keywordLang, exp, operator, ParserExtension}
+  import fp.{FP, exp, ParserExtension, reservedKw, reservedSym}
 
   private def deactivated: Boolean = config != null && config.terminationPlugin.toOption.getOrElse(false)
 
@@ -43,13 +43,13 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
    * or
    * decreases *
    */
-  def decreases[$: P]: P[(PKeywordLang, PDecreasesClause)] =
-    P(keywordLang(decreasesKeyword) ~/ (decreasesWildcard | decreasesStar | decreasesTuple) ~ ";".?)
+  def decreases[$: P]: P[(PReserved[PDecreasesKeyword.type], PDecreasesClause)] =
+    P(reservedKw(PDecreasesKeyword) ~ (decreasesWildcard | decreasesStar | decreasesTuple) ~ ";".?)
   def decreasesTuple[$: P]: P[PDecreasesTuple] =
     FP(exp.rep(sep = ",") ~/ condition.?).map { case (pos, (a, c)) => PDecreasesTuple(a, c)(pos) }
   def decreasesWildcard[$: P]: P[PDecreasesWildcard] = FP("_" ~/ condition.?).map{ case (pos, c) => PDecreasesWildcard(c)(pos) }
-  def decreasesStar[$: P]: P[PDecreasesStar] = FP(operator("*".!)).map{ case (pos, op) => PDecreasesStar(op)(pos)}
-  def condition[$: P]: P[PExp] = P("if" ~/ exp)
+  def decreasesStar[$: P]: P[PDecreasesStar] = FP(reservedSym(PStarSymbol)).map{ case (pos, op) => PDecreasesStar(op)(pos)}
+  def condition[$: P]: P[(PReserved[PIfKeyword.type], PExp)] = P(reservedKw(PIfKeyword) ~/ exp)
 
 
   /**

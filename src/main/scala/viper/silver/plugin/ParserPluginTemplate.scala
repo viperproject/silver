@@ -6,9 +6,9 @@
 
 package viper.silver.plugin
 
-import viper.silver.parser.{NameAnalyser, PAnnotationsPosition, PExp, PExtender, PKeywordLang, PStmt, PTypeSubstitution, Translator, TypeChecker}
+import viper.silver.parser.{NameAnalyser, PAnnotationsPosition, PExp, PExtender, PSpecification, PKw, PReserved, PStmt, PTypeSubstitution, Translator, TypeChecker}
 import viper.silver.ast.pretty.PrettyPrintPrimitives
-import viper.silver.ast.{Declaration, ErrorTrafo, Exp, ExtensionExp, ExtensionMember, ExtensionStmt, Info, Member, Node, Position, Stmt, Type}
+import viper.silver.ast.{Declaration, ErrorTrafo, Exp, ExtensionExp, ExtensionMember, ExtensionStmt, Info, Member, Node, NoPosition, Position, Stmt, Type}
 import viper.silver.verifier.VerificationResult
 
 import scala.collection.Set
@@ -68,20 +68,20 @@ trait ParserPluginTemplate {
   /**
     * The specification rule provides an extension to the precondition expressions
     */
-  def preSpecification : Extension[(PKeywordLang, PExp)] =
-    fp => ParserPluginTemplate.defaultExpExtension(fp).map(x => (PKeywordLang.empty, x))
+  def preSpecification : Extension[(PReserved[PSpecification], PExp)] =
+    fp => ParserPluginTemplate.defaultExpExtension(fp).map(x => (PReserved(PKw.Requires)((NoPosition, NoPosition)), x))
 
   /**
     * The specification rule provides an extension to the postcondition expressions
     */
-  def postSpecification : Extension[(PKeywordLang, PExp)] =
-    fp => ParserPluginTemplate.defaultExpExtension(fp).map(x => (PKeywordLang.empty, x))
+  def postSpecification : Extension[(PReserved[PSpecification], PExp)] =
+    fp => ParserPluginTemplate.defaultExpExtension(fp).map(x => (PReserved(PKw.Ensures)((NoPosition, NoPosition)), x))
 
   /**
     * The specification rule provides an extension to the loop invariant specification expressions
     */
-  def invSpecification : Extension[(PKeywordLang, PExp)] =
-    fp => ParserPluginTemplate.defaultExpExtension(fp).map(x => (PKeywordLang.empty, x))
+  def invSpecification : Extension[(PReserved[PSpecification], PExp)] =
+    fp => ParserPluginTemplate.defaultExpExtension(fp).map(x => (PReserved(PKw.Invariant)((NoPosition, NoPosition)), x))
 
   /**
     * This rule extends the keywords. So new strings added to the set will be considered as keywords.

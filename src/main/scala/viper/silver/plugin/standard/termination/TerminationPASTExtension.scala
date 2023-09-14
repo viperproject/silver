@@ -7,8 +7,17 @@
 package viper.silver.plugin.standard.termination
 
 import viper.silver.ast._
+import viper.silver.ast.utility.lsp.BuiltinFeature
 import viper.silver.parser.TypeHelper.Bool
 import viper.silver.parser._
+
+case object PDecreasesKeyword extends PKw("decreases", TODODecreasesDoc) with PKeywordLang with PSpecification
+case object PIfKeyword extends PKw("if", TODODecreasesDoc) with PKeywordLang
+case object TODODecreasesDoc extends BuiltinFeature(
+  """TODO""".stripMargin.replaceAll("\n", " ")
+)
+
+case object PStarSymbol extends PSym("*") with PSymbolLang
 
 /**
  * Any possible decreases clause extends from this trait.
@@ -25,42 +34,42 @@ sealed trait PDecreasesClause extends PExtender with PExp {
   override def forceSubstitution(ts: PTypeSubstitution): Unit = {}
 }
 
-case class PDecreasesTuple(tuple: Seq[PExp], condition: Option[PExp] = None)(val pos: (Position, Position)) extends PDecreasesClause {
+case class PDecreasesTuple(tuple: Seq[PExp], condition: Option[(PReserved[PIfKeyword.type], PExp)] = None)(val pos: (Position, Position)) extends PDecreasesClause {
 
-  override val getSubnodes: Seq[PNode] = tuple ++ condition
+  override val getSubnodes: Seq[PNode] = tuple ++ condition.toSeq.flatMap(c => Seq(c._1, c._2))
 
   override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = {
     // require condition to be of type bool
-    condition.foreach(c => t.checkTopTyped(c, Some(Bool)))
+    condition.foreach(c => t.checkTopTyped(c._2, Some(Bool)))
     tuple.foreach(a => t.checkTopTyped(a, None))
     None
   }
 
   override def translateExp(t: Translator): ExtensionExp = {
-    DecreasesTuple(tuple map t.exp, condition map t.exp)(t.liftPos(this))
+    DecreasesTuple(tuple map t.exp, condition map (_._2) map t.exp)(t.liftPos(this))
   }
 
-  override def prettyNoBrackets: String = tuple.map(_.pretty()).mkString(", ") + condition.map(c => " if " + c.pretty()).getOrElse("")
+  override def prettyNoBrackets: String = tuple.map(_.pretty).mkString(", ") + condition.map(c => s" ${c._1.pretty} ${c._2.pretty}").getOrElse("")
 }
 
-case class PDecreasesWildcard(condition: Option[PExp] = None)(val pos: (Position, Position)) extends PDecreasesClause {
+case class PDecreasesWildcard(condition: Option[(PReserved[PIfKeyword.type], PExp)] = None)(val pos: (Position, Position)) extends PDecreasesClause {
 
-  override val getSubnodes: Seq[PNode] = condition.toSeq
+  override val getSubnodes: Seq[PNode] = condition.toSeq.flatMap(c => Seq(c._1, c._2))
 
   override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = {
     // require condition to be of type bool
-    condition.foreach(c => t.checkTopTyped(c, Some(Bool)))
+    condition.foreach(c => t.checkTopTyped(c._2, Some(Bool)))
     None
   }
 
   override def translateExp(t: Translator): ExtensionExp = {
-    DecreasesWildcard(condition map t.exp)(t.liftPos(this))
+    DecreasesWildcard(condition map (_._2) map t.exp)(t.liftPos(this))
   }
 
-  override def prettyNoBrackets: String = "_" + condition.map(c => " if " + c.pretty()).getOrElse("")
+  override def prettyNoBrackets: String = "_" + condition.map(c => s" ${c._1.pretty} ${c._2.pretty}").getOrElse("")
 }
 
-case class PDecreasesStar(star: POperator)(val pos: (Position, Position)) extends PDecreasesClause {
+case class PDecreasesStar(star: PReserved[PStarSymbol.type])(val pos: (Position, Position)) extends PDecreasesClause {
   override val getSubnodes: Seq[PNode] = Seq(star)
 
   override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = {
@@ -71,6 +80,6 @@ case class PDecreasesStar(star: POperator)(val pos: (Position, Position)) extend
     DecreasesStar()(t.liftPos(this))
   }
 
-  override def prettyNoBrackets: String = star.operator
+  override def prettyNoBrackets: String = star.pretty
 }
 
