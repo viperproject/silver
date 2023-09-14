@@ -1,0 +1,28 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <decreases/all.vpr>
+
+domain ListWellFoundedOrder[T] {
+
+
+  axiom {
+    forall y : List[T] :: {bounded(y)} bounded(y)
+  }
+
+
+  axiom {
+    forall xs : List[T] , y : T ::
+      decreasing(xs, Cons(y, xs))
+  }
+
+  axiom {
+    forall xs : List[T], ys : List[T], zs : List[T] :: {decreasing(xs, ys), decreasing(ys, zs)}
+      decreasing(xs, ys) && decreasing(ys, zs) ==> decreasing(xs, zs)
+  }
+}
+
+adt List[T] {
+  Nil()
+  Cons(value : T, tail : List[T])
+}
