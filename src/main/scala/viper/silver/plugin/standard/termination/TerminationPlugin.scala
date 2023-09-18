@@ -8,9 +8,9 @@ package viper.silver.plugin.standard.termination
 
 import viper.silver.ast.utility.{Functions, ViperStrategy}
 import viper.silver.ast.utility.rewriter.{SimpleContext, Strategy, StrategyBuilder}
-import viper.silver.ast.{Applying, Assert, CondExp, CurrentPerm, Exp, FuncApp, Function, InhaleExhaleExp, MagicWand, Method, Node, Program, Unfolding, While}
+import viper.silver.ast.{Applying, Assert, CondExp, CurrentPerm, Exp, FuncApp, Function, InhaleExhaleExp, MagicWand, Method, Node, NoPosition, Program, Unfolding, While}
 import viper.silver.parser._
-import viper.silver.plugin.standard.predicateinstance.PPredicateInstance
+import viper.silver.plugin.standard.predicateinstance.{PMarkerSymbol, PPredicateInstance}
 import viper.silver.plugin.standard.termination.transformation.Trafo
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier.errors.AssertFailed
@@ -52,7 +52,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
   def decreasesTuple[$: P]: P[PDecreasesTuple] =
     FP(exp.rep(sep = ",") ~/ condition.?).map { case (pos, (a, c)) => PDecreasesTuple(a, c)(pos) }
   def decreasesWildcard[$: P]: P[PDecreasesWildcard] = FP("_" ~/ condition.?).map{ case (pos, c) => PDecreasesWildcard(c)(pos) }
-  def decreasesStar[$: P]: P[PDecreasesStar] = FP(reservedSym(PStarSymbol)).map{ case (pos, op) => PDecreasesStar(op)(pos)}
+  def decreasesStar[$: P]: P[PDecreasesStar] = FP(reservedSym(PSym.Star)).map{ case (pos, op) => PDecreasesStar(op)(pos)}
   def condition[$: P]: P[(PReserved[PIfKeyword.type], PExp)] = P(reservedKw(PIfKeyword) ~/ exp)
 
 
@@ -79,18 +79,18 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
     // Transform predicate accesses to predicate instances
     // (which are not used in the unfolding to predicate instances)
     val transformPredicateInstances = StrategyBuilder.Slim[PNode]({
-      case pc@PCall(idnUse, args, None) if input.predicates.exists(_.idndef.name == idnUse.name) =>
+      case pc@PCall(idnUse, l, args, r, None) if input.predicates.exists(_.idndef.name == idnUse.name) =>
         // PCall represents the predicate access before the translation into the AST
-        PPredicateInstance(args, idnUse)(pc.pos)
-      case PAccPred(_, pc@PCall(idnUse, args, None), _) if input.predicates.exists(_.idndef.name == idnUse.name) =>
-        PPredicateInstance(args, idnUse)(pc.pos)
+        PPredicateInstance(PReserved(PMarkerSymbol)((NoPosition, NoPosition)), idnUse, l, args, r)(pc.pos)
+      case PAccPred(_, pc@PCall(idnUse, l, args, r, None), _) if input.predicates.exists(_.idndef.name == idnUse.name) =>
+        PPredicateInstance(PReserved(PMarkerSymbol)((NoPosition, NoPosition)), idnUse, l, args, r)(pc.pos)
       case d => d
     }).recurseFunc({
       case PUnfolding(_, _, _, exp) => // ignore predicate access when it is used for unfolding
         Seq(exp)
       case PApplying(_, _, _, exp) => // ignore predicate access when it is in a magic wand
         Seq(exp)
-      case PCurPerm(_, _) => // ignore predicate access when it is in perm
+      case _: PCurPerm => // ignore predicate access when it is in perm
         // (However, anyways not supported in decreases clauses)
         Nil
     })

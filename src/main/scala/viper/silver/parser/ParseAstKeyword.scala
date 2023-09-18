@@ -12,9 +12,38 @@ import viper.silver.ast.{NoPosition, Position}
 trait PReservedString extends PReservedStringLsp {
   def token: String
   def documentation: BuiltinFeature
+  def display: String = token
 }
-case class PReserved[+T <: PReservedString](rs: T)(val pos: (Position, Position)) extends PNode with PPretty with PReservedLsp[T] {
-  override def pretty = rs.token
+trait LeftSpace; trait RightSpace
+case class PReserved[+T <: PReservedString](rs: T)(val pos: (Position, Position)) extends PNode with PLeaf with PReservedLsp[T] {
+  override def display = s"${if (rs.isInstanceOf[LeftSpace]) " " else ""}${rs.display}${if (rs.isInstanceOf[RightSpace]) " " else ""}"
+}
+object PReserved {
+  def implied[T <: PReservedString](rs: T): PReserved[T] = PReserved(rs)(NoPosition, NoPosition)
+}
+
+case class PGrouped[G <: PSym.Group, +T](l: PReserved[G#L], inner: T, r: PReserved[G#R])(val pos: (Position, Position)) extends PNode with PPrettySubnodes {
+  def update(replacement: T): PGrouped[G, T] = PGrouped(l, replacement, r)(pos)
+}
+case object PGrouped {
+  def implied[G <: PSym.Group, T](l: G#L, inner: T, r: G#R): PGrouped[G, T] =
+    PGrouped[G, T](PReserved.implied(l), inner, PReserved.implied(r))(NoPosition, NoPosition)
+}
+
+case class PDelimited[+T, +D](
+  first: Option[T],
+  inner: Seq[(D, T)],
+  end: Option[D]
+)(val pos: (Position, Position)) extends PNode with PPrettySubnodes {
+  def toSeq: Seq[T] = first.map(_ +: inner.map(_._2)).getOrElse(Nil)
+  def delimiters: Seq[D] = inner.map(_._1) ++ end.toSeq
+  // def toNodes = first.toSeq ++ inner.flatMap(i => Seq(i._1, i._2)) ++ end.toSeq
+
+  def update(replacement: Seq[T]): PDelimited[T, D] = {
+    assert((first.isEmpty && replacement.isEmpty) || (first.isDefined && inner.length == replacement.length - 1))
+    if (replacement.isEmpty) PDelimited(None, Nil, end)(pos)
+    else PDelimited(Some(replacement.head), inner.zip(replacement.tail).map { case ((d, _), r) => (d, r) }, end)(pos)
+  }
 }
 
 ////
@@ -34,7 +63,6 @@ trait PKeywordConstant extends PKeyword with PKeywordLsp
 sealed trait PKeywordAtom
 sealed trait PKeywordIf extends PKeywordStmt
 
-trait PSpecification extends PReservedString
 
 abstract class PKw(val keyword: String, val documentation: BuiltinFeature) extends PKeyword
 object PKw {
@@ -51,15 +79,19 @@ object PKw {
 
   case object Returns extends PKw("returns", BuiltinFeature.TODO) with PKeywordLang
   case object Unique extends PKw("unique", BuiltinFeature.TODO) with PKeywordLang
-  case object Requires extends PKw("requires", BuiltinFeature.TODO) with PKeywordLang with PSpecification
-  case object Ensures extends PKw("ensures", BuiltinFeature.TODO) with PKeywordLang with PSpecification
-  case object Invariant extends PKw("invariant", BuiltinFeature.TODO) with PKeywordLang with PSpecification
+
+  sealed trait Spec extends PReservedString; trait PreSpec extends Spec; trait PostSpec extends Spec; trait InvSpec extends Spec
+  case object Requires extends PKw("requires", BuiltinFeature.TODO) with PKeywordLang with PreSpec
+  case object Ensures extends PKw("ensures", BuiltinFeature.TODO) with PKeywordLang with PostSpec
+  case object Invariant extends PKw("invariant", BuiltinFeature.TODO) with PKeywordLang with InvSpec
 
   case object Result extends PKw("result", BuiltinFeature.TODO) with PKeywordLang with PKeywordAtom
   case object Exists extends PKw("exists", BuiltinFeature.TODO) with PKeywordLang with PKeywordAtom
   case object Forall extends PKw("forall", BuiltinFeature.TODO) with PKeywordLang with PKeywordAtom
   case object Forperm extends PKw("forperm", BuiltinFeature.TODO) with PKeywordLang with PKeywordAtom
   case object New extends PKw("new", BuiltinFeature.TODO) with PKeywordLang with PKeywordAtom
+
+  case object Lhs extends PKw("lhs", BuiltinFeature.TODO) with PKeywordLang
 
   // Stmts
   case object If extends PKw("if", BuiltinFeature.TODO) with PKeywordIf
@@ -115,10 +147,64 @@ trait PSymbolLang extends PSymbol with PSymbolLangLsp
 
 abstract class PSym(val symbol: String) extends PSymbol
 object PSym {
-  case object LParen extends PSym("(") with PSymbolLang
-  case object RParen extends PSym(")") with PSymbolLang
-  case object ColonColon extends PSym("::") with PSymbolLang
+  sealed trait Group extends PSymbol {
+    type L <: Group; type R <: Group
+  }
+  sealed trait Paren extends Group {
+    type L = LParen.type; type R = RParen.type
+  }
+  case object LParen extends PSym("(") with PSymbolLang with Paren
+  type LParen = PReserved[LParen.type]
+  case object RParen extends PSym(")") with PSymbolLang with Paren
+  type RParen = PReserved[RParen.type]
+  sealed trait Angle extends Group {
+    type L = LAngle.type; type R = RAngle.type
+  }
+  case object LAngle extends PSym("<") with PSymbolLang with Angle
+  type LAngle = PReserved[LAngle.type]
+  case object RAngle extends PSym(">") with PSymbolLang with Angle
+  type RAngle = PReserved[RAngle.type]
+  sealed trait Brace extends Group {
+    type L = LBrace.type; type R = RBrace.type
+  }
+  case object LBrace extends PSym("{") with PSymbolLang with Brace
+  type LBrace = PReserved[LBrace.type]
+  case object RBrace extends PSym("}") with PSymbolLang with Brace
+  type RBrace = PReserved[RBrace.type]
+  sealed trait Bracket extends Group {
+    type L = LBracket.type; type R = RBracket.type
+  }
+  case object LBracket extends PSym("[") with PSymbolLang with Bracket
+  type LBracket = PReserved[LBracket.type]
+  case object RBracket extends PSym("]") with PSymbolLang with Bracket
+  type RBracket = PReserved[RBracket.type]
+  case object Quote extends PSym("\"") with PSymbolLang with Group {
+    type L = Quote.type; type R = Quote.type
+  }
+  type Quote = PReserved[Quote.type]
+
+  case object Comma extends PSym(",") with PSymbolLang with RightSpace {
+    override def display = ", "
+  }
+  type Comma = PReserved[Comma.type]
+  case object Semi extends PSym(";") with PSymbolLang
+  type Semi = PReserved[Semi.type]
+
+  // Used for domain interpretations or type annotations
+  case object Colon extends PSym(":") with PSymbolLang with RightSpace
+  type Colon = PReserved[Colon.type]
+  // Used for quantifiers
+  case object ColonColon extends PSym("::") with PSymbolLang with LeftSpace with RightSpace
+  type ColonColon = PReserved[ColonColon.type]
+  // Used for annotations
   case object At extends PSym("@") with PSymbolLang
+  type At = PReserved[At.type]
+  // Used for `new(*)`
+  case object Star extends PSym("*") with PSymbolLang
+  type Star = PReserved[Star.type]
+
+  /** Grouped and delimited. */
+  type Punctuated[G <: Group, T <: PNode] = PGrouped[G, PDelimited[T, Comma]]
 }
 
 /** Anything that can act as an operator. */
@@ -130,7 +216,7 @@ trait POperator extends PReservedString with POperatorLsp {
 trait PSymbolOp extends PSymbol with POperator {
   override def operator = symbol
 }
-trait PBinaryOp extends POperator
+trait PBinaryOp extends POperator with LeftSpace with RightSpace
 trait PUnaryOp extends POperator
 
 object PSymOp {
@@ -151,20 +237,23 @@ object PSymOp {
   case object ArithDiv extends PSym("\\") with PSymbolOp with PBinaryOp
   case object Mod extends PSym("%") with PSymbolOp with PBinaryOp
   case object Plus extends PSym("+") with PSymbolOp with PBinaryOp
-  case object Minus extends PSym("-") with PSymbolOp with PBinaryOp with PUnaryOp
+  case object Minus extends PSym("-") with PSymbolOp with PBinaryOp
+  case object Neg extends PSym("-") with PSymbolOp with PUnaryOp
   case object Not extends PSym("!") with PSymbolOp with PUnaryOp
 
   case object Append extends PSym("++") with PSymbolOp with PBinaryOp
 
-  case object Assign extends PSym(":=") with PSymbolOp
+  case object Assign extends PSym(":=") with PSymbolOp with LeftSpace with RightSpace
+  type Assign = PReserved[Assign.type]
   case object Dot extends PSym(".") with PSymbolOp
   case object DotDot extends PSym("..") with PSymbolOp
   case object Comma extends PSym(",") with PSymbolOp
   case object RParen extends PSym(")") with PSymbolOp
   case object LBracket extends PSym("[") with PSymbolOp
   case object RBracket extends PSym("]") with PSymbolOp
-  case object Question extends PSym("?") with PSymbolOp
-  case object Colon extends PSym(":") with PSymbolOp
+  case object Question extends PSym("?") with PSymbolOp with LeftSpace with RightSpace
+  case object Colon extends PSym(":") with PSymbolOp with LeftSpace with RightSpace
+  case object Or extends PSym("|") with PSymbolOp
 }
 
 trait POperatorKeyword extends PKeyword with PKeywordLsp with POperator
@@ -182,9 +271,9 @@ object PKwOp {
   case object Setminus extends PKwOp("setminus") with PBinaryOp
   case object Subset extends PKwOp("subset") with PBinaryOp
 
-  case object Unfolding extends PKwOp("unfolding") with PKeywordAtom
-  case object Applying extends PKwOp("applying") with PKeywordAtom
-  case object Let extends PKwOp("let") with PKeywordAtom
+  case object Unfolding extends PKwOp("unfolding") with PKeywordAtom with RightSpace
+  case object Applying extends PKwOp("applying") with PKeywordAtom with RightSpace
+  case object Let extends PKwOp("let") with PKeywordAtom with RightSpace
 
   case object Perm extends PKwOp("perm") with PKeywordAtom
   case object Acc extends PKwOp("acc") with PKeywordAtom

@@ -68,20 +68,20 @@ trait ParserPluginTemplate {
   /**
     * The specification rule provides an extension to the precondition expressions
     */
-  def preSpecification : Extension[(PReserved[PSpecification], PExp)] =
-    fp => ParserPluginTemplate.defaultExpExtension(fp).map(x => (PReserved(PKw.Requires)((NoPosition, NoPosition)), x))
+  def preSpecification : Extension[PSpecification[PKw.PreSpec]] =
+    fp => ParserPluginTemplate.defaultExpExtension(fp).map(x => PSpecification(PReserved.implied(PKw.Requires), x)(NoPosition, NoPosition))
 
   /**
     * The specification rule provides an extension to the postcondition expressions
     */
-  def postSpecification : Extension[(PReserved[PSpecification], PExp)] =
-    fp => ParserPluginTemplate.defaultExpExtension(fp).map(x => (PReserved(PKw.Ensures)((NoPosition, NoPosition)), x))
+  def postSpecification : Extension[PSpecification[PKw.PostSpec]] =
+    fp => ParserPluginTemplate.defaultExpExtension(fp).map(x => PSpecification(PReserved.implied(PKw.Ensures), x)(NoPosition, NoPosition))
 
   /**
     * The specification rule provides an extension to the loop invariant specification expressions
     */
-  def invSpecification : Extension[(PReserved[PSpecification], PExp)] =
-    fp => ParserPluginTemplate.defaultExpExtension(fp).map(x => (PReserved(PKw.Invariant)((NoPosition, NoPosition)), x))
+  def invSpecification : Extension[PSpecification[PKw.InvSpec]] =
+    fp => ParserPluginTemplate.defaultExpExtension(fp).map(x => PSpecification(PReserved.implied(PKw.Invariant), x)(NoPosition, NoPosition))
 
   /**
     * This rule extends the keywords. So new strings added to the set will be considered as keywords.

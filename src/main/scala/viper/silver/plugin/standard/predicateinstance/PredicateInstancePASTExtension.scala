@@ -16,8 +16,12 @@ case object PPredicateInstanceKeyword extends PKw("PredicateInstance", TODOPredi
 case object TODOPredicateInstanceDoc extends BuiltinFeature(
   """TODO""".stripMargin.replaceAll("\n", " ")
 )
+/**
+ * Syntactic marker for predicate instances
+ */
+case object PMarkerSymbol extends PSym("#") with PSymbolLang
 
-case class PPredicateInstance(args: Seq[PExp], idnuse: PIdnRef)(val pos: (Position, Position)) extends PExtender with PExp {
+case class PPredicateInstance(m: PReserved[PMarkerSymbol.type], idnuse: PIdnRef, l: PSym.LParen, args: Seq[PExp], r: PSym.RParen)(val pos: (Position, Position)) extends PExtender with PExp {
 
   typ = PPrimitiv(PReserved(PPredicateInstanceKeyword)(NoPosition, NoPosition))(NoPosition, NoPosition)
 
@@ -34,7 +38,7 @@ case class PPredicateInstance(args: Seq[PExp], idnuse: PIdnRef)(val pos: (Positi
     n.definition(member = null)(idnuse) match {
       case Some(p: PPredicate) =>
         // type checking should be the same as for PPredicateAccess nodes
-        val predicateAccess = PCall(idnuse, args, None)(p.pos)
+        val predicateAccess = PCall(idnuse, l, args, r, None)(p.pos)
         predicateAccess.funcDecl = Some(p)
         t.checkInternal(predicateAccess)
         None

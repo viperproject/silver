@@ -17,8 +17,6 @@ case object TODODecreasesDoc extends BuiltinFeature(
   """TODO""".stripMargin.replaceAll("\n", " ")
 )
 
-case object PStarSymbol extends PSym("*") with PSymbolLang
-
 /**
  * Any possible decreases clause extends from this trait.
  */
@@ -69,7 +67,7 @@ case class PDecreasesWildcard(condition: Option[(PReserved[PIfKeyword.type], PEx
   override def prettyNoBrackets: String = "_" + condition.map(c => s" ${c._1.pretty} ${c._2.pretty}").getOrElse("")
 }
 
-case class PDecreasesStar(star: PReserved[PStarSymbol.type])(val pos: (Position, Position)) extends PDecreasesClause {
+case class PDecreasesStar(star: PSym.Star)(val pos: (Position, Position)) extends PDecreasesClause {
   override val getSubnodes: Seq[PNode] = Seq(star)
 
   override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = {

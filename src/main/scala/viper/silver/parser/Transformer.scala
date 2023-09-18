@@ -56,8 +56,8 @@ object Transformer {
         case p@PBoolLit(keyword, b) => PBoolLit(go(keyword), b)(p.pos)
         case p@PNullLit(nul) => PNullLit(go(nul))(p.pos)
         case p@PFieldAccess(rcv, dot, idnuse) => PFieldAccess(go(rcv), go(dot), go(idnuse))(p.pos)
-        case p@PCall(func, args, explicitType) =>
-          PCall(go(func), args map go, explicitType match {
+        case p@PCall(func, l, args, r, explicitType) =>
+          PCall(go(func), go(l), args map go, go(r), explicitType match {
             case Some(t) => Some(go(t))
             case None => None
           })(p.pos)
@@ -72,24 +72,24 @@ object Transformer {
         case p@PForPerm(forperm, vars, res, cs, exp) => PForPerm(go(forperm), vars map go, go(res), go(cs), go(exp))(p.pos)
         case p@PCondExp(cond, q, thn, c, els) => PCondExp(go(cond), go(q), go(thn), go(c), go(els))(p.pos)
         case p@PInhaleExhaleExp(l, in, c, ex, r) => PInhaleExhaleExp(go(l), go(in), go(c), go(ex), go(r))(p.pos)
-        case p@PCurPerm(k, loc) => PCurPerm(go(k), go(loc))(p.pos)
+        case p@PCurPerm(k, l, loc, r) => PCurPerm(go(k), go(l), go(loc), go(r))(p.pos)
         case _: PNoPerm => parent
         case _: PFullPerm => parent
         case _: PWildcard => parent
         case _: PEpsilon => parent
         case p@PAccPred(acc, loc, perm) => PAccPred(go(acc), go(loc), go(perm))(p.pos)
-        case p@POldExp(k, l, e) => POldExp(go(k), l map go, go(e))(p.pos)
-        case p@PEmptySeq(k, t) => PEmptySeq(go(k), go(t))(p.pos)
-        case p@PExplicitSeq(k, elems) => PExplicitSeq(go(k), elems map go)(p.pos)
+        case p@POldExp(k, lbl, l, e, r) => POldExp(go(k), lbl map go, go(l), go(e), go(r))(p.pos)
+        case p@PEmptySeq(k, t, l, r) => PEmptySeq(go(k), go(t), go(l), go(r))(p.pos)
+        case p@PExplicitSeq(k, l, elems, r) => PExplicitSeq(go(k), go(l), elems map go, go(r))(p.pos)
         case p@PRangeSeq(l, low, ds, high, r) => PRangeSeq(go(l), go(low), go(ds), go(high), go(r))(p.pos)
         case p@PSeqSlice(seq, l, s, ds, e, r) => PSeqSlice(go(seq), go(l), s map go, go(ds), e map go, go(r))(p.pos)
         case p@PSize(seq) => PSize(go(seq))(p.pos)
-        case p@PEmptySet(k, t) => PEmptySet(go(k), go(t))(p.pos)
+        case p@PEmptySet(k, t, l, r) => PEmptySet(go(k), go(t), go(l), go(r))(p.pos)
         case p@PLookup(seq, l, idx, r) => PLookup(go(seq), go(l), go(idx), go(r))(p.pos)
         case p@PUpdate(seq, l, idx, a, elem, r) => PUpdate(go(seq), go(l), go(idx), go(a), go(elem), go(r))(p.pos)
-        case p@PExplicitSet(k, elems) => PExplicitSet(go(k), elems map go)(p.pos)
-        case p@PEmptyMultiset(k, t) => PEmptyMultiset(go(k), go(t))(p.pos)
-        case p@PExplicitMultiset(k, elems) => PExplicitMultiset(go(k), elems map go)(p.pos)
+        case p@PExplicitSet(k, l, elems, r) => PExplicitSet(go(k), go(l), elems map go, go(r))(p.pos)
+        case p@PEmptyMultiset(k, t, l, r) => PEmptyMultiset(go(k), go(t), go(l), go(r))(p.pos)
+        case p@PExplicitMultiset(k, l, elems, r) => PExplicitMultiset(go(k), go(l), elems map go, go(r))(p.pos)
 
         case p@PSeqn(ss) => PSeqn(ss map go)(p.pos)
         case p@PFold(fold, e) => PFold(go(fold), go(e))(p.pos)
@@ -104,8 +104,8 @@ object Transformer {
           PQuasihavoc(go(quasihavoc), lhs map goPair, go(e))(p.pos)
         case p@PQuasihavocall(quasihavocall, vars, cc, lhs, e) =>
           PQuasihavocall(go(quasihavocall), vars map go, go(cc), lhs map goPair, go(e))(p.pos)
-        case p@PEmptyMap(k, keyType, valueType) => PEmptyMap(go(k), go(keyType), go(valueType))(p.pos)
-        case p@PExplicitMap(k, exprs) => PExplicitMap(go(k), exprs map go)(p.pos)
+        case p@PEmptyMap(k, keyType, valueType, l, r) => PEmptyMap(go(k), go(keyType), go(valueType), go(l), go(r))(p.pos)
+        case p@PExplicitMap(k, l, exprs, r) => PExplicitMap(go(k), go(l), exprs map go, go(r))(p.pos)
         case p@PMaplet(key, value) => PMaplet(go(key), go(value))(p.pos)
         case p@PMapDomain(op, base) => PMapDomain(go(op), go(base))(p.pos)
         case p@PMapRange(op, base) => PMapRange(go(op), go(base))(p.pos)

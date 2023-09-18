@@ -98,7 +98,7 @@ case class Translator(program: PProgram) {
     case PDomain(_, _, name, _, PDomainMembers(functions, axioms), interpretation) =>
       val d = findDomain(name)
       val dd = d.copy(functions = functions map (f => findDomainFunction(f.idndef)),
-        axioms = axioms map translate, interpretations = interpretation.map(_._2))(d.pos, d.info, d.errT)
+        axioms = axioms map translate, interpretations = interpretation.map(_.interps))(d.pos, d.info, d.errT)
       members(d.name) = dd
       dd
   }
@@ -148,9 +148,9 @@ case class Translator(program: PProgram) {
       case pf@PFunction(_, _, _, formalArgs, typ, _, _, _) =>
         Function(name, formalArgs map liftArgDecl, ttyp(typ), null, null, null)(pos, Translator.toInfo(p.annotations, pf))
       case pdf@PDomainFunction(_, unique, _, _, args, typ, interp) =>
-        DomainFunc(name, args map liftAnyArgDecl, ttyp(typ), unique.isDefined, interp.map(_._2))(pos, Translator.toInfo(p.annotations, pdf),pdf.domainName.name)
+        DomainFunc(name, args map liftAnyArgDecl, ttyp(typ), unique.isDefined, interp.map(_._2.s))(pos, Translator.toInfo(p.annotations, pdf),pdf.domainName.name)
       case pd@PDomain(_, _, _, typVars, _, interp) =>
-        Domain(name, null, null, typVars map (t => TypeVar(t.idndef.name)), interp.map(_._2))(pos, Translator.toInfo(p.annotations, pd))
+        Domain(name, null, null, typVars map (t => TypeVar(t.idndef.name)), interp.map(_.interps))(pos, Translator.toInfo(p.annotations, pd))
       case pp@PPredicate(_, _, _, formalArgs, _) =>
         Predicate(name, formalArgs map liftArgDecl, null)(pos, Translator.toInfo(p.annotations, pp))
       case pm@PMethod(_, _, _, formalArgs, _, formalReturns, _, _, _) =>
@@ -182,7 +182,7 @@ case class Translator(program: PProgram) {
     val info = if (annotations.isEmpty) NoInfo else AnnotationInfo(annotations)
     val subInfo = NoInfo
     s match {
-      case PAssign(targets, _, PCall(method, args, _)) if members(method.name).isInstanceOf[Method] =>
+      case PAssign(targets, _, PCall(method, _, args, _, _)) if members(method.name).isInstanceOf[Method] =>
         methodCallAssign(s, targets, ts => MethodCall(findMethod(method), args map exp, ts)(pos, info))
       case PAssign(targets, _, _) if targets.length != 1 =>
         sys.error(s"Found non-unary target of assignment")
@@ -324,9 +324,9 @@ case class Translator(program: PProgram) {
       case PAnnotatedExp(ann, e) =>
         val (resPexp, innerMap) = extractAnnotation(e)
         val combinedValue = if (innerMap.contains(ann.key.name)) {
-          ann.values ++ innerMap(ann.key.name)
+          ann.values.map(_.s) ++ innerMap(ann.key.name)
         } else {
-          ann.values
+          ann.values.map(_.s)
         }
         (resPexp, innerMap.updated(ann.key.name, combinedValue))
       case _ => (pexp, Map())
@@ -338,9 +338,9 @@ case class Translator(program: PProgram) {
       case PAnnotatedStmt(ann, s) =>
         val (resPStmt, innerMap) = extractAnnotationFromStmt(s)
         val combinedValue = if (innerMap.contains(ann.key.name)) {
-          ann.values ++ innerMap(ann.key.name)
+          ann.values.map(_.s) ++ innerMap(ann.key.name)
         } else {
-          ann.values
+          ann.values.map(_.s)
         }
         (resPStmt, innerMap.updated(ann.key.name, combinedValue))
       case _ => (pStmt, Map())
@@ -483,7 +483,7 @@ case class Translator(program: PProgram) {
       case PFieldAccess(rcv, _, idn) =>
         FieldAccess(exp(rcv), findField(idn))(pos, info)
       case PMagicWandExp(left, _, right) => MagicWand(exp(left), exp(right))(pos, info)
-      case pfa@PCall(func, args, _) =>
+      case pfa@PCall(func, _, args, _, _) =>
         members(func.name) match {
           case f: Function => FuncApp(f, args map exp)(pos, info)
           case f @ DomainFunc(_, _, _, _, _) =>
@@ -550,11 +550,11 @@ case class Translator(program: PProgram) {
           case other =>
             sys.error(s"Internal Error: Unexpectedly found $other in forperm")
         }
-      case POldExp(_, lbl, e) =>
+      case POldExp(_, lbl, _, e, _) =>
         lbl.map(l => LabelledOld(exp(e), l.name)(pos, info)).getOrElse(Old(exp(e))(pos, info))
       case PCondExp(cond, _, thn, _, els) =>
         CondExp(exp(cond), exp(thn), exp(els))(pos, info)
-      case PCurPerm(_, res) =>
+      case PCurPerm(_, _, res, _) =>
         exp(res) match {
           case PredicateAccessPredicate(inner, _) => CurrentPerm(inner)(pos, info)
           case x: FieldAccess => CurrentPerm(x)(pos, info)
@@ -581,9 +581,9 @@ case class Translator(program: PProgram) {
           case _ =>
             sys.error("unexpected location")
         }
-      case PEmptySeq(_, _) =>
+      case _: PEmptySeq =>
         EmptySeq(ttyp(pexp.typ.asInstanceOf[PSeqType].elementType))(pos, info)
-      case PExplicitSeq(_, elems) =>
+      case PExplicitSeq(_, _, elems, _) =>
         ExplicitSeq(elems map exp)(pos, info)
       case PRangeSeq(_, low, _, high, _) =>
         RangeSeq(exp(low), exp(high))(pos, info)
@@ -612,20 +612,20 @@ case class Translator(program: PProgram) {
         case t => sys.error(s"unexpected type $t")
       }
 
-      case PEmptySet(_, _) =>
+      case _: PEmptySet =>
         EmptySet(ttyp(pexp.typ.asInstanceOf[PSetType].elementType))(pos, info)
-      case PExplicitSet(_, elems) =>
+      case PExplicitSet(_, _, elems, _) =>
         ExplicitSet(elems map exp)(pos, info)
-      case PEmptyMultiset(_, _) =>
+      case _: PEmptyMultiset =>
         EmptyMultiset(ttyp(pexp.typ.asInstanceOf[PMultisetType].elementType))(pos, info)
-      case PExplicitMultiset(_, elems) =>
+      case PExplicitMultiset(_, _, elems, _) =>
         ExplicitMultiset(elems map exp)(pos, info)
 
-      case PEmptyMap(_, _, _) => EmptyMap(
+      case _: PEmptyMap => EmptyMap(
         ttyp(pexp.typ.asInstanceOf[PMapType].keyType),
         ttyp(pexp.typ.asInstanceOf[PMapType].valueType)
       )(pos, info)
-      case PExplicitMap(_, elems) =>
+      case PExplicitMap(_, _, elems, _) =>
         ExplicitMap(elems map exp)(pos, info)
       case PMaplet(key, value) =>
         Maplet(exp(key), exp(value))(pos, info)
@@ -726,7 +726,7 @@ object Translator {
     if (annotations.isEmpty) {
       NoInfo
     } else {
-      AnnotationInfo(annotations.groupBy(_.key).map{ case (k, v) => k.name -> v.flatMap(_.values) })
+      AnnotationInfo(annotations.groupBy(_.key).map{ case (k, v) => k.name -> v.flatMap(_.values.map(_.s)) })
     }
   }
 }

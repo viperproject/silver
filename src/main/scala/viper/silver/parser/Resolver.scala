@@ -278,7 +278,7 @@ case class TypeChecker(names: NameAnalyser) {
     }
     // Check rhs
     stmt match {
-      case PAssign(targets, _, c@PCall(func, args, _)) if names.definition(curMember)(func).get.isInstanceOf[PMethod] =>
+      case PAssign(targets, _, c@PCall(func, _, args, _, _)) if names.definition(curMember)(func).get.isInstanceOf[PMethod] =>
         val m@PMethod(_, _, _, formalArgs, _, formalTargets, _, _, _) = names.definition(curMember)(func).get.asInstanceOf[PMethod]
         c.methodDecl = Some(m)
         func.decl = Some(m)
@@ -323,7 +323,7 @@ case class TypeChecker(names: NameAnalyser) {
 
   def acceptNonAbstractPredicateAccess(exp: PExp, messageIfAbstractPredicate: String): Unit = {
     exp match {
-      case PAccPred(_, PCall(idnuse, _, _), _) =>
+      case PAccPred(_, PCall(idnuse, _, _, _, _), _) =>
         val ad = names.definition(curMember)(idnuse)
         ad match {
           case Some(predicate: PPredicate) =>
@@ -638,7 +638,7 @@ case class TypeChecker(names: NameAnalyser) {
           poa.args.foreach(checkInternal)
           var nestedTypeError = !poa.args.forall(a => a.typ.isValidOrUndeclared)
           poa match {
-            case pfa@PCall(func, args, explicitType) =>
+            case pfa@PCall(func, _, args, _, explicitType) =>
               explicitType match {
                 case Some(t) =>
                   check(t)

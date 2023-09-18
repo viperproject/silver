@@ -125,7 +125,7 @@ trait POperatorLsp extends PReservedStringLsp {
 ////
 // Variable declarations
 ////
-trait PAnyVarDeclLsp extends PDeclarationLsp with PPretty {
+trait PAnyVarDeclLsp extends PDeclarationLsp {
   def typ: PType
   override def hint = pretty
   override def detail = Some(typ.pretty)
