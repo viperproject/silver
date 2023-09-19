@@ -12,7 +12,7 @@ import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.ast.utility.Consistency
 import viper.silver.verifier.{ConsistencyError, VerificationResult}
 
-case class PredicateInstance(args: Seq[Exp], p: String)(override val pos: Position = NoPosition, override val info: Info = NoInfo, override val errT: ErrorTrafo = NoTrafos) extends ExtensionExp {
+case class PredicateInstance(p: String, args: Seq[Exp])(override val pos: Position = NoPosition, override val info: Info = NoInfo, override val errT: ErrorTrafo = NoTrafos) extends ExtensionExp {
 
   override def extensionIsPure: Boolean = true
 

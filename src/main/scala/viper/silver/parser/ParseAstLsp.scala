@@ -152,7 +152,7 @@ trait PLocalVarDeclLsp extends PDeclarationLsp {
   override def tokenType = TokenType.Variable
   override def description = "Local Variable"
 }
-trait PFieldDeclLsp extends PDeclarationLsp with PPretty {
+trait PFieldDeclLsp extends PDeclarationLsp {
   def decl: Option[PFields]
   def typ: PType
 
@@ -177,18 +177,16 @@ trait PDomainTypeLsp extends PLspHoverHintRef {
 ////
 // Operator applications
 ////
-trait POpAppKeywordLsp extends PLspHoverHint with Product {
+trait POpAppKeywordLsp extends PLspHoverHint with PPrettySubnodes {
   def ops: Seq[PReserved[POperator]]
   def typ: PType
   override def hovers = ops
-  def separator: String
   
   override def hint: String = {
-    val args = this.productIterator.flatMap {
+    val pretty = this.prettyMapped({
       case e: PExp => e.typ.pretty
-      case o: PReserved[_] => o.pretty
-    }
-    s"${args.mkString("(", separator, ")")}: ${typ.pretty}"
+    })
+    s"$pretty: ${typ.pretty}"
   }
 }
 trait PCallLsp extends PLspHoverHintRef with HasInlayHints {
@@ -267,7 +265,7 @@ trait PDeclarationLsp extends PNode with PLspHoverHint with PLspSemanticToken wi
 
 trait PGlobalDeclarationLsp extends PDeclarationLsp with PAnnotated {
   override def documentation: Option[String] = {
-    val docs = annotations.filter(_.key.name == "doc").map(_.values.mkString("\n"))
+    val docs = annotations.filter(_.key.name == "doc").map(_.values.inner.toSeq.map(_.grouped.inner).mkString("\n"))
     if (docs.isEmpty) None else Some(docs.mkString("\n---\n"))
   }
 }

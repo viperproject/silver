@@ -94,6 +94,7 @@ trait ParserPluginTemplate {
     // These two founction for translating PAst to Ast nodes are applicable only in the case of this class being a high level declaration
     override def translateMember(t: Translator): Member = ???
     override def translateMemberSignature(t: Translator): Member = super.translateMemberSignature(t)
+    override def pretty = ""
   }
 
   case class PExampleStmt()(val pos: (Position, Position)) extends PExtender with PStmt{
@@ -113,8 +114,6 @@ trait ParserPluginTemplate {
     override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = super.typecheck(t, n)
     // The translator function to translate the PAst node corresponding to the Ast node
     override def translateExp(t: Translator): Exp = super.translateExp(t)
-
-    override def prettyNoBrackets: String = ""
   }
 
   /**

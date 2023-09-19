@@ -11,11 +11,13 @@ import viper.silver.ast.utility.lsp.BuiltinFeature
 import viper.silver.parser.TypeHelper.Bool
 import viper.silver.parser._
 
-case object PDecreasesKeyword extends PKw("decreases", TODODecreasesDoc) with PKeywordLang with PSpecification
+case object PDecreasesKeyword extends PKw("decreases", TODODecreasesDoc) with PKeywordLang with PKw.AnySpec
 case object PIfKeyword extends PKw("if", TODODecreasesDoc) with PKeywordLang
 case object TODODecreasesDoc extends BuiltinFeature(
   """TODO""".stripMargin.replaceAll("\n", " ")
 )
+
+case object PWildcardSym extends PSym("_") with PSymbolLang
 
 /**
  * Any possible decreases clause extends from this trait.
@@ -32,27 +34,25 @@ sealed trait PDecreasesClause extends PExtender with PExp {
   override def forceSubstitution(ts: PTypeSubstitution): Unit = {}
 }
 
-case class PDecreasesTuple(tuple: Seq[PExp], condition: Option[(PReserved[PIfKeyword.type], PExp)] = None)(val pos: (Position, Position)) extends PDecreasesClause {
+case class PDecreasesTuple(tuple: PDelimited[PExp, PSym.Comma], condition: Option[(PReserved[PIfKeyword.type], PExp)] = None)(val pos: (Position, Position)) extends PDecreasesClause {
 
-  override val getSubnodes: Seq[PNode] = tuple ++ condition.toSeq.flatMap(c => Seq(c._1, c._2))
+  override val getSubnodes: Seq[PNode] = Seq(tuple) ++ condition.toSeq.flatMap(c => Seq(c._1, c._2))
 
   override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = {
     // require condition to be of type bool
     condition.foreach(c => t.checkTopTyped(c._2, Some(Bool)))
-    tuple.foreach(a => t.checkTopTyped(a, None))
+    tuple.toSeq.foreach(a => t.checkTopTyped(a, None))
     None
   }
 
   override def translateExp(t: Translator): ExtensionExp = {
-    DecreasesTuple(tuple map t.exp, condition map (_._2) map t.exp)(t.liftPos(this))
+    DecreasesTuple(tuple.toSeq map t.exp, condition map (_._2) map t.exp)(t.liftPos(this))
   }
-
-  override def prettyNoBrackets: String = tuple.map(_.pretty).mkString(", ") + condition.map(c => s" ${c._1.pretty} ${c._2.pretty}").getOrElse("")
 }
 
-case class PDecreasesWildcard(condition: Option[(PReserved[PIfKeyword.type], PExp)] = None)(val pos: (Position, Position)) extends PDecreasesClause {
+case class PDecreasesWildcard(wildcard: PReserved[PWildcardSym.type], condition: Option[(PReserved[PIfKeyword.type], PExp)] = None)(val pos: (Position, Position)) extends PDecreasesClause {
 
-  override val getSubnodes: Seq[PNode] = condition.toSeq.flatMap(c => Seq(c._1, c._2))
+  override val getSubnodes: Seq[PNode] = Seq(wildcard) ++ condition.toSeq.flatMap(c => Seq(c._1, c._2))
 
   override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = {
     // require condition to be of type bool
@@ -63,8 +63,6 @@ case class PDecreasesWildcard(condition: Option[(PReserved[PIfKeyword.type], PEx
   override def translateExp(t: Translator): ExtensionExp = {
     DecreasesWildcard(condition map (_._2) map t.exp)(t.liftPos(this))
   }
-
-  override def prettyNoBrackets: String = "_" + condition.map(c => s" ${c._1.pretty} ${c._2.pretty}").getOrElse("")
 }
 
 case class PDecreasesStar(star: PSym.Star)(val pos: (Position, Position)) extends PDecreasesClause {
@@ -77,7 +75,5 @@ case class PDecreasesStar(star: PSym.Star)(val pos: (Position, Position)) extend
   override def translateExp(t: Translator): ExtensionExp = {
     DecreasesStar()(t.liftPos(this))
   }
-
-  override def prettyNoBrackets: String = star.pretty
 }
 

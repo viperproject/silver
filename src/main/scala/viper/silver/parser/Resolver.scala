@@ -7,7 +7,7 @@
 package viper.silver.parser
 
 import viper.silver.FastMessaging
-import viper.silver.ast.{LabelledOld, MagicWandOp}
+import viper.silver.ast.LabelledOld
 
 import scala.collection.mutable
 import scala.reflect._
@@ -116,8 +116,8 @@ case class TypeChecker(names: NameAnalyser) {
 
   def checkBody(m: PMethod): Unit = {
     checkMember(m) {
-      m.pres foreach (p => check(p._2, Bool))
-      m.posts foreach (p => check(p._2, Bool))
+      m.pres.toSeq foreach (p => check(p.e, Bool))
+      m.posts.toSeq foreach (p => check(p.e, Bool))
       m.body.foreach(check)
     }
   }
@@ -136,9 +136,9 @@ case class TypeChecker(names: NameAnalyser) {
     checkMember(f) {
       assert(curFunction == null)
       curFunction = f
-      f.pres foreach (p => check(p._2, Bool))
+      f.pres.toSeq foreach (p => check(p.e, Bool))
       resultAllowed = true
-      f.posts foreach (p => check(p._2, Bool))
+      f.posts.toSeq foreach (p => check(p.e, Bool))
       f.body.map(_.inner).foreach(check(_, f.typ.resultType)) //result in the function body gets the error message somewhere else
       resultAllowed = false
       curFunction = null
@@ -153,13 +153,13 @@ case class TypeChecker(names: NameAnalyser) {
 
   def checkBody(p: PPredicate): Unit = {
     checkMember(p) {
-      p.body.map(_.inner).foreach(check(_, Bool))
+      p.body.map(_.e.inner).foreach(check(_, Bool))
     }
   }
 
   def check(f: PFields): Unit = {
     checkMember(f) {
-      f.fields foreach (fd => {
+      f.fields.toSeq foreach (fd => {
         fd.decl = Some(f)
         check(fd.typ)
       })
@@ -168,19 +168,19 @@ case class TypeChecker(names: NameAnalyser) {
 
   def checkFunctions(d: PDomain): Unit = {
     checkMember(d) {
-      d.members.funcs foreach check
+      d.members.funcs.toSeq foreach check
     }
   }
 
   def checkAxioms(d: PDomain): Unit = {
     checkMember(d) {
-      d.members.axioms foreach check
+      d.members.axioms.toSeq foreach check
     }
   }
 
   def check(a: PAxiom): Unit = {
     checkMember(a) {
-      check(a.exp.inner, Bool)
+      check(a.exp.e.inner, Bool)
     }
   }
 
@@ -195,7 +195,7 @@ case class TypeChecker(names: NameAnalyser) {
         check(s)
       case s@PSeqn(ss) =>
         checkMember(s) {
-          ss foreach check
+          ss.inner.toSeq foreach check
         }
       case PFold(_, e) =>
         acceptNonAbstractPredicateAccess(e, "abstract predicates cannot be folded")
@@ -206,7 +206,7 @@ case class TypeChecker(names: NameAnalyser) {
       case PPackageWand(_, e, proofScript) =>
         check(e, Wand)
         checkMagicWand(e)
-        check(proofScript)
+        proofScript foreach check
       case PApplyWand(_, e) =>
         check(e, Wand)
         checkMagicWand(e)
@@ -221,26 +221,28 @@ case class TypeChecker(names: NameAnalyser) {
       case assign: PAssign =>
         checkAssign(assign)
       case PLabel(_, _, invs) =>
-        invs foreach (i => check(i._2, Bool))
+        invs.toSeq foreach (i => check(i.e, Bool))
       case PGoto(_, _) =>
-      case PIf(_, cond, thn, _, els) =>
+      case PIf(_, cond, thn, els) =>
         check(cond, Bool)
         check(thn)
+        els foreach check
+      case PElse(_, els) =>
         check(els)
       case PWhile(_, cond, invs, body) =>
         check(cond, Bool)
-        invs foreach (inv => check(inv._2, Bool))
+        invs.toSeq foreach (inv => check(inv.e, Bool))
         check(body)
-      case v@PVars(_, vars, initial) =>
-        vars foreach (v => check(v.typ))
-        initial.map(i => checkAssign(PAssign(vars.map(_.toIdnUse), Some(i._1), i._2)(v.pos)))
+      case v: PVars =>
+        v.vars.toSeq foreach (v => check(v.typ))
+        v.assign foreach checkAssign
       case _: PDefine =>
         /* Should have been removed right after parsing */
         sys.error(s"Unexpected node $stmt found")
       case PQuasihavoc(_, lhs, e) =>
         checkHavoc(stmt, lhs.map(_._1), e)
       case havoc@PQuasihavocall(_, vars, _, lhs, e) =>
-        vars foreach (v => check(v.typ))
+        vars.toSeq foreach (v => check(v.typ))
         // update the curMember, which contains quantified variable information
         val oldCurMember = curMember
         curMember = havoc
@@ -257,7 +259,7 @@ case class TypeChecker(names: NameAnalyser) {
 
   def checkAssign(stmt: PAssign): Unit = {
     // Check targets
-    stmt.targets foreach {
+    stmt.targets.toSeq foreach {
       case idnuse: PIdnUse =>
         idnuse.assignUse = true
         names.definition(curMember)(idnuse) match {
@@ -278,24 +280,26 @@ case class TypeChecker(names: NameAnalyser) {
     }
     // Check rhs
     stmt match {
-      case PAssign(targets, _, c@PCall(func, _, args, _, _)) if names.definition(curMember)(func).get.isInstanceOf[PMethod] =>
-        val m@PMethod(_, _, _, formalArgs, _, formalTargets, _, _, _) = names.definition(curMember)(func).get.asInstanceOf[PMethod]
+      case PAssign(targets, _, c@PCall(func, _, _)) if names.definition(curMember)(func).get.isInstanceOf[PMethod] =>
+        val m = names.definition(curMember)(func).get.asInstanceOf[PMethod]
+        val formalArgs = m.formalArgs
+        val formalTargets = m.formalReturns
         c.methodDecl = Some(m)
         func.decl = Some(m)
         formalArgs.foreach(fa => check(fa.typ))
-        if (formalArgs.length != args.length) {
+        if (formalArgs.length != c.args.length) {
           messages ++= FastMessaging.message(stmt, "wrong number of arguments")
         } else if (formalTargets.length != targets.length) {
           messages ++= FastMessaging.message(stmt, "wrong number of targets")
         } else {
-          for ((formal, actual) <- (formalArgs zip args) ++ (formalTargets zip targets)) {
+          for ((formal, actual) <- (formalArgs zip c.args) ++ (formalTargets zip targets.toSeq)) {
             check(actual, formal.typ)
           }
         }
-      case PAssign(Seq(target), _, PNewExp(_, fieldsOpt)) =>
-        check(target, Ref)
-        fieldsOpt map (acceptAndCheckTypedEntity[PFieldDecl, Nothing](_, "expected a field as argument"))
-      case PAssign(Seq(lhs), _, rhs) => check(rhs, lhs.typ)
+      case PAssign(targets, _, PNewExp(_, fieldsOpt)) if targets.length == 1 =>
+        check(targets.head, Ref)
+        fieldsOpt.inner foreach (fds => acceptAndCheckTypedEntity[PFieldDecl, Nothing](fds.toSeq, "expected a field as argument"))
+      case PAssign(targets, _, rhs) if targets.length == 1 => check(rhs, targets.head.typ)
       // Case `targets.length != 1`:
       case _ => messages ++= FastMessaging.message(stmt, "expected a method call")
     }
@@ -323,7 +327,8 @@ case class TypeChecker(names: NameAnalyser) {
 
   def acceptNonAbstractPredicateAccess(exp: PExp, messageIfAbstractPredicate: String): Unit = {
     exp match {
-      case PAccPred(_, PCall(idnuse, _, _, _, _), _) =>
+      case acc: PAccPred if acc.loc.isInstanceOf[PCall] =>
+        val idnuse = acc.loc.asInstanceOf[PCall].func
         val ad = names.definition(curMember)(idnuse)
         ad match {
           case Some(predicate: PPredicate) =>
@@ -401,11 +406,11 @@ case class TypeChecker(names: NameAnalyser) {
       case dt@PDomainType(domain, args) =>
         assert(!dt.isResolved, "Only yet-unresolved domain types should be type-checked and resolved")
 
-        args foreach check
+        args foreach (_.inner.toSeq foreach check)
 
         names.definition(curMember)(domain) match {
           case Some(PDomain(_, _, _, typVars, _, _)) =>
-            ensure(args.length == typVars.length, typ, "wrong number of type arguments")
+            ensure(args.map(_.inner.length) == typVars.map(_.inner.length), typ, "wrong number of type arguments")
             dt.kind = PDomainTypeKinds.Domain
           case Some(PTypeVarDecl(_)) =>
             dt.kind = PDomainTypeKinds.TypeVar
@@ -414,14 +419,14 @@ case class TypeChecker(names: NameAnalyser) {
         }
 
       case PSeqType(_, elemType) =>
-        check(elemType)
+        check(elemType.inner)
       case PSetType(_, elemType) =>
-        check(elemType)
+        check(elemType.inner)
       case PMultisetType(_, elemType) =>
-        check(elemType)
-      case PMapType(_, keyType, valueType) =>
-        check(keyType)
-        check(valueType)
+        check(elemType.inner)
+      case m: PMapType =>
+        check(m.keyType)
+        check(m.valueType)
       case PFunctionType(argTypes, resultType) =>
         argTypes map check
         check(resultType)
@@ -446,13 +451,13 @@ case class TypeChecker(names: NameAnalyser) {
       case (_, dt: PDomainType) if dt.isUndeclared => true
       case (PTypeVar(_), _) | (_, PTypeVar(_)) => true
       case (Bool, PWandType()) => true
-      case (PSeqType(_, e1), PSeqType(_, e2)) => isCompatible(e1, e2)
-      case (PSetType(_, e1), PSetType(_, e2)) => isCompatible(e1, e2)
-      case (PMultisetType(_, e1), PMultisetType(_, e2)) => isCompatible(e1, e2)
-      case (PMapType(_, k1, v1), PMapType(_, k2, v2)) => isCompatible(k1, k2) && isCompatible(v1, v2)
+      case (PSeqType(_, e1), PSeqType(_, e2)) => isCompatible(e1.inner, e2.inner)
+      case (PSetType(_, e1), PSetType(_, e2)) => isCompatible(e1.inner, e2.inner)
+      case (PMultisetType(_, e1), PMultisetType(_, e2)) => isCompatible(e1.inner, e2.inner)
+      case (m1: PMapType, m2: PMapType) => isCompatible(m1.keyType, m2.keyType) && isCompatible(m1.valueType, m2.valueType)
       case (PDomainType(domain1, args1), PDomainType(domain2, args2))
-        if domain1 == domain2 && args1.length == args2.length =>
-        (args1 zip args2) forall (x => isCompatible(x._1, x._2))
+        if domain1 == domain2 && args1.map(_.inner.length) == args2.map(_.inner.length) =>
+        (args1.toSeq.flatMap(_.inner.toSeq) zip args2.toSeq.flatMap(_.inner.toSeq)) forall (x => isCompatible(x._1, x._2))
 
       case (_: PExtender, _) => false // TBD: the equality function for two type variables
       case (_, _: PExtender) => false // TBD: the equality function for two type variables
@@ -638,9 +643,9 @@ case class TypeChecker(names: NameAnalyser) {
           poa.args.foreach(checkInternal)
           var nestedTypeError = !poa.args.forall(a => a.typ.isValidOrUndeclared)
           poa match {
-            case pfa@PCall(func, _, args, _, explicitType) =>
+            case pfa@PCall(func, _, explicitType) =>
               explicitType match {
-                case Some(t) =>
+                case Some((_, t)) =>
                   check(t)
                   if (!t.isValidOrUndeclared) nestedTypeError = true
                 case None =>
@@ -650,22 +655,23 @@ case class TypeChecker(names: NameAnalyser) {
                 case Some(fd: PAnyFunction) =>
                   func.decl = Some(fd)
                   pfa.funcDecl = Some(fd)
-                  ensure(fd.formalArgs.length == args.length, pfa, "wrong number of arguments")
+                  ensure(fd.formalArgs.length == pfa.args.length, pfa, "wrong number of arguments")
                   fd match {
-                    case PFunction(_, _, _, _, _, pres, _, _) =>
+                    case pfn: PFunction =>
                       checkMember(fd) {
                         check(fd.typ)
                         fd.formalArgs foreach (a => check(a.typ))
                       }
-                      if (inAxiomScope(Some(pfa)) && pres.nonEmpty)
+                      if (inAxiomScope(Some(pfa)) && pfn.pres.length != 0)
                         issueError(func, s"Cannot use function ${func.name}, which has preconditions, inside axiom")
 
-                    case pdf@PDomainFunction(_, _, _, _, _, _, _) =>
+                    case pdf: PDomainFunction =>
                       val domain = names.definition(curMember)(pdf.domainName).get.asInstanceOf[PDomain]
-                      val fdtv = PTypeVar.freshTypeSubstitution((domain.typVars map (tv => tv.idndef.name)).distinct) //fresh domain type variables
+                      val typVars = domain.typVarsSeq
+                      val fdtv = PTypeVar.freshTypeSubstitution((typVars map (tv => tv.idndef.name)).distinct) //fresh domain type variables
                       pfa.domainTypeRenaming = Some(fdtv)
-                      pfa._extraLocalTypeVariables = (domain.typVars map (tv => PTypeVar(tv.idndef.name))).toSet
-                      extraReturnTypeConstraint = explicitType
+                      pfa._extraLocalTypeVariables = (typVars map (tv => PTypeVar(tv.idndef.name))).toSet
+                      extraReturnTypeConstraint = explicitType.map(_._2)
                     case _: PPredicate =>
                   }
                 case _ =>
@@ -685,11 +691,11 @@ case class TypeChecker(names: NameAnalyser) {
             case PFieldAccess(_, _, idnuse) =>
               acceptAndCheckTypedEntity[PFieldDecl, Nothing](Seq(idnuse), "expected field")
 
-            case PAccPred(_, loc, _) =>
-              loc match {
+            case acc: PAccPred =>
+              acc.loc match {
                 case _: PFieldAccess =>
                 case pc: PCall if pc.isPredicate =>
-                case _ =>
+                case loc =>
                   issueError(loc, "specified location is not a field nor a predicate")
               }
 
@@ -756,10 +762,10 @@ case class TypeChecker(names: NameAnalyser) {
       case pq: PForPerm =>
         val oldCurMember = curMember
         curMember = pq
-        pq.vars foreach (v => check(v.typ))
+        pq.boundVars foreach (v => check(v.typ))
         check(pq.body, Bool)
-        checkInternal(pq.accessRes)
-        pq.triggers foreach (_.exp foreach (tpe => checkTopTyped(tpe, None)))
+        checkInternal(pq.accessRes.inner)
+        pq.triggers foreach (_.exp.inner.toSeq foreach (tpe => checkTopTyped(tpe, None)))
         pq._typeSubstitutions = pq.body.typeSubstitutions.toList.distinct
         pq.typ = Bool
         curMember = oldCurMember
@@ -767,9 +773,9 @@ case class TypeChecker(names: NameAnalyser) {
       case pq: PQuantifier =>
         val oldCurMember = curMember
         curMember = pq
-        pq.vars foreach (v => check(v.typ))
+        pq.boundVars foreach (v => check(v.typ))
         check(pq.body, Bool)
-        pq.triggers foreach (_.exp foreach (tpe => checkTopTyped(tpe, None)))
+        pq.triggers foreach (_.exp.inner.toSeq foreach (tpe => checkTopTyped(tpe, None)))
         pq._typeSubstitutions = pq.body.typeSubstitutions.toList.distinct
         pq.typ = Bool
         curMember = oldCurMember
@@ -976,7 +982,7 @@ case class NameAnalyser() {
         // find all global names first
         for (d <- prog.domains) {
           nodeDownNameCollectorVisitor(d)
-          d.members.funcs.foreach(f => {
+          d.members.funcs.toSeq.foreach(f => {
             nodeDownNameCollectorVisitor(f);
             nodeUpNameCollectorVisitor(f)
           })

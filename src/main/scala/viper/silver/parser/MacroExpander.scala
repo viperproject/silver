@@ -63,7 +63,7 @@ object MacroExpander {
       val (replacer, freeVars) = makeReplacer()
       // Execute with empty replacer, thus no variables will be replaced but freeVars will be filled
       replacer.execute(define)
-      val parameters = define.parameters.map(_._2).getOrElse(Seq.empty[PIdnDef]).map(_.name).toSet
+      val parameters = define.parameters.map(_.inner.toSeq).getOrElse(Seq.empty[PIdnDef]).map(_.name).toSet
       val nonUsedParameter = parameters -- freeVars
 
       if (nonUsedParameter.nonEmpty) {
@@ -97,28 +97,34 @@ object MacroExpander {
       })
 
     def linearizeMethod(method: PMethod): PMethod = {
-      def linearizeSeqOfNestedStmt(ss: Seq[PStmt]): Seq[PStmt] = {
-        def linearizeSeqn(s: PSeqn): PSeqn = PSeqn(s.l, linearizeSeqOfNestedStmt(s.ss), s.r)(s.pos)
+      def linearizeSeqOfNestedStmt(ss: PGrouped[PSym.Brace, PDelimited[PStmt, Option[PSym.Semi]]]): PGrouped[PSym.Brace, PDelimited[PStmt, Option[PSym.Semi]]] = {
+        def linearizeSeqn(s: PSeqn): PSeqn = PSeqn(linearizeSeqOfNestedStmt(s.ss))(s.pos)
         def linearizeIf(i: PIf): PIf = i match {
           case PIf(k, cond, thn, None) => PIf(k, cond, linearizeSeqn(thn), None)(i.pos)
-          case PIf(k, cond, thn, Some(Left(ei))) =>
-            PIf(k, cond, linearizeSeqn(thn), Some(Left(linearizeIf(ei))))(i.pos)
-          case PIf(k, cond, thn, Some(Right(e@PElse(ek, els)))) =>
-            PIf(k, cond, linearizeSeqn(thn), Some(Right(PElse(ek, linearizeSeqn(els))(e.pos))))(i.pos)
+          case PIf(k, cond, thn, Some(ei: PIf)) =>
+            PIf(k, cond, linearizeSeqn(thn), Some(linearizeIf(ei)))(i.pos)
+          case PIf(k, cond, thn, Some(e@PElse(ek, els))) =>
+            PIf(k, cond, linearizeSeqn(thn), Some(PElse(ek, linearizeSeqn(els))(e.pos)))(i.pos)
         }
-        var stmts = Seq.empty[PStmt]
-        ss.foreach {
-          case s: PMacroSeqn => stmts = stmts ++ linearizeSeqOfNestedStmt(s.ss)
-          case s: PSeqn => stmts = stmts :+ linearizeSeqn(s)
-          case i: PIf => stmts = stmts :+ linearizeIf(i)
-          case w@PWhile(k, cond, invs, body) => stmts = stmts :+ PWhile(k, cond, invs, linearizeSeqn(body))(w.pos)
-          case v => stmts = stmts :+ v
+        var stmts = Seq.empty[(PStmt, Option[PSym.Semi])]
+        (ss.inner.toSeq.zip(ss.inner.delimiters)).foreach {
+          case (n: PMacroSeqn, _) =>
+            val lin = linearizeSeqOfNestedStmt(n.ss)
+            stmts = stmts ++ lin.inner.toSeq.zip(lin.inner.delimiters)
+          case (n: PSeqn, s) =>
+            stmts = stmts :+ (linearizeSeqn(n), s)
+          case (n: PIf, s) =>
+            stmts = stmts :+ (linearizeIf(n), s)
+          case (n@PWhile(k, cond, invs, body), s) =>
+            stmts = stmts :+ (PWhile(k, cond, invs, linearizeSeqn(body))(n.pos), s)
+          case (n, s) =>
+            stmts = stmts :+ (n, s)
         }
-        stmts
+        ss.update(PDelimited(stmts)(ss.inner.pos))
       }
 
       val body = method.body match {
-        case Some(PSeqn(l, ss, r)) => Some(PSeqn(l, linearizeSeqOfNestedStmt(ss), r)(method.pos))
+        case Some(PSeqn(ss)) => Some(PSeqn(linearizeSeqOfNestedStmt(ss))(method.pos))
         case v => v
       }
 
@@ -140,7 +146,7 @@ object MacroExpander {
         if (localMacros.isEmpty)
           method
         else
-          method.transform { case mac: PDefine => PSkip()(mac.pos) }()
+          StrategyBuilder.Slim[PNode]({ case mac: PDefine => PSkip()(mac.pos) }).execute(method)
 
       linearizeMethod(doExpandDefines(localMacros ++ globalMacros, methodWithoutMacros, p))
     })
@@ -279,7 +285,7 @@ object MacroExpander {
 
       // Duplicate the body of the macro to allow for differing type checks depending on the context
       val replicatedBody = body.deepCopyAll match {
-        case s@PSeqn(_, ss, _) => PMacroSeqn(ss)(s.pos)
+        case s@PSeqn(ss) => PMacroSeqn(ss)(s.pos)
         case b => b
       }
 
@@ -302,7 +308,7 @@ object MacroExpander {
       matchOnMacroCall.andThen {
         case MacroApp(idnuse, arguments, call) =>
           val macroDefinition = getMacroByName(idnuse)
-          val parameters = macroDefinition.parameters.map(_._2).getOrElse(Nil)
+          val parameters = macroDefinition.parameters.map(_.inner.toSeq).getOrElse(Nil)
           val body = macroDefinition.body
 
           if (arguments.length != parameters.length)
@@ -330,7 +336,7 @@ object MacroExpander {
            *       Seems difficult to concisely and precisely match all (il)legal cases, however.
            */
           (ctx.parent, body) match {
-            case (PAccPred(_, _, loc, _, _), _) if (loc eq call) && !body.isInstanceOf[PLocationAccess] =>
+            case (PAccPred(_, amount), _) if (amount.inner.first eq call) && !body.isInstanceOf[PLocationAccess] =>
               throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + body.toString, call.pos)
             case (_: PCurPerm, _) if !body.isInstanceOf[PLocationAccess] =>
               throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + body.toString, call.pos)
@@ -364,7 +370,7 @@ object MacroExpander {
 
       // Handles macros on the left hand-side of assignments
       case (assign@PAssign(targets, op, rhs), ctx) =>
-        val expandedTargets = targets map {
+        val expandedTargets = targets.toSeq map {
           case call: PCall => {
             if (!isMacro(call.possibleMacro))
               throw ParseException("The only calls that can be on the left-hand side of an assignment statement are calls to macros", call.pos)
@@ -379,7 +385,7 @@ object MacroExpander {
           }
           case target => target
         }
-        val expandedLhs = PAssign(expandedTargets, op, rhs)(assign.pos)
+        val expandedLhs = PAssign(targets.update(expandedTargets), op, rhs)(assign.pos)
         (ExpandMacroIfValid(expandedLhs, ctx), ctx)
 
       // Handles all other calls to macros
@@ -391,7 +397,7 @@ object MacroExpander {
        * to construct invalid AST nodes.
        * Recursing into such PIdnUse nodes caused Silver issue #205.
        */
-      case PCall(_, _, args, _, typeAnnotated) => Seq(args, typeAnnotated)
+      case PCall(_, args, typeAnnotated) => Seq(args, typeAnnotated)
     }.repeat
 
     try {

@@ -21,7 +21,7 @@ case object TODOPredicateInstanceDoc extends BuiltinFeature(
  */
 case object PMarkerSymbol extends PSym("#") with PSymbolLang
 
-case class PPredicateInstance(m: PReserved[PMarkerSymbol.type], idnuse: PIdnRef, l: PSym.LParen, args: Seq[PExp], r: PSym.RParen)(val pos: (Position, Position)) extends PExtender with PExp {
+case class PPredicateInstance(m: PReserved[PMarkerSymbol.type], idnuse: PIdnRef, args: PDelimited.Comma[PSym.Paren, PExp])(val pos: (Position, Position)) extends PExtender with PExp {
 
   typ = PPrimitiv(PReserved(PPredicateInstanceKeyword)(NoPosition, NoPosition))(NoPosition, NoPosition)
 
@@ -30,7 +30,7 @@ case class PPredicateInstance(m: PReserved[PMarkerSymbol.type], idnuse: PIdnRef,
   final override def typeSubstitutions: mutable.ArrayDeque[PTypeSubstitution] = _typeSubstitutions
   override def forceSubstitution(ts: PTypeSubstitution): Unit = {}
 
-  override def getSubnodes(): Seq[PNode] = args :+ idnuse
+  override def getSubnodes(): Seq[PNode] = Seq(m, idnuse, args)
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
     // TODO: Don't know if this is correct
@@ -38,7 +38,7 @@ case class PPredicateInstance(m: PReserved[PMarkerSymbol.type], idnuse: PIdnRef,
     n.definition(member = null)(idnuse) match {
       case Some(p: PPredicate) =>
         // type checking should be the same as for PPredicateAccess nodes
-        val predicateAccess = PCall(idnuse, l, args, r, None)(p.pos)
+        val predicateAccess = PCall(idnuse, args, None)(p.pos)
         predicateAccess.funcDecl = Some(p)
         t.checkInternal(predicateAccess)
         None
@@ -47,8 +47,6 @@ case class PPredicateInstance(m: PReserved[PMarkerSymbol.type], idnuse: PIdnRef,
   }
 
   override def translateExp(t: Translator): ExtensionExp = {
-    PredicateInstance(args map t.exp, idnuse.name)(t.liftPos(this))
+    PredicateInstance(idnuse.name, args.inner.toSeq map t.exp)(t.liftPos(this))
   }
-
-  override def prettyNoBrackets: String = s"#${idnuse.name}(${args.map(_.pretty).mkString(", ")})"
 }

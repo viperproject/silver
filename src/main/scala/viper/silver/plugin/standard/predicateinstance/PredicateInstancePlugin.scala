@@ -25,15 +25,16 @@ class PredicateInstancePlugin(@unused reporter: viper.silver.reporter.Reporter,
                               @unused config: viper.silver.frontend.SilFrontendConfig,
                               fp: FastParser)  extends SilverPlugin with ParserPluginTemplate {
 
-  import fp.{FP, predAcc, ParserExtension, reservedSym}
+  import fp.{predAcc, ParserExtension, lineCol, _file}
+  import FastParserCompanion.{PositionParsing, reservedSym}
 
   /**
    * Parser for declaring predicate instances.
    *
    */
-  def predicateInstance[$: P]: P[PPredicateInstance] = FP(reservedSym(PMarkerSymbol) ~/ predAcc).map {
-    case (pos, (m, p)) => PPredicateInstance(m, p.idnuse, p.l, p.args, p.r)(pos)
-  }
+  def predicateInstance[$: P]: P[PPredicateInstance] = P((P(PMarkerSymbol) ~ predAcc).map {
+    case (m, p) => PPredicateInstance(m, p.idnuse, p.callArgs)(_)
+  }).pos
 
   /** Called before any processing happened.
    *

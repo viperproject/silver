@@ -27,7 +27,9 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
                         @unused logger: ch.qos.logback.classic.Logger,
                         config: viper.silver.frontend.SilFrontendConfig,
                         fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
-  import fp.{FP, exp, ParserExtension, reservedKw, reservedSym}
+
+  import fp.{exp, ParserExtension, lineCol, _file}
+  import FastParserCompanion.{ExtendedParsing, LeadingWhitespace, PositionParsing, reservedKw, reservedSym}
 
   private def deactivated: Boolean = config != null && config.terminationPlugin.toOption.getOrElse(false)
 
@@ -47,13 +49,13 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
    * or
    * decreases *
    */
-  def decreases[$: P]: P[(PReserved[PDecreasesKeyword.type], PDecreasesClause)] =
-    P(reservedKw(PDecreasesKeyword) ~ (decreasesWildcard | decreasesStar | decreasesTuple) ~ ";".?)
+  def decreases[$: P]: P[PSpecification[PDecreasesKeyword.type]] =
+    P((P(PDecreasesKeyword) ~ (decreasesWildcard | decreasesStar | decreasesTuple)) map (PSpecification.apply _).tupled).pos
   def decreasesTuple[$: P]: P[PDecreasesTuple] =
-    FP(exp.rep(sep = ",") ~/ condition.?).map { case (pos, (a, c)) => PDecreasesTuple(a, c)(pos) }
-  def decreasesWildcard[$: P]: P[PDecreasesWildcard] = FP("_" ~/ condition.?).map{ case (pos, c) => PDecreasesWildcard(c)(pos) }
-  def decreasesStar[$: P]: P[PDecreasesStar] = FP(reservedSym(PSym.Star)).map{ case (pos, op) => PDecreasesStar(op)(pos)}
-  def condition[$: P]: P[(PReserved[PIfKeyword.type], PExp)] = P(reservedKw(PIfKeyword) ~/ exp)
+    P((exp.delimited(PSym.Comma) ~~~ condition.lw.?) map (PDecreasesTuple.apply _).tupled).pos
+  def decreasesWildcard[$: P]: P[PDecreasesWildcard] = P((P(PWildcardSym) ~~~ condition.lw.?) map (PDecreasesWildcard.apply _).tupled).pos
+  def decreasesStar[$: P]: P[PDecreasesStar] = P(P(PSym.Star) map (PDecreasesStar(_) _)).pos
+  def condition[$: P]: P[(PReserved[PIfKeyword.type], PExp)] = P(P(PIfKeyword) ~ exp)
 
 
   /**
@@ -79,11 +81,11 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
     // Transform predicate accesses to predicate instances
     // (which are not used in the unfolding to predicate instances)
     val transformPredicateInstances = StrategyBuilder.Slim[PNode]({
-      case pc@PCall(idnUse, l, args, r, None) if input.predicates.exists(_.idndef.name == idnUse.name) =>
+      case pc@PCall(idnUse, args, None) if input.predicates.exists(_.idndef.name == idnUse.name) =>
         // PCall represents the predicate access before the translation into the AST
-        PPredicateInstance(PReserved(PMarkerSymbol)((NoPosition, NoPosition)), idnUse, l, args, r)(pc.pos)
-      case PAccPred(_, pc@PCall(idnUse, l, args, r, None), _) if input.predicates.exists(_.idndef.name == idnUse.name) =>
-        PPredicateInstance(PReserved(PMarkerSymbol)((NoPosition, NoPosition)), idnUse, l, args, r)(pc.pos)
+        PPredicateInstance(PReserved.implied(PMarkerSymbol), idnUse, args)(pc.pos)
+      case PAccPred(_, PGrouped(_, PMaybePairArgument(pc@PCall(idnUse, args, None), _), _)) if input.predicates.exists(_.idndef.name == idnUse.name) =>
+        PPredicateInstance(PReserved.implied(PMarkerSymbol), idnUse, args)(pc.pos)
       case d => d
     }).recurseFunc({
       case PUnfolding(_, _, _, exp) => // ignore predicate access when it is used for unfolding
@@ -107,7 +109,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
     }).recurseFunc({ // decreases clauses can only appear in functions/methods pres, posts and methods bodies
       case PProgram(_, _, _, _, functions, _, methods, _, _) => Seq(functions, methods)
       case PFunction(_, _, _, _, _, pres, posts, _) => Seq(pres, posts)
-      case PMethod(_, _, _, _, _, _, pres, posts, body) => Seq(pres, posts, body)
+      case PMethod(_, _, _, _, pres, posts, body) => Seq(pres, posts, body)
     }).execute(input)
 
     newProgram
@@ -137,7 +139,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
         case PSeqType(k, _) => Seq(k.rs.keyword)
         case PSetType(k, _) => Seq(k.rs.keyword)
         case PMultisetType(k, _) => Seq(k.rs.keyword)
-        case PMapType(k, _, _) => Seq(k.rs.keyword)
+        case PMapType(k, _) => Seq(k.rs.keyword)
         case PDomainType(d, _) if d.name == "PredicateInstance" => Seq("PredicateInstances")
         case PDomainType(d, _) => Seq(d.name)
         case gt: PGenericType => Seq(gt.genericName)
@@ -160,7 +162,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
     var usesPredicate = false
     val allClauseTypes: Set[Any] = decreasesClauses.flatMap{
       case PDecreasesTuple(Seq(), _) => Nil
-      case PDecreasesTuple(exps, _) => exps.map(e => e.typ match {
+      case PDecreasesTuple(exps, _) => exps.toSeq.map(e => e.typ match {
         case PUnknown() if e.isInstanceOf[PCall] =>
           usesPredicate = usesPredicate || e.asInstanceOf[PCall].funcDecl.map(_.isInstanceOf[PPredicate]).getOrElse(false)
           Nil
@@ -177,7 +179,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
         Some(name.substring(0, name.length - 16))
       else
         None
-      val wronglyConstrainedTypes = d.members.axioms.flatMap(a => constrainsWellfoundednessUnexpectedly(a, typeName))
+      val wronglyConstrainedTypes = d.members.axioms.toSeq.flatMap(a => constrainsWellfoundednessUnexpectedly(a, typeName))
       reporter.report(WarningsDuringTypechecking(wronglyConstrainedTypes.map(t =>
         TypecheckerWarning(s"Domain ${d.idndef.name} constrains well-foundedness functions for type ${t} and should be named <Type>WellFoundedOrder instead.", d.pos._1))))
     }
