@@ -139,7 +139,7 @@ case class TypeChecker(names: NameAnalyser) {
       f.pres.toSeq foreach (p => check(p.e, Bool))
       resultAllowed = true
       f.posts.toSeq foreach (p => check(p.e, Bool))
-      f.body.map(_.inner).foreach(check(_, f.typ.resultType)) //result in the function body gets the error message somewhere else
+      f.body.map(_.e.inner).foreach(check(_, f.typ.resultType)) //result in the function body gets the error message somewhere else
       resultAllowed = false
       curFunction = null
     }
@@ -168,13 +168,13 @@ case class TypeChecker(names: NameAnalyser) {
 
   def checkFunctions(d: PDomain): Unit = {
     checkMember(d) {
-      d.members.funcs.toSeq foreach check
+      d.members.inner.funcs.toSeq foreach check
     }
   }
 
   def checkAxioms(d: PDomain): Unit = {
     checkMember(d) {
-      d.members.axioms.toSeq foreach check
+      d.members.inner.axioms.toSeq foreach check
     }
   }
 
@@ -708,6 +708,15 @@ case class TypeChecker(names: NameAnalyser) {
               if (!pem.pValueType.isValidOrUndeclared)
                 check(pem.pValueType)
 
+            case pl@PLet(_, variable, _, e, _, ns) =>
+              val oldCurMember = curMember
+              curMember = ns
+              checkInternal(e)
+              variable.typ = e.typ
+              checkInternal(ns.body)
+              pl.typ = ns.body.typ
+              curMember = oldCurMember
+
             case _ =>
           }
 
@@ -749,15 +758,6 @@ case class TypeChecker(names: NameAnalyser) {
 
       case piu: PIdnUse =>
         acceptAndCheckTypedEntity[PAnyVarDecl, Nothing](Seq(piu), "expected variable identifier")
-
-      case pl@PLet(_, variable, _, e, _, ns) =>
-        val oldCurMember = curMember
-        curMember = ns
-        checkInternal(e)
-        variable.typ = e.typ
-        checkInternal(ns.body)
-        pl.typ = ns.body.typ
-        curMember = oldCurMember
 
       case pq: PForPerm =>
         val oldCurMember = curMember
@@ -982,7 +982,7 @@ case class NameAnalyser() {
         // find all global names first
         for (d <- prog.domains) {
           nodeDownNameCollectorVisitor(d)
-          d.members.funcs.toSeq.foreach(f => {
+          d.members.inner.funcs.toSeq.foreach(f => {
             nodeDownNameCollectorVisitor(f);
             nodeUpNameCollectorVisitor(f)
           })

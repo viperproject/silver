@@ -150,9 +150,9 @@ trait PLeaf extends PPrettySubnodes {
 trait PPrettySubnodes extends PNode {
   override def pretty: String = this match {
     case l: PLeaf => l.display
-    case _ => this.subnodes.map(_.pretty).mkString("")
+    case _ => this.prettyMapped()
   }
-  def prettyMapped(f: PartialFunction[PNode, String]): String = this.subnodes map {
+  def prettyMapped(f: PartialFunction[PNode, String] = PartialFunction.empty): String = this.subnodes map {
     case sn if f.isDefinedAt(sn) => f(sn)
     case l: PLeaf => l.display
     case sn: PPrettySubnodes => sn.prettyMapped(f)
@@ -1252,7 +1252,7 @@ trait PStmt extends PNode with PPrettySubnodes
 case class PAnnotatedStmt(annotation: PAnnotation, stmt: PStmt)(val pos: (Position, Position)) extends PStmt
 
 case class PSeqn(ss: PDelimited.Block[PStmt])(val pos: (Position, Position)) extends PStmt with PScope {
-  override def pretty = ss.pretty.replace("\n", "\n  ")
+  override def pretty = ss.prettyLines
 }
 
 /**
@@ -1395,11 +1395,11 @@ trait PGlobalCallable extends PGlobalDeclaration with HasFoldingRanges with HasS
   override def idndef = sig.idndef
   def formalArgs: Seq[PAnyFormalArgDecl] = sig.formalArgs.inner.toSeq
   def returnString: Option[String]
-  def pres: Seq[(PReserved[_], PExp)]
-  def posts: Seq[(PReserved[_], PExp)]
+  def pres: PDelimited[PSpecification[PKw.PreSpec], Option[PSym.Semi]]
+  def posts: PDelimited[PSpecification[PKw.PostSpec], Option[PSym.Semi]]
   override def hint: String = {
     val firstLine = s"${keyword.pretty} ${idndef.pretty}(${formalArgs.map(_.pretty).mkString(", ")})${returnString.getOrElse("")}"
-    val contract = (pres ++ posts).map(p => s"\n  ${p._1.pretty} ${p._2.pretty}")
+    val contract = (pres.toSeq ++ posts.toSeq).map(_.pretty)
     val bodyString = bodyRange.map(_ => if (contract.length > 0) "\n{ ... }" else " { ... }").getOrElse("")
     s"$firstLine${contract.mkString}$bodyString"
   }
@@ -1465,7 +1465,12 @@ case class PSignature[+T <: PAnyFormalArgDecl](idndef: PIdnDef, formalArgs: PDel
 ///////////////////////////////////////////////////////////////////////////
 // Program Members
 
-case class PProgram(imports: Seq[PImport], macros: Seq[PDefine], domains: Seq[PDomain], fields: Seq[PFields], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod], extensions: Seq[PExtender], errors: Seq[ParseReport])(val pos: (Position, Position)) extends PNode with PProgramLsp
+case class PProgram(imports: Seq[PImport], macros: Seq[PDefine], domains: Seq[PDomain], fields: Seq[PFields], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod], extensions: Seq[PExtender], errors: Seq[ParseReport])(val pos: (Position, Position)) extends PNode with PProgramLsp {
+  override def pretty =  {
+    val all = Seq(imports, macros, domains, fields, functions, predicates, methods, extensions).filter(_.length > 0)
+    all.map(_.map(_.pretty).mkString("\n")).mkString("\n")
+  }
+}
 
 case class PImport(annotations: Seq[PAnnotation], imprt: PKw.Import, file: PStringLiteral)(val pos: (Position, Position)) extends PNode with PPrettySubnodes with PLspDocumentSymbol {
   var local: Boolean = true
@@ -1495,8 +1500,8 @@ case class PDefine(annotations: Seq[PAnnotation], define: PKw.Define, idndef: PI
   override def description: String = "Macro"
 }
 
-case class PDomain(annotations: Seq[PAnnotation], domain: PKw.Domain, idndef: PIdnDef, typVars: Option[PDelimited.Comma[PSym.Bracket, PTypeVarDecl]], members: PDomainMembers, interpretations: Option[PDomainInterpretations])
-                  (val pos: (Position, Position)) extends PSingleMember with PGlobalDeclaration with HasFoldingRanges with HasSuggestionScopeRanges {
+case class PDomain(annotations: Seq[PAnnotation], domain: PKw.Domain, idndef: PIdnDef, typVars: Option[PDelimited.Comma[PSym.Bracket, PTypeVarDecl]], interpretations: Option[PDomainInterpretations], members: PGrouped[PSym.Brace, PDomainMembers])
+                  (val pos: (Position, Position)) extends PSingleMember with PGlobalDeclaration with PPrettySubnodes with HasFoldingRanges with HasSuggestionScopeRanges {
   def typVarsSeq: Seq[PTypeVarDecl] = typVars.map(_.inner.toSeq).getOrElse(Nil)
 
   override def tokenType = TokenType.Interface
@@ -1521,8 +1526,8 @@ case class PDomainFunction(annotations: Seq[PAnnotation], unique: Option[PKw.Uni
                           (val domainName: PIdnRef)(val pos: (Position, Position)) extends PAnyFunction with PPrettySubnodes {
 
   override def keyword = function
-  override def pres = Nil
-  override def posts = Nil
+  override def pres = PDelimited.empty
+  override def posts = PDelimited.empty
   override def bodyRange: Option[RangePosition] = None
   override def description: String = "Domain Function"
 }
@@ -1531,10 +1536,16 @@ case class PAxiom(annotations: Seq[PAnnotation], axiom: PKw.Axiom, idndef: Optio
 
   override def getFoldingRanges: Seq[FoldingRange] = RangePosition(exp).map(FoldingRange(_)).toSeq
 }
-case class PDomainMembers(funcs: PDelimited[PDomainFunction, Option[PSym.Semi]], axioms: PDelimited[PAxiom, Option[PSym.Semi]])(val pos: (Position, Position)) extends PNode
+case class PDomainMembers(funcs: PDelimited[PDomainFunction, Option[PSym.Semi]], axioms: PDelimited[PAxiom, Option[PSym.Semi]])(val pos: (Position, Position)) extends PNode {
+  override def pretty: String = {
+    val fPretty = if (funcs.length == 0) "" else s"\n  ${funcs.prettyLines.replace("\n", "\n  ")}\n"
+    val aPretty = if (axioms.length == 0) "" else s"\n  ${axioms.prettyLines.replace("\n", "\n  ")}\n"
+    s"${fPretty}${aPretty}"
+  }
+}
 
 case class PDomainInterpretation(name: String, c: PSym.Colon, str: PStringLiteral)(val pos: (Position, Position)) extends PNode with PPrettySubnodes
-case class PDomainInterpretations(k: PReserved[PKeywordLang], m: PDelimited.Comma[PSym.Paren, PDomainInterpretation])(val pos: (Position, Position)) extends PNode {
+case class PDomainInterpretations(k: PReserved[PKeywordLang], m: PDelimited.Comma[PSym.Paren, PDomainInterpretation])(val pos: (Position, Position)) extends PNode with PPrettySubnodes {
   def interps: Map[String, String] = m.inner.toSeq.map(i => i.name -> i.str.grouped.inner).toMap
 }
 
@@ -1552,9 +1563,9 @@ case class PSpecification[+T <: PKw.Spec](k: PReserved[PKw.Spec], e: PExp)(val p
   override def pretty: String = "\n  " + super.pretty
 }
 
-case class PFunction(annotations: Seq[PAnnotation], function: PKw.Function, sig: PSignature[PFormalArgDecl], c: PSym.Colon, resultType: PType, pres: PDelimited[PSpecification[PKw.PreSpec], Option[PSym.Semi]], posts: PDelimited[PSpecification[PKw.PostSpec], Option[PSym.Semi]], body: Option[PGrouped[PSym.Brace, PExp]])
-                    (val pos: (Position, Position)) extends PAnyFunction {
-  def deepCopy(annotations: Seq[PAnnotation] = this.annotations, function: PKw.Function = this.function, sig: PSignature[PFormalArgDecl] = this.sig, c: PSym.Colon = this.c, resultType: PType = this.resultType, pres: PDelimited[PSpecification[PKw.PreSpec], Option[PSym.Semi]] = this.pres, posts: PDelimited[PSpecification[PKw.PostSpec], Option[PSym.Semi]] = this.posts, body: Option[PGrouped[PSym.Brace, PExp]] = this.body): PFunction = {
+case class PFunction(annotations: Seq[PAnnotation], function: PKw.Function, sig: PSignature[PFormalArgDecl], c: PSym.Colon, resultType: PType, pres: PDelimited[PSpecification[PKw.PreSpec], Option[PSym.Semi]], posts: PDelimited[PSpecification[PKw.PostSpec], Option[PSym.Semi]], body: Option[PBracedExp])
+                    (val pos: (Position, Position)) extends PAnyFunction with PPrettySubnodes {
+  def deepCopy(annotations: Seq[PAnnotation] = this.annotations, function: PKw.Function = this.function, sig: PSignature[PFormalArgDecl] = this.sig, c: PSym.Colon = this.c, resultType: PType = this.resultType, pres: PDelimited[PSpecification[PKw.PreSpec], Option[PSym.Semi]] = this.pres, posts: PDelimited[PSpecification[PKw.PostSpec], Option[PSym.Semi]] = this.posts, body: Option[PBracedExp] = this.body): PFunction = {
     StrategyBuilder.Slim[PNode]({
       case p: PFunction => PFunction(annotations, function, sig, c, resultType, pres, posts, body)(p.pos)
     }).execute[PFunction](this)
@@ -1576,15 +1587,15 @@ case class PPredicate(annotations: Seq[PAnnotation], predicate: PKw.Predicate, s
   override def tokenType = TokenType.Struct
   override def symbolKind: SymbolKind.SymbolKind = SymbolKind.Struct
   override def keyword = predicate
-  override def pres = Nil
-  override def posts = Nil
+  override def pres = PDelimited.empty
+  override def posts = PDelimited.empty
   override def bodyRange: Option[RangePosition] = body.flatMap(RangePosition(_))
   override def completionKind: CompletionKind.CompletionKind = CompletionKind.Struct
   override def description: String = "Predicate"
 }
 
 case class PMethod(annotations: Seq[PAnnotation], method: PKw.Method, sig: PSignature[PFormalArgDecl], returns: Option[PMethodReturns], pres: PDelimited[PSpecification[PKw.PreSpec], Option[PSym.Semi]], posts: PDelimited[PSpecification[PKw.PostSpec], Option[PSym.Semi]], body: Option[PStmt])
-                  (val pos: (Position, Position)) extends PSingleMember with PGlobalDeclaration with PGlobalCallable with HasSuggestionScopeRanges {
+                  (val pos: (Position, Position)) extends PSingleMember with PGlobalDeclaration with PGlobalCallable with PPrettySubnodes with HasSuggestionScopeRanges {
   def deepCopy(annotations: Seq[PAnnotation] = this.annotations, method: PKw.Method = this.method, sig: PSignature[PFormalArgDecl] = this.sig, returns: Option[PMethodReturns] = this.returns, pres: PDelimited[PSpecification[PKw.PreSpec], Option[PSym.Semi]] = this.pres, posts: PDelimited[PSpecification[PKw.PostSpec], Option[PSym.Semi]] = this.posts, body: Option[PStmt] = this.body): PMethod = {
     StrategyBuilder.Slim[PNode]({
       case p: PMethod => PMethod(annotations, method, sig, returns, pres, posts, body)(p.pos)

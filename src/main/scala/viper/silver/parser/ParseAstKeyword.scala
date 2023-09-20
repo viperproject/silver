@@ -28,6 +28,10 @@ object PReserved {
 
 case class PGrouped[G <: PSym.Group, +T](l: PReserved[G#L], inner: T, r: PReserved[G#R])(val pos: (Position, Position)) extends PNode with PPrettySubnodes {
   def update[U](replacement: U): PGrouped[G, U] = PGrouped(l, replacement, r)(pos)
+  def prettyLines[U, D](implicit ev: T <:< PDelimited[U, D]): String = {
+    val iPretty = if (inner.length == 0) "" else s"\n  ${inner.prettyLines.replace("\n", "\n  ")}\n"
+    s"${l.pretty}${iPretty}${r.pretty}"
+  }
 }
 case object PGrouped {
   def implied[G <: PSym.Group, T](l: G#L, inner: T, r: G#R): PGrouped[G, T] =
@@ -52,6 +56,11 @@ case class PDelimited[+T, +D](
     if (replacement.isEmpty) PDelimited(None, Nil, end)(pos)
     else PDelimited(Some(replacement.head), inner.zip(replacement.tail).map { case ((d, _), r) => (d, r) }, end)(pos)
   }
+  def prettyLines: String = {
+    this.update(this.toSeq.zipWithIndex.map {
+      case (e, i) => (if (i == 0) () else PReserved.implied(PSym.Newline), e)
+    }).pretty
+  }
 }
 
 object PDelimited {
@@ -65,6 +74,7 @@ object PDelimited {
     val (ts, ds) = all.unzip
     new PDelimited[T, D](ts.headOption, ds.dropRight(1).zip(ts.drop(1)), ds.lastOption)(pos)
   }
+  def empty[T, D]: PDelimited[T, D] = PDelimited(None, Nil, None)(NoPosition, NoPosition)
 }
 
 ////
@@ -276,6 +286,8 @@ object PSym {
   // Used for `new(*)`
   case object Star extends PSym("*") with PSymbolLang
   type Star = PReserved[Star.type]
+  // Unused, only temporarily created when calling `prettyLines`
+  case object Newline extends PSym("\n") with PSymbolLang
 }
 
 /** Anything that can act as an operator. */

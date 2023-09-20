@@ -768,7 +768,7 @@ class FastParser {
     filter { case (t, es) => es.inner.length == 0 || t.isEmpty }
     map {
       case (t, es) if es.inner.length == 0 => empty(t, es.update(es.inner.update(Nil)))
-      case (None, es) => nonEmpty(es)
+      case (_, es) => nonEmpty(es)
     })
 
   def size[$: P]: P[PExp] = P((P(PSymOp.Or) ~ exp ~ PSymOp.Or) map (PSize.apply _).tupled).pos
@@ -963,13 +963,14 @@ class FastParser {
       val axioms1 = members collect { case m: PAxiom1 => m }
       val funcs = funcs1 map (f => (PDomainFunction(f.annotations, f.unique, f.function, f.sig, f.c, f.typ, f.interpretation)(PIdnRef(name.name)(name.pos))(f.pos), f.s))
       val axioms = axioms1 map (a => (PAxiom(a.annotations, a.axiom, a.idndef, a.exp)(PIdnRef(name.name)(name.pos))(a.pos), a.s))
+      val allMembers = block.update(PDomainMembers(PDelimited(funcs)(NoPosition, NoPosition), PDelimited(axioms)(NoPosition, NoPosition))(block.pos))
       k => ap: PAnnotationsPosition => PDomain(
         ap.annotations,
         k,
         name,
         typparams,
-        PDomainMembers(PDelimited(funcs)(NoPosition, NoPosition), PDelimited(axioms)(NoPosition, NoPosition))(block.pos),
-        interpretations)(ap.pos)
+        interpretations,
+        allMembers)(ap.pos)
   }
 
   def domainTypeVarDecl[$: P]: P[PTypeVarDecl] = P(idndef map (PTypeVarDecl.apply _)).pos
@@ -1004,7 +1005,7 @@ class FastParser {
 
   def functionDecl[$: P]: P[PKw.Function => PAnnotationsPosition => PFunction] = P((signature(formalArg) ~ PSym.Colon ~ typ
     ~~ precondition.delimited(P(PSym.Semi).?, trailingDelimit = true)
-    ~~ postcondition.delimited(P(PSym.Semi).?, trailingDelimit = true) ~~~ exp.braces.lw.?
+    ~~ postcondition.delimited(P(PSym.Semi).?, trailingDelimit = true) ~~~ bracedExp.lw.?
   ) map { case (sig, c, typ, d, e, f) => k =>
       ap: PAnnotationsPosition => PFunction(ap.annotations, k, sig, c, typ, d, e, f)(ap.pos)
   })

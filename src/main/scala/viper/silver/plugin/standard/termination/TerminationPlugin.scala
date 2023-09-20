@@ -8,7 +8,7 @@ package viper.silver.plugin.standard.termination
 
 import viper.silver.ast.utility.{Functions, ViperStrategy}
 import viper.silver.ast.utility.rewriter.{SimpleContext, Strategy, StrategyBuilder}
-import viper.silver.ast.{Applying, Assert, CondExp, CurrentPerm, Exp, FuncApp, Function, InhaleExhaleExp, MagicWand, Method, Node, NoPosition, Program, Unfolding, While}
+import viper.silver.ast.{Applying, Assert, CondExp, CurrentPerm, Exp, FuncApp, Function, InhaleExhaleExp, MagicWand, Method, Node, Program, Unfolding, While}
 import viper.silver.parser._
 import viper.silver.plugin.standard.predicateinstance.{PMarkerSymbol, PPredicateInstance}
 import viper.silver.plugin.standard.termination.transformation.Trafo
@@ -179,7 +179,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
         Some(name.substring(0, name.length - 16))
       else
         None
-      val wronglyConstrainedTypes = d.members.axioms.toSeq.flatMap(a => constrainsWellfoundednessUnexpectedly(a, typeName))
+      val wronglyConstrainedTypes = d.members.inner.axioms.toSeq.flatMap(a => constrainsWellfoundednessUnexpectedly(a, typeName))
       reporter.report(WarningsDuringTypechecking(wronglyConstrainedTypes.map(t =>
         TypecheckerWarning(s"Domain ${d.idndef.name} constrains well-foundedness functions for type ${t} and should be named <Type>WellFoundedOrder instead.", d.pos._1))))
     }
@@ -212,7 +212,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
     def generateViperPAst(code: String): Option[PProgram] = {
       val code_id = code.hashCode.asInstanceOf[Short].toString
       _input = Some(code)
-      execute(Array("--ignoreFile", code_id))
+      execute(Seq("--ignoreFile", code_id))
 
       if (errors.isEmpty) {
         Some(semanticAnalysisResult)

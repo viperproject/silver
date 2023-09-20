@@ -43,7 +43,7 @@ case class Translator(program: PProgram) {
         /* [2022-03-14 Alessandro] Following signatures can be translated independently of each other but must be translated
          * after signatures of domains and extensions because of the above mentioned reasons.
          */
-        pdomains flatMap (_.members.funcs.toSeq) foreach translateMemberSignature
+        pdomains flatMap (_.members.inner.funcs.toSeq) foreach translateMemberSignature
         (pfields ++ pfunctions ++ ppredicates ++ pmethods) foreach translateMemberSignature
 
         /* [2022-03-14 Alessandro] After the signatures are translated, the actual full translations can be done
@@ -95,7 +95,7 @@ case class Translator(program: PProgram) {
   }
 
   private def translate(d: PDomain): Domain = d match {
-    case PDomain(_, _, name, _, PDomainMembers(functions, axioms), interpretation) =>
+    case PDomain(_, _, name, _, interpretation, PGrouped(_, PDomainMembers(functions, axioms), _)) =>
       val d = findDomain(name)
       val dd = d.copy(functions = functions.toSeq map (f => findDomainFunction(f.idndef)),
         axioms = axioms.toSeq map translate, interpretations = interpretation.map(_.interps))(d.pos, d.info, d.errT)
@@ -113,7 +113,7 @@ case class Translator(program: PProgram) {
   private def translate(f: PFunction): Function = f match {
     case PFunction(_, _, sig, _, _, pres, posts, body) =>
       val f = findFunction(sig.idndef)
-      val ff = f.copy( pres = pres.toSeq map (p => exp(p.e)), posts = posts.toSeq map (p => exp(p.e)), body = body map (_.inner) map exp)(f.pos, f.info, f.errT)
+      val ff = f.copy( pres = pres.toSeq map (p => exp(p.e)), posts = posts.toSeq map (p => exp(p.e)), body = body map (_.e.inner) map exp)(f.pos, f.info, f.errT)
       members(f.name) = ff
       ff
   }
@@ -149,7 +149,7 @@ case class Translator(program: PProgram) {
         Function(name, pf.formalArgs map liftArgDecl, ttyp(typ), null, null, null)(pos, Translator.toInfo(p.annotations, pf))
       case pdf@PDomainFunction(_, unique, _, _, _, typ, interp) =>
         DomainFunc(name, pdf.formalArgs map liftAnyArgDecl, ttyp(typ), unique.isDefined, interp.map(_.i.grouped.inner))(pos, Translator.toInfo(p.annotations, pdf),pdf.domainName.name)
-      case pd@PDomain(_, _, _, typVars, _, interp) =>
+      case pd@PDomain(_, _, _, typVars, interp, _) =>
         Domain(name, null, null, typVars map (_.inner.toSeq map (t => TypeVar(t.idndef.name))) getOrElse Nil, interp.map(_.interps))(pos, Translator.toInfo(p.annotations, pd))
       case pp: PPredicate =>
         Predicate(name, pp.formalArgs map liftArgDecl, null)(pos, Translator.toInfo(p.annotations, pp))
@@ -703,6 +703,8 @@ case class Translator(program: PProgram) {
 }
 
 object Translator {
+  import scala.annotation.unused
+
   /** Takes a [[viper.silver.parser.FastPositioned]] and turns it into a [[viper.silver.ast.SourcePosition]]. */
   implicit def liftWhere(node: Where): SourcePosition = {
     if (node.pos._1.isInstanceOf[FilePosition]) {
@@ -720,7 +722,7 @@ object Translator {
     }
   }
 
-  def toInfo(annotations: Seq[PAnnotation], node: PNode): Info = {
+  def toInfo(annotations: Seq[PAnnotation], @unused node: PNode): Info = {
     if (annotations.isEmpty) {
       NoInfo
     } else {
