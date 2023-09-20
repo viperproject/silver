@@ -18,7 +18,6 @@ case object TODORefuteDoc extends BuiltinFeature(
 )
 
 case class PRefute(refute: PReserved[PRefuteKeyword.type], e: PExp)(val pos: (Position, Position)) extends PExtender with PStmt {
-  override val getSubnodes: Seq[PNode] = Seq(refute, e)
 
   override def typecheck(t: TypeChecker, n: NameAnalyser):Option[Seq[String]] = {
     t.check(e, Bool)

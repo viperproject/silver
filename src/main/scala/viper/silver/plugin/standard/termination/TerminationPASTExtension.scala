@@ -36,8 +36,6 @@ sealed trait PDecreasesClause extends PExtender with PExp {
 
 case class PDecreasesTuple(tuple: PDelimited[PExp, PSym.Comma], condition: Option[(PReserved[PIfKeyword.type], PExp)] = None)(val pos: (Position, Position)) extends PDecreasesClause {
 
-  override val getSubnodes: Seq[PNode] = Seq(tuple) ++ condition.toSeq.flatMap(c => Seq(c._1, c._2))
-
   override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = {
     // require condition to be of type bool
     condition.foreach(c => t.checkTopTyped(c._2, Some(Bool)))
@@ -52,8 +50,6 @@ case class PDecreasesTuple(tuple: PDelimited[PExp, PSym.Comma], condition: Optio
 
 case class PDecreasesWildcard(wildcard: PReserved[PWildcardSym.type], condition: Option[(PReserved[PIfKeyword.type], PExp)] = None)(val pos: (Position, Position)) extends PDecreasesClause {
 
-  override val getSubnodes: Seq[PNode] = Seq(wildcard) ++ condition.toSeq.flatMap(c => Seq(c._1, c._2))
-
   override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = {
     // require condition to be of type bool
     condition.foreach(c => t.checkTopTyped(c._2, Some(Bool)))
@@ -66,7 +62,6 @@ case class PDecreasesWildcard(wildcard: PReserved[PWildcardSym.type], condition:
 }
 
 case class PDecreasesStar(star: PSym.Star)(val pos: (Position, Position)) extends PDecreasesClause {
-  override val getSubnodes: Seq[PNode] = Seq(star)
 
   override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = {
     None

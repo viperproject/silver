@@ -14,7 +14,6 @@ import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier.{ConsistencyError, Failure, Success, VerificationResult}
 import viper.silver.verifier.errors.PreconditionInAppFalse
 import fastparse._
-import viper.silver.parser.FastParserCompanion.whitespace
 import viper.silver.reporter.Entity
 
 import scala.annotation.unused
@@ -26,7 +25,7 @@ class PredicateInstancePlugin(@unused reporter: viper.silver.reporter.Reporter,
                               fp: FastParser)  extends SilverPlugin with ParserPluginTemplate {
 
   import fp.{predAcc, ParserExtension, lineCol, _file}
-  import FastParserCompanion.{PositionParsing, reservedSym}
+  import FastParserCompanion.{PositionParsing, reservedSym, whitespace}
 
   /**
    * Parser for declaring predicate instances.

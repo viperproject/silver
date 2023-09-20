@@ -9,7 +9,6 @@ package viper.silver.plugin.standard.adt
 import fastparse._
 import viper.silver.ast.Program
 import viper.silver.ast.utility.rewriter.StrategyBuilder
-import viper.silver.parser.FastParserCompanion.whitespace
 import viper.silver.parser._
 import viper.silver.plugin.standard.adt.encoding.AdtEncoder
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
@@ -21,7 +20,8 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
                 config: viper.silver.frontend.SilFrontendConfig,
                 fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
 
-  import fp.{annotation, FP, formalArgList, idndef, idnuse, reservedKw, typ, typeParams, ParserExtension}
+  import fp.{annotation, argList, formalArg, idndef, idnuse, typ, typeList, domainTypeVarDecl, ParserExtension, lineCol, _file}
+  import FastParserCompanion.{ExtendedParsing, LeadingWhitespace, PositionParsing, reservedKw, reservedSym, whitespace}
 
   /**
     * This field is set during the beforeParse method
@@ -61,33 +61,27 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
     * }
     *
     */
-  def adtDecl[$: P]: P[PAnnotationsPosition => PAdt] = P(reservedKw(PAdtKeyword) ~ idndef ~ typeParams ~ "{" ~ adtConstructorDecl.rep ~
-    "}" ~ adtDerivingDecl.?).map {
-    case (k, name, typparams, constructors, dec) =>
-      ap: PAnnotationsPosition => PAdt(
-        ap.annotations,
-        k,
-        name,
-        typparams,
-        constructors map (c => PAdtConstructor(c.annotations, c.idndef, c.formalArgs)(PIdnRef(name.name)(name.pos))(c.pos)),
-        dec.map(_._1),
-        dec.map(_._2).getOrElse(Seq.empty)
-      )(ap.pos)
-  }
+  def adtDecl[$: P]: P[PAnnotationsPosition => PAdt] =
+    P(P(PAdtKeyword) ~ idndef ~ typeList(domainTypeVarDecl).? ~ adtConstructorDecl.rep.braces.map(PAdtConstructors1.apply _).pos ~~~ adtDerivingDecl.lw.?).map {
+      case (k, name, typparams, c, dec) =>
+        ap: PAnnotationsPosition => PAdt(
+          ap.annotations,
+          k,
+          name,
+          typparams,
+          PAdtSeq(c.seq.update(c.seq.inner map (c => PAdtConstructor(c.annotations, c.idndef, c.args)(PIdnRef(name.name)(name.pos))(c.pos))))(c.pos),
+          dec,
+        )(ap.pos)
+    }
 
-  def adtDerivingDecl[$: P] = P(reservedKw(PDeriveKeyword) ~/ "{" ~ adtDerivingDeclBody.rep ~ "}")
+  def adtDerivingDecl[$: P] = P((P(PDeriveKeyword) ~ adtDerivingDeclBody.rep.braces.map(PAdtSeq.apply _).pos) map (PAdtDeriving.apply _).tupled).pos
+
+  def adtWithout[$: P]: P[PAdtWithout] = P((P(PWithoutKeyword) ~ idnuse.delimited(PSym.Comma, min = 1)) map (PAdtWithout.apply _).tupled).pos
 
   def adtDerivingDeclBody[$: P]: P[PAdtDerivingInfo] =
-    FP(idnuse ~ ("[" ~ typ ~ "]").? ~ (reservedKw(PWithoutKeyword) ~/ idnuse.rep(sep = ",", min = 1)).?).map {
-    case (pos, (func, ttyp, Some((without, bl)))) => PAdtDerivingInfo(func, ttyp, Some(without), bl.toSet)(pos)
-    case (pos, (func, ttyp, None)) => PAdtDerivingInfo(func, ttyp, None, Set.empty)(pos)
-  }
+    P((idnuse ~~~ typ.brackets.lw.? ~~~ adtWithout.lw.?) map ((PAdtDerivingInfo.apply _).tupled)).pos
 
-  def adtConstructorDecl[$: P]: P[PAdtConstructor1] = FP(annotation.rep(0) ~ adtConstructorSignature ~ ";".?).map {
-    case (pos, (anns, (name, formalArgs))) => PAdtConstructor1(anns, name, formalArgs)(pos)
-  }
-
-  def adtConstructorSignature[$: P]: P[(PIdnDef, Seq[PFormalArgDecl])] = P(idndef ~ "(" ~ formalArgList ~ ")")
+  def adtConstructorDecl[$: P]: P[PAdtConstructor1] = P((annotation.rep ~ idndef ~ argList(formalArg) ~~~ P(PSym.Semi).lw.?) map (PAdtConstructor1.apply _).tupled).pos
 
   override def beforeResolve(input: PProgram): PProgram = {
     if (deactivated) {
@@ -103,14 +97,14 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
 
     def transformStrategy[T <: PNode](input: T): T = StrategyBuilder.Slim[PNode]({
       // If derives import is missing deriving info is ignored
-      case pa@PAdt(anns, adt, idndef, typVars, constructors, derive, _) if !derivesImported => PAdt(anns, adt, idndef, typVars, constructors, derive, Seq.empty)(pa.pos)
+      case pa@PAdt(anns, adt, idndef, typVars, constructors, _) if !derivesImported => PAdt(anns, adt, idndef, typVars, constructors, None)(pa.pos)
       case pa@PDomainType(idnuse, args) if declaredAdtNames.contains(idnuse.name) => PAdtType(idnuse, args)(pa.pos)
       case pc@PCall(idnuse, args, typeAnnotated) if declaredConstructorNames.exists(_.name == idnuse.name) => PConstructorCall(idnuse, args, typeAnnotated)(pc.pos)
       // A destructor call or discriminator call might be parsed as left-hand side of a field assignment, which is illegal. Hence in this case
       // we simply treat the calls as an ordinary field access, which results in an identifier not found error.
       case pfa@PAssign(Seq(fieldAcc: PFieldAccess), op, rhs) if declaredConstructorArgsNames.contains(fieldAcc.idnuse.name) ||
         declaredConstructorNames.exists("is" + _.name == fieldAcc.idnuse.name) =>
-        PAssign(Seq(fieldAcc.copy(rcv = transformStrategy(fieldAcc.rcv))(fieldAcc.pos)), op, transformStrategy(rhs))(pfa.pos)
+        PAssign(pfa.targets.update(Seq(fieldAcc.copy(rcv = transformStrategy(fieldAcc.rcv))(fieldAcc.pos))), op, transformStrategy(rhs))(pfa.pos)
       case pfa@PFieldAccess(rcv, _, idnuse) if declaredConstructorArgsNames.contains(idnuse.name) => PDestructorCall(idnuse, rcv)(pfa.pos)
       case pfa@PFieldAccess(rcv, _, idnuse) if declaredConstructorNames.exists("is" + _.name == idnuse.name) => PDiscriminatorCall(PIdnRef(idnuse.name.substring(2))(idnuse.pos), rcv)(pfa.pos)
     }).recurseFunc({

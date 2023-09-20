@@ -30,8 +30,6 @@ case class PPredicateInstance(m: PReserved[PMarkerSymbol.type], idnuse: PIdnRef,
   final override def typeSubstitutions: mutable.ArrayDeque[PTypeSubstitution] = _typeSubstitutions
   override def forceSubstitution(ts: PTypeSubstitution): Unit = {}
 
-  override def getSubnodes(): Seq[PNode] = Seq(m, idnuse, args)
-
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
     // TODO: Don't know if this is correct
     // check that idnuse is the id of a predicate

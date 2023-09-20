@@ -9,7 +9,7 @@ package viper.silver.plugin.standard.refute
 import fastparse._
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast._
-import viper.silver.parser.FastParserCompanion.whitespace
+import viper.silver.parser.FastParserCompanion
 import viper.silver.parser.FastParser
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.reporter.Entity
@@ -23,11 +23,11 @@ class RefutePlugin(@unused reporter: viper.silver.reporter.Reporter,
                    @unused config: viper.silver.frontend.SilFrontendConfig,
                    fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
 
-  import fp.{FP, reservedKw, exp, ParserExtension}
+  import fp.{exp, ParserExtension, lineCol, _file}
+  import FastParserCompanion.{PositionParsing, reservedKw, whitespace}
 
   /** Parser for refute statements. */
-  def refute[$: P]: P[PRefute] =
-    FP(reservedKw(PRefuteKeyword) ~/ exp).map{ case (pos, (k, e)) => PRefute(k, e)(pos) }
+  def refute[$: P]: P[PRefute] = P((P(PRefuteKeyword) ~ exp) map (PRefute.apply _).tupled).pos
 
   /** Add refute to the parser. */
   override def beforeParse(input: String, isImported: Boolean): String = {

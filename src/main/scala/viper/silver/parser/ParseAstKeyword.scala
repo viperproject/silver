@@ -28,7 +28,8 @@ object PReserved {
 
 case class PGrouped[G <: PSym.Group, +T](l: PReserved[G#L], inner: T, r: PReserved[G#R])(val pos: (Position, Position)) extends PNode with PPrettySubnodes {
   def update[U](replacement: U): PGrouped[G, U] = PGrouped(l, replacement, r)(pos)
-  def prettyLines[U, D](implicit ev: T <:< PDelimited[U, D]): String = {
+  def update[U, V, D](replacement: Seq[U])(implicit ev: T <:< PDelimited[_, D]) = PGrouped[G, PDelimited[U, D]](l, inner.update(replacement), r)(pos)
+  def prettyLines(implicit ev: T <:< PDelimited[_, _]): String = {
     val iPretty = if (inner.length == 0) "" else s"\n  ${inner.prettyLines.replace("\n", "\n  ")}\n"
     s"${l.pretty}${iPretty}${r.pretty}"
   }

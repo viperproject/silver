@@ -77,8 +77,8 @@ case class Translator(program: PProgram) {
   }
 
   private def translate(m: PMethod): Method = m match {
-    case PMethod(_, _, sig, _, pres, posts, body) =>
-      val m = findMethod(sig.idndef)
+    case PMethod(_, _, idndef, _, _, pres, posts, body) =>
+      val m = findMethod(idndef)
 
       val newBody = body.map(actualBody => {
         val b = stmt(actualBody).asInstanceOf[Seqn]
@@ -111,16 +111,16 @@ case class Translator(program: PProgram) {
   }
 
   private def translate(f: PFunction): Function = f match {
-    case PFunction(_, _, sig, _, _, pres, posts, body) =>
-      val f = findFunction(sig.idndef)
+    case PFunction(_, _, idndef, _, _, _, pres, posts, body) =>
+      val f = findFunction(idndef)
       val ff = f.copy( pres = pres.toSeq map (p => exp(p.e)), posts = posts.toSeq map (p => exp(p.e)), body = body map (_.e.inner) map exp)(f.pos, f.info, f.errT)
       members(f.name) = ff
       ff
   }
 
   private def translate(p: PPredicate): Predicate = p match {
-    case PPredicate(_, _, sig, body) =>
-      val p = findPredicate(sig.idndef)
+    case PPredicate(_, _, idndef, _, body) =>
+      val p = findPredicate(idndef)
       val pp = p.copy(body = body map (_.e.inner) map exp)(p.pos, p.info, p.errT)
       members(p.name) = pp
       pp
@@ -145,9 +145,9 @@ case class Translator(program: PProgram) {
     val t = decl match {
       case pf@PFieldDecl(_, typ) =>
         Field(name, ttyp(typ))(pos, Translator.toInfo(p.annotations, pf))
-      case pf@PFunction(_, _, _, _, typ, _, _, _) =>
+      case pf@PFunction(_, _, _, _, _, typ, _, _, _) =>
         Function(name, pf.formalArgs map liftArgDecl, ttyp(typ), null, null, null)(pos, Translator.toInfo(p.annotations, pf))
-      case pdf@PDomainFunction(_, unique, _, _, _, typ, interp) =>
+      case pdf@PDomainFunction(_, unique, _, _, _, _, typ, interp) =>
         DomainFunc(name, pdf.formalArgs map liftAnyArgDecl, ttyp(typ), unique.isDefined, interp.map(_.i.grouped.inner))(pos, Translator.toInfo(p.annotations, pdf),pdf.domainName.name)
       case pd@PDomain(_, _, _, typVars, interp, _) =>
         Domain(name, null, null, typVars map (_.inner.toSeq map (t => TypeVar(t.idndef.name))) getOrElse Nil, interp.map(_.interps))(pos, Translator.toInfo(p.annotations, pd))

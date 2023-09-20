@@ -36,11 +36,6 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
   private var decreasesClauses: Seq[PDecreasesClause] = Seq.empty
 
   /**
-   * Keyword used to define decreases clauses
-   */
-  private val decreasesKeyword: String = "decreases"
-
-  /**
    * Parser for decreases clauses with following possibilities.
    *
    * decreases (exp (, exp)*)? (if exp)?
@@ -63,7 +58,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
    */
   override def beforeParse(input: String, isImported: Boolean): String = {
     // Add new keyword
-    ParserExtension.addNewKeywords(Set[String](decreasesKeyword))
+    ParserExtension.addNewKeywords(Set[String](PDecreasesKeyword.keyword))
     // Add new parser to the precondition
     ParserExtension.addNewPreCondition(decreases(_))
     // Add new parser to the postcondition
@@ -108,8 +103,8 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
       case d => d
     }).recurseFunc({ // decreases clauses can only appear in functions/methods pres, posts and methods bodies
       case PProgram(_, _, _, _, functions, _, methods, _, _) => Seq(functions, methods)
-      case PFunction(_, _, _, _, _, pres, posts, _) => Seq(pres, posts)
-      case PMethod(_, _, _, _, pres, posts, body) => Seq(pres, posts, body)
+      case PFunction(_, _, _, _, _, _, pres, posts, _) => Seq(pres, posts)
+      case PMethod(_, _, _, _, _, pres, posts, body) => Seq(pres, posts, body)
     }).execute(input)
 
     newProgram

@@ -42,7 +42,7 @@ object Sanitizer {
       case (forall: PForall, c) => {
 
         // Check if bound variables clash with scope
-        val bounds = forall.vars.map(_.idndef.name).toSet
+        val bounds = forall.boundVars.map(_.idndef.name).toSet
         val scope = scopeAt(forall)
         val intersection = scope & bounds
 
