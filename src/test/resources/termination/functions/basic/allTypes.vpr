@@ -85,7 +85,6 @@ function numberOfUsers(seq:Seq[Bool]): Int
 decreases seq
 {
     |seq| == 0 ? 0 :
-    //:: UnexpectedOutput(termination.failed:tuple.false, /silicon/issue/300/)
         seq[0] ? 1 + numberOfUsers(seq[1..]) : numberOfUsers(seq[1..])
 }
 
