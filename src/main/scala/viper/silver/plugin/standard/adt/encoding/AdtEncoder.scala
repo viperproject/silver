@@ -32,13 +32,13 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     *
     * @return The encoded program.
     */
-  def encode(isTerminationPluginActive: Boolean): Program = {
+  def encode(generateWellFoundedness: Boolean): Program = {
 
     // In a first step encode all adt top level declarations and constructor calls
     var newProgram: Program = StrategyBuilder.Slim[Node]({
       case p@Program(domains, fields, functions, predicates, methods, extensions) =>
         val remainingExtensions = extensions filter { case _: Adt => false; case _ => true }
-        val tmp = extensions collect { case a: Adt => encodeAdtAsDomain(a, isTerminationPluginActive) }
+        val tmp = extensions collect { case a: Adt => encodeAdtAsDomain(a, generateWellFoundedness) }
         val encodedAdtsAsDomains: Seq[Domain] = tmp.flatten
         Program(domains ++ encodedAdtsAsDomains, fields, functions, predicates, methods, remainingExtensions)(p.pos, p.info, p.errT)
       case aca: AdtConstructorApp => encodeAdtConstructorApp(aca)
@@ -79,7 +79,7 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     * @param adt The ADT to encode
     * @return An the encoded ADT as a domain
     */
-  private def encodeAdtAsDomain(adt: Adt, isTerminationPluginActive: Boolean): Seq[Domain] = {
+  private def encodeAdtAsDomain(adt: Adt, generateWellFoundedness: Boolean): Seq[Domain] = {
     adt match {
       case Adt(name, constructors, typVars, derivingInfo) =>
         val domain = Domain(name, null, null, typVars)(adt.pos, adt.info, adt.errT)
@@ -91,7 +91,7 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
           constructors filter (_.formalArgs.nonEmpty) map generateContainsAxiom(domain, derivingInfo(getContainsFunctionName)._2) else Seq.empty
         val newAdtDomain = domain.copy(functions = functions, axioms = axioms ++ derivingAxioms)(adt.pos, adt.info, adt.errT)
 
-        if (isTerminationPluginActive) {
+        if (generateWellFoundedness) {
           val decreasesAxioms = constructors map generateDecreasesAxiom(domain)
           val wellFoundedDomain = Domain(getWellFoundedDomainName(domain.name), Seq(), decreasesAxioms, domain.typVars)(adt.pos, adt.info, adt.errT)
           Seq(newAdtDomain, wellFoundedDomain)
@@ -436,6 +436,8 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     AnonymousDomainAxiom(forall)(ac.pos, ac.info, ac.adtName, ac.errT)
   }
 
+  //private def generateDecreasesTransitivityAxiom(domain: Domain): AnonymousDomainAxiom = {}
+
   private def generateDecreasesAxiom(domain: Domain)(ac: AdtConstructor): AnonymousDomainAxiom = {
     assert(domain.name == ac.adtName, "AdtEncoder: An error in the ADT encoding occurred.")
 
@@ -470,7 +472,7 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
       val decreasesApp = (lv: LocalVar) => DomainFuncApp(
         getDecreasesFunctionName,
         Seq(lv, constructorApp),
-        Map(TypeVar("T") -> lv.typ)
+        Map(TypeVar("T") -> constructorApp.typ)
       )(ac.pos, ac.info, Bool, getWellFoundedOrderDeclarationDomainName, ac.errT)
 
       val axiomBody = localVars.filter(lv => lv.typ == constructorApp.typ)

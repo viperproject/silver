@@ -34,7 +34,15 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
     */
   private var derivesImported: Boolean = false
 
-  private def isTerminationPluginActive: Boolean = true // config != null && config.terminationPlugin.toOption.getOrElse(false)
+  private def isTerminationPluginActive: Boolean = {
+    config != null && !config.disableTerminationPlugin.toOption.getOrElse(false) &&
+      (!config.disableDefaultPlugins.toOption.getOrElse(false) ||
+        config.plugin.toOption.getOrElse("").split(":").contains("viper.silver.plugin.standard.termination.TerminationPlugin"))
+  }
+
+  private def generateWellFoundednessAxioms(prog: Program): Boolean = {
+    isTerminationPluginActive && prog.domainsByName.contains("WellFoundedOrder")
+  }
 
   def adtDerivingFunc[$: P]: P[PIdnUse] = FP(StringIn("contains").!).map { case (pos, id) => PIdnUse(id)(pos) }
 
@@ -53,7 +61,7 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
     input
   }
 
-  private def deactivated: Boolean = config != null && config.adtPlugin.toOption.getOrElse(false)
+  private def deactivated: Boolean = config != null && config.disableAdtPlugin.toOption.getOrElse(false)
 
   private def setDerivesImported(input: String): Unit = "import[\\s]+<adt\\/derives\\.vpr>".r.findFirstIn(input) match {
     case Some(_) => derivesImported = true
@@ -133,7 +141,7 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
     if (deactivated) {
       return input
     }
-    new AdtEncoder(input).encode(isTerminationPluginActive)
+    new AdtEncoder(input).encode(generateWellFoundednessAxioms(input))
   }
 
 }
