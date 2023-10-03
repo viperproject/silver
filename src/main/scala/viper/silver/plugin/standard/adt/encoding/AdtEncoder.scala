@@ -484,7 +484,7 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     }
 
 
-    AnonymousDomainAxiom(body)(ac.pos, ac.info, ac.adtName, ac.errT)
+    AnonymousDomainAxiom(body)(ac.pos, ac.info, getWellFoundedDomainName(domain.name), ac.errT)
   }
 
   /**
