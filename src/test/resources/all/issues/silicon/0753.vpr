@@ -1,0 +1,88 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+domain Val  {}
+
+domain WellFoundedOrder[T]  {
+
+  function decreasing(arg1: T, arg2: T): Bool
+
+  function bounded(arg1: T): Bool
+}
+
+domain List[V]  {
+
+  function Nil(): List[V]
+
+  function Cons(value: V, tail: List[V]): List[V]
+
+  function get_List_value(t: List[V]): V
+
+  function get_List_tail(t: List[V]): List[V]
+
+  function List_tag(t: List[V]): Int
+
+  axiom {
+    (forall value: V, tail: List[V] ::
+      { (Cons(value, tail): List[V]) }
+      value == (get_List_value((Cons(value, tail): List[V])): V))
+  }
+
+  axiom {
+    (forall value: V, tail: List[V] ::
+      { (Cons(value, tail): List[V]) }
+      tail == (get_List_tail((Cons(value, tail): List[V])): List[V]))
+  }
+
+  axiom {
+    (List_tag((Nil(): List[V])): Int) == 1
+  }
+
+  axiom {
+    (forall value: V, tail: List[V] ::
+      { (Cons(value, tail): List[V]) }
+      (List_tag((Cons(value, tail): List[V])): Int) == 0)
+  }
+
+  axiom {
+    (forall t: List[V] ::
+      { (List_tag(t): Int) }
+      { (get_List_value(t): V) }
+      { (get_List_tail(t): List[V]) }
+      (List_tag(t) == 1 && t == (Nil(): List[V])) ||
+      (List_tag(t) == 0 && exists v: V, l: List[V] :: t == Cons(v, l))
+      //(t == (Cons((get_List_value(t): V), (get_List_tail(t): List[V])): List[V]))
+      )
+  }
+}
+
+domain ListWellFoundedOrder[V]  {
+
+  axiom {
+    (bounded((Nil(): List[V])): Bool)
+  }
+
+  axiom {
+    (forall value: V, tail: List[V] ::
+      { (Cons(value, tail): List[V]) }
+      (bounded((Cons(value, tail): List[V])): Bool) &&
+      (decreasing(tail, (Cons(value, tail): List[V])): Bool))
+  }
+}
+
+// decreases l
+function len(l: List[Val]): Int
+  ensures result >= 0
+{
+  ((List_tag(l): Int) == 1 ? 0 : 1 + len((get_List_tail(l): List[Val])))
+}
+
+// decreases l
+method len_termination_proof(l: List[Val])
+{
+  if ((List_tag(l): Int) == 1) {
+  } else {
+    assert (decreasing((get_List_tail(l): List[Val]), old(l)): Bool) &&
+      (bounded(old(l)): Bool)}
+}

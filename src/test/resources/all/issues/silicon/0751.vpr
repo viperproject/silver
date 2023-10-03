@@ -1,0 +1,12 @@
+domain $domain$to_int  {
+
+  function to_int(to_int1: Perm): Int interpretation "to_int"
+}
+
+function round(x: Perm): Perm
+  decreases
+  //:: ExpectedOutput(postcondition.violated:assertion.false)
+  ensures result == to_int(x) / 1
+{
+  to_int(x + (1/2)) / 1
+}
