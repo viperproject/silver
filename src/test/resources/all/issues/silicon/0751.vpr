@@ -1,6 +1,7 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
+
 domain $domain$to_int  {
 
   function to_int(to_int1: Perm): Int interpretation "to_int"
