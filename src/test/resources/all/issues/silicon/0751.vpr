@@ -1,0 +1,17 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+domain $domain$to_int  {
+
+  function to_int(to_int1: Perm): Int interpretation "to_int"
+}
+
+function round(x: Perm): Perm
+  decreases
+  ensures x == 3/1 ==> result == 3/2
+  //:: ExpectedOutput(postcondition.violated:assertion.false)
+  ensures result == to_int(x) / 1
+{
+  to_int(x) / 2
+}
