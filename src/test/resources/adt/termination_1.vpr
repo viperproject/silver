@@ -1,0 +1,105 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+domain Val {}
+
+adt List[V] {
+    Nil()
+    Cons(value: V, tail: List[V])
+}
+
+function len(l: List[Val]): Int
+  ensures result >= 0
+  decreases l
+{
+  l.isNil ? 0 : 1 + len(l.tail)
+}
+
+function len2(l: List[Val]): Int
+  ensures result >= 0
+  decreases l
+{
+  l.isNil ? 0 : (l.tail.isNil ? 1 : 2 + len2(l.tail.tail))
+}
+
+function lenBad(l: List[Val], v: Val): Int
+ ensures result >= 0
+ decreases l
+{
+ //:: ExpectedOutput(termination.failed:tuple.false)
+ lenBad(Cons(v, Nil()), v)
+}
+
+function lenBad2(l: List[Val]): Int
+ ensures result >= 0
+ decreases l
+{
+ //:: ExpectedOutput(termination.failed:tuple.false)
+ 1 + lenBad2(l)
+}
+
+////////////////////////
+
+adt IntList {
+    INil()
+    ICons(ivalue: Int, itail: IntList)
+}
+
+function ilen(l: IntList): Int
+  ensures result >= 0
+  decreases l
+{
+  l.isINil ? 0 : 1 + ilen(l.itail)
+}
+
+function ilen2(l: IntList): Int
+  ensures result >= 0
+  decreases l
+{
+  l.isINil ? 0 : (l.itail.isINil ? 1 : 2 + ilen2(l.itail.itail))
+}
+
+function ilenBad(l: IntList, v: Int): Int
+ ensures result >= 0
+ decreases l
+{
+ //:: ExpectedOutput(termination.failed:tuple.false)
+ ilenBad(ICons(v, INil()), v)
+}
+
+////////////////////////
+
+// non-recursive data type with two type variables
+adt Pair[T, V] {
+    pair(fst: T, snd: V)
+}
+
+function stupidFunc(p: Pair[Int, Val]): Val
+  decreases p
+{
+  //:: ExpectedOutput(termination.failed:tuple.false)
+  stupidFunc(p)
+}
+
+// two type variables
+adt DList[V, T] {
+    DNil()
+    DCons(dvalue1: V, dvalue2: T, dtail: DList[V, T])
+}
+
+function dlen(l: DList[Int, Val]): Int
+  ensures result >= 0
+  decreases l
+{
+  l.isDNil ? 0 : 1 + dlen(l.dtail)
+}
+
+function dlenBad(l: DList[Int, Val]): Int
+  ensures result >= 0
+  decreases l
+{
+  //:: ExpectedOutput(termination.failed:tuple.false)
+  l.isDNil ? 0 : 1 + dlenBad(l)
+}
+
