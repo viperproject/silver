@@ -7,6 +7,11 @@ predicate falze()
     false
 }
 
+predicate tru()
+{
+    true
+}
+
 method test_unfold(){
     //:: ExpectedOutput(unfold.failed:permission.not.positive)
     unfold acc(falze(), none)
@@ -16,9 +21,9 @@ method test_unfold(){
 method test_unfold_unknown(p: Perm){
     assume p >= none
     //:: ExpectedOutput(unfold.failed:permission.not.positive)
+    //:: ExpectedOutput(unfold.failed:insufficient.permission)
+    //:: MissingOutput(unfold.failed:insufficient.permission, /Silicon/issue/34/)
     unfold acc(falze(), p)
-    //:: ExpectedOutput(assert.failed:assertion.false)
-    //:: MissingOutput(assert.failed:assertion.false, /Silicon/issue/34/)
     assert false
 }
 
@@ -30,18 +35,18 @@ method test_unfolding(){
 method test_unfolding_unknown(p: Perm){
     assume p >= none
     //:: ExpectedOutput(assert.failed:permission.not.positive)
-    //:: ExpectedOutput(assert.failed:assertion.false)
-    //:: MissingOutput(assert.failed:assertion.false, /Silicon/issue/34/)
+    //:: ExpectedOutput(assert.failed:insufficient.permission)
+    //:: MissingOutput(assert.failed:insufficient.permission, /Silicon/issue/34/)
     assert unfolding acc(falze(), p) in false
 }
 
 method test_fold(){
     //:: ExpectedOutput(fold.failed:permission.not.positive)
-    fold acc(falze(), none)
+    fold acc(tru(), none)
 }
 
 method test_fold_unknown(p: Perm){
     assume p >= none
     //:: ExpectedOutput(fold.failed:permission.not.positive)
-    fold acc(falze(), p)
+    fold acc(tru(), p)
 }
