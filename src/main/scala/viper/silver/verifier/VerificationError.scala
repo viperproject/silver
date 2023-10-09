@@ -650,6 +650,14 @@ object reasons {
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = NegativePermission(offendingNode.asInstanceOf[Exp])
   }
 
+  case class NonPositivePermission(offendingNode: Exp) extends AbstractErrorReason {
+    val id = "permission.not.positive"
+
+    def readableMessage = s"Fraction $offendingNode might not be positive."
+
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = NonPositivePermission(offendingNode.asInstanceOf[Exp])
+  }
+
   case class InsufficientPermission(offendingNode: LocationAccess) extends AbstractErrorReason {
     val id = "insufficient.permission"
     def readableMessage = s"There might be insufficient permission to access $offendingNode"
