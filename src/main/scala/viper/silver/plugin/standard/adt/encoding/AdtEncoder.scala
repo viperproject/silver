@@ -504,6 +504,41 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
         Map(TypeVar("T") -> constructorApp.typ)
       )(ac.pos, ac.info, Bool, getWellFoundedOrderDeclarationDomainName, ac.errT)
 
+      def getNestedADTVals(visitedADTTypes: Set[AdtType], currentVar: LocalVarDecl): Seq[(Seq[LocalVarDecl], Exp, Exp)] = {
+        currentVar.typ match {
+          case at: AdtType if at == ac.typ => Seq((Seq(currentVar), currentVar.localVar, currentVar.localVar))
+          case at: AdtType if !visitedADTTypes.contains(at) =>
+            val adt = program.extensions.find {
+              case a: Adt if a.name == at.adtName => true
+              case _ => false
+            }.get.asInstanceOf[Adt]
+            // for every constructor,
+            // for every parameter, if there is something recursive to be done, collect options.
+            // if not, introduce a new quantified variable.
+            // if at least one parameter does something recursive, return the new plus returned quantified variables, the constructor
+            // applied to all args or lower level terms, and return the constrainable vars unchanged.
+            adt.constructors.flatMap(ac2 => {
+              val argDecls = ac2.formalArgs.map { case l: LocalVarDecl => l.copy(name = l.name + "_" + visitedADTTypes.size)(l.pos, l.info, l.errT) }
+              val argVals = ac2.formalArgs.map(fa2 => getNestedADTVals(visitedADTTypes + at, fa2))
+              argVals.zipWithIndex.flatMap{ case (avs, i) => {
+                val res: Seq[(Seq[LocalVarDecl], Exp, Exp)] = avs.map(av => {
+                  val qvars = av._1 ++ (argDecls diff Seq(argDecls(i)))
+                  val cApp = DomainFuncApp(
+                    ac2.name,
+                    argDecls.take(i).map(_.localVar) ++ Seq(av._2) ++ argDecls.drop(i + 1).map(_.localVar),
+                    encodeAdtTypeAsDomainType(ac2.typ).typVarsMap,
+                  )(ac.pos, ac.info, encodeAdtTypeAsDomainType(ac2.typ), ac.adtName, ac.errT)
+                  (qvars, cApp, av._3)
+                })
+                res
+              }}
+            })
+          case _ => Seq()
+        }
+      }
+
+      val nestedADTVals = localVarDecl.flatMap(lvd => getNestedADTVals(Set(), lvd))
+      println(nestedADTVals)
       val axiomBody = localVars.filter(lv => lv.typ == constructorApp.typ)
         .map(decreasesApp)
         .foldLeft[Exp](boundedApp)((a, b) => And(a, b)(ac.pos, ac.info, ac.errT)
