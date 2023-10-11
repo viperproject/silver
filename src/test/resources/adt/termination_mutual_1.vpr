@@ -1,0 +1,35 @@
+adt List1 {
+  RList1(x: Int, l: List2)
+}
+adt List2 {
+  Empty()
+  NonEmpty(l: List1)
+}
+
+
+function len2(l: List2): Int
+    decreases l
+{
+    l == Empty()? 0 : 1 + len2(l.l.l)
+}
+
+
+function len2Bad(l: List2): Int
+    decreases l
+{
+    //:: ExpectedOutput(termination.failed:tuple.false)
+    l == Empty()? 0 : 1 + len2Bad(l)
+}
+
+function len1(l: List1): Int
+    decreases l
+{
+    l.l == Empty()? 0 : 1 + len1(l.l.l)
+}
+
+function len1Bad(l: List1): Int
+    decreases l
+{
+    //:: ExpectedOutput(termination.failed:tuple.false)
+    l.l == Empty()? 0 : 1 + len1Bad(l)
+}

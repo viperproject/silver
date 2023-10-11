@@ -97,7 +97,7 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
         val newAdtDomain = domain.copy(functions = functions, axioms = axioms ++ derivingAxioms)(adt.pos, adt.info, adt.errT)
 
         if (generateWellFoundedness) {
-          val decreasesAxioms = (constructors map generateDecreasesAxiom(domain)) :+ generateDecreasesTransitivityAxiom(domain)
+          val decreasesAxioms = (constructors map generateDecreasesAxiom(domain)) :+ generateDecreasesTransitivityAxiom(domain) :+ generateBoundedAxiom(domain)
           val wellFoundedDomain = Domain(getWellFoundedDomainName(domain.name), Seq(), decreasesAxioms, domain.typVars)(adt.pos, adt.info, adt.errT)
           Seq(newAdtDomain, wellFoundedDomain)
         }else {
@@ -467,6 +467,19 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     AnonymousDomainAxiom(forall)(domain.pos, domain.info, getWellFoundedDomainName(domain.name), domain.errT)
   }
 
+  private def generateBoundedAxiom(domain: Domain): AnonymousDomainAxiom = {
+    val domainType = DomainType(domain, defaultTypeVarsFromDomain(domain))
+    val param = LocalVarDecl("x", domainType)()
+    val boundedApp = DomainFuncApp(
+      getBoundedFunctionName,
+      Seq(param.localVar),
+      Map(TypeVar("T") -> domainType)
+    )(domain.pos, domain.info, Bool, getWellFoundedOrderDeclarationDomainName, domain.errT)
+    val trigger = Trigger(Seq(boundedApp))(domain.pos, domain.info, domain.errT)
+    val forall = Forall(Seq(param), Seq(trigger), boundedApp)(domain.pos, domain.info, domain.errT)
+    AnonymousDomainAxiom(forall)(domain.pos, domain.info, getWellFoundedDomainName(domain.name), domain.errT)
+  }
+
   private def generateDecreasesAxiom(domain: Domain)(ac: AdtConstructor): AnonymousDomainAxiom = {
     assert(domain.name == ac.adtName, "AdtEncoder: An error in the ADT encoding occurred.")
 
@@ -476,33 +489,14 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
         case d => localVarTFromType(d, Some(lv.name))(ac.pos, ac.info, ac.errT)
       }
     }
-    val constructorApp = DomainFuncApp(
-      ac.name,
-      localVars,
-      defaultTypeVarsFromDomain(domain)
-    )(ac.pos, ac.info, encodeAdtTypeAsDomainType(ac.typ), ac.adtName, ac.errT)
 
-    val boundedApp = DomainFuncApp(
-      getBoundedFunctionName,
-      Seq(constructorApp),
-      Map(TypeVar("T") -> constructorApp.typ)
-    )(ac.pos, ac.info, Bool, getWellFoundedOrderDeclarationDomainName, ac.errT)
-
-
-    val body = if (ac.formalArgs.isEmpty) {
-      boundedApp
+    val decreases = if (ac.formalArgs.isEmpty) {
+      Nil
     } else {
       val localVarDecl = ac.formalArgs.collect { case l: LocalVarDecl => l }
 
       assert(localVarDecl.size == localVars.size, "AdtEncoder: An error in the ADT encoding occurred.")
 
-      val trigger = Trigger(Seq(constructorApp))(ac.pos, ac.info, ac.errT)
-
-      val decreasesApp = (lv: LocalVar) => DomainFuncApp(
-        getDecreasesFunctionName,
-        Seq(lv, constructorApp),
-        Map(TypeVar("T") -> constructorApp.typ)
-      )(ac.pos, ac.info, Bool, getWellFoundedOrderDeclarationDomainName, ac.errT)
 
       def getNestedADTVals(visitedADTTypes: Set[AdtType], currentVar: LocalVarDecl): Seq[(Seq[LocalVarDecl], Exp, Exp)] = {
         currentVar.typ match {
@@ -520,7 +514,7 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
             adt.constructors.flatMap(ac2 => {
               val argDecls = ac2.formalArgs.map { case l: LocalVarDecl => l.copy(name = l.name + "_" + visitedADTTypes.size)(l.pos, l.info, l.errT) }
               val argVals = ac2.formalArgs.map(fa2 => getNestedADTVals(visitedADTTypes + at, fa2))
-              argVals.zipWithIndex.flatMap{ case (avs, i) => {
+              argVals.zipWithIndex.flatMap{ case (avs, i) =>
                 val res: Seq[(Seq[LocalVarDecl], Exp, Exp)] = avs.map(av => {
                   val qvars = av._1 ++ (argDecls diff Seq(argDecls(i)))
                   val cApp = DomainFuncApp(
@@ -531,23 +525,40 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
                   (qvars, cApp, av._3)
                 })
                 res
-              }}
+              }
             })
           case _ => Seq()
         }
       }
+      var decreasesQuants: List[Exp] = Nil
 
-      val nestedADTVals = localVarDecl.flatMap(lvd => getNestedADTVals(Set(), lvd))
-      println(nestedADTVals)
-      val axiomBody = localVars.filter(lv => lv.typ == constructorApp.typ)
-        .map(decreasesApp)
-        .foldLeft[Exp](boundedApp)((a, b) => And(a, b)(ac.pos, ac.info, ac.errT)
-        )
-      val forall = Forall(localVarDecl, Seq(trigger), axiomBody)(ac.pos, ac.info, ac.errT)
-      forall
+      val nestedADTVals = localVarDecl.map(lvd => getNestedADTVals(Set(), lvd))
+      for ((avs, i) <- nestedADTVals.zipWithIndex) {
+        val otherVars = localVarDecl.take(i) ++ localVarDecl.drop(i + 1)
+        for (av <- avs) {
+          val (qvars, value, smallerValue) = av
+          val allQvars = qvars ++ otherVars
+          val constructorArgs = localVars.take(i) ++ Seq(value) ++ localVars.drop(i + 1)
+          val constructorApp = DomainFuncApp(
+            ac.name,
+            constructorArgs,
+            defaultTypeVarsFromDomain(domain)
+          )(ac.pos, ac.info, encodeAdtTypeAsDomainType(ac.typ), ac.adtName, ac.errT)
+          val trigger = Trigger(Seq(constructorApp))(ac.pos, ac.info, ac.errT)
+          val decreasesApp = DomainFuncApp(
+            getDecreasesFunctionName,
+            Seq(smallerValue, constructorApp),
+            Map(TypeVar("T") -> constructorApp.typ)
+          )(ac.pos, ac.info, Bool, getWellFoundedOrderDeclarationDomainName, ac.errT)
+          val forall = Forall(allQvars, Seq(trigger), decreasesApp)(ac.pos, ac.info, ac.errT)
+          decreasesQuants = forall :: decreasesQuants
+        }
+      }
+
+      decreasesQuants
     }
 
-
+    val body = decreases.foldLeft[Exp](TrueLit()())((a, b) => And(a, b)())
     AnonymousDomainAxiom(body)(ac.pos, ac.info, getWellFoundedDomainName(domain.name), ac.errT)
   }
 
