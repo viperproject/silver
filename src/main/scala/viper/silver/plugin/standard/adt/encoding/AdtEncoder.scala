@@ -441,6 +441,11 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     AnonymousDomainAxiom(forall)(ac.pos, ac.info, ac.adtName, ac.errT)
   }
 
+  /**
+    * Generates an axiom that expresses transitivity of the decreases relation for the current type ADT:
+    * forall v1: ADT, v2: ADT, v3: ADT :: { decreases(v1, v2), decreases(v2, v3) }
+    *   decreases(v1, v2) && decreases(v2, v3) ==> decreases(v1, v3)
+    */
   private def generateDecreasesTransitivityAxiom(domain: Domain): AnonymousDomainAxiom = {
     val dt = DomainType(domain, defaultTypeVarsFromDomain(domain))
     val v1 = LocalVarDecl("v1", dt)()
@@ -467,6 +472,11 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     AnonymousDomainAxiom(forall)(domain.pos, domain.info, getWellFoundedDomainName(domain.name), domain.errT)
   }
 
+  /**
+    * Generates an axiom that expresses that all values of the current ADT are bounded:
+    * forall x: ADT :: { bounded(x) } bounded(x)
+    * This is justified by the fact that Viper ADTs are recursive types and are always finite.
+    */
   private def generateBoundedAxiom(domain: Domain): AnonymousDomainAxiom = {
     val domainType = DomainType(domain, defaultTypeVarsFromDomain(domain))
     val param = LocalVarDecl("x", domainType)()
@@ -480,6 +490,14 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     AnonymousDomainAxiom(forall)(domain.pos, domain.info, getWellFoundedDomainName(domain.name), domain.errT)
   }
 
+  /**
+    * Generates an axiom for the given constructor that expresses that all values of the current ADT contained
+    * inside an ADT value constructed using said constructor are smaller than the ADT value itself.
+    * E.g., for List { Nil() Cons(i: Int, l: List) }:
+    * forall i: Int, l: List :: { Cons(i, l) } decreases(l, Cons(i, l))
+    * Also takes into account values that may be contained through constructors of other ADT types (in cases of mutually
+    * recursive ADT definitions).
+    */
   private def generateDecreasesAxiom(domain: Domain)(ac: AdtConstructor): AnonymousDomainAxiom = {
     assert(domain.name == ac.adtName, "AdtEncoder: An error in the ADT encoding occurred.")
 
@@ -497,25 +515,47 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
 
       assert(localVarDecl.size == localVars.size, "AdtEncoder: An error in the ADT encoding occurred.")
 
-
+      /**
+        * Given a variable currentVar that represents an argument of the current ADT constructor, if the variable's
+        * type is an ADT type, recursively looks for values of the original ADT type, either in the variable itself
+        * or in all constructors of its type.
+        * E.g., if ac is a constructor for ADT1, then:
+        *  - if the type of currentVar is ADT1, then we have already found a value of the original ADT type
+        *  - if the type of the variable is ADT2, and ADT2 has a constructor C(T1, ADT1), then we have found a value
+        *    of the original type inside this constructor.
+        * The method returns a sequence of tuples, where each tuple contains
+        * - a list of all variables referred to in the second argument
+        * - an expression containing a value of type ADT1 (either just a variable of the type, or an ADT constructor
+        *   applied to some arguments, one of which is either itself a variable of type ADT1 or another ADT constructor
+        *   that has an argument that is or contains a value of said type).
+        * - the variable of type ADT1 contained in the second term.
+        * So, in the first scenario above, we return Seq((Seq(currentVar), currentVar, currentVar)).
+        * In the second scenario, we return Seq((Seq(t: T, a: ADT1), C(t, a), a))
+        */
       def getNestedADTVals(visitedADTTypes: Set[AdtType], currentVar: LocalVarDecl): Seq[(Seq[LocalVarDecl], Exp, Exp)] = {
         currentVar.typ match {
-          case at: AdtType if at == ac.typ => Seq((Seq(currentVar), currentVar.localVar, currentVar.localVar))
+          case at: AdtType if at == ac.typ =>
+            // case 1: The variable directly has the type that we are looking for.
+            val newName = currentVar.name + "_" + visitedADTTypes.size
+            val renamedCurrentVar = currentVar.copy(name = newName)(currentVar.pos, currentVar.info, currentVar.errT)
+            Seq((Seq(renamedCurrentVar), renamedCurrentVar.localVar, renamedCurrentVar.localVar))
           case at: AdtType if !visitedADTTypes.contains(at) =>
+            // case 2: The variable has a different ADT type, which may have one or more constructors that contain
+            // a value of the type we are looking for.
             val adt = program.extensions.find {
               case a: Adt if a.name == at.adtName => true
               case _ => false
             }.get.asInstanceOf[Adt]
-            // for every constructor,
-            // for every parameter, if there is something recursive to be done, collect options.
-            // if not, introduce a new quantified variable.
-            // if at least one parameter does something recursive, return the new plus returned quantified variables, the constructor
-            // applied to all args or lower level terms, and return the constrainable vars unchanged.
+
+            // Look through all constructors
             adt.constructors.flatMap(ac2 => {
               val argDecls = ac2.formalArgs.map { case l: LocalVarDecl => l.copy(name = l.name + "_" + visitedADTTypes.size)(l.pos, l.info, l.errT) }
+
+              // Recursively check the type of the constructor's arguments
               val argVals = ac2.formalArgs.map(fa2 => getNestedADTVals(visitedADTTypes + at, fa2))
               argVals.zipWithIndex.flatMap{ case (avs, i) =>
                 val res: Seq[(Seq[LocalVarDecl], Exp, Exp)] = avs.map(av => {
+                  // Apply the current constructor to the arguments for every occurrence that was found.
                   val qvars = av._1 ++ (argDecls diff Seq(argDecls(i)))
                   val cApp = DomainFuncApp(
                     ac2.name,
@@ -527,12 +567,17 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
                 res
               }
             })
-          case _ => Seq()
+          case _ =>
+            // case 3: Different type or an ADT type we already looked at.
+            Seq()
         }
       }
       var decreasesQuants: List[Exp] = Nil
 
       val nestedADTVals = localVarDecl.map(lvd => getNestedADTVals(Set(), lvd))
+
+      // For each found nested value of our type, generate a quantified expression that states states that the contained
+      // value is less than the original value.
       for ((avs, i) <- nestedADTVals.zipWithIndex) {
         val otherVars = localVarDecl.take(i) ++ localVarDecl.drop(i + 1)
         for (av <- avs) {
@@ -554,7 +599,6 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
           decreasesQuants = forall :: decreasesQuants
         }
       }
-
       decreasesQuants
     }
 
