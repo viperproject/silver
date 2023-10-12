@@ -1,0 +1,18 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <decreases/declaration.vpr>
+
+domain IntWellFoundedOrder{
+	// Domain already being present will prevent auto-import of the default domain.
+	// Thus, we have no defined order for type Int and proofs should fail.
+}
+
+//Example decreasing Int
+function fact(x:Int): Int
+  decreases x
+  requires x>=0
+{
+    //:: ExpectedOutput(termination.failed:tuple.false)
+    x==0 ? 1 : x*fact(x-1)
+}
