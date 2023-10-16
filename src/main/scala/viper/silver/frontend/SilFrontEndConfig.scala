@@ -110,7 +110,7 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     case i => throw new IllegalArgumentException(s"Unsupported counterexample model provided. Expected 'native', 'variables' or 'mapped' but got $i")
   }))
 
-  val terminationPlugin = opt[Boolean]("disableTerminationPlugin",
+  val disableTerminationPlugin = opt[Boolean]("disableTerminationPlugin",
     descr = "Disable the termination plugin, which adds termination checks to functions, " +
       "methods and loops.",
     default = Some(false),
@@ -118,7 +118,7 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     hidden = true
   )
 
-  val adtPlugin = opt[Boolean]("disableAdtPlugin",
+  val disableAdtPlugin = opt[Boolean]("disableAdtPlugin",
     descr = "Disable the ADT plugin, which adds support for ADTs as a built-in type.",
     default = Some(false),
     noshort = true,
