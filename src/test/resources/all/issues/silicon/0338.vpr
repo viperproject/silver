@@ -40,6 +40,7 @@ method bar(x: Ref)
 {
     package acc(x.data) --* false {
         assert acc(x.data) && acc(x.data)
+        //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/470/)
         assert false
     }
     //:: ExpectedOutput(assert.failed:assertion.false)
