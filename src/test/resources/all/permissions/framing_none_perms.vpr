@@ -27,9 +27,7 @@ method test02(x: Ref, y: Ref)
   var vx: Int := fun02(x, y, true)
   var vy: Int := fun02(x, y, false)
   y.f := 0
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/205/)
   assert vx == fun02(x, y, true)
   //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)
   assert vy == fun02(x, y, false)
 }

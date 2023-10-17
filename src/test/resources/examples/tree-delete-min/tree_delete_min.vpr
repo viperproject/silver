@@ -1,7 +1,6 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-//:: IgnoreFile(/carbon/issue/280/)
 
 /* This example shows how magic wands can be used to specify the
  * imperative version of challenge 3 from the VerifyThis@FM2012

@@ -1,12 +1,14 @@
 package viper.silver.testing
 
-import org.scalatest.{BeforeAndAfterAllConfigMap, ConfigMap, FunSuite, Matchers}
-import viper.silver.ast.{And, AnySetContains, Assert, BackendFuncApp, EqCmp, Exhale, Exp, Field, FieldAccess, FieldAccessPredicate, FieldAssign, Fold, Forall, FullPerm, Function, Implies, Inhale, IntLit, LocalVarAssign, LocalVarDecl, Method, NeCmp, Not, Predicate, PredicateAccess, PredicateAccessPredicate, Program, Ref, Result, Seqn, SetType, Stmt}
+import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.{BeforeAndAfterAllConfigMap, ConfigMap}
+import viper.silver.ast.{And, AnySetContains, Assert, BackendFuncApp, Domain, EqCmp, Exhale, Exp, Field, FieldAccess, FieldAccessPredicate, FieldAssign, Fold, Forall, FullPerm, Function, Implies, Inhale, IntLit, LocalVarAssign, LocalVarDecl, Method, NeCmp, Not, Predicate, PredicateAccess, PredicateAccessPredicate, Program, Ref, Result, Seqn, SetType, Stmt}
 import viper.silver.ast.utility.{BVFactory, FloatFactory, RoundingMode}
 import viper.silver.verifier.{Failure, Success, Verifier}
 import viper.silver.verifier.errors.{AssertFailed, PostconditionViolated}
 
-trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfigMap {
+trait BackendTypeTest extends AnyFunSuite with Matchers with BeforeAndAfterAllConfigMap {
 
   def generateTypeCombinationTest(success: Boolean) : (Program, Assert) = {
     val t = if (success) BVFactory(23).typ else FloatFactory(23, 11, RoundingMode.RNE).typ
@@ -19,7 +21,8 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
     val assume = Inhale(element_in_param)()
     val assert = Assert(element_in_param)()
     val body = if (success) Seq(assume, assert) else Seq(assert)
-    (wrapInProgram(body, Seq(p1_decl, p2_decl), Seq()), assert)
+    val domain = if (success) BVFactory(23).constructDomain(Seq()) else FloatFactory(23, 11, RoundingMode.RNE).constructDomain(Seq())
+    (wrapInProgram(Seq(domain), body, Seq(p1_decl, p2_decl), Seq()), assert)
   }
 
   def generateFieldTypeTest(success: Boolean) : (Program, Assert) = {
@@ -37,7 +40,8 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
     val assume = Inhale(element_in_param)()
     val assert = Assert(element_in_param)()
     val body = if (success) Seq(getPerm, assume, assert) else Seq(getPerm, assert)
-    (wrapInProgram(body, Seq(p1_decl, p2_decl), Seq(), fields = Seq(field)), assert)
+    val domain = if (!success) BVFactory(23).constructDomain(Seq()) else FloatFactory(23, 11, RoundingMode.RNE).constructDomain(Seq())
+    (wrapInProgram(Seq(domain), body, Seq(p1_decl, p2_decl), Seq(), fields = Seq(field)), assert)
   }
 
   def generateFloatQPTest() : Program = {
@@ -53,7 +57,7 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
     val fieldInfoBody = Implies(AnySetContains(x.localVar, setParam.localVar)(), NeCmp(FieldAccess(x.localVar, fld)(), floatParam.localVar)())()
     val fieldInfoQuant = Forall(Seq(x), Seq(), fieldInfoBody)()
     val inhaleFieldInfo = Inhale(fieldInfoQuant)()
-    wrapInProgram(Seq(inhaleQp, inhaleFieldInfo), Seq(setParam, floatParam), Seq(), Seq(fld))
+    wrapInProgram(Seq(fp.constructDomain(Seq())), Seq(inhaleQp, inhaleFieldInfo), Seq(setParam, floatParam), Seq(), Seq(fld))
   }
 
   def generateFloatOpTest(success: Boolean) : (Program, Assert) = {
@@ -79,7 +83,7 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
 
     val equality = BackendFuncApp(fp_eq, Seq(addition, result_addition))()
     val assert = Assert(equality)()
-    (wrapInProgram(Seq(assert), Seq(), Seq()), assert)
+    (wrapInProgram(Seq(bv32.constructDomain(Seq(from_int)), fp.constructDomain(Seq(to_fp, fp_eq, fp_add))), Seq(assert), Seq(), Seq()), assert)
   }
 
   def generateFloatMinMaxTest(success: Boolean) : (Program, Assert) = {
@@ -104,7 +108,8 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
     val equality_max = BackendFuncApp(fp_eq, Seq(max, second_float))()
     val equality = And(equality_min, equality_max)()
     val assert = Assert(if (success) equality else Not(equality)())()
-    (wrapInProgram(Seq(assert), Seq(), Seq()), assert)
+
+    (wrapInProgram(Seq(bv32.constructDomain(Seq(from_int)), fp.constructDomain(Seq(to_fp, fp_eq, fp_min, fp_max))), Seq(assert), Seq(), Seq()), assert)
   }
 
   def generateFloatOpFunctionTest(success: Boolean) : (Program, Function, Exp) = {
@@ -131,7 +136,7 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
     val equality = BackendFuncApp(fp_eq, Seq(Result(fp.typ)(), result_addition))()
 
     val fun = Function("test", Seq(), fp.typ, Seq(), Seq(equality), Some(addition))()
-    val program = Program(Seq(), Seq(), Seq(fun), Seq(), Seq(), Seq())()
+    val program = Program(Seq(fp.constructDomain(Seq(to_fp, fp_eq, fp_add)), bv32.constructDomain(Seq(from_int))), Seq(), Seq(fun), Seq(), Seq(), Seq())()
     (program, fun, equality)
   }
 
@@ -159,7 +164,8 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
 
     val body = Seqn(Seq(inhale, assign, fold, exhale), Seq())()
     val method = Method("m_id", Seq(), Seq(selfVar), Seq(), Seq(), Some(body))()
-    val prog = Program(Seq(), Seq(field), Seq(), Seq(pred), Seq(method), Seq())()
+    val domains = Seq(fp.constructDomain(Seq(to_fp)), bv64.constructDomain(Seq(from_int)))
+    val prog = Program(domains, Seq(field), Seq(), Seq(pred), Seq(method), Seq())()
 
     prog
   }
@@ -180,7 +186,8 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
     val xor_app = BackendFuncApp(xor, Seq(one, two))()
     val equality1 = EqCmp(result_ref, xor_app)()
     val assertion1 = Assert(equality1)()
-    (wrapInProgram(Seq(assign, assertion1), Seq(), Seq(result_decl)), assertion1)
+    val domain = bv23.constructDomain(Seq(from_int, xor))
+    (wrapInProgram(Seq(domain), Seq(assign, assertion1), Seq(), Seq(result_decl)), assertion1)
   }
 
   def generateBvOpTest2() : Program = {
@@ -192,41 +199,59 @@ trait BackendTypeTest extends FunSuite with Matchers with BeforeAndAfterAllConfi
     val one = BackendFuncApp(from_int, Seq(one_lit))()
     val res_decl = LocalVarDecl("res", bv23.typ)()
     val res = res_decl.localVar
+    val xor = bv23.xor("xorBV23")
+    val xnor = bv23.xnor("xnorBV23")
+    val and = bv23.and("andBV23")
+    val nand = bv23.nand("nandBV23")
+    val or = bv23.or("orBV23")
+    val nor = bv23.nor("norBV23")
+    val add = bv23.add("addBV23")
+    val sub = bv23.sub("subBV23")
+    val mul = bv23.mul("mulBV23")
+    val smod = bv23.smod("smodBV23")
+    val srem = bv23.srem("sremBV23")
+    val udiv = bv23.udiv("udivBV23")
+    val urem = bv23.urem("uremBV23")
+    val shl = bv23.shl("shlBV23")
+    val lshr = bv23.lshr("lshrBV23")
+    val ashr = bv23.ashr("ashrBV23")
+    val domain = bv23.constructDomain(Seq(from_int, xor, xnor, and, nand, or, nor, add, sub, mul, smod, srem, udiv, urem, shl, lshr, ashr))
     wrapInProgram(
+      Seq(domain),
       Seq(
-        LocalVarAssign(res, BackendFuncApp(bv23.xor("xorBV23"), Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(bv23.xnor("xnorBV23"), Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(bv23.and("andBV23"), Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(bv23.nand("nandBV23"), Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(bv23.or("orBV23"), Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(bv23.nor("norBV23"), Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(bv23.add("addBV23"), Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(bv23.sub("subBV23"), Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(bv23.mul("mulBV23"), Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(bv23.smod("smodBV23"), Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(bv23.srem("sremBV23"), Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(bv23.udiv("udivBV23"), Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(bv23.urem("uremBV23"), Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(bv23.shl("shlBV23"), Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(bv23.lshr("lshrBV23"), Seq(one, two))())(),
-        LocalVarAssign(res, BackendFuncApp(bv23.ashr("ashrBV23"), Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(xor, Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(xnor, Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(and, Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(nand, Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(or, Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(nor, Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(add, Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(sub, Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(mul, Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(smod, Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(srem, Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(udiv, Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(urem, Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(shl, Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(lshr, Seq(one, two))())(),
+        LocalVarAssign(res, BackendFuncApp(ashr, Seq(one, two))())(),
       ), Seq(), Seq(res_decl))
   }
 
-  def wrapInProgram(stmts: Seq[Stmt], params: Seq[LocalVarDecl], vars: Seq[LocalVarDecl], fields: Seq[Field] = Seq()): Program = {
+  def wrapInProgram(domains: Seq[Domain], stmts: Seq[Stmt], params: Seq[LocalVarDecl], vars: Seq[LocalVarDecl], fields: Seq[Field] = Seq()): Program = {
     val block = Seqn(stmts, vars)()
     val method = Method("test", params, Seq(), Seq(), Seq(), Some(block))()
-    Program(Seq(), fields, Seq(), Seq(), Seq(method), Seq())()
+    Program(domains, fields, Seq(), Seq(), Seq(method), Seq())()
   }
 
   val verifier : Verifier
 
-  override def beforeAll(configMap: ConfigMap) {
+  override def beforeAll(configMap: ConfigMap): Unit = {
     verifier.parseCommandLine(Seq("dummy.vpr"))
     verifier.start()
   }
 
-  override def afterAll(configMap: ConfigMap) {
+  override def afterAll(configMap: ConfigMap): Unit = {
     verifier.stop()
   }
 

@@ -12,12 +12,15 @@ import viper.silver.ast._
 import viper.silver.parser.FastParserCompanion.whitespace
 import viper.silver.parser.FastParser
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
+import viper.silver.reporter.Entity
 import viper.silver.verifier._
 import viper.silver.verifier.errors.AssertFailed
 
-class RefutePlugin(reporter: viper.silver.reporter.Reporter,
-                   logger: ch.qos.logback.classic.Logger,
-                   config: viper.silver.frontend.SilFrontendConfig,
+import scala.annotation.unused
+
+class RefutePlugin(@unused reporter: viper.silver.reporter.Reporter,
+                   @unused logger: ch.qos.logback.classic.Logger,
+                   @unused config: viper.silver.frontend.SilFrontendConfig,
                    fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
 
   import fp.{FP, keyword, exp, ParserExtension}
@@ -25,10 +28,8 @@ class RefutePlugin(reporter: viper.silver.reporter.Reporter,
   /** Keyword used to define refute statements. */
   private val refuteKeyword: String = "refute"
 
-  private var refuteAsserts: Map[Position, Refute] = Map()
-
   /** Parser for refute statements. */
-  def refute[_: P]: P[PRefute] =
+  def refute[$: P]: P[PRefute] =
     FP(keyword(refuteKeyword) ~/ exp).map{ case (pos, e) => PRefute(e)(pos) }
 
   /** Add refute to the parser. */
@@ -44,40 +45,65 @@ class RefutePlugin(reporter: viper.silver.reporter.Reporter,
    * Remove refute statements from the AST and add them as non-det asserts.
    * The ⭐ is nice since such a variable name cannot be parsed, but will it cause issues?
    */
-  override def beforeVerify(input: Program): Program =
-    ViperStrategy.Slim({
-      case r@Refute(exp) => {
-        this.refuteAsserts += (r.pos -> r)
-        Seqn(Seq(
-          If(LocalVar(s"__plugin_refute_nondet${this.refuteAsserts.size}", Bool)(r.pos),
-            Seqn(Seq(
-              Assert(exp)(r.pos, RefuteInfo),
-              Inhale(BoolLit(false)(r.pos))(r.pos)
-            ), Seq())(r.pos),
-            Seqn(Seq(), Seq())(r.pos))(r.pos)
+  override def beforeVerify(input: Program): Program = {
+    val transformedMethods = input.methods.map(method => {
+      var refutesInMethod = 0
+      ViperStrategy.Slim({
+        case r@Refute(exp) =>
+          refutesInMethod += 1
+          val nonDetLocalVarDecl = LocalVarDecl(s"__plugin_refute_nondet$refutesInMethod", Bool)(r.pos)
+          Seqn(Seq(
+            If(nonDetLocalVarDecl.localVar,
+              Seqn(Seq(
+                Assert(exp)(r.pos, RefuteInfo(r)),
+                Inhale(BoolLit(false)(r.pos))(r.pos)
+              ), Seq())(r.pos),
+              Seqn(Seq(), Seq())(r.pos))(r.pos)
           ),
-          Seq(LocalVarDecl(s"__plugin_refute_nondet${this.refuteAsserts.size}", Bool)(r.pos))
-        )(r.pos)
-      }
-    }).recurseFunc({
-      case Method(_, _, _, _, _, body) => Seq(body)
-    }).execute(input)
+            Seq(nonDetLocalVarDecl)
+          )(r.pos)
+      }).recurseFunc({
+        case Method(_, _, _, _, _, body) => Seq(body)
+      }).execute[Method](method)
+    })
+    Program(input.domains, input.fields, input.functions, input.predicates, transformedMethods, input.extensions)(input.pos, input.info, input.errT)
+  }
 
-  /** Remove refutation related errors and add refuteAsserts that didn't report an error. */
-  override def mapVerificationResult(input: VerificationResult): VerificationResult = {
-    val errors: Seq[AbstractError] = (input match {
-      case Success => Seq()
-      case Failure(errors) => {
-        errors.filter {
-          case AssertFailed(a, _, _) if a.info == RefuteInfo => {
-            this.refuteAsserts -= a.pos
-            false
-          }
-          case _ => true
-        }
+  /** Remove refutation related errors for the current entity and add refuteAsserts in this entity that didn't report an error. */
+  override def mapEntityVerificationResult(entity: Entity, input: VerificationResult): VerificationResult =
+    mapVerificationResultsForNode(entity, input)
+
+  /** Remove refutation related errors (for all entities) and add refuteAsserts (for all entities) that didn't report an error. */
+  override def mapVerificationResult(program: Program, input: VerificationResult): VerificationResult =
+    mapVerificationResultsForNode(program, input)
+
+  private def mapVerificationResultsForNode(n: Node, input: VerificationResult): VerificationResult = {
+    val (refutesForWhichErrorOccurred, otherErrors) = input match {
+      case Success => (Seq.empty, Seq.empty)
+      case Failure(errors) => errors.partitionMap {
+        case AssertFailed(NodeWithRefuteInfo(RefuteInfo(r)), _, _) => Left((r, r.pos))
+        case err => Right(err)
       }
-    }) ++ this.refuteAsserts.map(r => RefuteFailed(r._2, RefutationTrue(r._2.exp)))
-    if (errors.length == 0) Success
+    }
+    val refutesContainedInNode = n.collect {
+      case NodeWithRefuteInfo(RefuteInfo(r)) => (r, r.pos)
+    }
+    // note that we include positional information in `refutesForWhichErrorOccurred` and `refutesContainedInNode` such
+    // that we do not miss errors just because the same refute statement occurs multiple times
+    val refutesForWhichNoErrorOccurred = refutesContainedInNode.filterNot(refutesForWhichErrorOccurred.contains(_))
+    val missingErrorsInNode = refutesForWhichNoErrorOccurred.map{
+      case (refute, _) => RefuteFailed(refute, RefutationTrue(refute.exp))
+    }
+
+    val errors = otherErrors ++ missingErrorsInNode
+    if (errors.isEmpty) Success
     else Failure(errors)
+  }
+}
+
+object NodeWithRefuteInfo {
+  def unapply(node : Node) : Option[RefuteInfo] = node match {
+    case i: Infoed => i.info.getUniqueInfo[RefuteInfo]
+    case _ => None
   }
 }

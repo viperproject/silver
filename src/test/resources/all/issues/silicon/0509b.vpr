@@ -1,0 +1,70 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+function lookup(r: Ref, i: Int): Int
+  requires acc(r.f)
+
+
+function lookup2(r: Ref, i: Int): Int
+  requires acc(r.f)
+
+method main(r1: Ref, r2: Ref)
+    requires acc(r1.f) && acc(r2.f)
+{
+  assume r1.f == 1
+  exhale acc(r1.f) && acc(r2.f)
+  inhale acc(r1.f) && acc(r2.f)
+  assume r1.f == 3
+  var s: Set[Ref]
+  s := Set(r1, r2)
+  assume lookup(r1, 5) > 3
+  label before
+  exhale acc(r1.f) && acc(r2.f)
+  inhale acc(r1.f) && acc(r2.f)
+  assume r1.f == 4
+  assume forall i: Int :: { old[before](lookup(r1, i)) } lookup2(r1, i) == old[before](lookup(r1, i))
+
+  assert lookup2(r1, 5) > 2
+}
+
+method main_fail_1(r1: Ref, r2: Ref)
+    requires acc(r1.f) && acc(r2.f)
+{
+  assume r1.f == 1
+  exhale acc(r1.f) && acc(r2.f)
+  inhale acc(r1.f) && acc(r2.f)
+  assume r1.f == 3
+  var s: Set[Ref]
+  s := Set(r1, r2)
+  assume lookup(r1, 5) > 3
+  label before
+  exhale acc(r1.f) && acc(r2.f)
+  inhale acc(r1.f) && acc(r2.f)
+  assume r1.f == 4
+  assume forall i: Int :: { lookup(r1, i) } lookup2(r1, i) == old[before](lookup(r1, i))
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert lookup2(r1, 5) > 2
+}
+
+method main_fail_2(r1: Ref, r2: Ref)
+    requires acc(r1.f) && acc(r2.f)
+{
+  assume r1.f == 1
+  exhale acc(r1.f) && acc(r2.f)
+  inhale acc(r1.f) && acc(r2.f)
+  assume r1.f == 3
+  var s: Set[Ref]
+  s := Set(r1, r2)
+  assume lookup(r1, 5) > 3
+  label before
+  exhale acc(r1.f) && acc(r2.f)
+  inhale acc(r1.f) && acc(r2.f)
+  assume r1.f == 4
+  assume forall i: Int :: { old(lookup(r1, i)) } lookup2(r1, i) == old[before](lookup(r1, i))
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert lookup2(r1, 5) > 2
+}

@@ -11,5 +11,6 @@ method test(r:Ref)
   requires P(r)
   {
       assert perm(r.next) == none
+      //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/213/)
       assert (unfolding P(r) in perm(r.next) == write)
   }

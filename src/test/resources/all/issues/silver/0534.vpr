@@ -1,0 +1,19 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Ref
+predicate P(r: Ref)
+
+domain Frac {
+  function box(p: Perm): Frac
+  function unbox(q: Frac): Perm
+}
+
+method test1(b: Bool, x: Ref) {
+  //:: ExpectedOutput(consistency.error)
+  inhale acc(x.f, 2*wildcard)
+  //:: ExpectedOutput(consistency.error)
+  inhale acc(x.f, unbox(box(wildcard)))
+  //:: ExpectedOutput(consistency.error)
+  inhale acc(P(x), b ? wildcard : 1/2)
+}

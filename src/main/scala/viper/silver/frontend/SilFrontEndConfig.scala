@@ -82,6 +82,13 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     hidden = true
   )
 
+  val disableDefaultPlugins = opt[Boolean]("disableDefaultPlugins",
+    descr = "Deactivate all default plugins.",
+    default = Some(false),
+    noshort = true,
+    hidden = true
+  )
+
   val plugin = opt[String]("plugin",
     descr = "Load plugin(s) with given class name(s). Several plugins can be separated by ':'. " +
       "The fully qualified class name of the plugin should be specified.",
@@ -103,7 +110,7 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     case i => throw new IllegalArgumentException(s"Unsupported counterexample model provided. Expected 'native', 'variables' or 'mapped' but got $i")
   }))
 
-  val terminationPlugin = opt[Boolean]("disableTerminationPlugin",
+  val disableTerminationPlugin = opt[Boolean]("disableTerminationPlugin",
     descr = "Disable the termination plugin, which adds termination checks to functions, " +
       "methods and loops.",
     default = Some(false),
@@ -111,7 +118,7 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     hidden = true
   )
 
-  val adtPlugin = opt[Boolean]("disableAdtPlugin",
+  val disableAdtPlugin = opt[Boolean]("disableAdtPlugin",
     descr = "Disable the ADT plugin, which adds support for ADTs as a built-in type.",
     default = Some(false),
     noshort = true,
@@ -160,6 +167,7 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
       case Version => println(builder.vers.get)
       case Help(_) =>
         _printHelp = true
+        helpWidth(120)
         printHelp()
       case ScallopException(message) => error = Some(message)
       case unhandled => throw unhandled

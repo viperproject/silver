@@ -1,0 +1,9 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Bool
+
+predicate segment(x: Ref) {
+    //:: ExpectedOutput(consistency.error)
+    acc(x.f, wildcard) && (x.f ==> acc(x.f, write - wildcard))
+}

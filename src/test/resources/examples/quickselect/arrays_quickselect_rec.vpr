@@ -1,7 +1,6 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-//:: IgnoreFile(/carbon/issue/280/)
 
 /* https://en.wikipedia.org/wiki/Quickselect
  *
@@ -151,7 +150,6 @@ method select_rec(a: IArray, left: Int, right: Int, n: Int) returns (storeIndex:
 {
   var pwPar: Seq[Int]
   var pwRec: Seq[Int]
-
   if (left == right) {
     /* If the list contains only one element, return it */
     storeIndex := left

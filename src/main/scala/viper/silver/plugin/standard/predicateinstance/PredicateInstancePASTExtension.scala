@@ -27,10 +27,11 @@ case class PPredicateInstance(args: Seq[PExp], idnuse: PIdnUse)(val pos: (Positi
     // TODO: Don't know if this is correct
     // check that idnuse is the id of a predicate
     n.definition(member = null)(idnuse) match {
-      case p: PPredicate =>
+      case Some(p: PPredicate) =>
         // type checking should be the same as for PPredicateAccess nodes
-        val predicateAccess = PPredicateAccess(args, idnuse)(p.pos)
-        t.check(predicateAccess, PTypeSubstitution.id)
+        val predicateAccess = PCall(idnuse, args)(p.pos)
+        predicateAccess.extfunction = p
+        t.checkInternal(predicateAccess)
         None
       case _ => Some(Seq("expected predicate"))
     }

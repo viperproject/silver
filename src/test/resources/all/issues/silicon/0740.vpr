@@ -1,0 +1,20 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+field f: Bool
+
+method fails(a: Bool)
+{
+    var curr: Ref := null
+
+    while (curr != null)
+        invariant curr != null ==> acc(curr.f)
+    {
+        refute false
+        curr := null
+    }
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}

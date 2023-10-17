@@ -16,14 +16,14 @@ method t_plus(x: Ref)
 method t_minus_1(x: Ref)
     requires acc(x.f)
 {
-    //:: ExpectedOutput(fold.failed:negative.permission)
+    //:: ExpectedOutput(fold.failed:permission.not.positive)
     fold acc(token(x), (-1/1))
 }
 
 method t_minus_2(x: Ref)
     requires acc(x.f)
 {
-    //:: ExpectedOutput(fold.failed:negative.permission)
+    //:: ExpectedOutput(fold.failed:permission.not.positive)
     fold acc(token(x), -(1/1))
 }
 

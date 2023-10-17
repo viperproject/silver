@@ -1,0 +1,15 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+method test(xs: Seq[Seq[Ref]])
+    requires forall i: Int, j: Int, i0: Int, j0: Int ::
+        0 <= i && i < |xs| && 0 <= j && j < |xs[i]| &&
+        0 <= i0 && i0 < |xs| && 0 <= j0 && j0 < |xs[i0]| &&
+        (i != i0 || j != j0)
+        ==> xs[i][j] != xs[i0][j0]
+    requires forall i: Int :: 0 <= i && i < |xs| ==>
+        let xs_i == (xs[i]) in
+            forall j: Int :: 0 <= j && j < |xs_i| ==>
+                acc(xs[i][j].f, write)

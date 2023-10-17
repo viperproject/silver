@@ -8,6 +8,7 @@ package viper.silver.plugin
 
 import viper.silver.ast.Program
 import viper.silver.parser.PProgram
+import viper.silver.reporter.Entity
 import viper.silver.verifier.{AbstractError, VerificationResult}
 
 // The aim of this file is just to give a skeleton implementation to copy for a particular plugin implementation.
@@ -53,13 +54,24 @@ class PluginTemplate extends SilverPlugin {
       */
     override def beforeVerify(input: Program) : Program = ???
 
-    /** Called after the verification. Error transformation should happen here.
-      * This will only be called if verification took place.
+    /** Called after the verification of an entity, which is used to stream verification results to the IDE
+      * (which happens as soon as a member has been verified). Error transformation should happen here.
+      * This will only be called if verification of `entity` took place.
       *
+      * @param entity Entity to which `input` belongs
       * @param input Result of verification
       * @return Modified result
       */
-    override def mapVerificationResult(input: VerificationResult): VerificationResult = ???
+    override def mapEntityVerificationResult(entity: Entity, input: VerificationResult): VerificationResult = ???
+
+    /** Called after the verification. Error transformation should happen here.
+      * This will only be called if verification took place.
+      *
+      * @param program Viper AST
+      * @param input Result of verification
+      * @return Modified result
+      */
+    override def mapVerificationResult(program: Program, input: VerificationResult): VerificationResult = ???
 
     /** Called after the verification just before the result is printed. Will not be called in tests.
       * This will also be called even if verification did not take place (i.e. an error during parsing/translation occurred).

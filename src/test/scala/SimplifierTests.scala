@@ -12,6 +12,27 @@ import viper.silver.ast._
 import viper.silver.ast.utility.Simplifier._
 
 class SimplifierTests extends AnyFunSuite with Matchers {
+
+  test("cond") {
+
+    val a = LocalVar("a", Bool)()
+    val b = LocalVar("a", Bool)()
+    val acc = PredicateAccessPredicate(
+      PredicateAccess(Nil, "pred")(),
+      FullPerm()()
+    )()
+    val tru = TrueLit()()
+
+    // Non-pure conditional should be converted into implication
+    simplify(CondExp(a,tru,acc)()) should be(Implies(Not(a)(), acc)())
+
+    // Pure conditional can be converted into disjunction
+    simplify(CondExp(a,tru,b)()) should be(Or(a, b)())
+
+    simplify(CondExp(a,b,tru)()) should be(Implies(a, b)())
+
+  }
+
   test("div") {
     simplify(Div(0, 0)()) should be(Div(0, 0)())
     simplify(Div(8, 2)()) should be(4: IntLit)
@@ -27,6 +48,12 @@ class SimplifierTests extends AnyFunSuite with Matchers {
     simplify(Mod(-3, 8)()) should be (5: IntLit)
     simplify(Mod(-8, -3)()) should be (1: IntLit)
     simplify(Mod(-3, -8)()) should be (5: IntLit)
+  }
+
+  test("equality") {
+    val seqAcc = SeqIndex(EmptySeq(Int)(), 0: IntLit)()
+    // Do not simplify away definedness issues.
+    simplify(EqCmp(seqAcc, seqAcc)()) should be(EqCmp(seqAcc, seqAcc)())
   }
 
   implicit def int2IntLit(i: Int): IntLit = IntLit(i)()

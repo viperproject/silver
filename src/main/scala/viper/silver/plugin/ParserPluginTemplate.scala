@@ -138,6 +138,8 @@ trait ParserPluginTemplate {
     override def errT: ErrorTrafo = ???
     override def info: Info = ???
     override def prettyPrint: PrettyPrintPrimitives#Cont = ???
+    /** declarations contributed by this statement that should be added to the parent scope */
+    override def declarationsInParentScope: Seq[Declaration] = ???
   }
 
   /**

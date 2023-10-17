@@ -41,6 +41,11 @@ trait AdtNameManager {
 
   def getContainsFunctionName: String = "contains"
 
+  def getWellFoundedDomainName(typeName: String): String = typeName + "WellFoundedOrder"
+  def getWellFoundedOrderDeclarationDomainName : String = "WellFoundedOrder"
+  def getDecreasesFunctionName: String = "decreasing"
+  def getBoundedFunctionName: String = "bounded"
+
   def getContainsTransitivityDomain: String = getName("ContainsTransitivityDomain")
 
   /**

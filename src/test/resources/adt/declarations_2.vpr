@@ -1,14 +1,14 @@
 adt SimpleList {
     SimpleNil()
-    //:: ExpectedOutput(typechecker.error)
     SimpleCons(value: Int, tail: SimpleList)
+    //:: ExpectedOutput(typechecker.error)
     SimpleCons(value: Int, tail: SimpleList)
 }
 
 adt List[T] {
     Nil()
-    //:: ExpectedOutput(typechecker.error)
     Cons(value: T, tail: List[T])
+    //:: ExpectedOutput(typechecker.error)
     Cons(value: T, tail: List[T])
 }
 

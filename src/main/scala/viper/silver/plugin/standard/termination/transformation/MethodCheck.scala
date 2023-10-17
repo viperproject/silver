@@ -19,7 +19,7 @@ import viper.silver.verifier.errors.AssertFailed
 trait MethodCheck extends ProgramManager with DecreasesCheck with NestedPredicates with ErrorReporter {
 
   private def getMethodDecreasesSpecification(method: String): DecreasesSpecification = {
-    program.methods.find(_.name == method) match {
+    program.findMethodOptionally(method) match {
       case Some(f) => DecreasesSpecification.fromNode(f)
       case None => DecreasesSpecification()
     }

@@ -11,11 +11,12 @@ import viper.silver.ast._
 import viper.silver.parser._
 import viper.silver.plugin.standard.adt.PAdtConstructor.findAdtConstructor
 
+import scala.annotation.unused
 import scala.util.{Success, Try}
 
 
 case class PAdt(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], constructors: Seq[PAdtConstructor], derivingInfos: Seq[PAdtDerivingInfo])
-               (val pos: (Position, Position)) extends PExtender with PMember with PGlobalDeclaration {
+               (val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PExtender with PSingleMember {
 
   override val getSubnodes: Seq[PNode] = Seq(idndef) ++ typVars ++ constructors ++ derivingInfos
 
@@ -88,6 +89,18 @@ case class PAdt(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], constructors: Seq[P
     adtType
   }
 
+  override def withChildren(children: Seq[Any], pos: Option[(Position, Position)] = None, forceRewrite: Boolean = false): this.type = {
+    if (!forceRewrite && this.children == children && pos.isEmpty)
+      this
+    else {
+      assert(children.length == 4, s"PAdt : expected length 4 but got ${children.length}")
+      val first = children(0).asInstanceOf[PIdnDef]
+      val second = children(1).asInstanceOf[Seq[PTypeVarDecl]]
+      val third = children(2).asInstanceOf[Seq[PAdtConstructor]]
+      val fourth = children(3).asInstanceOf[Seq[PAdtDerivingInfo]]
+      PAdt(first, second, third, fourth)(pos.getOrElse(this.pos), annotations).asInstanceOf[this.type]
+    }
+  }
 }
 
 object PAdt {
@@ -103,7 +116,7 @@ object PAdt {
 }
 
 case class PAdtConstructor(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl])
-                          (val adtName: PIdnUse)(val pos: (Position, Position)) extends PExtender with PMember with PGlobalDeclaration {
+                          (val adtName: PIdnUse)(val pos: (Position, Position), val annotations: Seq[(String, Seq[String])]) extends PExtender with PSingleMember {
 
   override val getSubnodes: Seq[PNode] = Seq(idndef) ++ formalArgs
 
@@ -114,7 +127,7 @@ case class PAdtConstructor(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl])
     Try {
       n.definition(t.curMember)(PIdnUse("is" + idndef.name)(idndef.pos))
     } match {
-      case Success(decl) =>
+      case Success(Some(decl)) =>
         t.messages ++= FastMessaging.message(idndef, "corresponding adt discriminator identifier `" + decl.idndef.name + "' at " + idndef.pos._1 + " is shadowed at " + decl.idndef.pos._1)
       case _ =>
     }
@@ -141,7 +154,7 @@ case class PAdtConstructor(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl])
       assert(children.length == 2, s"PAdtConstructor : expected length 2 but got ${children.length}")
       val first = children.head.asInstanceOf[PIdnDef]
       val second = children.tail.head.asInstanceOf[Seq[PFormalArgDecl]]
-      PAdtConstructor(first, second)(this.adtName)(pos.getOrElse(this.pos)).asInstanceOf[this.type]
+      PAdtConstructor(first, second)(this.adtName)(pos.getOrElse(this.pos), annotations).asInstanceOf[this.type]
     }
   }
 }
@@ -157,7 +170,7 @@ object PAdtConstructor {
   def findAdtConstructor(id: PIdentifier, t: Translator): AdtConstructor = t.getMembers()(id.name).asInstanceOf[AdtConstructor]
 }
 
-case class PAdtConstructor1(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl])(val pos: (Position, Position))
+case class PAdtConstructor1(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl])(val pos: (Position, Position), val annotations: Seq[(String, Seq[String])])
 
 case class PAdtDerivingInfo(idnuse: PIdnUse, param: Option[PType], blockList: Set[PIdnUse])(val pos: (Position, Position)) extends PExtender {
 
@@ -210,7 +223,7 @@ case class PAdtType(adt: PIdnUse, args: Seq[PType])
         var x: Any = null
 
         try {
-          x = t.names.definition(t.curMember)(adt)
+          x = t.names.definition(t.curMember)(adt).get
         } catch {
           case _: Throwable =>
         }
@@ -238,6 +251,8 @@ case class PAdtType(adt: PIdnUse, args: Seq[PType])
       case None => sys.error("undeclared adt type")
     }
   }
+
+  override def withTypeArguments(s: Seq[PType]): PGenericType = copy(args = s)(pos)
 
   override def toString: String = adt.name + (if (args.isEmpty) "" else s"[${args.mkString(", ")}]")
 
@@ -281,7 +296,7 @@ sealed trait PAdtOpApp extends PExtender with POpApp {
         assert(s3.m.forall(_._2.isGround))
         adtSubstitution = Some(s3)
         dtr.mm.values.foldLeft(ots)(
-          (tss, s) => if (tss.contains(s)) tss else tss.add(s, PTypeSubstitution.defaultType).get)
+          (tss, s) => if (tss.contains(s)) tss else tss.add(s, PTypeSubstitution.defaultType).toOption.get)
       case _ => ots
     }
     super.forceSubstitution(ts)
@@ -296,7 +311,7 @@ object PAdtOpApp {
     * This method mirrors the functionality in Resolver.scala that handles operation applications, except that it is
     * adapted to work for ADT operator applications.
     */
-  def typecheck(poa: PAdtOpApp)(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
+  def typecheck(poa: PAdtOpApp)(t: TypeChecker, @unused n: NameAnalyser): Option[Seq[String]] = {
 
     def getFreshTypeSubstitution(tvs: Seq[PDomainType]): PTypeRenaming =
       PTypeVar.freshTypeSubstitutionPTVs(tvs)
@@ -324,10 +339,10 @@ object PAdtOpApp {
             }
 
             if (!nestedTypeError) {
-              val ac = t.names.definition(t.curMember)(constr).asInstanceOf[PAdtConstructor]
+              val ac = t.names.definition(t.curMember)(constr).get.asInstanceOf[PAdtConstructor]
               pcc.constructor = ac
               t.ensure(ac.formalArgs.size == args.size, pcc, "wrong number of arguments")
-              val adt = t.names.definition(t.curMember)(ac.adtName).asInstanceOf[PAdt]
+              val adt = t.names.definition(t.curMember)(ac.adtName).get.asInstanceOf[PAdt]
               pcc.adt = adt
               val fdtv = PTypeVar.freshTypeSubstitution((adt.typVars map (tv => tv.idndef.name)).distinct) //fresh domain type variables
               pcc.adtTypeRenaming = Some(fdtv)
@@ -338,7 +353,7 @@ object PAdtOpApp {
           case pdc@PDestructorCall(name, _) =>
             pdc.args.head.typ match {
               case at: PAdtType =>
-                val adt = t.names.definition(t.curMember)(at.adt).asInstanceOf[PAdt]
+                val adt = t.names.definition(t.curMember)(at.adt).get.asInstanceOf[PAdt]
                 pdc.adt = adt
                 val matchingConstructorArgs: Seq[PFormalArgDecl] = adt.constructors flatMap (c => c.formalArgs.collect { case fad@PFormalArgDecl(idndef, _) if idndef.name == name => fad })
                 if (matchingConstructorArgs.nonEmpty) {
@@ -357,8 +372,8 @@ object PAdtOpApp {
 
           case pdc@PDiscriminatorCall(name, _) =>
             t.names.definition(t.curMember)(name) match {
-              case ac: PAdtConstructor =>
-                val adt = t.names.definition(t.curMember)(ac.adtName).asInstanceOf[PAdt]
+              case Some(ac: PAdtConstructor) =>
+                val adt = t.names.definition(t.curMember)(ac.adtName).get.asInstanceOf[PAdt]
                 pdc.adt = adt
                 val fdtv = PTypeVar.freshTypeSubstitution((adt.typVars map (tv => tv.idndef.name)).distinct) //fresh domain type variables
                 pdc.adtTypeRenaming = Some(fdtv)
@@ -377,15 +392,15 @@ object PAdtOpApp {
           assert(rlts.nonEmpty)
           val rrt: PDomainType = POpApp.pRes.substitute(ltr).asInstanceOf[PDomainType] // return type (which is a dummy type variable) replaced with fresh type
           val flat = poa.args.indices map (i => POpApp.pArg(i).substitute(ltr)) //fresh local argument types
-          // the triples below are: (fresh argument type, argument type as used in domain of substitutions, substitutions)
-          poa.typeSubstitutions ++= t.unifySequenceWithSubstitutions(rlts, flat.indices.map(i => (flat(i), poa.args(i).typ, poa.args(i).typeSubstitutions.distinct.toSeq)) ++
+          // the tuples below are: (fresh argument type, argument type as used in domain of substitutions, substitutions, the argument itself)
+          poa.typeSubstitutions ++= t.unifySequenceWithSubstitutions(rlts, flat.indices.map(i => (flat(i), poa.args(i).typ, poa.args(i).typeSubstitutions.distinct.toSeq, poa.args(i))) ++
             (
               extraReturnTypeConstraint match {
                 case None => Nil
-                case Some(t) => Seq((rrt, t, List(PTypeSubstitution.id)))
+                case Some(t) => Seq((rrt, t, List(PTypeSubstitution.id), poa))
               }
               )
-          )
+          ).getOrElse(Seq())
           val ts = poa.typeSubstitutions.distinct
           if (ts.isEmpty)
             t.typeError(poa)

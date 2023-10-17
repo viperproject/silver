@@ -1,0 +1,68 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <decreases/int.vpr>
+
+// Viper permits writing decreases measures anywhere in a function's specification
+// and this test case checks that the transformations correctly account for this
+
+function fun1(x: Int): Int
+  decreases
+  requires true
+  ensures  true
+{
+  //:: ExpectedOutput(termination.failed:tuple.false)
+  x > -10 ? fun1(x-1) : 6
+}
+
+function fun2(x: Int): Int
+  requires true
+  decreases
+  ensures  true
+{
+  //:: ExpectedOutput(termination.failed:tuple.false)
+  x > -10 ? fun2(x-1) : 6
+}
+
+function fun3(x: Int): Int
+  requires true
+  ensures  true
+  decreases
+{
+  //:: ExpectedOutput(termination.failed:tuple.false)
+  x > -10 ? fun3(x-1) : 6
+}
+
+
+// the following methods check that the termination plugin considers ALL stated termination measures independently of
+// how they are mixed with pre- and postconditions
+
+function fun4(x: Int): Int
+  decreases _ if x <= -10
+  decreases x+10 if x > -10 // verification of this function does not result in a verification failure in case this termination measure is ignored / dropped by the plugin
+  requires true
+  ensures  true
+{
+  //:: ExpectedOutput(termination.failed:tuple.condition.false)
+  x > -10 ? fun4(x-1) : 6
+}
+
+function fun5(x: Int): Int
+  decreases _ if x <= -10
+  requires true
+  decreases x+10 if x > -10 // verification of this function does not result in a verification failure in case this termination measure is ignored / dropped by the plugin
+  ensures  true
+{
+  //:: ExpectedOutput(termination.failed:tuple.condition.false)
+  x > -10 ? fun5(x-1) : 6
+}
+
+function fun6(x: Int): Int
+  decreases _ if x <= -10
+  requires true
+  ensures  true
+  decreases x+10 if x > -10 // verification of this function does not result in a verification failure in case this termination measure is ignored / dropped by the plugin
+{
+  //:: ExpectedOutput(termination.failed:tuple.condition.false)
+  x > -10 ? fun6(x-1) : 6
+}
