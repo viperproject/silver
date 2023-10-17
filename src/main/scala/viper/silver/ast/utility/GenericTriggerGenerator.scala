@@ -7,7 +7,8 @@
 package viper.silver.ast.utility
 
 import java.util.concurrent.atomic.AtomicInteger
-import reflect.ClassTag
+import scala.reflect.ClassTag
+import viper.silver.ast
 
 object GenericTriggerGenerator {
   case class TriggerSet[E](exps: Seq[E])
@@ -194,7 +195,14 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
           results.flatten ++ Seq((withArgs(possibleTrigger, processedArgs), containedVars, extraVars))
         else
           results.flatten
-
+      case ast.Old(_) => results.flatten.map(t => {
+        val exp = t._1.asInstanceOf[ast.Exp]
+        (ast.Old(exp)(exp.pos, exp.info, exp.errT).asInstanceOf[PossibleTrigger], t._2, t._3)
+      })
+      case ast.LabelledOld(_, l) => results.flatten.map(t => {
+        val exp = t._1.asInstanceOf[ast.Exp]
+        (ast.LabelledOld(exp, l)(exp.pos, exp.info, exp.errT).asInstanceOf[PossibleTrigger], t._2, t._3)
+      })
       case _ => results.flatten
     })
   }
