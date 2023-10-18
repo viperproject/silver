@@ -8,7 +8,6 @@ package viper.silver.ast.utility
 
 import java.util.concurrent.atomic.AtomicInteger
 import reflect.ClassTag
-import viper.silver.ast
 
 object GenericTriggerGenerator {
   case class TriggerSet[E](exps: Seq[E])
