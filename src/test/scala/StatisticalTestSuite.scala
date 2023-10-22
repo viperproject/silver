@@ -5,6 +5,7 @@ import java.nio.file.{Path, Paths => JPaths}
 import scala.collection.immutable
 import org.scalatest.ConfigMap
 import viper.silver
+import viper.silver.ast.HasLineColumn
 import viper.silver.utility.{Paths, TimingUtils}
 import viper.silver.verifier.{AbstractError, AbstractVerificationError, Failure, Success, Verifier}
 
@@ -77,7 +78,7 @@ trait StatisticalTestSuite extends SilSuite {
     csvFileName foreach (filename => {
       csvFile = new BufferedWriter(new FileWriter(filename))
 
-      csvFile.write("File,Outputs,Mean [ms],StdDev [ms],RelStdDev [%],Best [ms],Median [ms],Worst [ms]")
+      csvFile.write("File,Outputs,Mean [ms],StdDev [ms],RelStdDev [%],Best [ms],Median [ms],Worst [ms], ResultsConsistent, Results")
       csvFile.newLine()
       csvFile.flush()
     })
@@ -206,7 +207,7 @@ trait StatisticalTestSuite extends SilSuite {
             JPaths.get(targetDirName).toAbsolutePath.relativize(input.file.toAbsolutePath),
             verResults.head.length,
             meanTimings.last, stddevTimings.last, relStddevTimings.last,
-            bestRun.last, medianRun.last, worstRun.last)
+            bestRun.last, medianRun.last, worstRun.last, resultsConsistent(verResults), summarizeResults(verResults.head))
 
           csvFile.write(csvRowData.mkString(","))
           csvFile.newLine()
@@ -230,7 +231,7 @@ trait StatisticalTestSuite extends SilSuite {
             JPaths.get(targetDirName).toAbsolutePath.relativize(input.file.toAbsolutePath),
             verResults.head.length,
             meanTimings.last, stddevTimings.last, relStddevTimings.last,
-            bestRun.last, medianRun.last, worstRun.last)
+            bestRun.last, medianRun.last, worstRun.last, resultsConsistent(verResults), summarizeResults(verResults.head))
 
           csvFile.write(csvRowData.mkString(","))
           csvFile.newLine()
@@ -250,6 +251,25 @@ trait StatisticalTestSuite extends SilSuite {
         .zip(phaseNames)
         .map(tup => tup._1 + " (" + tup._2 + ")")
         .mkString(", ")
+    }
+  }
+
+  private def resultsConsistent(results: Seq[Seq[AbstractError]]): Boolean = {
+    val first = results.head
+    results.tail.forall(_ == first)
+  }
+
+  private def summarizeResults(results: Seq[AbstractError]): String = {
+    if (results.isEmpty) {
+      "success"
+    } else {
+      results.map(e => {
+        val posString = e.pos match {
+          case lc: HasLineColumn => s"${lc.line}.${lc.column}"
+          case _ => e.pos.toString
+        }
+        s"${posString}-${e.fullId}"
+      }).sorted.mkString(";")
     }
   }
 
