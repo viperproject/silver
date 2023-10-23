@@ -169,7 +169,7 @@ class IOTests extends AnyFunSuite with Matchers {
         override def reason: ErrorReason = DummyReason
         override def readableMessage(withId: Boolean, withPosition: Boolean): String =
           "MockIOVerifier failed the verification (as requested)."
-        override def withNode(offendingNode: ErrorNode): ErrorMessage = DummyReason
+        override def withNode(offendingNode: ErrorNode): ErrorMessage = this
         override def pos: Position = NoPosition
         override def offendingNode: ErrorNode = DummyNode
         override def id: String = "MockIOVerifier.verification.failure"
