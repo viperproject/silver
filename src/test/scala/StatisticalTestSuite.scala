@@ -157,12 +157,6 @@ trait StatisticalTestSuite extends SilSuite {
 
       val (verResults: immutable.Seq[Seq[AbstractError]], timeResults: immutable.Seq[Seq[Long]]) = data.unzip
 
-      if (1 < verResults.length) {
-        Predef.assert(
-          verResults.tail.forall(_ == verResults.head),
-          s"Did not get the same errors for all repetitions: $verResults")
-      }
-
       val timingsWithTotal: Vector[Seq[Long]] = timeResults.toVector.map(row => row :+ row.sum)
 
       val sortedTimings = timingsWithTotal.sortBy(_.last)

@@ -114,7 +114,8 @@ abstract class ResourceBasedTestSuite extends AnyFunSuite {
         // Once the SBT REPL is closed, the "ghost" file disappears.
         if Files.isReadable(f)
         if !Files.isDirectory(f)
-        if f.toString.matches(includeFilesPattern)) {
+        if f.toString.matches(includeFilesPattern)
+        if !f.toString.contains("_preambles")) {
 
       val testInput = buildTestInput(f, prefix)
 
