@@ -3,9 +3,6 @@
 
 field f: Int
 
-// use function and dont know def
-// recursive
-
 @opaque()
 function isGreaterOne(i: Int): Bool
     requires i > -60
@@ -43,7 +40,6 @@ function isGreaterOne32(r: Ref): Bool
 function isGreaterOne33(r: Ref): Bool
     requires acc(r.f)
     ensures (r.f > 60) ==> result
-    ensures result == r.f > 1
 //:: ExpectedOutput(application.precondition:assertion.false)
 { @reveal() isGreaterOne(r.f) }
 
