@@ -27,7 +27,7 @@ method test3b(x: Ref, p: Perm) {
 
 method test4(x: Ref, p: Perm) {
   inhale P(x)
-  //:: ExpectedOutput(unfold.failed:negative.permission)
+  //:: ExpectedOutput(unfold.failed:permission.not.positive)
   //:: ExpectedOutput(unfold.failed:insufficient.permission)
   //:: MissingOutput(unfold.failed:insufficient.permission, /Silicon/issue/34/)
   unfold acc(P(x), p)

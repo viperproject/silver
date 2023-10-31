@@ -29,7 +29,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
                         fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
   import fp.{FP, keyword, exp, ParserExtension}
 
-  private def deactivated: Boolean = config != null && config.terminationPlugin.toOption.getOrElse(false)
+  private def deactivated: Boolean = config != null && config.disableTerminationPlugin.toOption.getOrElse(false)
 
   private var decreasesClauses: Seq[PDecreasesClause] = Seq.empty
 
@@ -104,10 +104,10 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
         decreasesClauses = decreasesClauses :+ dc
         dc
       case d => d
-    }).recurseFunc({ // decreases clauses can only appear in functions/methods pres and methods bodies
+    }).recurseFunc({ // decreases clauses can only appear in functions/methods pres, posts and methods bodies
       case PProgram(_, _, _, _, functions, _, methods, _, _) => Seq(functions, methods)
-      case PFunction(_, _, _, pres, _, _) => Seq(pres)
-      case PMethod(_, _, _, pres, _, body) => Seq(pres, body)
+      case PFunction(_, _, _, pres, posts, _) => Seq(pres, posts)
+      case PMethod(_, _, _, pres, posts, body) => Seq(pres, posts, body)
     }).execute(input)
 
     newProgram
@@ -140,6 +140,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
         case PMapType(_, _) => Seq("Map")
         case PDomainType(d, _) if d.name == "PredicateInstance" => Seq("PredicateInstances")
         case PDomainType(d, _) => Seq(d.name)
+        case gt: PGenericType => Seq(gt.genericName)
       }
       !typeNames.exists(tn => wfTypeName.contains(tn))
     }

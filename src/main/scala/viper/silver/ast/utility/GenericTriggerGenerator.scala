@@ -195,9 +195,18 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
         else
           results.flatten
 
+      case e if modifyPossibleTriggers.isDefinedAt(e) => modifyPossibleTriggers.apply(e)(results)
+
       case _ => results.flatten
     })
   }
+
+  /*
+   * Hook for clients to add more cases to getFunctionAppsContaining to modify the found possible triggers.
+   * Used e.g. to wrap trigger expressions inferred from inside old-expression into old()
+   */
+  def modifyPossibleTriggers: PartialFunction[Node, Seq[Seq[(PossibleTrigger, Seq[Var], Seq[Var])]] =>
+    Seq[(PossibleTrigger, Seq[Var], Seq[Var])]] = PartialFunction.empty
 
   /* Precondition: if vars is non-empty then every (f,vs) pair in functs
    * satisfies the property that vars and vs are not disjoint.

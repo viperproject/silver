@@ -81,12 +81,12 @@ class RefutePlugin(@unused reporter: viper.silver.reporter.Reporter,
     val (refutesForWhichErrorOccurred, otherErrors) = input match {
       case Success => (Seq.empty, Seq.empty)
       case Failure(errors) => errors.partitionMap {
-        case AssertFailed(NodeWithInfo(RefuteInfo(r)), _, _) => Left((r, r.pos))
+        case AssertFailed(NodeWithRefuteInfo(RefuteInfo(r)), _, _) => Left((r, r.pos))
         case err => Right(err)
       }
     }
     val refutesContainedInNode = n.collect {
-      case NodeWithInfo(RefuteInfo(r)) => (r, r.pos)
+      case NodeWithRefuteInfo(RefuteInfo(r)) => (r, r.pos)
     }
     // note that we include positional information in `refutesForWhichErrorOccurred` and `refutesContainedInNode` such
     // that we do not miss errors just because the same refute statement occurs multiple times
@@ -101,6 +101,9 @@ class RefutePlugin(@unused reporter: viper.silver.reporter.Reporter,
   }
 }
 
-object NodeWithInfo {
-  def unapply(node : Node) : Option[Info] = Some(node.meta._2)
+object NodeWithRefuteInfo {
+  def unapply(node : Node) : Option[RefuteInfo] = node match {
+    case i: Infoed => i.info.getUniqueInfo[RefuteInfo]
+    case _ => None
+  }
 }
