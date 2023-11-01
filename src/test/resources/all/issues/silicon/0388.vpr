@@ -1,4 +1,3 @@
-//:: IgnoreFile(/carbon/issue/294/)
 
 predicate P()
 
