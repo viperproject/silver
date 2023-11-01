@@ -290,3 +290,48 @@ method mFac3_5()
     //:: ExpectedOutput(assert.failed:assertion.false)
     assert tmp == 6
 }
+
+predicate P(x: Ref) {
+    acc(x.f)
+}
+
+@opaque()
+function funP(x: Ref): Int
+    requires P(x)
+{
+    unfolding P(x) in x.f
+}
+
+function funP2(x: Ref): Int
+    requires P(x)
+{
+    unfolding P(x) in x.f
+}
+
+method mFold(r: Ref)
+    requires acc(r.f)
+{
+    var tmp: Int
+    tmp := r.f
+    fold P(r)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert funP(r) == tmp
+}
+
+method mFold2(r: Ref)
+    requires acc(r.f)
+{
+    var tmp: Int
+    tmp := r.f
+    fold P(r)
+    assert @reveal() funP(r) == tmp
+}
+
+method mFold3(r: Ref)
+    requires acc(r.f)
+{
+    var tmp: Int
+    tmp := r.f
+    fold P(r)
+    assert funP2(r) == tmp
+}
