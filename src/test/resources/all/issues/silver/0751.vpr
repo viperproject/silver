@@ -1,0 +1,15 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+method main() {
+    assume forall qvar: Int ::
+      let alias == (qvar) in
+        f_get(alias) == f_clamp() 
+    assert f_get(10) == 0
+}
+
+function f_get(idx: Int): Int
+
+
+function f_clamp(): Int
+  ensures result == 0
