@@ -85,7 +85,7 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
           .map(p => ViperStrategy.Slim({
             case Result(_) => resultVariable.localVar
           }, Traverse.BottomUp).execute[Exp](p))
-          .reduce((e, p) => And(e, p)())
+          .reduce((e, p) => And(e, p)(e.pos))
 
         val proofMethodBody: Stmt = {
           val stmt: Stmt = Simplifier.simplify(transformExp(posts, context))
@@ -111,7 +111,7 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
         val context = FContext(f)
 
         // concatenate all pres
-        val pres = f.pres.reduce((e, p) => And(e, p)())
+        val pres = f.pres.reduce((e, p) => And(e, p)(e.pos))
 
         val proofMethodBody: Stmt = Simplifier.simplify(transformExp(pres, context))
 
