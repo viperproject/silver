@@ -24,6 +24,23 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
    * @return a statement representing the expression.
    */
   def transformExp(e: Exp, c: ExpressionContext): Stmt = e match {
+    case And(fst, snd) =>
+      val fstStmt = transformExp(fst, c)
+      val nonDetVarDecl = LocalVarDecl(uniqueName("b"), Bool)(e.pos, e.info, e.errT)
+      val assumeFalse = Inhale(FalseLit()())()
+      val inhaleFst = Inhale(fst)()
+      val inhaleFstStmt = if (fst.contains[InhaleExhaleExp]) {
+        c.conditionInEx match {
+          case Some(conditionVar) => If(conditionVar.localVar, Seqn(Seq(inhaleFst), Nil)(), Seqn(Seq(Inhale(fst.whenExhaling)()), Nil)())()
+          case None => inhaleFst
+        }
+      } else {
+        inhaleFst
+      }
+      val fstIf = If(nonDetVarDecl.localVar, Seqn(Seq(fstStmt, assumeFalse), Nil)(), Seqn(Seq(inhaleFstStmt), Nil)())(e.pos, e.info, e.errT)
+      val fstBlock = Seqn(Seq(fstIf), Seq(nonDetVarDecl))()
+      val sndStmt = transformExp(snd, c)
+      Seqn(Seq(fstBlock, sndStmt), Nil)()
     case CondExp(cond, thn, els) =>
       val condStmt = transformExp(cond, c)
       val thnStmt = transformExp(thn, c)

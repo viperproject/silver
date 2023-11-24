@@ -58,7 +58,7 @@ object Triggers {
       case _ => sys.error(s"Unexpected expression $e")
     }
 
-    override def modifyPossibleTriggers = {
+    override def modifyPossibleTriggers(relevantVars: Seq[LocalVar]) = {
       case ast.Old(_) => results =>
         results.flatten.map(t => {
           val exp = t._1
@@ -69,6 +69,17 @@ object Triggers {
           val exp = t._1
           (ast.LabelledOld(exp, l)(exp.pos, exp.info, exp.errT), t._2, t._3)
         })
+      case ast.Let(v, e, _) => results =>
+        results.flatten.map(t => {
+          val exp = t._1
+          val coveredVars = t._2.filter(cv => cv != v.localVar) ++ relevantVars.filter(rv => e.contains(rv))
+          (exp.replace(v.localVar, e), coveredVars, t._3)
+        })
+    }
+
+    override def additionalRelevantVariables(relevantVars: Seq[LocalVar], varsToAvoid: Seq[LocalVar]): PartialFunction[Node, Seq[LocalVar]] = {
+      case ast.Let(v, e, _) if relevantVars.exists(v => e.contains(v)) && varsToAvoid.forall(v => !e.contains(v)) =>
+        Seq(v.localVar)
     }
   }
 
