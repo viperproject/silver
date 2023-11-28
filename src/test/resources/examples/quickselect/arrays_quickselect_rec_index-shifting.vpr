@@ -1,7 +1,7 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-//:: IgnoreFile(/carbon/issue/137/)
+//:: IgnoreFile(/carbon/issue/280/)
 
 /* This version differs from arrays_quickselect_rec.vpr in so far as the
  * permutation witness pw only covers the segment of the array that is being
