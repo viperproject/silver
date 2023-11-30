@@ -321,6 +321,7 @@ object PTypeVar {
   }
 
   val sep = "#"
+  val domainNameSep = "%"
 
   //TODO: do this properly
   def isFreePTVName(s: String) = s.contains(sep)
@@ -342,9 +343,18 @@ object PTypeVar {
     freshTypeSubstitution(tvs map (tv => tv.domain.name))
   }
 
-  def freshTypeSubstitution(tvns: Seq[String]): PTypeRenaming = {
+  def freshTypeSubstitution(tvns: Seq[String], domainName: Option[String] = None): PTypeRenaming = {
     val ind = lastIndex.getAndIncrement()
-    new PTypeRenaming((tvns map (tv => tv -> getFreshName(tv, ind))).toMap)
+    new PTypeRenaming((tvns map (tv => {
+      val tvName = domainName match {
+        case Some(dn) =>
+          // Choose a name for the type variable that contains the domain name.
+          // This enables us to choose a useful default in case the type variable is unconstrained.
+          dn + domainNameSep + tv
+        case None => tv
+      }
+      tv -> getFreshName(tvName, ind)
+    })).toMap)
   }
 }
 
