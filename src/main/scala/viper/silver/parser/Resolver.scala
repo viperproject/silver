@@ -360,6 +360,27 @@ case class TypeChecker(names: NameAnalyser) {
     }
   }
 
+  // TODO ake: copy pasted from above
+  def acceptAndCheckTypedEntityWithVersion[T1: ClassTag, T2: ClassTag]
+  (idnUses: Seq[PVersionedIdnUse], errorMessage: => String): Unit = {
+
+    /* TODO: Ensure that the ClassTags denote subtypes of TypedEntity */
+    val acceptedClasses = Seq[Class[_]](classTag[T1].runtimeClass, classTag[T2].runtimeClass)
+
+    idnUses.foreach { use =>
+      val decl = names.definition(curMember)(PIdnUse(use.name)(use.pos)).get
+
+      acceptedClasses.find(_.isInstance(decl)) match {
+        case Some(_) =>
+          val td = decl.asInstanceOf[PTypedDeclaration]
+          use.typ = td.typ
+          use.decl = td
+        case None =>
+          messages ++= FastMessaging.message(use, errorMessage)
+      }
+    }
+  }
+
   def check(typ: PType): Unit = {
     typ match {
       case _: PPredicateType | _: PWandType =>
@@ -725,6 +746,9 @@ case class TypeChecker(names: NameAnalyser) {
       case piu: PIdnUse =>
         acceptAndCheckTypedEntity[PAnyVarDecl, Nothing](Seq(piu), "expected variable identifier")
 
+      case pviu: PVersionedIdnUse =>
+        acceptAndCheckTypedEntityWithVersion[PAnyVarDecl, Nothing](Seq(pviu), "expected variable identifier with version") // TODO ake: versionedVar
+
       case pl@PLet(e, ns) =>
         val oldCurMember = curMember
         curMember = ns
@@ -908,6 +932,22 @@ case class NameAnalyser() {
                 }
               case _ =>
             }
+          case i@PVersionedIdnUse(name, _, _) =>
+            // look up in both maps (if we are not in a method currently, we look in the same map twice, but that is ok)
+            getCurrentMap.getOrElse(name, globalDeclarationMap.getOrElse(name, PUnknownEntity())) match {
+              case PUnknownEntity() =>
+                // domain types can also be type variables, which need not be declared
+                // goto and state labels may exist out of scope (but must exist in method, this is checked in final AST in checkIdentifiers)
+                if (i.parent.isDefined) {
+                  val parent = i.parent.get
+                  if (!parent.isInstanceOf[PDomainType] && !parent.isInstanceOf[PGoto] &&
+                    !(parent.isInstanceOf[PLabelledOld] && i == parent.asInstanceOf[PLabelledOld].label) &&
+                    !(name == LabelledOld.LhsOldLabel && parent.isInstanceOf[PLabelledOld])) {
+                    messages ++= FastMessaging.message(i, s"identifier $name not defined.")
+                  }
+                }
+              case _ =>
+            }
           case _ =>
         }
 
@@ -931,6 +971,7 @@ case class NameAnalyser() {
           case _: PDeclaration => true
           case _: PScope => true
           case _: PIdnUse => true
+          case _: PVersionedIdnUse => true // TODO ake: ???
           case _ => target.isDefined
         }
       }

@@ -164,6 +164,19 @@ case class PIdnUse(name: String)(val pos: (Position, Position)) extends PExp wit
   }
 }
 
+case class PVersionedIdnUse(name: String, version: String, separator: String = "@")(val pos: (Position, Position)) extends PExp with PIdentifier   {
+  var decl: PTypedDeclaration = null
+
+  val versionedName: String = name + separator + version
+
+  override val typeSubstitutions = List(PTypeSubstitution.id)
+
+  def forceSubstitution(ts: PTypeSubstitution) = {
+    typ = typ.substitute(ts)
+    assert(typ.isGround)
+  }
+}
+
 trait PAnyFormalArgDecl extends PNode with PUnnamedTypedDeclaration
 
 case class PUnnamedFormalArgDecl(var typ: PType)(val pos: (Position, Position)) extends PAnyFormalArgDecl
@@ -991,7 +1004,7 @@ case class POld(e: PExp)(val pos: (Position, Position)) extends POldExp {
   override val opName = "old"
 }
 
-case class PLabelledOld(label: PIdnUse, e: PExp)(val pos: (Position, Position)) extends POldExp {
+case class PLabelledOld(label: PIdnUse, e: PExp)(val pos: (Position, Position)) extends POldExp { // TODO ake: labelOld
   override val opName = "old#labeled"
 }
 
@@ -1498,6 +1511,7 @@ object Nodes {
     n match {
       case PIdnDef(_) => Nil
       case PIdnUse(_) => Nil
+      case PVersionedIdnUse(_, _, _) => Nil
       case PUnnamedFormalArgDecl(typ) => Seq(typ)
       case PFormalArgDecl(idndef, typ) => Seq(idndef, typ)
       case PFormalReturnDecl(idndef, typ) => Seq(idndef, typ)

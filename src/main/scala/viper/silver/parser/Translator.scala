@@ -368,6 +368,13 @@ case class Translator(program: PProgram) {
           // Should have been caught by the type checker.
           case _ => sys.error("should not occur in type-checked program")
         }
+      case pviu@PVersionedIdnUse(_, _, _) =>
+        pviu.decl match {
+          case _: PAnyVarDecl => LocalVar(pviu.versionedName, ttyp(pexp.typ))(pos, info)
+          // A malformed AST where a field, function or other declaration is used as a variable.
+          // Should have been caught by the type checker.
+          case _ => sys.error("should not occur in type-checked program")
+        }
       case pbe @ PBinExp(left, op, right) =>
         val (l, r) = (exp(left), exp(right))
         op match {
