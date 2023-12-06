@@ -1,0 +1,111 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+domain block  {
+
+  function block_length(b: block): Int
+
+  function loc(b: block, i: Int): Ref
+
+  function loc_inv_1(r: Ref): block
+
+  function loc_inv_2(r: Ref): Int
+
+  axiom {
+    (forall b: block ::block_length(b) >= 0)
+  }
+
+  axiom {
+    (forall b: block, i: Int ::
+      { loc(b, i) }
+      loc_inv_1(loc(b, i)) == b && loc_inv_2(loc(b, i)) == i)
+  }
+}
+
+domain pointer  {
+
+  function pointer_of(b: block, offset: Int): pointer
+
+  function pointer_block(p: pointer): block
+
+  function pointer_offset(p: pointer): Int
+
+  axiom {
+    (forall p: pointer ::pointer_offset(p) >= 0 &&
+      pointer_offset(p) < block_length(pointer_block(p)))
+  }
+
+  axiom {
+    (forall b: block, offset: Int ::
+      { pointer_block(pointer_of(b, offset)), pointer_offset(pointer_of(b, offset)) }
+      pointer_block(pointer_of(b, offset)) == b &&
+      pointer_offset(pointer_of(b, offset)) == offset)
+  }
+}
+
+function ptr_deref(p: pointer): Ref
+  decreases
+{
+  loc(pointer_block(p), pointer_offset(p))
+}
+
+function ptr_add(p: pointer, offset: Int): pointer
+  requires 0 <= pointer_offset(p) + offset
+  requires pointer_offset(p) + offset < block_length(pointer_block(p))
+  decreases
+{
+  pointer_of(pointer_block(p), pointer_offset(p) + offset)
+}
+
+field ref: Ref
+field x: Int
+
+function inp_to_seq_2(inp: pointer, n: Int): Seq[Int]
+  requires n <=
+    block_length(pointer_block(inp)) -
+    pointer_offset(inp)
+  requires (forall i: Int ::
+      { ptr_deref(ptr_add(inp, i)).ref }
+      0 <= i && i < n ==>
+      acc(ptr_deref(ptr_add(inp, i)).ref, 1 *
+      write /
+      10))
+  requires (forall i: Int, j: Int ::0 <= i &&
+      i < n &&
+      0 <= j &&
+      j < n ==>
+      i != j ==>
+      ptr_deref(ptr_add((inp), i)).ref !=
+      ptr_deref(ptr_add((inp), j)).ref)
+  requires (forall i: Int ::
+      { ptr_deref(ptr_add(inp, i)).ref.x }
+      0 <= i && i < n ==>
+      acc(ptr_deref(ptr_add(inp, i)).ref.x, 1 *
+      write /
+      10))
+   decreases
+{
+  Seq[Int]()
+}
+
+// Regression test for a bug in the original fix:
+
+adt tree {
+    leaf(value: Int)
+    node(left: tree, right: tree)
+}
+
+function leafCount(t: tree): Int
+    decreases 1
+{
+    id(t.isleaf && t.isleaf ?
+        (1) :
+        //:: ExpectedOutput(termination.failed:tuple.false)
+        (leafCount(t.left) + leafCount(t.right)))
+}
+
+function id(i: Int): Int
+    decreases 0
+{
+    i
+}

@@ -53,7 +53,7 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
         val context = FContext(f)
 
         val proofMethodBody: Stmt = {
-          val stmt: Stmt = Simplifier.simplify(transformExp(f.body.get, context))
+          val stmt: Stmt = Simplifier.simplify(transformExp(f.body.get, context, false))
           if (requireNestedInfo) {
             addNestedPredicateInformation.execute(stmt)
           } else {
@@ -85,10 +85,10 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
           .map(p => ViperStrategy.Slim({
             case Result(_) => resultVariable.localVar
           }, Traverse.BottomUp).execute[Exp](p))
-          .reduce((e, p) => And(e, p)())
+          .reduce((e, p) => And(e, p)(e.pos))
 
         val proofMethodBody: Stmt = {
-          val stmt: Stmt = Simplifier.simplify(transformExp(posts, context))
+          val stmt: Stmt = Simplifier.simplify(transformExp(posts, context, false))
           if (requireNestedInfo) {
             addNestedPredicateInformation.execute(stmt)
           } else {
@@ -111,9 +111,9 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
         val context = FContext(f)
 
         // concatenate all pres
-        val pres = f.pres.reduce((e, p) => And(e, p)())
+        val pres = f.pres.reduce((e, p) => And(e, p)(e.pos))
 
-        val proofMethodBody: Stmt = Simplifier.simplify(transformExp(pres, context))
+        val proofMethodBody: Stmt = Simplifier.simplify(transformExp(pres, context, true))
 
         if (proofMethodBody != EmptyStmt) {
           val proofMethod = Method(proofMethodName, f.formalArgs, Nil, Nil, Nil,
@@ -136,12 +136,12 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
    *
    * @return a statement representing the expression
    */
-  override def transformExp(e: Exp, c: ExpressionContext): Stmt = (e, c) match {
+  override def transformExp(e: Exp, c: ExpressionContext, inhaleExp: Boolean): Stmt = (e, c) match {
     case (functionCall: FuncApp, context: FunctionContext @unchecked) =>
       val stmts = collection.mutable.ArrayBuffer[Stmt]()
 
       // check the arguments
-      val termChecksOfArgs: Seq[Stmt] = functionCall.getArgs map (a => transformExp(a, context))
+      val termChecksOfArgs: Seq[Stmt] = functionCall.getArgs map (a => transformExp(a, context, false))
       stmts.appendAll(termChecksOfArgs)
 
       getFunctionDecreasesSpecification(context.functionName).tuple match {
@@ -218,7 +218,7 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
         // should not happen
       }
       Seqn(stmts.toSeq, Nil)()
-    case _ => super.transformExp(e, c)
+    case _ => super.transformExp(e, c, inhaleExp)
   }
 
   // context creator

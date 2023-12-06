@@ -1,0 +1,61 @@
+method test()
+{
+    label l0 invariant true
+    refute false
+    goto l0
+}
+
+method test2()
+{
+    label l0
+    refute false
+    goto l0
+}
+
+function pre(): Bool
+
+function needsPre(): Bool
+  requires pre()
+
+method test3()
+{
+    var tmp: Int
+    label l1
+    assume pre()
+    if (needsPre()) {
+        tmp := 3
+    } else {
+        tmp := 4
+    }
+    goto l1
+}
+
+method test3fail()
+{
+    var tmp: Int
+    label l1
+    //:: ExpectedOutput(application.precondition:assertion.false)
+    if (needsPre()) {
+        tmp := 3
+    } else {
+        tmp := 4
+    }
+    goto l1
+}
+
+
+method test4()
+{
+  {
+    label l0
+    {
+      var __plugin_refute_nondet1: Bool
+      if (__plugin_refute_nondet1) {
+        //:: ExpectedOutput(assert.failed:assertion.false)
+        assert false
+        inhale false
+      }
+    }
+    goto l0
+  }
+}
