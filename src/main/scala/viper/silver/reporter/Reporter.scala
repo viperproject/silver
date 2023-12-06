@@ -199,6 +199,7 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
 case class BenchmarkingReporter(name: String = "benchmarking_reporter") extends Reporter {
   private val _initial_time = System.currentTimeMillis()
   private var _previous_phase: Long = _initial_time
+  private var _accumulators: scala.collection.mutable.Map[String, Long] = scala.collection.mutable.Map[String, Long]().withDefaultValue(0)
 
   def report(msg: Message): Unit = {
     msg match {
@@ -206,7 +207,11 @@ case class BenchmarkingReporter(name: String = "benchmarking_reporter") extends 
         val t = System.currentTimeMillis()
         println(s"[Benchmarking] Phase $phase at ${t - _initial_time} ms and took ${t - _previous_phase} ms")
         _previous_phase = t
-      case _ =>
+      case BenchmarkingAccumulator(accum) =>
+        _accumulators(accum) = _accumulators(accum) + 1
+      case BenchmarkingReport(accum) =>
+        println(s"[Benchmarking] Accumulator '$accum' has value ${_accumulators(accum)}")
+      case _ => // ignore
     }
   }
 }

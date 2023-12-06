@@ -326,3 +326,13 @@ case class BenchmarkingPhase(phase: String) extends BenchmarkingMessage {
   override val name: String = "benchmarking_phase"
   override def toString: String = phase
 }
+
+case class BenchmarkingAccumulator(accum: String) extends BenchmarkingMessage {
+  override val name: String = "benchmarking_accumulator"
+  override val toString: String = accum
+}
+
+case class BenchmarkingReport(accum: String) extends BenchmarkingMessage {
+  override val name: String = "benchmarking_report"
+  override val toString: String = accum
+}
