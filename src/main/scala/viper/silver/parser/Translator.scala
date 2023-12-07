@@ -370,7 +370,7 @@ case class Translator(program: PProgram) {
         }
       case pviu@PVersionedIdnUse(_, _, _) =>
         pviu.decl match {
-          case _: PAnyVarDecl => LocalVar(pviu.versionedName, ttyp(pexp.typ))(pos, info)
+          case _: PAnyVarDecl => LocalVarWithVersion(pviu.versionedName, ttyp(pexp.typ))(pos, info)
           // A malformed AST where a field, function or other declaration is used as a variable.
           // Should have been caught by the type checker.
           case _ => sys.error("should not occur in type-checked program")

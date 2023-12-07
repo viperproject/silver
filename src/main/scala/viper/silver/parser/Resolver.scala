@@ -747,7 +747,7 @@ case class TypeChecker(names: NameAnalyser) {
         acceptAndCheckTypedEntity[PAnyVarDecl, Nothing](Seq(piu), "expected variable identifier")
 
       case pviu: PVersionedIdnUse =>
-        acceptAndCheckTypedEntityWithVersion[PAnyVarDecl, Nothing](Seq(pviu), "expected variable identifier with version") // TODO ake: versionedVar
+        acceptAndCheckTypedEntityWithVersion[PAnyVarDecl, Nothing](Seq(pviu), "expected variable identifier with version")
 
       case pl@PLet(e, ns) =>
         val oldCurMember = curMember

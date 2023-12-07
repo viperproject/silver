@@ -436,7 +436,7 @@ class FastParser {
 
   def identifier[$: P]: P[Unit] = CharIn("A-Z", "a-z", "$_") ~~ CharIn("0-9", "A-Z", "a-z", "$_").repX
 
-  def versionedIdentifier[$: P]: P[Unit] = CharIn("A-Z", "a-z", "$_") ~~ CharIn("0-9", "A-Z", "a-z", "$_").repX ~~ CharIn("@") ~~ CharIn("0-9") ~~ CharIn("0-9")
+  def versionedIdentifier[$: P]: P[Unit] = CharIn("A-Z", "a-z", "$_") ~~ CharIn("0-9", "A-Z", "a-z", "$_").repX ~~ CharIn("@") ~~ CharIn("0-9") ~~ CharIn("0-9").repX
 
   def annotationIdentifier[$: P]: P[String] = (CharIn("A-Z", "a-z", "$_") ~~ CharIn("0-9", "A-Z", "a-z", "$_.").repX).!
 

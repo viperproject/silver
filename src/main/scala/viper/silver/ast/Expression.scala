@@ -713,6 +713,13 @@ case class Result(typ: Type)(val pos: Position = NoPosition, val info: Info = No
   lazy val name = "result"
 }
 
+/** A special local variable with a version for debugging */
+case class LocalVarWithVersion(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractLocalVar with Lhs {
+  def nameWithoutVersion = name.substring(0, name.lastIndexOf("@"))
+  override lazy val check: Seq[ConsistencyError] =
+    if (!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Local var name must be valid identifier.", pos)) else Seq()
+}
+
 // --- Mathematical sequences
 
 /**
