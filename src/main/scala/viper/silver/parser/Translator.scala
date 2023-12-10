@@ -569,6 +569,8 @@ case class Translator(program: PProgram) {
         Old(exp(e))(pos, info)
       case PLabelledOld(lbl,e) =>
         LabelledOld(exp(e),lbl.name)(pos, info)
+      case PDebugLabelledOld(lbl, e) =>
+        DebugLabelledOld(exp(e), lbl.name)(pos, info)
       case PCondExp(cond, thn, els) =>
         CondExp(exp(cond), exp(thn), exp(els))(pos, info)
       case PCurPerm(res) =>

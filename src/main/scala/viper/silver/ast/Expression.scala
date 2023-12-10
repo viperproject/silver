@@ -512,6 +512,12 @@ case class LabelledOld(exp: Exp, oldLabel: String)(val pos: Position = NoPositio
       Consistency.checkPure(exp)
 }
 
+/** Old expression that are used in the debugger. */
+case class DebugLabelledOld(exp: Exp, oldLabel: String)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends OldExp {
+  override lazy val check : Seq[ConsistencyError] =
+    Consistency.checkPure(exp)
+}
+
 case object LabelledOld {
   val LhsOldLabel = "lhs"
 }

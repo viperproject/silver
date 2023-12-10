@@ -775,6 +775,8 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
         text("old") <> parens(show(exp))
       case LabelledOld(exp,label) =>
         text("old") <> brackets(label) <> parens(show(exp))
+      case DebugLabelledOld(exp, label) =>
+        text("old") <> brackets(label) <> parens(show(exp))
       case Let(v, exp, body) =>
         parens(text("let") <+> text(v.name) <+> "==" <> nest(defaultIndent, line <> parens(show(exp))) <+>
           "in" <> nest(defaultIndent, line <> show(body)))

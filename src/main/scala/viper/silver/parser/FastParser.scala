@@ -401,8 +401,8 @@ class FastParser {
 
   // Note that `typedfuncApp` is before `"(" ~ exp ~ ")"` to ensure that the latter doesn't gobble up the brackets for the former
   // and then look like an `funcApp` up untill the `: type` part, after which we need to backtrack all the way back (or error if cut)
-  // TODO ake: versionedidnuse
   def atom(implicit ctx : P[_]) : P[PExp] = P(ParserExtension.newExpAtStart(ctx) | versionedidnuse
+    | debugOld
     | annotatedAtom
     | integer | booltrue | boolfalse | nul | old
     | result | unExp | typedFuncApp
@@ -451,11 +451,23 @@ class FastParser {
     PVersionedIdnUse(name=parts(0), version=parts(1))(pos)
   } }
 
-  def oldLabel[$: P]: P[PIdnUse] = idnuse | FP(LabelledOld.LhsOldLabel.!).map { // TODO ake: oldLabel parsing
+  def debugOldLabel[$: P]: P[String] = (StringIn("line") ~~ CharIn("@") ~~ CharIn("0-9", "A-Z", "a-z", "$_.").repX).!.opaque("debugOldLabel")
+
+  def debugOldLabelUse[$: P]: P[PVersionedIdnUse] = FP(debugOldLabel).map { case (pos, id) => {
+    val parts = id.split("@")
+    PVersionedIdnUse(name = parts(0), version = parts(1))(pos)
+  }
+  }
+
+  def debugOld[$: P]: P[PExp] = P(StringIn("old") ~ FP("[" ~ debugOldLabelUse ~ "]" ~ parens(exp)).map {
+    case (pos, (a, b)) => PDebugLabelledOld(a, b)(pos)})
+
+  def oldLabel[$: P]: P[PIdnUse] = idnuse | FP(LabelledOld.LhsOldLabel.!).map {
     case (pos, lhsOldLabel) => PIdnUse(lhsOldLabel)(pos)
   }
 
-  def old[$: P]: P[PExp] = P(StringIn("old") ~ (FP(parens(exp)).map { case (pos, e) => POld(e)(pos) } | FP("[" ~ oldLabel ~ "]" ~ parens(exp)).map {
+  def old[$: P]: P[PExp] = P(StringIn("old") ~ (FP(parens(exp)).map { case (pos, e) => POld(e)(pos) }
+    | FP("[" ~ oldLabel ~ "]" ~ parens(exp)).map {
     case (pos, (a, b)) => PLabelledOld(a, b)(pos)
   }))
 

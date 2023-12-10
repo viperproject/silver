@@ -1004,8 +1004,12 @@ case class POld(e: PExp)(val pos: (Position, Position)) extends POldExp {
   override val opName = "old"
 }
 
-case class PLabelledOld(label: PIdnUse, e: PExp)(val pos: (Position, Position)) extends POldExp { // TODO ake: labelOld
+case class PLabelledOld(label: PIdnUse, e: PExp)(val pos: (Position, Position)) extends POldExp {
   override val opName = "old#labeled"
+}
+
+case class PDebugLabelledOld(label: PVersionedIdnUse, e: PExp)(val pos: (Position, Position)) extends POldExp {
+  override val opName = "debug#old#labeled"
 }
 
 sealed trait PCollectionLiteral extends POpApp {
