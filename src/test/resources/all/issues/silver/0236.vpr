@@ -2,7 +2,7 @@
 // http://creativecommons.org/publicdomain/zero/1.0/
 
 domain Option[T] {
-  axiom ax_Option_None_discr {
+  axiom  {
     Option_discr(Option_None()) == 0
   }
   function Option_discr(Option[T]): Int
@@ -29,8 +29,8 @@ domain Option2[T] {
 }
 
 method m2() {
-    assert Option2_discr(Option2_None()) == 0
+    assert Option2_discr((Option2_None(): Option2[Bool])) == 0
 
     //:: ExpectedOutput(assert.failed:assertion.false)
-    assert Option2_discr(Option2_None()) == 1
+    assert Option2_discr((Option2_None(): Option2[Bool])) == 1
 }
