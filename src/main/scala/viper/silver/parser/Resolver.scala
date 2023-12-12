@@ -490,11 +490,16 @@ case class TypeChecker(names: NameAnalyser) {
     Right(pss)
   }
 
+  def getParentAxiom(n: PNode): Option[PAxiom] = n match {
+    case a: PAxiom => Some(a)
+    case _ => n.parent.flatMap(getParentAxiom)
+  }
+
   def ground(exp: PExp, pts: PTypeSubstitution): PTypeSubstitution = {
     pts.m.flatMap(kv => kv._2.freeTypeVariables &~ pts.m.keySet).foldLeft(pts)((ts, fv) => {
       var chosenType: PType = PTypeSubstitution.defaultType
-      curMember match {
-        case ax: PAxiom if ax.parent.exists(p => p.isInstanceOf[PDomain]) =>
+      getParentAxiom(curMember) match {
+        case Some(ax: PAxiom) if ax.parent.exists(p => p.isInstanceOf[PDomain]) =>
           // If we are inside the domain that defines the type variable, then we choose the type variable itself
           // as the default.
           val domain = ax.parent.get.asInstanceOf[PDomain]
