@@ -132,6 +132,12 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     hidden = false
   )
 
+  val submitForEvaluation = opt[Boolean](name = "submitForEvaluation",
+    descr = "Whether to allow storing the current program for future evaluation.",
+    default = Some(false),
+    noshort = true
+  )
+
   validateOpt(file, ignoreFile) {
     case (_, Some(true)) => Right(())
     case (Some(filepath), _) => validateFileOpt(file.name, filepath)
