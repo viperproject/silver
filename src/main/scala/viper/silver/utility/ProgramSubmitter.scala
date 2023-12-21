@@ -81,19 +81,19 @@ class ManualProgramSubmitter extends ProgramSubmitter {
 
   def setProgramInfo(
       programName: String,
-      program: String,
       args: Array[String],
       frontend: String,
       verifier: String
-  ) = {
+  ): Unit = {
     this.programName = programName
-    this.program = program
     this.args = args
     this.originalFrontend = frontend
     this.originalVerifier = verifier
   }
 
-  def setSuccess(success: Boolean) = succeeded = success
+  def setProgram(p: String): Unit = program = p
+
+  def setSuccess(success: Boolean): Unit = succeeded = success
 
   override def runtime: Long = System.currentTimeMillis() - startTime
 
