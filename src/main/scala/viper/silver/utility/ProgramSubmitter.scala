@@ -5,7 +5,7 @@ import ujson.{Arr, Obj}
 import viper.silver.ast.Program
 import viper.silver.ast.pretty.FastPrettyPrinter
 import viper.silver.verifier.{Success, VerificationResult}
-import viper.silver.frontend.{SilFrontend, SilFrontendConfig}
+import viper.silver.frontend.{SilFrontend}
 
 /** Trait for an object that submits a program to the viper-data-collection API */
 trait ProgramSubmitter {
@@ -14,36 +14,89 @@ trait ProgramSubmitter {
   val API_HOST = "http://localhost:8080"
 
   /** Whether program will be submitted to database */
-  def allowSubmission: Boolean
+  protected def allowSubmission: Boolean
 
   /** Original filename of program to submit */
-  def programName: String
+  protected def programName: String
 
   /** Plaintext Viper program that was verified */
-  def program: String
+  protected def program: String
 
   /** Frontend that generated program, if manually submitted to Silicon and Carbon this should be equal to [[originalVerifier]] */
-  def originalFrontend: String
+  protected def originalFrontend: String
 
   /** Arguments passed to the verifier */
-  def args: Array[String]
+  protected def args: Array[String]
 
   /** Verifier used to verify program */
-  def originalVerifier: String
-  def succeeded: Boolean
-  def runtime: Long
+  protected def originalVerifier: String
+  protected def succeeded: Boolean
+  protected def runtime: Long
 
   /** Sends program and metadata to viper-data-collection API */
-  def submit(): Unit
-
-  protected def didVerSucceed(vr: Option[VerificationResult]): Boolean = vr match {
-    case Some(res) =>
-      res match {
-        case Success => true
-        case _       => false
+  def submit(): Unit = {
+    if (API_HOST != "" && allowSubmission) {
+      val submission =
+        Obj(
+          "originalName" -> programName,
+          "program" -> program,
+          "frontend" -> originalFrontend,
+          "args" -> Arr.from[String](args),
+          "originalVerifier" -> originalVerifier,
+          "success" -> succeeded,
+          "runtime" -> runtime
+        )
+      try {
+        requests.post(s"$API_HOST/submit-program", data = submission)
+      } catch {
+        case _: Exception => println("Program couldn't be submitted")
       }
-    case _ => false
+    }
   }
+
+  protected def didVerSucceed(vr: Option[VerificationResult]): Boolean =
+    vr match {
+      case Some(res) =>
+        res match {
+          case Success => true
+          case _       => false
+        }
+      case _ => false
+    }
+}
+
+/** To use when no [[SilFrontend]] is available. [[setAllowSubmission]], [[setProgramInfo]] and [[setSuccess]] have to be called manually. */
+class ManualProgramSubmitter extends ProgramSubmitter {
+
+  private val startTime: Long = System.currentTimeMillis()
+  protected var allowSubmission: Boolean = false
+  protected var programName: String = ""
+  protected var program: String = ""
+  protected var originalFrontend: String = ""
+  protected var args: Array[String] = Array()
+  protected var originalVerifier: String = ""
+  protected var succeeded: Boolean = false
+
+  def setAllowSubmission(b: Boolean): Unit = allowSubmission = b
+
+  def setProgramInfo(
+      programName: String,
+      program: String,
+      args: Array[String],
+      frontend: String,
+      verifier: String
+  ) = {
+    this.programName = programName
+    this.program = program
+    this.args = args
+    this.originalFrontend = frontend
+    this.originalVerifier = verifier
+  }
+
+  def setSuccess(success: Boolean) = succeeded = success
+
+  override def runtime: Long = System.currentTimeMillis() - startTime
+
 }
 
 /** ProgramSubmitter that takes a [[SilFrontend]] to read out verification metrics, so they don't have to be manually defined.
@@ -52,12 +105,13 @@ trait ProgramSubmitter {
 trait FEProgramSubmitter extends ProgramSubmitter {
 
   var args: Array[String] = Array()
-  var programName         = ""
+  var programName = ""
 
   /** Instance of frontend responsible for verification, used to read out verification metrics */
   protected val frontend: SilFrontend
 
-  override def allowSubmission: Boolean = frontend.config.submitForEvaluation.getOrElse(false)
+  override def allowSubmission: Boolean =
+    frontend.config.submitForEvaluation.getOrElse(false)
 
   def originalFrontend: String = originalVerifier
 
@@ -68,7 +122,8 @@ trait FEProgramSubmitter extends ProgramSubmitter {
   def runtime: Long = frontend.getTime
 
   def setArgs(arguments: Array[String]): Unit = {
-    args = arguments.filter(a => a != "--submitForEvaluation" && !a.endsWith(".vpr"))
+    args =
+      arguments.filter(a => a != "--submitForEvaluation" && !a.endsWith(".vpr"))
   }
 
   def setName(n: String): Unit = {
@@ -82,13 +137,13 @@ trait FEProgramSubmitter extends ProgramSubmitter {
     if (API_HOST != "" && allowSubmission) {
       val submission =
         Obj(
-          "originalName"     -> programName,
-          "program"          -> program,
-          "frontend"         -> originalFrontend,
-          "args"             -> Arr.from[String](args),
+          "originalName" -> programName,
+          "program" -> program,
+          "frontend" -> originalFrontend,
+          "args" -> Arr.from[String](args),
           "originalVerifier" -> originalVerifier,
-          "success"          -> succeeded,
-          "runtime"          -> runtime
+          "success" -> succeeded,
+          "runtime" -> runtime
         )
       try {
         requests.post(s"$API_HOST/submit-program", data = submission)
@@ -104,7 +159,7 @@ trait FEProgramSubmitter extends ProgramSubmitter {
   */
 class FileProgramSubmitter(fe: SilFrontend) extends FEProgramSubmitter {
 
-  private var programPath: String     = ""
+  private var programPath: String = ""
   protected val frontend: SilFrontend = fe
 
   override def program: String = {
@@ -141,7 +196,7 @@ class FileProgramSubmitter(fe: SilFrontend) extends FEProgramSubmitter {
   */
 class ViperProgramSubmitter(fe: SilFrontend) extends FEProgramSubmitter {
   private var viperProgram: Program = null
-  protected val frontend            = fe
+  protected val frontend = fe
 
   def setProgram(p: Program): Unit = {
     viperProgram = p
