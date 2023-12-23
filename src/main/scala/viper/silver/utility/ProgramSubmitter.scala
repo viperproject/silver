@@ -54,6 +54,8 @@ trait ProgramSubmitter {
     }
   }
 
+  def programToString(p: Program): String = FastPrettyPrinter.pretty(p)
+
   protected def didVerSucceed(vr: Option[VerificationResult]): Boolean =
     vr match {
       case Some(res) =>
@@ -63,6 +65,7 @@ trait ProgramSubmitter {
         }
       case _ => false
     }
+
 }
 
 /** To use when no [[SilFrontend]] is available. [[setProgram]] and [[setSuccess]] have to be called manually. */
@@ -81,6 +84,8 @@ class ManualProgramSubmitter(
   def setAllowSubmission(b: Boolean): Unit = allowSubmission = b
 
   def setProgram(p: String): Unit = program = p
+
+  def setProgram(p: Program): Unit = program = programToString(p)
 
   def setSuccess(success: Boolean): Unit = succeeded = success
 
@@ -193,7 +198,7 @@ class ViperProgramSubmitter(fe: SilFrontend) extends FEProgramSubmitter {
 
   override def program: String = {
     if (viperProgram != null) {
-      FastPrettyPrinter.pretty(viperProgram)
+      programToString(viperProgram)
     } else ""
   }
 
