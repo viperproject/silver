@@ -65,31 +65,20 @@ trait ProgramSubmitter {
     }
 }
 
-/** To use when no [[SilFrontend]] is available. [[setAllowSubmission]], [[setProgramInfo]] and [[setSuccess]] have to be called manually. */
-class ManualProgramSubmitter extends ProgramSubmitter {
+/** To use when no [[SilFrontend]] is available. [[setProgram]] and [[setSuccess]] have to be called manually. */
+class ManualProgramSubmitter(
+    var allowSubmission: Boolean,
+    var programName: String,
+    var program: String,
+    var originalFrontend: String,
+    var originalVerifier: String,
+    var args: Array[String]
+) extends ProgramSubmitter {
 
   private val startTime: Long = System.currentTimeMillis()
-  protected var allowSubmission: Boolean = false
-  protected var programName: String = ""
-  protected var program: String = ""
-  protected var originalFrontend: String = ""
-  protected var args: Array[String] = Array()
-  protected var originalVerifier: String = ""
   protected var succeeded: Boolean = false
 
   def setAllowSubmission(b: Boolean): Unit = allowSubmission = b
-
-  def setProgramInfo(
-      programName: String,
-      args: Array[String],
-      frontend: String,
-      verifier: String
-  ): Unit = {
-    this.programName = programName
-    this.args = args
-    this.originalFrontend = frontend
-    this.originalVerifier = verifier
-  }
 
   def setProgram(p: String): Unit = program = p
 
