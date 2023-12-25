@@ -2,12 +2,13 @@ package viper.silver.testing
 
 import java.io.{BufferedWriter, File, FileWriter}
 import java.nio.file.{Path, Paths => JPaths}
-import scala.collection.immutable
+import scala.collection.{immutable, mutable}
 import org.scalatest.ConfigMap
 import viper.silver
 import viper.silver.ast.HasLineColumn
 import viper.silver.utility.{Paths, TimingUtils}
 import viper.silver.verifier.{AbstractError, AbstractVerificationError, Failure, Success, Verifier}
+
 
 trait StatisticalTestSuite extends SilSuite {
   protected def repetitionsPropertyName: String = "STATS_REPETITIONS"
@@ -133,12 +134,14 @@ trait StatisticalTestSuite extends SilSuite {
 
       // collect data
       val data = for (_ <- 1 to reps) yield {
+        BenchmarkStatCollector.initTest()
         val fe = frontend(verifier, input.files)
 
         // collect timings
         val perPhaseTimings = fe.phases.map { p =>
           time(p.f)._2
         }
+        val testStats = BenchmarkStatCollector.endTest()
 
         val actualErrors: Seq[AbstractError] =
           fe.result match {
@@ -150,12 +153,12 @@ trait StatisticalTestSuite extends SilSuite {
             }
           }
 
-        (actualErrors, perPhaseTimings)
+        (actualErrors, perPhaseTimings, testStats)
       }
 
       //      println(data)
 
-      val (verResults: immutable.Seq[Seq[AbstractError]], timeResults: immutable.Seq[Seq[Long]]) = data.unzip
+      val (verResults: immutable.Seq[Seq[AbstractError]], timeResults: immutable.Seq[Seq[Long]], statResults) = data.unzip3
 
       val timingsWithTotal: Vector[Seq[Long]] = timeResults.toVector.map(row => row :+ row.sum)
 
@@ -201,7 +204,7 @@ trait StatisticalTestSuite extends SilSuite {
             JPaths.get(targetDirName).toAbsolutePath.relativize(input.file.toAbsolutePath),
             verResults.head.length,
             meanTimings.last, stddevTimings.last, relStddevTimings.last,
-            bestRun.last, medianRun.last, worstRun.last, resultsConsistent(verResults), summarizeResults(verResults.head))
+            bestRun.last, medianRun.last, worstRun.last, resultsConsistent(verResults), summarizeResults(verResults.head), summarizeStats(statResults.head))
 
           csvFile.write(csvRowData.mkString(","))
           csvFile.newLine()
@@ -225,7 +228,7 @@ trait StatisticalTestSuite extends SilSuite {
             JPaths.get(targetDirName).toAbsolutePath.relativize(input.file.toAbsolutePath),
             verResults.head.length,
             meanTimings.last, stddevTimings.last, relStddevTimings.last,
-            bestRun.last, medianRun.last, worstRun.last, resultsConsistent(verResults), summarizeResults(verResults.head))
+            bestRun.last, medianRun.last, worstRun.last, resultsConsistent(verResults), summarizeResults(verResults.head), summarizeStats(statResults.head))
 
           csvFile.write(csvRowData.mkString(","))
           csvFile.newLine()
@@ -265,6 +268,10 @@ trait StatisticalTestSuite extends SilSuite {
         s"${posString}-${e.fullId}"
       }).sorted.mkString(";")
     }
+  }
+
+  private def summarizeStats(stats: Map[String, Int]): String = {
+    stats.toSeq.sortBy(_._1).map(tup => s"${tup._1}=${tup._2}").mkString(";")
   }
 
   private def failIf(message: => String, condition: Boolean): Unit =
