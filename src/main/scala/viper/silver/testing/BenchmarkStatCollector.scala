@@ -4,7 +4,7 @@ import scala.collection.mutable
 
 
 object BenchmarkStatCollector {
-  private val _stats = new mutable.HashMap[String, Int]()
+  private val _stats = new mutable.HashMap[String, Long]()
 
   private var isReady = false
 
@@ -26,7 +26,7 @@ object BenchmarkStatCollector {
     }
   }
 
-  def addToStat(stat: String, value: Int) = {
+  def addToStat(stat: String, value: Long) = {
     val map = getStats()
     val current = map(stat)
     map.update(stat, current + value)

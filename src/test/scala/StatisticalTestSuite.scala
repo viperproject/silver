@@ -270,7 +270,7 @@ trait StatisticalTestSuite extends SilSuite {
     }
   }
 
-  private def summarizeStats(stats: Map[String, Int]): String = {
+  private def summarizeStats(stats: Map[String, Long]): String = {
     stats.toSeq.sortBy(_._1).map(tup => s"${tup._1}=${tup._2}").mkString(";")
   }
 
