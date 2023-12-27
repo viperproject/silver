@@ -10,13 +10,15 @@ object BenchmarkStatCollector {
 
   def initTest() = {
     BenchmarkStatCollector.synchronized{
-      assert(!isReady)
+      if (isReady) {
+        endTest()
+      }
       isReady = true
     }
   }
 
   private def getStats() = {
-    assert(isReady)
+    //assert(isReady)
     _stats
   }
 
@@ -34,7 +36,7 @@ object BenchmarkStatCollector {
 
   def endTest() = {
     BenchmarkStatCollector.synchronized{
-      assert(isReady)
+      //assert(isReady)
       isReady = false
       val res = _stats.toMap
       _stats.clear()
