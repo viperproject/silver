@@ -40,6 +40,7 @@ case class TypeChecker(names: NameAnalyser) {
   var curMember: PScope = null
   var curFunction: PFunction = null
   var resultAllowed: Boolean = false
+  var debugVariableTypes: Map[String, PType] = Map.empty
 
   /** to record error messages */
   var messages: FastMessaging.Messages = Nil
@@ -360,23 +361,15 @@ case class TypeChecker(names: NameAnalyser) {
     }
   }
 
-  // TODO ake: copy pasted from above
   def acceptAndCheckTypedEntityWithVersion[T1: ClassTag, T2: ClassTag]
   (idnUses: Seq[PVersionedIdnUse], errorMessage: => String): Unit = {
 
-    /* TODO: Ensure that the ClassTags denote subtypes of TypedEntity */
-    val acceptedClasses = Seq[Class[_]](classTag[T1].runtimeClass, classTag[T2].runtimeClass)
-
     idnUses.foreach { use =>
-      val decl = names.definition(curMember)(PIdnUse(use.name)(use.pos)).get
+      val decl1 = debugVariableTypes.get(use.versionedName)
 
-      acceptedClasses.find(_.isInstance(decl)) match {
-        case Some(_) =>
-          val td = decl.asInstanceOf[PTypedDeclaration]
-          use.typ = td.typ
-          use.decl = td
-        case None =>
-          messages ++= FastMessaging.message(use, errorMessage)
+      decl1 match {
+        case Some(value) => use.typ = value // TODO ake: set use.decl?
+        case None => messages ++= FastMessaging.message(use, errorMessage)
       }
     }
   }

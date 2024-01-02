@@ -369,11 +369,9 @@ case class Translator(program: PProgram) {
           case _ => sys.error("should not occur in type-checked program")
         }
       case pviu@PVersionedIdnUse(_, _, _) =>
-        pviu.decl match {
-          case _: PAnyVarDecl => LocalVarWithVersion(pviu.versionedName, ttyp(pexp.typ))(pos, info)
-          // A malformed AST where a field, function or other declaration is used as a variable.
-          // Should have been caught by the type checker.
-          case _ => sys.error("should not occur in type-checked program")
+        pexp.typ match {
+          case null => sys.error("should not occur in type-checked program")
+          case _ => LocalVarWithVersion(pviu.versionedName, ttyp(pexp.typ))(pos, info)
         }
       case pbe @ PBinExp(left, op, right) =>
         val (l, r) = (exp(left), exp(right))
@@ -570,7 +568,7 @@ case class Translator(program: PProgram) {
       case PLabelledOld(lbl,e) =>
         LabelledOld(exp(e),lbl.name)(pos, info)
       case PDebugLabelledOld(lbl, e) =>
-        DebugLabelledOld(exp(e), lbl.name)(pos, info)
+        DebugLabelledOld(exp(e), lbl.versionedName)(pos, info)
       case PCondExp(cond, thn, els) =>
         CondExp(exp(cond), exp(thn), exp(els))(pos, info)
       case PCurPerm(res) =>
