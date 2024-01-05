@@ -7,7 +7,7 @@ import org.scalatest.ConfigMap
 import viper.silver
 import viper.silver.ast.HasLineColumn
 import viper.silver.utility.{Paths, TimingUtils}
-import viper.silver.verifier.{AbstractError, AbstractVerificationError, Failure, Success, Verifier}
+import viper.silver.verifier.{AbstractError, AbstractVerificationError, Failure, Success, TimeoutOccurred, Verifier}
 
 
 trait StatisticalTestSuite extends SilSuite {
@@ -107,6 +107,8 @@ trait StatisticalTestSuite extends SilSuite {
 
   protected def name: String
 
+  val randomization: Option[(Seq[String], String, Int => Int)] = None
+
   private val testingInstance: SystemUnderTest with TimingUtils = new SystemUnderTest with TimingUtils {
 
     /** In order to support hierarchical test annotations (an UnexpectedError could be attributed to a verifier, e.g.
@@ -132,9 +134,18 @@ trait StatisticalTestSuite extends SilSuite {
       //      println(s">>> isWarmup = $isWarmup")
       //      println(s">>> reps = $reps")
 
+      var foundTimeout = false
+      var lastActualErrors: Seq[AbstractError] = null
+
       // collect data
-      val data = for (_ <- 1 to reps) yield {
+      val data = for (_ <- 1 to reps if !foundTimeout) yield {
         BenchmarkStatCollector.initTest()
+        randomization match {
+          case Some((args, randArg, randFunc)) =>
+            val seed = randFunc(reps)
+            verifier.parseCommandLine(args ++ Seq(s"${randArg}=${seed}", "dummy.vpr"))
+          case _ =>
+        }
         val fe = frontend(verifier, input.files)
 
         // collect timings
@@ -147,11 +158,21 @@ trait StatisticalTestSuite extends SilSuite {
           fe.result match {
             case Success => Nil
             case Failure(es) => es collect {
+              case te: TimeoutOccurred =>
+                foundTimeout = true; te
               case e: AbstractVerificationError =>
                 e.transformedError()
               case rest: AbstractError => rest
             }
           }
+        if (lastActualErrors != null) {
+          if (!resultsConsistent(Seq(lastActualErrors, actualErrors))) {
+            foundTimeout = true
+          }
+        }
+
+        lastActualErrors = actualErrors
+
 
         (actualErrors, perPhaseTimings, testStats)
       }
@@ -159,6 +180,7 @@ trait StatisticalTestSuite extends SilSuite {
       //      println(data)
 
       val (verResults: immutable.Seq[Seq[AbstractError]], timeResults: immutable.Seq[Seq[Long]], statResults) = data.unzip3
+      val actualReps = verResults.length
 
       val timingsWithTotal: Vector[Seq[Long]] = timeResults.toVector.map(row => row :+ row.sum)
 
@@ -167,8 +189,8 @@ trait StatisticalTestSuite extends SilSuite {
       //      println(s">>> sortedTimings = ${sortedTimings}")
       //      println(s">>> sortedTimings.slice(1,reps-1) = ${sortedTimings.slice(1,reps-1)}")
 
-      val (trimmedTimings, isTrimmed) = if (reps >= 4) {
-        (sortedTimings.slice(1,reps-1), true)
+      val (trimmedTimings, isTrimmed) = if (actualReps >= 4) {
+        (sortedTimings.slice(1,actualReps-1), true)
       } else {
         (sortedTimings, false)
       }

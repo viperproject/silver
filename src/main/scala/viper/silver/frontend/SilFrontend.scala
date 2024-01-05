@@ -6,15 +6,18 @@
 
 package viper.silver.frontend
 
-import viper.silver.ast.utility.Consistency
+import viper.silver.ast.utility.{Chopper, Consistency}
 import viper.silver.ast._
 import viper.silver.parser._
 import viper.silver.plugin.SilverPluginManager
 import viper.silver.plugin.SilverPluginManager.PluginException
 import viper.silver.reporter._
 import viper.silver.verifier._
+
 import java.nio.file.{Path, Paths}
 import viper.silver.FastMessaging
+
+import java.io.PrintWriter
 
 /**
  * Common functionality to implement a command-line verifier for Viper.  This trait
@@ -246,7 +249,8 @@ trait SilFrontend extends DefaultFrontend {
 
     if (state == DefaultStates.ConsistencyCheck && _errors.isEmpty) {
       filter(_program.get) match {
-        case Succ(program) => _program = Some(program)
+        case Succ(program) =>
+          _program = Some(program)
         case Fail(errors) => _errors ++= errors
       }
     }

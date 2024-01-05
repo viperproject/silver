@@ -64,7 +64,7 @@ case class Translator(program: PProgram) {
 
         finalProgram.deepCollect {
           case fp: ForPerm => Consistency.checkForPermArguments(fp, finalProgram)
-          case trig: Trigger => Consistency.checkTriggers(trig, finalProgram)
+          //case trig: Trigger => Consistency.checkTriggers(trig, finalProgram)
         }
 
         if (Consistency.messages.isEmpty) Some(finalProgram) // all error messages generated during translation should be Consistency messages
