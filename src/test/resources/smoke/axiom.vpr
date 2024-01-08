@@ -1,0 +1,10 @@
+domain Foo {
+  axiom unsound {
+    false
+  }
+}
+
+//:: ExpectedOutput(refute.failed:refutation.true)
+method test()
+{
+}

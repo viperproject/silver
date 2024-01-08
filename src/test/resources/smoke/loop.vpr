@@ -1,0 +1,14 @@
+function foo(): Bool
+{
+    false
+}
+
+method test(a: Bool)
+{
+
+    //:: ExpectedOutput(refute.failed:refutation.true)
+    while (a) {
+        //:: ExpectedOutput(refute.failed:refutation.true)
+        assume foo()
+    }
+}
