@@ -7,4 +7,5 @@ domain Foo {
 //:: ExpectedOutput(refute.failed:refutation.true)
 method test()
 {
+    var x: Foo
 }
