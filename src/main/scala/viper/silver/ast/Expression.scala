@@ -11,10 +11,17 @@ import viper.silver.ast.pretty._
 import viper.silver.ast.utility._
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.ast.utility.rewriter.{StrategyBuilder, Traverse}
+import viper.silver.parser.PExp
 import viper.silver.verifier.{ConsistencyError, VerificationResult}
 
 /** Expressions. */
 sealed trait Exp extends Hashable with Typed with Positioned with Infoed with TransformableErrors with PrettyExpression {
+  var sourcePExp : Option[PExp] = None
+
+  def setSourcePExp(pexp: PExp): Unit = {
+    sourcePExp = Some(pexp)
+  }
+
   lazy val isPure = Expressions.isPure(this)
   def isHeapDependent(p: Program) = Expressions.isHeapDependent(this, p)
   def isTopLevelHeapDependent(p: Program) = Expressions.isTopLevelHeapDependent(this, p)
