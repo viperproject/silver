@@ -16,8 +16,10 @@ import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier.errors.AssertFailed
 import viper.silver.verifier._
 import fastparse._
+import viper.silver.frontend.{DefaultStates, ViperPAstProvider}
+import viper.silver.logger.SilentLogger
 import viper.silver.parser.FastParserCompanion.whitespace
-import viper.silver.reporter.Entity
+import viper.silver.reporter.{Entity, NoopReporter, WarningsDuringTypechecking}
 
 import scala.annotation.unused
 
@@ -27,7 +29,9 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
                         fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
   import fp.{FP, keyword, exp, ParserExtension}
 
-  private def deactivated: Boolean = config != null && config.terminationPlugin.toOption.getOrElse(false)
+  private def deactivated: Boolean = config != null && config.disableTerminationPlugin.toOption.getOrElse(false)
+
+  private var decreasesClauses: Seq[PDecreasesClause] = Seq.empty
 
   /**
    * Keyword used to define decreases clauses
@@ -93,15 +97,144 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
 
     // Apply the predicate access to instance transformation only to decreases clauses.
     val newProgram: PProgram = StrategyBuilder.Slim[PNode]({
-      case dt: PDecreasesTuple => transformPredicateInstances.execute(dt): PDecreasesTuple
+      case dt: PDecreasesTuple =>
+        decreasesClauses = decreasesClauses :+ dt
+        transformPredicateInstances.execute(dt): PDecreasesTuple
+      case dc : PDecreasesClause =>
+        decreasesClauses = decreasesClauses :+ dc
+        dc
       case d => d
-    }).recurseFunc({ // decreases clauses can only appear in functions/methods pres and methods bodies
+    }).recurseFunc({ // decreases clauses can only appear in functions/methods pres, posts and methods bodies
       case PProgram(_, _, _, _, functions, _, methods, _, _) => Seq(functions, methods)
-      case PFunction(_, _, _, pres, _, _) => Seq(pres)
-      case PMethod(_, _, _, pres, _, body) => Seq(pres, body)
+      case PFunction(_, _, _, pres, posts, _) => Seq(pres, posts)
+      case PMethod(_, _, _, pres, posts, body) => Seq(pres, posts, body)
     }).execute(input)
 
     newProgram
+  }
+
+  private def constrainsWellfoundednessUnexpectedly(ax: PAxiom, wfTypeName: Option[String]): Seq[PType] = {
+
+    def isWellFoundedFunctionCall(c: PCall): Boolean = {
+      if (!c.isDomainFunction)
+        return false
+      if (!(c.idnuse.name == "decreases" || c.idnuse.name == "bounded"))
+        return false
+      c.function match {
+        case df: PDomainFunction => df.domainName.name == "WellFoundedOrder"
+        case _ => false
+      }
+    }
+
+    def isNotExpectedConstrainedType(t: PType): Boolean = {
+      if (!t.isValidOrUndeclared)
+        return false
+      if (wfTypeName.isEmpty)
+        return true
+      val typeNames = t match {
+        case PPrimitiv("Perm") => Seq("Rational", "Perm")
+        case PPrimitiv(n) => Seq(n)
+        case PSeqType(_) => Seq("Seq")
+        case PSetType(_) => Seq("Set")
+        case PMultisetType(_) => Seq("MultiSet")
+        case PMapType(_, _) => Seq("Map")
+        case PDomainType(d, _) if d.name == "PredicateInstance" => Seq("PredicateInstances")
+        case PDomainType(d, _) => Seq(d.name)
+        case gt: PGenericType => Seq(gt.genericName)
+      }
+      !typeNames.exists(tn => wfTypeName.contains(tn))
+    }
+
+    ax.exp.shallowCollect{
+      case c: PCall if isWellFoundedFunctionCall(c) && c.domainSubstitution.isDefined &&
+        c.domainSubstitution.get.contains("T") &&
+        isNotExpectedConstrainedType(c.domainSubstitution.get.get("T").get) =>
+        c.domainSubstitution.get.get("T").get
+    }
+  }
+
+  override def beforeTranslate(input: PProgram): PProgram = {
+    if (deactivated)
+      return input
+
+    val allClauseTypes: Set[Any] = decreasesClauses.flatMap{
+      case PDecreasesTuple(Seq(), _) => Seq(())
+      case PDecreasesTuple(exps, _) => exps.map(e => e.typ match {
+        case PUnknown() if e.isInstanceOf[PCall] => e.asInstanceOf[PCall].idnuse.typ
+        case _ => e.typ
+      })
+      case _ => Seq()
+    }.toSet
+    val presentDomains = input.domains.map(_.idndef.name).toSet
+
+    // Check if the program contains any domains that define decreasing and bounded functions that do *not* have the expected names.
+    for (d <- input.domains) {
+      val name = d.idndef.name
+      val typeName = if (name.endsWith("WellFoundedOrder"))
+        Some(name.substring(0, name.length - 16))
+      else
+        None
+      val wronglyConstrainedTypes = d.axioms.flatMap(a => constrainsWellfoundednessUnexpectedly(a, typeName))
+      reporter.report(WarningsDuringTypechecking(wronglyConstrainedTypes.map(t =>
+        TypecheckerWarning(s"Domain ${d.idndef.name} constrains well-foundedness functions for type ${t} and should be named <Type>WellFoundedOrder instead.", d.pos._1))))
+    }
+
+    val importStmts = allClauseTypes flatMap {
+      case TypeHelper.Int if !presentDomains.contains("IntWellFoundedOrder") => Some("import <decreases/int.vpr>")
+      case TypeHelper.Ref if !presentDomains.contains("RefWellFoundedOrder") => Some("import <decreases/ref.vpr>")
+      case TypeHelper.Bool if !presentDomains.contains("BoolWellFoundedOrder") => Some("import <decreases/bool.vpr>")
+      case TypeHelper.Perm if !presentDomains.contains("RationalWellFoundedOrder") && !presentDomains.contains("PermWellFoundedOrder") => Some("import <decreases/perm.vpr>")
+      case PMultisetType(_) if !presentDomains.contains("MultiSetWellFoundedOrder") => Some("import <decreases/multiset.vpr>")
+      case PSeqType(_) if !presentDomains.contains("SeqWellFoundedOrder") => Some("import <decreases/seq.vpr>")
+      case PSetType(_) if !presentDomains.contains("SetWellFoundedOrder") => Some("import <decreases/set.vpr>")
+      case PPredicateType() if !presentDomains.contains("PredicateInstancesWellFoundedOrder") =>
+        Some("import <decreases/predicate_instance.vpr>")
+      case _ if !presentDomains.contains("WellFoundedOrder") => Some("import <decreases/declaration.vpr>")
+      case _ => None
+    }
+    if (importStmts.nonEmpty) {
+      val importOnlyProgram = importStmts.mkString("\n")
+      val importPProgram = PAstProvider.generateViperPAst(importOnlyProgram)
+      val mergedDomains = input.domains.filter(_.idndef.name != "WellFoundedOrder") ++ importPProgram.get.domains
+
+      val mergedProgram = input.copy(domains = mergedDomains)(input.pos)
+      super.beforeTranslate(mergedProgram)
+    } else {
+      super.beforeTranslate(input)
+    }
+  }
+
+  object PAstProvider extends ViperPAstProvider(NoopReporter, SilentLogger().get) {
+    def generateViperPAst(code: String): Option[PProgram] = {
+      val code_id = code.hashCode.asInstanceOf[Short].toString
+      _input = Some(code)
+      execute(Array("--ignoreFile", code_id))
+
+      if (errors.isEmpty) {
+        Some(semanticAnalysisResult)
+      } else {
+        None
+      }
+    }
+
+    def setCode(code: String): Unit = {
+      _input = Some(code)
+    }
+
+    override def reset(input: java.nio.file.Path): Unit = {
+      if (state < DefaultStates.Initialized) sys.error("The translator has not been initialized.")
+      _state = DefaultStates.InputSet
+      _inputFile = Some(input)
+
+      /** must be set by [[setCode]] */
+      // _input = None
+      _errors = Seq()
+      _parsingResult = None
+      _semanticAnalysisResult = None
+      _verificationResult = None
+      _program = None
+      resetMessages()
+    }
   }
 
 
@@ -111,27 +244,29 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
   override def beforeVerify(input: Program): Program = {
     // Prevent potentially unsafe (mutually) recursive function calls in function postcondtions
     // for all functions that don't have a decreases clause
-    lazy val cycles = Functions.findFunctionCyclesViaOptimized(input, func => func.body.toSeq)
-    for (f <- input.functions) {
-      val hasDecreasesClause = (f.pres ++ f.posts).exists(p => p.shallowCollect {
-        case dc: DecreasesClause => dc
-      }.nonEmpty)
-      if (!hasDecreasesClause) {
-        val funcCycles = cycles.get(f)
-        val problematicFuncApps = f.posts.flatMap(p => p.shallowCollect {
-          case fa: FuncApp if fa.func(input) == f => fa
-          case fa: FuncApp if funcCycles.isDefined && funcCycles.get.contains(fa.func(input)) => fa
-        }).toSet
-        for (fa <- problematicFuncApps) {
-          val calledFunc = fa.func(input)
-          if (calledFunc == f) {
-            if (fa.args == f.formalArgs.map(_.localVar)) {
-              reportError(ConsistencyError(s"Function ${f.name} has a self-reference in its postcondition and must be proven to be well-founded. Use \"result\" instead to refer to the result of the function.", fa.pos))
+    if (!deactivated) {
+      lazy val cycles = Functions.findFunctionCyclesViaOptimized(input, func => func.body.toSeq)
+      for (f <- input.functions) {
+        val hasDecreasesClause = (f.pres ++ f.posts).exists(p => p.shallowCollect {
+          case dc: DecreasesClause => dc
+        }.nonEmpty)
+        if (!hasDecreasesClause) {
+          val funcCycles = cycles.get(f)
+          val problematicFuncApps = f.posts.flatMap(p => p.shallowCollect {
+            case fa: FuncApp if fa.func(input) == f => fa
+            case fa: FuncApp if funcCycles.isDefined && funcCycles.get.contains(fa.func(input)) => fa
+          }).toSet
+          for (fa <- problematicFuncApps) {
+            val calledFunc = fa.func(input)
+            if (calledFunc == f) {
+              if (fa.args == f.formalArgs.map(_.localVar)) {
+                reportError(ConsistencyError(s"Function ${f.name} has a self-reference in its postcondition and must be proven to be well-founded. Use \"result\" instead to refer to the result of the function.", fa.pos))
+              } else {
+                reportError(ConsistencyError(s"Function ${f.name} has a self-reference in its postcondition and must be proven to be well-founded. Add a \"decreases\" clause to prove well-foundedness.", fa.pos))
+              }
             } else {
-              reportError(ConsistencyError(s"Function ${f.name} has a self-reference in its postcondition and must be proven to be well-founded. Add a \"decreases\" clause to prove well-foundedness.", fa.pos))
+              reportError(ConsistencyError(s"Function ${f.name} has a call to mutually-recursive function ${calledFunc.name} in its postcondition and must be proven to be well-founded. Add a \"decreases\" clause to prove well-foundedness.", fa.pos))
             }
-          } else {
-            reportError(ConsistencyError(s"Function ${f.name} has a call to mutually-recursive function ${calledFunc.name} in its postcondition and must be proven to be well-founded. Add a \"decreases\" clause to prove well-foundedness.", fa.pos))
           }
         }
       }

@@ -1,0 +1,337 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+@opaque()
+function isGreaterOne(i: Int): Bool
+    requires i > -60
+    ensures (i > 60) ==> result
+{ i > 1 }
+
+@opaque()
+function isGreaterOne2(r: Ref): Bool
+    requires acc(r.f) && r.f > -38
+    ensures (r.f > 60) ==> result
+{ isGreaterOne(r.f) }
+
+@opaque()
+function isGreaterOne22(r: Ref): Bool
+    requires acc(r.f) && r.f > -38
+    ensures (r.f > 60) ==> result
+    //:: ExpectedOutput(postcondition.violated:assertion.false)
+    ensures result == r.f > 1 // fail
+{ isGreaterOne(r.f) }
+
+@opaque()
+function isGreaterOne3(r: Ref): Bool
+    requires acc(r.f) && r.f > -38
+    ensures (r.f > 60) ==> result
+{ @reveal() isGreaterOne(r.f) }
+
+@opaque()
+function isGreaterOne32(r: Ref): Bool
+    requires acc(r.f) && r.f > -38
+    ensures (r.f > 60) ==> result
+    ensures result == r.f > 1
+{ @reveal() isGreaterOne(r.f) }
+
+@opaque()
+function isGreaterOne33(r: Ref): Bool
+    requires acc(r.f)
+    ensures (r.f > 60) ==> result
+//:: ExpectedOutput(application.precondition:assertion.false)
+{ @reveal() isGreaterOne(r.f) }
+
+function isGreaterOne34(r: Ref): Bool
+    requires acc(r.f) && r.f > -38
+    ensures (r.f > 60) ==> result
+{ @reveal() isGreaterOne(r.f) }
+
+function isGreaterOne35(r: Ref): Bool
+    requires acc(r.f) && r.f > -38
+    ensures (r.f > 60) ==> result
+{ isGreaterOne(r.f) }
+
+
+method mPre(j: Int)
+{
+    var tmp : Bool
+    //:: ExpectedOutput(application.precondition:assertion.false)
+    tmp := isGreaterOne(j)
+}
+
+method mPre2(j: Int)
+{
+    var tmp : Bool
+    //:: ExpectedOutput(application.precondition:assertion.false)
+    tmp := @reveal() isGreaterOne(j)
+}
+
+method mPost()
+{
+    var tmp : Bool
+    tmp := isGreaterOne(70)
+    assert tmp
+}
+
+method mPost2()
+{
+    var tmp : Bool
+    tmp := @reveal() isGreaterOne(70)
+    assert tmp
+}
+
+method mDef(j: Int)
+    requires j > -50
+{
+    assume isGreaterOne(j)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert j > 1
+}
+
+method mDef2(j: Int)
+    requires j > -50
+{
+    assume @reveal() isGreaterOne(j)
+    assert j > 1
+}
+
+method mProveFun(j: Int)
+    requires j > 1
+{
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert isGreaterOne(j)
+}
+
+method mProveFun2(j: Int)
+    requires j > 1
+{
+    assert @reveal() isGreaterOne(j)
+}
+
+method mProveRevealed(j: Int)
+    requires j > -40
+{
+    assume isGreaterOne(j)
+    assert @reveal() isGreaterOne(j)
+    assert j > 1
+}
+
+method mProveRevealed2(j: Int)
+    requires j > -40
+{
+    assume isGreaterOne(j)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert j > 1
+}
+
+method mProveOpaque(j: Int)
+    requires j > -40
+{
+    assume @reveal() isGreaterOne(j)
+    assert isGreaterOne(j)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+method mNestedFunc(r: Ref)
+    requires acc(r.f) && r.f > -20
+{
+    assume isGreaterOne2(r)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert r.f > 1
+}
+
+method mNestedFunc2(r: Ref)
+    requires acc(r.f) && r.f > -20
+{
+    assume @reveal() isGreaterOne2(r)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert r.f > 1
+}
+
+method mNestedFunc3(r: Ref)
+    requires acc(r.f) && r.f > -20
+{
+    assume isGreaterOne3(r)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert r.f > 1
+}
+
+method mNestedFunc4(r: Ref)
+    requires acc(r.f) && r.f > -20
+{
+    assume @reveal() isGreaterOne3(r)
+    assert r.f > 1
+}
+
+method mNestedFunc5(r: Ref)
+    requires acc(r.f) && r.f > -20
+{
+    assume isGreaterOne34(r)
+    assert r.f > 1
+}
+
+method mNestedFunc6(r: Ref)
+    requires acc(r.f) && r.f > -20
+{
+    assume isGreaterOne35(r)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert r.f > 1
+}
+
+function fac1(i: Int): Int
+{
+    i <= 1 ? 1 : i * fac1(i - 1)
+}
+
+@opaque()
+function fac2(i: Int): Int
+{
+    i <= 1 ? 1 : i * fac2(i - 1)
+}
+
+@opaque()
+function fac3(i: Int): Int
+{
+    i <= 1 ? 1 : i * (@reveal() fac3(i - 1))
+}
+
+method mFac1_1()
+{
+    var tmp : Int
+    tmp := fac1(3)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert tmp == 6
+}
+
+method mFac1_2()
+{
+    var tmp : Int
+    tmp := fac1(3)
+    assert tmp == 3 * fac1(2)
+    assert tmp == 3 * 2 * fac1(1)
+    assert tmp == 6
+}
+
+method mFac2_1()
+{
+    var tmp : Int
+    tmp := fac2(3)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert tmp == 6
+}
+
+method mFac2_2()
+{
+    var tmp : Int
+    tmp := fac2(3)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert tmp == 3 * fac2(2)
+}
+
+method mFac2_3()
+{
+    var tmp : Int
+    tmp := @reveal() fac2(3)
+    assert tmp == 3 * @reveal() fac2(2)
+    assert tmp == 3 * 2 * @reveal() fac2(1)
+    assert tmp == 6
+}
+
+method mFac2_4()
+{
+    var tmp : Int
+    tmp := @reveal() fac2(3)
+    assert tmp == 3 * fac2(2)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert tmp == 3 * 2 * fac2(1)
+}
+
+method mFac3_1()
+{
+    var tmp : Int
+    tmp := fac3(3)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert tmp == 6
+}
+
+method mFac3_2()
+{
+    var tmp : Int
+    tmp := fac3(3)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert tmp == 3 * fac3(2)
+}
+
+method mFac3_3()
+{
+    var tmp : Int
+    tmp := @reveal() fac3(3)
+    assert tmp == 3 * @reveal() fac3(2)
+    assert tmp == 3 * 2 * @reveal() fac3(1)
+    assert tmp == 6
+}
+
+method mFac3_4()
+{
+    var tmp : Int
+    tmp := @reveal() fac3(3)
+    assert tmp == 3 * fac3(2)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert tmp == 3 * 2 * fac3(1)
+}
+
+method mFac3_5()
+{
+    var tmp : Int
+    tmp := @reveal() fac3(3)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert tmp == 6
+}
+
+predicate P(x: Ref) {
+    acc(x.f)
+}
+
+@opaque()
+function funP(x: Ref): Int
+    requires P(x)
+{
+    unfolding P(x) in x.f
+}
+
+function funP2(x: Ref): Int
+    requires P(x)
+{
+    unfolding P(x) in x.f
+}
+
+method mFold(r: Ref)
+    requires acc(r.f)
+{
+    var tmp: Int
+    tmp := r.f
+    fold P(r)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert funP(r) == tmp
+}
+
+method mFold2(r: Ref)
+    requires acc(r.f)
+{
+    var tmp: Int
+    tmp := r.f
+    fold P(r)
+    assert @reveal() funP(r) == tmp
+}
+
+method mFold3(r: Ref)
+    requires acc(r.f)
+{
+    var tmp: Int
+    tmp := r.f
+    fold P(r)
+    assert funP2(r) == tmp
+}

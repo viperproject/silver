@@ -1,0 +1,25 @@
+method test(a: Bool)
+    requires !a
+{
+    if (a) {
+        unreachable
+    }
+    
+
+    var x: Int := 1
+
+    if (a) {
+        //:: ExpectedOutput(refute.failed:refutation.true)
+        assume false
+        unreachable
+        x := 0
+
+        if (x == 1) {
+            assume false
+
+            if (x == 1) {
+                assume false
+            }
+        }
+    }
+}

@@ -1,0 +1,52 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+predicate falze()
+{
+    false
+}
+
+predicate tru()
+{
+    true
+}
+
+method test_unfold(){
+    //:: ExpectedOutput(unfold.failed:permission.not.positive)
+    unfold acc(falze(), none)
+    assert false
+}
+
+method test_unfold_unknown(p: Perm){
+    assume p >= none
+    //:: ExpectedOutput(unfold.failed:permission.not.positive)
+    //:: ExpectedOutput(unfold.failed:insufficient.permission)
+    //:: MissingOutput(unfold.failed:insufficient.permission, /Silicon/issue/34/)
+    unfold acc(falze(), p)
+    assert false
+}
+
+method test_unfolding(){
+    //:: ExpectedOutput(assert.failed:permission.not.positive)
+    assert unfolding acc(falze(), none) in false
+}
+
+method test_unfolding_unknown(p: Perm){
+    assume p >= none
+    //:: ExpectedOutput(assert.failed:permission.not.positive)
+    //:: ExpectedOutput(assert.failed:insufficient.permission)
+    //:: MissingOutput(assert.failed:insufficient.permission, /Silicon/issue/34/)
+    assert unfolding acc(falze(), p) in false
+}
+
+method test_fold(){
+    //:: ExpectedOutput(fold.failed:permission.not.positive)
+    fold acc(tru(), none)
+}
+
+method test_fold_unknown(p: Perm){
+    assume p >= none
+    //:: ExpectedOutput(fold.failed:permission.not.positive)
+    fold acc(tru(), p)
+}
