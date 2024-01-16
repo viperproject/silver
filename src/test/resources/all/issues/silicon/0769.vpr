@@ -1,0 +1,17 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field values: Map[Int, Ref]
+
+field value: Int
+
+
+method main()
+{
+  var x: Ref
+  x := new(values)
+  x.values := Map()
+  //:: ExpectedOutput(assert.failed:map.key.contains)
+  assert x.values[1].value > 0
+  assert false
+}

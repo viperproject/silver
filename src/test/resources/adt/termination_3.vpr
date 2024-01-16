@@ -1,0 +1,51 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+// Part of termination_1.vpr, but with the WellFoundedness domain already there and a custom domain for
+// the list well founded order.
+import <decreases/declaration.vpr>
+
+domain ListWellFoundedOrder[W] {
+    // Domain already being present will prevent auto-generation of axioms.
+    // Thus, we should not be able to prove termination based on List measures here.
+}
+
+domain Val {}
+
+adt List[V] {
+    Nil()
+    Cons(value: V, tail: List[V])
+}
+
+function len(l: List[Val]): Int
+  ensures result >= 0
+  decreases l
+{
+  //:: ExpectedOutput(termination.failed:tuple.false)
+  l.isNil ? 0 : 1 + len(l.tail)
+}
+
+function len2(l: List[Val]): Int
+  ensures result >= 0
+  decreases l
+{
+  //:: ExpectedOutput(termination.failed:tuple.false)
+  l.isNil ? 0 : (l.tail.isNil ? 1 : 2 + len2(l.tail.tail))
+}
+
+function lenBad(l: List[Val], v: Val): Int
+ ensures result >= 0
+ decreases l
+{
+ //:: ExpectedOutput(termination.failed:tuple.false)
+ lenBad(Cons(v, Nil()), v)
+}
+
+function lenBad2(l: List[Val]): Int
+ ensures result >= 0
+ decreases l
+{
+ //:: ExpectedOutput(termination.failed:tuple.false)
+ 1 + lenBad2(l)
+}

@@ -31,7 +31,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
   import fp.{exp, ParserExtension, lineCol, _file}
   import FastParserCompanion.{ExtendedParsing, LeadingWhitespace, PositionParsing, reservedKw, reservedSym}
 
-  private def deactivated: Boolean = config != null && config.terminationPlugin.toOption.getOrElse(false)
+  private def deactivated: Boolean = config != null && config.disableTerminationPlugin.toOption.getOrElse(false)
 
   private var decreasesClauses: Seq[PDecreasesClause] = Seq.empty
 
