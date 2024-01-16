@@ -22,7 +22,7 @@ class SmokeDetectionPlugin(@unused reporter: viper.silver.reporter.Reporter,
 
   /** Parser for `unreachable` statements. */
   def unreachable[$: P]: P[PUnreachable] =
-    P(P(PUnreachableKeyword) map (PUnreachable(_) _)).pos
+    P(P(PUnreachableKeyword) map PUnreachable.apply).pos
 
   /** Add `unreachable` to the parser. */
   override def beforeParse(input: String, isImported: Boolean): String = {
