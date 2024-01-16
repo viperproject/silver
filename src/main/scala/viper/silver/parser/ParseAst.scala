@@ -795,6 +795,7 @@ class PBinExp(val left: PExp, val opName: String, val right: PExp)(val pos: (Pos
   }
 
   override def hashCode(): Int = viper.silver.utility.Common.generateHashCode(left, opName, right)
+  override def toString(): String = s"PBinExp($left,$opName,$right)"
 }
 
 object PBinExp {
