@@ -64,6 +64,12 @@ object FastParserCompanion {
   }
   class PositionParsing[T](val p: () => P[((Position, Position)) => T]) extends AnyVal {
     def pos(implicit ctx: P[Any], lineCol: LineCol, _file: Path): P[T] = {
+      // TODO: switch over to this?
+      // Index ~~ p() ~~ Index map { case (start, f, end) => {
+      //   val startPos = lineCol.getPos(start)
+      //   val finishPos = lineCol.getPos(end)
+      //   f((FilePosition(_file, startPos._1, startPos._2), FilePosition(_file, finishPos._1, finishPos._2)))
+      // }}
       val startPos = lineCol.getPos(ctx.index)
       val res: P[((Position, Position)) => T] = p()
       val finishPos = lineCol.getPos(ctx.index)
@@ -83,12 +89,16 @@ object FastParserCompanion {
     /** `[`...`]` */
     def brackets[$: P](implicit lineCol: LineCol, _file: Path) = P((P(PSym.LBracket) ~ p() ~ PSym.RBracket) map (PGrouped.apply[PSym.Bracket, T] _).tupled).pos
 
-    def delimited[$: P, U](sep: => P[U], min: Int = 0, max: Int = Int.MaxValue, exactly: Int = -1, trailingDelimit: Boolean = false)(implicit lineCol: LineCol, _file: Path): P[PDelimited[T, U]] =
-      P((    (p() ~ Pass).lw.?.filter(p => (p.isEmpty && min <= 0 && exactly <= 0) || (!p.isEmpty && max > 0 && exactly != 0)) // Parse first element
-        ~~~/ (sep ~ p()).lw.rep(min = if (min == 0) 0 else min - 1, max = max - 1, exactly = if (exactly == -1) -1 else exactly - 1) // Parse other elements
+    def delimitedUnfiltered[$: P, U](sep: => P[U], min: Int, max: Int, exactly: Int): P[(Option[T], Seq[(U, T)], Option[U])] =
+      P(    (p() ~ Pass)./.lw.?.filter(p => (p.isEmpty && min <= 0 && exactly <= 0) || (!p.isEmpty && max > 0 && exactly != 0)) // Parse first element
+        ~~~ (sep ~ p()).lw.rep(min = if (min == 0) 0 else min - 1, max = max - 1, exactly = if (exactly == -1) -1 else exactly - 1) // Parse other elements
         ~~~ sep.lw.? // Parse trailing delimiter
-        ).filter(p => p._1.isDefined || p._2.isEmpty) // Cannot start with delimiter
-        .filter(_._1.isDefined == trailingDelimit) // Cannot end with delimiter unless `trailingDelimit`
+        )
+
+    def delimited[$: P, U](sep: => P[U], min: Int = 0, max: Int = Int.MaxValue, exactly: Int = -1, trailingDelimit: Boolean = false)(implicit lineCol: LineCol, _file: Path): P[PDelimited[T, U]] =
+      P(delimitedUnfiltered(sep, min, max, exactly)
+        .filter(p => p._1.isDefined || p._2.isEmpty) // Cannot start with delimiter
+        .filter(_._3.isDefined == trailingDelimit) // Cannot end with delimiter unless `trailingDelimit`
         .map { case (first, inner, end) => PDelimited(first, inner, end)(_) }
       ).pos
   }
@@ -416,12 +426,16 @@ class FastParser {
     P(!clashes.getOrElse(Fail) ~~ s.!./.map { op => PReserved(f(op))(_) }).pos
 
   /**
-    * Parses one of many possible reserved words, should only be used with `StringIn` as `s`. The parser given in
-    * `f` should be pre-initialized (e.g. from a `val`), see [here](https://com-lihaoyi.github.io/fastparse/#FlatMap). If only
-    * a single reserved word is to be parsed, use `reservedKw` instead.
+    * Parses one of many possible reserved words, should only be used with
+    * `StringIn` as `s`. The parser given in `f` should be mostly
+    * pre-initialized (e.g. from a `def`), see
+    * [here](https://com-lihaoyi.github.io/fastparse/#FlatMap). If only a single
+    * reserved word is to be parsed, use `reservedKw` instead.
     */
-  // def reservedKwMany[$: P, U](s: => P[_], f: String => Pos => P[U]): P[U] =
-  //   (s.! ~~ !identContinues)./.map(f).pos.flatMap(p => p)
+  def reservedKwMany[$: P, U](s: => P[_], f: String => Pos => P[U]): P[U] = {
+    def parser = (s.! ~~ !identContinues)./.map(s => { p: Pos => (s, p) }).pos
+    parser.flatMap { case (s, p) => f(s)(p) }
+  }
 
   /** `(`...`,` ...`,` ...`)` */
   def argList[$: P, T](p: => P[T]) = p.delimited(PSym.Comma).parens
@@ -436,9 +450,36 @@ class FastParser {
     es.foldLeft(e) { (t, a) => a(t) }
 
   def atomReservedKw[$: P]: P[PExp] = {
-    val (oldP, accP, permP, letP, forallP, existsP, forpermP, unfoldingP, applyingP, setP, seqP, multisetP, mapP, rangeP, domainP, newP) =
-        (old, accessPredImpl, perm, let, forall, exists, forperm, unfolding, applying, setConstructor, seqConstructor, multisetConstructor, mapConstructor, mapRange, mapDomain, newExp)
-    Fail
+    reservedKwMany(
+      StringIn("true", "false", "null", "old", "result", "acc", "none", "wildcard", "write", "epsilon", "perm", "let", "forall", "exists", "forperm",
+        "unfolding", "applying", "Set", "Seq", "Multiset", "Map", "range", "domain", "new"),
+      str => pos => str match {
+        case "true" => Pass.map(_ => PBoolLit(PReserved(PKw.True)(pos), true)(_))
+        case "false" => Pass.map(_ => PBoolLit(PReserved(PKw.False)(pos), false)(_))
+        case "null" => Pass.map(_ => PNullLit(PReserved(PKw.Null)(pos))(_))
+        case "old" => old.map(_(PReserved(PKwOp.Old)(pos)))
+        case "result" => Pass.map(_ => PResultLit(PReserved(PKw.Result)(pos))(_))
+        case "acc" => accessPredImpl.map(_(PReserved(PKwOp.Acc)(pos)))
+        case "none" => Pass.map(_ => PNoPerm(PReserved(PKw.None)(pos))(_))
+        case "wildcard" => Pass.map(_ => PWildcard(PReserved(PKw.Wildcard)(pos))(_))
+        case "write" => Pass.map(_ => PFullPerm(PReserved(PKw.Write)(pos))(_))
+        case "epsilon" => Pass.map(_ => PEpsilon(PReserved(PKw.Epsilon)(pos))(_))
+        case "perm" => perm.map(_(PReserved(PKwOp.Perm)(pos)))
+        case "let" => let.map(_(PReserved(PKwOp.Let)(pos)))
+        case "forall" => forall.map(_(PReserved(PKw.Forall)(pos)))
+        case "exists" => exists.map(_(PReserved(PKw.Exists)(pos)))
+        case "forperm" => forperm.map(_(PReserved(PKw.Forperm)(pos)))
+        case "unfolding" => unfolding.map(_(PReserved(PKwOp.Unfolding)(pos)))
+        case "applying" => applying.map(_(PReserved(PKwOp.Applying)(pos)))
+        case "Set" => setConstructor.map(_(PReserved(PKwOp.Set)(pos)))
+        case "Seq" => seqConstructor.map(_(PReserved(PKwOp.Seq)(pos)))
+        case "Multiset" => multisetConstructor.map(_(PReserved(PKwOp.Multiset)(pos)))
+        case "Map" => mapConstructor.map(_(PReserved(PKwOp.Map)(pos)))
+        case "range" => mapRange.map(_(PReserved(PKwOp.Range)(pos)))
+        case "domain" => mapDomain.map(_(PReserved(PKwOp.Domain)(pos)))
+        case "new" => newExp.map(_(PReserved(PKw.New)(pos)))
+      }
+    ).pos
   }
 
   def atom(bracketed: Boolean = false)(implicit ctx : P[_]) : P[PExp] = P(ParserExtension.newExpAtStart(ctx) | annotatedAtom
@@ -547,7 +588,12 @@ class FastParser {
     case "++" => PSymOp.Append
     case "+" => PSymOp.Plus
     case "-" => PSymOp.Minus
-  }) | Fail)
+  }) | reservedKwMany(StringIn("union", "intersection", "setminus", "subset"), str => _ => str match {
+    case "union" => Pass.map(_ => PReserved(PKwOp.Union)(_))
+    case "intersection" => Pass.map(_ => PReserved(PKwOp.Intersection)(_))
+    case "setminus" => Pass.map(_ => PReserved(PKwOp.Setminus)(_))
+    case "subset" => Pass.map(_ => PReserved(PKwOp.Subset)(_))
+  }).pos)
 
   def sum[$: P](bracketed: Boolean = false): P[PExp] = P((term(bracketed) ~~~ sumd.lw.rep).map { case (a, ss) => foldPExp(a, ss) })
 
@@ -652,8 +698,24 @@ class FastParser {
   def idnTypeBinding[$: P]: P[PIdnTypeBinding] = P((idndef ~ PSym.Colon ~ typ) map (PIdnTypeBinding.apply _).tupled).pos
 
   def typReservedKw[$: P]: P[PType] = {
-    val (seqP, setP, multisetP, mapP) = (seqType, setType, multisetType, mapType)
-    Fail
+    reservedKwMany(
+      StringIn("Rational", "Int", "Bool", "Perm", "Ref", "Seq", "Set", "Multiset", "Map"),
+      str => pos => str match {
+        case "Rational" => Pass.map { _ =>
+            val p = pos.asInstanceOf[(HasLineColumn, HasLineColumn)]
+            _warnings = _warnings :+ ParseWarning("Rational is deprecated, use Perm instead", SourcePosition(_file, p._1, p._2))
+            PPrimitiv(PReserved(PKw.Perm)(pos))(_)
+          }
+        case "Int" => Pass.map(_ => PPrimitiv(PReserved(PKw.Int)(pos))(_))
+        case "Bool" => Pass.map(_ => PPrimitiv(PReserved(PKw.Bool)(pos))(_))
+        case "Perm" => Pass.map(_ => PPrimitiv(PReserved(PKw.Perm)(pos))(_))
+        case "Ref" => Pass.map(_ => PPrimitiv(PReserved(PKw.Ref)(pos))(_))
+        case "Seq" => seqType.map(_(PReserved(PKw.Seq)(pos)))
+        case "Set" => setType.map(_(PReserved(PKw.Set)(pos)))
+        case "Multiset" => multisetType.map(_(PReserved(PKw.Multiset)(pos)))
+        case "Map" => mapType.map(_(PReserved(PKw.Map)(pos)))
+      }
+    ).pos
   }
 
   def typ[$: P]: P[PType] = P(typReservedKw | domainTyp | macroType)
@@ -746,9 +808,29 @@ class FastParser {
   }.pos)
 
   def stmtReservedKw[$: P](allowDefine: Boolean): P[PStmt] = {
-    val (foldP, unfoldP, exhaleP, assertStmtP, inhaleP, assumeP, ifThenElseP, whileStmtP, localVarsP, defineDeclStmtP, gotoP, labelP, packageWandP, applyWandP, quasihavocP, quasihavocallP) =
-      (fold, unfold, exhale, assertStmt, inhale, assume, ifThenElse, whileStmt, localVars, defineDeclStmt, goto, label, packageWand, applyWand, quasihavoc, quasihavocall)
-    Fail
+    reservedKwMany(
+      StringIn("fold", "unfold", "exhale", "assert", "inhale", "assume", "if", "while", "var", "define",
+        "goto", "label", "package", "apply", "quasihavoc", "quasihavocall"),
+      str => pos => str match {
+        case "fold" => fold.map(_(PReserved(PKw.Fold)(pos)))
+        case "unfold" => unfold.map(_(PReserved(PKw.Unfold)(pos)))
+        case "exhale" => exhale.map(_(PReserved(PKw.Exhale)(pos)))
+        case "assert" => assertStmt.map(_(PReserved(PKw.Assert)(pos)))
+        case "inhale" => inhale.map(_(PReserved(PKw.Inhale)(pos)))
+        case "assume" => assume.map(_(PReserved(PKw.Assume)(pos)))
+        case "if" => ifThenElse.map(_(PReserved(PKw.If)(pos)))
+        case "while" => whileStmt.map(_(PReserved(PKw.While)(pos)))
+        case "var" => localVars.map(_(PReserved(PKw.Var)(pos)))
+        case "define" if allowDefine => defineDeclStmt.map(_(PReserved(PKw.Define)(pos)))
+        case "define" if !allowDefine => Fail
+        case "goto" => goto.map(_(PReserved(PKw.Goto)(pos)))
+        case "label" => label.map(_(PReserved(PKw.Label)(pos)))
+        case "package" => packageWand.map(_(PReserved(PKw.Package)(pos)))
+        case "apply" => applyWand.map(_(PReserved(PKw.Apply)(pos)))
+        case "quasihavoc" => quasihavoc.map(_(PReserved(PKw.Quasihavoc)(pos)))
+        case "quasihavocall" => quasihavocall.map(_(PReserved(PKw.Quasihavocall)(pos)))
+      }
+    ).pos
   }
 
   def stmt(allowDefine: Boolean = true)(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | annotatedStmt |
@@ -831,9 +913,18 @@ class FastParser {
     P(magicWandExp() map { wand => PApplyWand(_, wand) _ })
 
   def memberReservedKw[$: P]: P[PAnnotationsPosition => PNode] = {
-    val (importP, defineP, fieldP, methodP, domainP, functionP, predicateP) =
-      (preambleImport, defineDecl, fieldDecl, methodDecl, domainDecl, functionDecl, predicateDecl)
-    Fail
+    reservedKwMany(
+      StringIn("import", "define", "field", "method", "domain", "function", "predicate"),
+      str => pos => str match {
+        case "import" => preambleImport.map(_(PReserved(PKw.Import)(pos)))
+        case "define" => defineDecl.map(_(PReserved(PKw.Define)(pos)))
+        case "field" => fieldDecl.map(_(PReserved(PKw.Field)(pos)))
+        case "method" => methodDecl.map(_(PReserved(PKw.Method)(pos)))
+        case "domain" => domainDecl.map(_(PReserved(PKw.Domain)(pos)))
+        case "function" => functionDecl.map(_(PReserved(PKw.Function)(pos)))
+        case "predicate" => predicateDecl.map(_(PReserved(PKw.Predicate)(pos)))
+      }
+    )
   }
 
   def programMember(implicit ctx : P[_]): P[PNode] =

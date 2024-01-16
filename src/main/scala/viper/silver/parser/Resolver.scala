@@ -671,7 +671,7 @@ case class TypeChecker(names: NameAnalyser) {
           var nestedTypeError = !poa.args.forall(a => a.typ.isValidOrUndeclared)
           if (!nestedTypeError) {
             poa match {
-              case pfa@PCall(func, args, explicitType) =>
+              case pfa@PCall(func, _, explicitType) =>
                 explicitType match {
                   case Some((_, t)) =>
                     check(t)
@@ -679,30 +679,7 @@ case class TypeChecker(names: NameAnalyser) {
                   case None =>
                 }
 
-                if (poa.signatures.nonEmpty && poa.args.forall(_.typeSubstitutions.nonEmpty) && !nestedTypeError) {
-                  val ltr = getFreshTypeSubstitution(poa.localScope.toList) //local type renaming - fresh versions
-                  val rlts = poa.signatures map (ts => refreshWith(ts, ltr)) //local substitutions refreshed
-                  assert(rlts.nonEmpty)
-                  val rrt: PDomainType = POpApp.pRes.substitute(ltr).asInstanceOf[PDomainType] // return type (which is a dummy type variable) replaced with fresh type
-                  val flat = poa.args.indices map (i => POpApp.pArg(i).substitute(ltr)) //fresh local argument types
-                  // the quadruples below are: (fresh argument type, argument type as used in domain of substitutions, substitutions, expression)
-                  val argData = flat.indices.map(i => (flat(i), poa.args(i).typ, poa.args(i).typeSubstitutions.distinct.toSeq, poa.args(i))) ++
-                    (
-                      extraReturnTypeConstraint match {
-                        case None => Nil
-                        case Some(t) => Seq((rrt, t, List(PTypeSubstitution.id), poa))
-                      }
-                      )
-                  val unifiedSequence = unifySequenceWithSubstitutions(rlts, argData)
-                  if (unifiedSequence.isLeft && poa.typeSubstitutions.isEmpty) {
-                    val problem = unifiedSequence.swap.toOption.get
-                    messages ++= FastMessaging.message(problem._3,
-                      s"Type error in the expression at ${problem._3.pos._1}. Expected type ${problem._1} but found ${problem._2}.")
-                  } else {
-                    poa.typeSubstitutions ++= unifiedSequence.toOption.get
-                    val ts = poa.typeSubstitutions.distinct
-                    poa.typ = if (ts.size == 1) rrt.substitute(ts.head) else rrt
-                  }
+                if (!nestedTypeError) {
                   val ad = names.definition(curMember)(func)
                   ad match {
                     case Some(fd: PAnyFunction) =>
@@ -775,39 +752,41 @@ case class TypeChecker(names: NameAnalyser) {
             }
           }
 
-          val ltr = getFreshTypeSubstitution(poa.localScope.toList) //local type renaming - fresh versions
-          val rlts = poa.signatures map (ts => refreshWith(ts, ltr)) //local substitutions refreshed
-          val rrt: PDomainType = POpApp.pRes.substitute(ltr).asInstanceOf[PDomainType] // return type (which is a dummy type variable) replaced with fresh type
-          // Continue only if there was no error in the arguments
-          if (rlts.nonEmpty && poa.args.forall(_.typeSubstitutions.nonEmpty) && !nestedTypeError) {
-            val flat = poa.args.indices map (i => POpApp.pArg(i).substitute(ltr)) //fresh local argument types
-            // the quadruples below are: (fresh argument type, argument type as used in domain of substitutions, substitutions, expression)
-            val argData = flat.indices.map(i => (flat(i), poa.args(i).typ, poa.args(i).typeSubstitutions.distinct.toSeq, poa.args(i))) ++
-              (
-                extraReturnTypeConstraint match {
-                  case None => Nil
-                  case Some(t) => Seq((rrt, t, List(PTypeSubstitution.id), poa))
-                }
-                )
-            val unifiedSequence = unifySequenceWithSubstitutions(rlts, argData)
-            if (unifiedSequence.isLeft && poa.typeSubstitutions.isEmpty) {
-              val problem = unifiedSequence.left.toOption.get
-              messages ++= FastMessaging.message(problem._3,
-                s"Expected type ${problem._1.pretty}, but found ${problem._2.pretty} at the expression at ${problem._3.pos._1}.")
+          if (poa.signatures.nonEmpty && poa.args.forall(_.typeSubstitutions.nonEmpty) && !nestedTypeError) {
+            val ltr = getFreshTypeSubstitution(poa.localScope.toList) //local type renaming - fresh versions
+            val rlts = poa.signatures map (ts => refreshWith(ts, ltr)) //local substitutions refreshed
+            val rrt: PDomainType = POpApp.pRes.substitute(ltr).asInstanceOf[PDomainType] // return type (which is a dummy type variable) replaced with fresh type
+            // Continue only if there was no error in the arguments
+            if (rlts.nonEmpty && poa.args.forall(_.typeSubstitutions.nonEmpty) && !nestedTypeError) {
+              val flat = poa.args.indices map (i => POpApp.pArg(i).substitute(ltr)) //fresh local argument types
+              // the quadruples below are: (fresh argument type, argument type as used in domain of substitutions, substitutions, expression)
+              val argData = flat.indices.map(i => (flat(i), poa.args(i).typ, poa.args(i).typeSubstitutions.distinct.toSeq, poa.args(i))) ++
+                (
+                  extraReturnTypeConstraint match {
+                    case None => Nil
+                    case Some(t) => Seq((rrt, t, List(PTypeSubstitution.id), poa))
+                  }
+                  )
+              val unifiedSequence = unifySequenceWithSubstitutions(rlts, argData)
+              if (unifiedSequence.isLeft && poa.typeSubstitutions.isEmpty) {
+                val problem = unifiedSequence.left.toOption.get
+                messages ++= FastMessaging.message(problem._3,
+                  s"Expected type ${problem._1.pretty}, but found ${problem._2.pretty} at the expression at ${problem._3.pos._1}.")
+              } else {
+                poa.typeSubstitutions ++= unifiedSequence.toOption.get
+                val ts = poa.typeSubstitutions.distinct
+                poa.typ = if (ts.size == 1) rrt.substitute(ts.head) else rrt
+              }
             } else {
-              poa.typeSubstitutions ++= unifiedSequence.toOption.get
-              val ts = poa.typeSubstitutions.distinct
-              poa.typ = if (ts.size == 1) rrt.substitute(ts.head) else rrt
+              poa.typeSubstitutions.clear()
+              // Try to get a correct type even though the
+              val ts = rlts.map(rrt.substitute(_)).distinct
+              if (ts.size == 1) {
+                poa.typeSubstitutions += rlts.find(_.contains(rrt)).get
+                poa.typ = ts.head
+              } else
+                poa.typ = PUnknown()()
             }
-          } else {
-            poa.typeSubstitutions.clear()
-            // Try to get a correct type even though the
-            val ts = rlts.map(rrt.substitute(_)).distinct
-            if (ts.size == 1) {
-              poa.typeSubstitutions += rlts.find(_.contains(rrt)).get
-              poa.typ = ts.head
-            } else
-              poa.typ = PUnknown()()
           }
         }
 

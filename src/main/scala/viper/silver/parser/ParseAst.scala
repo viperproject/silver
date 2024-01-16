@@ -34,7 +34,7 @@ trait PNode extends Where with Product with Rewritable {
   def pretty: String
 
   /** Returns a list of all direct sub-nodes of this node. */
-  def subnodes: Seq[PNode] = PNode.children(this).flatMap(PNode.nodes).toSeq
+  def subnodes: Seq[PNode] = PNode.children(this, this).flatMap(PNode.nodes(this, _)).toSeq
 
   /** @see [[Visitor.reduceTree()]] */
   def reduceTree[T](f: (PNode, Seq[T]) => T) = Visitor.reduceTree(this, PNode.callSubnodes)(f)
@@ -107,31 +107,20 @@ trait PNode extends Where with Product with Rewritable {
   def initProperties(): Unit = {
 
     var ind: Int = 0
-    var prev: PNode = null
-
-
-    def setNodeChildConnections(node: Any): Unit =
-      node match {
-        case c: PNode =>
-          c.parent = Some(this)
-          _children += c
-          c.index = ind
-          ind += 1
-          c.prev = Some(prev)
-          c.next = null
-          if (prev != null)
-            prev.next = Some(c)
-          prev = c
-          c.initProperties()
-        case _ =>
-          for (c <- PNode.children(node))
-            setNodeChildConnections(c)
-      }
+    var prev: Option[PNode] = None
 
     _children.clear()
-    for (c <- PNode.children(this))
-      setNodeChildConnections(c)
-
+    for (c <- this.subnodes) {
+      c.parent = Some(this)
+      _children += c
+      c.index = ind
+      ind += 1
+      c.prev = prev
+      c.next = None
+      prev.foreach(_.next = Some(c))
+      prev = Some(c)
+      c.initProperties()
+    }
   }
 
   def getEnclosingScope: Option[PScope] = {
@@ -161,7 +150,7 @@ trait PPrettySubnodes extends PNode {
 }
 
 object PNode {
-  def children(n: Any): Iterator[Any] = {
+  def children(parent: PNode, n: Any): Iterator[Any] = {
     n match {
       case _: PLeaf | _: Unit => Iterator.empty
       case t: PExtender => t.getSubnodes().iterator
@@ -170,13 +159,13 @@ object PNode {
       // Includes `Either`, all case classes, etc.
       case t: Product => t.productIterator
       // This case should be avoided by marking your node as a `PLeaf`.
-      case _ => sys.error(s"Unexpected node type: ${n.getClass}")
+      case _ => sys.error(s"Unexpected node type `${n.getClass}`. Make `${parent.getClass}` a `PLeaf` or put the `${n.getClass}` field into a `PLeaf` wrapper node.")
     }
   }
-  def nodes(n: Any): Iterator[PNode] = {
+  def nodes(parent: PNode, n: Any): Iterator[PNode] = {
     n match {
       case n: PNode => Iterator(n)
-      case _ => children(n).flatMap(nodes)
+      case _ => children(parent, n).flatMap(nodes(parent, _))
     }
   }
   def callSubnodes(n: PNode): Seq[PNode] = n.subnodes
@@ -551,7 +540,7 @@ case class PAnnotatedExp(annotation: PAnnotation, e: PExp)(val pos: (Position, P
   override def forceSubstitution(ts: PTypeSubstitution): Unit = e.forceSubstitution(ts)
 }
 
-class PTypeSubstitution(val m: Map[String, PType]) //extends Map[String,PType]()
+case class PTypeSubstitution(m: Map[String, PType]) //extends Map[String,PType]()
 {
   require(m.values.forall(_.isValidOrUndeclared))
 
@@ -810,6 +799,7 @@ class PBinExp(val left: PExp, val op: PReserved[PBinaryOp], val right: PExp)(val
   }
 
   override def hashCode(): Int = viper.silver.utility.Common.generateHashCode(left, op.rs.operator, right)
+  override def toString(): String = s"PBinExp($left,$op,$right)"
 }
 
 object PBinExp {
@@ -819,7 +809,7 @@ object PBinExp {
   def unapply(arg: PBinExp): Option[(PExp, PReserved[PBinaryOp], PExp)] = Some(arg.left, arg.op, arg.right)
 }
 
-case class PMagicWandExp(override val left: PExp, wand: PSymOp.Wand, override val right: PExp)(val posi: (Position, Position)) extends PBinExp(left, wand, right)(posi) with PResourceAccess
+case class PMagicWandExp(override val left: PExp, wand: PSymOp.Wand, override val right: PExp)(override val pos: (Position, Position)) extends PBinExp(left, wand, right)(pos) with PResourceAccess
 
 case class PUnExp(op: PReserved[PUnaryOp], exp: PExp)(val pos: (Position, Position)) extends POpAppOperator {
   override val args = Seq(exp)
@@ -853,8 +843,9 @@ case class PIntLit(i: BigInt)(val pos: (Position, Position)) extends PSimpleLite
 
 case class PResultLit(result: PKw.Result)(val pos: (Position, Position)) extends PSimpleLiteral
 
-case class PBoolLit(keyword: PReserved[PKeywordConstant], b: Boolean)(val pos: (Position, Position)) extends PConstantLiteral {
+case class PBoolLit(keyword: PReserved[PKeywordConstant], b: Boolean)(val pos: (Position, Position)) extends PConstantLiteral with PLeaf {
   typ = Bool
+  override def display: String = keyword.display
 }
 
 case class PNullLit(keyword: PKw.Null)(val pos: (Position, Position)) extends PConstantLiteral {
