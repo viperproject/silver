@@ -34,8 +34,6 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
         config.plugin.toOption.getOrElse("").split(":").contains("viper.silver.plugin.standard.termination.TerminationPlugin"))
   }
 
-  def adtDerivingFunc[$: P]: P[PIdnUse] = FP(StringIn("contains").!).map { case (pos, id) => PIdnUse(id)(pos) }
-
   override def beforeParse(input: String, isImported: Boolean): String = {
     if (deactivated) {
       return input

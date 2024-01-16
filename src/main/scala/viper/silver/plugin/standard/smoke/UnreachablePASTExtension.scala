@@ -8,8 +8,14 @@ package viper.silver.plugin.standard.smoke
 
 import viper.silver.ast.{Position, Stmt}
 import viper.silver.parser._
+import viper.silver.ast.utility.lsp.BuiltinFeature
 
-case class PUnreachable()(val pos: (Position, Position)) extends PExtender with PStmt {
+/** Keyword used to define `unreachable` statement. */
+case object PUnreachableKeyword extends PKw("unreachable", TODOUnreachableDoc) with PKeywordStmt
+case object TODOUnreachableDoc extends BuiltinFeature(
+  """TODO""".stripMargin.replaceAll("\n", " ")
+)
+case class PUnreachable(kw: PReserved[PUnreachableKeyword.type])(val pos: (Position, Position)) extends PExtender with PStmt {
   override val getSubnodes: Seq[PNode] = Seq()
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
     None

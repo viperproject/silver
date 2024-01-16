@@ -8,7 +8,7 @@ import java.nio.file.Paths
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast.{LocalVar, Perm, Program}
 import viper.silver.frontend.{SilFrontend, SilFrontendConfig}
-import viper.silver.parser.{PIdnDef, PKeywordLang, PPredicate, PProgram}
+import viper.silver.parser.{PIdnDef, PPredicate, PProgram}
 import viper.silver.plugin.{SilverPlugin, SilverPluginManager}
 import viper.silver.reporter.{Reporter, StdIOReporter}
 import viper.silver.verifier.errors.Internal
@@ -17,7 +17,10 @@ import viper.silver.verifier._
 import viper.silver.ast.NoPosition
 
 import scala.annotation.unused
-import viper.silver.parser.PKeywordLang
+import viper.silver.parser.PReserved
+import viper.silver.parser.PKw
+import viper.silver.parser.PGrouped
+import viper.silver.parser.PDelimited
 
 trait TestPlugin {
   def test(): Boolean = true
@@ -125,7 +128,7 @@ class TestPluginAddPredicate extends SilverPlugin {
       input.domains,
       input.fields,
       input.functions,
-      input.predicates :+ PPredicate(Seq(), PKeywordLang("predicate")(p), PIdnDef("testPredicate")(p), Seq(), None)(p),
+      input.predicates :+ PPredicate(Seq(), PReserved.implied(PKw.Predicate), PIdnDef("testPredicate")(p), PGrouped.impliedParen(PDelimited.empty), None)(p),
       input.methods,
       input.extensions,
       input.errors

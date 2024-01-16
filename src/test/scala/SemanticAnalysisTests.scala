@@ -27,17 +27,19 @@ class SemanticAnalysisTests extends AnyFunSuite {
 
   test("Semantic analysis in AST without shared nodes") {
     val p = (NoPosition, NoPosition)
-    val binExp1 = PBinExp(PIntLit(1)(p), POperatorSymbol("==")(p), PIntLit(1)(p))(p)
-    val binExp2 = PBinExp(PIntLit(1)(p), POperatorSymbol("==")(p), PIntLit(1)(p))(p)
-    val method = PMethod(Seq(), PKeywordLang("method")(p), PIdnDef("m")(p), Seq(), None, Seq(), Seq(), Seq(), Some(PSeqn(Seq(PSeqn(Seq(PAssert(PKeywordStmt("assert")(p), binExp1)(p), PSeqn(Seq(PAssert(PKeywordStmt("assert")(p), binExp2)(p)))(p)))(p)))(p)))(p)
+    val binExp1 = PBinExp(PIntLit(1)(p), PReserved.implied(PSymOp.EqEq), PIntLit(1)(p))(p)
+    val binExp2 = PBinExp(PIntLit(1)(p), PReserved.implied(PSymOp.EqEq), PIntLit(1)(p))(p)
+    val body = PSeqn(PDelimited.impliedBlock(Seq(PAssert(PReserved.implied(PKw.Assert), binExp1)(p), PSeqn(PDelimited.impliedBlock(Seq(PAssert(PReserved.implied(PKw.Assert), binExp2)(p))))(p))))(p)
+    val method = PMethod(Seq(), PReserved.implied(PKw.Method), PIdnDef("m")(p), PGrouped.impliedParen(PDelimited.empty), None, PDelimited.empty, PDelimited.empty, Some(body))(p)
     val program = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(method), Seq(), Seq())(p)
     assert(frontend.doSemanticAnalysis(program) === frontend.Succ(program))
   }
 
   test("Semantic analysis in AST with shared nodes") {
     val p = (NoPosition, NoPosition)
-    val binExp = PBinExp(PIntLit(1)(p), POperatorSymbol("==")(p), PIntLit(1)(p))(p)
-    val method = PMethod(Seq(), PKeywordLang("method")(p), PIdnDef("m")(p), Seq(), None, Seq(), Seq(), Seq(), Some(PSeqn(Seq(PSeqn(Seq(PAssert(PKeywordStmt("assert")(p), binExp)(p), PSeqn(Seq(PAssert(PKeywordStmt("assert")(p), binExp)(p)))(p)))(p)))(p)))(p)
+    val binExp = PBinExp(PIntLit(1)(p), PReserved.implied(PSymOp.EqEq), PIntLit(1)(p))(p)
+    val body = PSeqn(PDelimited.impliedBlock(Seq(PAssert(PReserved.implied(PKw.Assert), binExp)(p), PSeqn(PDelimited.impliedBlock(Seq(PAssert(PReserved.implied(PKw.Assert), binExp)(p))))(p))))(p)
+    val method = PMethod(Seq(), PReserved.implied(PKw.Method), PIdnDef("m")(p), PGrouped.impliedParen(PDelimited.empty), None, PDelimited.empty, PDelimited.empty, Some(body))(p)
     val program = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(method), Seq(), Seq())(p)
     assert(frontend.doSemanticAnalysis(program) === frontend.Succ(program))
   }

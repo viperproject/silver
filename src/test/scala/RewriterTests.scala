@@ -11,7 +11,8 @@ import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast._
 import viper.silver.ast.utility.rewriter._
 import viper.silver.ast.utility._
-import viper.silver.parser.{PBinExp, PIdnUse, PNode, POperatorSymbol}
+import viper.silver.parser.{PBinExp, PIdnUseExp, PNode, PSymOp}
+import viper.silver.parser.PReserved
 
 class RewriterTests extends AnyFunSuite with FileComparisonHelper {
   test("Performance_BinomialHeap") {
@@ -59,12 +60,12 @@ class RewriterTests extends AnyFunSuite with FileComparisonHelper {
 
   test("Binary expression") {
     val p = (NoPosition, NoPosition)
-    val original = PBinExp(PIdnUse("a")(p), POperatorSymbol(">")(p), PIdnUse("b")(p))(p)
-    val transformed = PBinExp(PIdnUse("a")(p), POperatorSymbol("<=")(p), PIdnUse("b")(p))(p)
+    val original = PBinExp(PIdnUseExp("a")(p), PReserved.implied(PSymOp.Gt), PIdnUseExp("b")(p))(p)
+    val transformed = PBinExp(PIdnUseExp("a")(p), PReserved.implied(PSymOp.Le), PIdnUseExp("b")(p))(p)
 
     val strategy = StrategyBuilder.Slim[PNode](
       {
-        case PBinExp(a, op, b) if op.operator == ">" => PBinExp(a, POperatorSymbol("<=")(p), b)(p)
+        case PBinExp(a, op, b) if op.rs.operator == ">" => PBinExp(a, PReserved.implied(PSymOp.Le), b)(p)
       })
 
     val res = strategy.execute[PNode](original)

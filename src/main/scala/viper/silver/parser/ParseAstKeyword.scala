@@ -38,6 +38,7 @@ case object PGrouped {
   def implied[G <: PSym.Group, T](l: G#L, inner: T, r: G#R): PGrouped[G, T] =
     PGrouped[G, T](PReserved.implied(l), inner, PReserved.implied(r))(NoPosition, NoPosition)
   def impliedBracket[T](inner: T): PGrouped[PSym.Bracket, T] = implied[PSym.Bracket, T](PSym.LBracket, inner, PSym.RBracket)
+  def impliedParen[T](inner: T): PGrouped[PSym.Paren, T] = implied[PSym.Paren, T](PSym.LParen, inner, PSym.RParen)
 }
 
 case class PDelimited[+T, +D](
@@ -47,6 +48,7 @@ case class PDelimited[+T, +D](
 )(val pos: (Position, Position)) extends PNode with PPrettySubnodes {
   def headOption: Option[T] = first
   def head: T = first.get
+  def tail: Seq[T] = inner.map(_._2)
   def toSeq: Seq[T] = first.map(_ +: inner.map(_._2)).getOrElse(Nil)
   def delimiters: Seq[D] = inner.map(_._1) ++ end.toSeq
   def length: Int = first.map(_ => 1 + inner.length).getOrElse(0)
@@ -76,6 +78,15 @@ object PDelimited {
     new PDelimited[T, D](ts.headOption, ds.dropRight(1).zip(ts.drop(1)), ds.lastOption)(pos)
   }
   def empty[T, D]: PDelimited[T, D] = PDelimited(None, Nil, None)(NoPosition, NoPosition)
+  def implied[T, D](inner: Seq[T], d: D): PDelimited[T, D] = {
+    PDelimited[T, D](inner.map((_, d)))(NoPosition, NoPosition)
+  }
+  def impliedBlock[T <: PNode](inner: Seq[T]): Block[T] = {
+    PGrouped.implied[PSym.Brace, PDelimited[T, Option[PSym.Semi]]](PSym.LBrace, PDelimited.implied(inner, None), PSym.RBrace)
+  }
+  def impliedParenComma[T <: PNode](inner: Seq[T]): Comma[PSym.Paren, T] = {
+    PGrouped.impliedParen(PDelimited.implied(inner, PReserved.implied(PSym.Comma)))
+  }
 }
 
 ////
