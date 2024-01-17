@@ -191,8 +191,7 @@ case class Translator(program: PProgram) {
     val subInfo = NoInfo
     s match {
       case PAssign(targets, PCall(method, args, _)) if members(method.name).isInstanceOf[Method] =>
-        val e1 = methodCallAssign(s, targets, ts => MethodCall(findMethod(method), args map exp, ts)(pos, info))
-        e1
+        methodCallAssign(s, targets, ts => MethodCall(findMethod(method), args map exp, ts)(pos, info))
       case PAssign(targets, _) if targets.length != 1 =>
         sys.error(s"Found non-unary target of assignment")
       case PAssign(Seq(target), PNewExp(fieldsOpt)) =>

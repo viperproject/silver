@@ -368,7 +368,7 @@ case class TypeChecker(names: NameAnalyser) {
       val decl1 = debugVariableTypes.get(use.versionedName)
 
       decl1 match {
-        case Some(value) => use.typ = value // TODO ake: set use.decl?
+        case Some(value) => use.typ = value
         case None => messages ++= FastMessaging.message(use, errorMessage)
       }
     }
@@ -964,7 +964,7 @@ case class NameAnalyser() {
           case _: PDeclaration => true
           case _: PScope => true
           case _: PIdnUse => true
-          case _: PVersionedIdnUse => true // TODO ake: ???
+          case _: PVersionedIdnUse => true
           case _ => target.isDefined
         }
       }
