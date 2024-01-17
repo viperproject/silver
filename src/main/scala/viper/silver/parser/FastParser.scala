@@ -454,8 +454,8 @@ class FastParser {
       StringIn("true", "false", "null", "old", "result", "acc", "none", "wildcard", "write", "epsilon", "perm", "let", "forall", "exists", "forperm",
         "unfolding", "applying", "Set", "Seq", "Multiset", "Map", "range", "domain", "new"),
       str => pos => str match {
-        case "true" => Pass.map(_ => PBoolLit(PReserved(PKw.True)(pos), true)(_))
-        case "false" => Pass.map(_ => PBoolLit(PReserved(PKw.False)(pos), false)(_))
+        case "true" => Pass.map(_ => PBoolLit(PReserved(PKw.True)(pos))(_))
+        case "false" => Pass.map(_ => PBoolLit(PReserved(PKw.False)(pos))(_))
         case "null" => Pass.map(_ => PNullLit(PReserved(PKw.Null)(pos))(_))
         case "old" => old.map(_(PReserved(PKwOp.Old)(pos)))
         case "result" => Pass.map(_ => PResultLit(PReserved(PKw.Result)(pos))(_))
@@ -508,7 +508,7 @@ class FastParser {
 
   def identifier[$: P]: P[Unit] = identStarts ~~ identContinues.repX
 
-  def annotationIdentifier[$: P]: P[PIdnRef] = P(((identStarts ~~ CharIn("0-9", "A-Z", "a-z", "$_.").repX).!) map (PIdnRef.apply _)).pos
+  def annotationIdentifier[$: P]: P[PAnnotationKey] = P(((identStarts ~~ CharIn("0-9", "A-Z", "a-z", "$_.").repX).!) map PAnnotationKey.apply).pos
 
   def ident[$: P]: P[String] = identifier.!.filter(a => !keywords.contains(a)).opaque("identifier")
 
@@ -835,16 +835,19 @@ class FastParser {
 
   def stmt(allowDefine: Boolean = true)(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | annotatedStmt |
     stmtReservedKw(allowDefine) | stmtBlock() |
-    assign | methodCall | ParserExtension.newStmtAtEnd(ctx))
+    assign | ParserExtension.newStmtAtEnd(ctx))
 
   def annotatedStmt(implicit ctx : P[_]): P[PStmt] = P((annotation ~ stmt()) map (PAnnotatedStmt.apply _).tupled).pos
 
-  def assignTarget[$: P]: P[PAssignTarget] = P(fieldAcc | NoCut(funcApp) | idnuse)
+  def assignTarget[$: P]: P[PAssignTarget] = P(fieldAcc | funcApp | idnuse)
 
-  def assign[$: P]: P[PAssign] = P((assignTarget.delimited(PSym.Comma, min = 1) ~ P(PSymOp.Assign).map(Some(_)) ~ exp) map (PAssign.apply _).tupled).pos
-
-  // The `Fail.delimited(Fail)` produces an empty list of targets and the `Pass` produces a `None: Option[PSymOp.Assign]` (i.e. both consume no characters)
-  def methodCall[$: P]: P[PAssign] = P((Fail.delimited(Fail) ~~ Pass.map(_ => None) ~~ (funcApp | idnuse)) map (PAssign.apply _).tupled).pos
+  // Parses any of `idn`, `idn(args)` or `... := exp` (where `...` is a comma
+  // delimited sequence of field access, function application or identifier)
+  def assign[$: P]: P[PAssign] = P(
+    (assignTarget.delimited(PSym.Comma, min = 1) ~~~ (P(PSymOp.Assign).map(Some(_)) ~ exp).lw.?)
+      filter (a => a._2.isDefined || (a._1.length == 1 && a._1.head.isInstanceOf[PMaybeMacroExp]))
+      map (a => if (a._2.isDefined) PAssign(a._1, a._2.get._1, a._2.get._2) _ else PAssign(PDelimited.empty, None, a._1.head) _)
+    ).pos
 
   def fold[$: P]: P[PKw.Fold => Pos => PFold] =
     P(predicateAccessAssertion map { e => PFold(_, e) })

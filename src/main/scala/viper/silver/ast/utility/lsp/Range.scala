@@ -9,7 +9,6 @@ package viper.silver.ast.utility.lsp
 import viper.silver.parser.Where
 import viper.silver.ast.{AbstractSourcePosition, FilePosition, HasLineColumn}
 import java.nio.file.Path
-import viper.silver.ast.utility.lsp.SelectionBoundTrait
 import viper.silver.ast.LineColumnPosition
 
 /** A range  */

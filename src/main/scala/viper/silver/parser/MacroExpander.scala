@@ -211,10 +211,10 @@ object MacroExpander {
     case class MacroApp(idnuse: PIdnUse, arguments: Seq[PExp], node: PNode)
 
     val matchOnMacroCall: PartialFunction[PNode, MacroApp] = {
-      case assign@PAssign(Seq(), _, app: PMaybeMacroExp) if isMacro(app.possibleMacro) =>
+      case assign@PAssign(PDelimited(), _, app: PMaybeMacroExp) if isMacro(app.possibleMacro) =>
         MacroApp(app.possibleMacro.get, app.macroArgs, assign)
       case app: PMaybeMacroExp if isMacro(app.possibleMacro) => MacroApp(app.possibleMacro.get, app.macroArgs, app)
-      case typ@PDomainType(domain, Seq()) if isMacro(Some(domain)) => MacroApp(domain, Seq(), typ)
+      case typ@PDomainType(domain, None) if isMacro(Some(domain)) => MacroApp(domain, Seq(), typ)
       case app: PMacroType => MacroApp(app.use.possibleMacro.get, app.use.macroArgs, app)
     }
 

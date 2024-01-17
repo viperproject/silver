@@ -41,10 +41,10 @@ case object PGrouped {
   def impliedParen[T](inner: T): PGrouped[PSym.Paren, T] = implied[PSym.Paren, T](PSym.LParen, inner, PSym.RParen)
 }
 
-case class PDelimited[+T, +D](
-  first: Option[T],
-  inner: Seq[(D, T)],
-  end: Option[D]
+class PDelimited[+T, +D](
+  val first: Option[T],
+  val inner: Seq[(D, T)],
+  val end: Option[D]
 )(val pos: (Position, Position)) extends PNode with PPrettySubnodes {
   def headOption: Option[T] = first
   def head: T = first.get
@@ -52,6 +52,7 @@ case class PDelimited[+T, +D](
   def toSeq: Seq[T] = first.map(_ +: inner.map(_._2)).getOrElse(Nil)
   def delimiters: Seq[D] = inner.map(_._1) ++ end.toSeq
   def length: Int = first.map(_ => 1 + inner.length).getOrElse(0)
+  def isEmpty: Boolean = length == 0
   // def toNodes = first.toSeq ++ inner.flatMap(i => Seq(i._1, i._2)) ++ end.toSeq
 
   def update[U](replacement: Seq[U]): PDelimited[U, D] = {
@@ -64,6 +65,23 @@ case class PDelimited[+T, +D](
       case (e, i) => (if (i == 0) () else PReserved.implied(PSym.Newline), e)
     }).pretty
   }
+
+  override def canEqual(that: Any): Boolean = that.isInstanceOf[PDelimited[_, _]]
+  override def productArity: Int = 3
+  override def productElement(n: Int): Any = n match {
+    case 0 => first
+    case 1 => inner
+    case 2 => end
+  }
+  
+  override def equals(that: Any): Boolean = {
+    if (this.canEqual(that)) {
+      val other = that.asInstanceOf[PDelimited[_, _]]
+      this.first == other.first && this.inner == other.inner && this.end == other.end
+    } else false
+  }
+  override def hashCode(): Int = viper.silver.utility.Common.generateHashCode(first, inner, end)
+  override def toString(): String = s"PDelimited($first,$inner,$end)"
 }
 
 object PDelimited {
@@ -73,10 +91,13 @@ object PDelimited {
   /** Grouped and comma delimited. */
   type Comma[G <: PSym.Group, +T <: PNode] = PGrouped[G, PDelimited[T, PSym.Comma]]
 
+  def apply[T, D](first: Option[T], inner: Seq[(D, T)], end: Option[D])(pos: (Position, Position)): PDelimited[T, D] = new PDelimited(first, inner, end)(pos)
   def apply[T, D](all: Seq[(T, D)])(pos: (Position, Position)): PDelimited[T, D] = {
     val (ts, ds) = all.unzip
-    new PDelimited[T, D](ts.headOption, ds.dropRight(1).zip(ts.drop(1)), ds.lastOption)(pos)
+    PDelimited[T, D](ts.headOption, ds.dropRight(1).zip(ts.drop(1)), ds.lastOption)(pos)
   }
+  def unapplySeq[T, D](pd: PDelimited[T, D]): Option[Seq[T]] = Some(pd.toSeq)
+
   def empty[T, D]: PDelimited[T, D] = PDelimited(None, Nil, None)(NoPosition, NoPosition)
   def implied[T, D](inner: Seq[T], d: D): PDelimited[T, D] = {
     PDelimited[T, D](inner.map((_, d)))(NoPosition, NoPosition)

@@ -271,7 +271,7 @@ trait PGlobalDeclarationLsp extends PDeclarationLsp with PAnnotated {
 }
 
 trait PAnnotationLsp extends PNode with HasSemanticHighlights {
-  def key: PIdnRef
+  def key: PAnnotationKey
   override def getSemanticHighlights: Seq[SemanticHighlight] = RangePosition(key).map(kp =>
       SemanticHighlight(kp, if (key.name == "doc") TokenType.Comment else TokenType.Decorator)
     ).toSeq

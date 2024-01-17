@@ -595,12 +595,14 @@ class RepeatedStrategy[N <: Rewritable](s: StrategyInterface[N]) extends Strateg
     * @return rewritten root
     */
   override def execute[T <: N](node: N): T = {
-    val result: T = s.execute[T](node)
-    if (!s.hasChanged) {
-      result
-    } else {
-      execute[T](result)
+    var result: T = s.execute[T](node)
+    var j = 1
+    while (s.hasChanged) {
+      result = s.execute[T](result)
+      j += 1
+      assert(j < 10000, "Infinite loop detected")
     }
+    result
   }
 
   /**
@@ -616,12 +618,13 @@ class RepeatedStrategy[N <: Rewritable](s: StrategyInterface[N]) extends Strateg
       node
     }
     else {
-      val result = s.execute[T](node)
-      if (s.hasChanged) {
-        result
-      } else {
-        execute[T](result, i - 1)
+      var result: T = s.execute[T](node)
+      var j = 1
+      while (s.hasChanged && j < i) {
+        result = s.execute[T](result)
+        j += 1
       }
+      result
     }
   }
 

@@ -165,13 +165,15 @@ object Consistency {
     val argVars = args.map(_.localVar).toSet
     var s = Seq.empty[ConsistencyError]
 
-    for (a@LocalVarAssign(l, _) <- b if argVars.contains(l)) {
+    // Suppressing "pattern var a in value $anonfun is never used: use a wildcard `_` or suppress this warning with `a@_`" warning using `(true || a == a)`
+    for (a@LocalVarAssign(l, _) <- b if argVars.contains(l) && (true || a == a)) {
       s :+= ConsistencyError(s"$a is a reassignment of formal argument $l.", a.pos)
     }
     for (c@MethodCall(_, _, targets) <- b; t <- targets if argVars.contains(t)) {
       s :+= ConsistencyError(s"$c is a reassignment of formal argument $t.", c.pos)
     }
-    for (n@NewStmt(l, _) <- b if argVars.contains(l)){
+    // Suppressing "pattern var n in value $anonfun is never used: use a wildcard `_` or suppress this warning with `n@_`" warning using `(true || n == n)`
+    for (n@NewStmt(l, _) <- b if argVars.contains(l) && (true || n == n)) {
       s :+= ConsistencyError(s"$n is a reassignment of formal argument $l.", n.pos)
     }
     s

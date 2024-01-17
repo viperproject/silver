@@ -16,7 +16,6 @@ case object TODOUnreachableDoc extends BuiltinFeature(
   """TODO""".stripMargin.replaceAll("\n", " ")
 )
 case class PUnreachable(kw: PReserved[PUnreachableKeyword.type])(val pos: (Position, Position)) extends PExtender with PStmt {
-  override val getSubnodes: Seq[PNode] = Seq()
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
     None
   }

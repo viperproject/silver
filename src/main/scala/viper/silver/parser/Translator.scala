@@ -193,9 +193,9 @@ case class Translator(program: PProgram) {
           case Right(pfields) => pfields.toSeq map findField
         }
         methodCallAssign(s, Seq(targets.head), lv => NewStmt(lv.head, fields)(pos, info))
-      case PAssign(Seq(idnuse: PIdnUse), _, rhs) =>
+      case PAssign(PDelimited(idnuse: PIdnUse), _, rhs) =>
         LocalVarAssign(LocalVar(idnuse.name, ttyp(idnuse.decl.get.asInstanceOf[PAssignableVarDecl].typ))(pos, subInfo), exp(rhs))(pos, info)
-      case PAssign(Seq(field: PFieldAccess), _, rhs) =>
+      case PAssign(PDelimited(field: PFieldAccess), _, rhs) =>
         FieldAssign(FieldAccess(exp(field.rcv), findField(field.idnuse))(field), exp(rhs))(pos, info)
       case lv: PVars =>
         // there are no declarations in the Viper AST; rather they are part of the scope signature
@@ -473,8 +473,8 @@ case class Translator(program: PProgram) {
           par = par.parent.get
         }
         Result(ttyp(par.asInstanceOf[PFunction].typ.resultType))(pos, info)
-      case PBoolLit(_, b) =>
-        if (b) TrueLit()(pos, info) else FalseLit()(pos, info)
+      case bool: PBoolLit =>
+        if (bool.b) TrueLit()(pos, info) else FalseLit()(pos, info)
       case PNullLit(_) =>
         NullLit()(pos, info)
       case PFieldAccess(rcv, _, idn) =>

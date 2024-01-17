@@ -153,13 +153,12 @@ object PNode {
   def children(parent: PNode, n: Any): Iterator[Any] = {
     n match {
       case _: PLeaf | _: Unit => Iterator.empty
-      case t: PExtender => t.getSubnodes().iterator
       // Includes `Option`, `Seq`, etc.
       case i: IterableOnce[_] => i.iterator
       // Includes `Either`, all case classes, etc.
       case t: Product => t.productIterator
       // This case should be avoided by marking your node as a `PLeaf`.
-      case _ => sys.error(s"Unexpected node type `${n.getClass}`. Make `${parent.getClass}` a `PLeaf` or put the `${n.getClass}` field into a `PLeaf` wrapper node.")
+      case _ => sys.error(s"Unexpected node type `${n.getClass}`. Make `${parent.getClass}` a `PLeaf` if it has no `PNode` children or put the `${n.getClass}` field into a `PLeaf` wrapper node.")
     }
   }
   def nodes(parent: PNode, n: Any): Iterator[PNode] = {
@@ -843,9 +842,12 @@ case class PIntLit(i: BigInt)(val pos: (Position, Position)) extends PSimpleLite
 
 case class PResultLit(result: PKw.Result)(val pos: (Position, Position)) extends PSimpleLiteral
 
-case class PBoolLit(keyword: PReserved[PKeywordConstant], b: Boolean)(val pos: (Position, Position)) extends PConstantLiteral with PLeaf {
+case class PBoolLit(keyword: PReserved[PKeywordConstant])(val pos: (Position, Position)) extends PConstantLiteral {
+  def b: Boolean = keyword.rs.keyword match {
+    case PKw.True.keyword => true
+    case PKw.False.keyword => false
+  }
   typ = Bool
-  override def display: String = keyword.display
 }
 
 case class PNullLit(keyword: PKw.Null)(val pos: (Position, Position)) extends PConstantLiteral {
@@ -1638,8 +1640,12 @@ case class PMethodReturns(k: PKw.Returns, formalReturns: PGrouped[PSym.Paren, PD
   */
 case class PAnnotationsPosition(annotations: Seq[PAnnotation], pos: (Position, Position))
 
-case class PAnnotation(at: PSym.At, key: PIdnRef, values: PGrouped[PSym.Paren, PDelimited[PStringLiteral, PSym.Comma]])(val pos: (Position, Position)) extends PNode with PPrettySubnodes with PAnnotationLsp {
+case class PAnnotation(at: PSym.At, key: PAnnotationKey, values: PGrouped[PSym.Paren, PDelimited[PStringLiteral, PSym.Comma]])(val pos: (Position, Position)) extends PNode with PPrettySubnodes with PAnnotationLsp {
   override def pretty: String = super.pretty + "\n"
+}
+
+case class PAnnotationKey(name: String)(val pos: (Position, Position)) extends PNode with PPrettySubnodes with PLeaf {
+  override def display: String = name
 }
 
 case class PStringLiteral(grouped: PGrouped[_, String])(val pos: (Position, Position)) extends PNode with PLeaf with PStringLiteralLsp {
@@ -1663,8 +1669,6 @@ case class PUnknownEntity() extends PErrorEntity {
 
 
 trait PExtender extends PNode {
-  def getSubnodes(): Seq[PNode] = this.subnodes
-
   def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = ???
 
   def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = ???
