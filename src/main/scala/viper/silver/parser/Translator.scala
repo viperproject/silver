@@ -143,7 +143,7 @@ case class Translator(program: PProgram) {
     val pos = decl
     val name = decl.idndef.name
     val t = decl match {
-      case pf@PFieldDecl(_, typ) =>
+      case pf@PFieldDecl(_, _, typ) =>
         Field(name, ttyp(typ))(pos, Translator.toInfo(p.annotations, pf))
       case pf@PFunction(_, _, _, _, _, typ, _, _, _) =>
         Function(name, pf.formalArgs map liftArgDecl, ttyp(typ), null, null, null)(pos, Translator.toInfo(p.annotations, pf))

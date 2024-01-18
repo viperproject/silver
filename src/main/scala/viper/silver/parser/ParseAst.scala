@@ -246,14 +246,14 @@ trait PAnyVarDecl extends PTypedDeclaration with PLocalDeclaration with PPrettyS
 trait PAssignableVarDecl extends PAnyVarDecl
 
 /** Any argument to a method, function or predicate. */
-case class PFormalArgDecl(idndef: PIdnDef, typ: PType)(val pos: (Position, Position)) extends PAnyFormalArgDecl with PAnyVarDecl with PFormalArgDeclLsp
+case class PFormalArgDecl(idndef: PIdnDef, c: PSym.Colon, typ: PType)(val pos: (Position, Position)) extends PAnyFormalArgDecl with PAnyVarDecl with PFormalArgDeclLsp
 object PFormalArgDecl {
-  def apply(d: PIdnTypeBinding): PFormalArgDecl = PFormalArgDecl(d.idndef, d.typ)(d.pos)
+  def apply(d: PIdnTypeBinding): PFormalArgDecl = PFormalArgDecl(d.idndef, d.c, d.typ)(d.pos)
 }
 /** The return arguments of methods. */
-case class PFormalReturnDecl(idndef: PIdnDef, typ: PType)(val pos: (Position, Position)) extends PAssignableVarDecl with PLocalDeclaration with PFormalReturnDeclLsp
+case class PFormalReturnDecl(idndef: PIdnDef, c: PSym.Colon, typ: PType)(val pos: (Position, Position)) extends PAssignableVarDecl with PLocalDeclaration with PFormalReturnDeclLsp
 object PFormalReturnDecl {
-  def apply(d: PIdnTypeBinding): PFormalReturnDecl = PFormalReturnDecl(d.idndef, d.typ)(d.pos)
+  def apply(d: PIdnTypeBinding): PFormalReturnDecl = PFormalReturnDecl(d.idndef, d.c, d.typ)(d.pos)
 }
 /** Any immutable variable binding, e.g. under quantifiers, let expressions.
  * [2014-11-13 Malte] Changed type to be a var, so that it can be updated
@@ -261,22 +261,22 @@ object PFormalReturnDecl {
  * explicit type in the binding of the variable, i.e., "let x: T = e1 in e2",
  * would be rather cumbersome.
  */
-case class PLogicalVarDecl(idndef: PIdnDef, var typ: PType)(val pos: (Position, Position)) extends PAnyVarDecl with PLocalDeclaration with PLogicalVarDeclLsp
+case class PLogicalVarDecl(idndef: PIdnDef, c: PSym.Colon, var typ: PType)(val pos: (Position, Position)) extends PAnyVarDecl with PLocalDeclaration with PLogicalVarDeclLsp
 object PLogicalVarDecl {
-  def apply(d: PIdnTypeBinding): PLogicalVarDecl = PLogicalVarDecl(d.idndef, d.typ)(d.pos)
+  def apply(d: PIdnTypeBinding): PLogicalVarDecl = PLogicalVarDecl(d.idndef, d.c, d.typ)(d.pos)
 }
 /** Declaration of a local variable. */
-case class PLocalVarDecl(idndef: PIdnDef, typ: PType)(val pos: (Position, Position)) extends PAssignableVarDecl with PLocalDeclaration with PLocalVarDeclLsp
+case class PLocalVarDecl(idndef: PIdnDef, c: PSym.Colon, typ: PType)(val pos: (Position, Position)) extends PAssignableVarDecl with PLocalDeclaration with PLocalVarDeclLsp
 object PLocalVarDecl {
-  def apply(d: PIdnTypeBinding): PLocalVarDecl = PLocalVarDecl(d.idndef, d.typ)(d.pos)
+  def apply(d: PIdnTypeBinding): PLocalVarDecl = PLocalVarDecl(d.idndef, d.c, d.typ)(d.pos)
 }
-case class PFieldDecl(idndef: PIdnDef, typ: PType)(val pos: (Position, Position)) extends PTypedDeclaration with PGlobalDeclaration with PFieldDeclLsp {
+case class PFieldDecl(idndef: PIdnDef, c: PSym.Colon, typ: PType)(val pos: (Position, Position)) extends PTypedDeclaration with PGlobalDeclaration with PFieldDeclLsp {
   var decl: Option[PFields] = None
   override def annotations = decl.toSeq.flatMap(_.annotations)
   override def pretty = s"${idndef.pretty}: ${typ.pretty}"
 }
 object PFieldDecl {
-  def apply(d: PIdnTypeBinding): PFieldDecl = PFieldDecl(d.idndef, d.typ)(d.pos)
+  def apply(d: PIdnTypeBinding): PFieldDecl = PFieldDecl(d.idndef, d.c, d.typ)(d.pos)
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -520,7 +520,7 @@ case class PFunctionType(argTypes: Seq[PType], resultType: PType) extends PType 
 // Expressions
 // typeSubstitutions are the possible substitutions used for type checking and inference
 // The argument types are unified with the (fresh versions of) types  are
-trait PExp extends PNode with PPrettySubnodes {
+trait PExp extends PNode with PExpLsp with PPrettySubnodes {
   var brackets: Option[PGrouped[PSym.Paren, PExp]] = None
   var typ: PType = PUnknown()()
 
@@ -656,7 +656,6 @@ class PTypeRenaming(val mm: Map[String, String])
 // Operator applications
 
 trait POpApp extends PExp {
-  def opName: String
   def args: Seq[PExp]
 
   private val _typeSubstitutions = new scala.collection.mutable.ArrayDeque[PTypeSubstitution]()
@@ -700,15 +699,15 @@ object POpApp {
   def pRes = PTypeVar(pResS)
 }
 
-trait PCallLike extends POpApp {
+trait PCallLike extends POpApp with PCallLsp {
   override def args = callArgs.inner.toSeq
   def callArgs: PDelimited.Comma[PSym.Paren, PExp]
 }
 
 case class PCall(func: PIdnRef, callArgs: PDelimited.Comma[PSym.Paren, PExp], typeAnnotated: Option[(PSym.Colon, PType)])(val pos: (Position, Position))
-  extends PCallLike with PLocationAccess with PAccAssertion with PAssignTarget with PMaybeMacroExp with PCallLsp {
+  extends PCallLike with PLocationAccess with PAccAssertion with PAssignTarget with PMaybeMacroExp {
   override val idnuse = func
-  override val opName = func.name
+  // override val opName = func.name
   override def possibleMacro = if (typeAnnotated.isEmpty) Some(idnuse) else None
   override def macroArgs = args
   override def loc = this
@@ -767,14 +766,8 @@ case class PCall(func: PIdnRef, callArgs: PDelimited.Comma[PSym.Paren, PExp], ty
   }
 }
 
-trait POpAppOperator extends POpApp with POpAppKeywordLsp {
-  def ops: Seq[PReserved[POperator]]
-  override def opName = ops.map(_.rs.operator).mkString
-}
-
-class PBinExp(val left: PExp, val op: PReserved[PBinaryOp], val right: PExp)(val pos: (Position, Position)) extends POpAppOperator {
+class PBinExp(val left: PExp, val op: PReserved[PBinaryOp], val right: PExp)(val pos: (Position, Position)) extends POpApp {
   override val args = Seq(left, right)
-  override val ops = Seq(op)
 
   override val extraLocalTypeVariables = if (op.rs.isInstanceOf[PCollectionOp]) Set(PCollectionOp.infVar) else Set()
   val signatures: List[PTypeSubstitution] = op.rs.signatures
@@ -810,15 +803,13 @@ object PBinExp {
 
 case class PMagicWandExp(override val left: PExp, wand: PSymOp.Wand, override val right: PExp)(override val pos: (Position, Position)) extends PBinExp(left, wand, right)(pos) with PResourceAccess
 
-case class PUnExp(op: PReserved[PUnaryOp], exp: PExp)(val pos: (Position, Position)) extends POpAppOperator {
+case class PUnExp(op: PReserved[PUnaryOp], exp: PExp)(val pos: (Position, Position)) extends POpApp {
   override val args = Seq(exp)
-  override val ops = Seq(op)
   override val signatures = op.rs.signatures
 }
 
-case class PCondExp(cond: PExp, q: PSymOp.Question, thn: PExp, c: PSymOp.Colon, els: PExp)(val pos: (Position, Position)) extends POpAppOperator {
+case class PCondExp(cond: PExp, q: PSymOp.Question, thn: PExp, c: PSymOp.Colon, els: PExp)(val pos: (Position, Position)) extends POpApp {
   override val args = Seq(cond, thn, els)
-  override val ops = Seq(q, c)
   val signatures: List[PTypeSubstitution] = List(
     Map(POpApp.pArgS(0) -> Bool, POpApp.pArgS(2) -> POpApp.pArg(1), POpApp.pResS -> POpApp.pArg(1))
   )
@@ -862,10 +853,8 @@ trait PLocationAccess extends PResourceAccess {
   def idnuse: PIdnUse
 }
 
-case class PFieldAccess(rcv: PExp, dot: PSymOp.Dot, idnuse: PIdnRef)(val pos: (Position, Position)) extends POpApp with PLocationAccess with PAssignTarget {
-  // TODO: Hover hint
+case class PFieldAccess(rcv: PExp, dot: PSymOp.Dot, idnuse: PIdnRef)(val pos: (Position, Position)) extends POpApp with PLocationAccess with PAssignTarget with PLspHoverHintBoth {
   override final val args = Seq(rcv)
-  override def opName = dot.rs.symbol
 
   override def signatures = idnuse.decl match {
     case Some(f: PFieldDecl) if f.typ.isValidOrUndeclared && rcv.typ.isValidOrUndeclared => List(
@@ -875,16 +864,14 @@ case class PFieldAccess(rcv: PExp, dot: PSymOp.Dot, idnuse: PIdnRef)(val pos: (P
   }
 }
 
-case class PUnfolding(unfolding: PKwOp.Unfolding, acc: PAccAssertion, in: PKwOp.In, exp: PExp)(val pos: (Position, Position)) extends POpAppOperator with PHeapOpApp {
+case class PUnfolding(unfolding: PKwOp.Unfolding, acc: PAccAssertion, in: PKwOp.In, exp: PExp)(val pos: (Position, Position)) extends POpApp with PHeapOpApp {
   override val args = Seq(acc, exp)
-  override def ops = Seq(unfolding, in)
   override val signatures: List[PTypeSubstitution] =
     List(Map(POpApp.pArgS(0) -> Bool, POpApp.pResS -> POpApp.pArg(1)))
 }
 
-case class PApplying(applying: PKwOp.Applying, wand: PExp, in: PKwOp.In, exp: PExp)(val pos: (Position, Position)) extends POpAppOperator with PHeapOpApp {
+case class PApplying(applying: PKwOp.Applying, wand: PExp, in: PKwOp.In, exp: PExp)(val pos: (Position, Position)) extends POpApp with PHeapOpApp {
   override val args = Seq(wand, exp)
-  override def ops = Seq(applying, in)
   override val signatures: List[PTypeSubstitution] =
     List(Map(POpApp.pArgS(0) -> Bool, POpApp.pResS -> POpApp.pArg(1)))
 }
@@ -909,7 +896,7 @@ case class PTrigger(exp: PDelimited.Comma[PSym.Brace, PExp])(val pos: (Position,
   override def pretty = exp.pretty
 }
 
-sealed trait PQuantifier extends PBinder with PScope {
+sealed trait PQuantifier extends PBinder {
   def keyword: PReserved[PKeywordLang]
   def c: PSym.ColonColon
   def vars: PDelimited[PLogicalVarDecl, PSym.Comma]
@@ -936,33 +923,24 @@ case class PForPerm(keyword: PKw.Forperm, vars: PDelimited[PLogicalVarDecl, PSym
  * already be in scope while checking `e1`, which wouldn't be correct.
  */
 // let variable == exp in nestedScope
-case class PLet(l: PKwOp.Let, variable: PLogicalVarDecl, eq: PSymOp.EqEq, exp: PExp, in: PKwOp.In, nestedScope: PLetNestedScope)(val pos: (Position, Position)) extends POpAppOperator {
-  override def args: Seq[PExp] = Seq(exp, nestedScope)
-  override def ops = Seq(l, eq, in)
-
-  // TODO:
-  override def signatures = List(Map(POpApp.pResS -> POpApp.pArg(1)))
-  // override def typeSubstitutions = (for (ts1 <- nestedScope.body.typeSubstitutions; ts2 <- exp.typeSubstitutions) yield (ts1 * ts2).toOption).flatten.toList.distinct
-  // override def forceSubstitution(ts: PTypeSubstitution) = {
-  //   exp.forceSubstitution(ts)
-  //   variable.typ = exp.typ
-  //   nestedScope.forceSubstitution(ts)
-  // }
+case class PLet(l: PKwOp.Let, variable: PLogicalVarDecl, eq: PSymOp.EqEq, exp: PExp, in: PKwOp.In, nestedScope: PLetNestedScope)(val pos: (Position, Position)) extends PExp {
+  override def typeSubstitutions = (for (ts1 <- nestedScope.body.typeSubstitutions; ts2 <- exp.typeSubstitutions) yield (ts1 * ts2).toOption).flatten.toList.distinct
   override def forceSubstitution(ts: PTypeSubstitution) = {
-    super.forceSubstitution(ts)
+    exp.forceSubstitution(ts)
     variable.typ = exp.typ
+    nestedScope.forceSubstitution(ts)
+    nestedScope.typ = nestedScope.body.typ
   }
 }
 
-case class PLetNestedScope(body: PExp)(val pos: (Position, Position)) extends PNode with PBinder {
+case class PLetNestedScope(body: PExp)(val pos: (Position, Position)) extends PExp with PBinder {
   var outerLet: PLet = null
-  override val boundVars = Seq(outerLet.variable)
+  override def boundVars = Seq(outerLet.variable)
 }
 
 // [in,ex]
-case class PInhaleExhaleExp(l: PSymOp.LBracket, in: PExp, c: PSymOp.Comma, ex: PExp, r: PSymOp.RBracket)(val pos: (Position, Position)) extends POpAppOperator with PHeapOpApp {
+case class PInhaleExhaleExp(l: PSymOp.LBracket, in: PExp, c: PSymOp.Comma, ex: PExp, r: PSymOp.RBracket)(val pos: (Position, Position)) extends POpApp with PHeapOpApp {
   override val args = Seq(in, ex)
-  override def ops = Seq(l, c, r)
 
   val signatures: List[PTypeSubstitution] = List(
     Map(POpApp.pArgS(0) -> Bool, POpApp.pArgS(1) -> Bool, POpApp.pResS -> Bool)
@@ -990,7 +968,7 @@ case class PEpsilon(keyword: PKw.Epsilon)(val pos: (Position, Position)) extends
 
 trait PCallKeyword extends POpApp {
   def op: PReserved[POperatorKeyword]
-  override def opName: String = op.rs.keyword
+  // override def opName: String = op.rs.keyword
 }
 
 case class PCurPerm(op: PKwOp.Perm, res: PGrouped[PSym.Paren, PResourceAccess])(val pos: (Position, Position)) extends PCallKeyword with PHeapOpApp {
@@ -1038,7 +1016,7 @@ sealed trait PCollectionLiteral extends PCallKeyword {
 
   def pCollectionType(pType: PType): PType
 
-  def collectionName: String = opName
+  // def collectionName: String = opName
   def explicitType: Option[PType]
 }
 
@@ -1081,20 +1059,18 @@ case class PEmptySeq(op: PKwOp.Seq, pAnnotatedType: Option[PGrouped[PSym.Bracket
 case class PExplicitSeq(op: PKwOp.Seq, callArgs: PDelimited.Comma[PSym.Paren, PExp])(val pos: (Position, Position)) extends PSeqLiteral with PExplicitCollectionLiteral
 
 // [low..high)
-case class PRangeSeq(l: PSymOp.LBracket, low: PExp, ds: PSymOp.DotDot, high: PExp, r: PSymOp.RParen)(val pos: (Position, Position)) extends POpAppOperator {
+case class PRangeSeq(l: PSymOp.LBracket, low: PExp, ds: PSymOp.DotDot, high: PExp, r: PSymOp.RParen)(val pos: (Position, Position)) extends POpApp {
   override val args = Seq(low, high)
-  override val ops = Seq(l, ds, r)
 
   override val signatures: List[PTypeSubstitution] = List(
     Map(POpApp.pArgS(0) -> Int, POpApp.pArgS(1) -> Int, POpApp.pResS -> MakeSeq(Int)))
 }
 
 // base[idx]
-case class PLookup(base: PExp, l: PSymOp.LBracket, idx: PExp, r: PSymOp.RBracket)(val pos: (Position, Position)) extends POpAppOperator {
+case class PLookup(base: PExp, l: PSymOp.LBracket, idx: PExp, r: PSymOp.RBracket)(val pos: (Position, Position)) extends POpApp {
   val keyType: PDomainType = POpApp.pArg(1)
 
   override val args = Seq(base, idx)
-  override val ops = Seq(l, r)
   override val extraLocalTypeVariables: Set[PDomainType] = Set(keyType)
 
   override val signatures: List[PTypeSubstitution] = List(
@@ -1104,7 +1080,7 @@ case class PLookup(base: PExp, l: PSymOp.LBracket, idx: PExp, r: PSymOp.RBracket
 }
 
 case class PSeqSlice(seq: PExp, l: PSymOp.LBracket, s: Option[PExp], d: PSymOp.DotDot, e: Option[PExp], r: PSymOp.RBracket)(val pos: (Position, Position)) extends POpApp {
-  override val opName = "Seq#Slice"
+  // override val opName = "Seq#Slice"
   val elementType = PTypeVar("#E")
   override val extraLocalTypeVariables = Set(elementType)
   override val args = seq +: (s.toSeq ++ e.toSeq)
@@ -1122,7 +1098,7 @@ case class PUpdate(base: PExp, l: PSymOp.LBracket, key: PExp, a: PSymOp.Assign, 
   val keyType: PDomainType = POpApp.pArg(1)
   val elementType: PDomainType = POpApp.pArg(2)
 
-  override val opName = "update"
+  // override val opName = "update"
   override val args = Seq(base, key, value)
   override val extraLocalTypeVariables: Set[PDomainType] = Set(keyType, elementType)
 
@@ -1136,7 +1112,7 @@ case class PSize(l: PSymOp.Or, seq: PExp, r: PSymOp.Or)(val pos: (Position, Posi
   val keyType: PDomainType = PTypeVar("#K")
   val elementType: PDomainType = PTypeVar("#E")
 
-  override val opName = "size"
+  // override val opName = "size"
   override val extraLocalTypeVariables: Set[PDomainType] = Set(keyType, elementType)
   override val args = Seq(seq)
 
@@ -1169,7 +1145,7 @@ case class PExplicitMultiset(op: PKwOp.Multiset, callArgs: PDelimited.Comma[PSym
 /* ** Maps */
 
 sealed trait PMapLiteral extends POpApp {
-  override val opName = "Map#Map"
+  // override val opName = "Map#Map"
   override def args: Seq[PExp] = callArgs.inner.toSeq
   def callArgs: PDelimited.Comma[PSym.Paren, PExp]
   def pKeyType: PType
@@ -1212,7 +1188,7 @@ case class PExplicitMap(op: PKwOp.Map, callArgs: PDelimited.Comma[PSym.Paren, PM
   * considered to be a singleton map literal itself.
   */
 case class PMaplet(key: PExp, a: PSymOp.Assign, value: PExp)(val pos: (Position, Position)) extends POpApp with PPrettySubnodes {
-  override val opName = "Map#Maplet"
+  // override val opName = "Map#Maplet"
   override def args: Seq[PExp] = Seq(key, value)
   override def signatures: List[PTypeSubstitution] = List(Map(
     POpApp.pResS -> MakeMap(POpApp.pArg(0), POpApp.pArg(1))
@@ -1223,7 +1199,7 @@ case class PMapDomain(keyword: PKwOp.Domain, base: PGrouped[PSym.Paren, PExp])(v
   val keyType: PDomainType = PTypeVar("#K")
   val valueType: PDomainType = PTypeVar("#E")
 
-  override val opName = "Map#domain"
+  // override val opName = "Map#domain"
   override val args = Seq(base.inner)
   override val extraLocalTypeVariables: Set[PDomainType] = Set(keyType, valueType)
 
@@ -1237,7 +1213,7 @@ case class PMapRange(keyword: PKwOp.Range, base: PGrouped[PSym.Paren, PExp])(val
   val keyType: PDomainType = PTypeVar("#K")
   val valueType: PDomainType = PTypeVar("#E")
 
-  override val opName = "Map#range"
+  // override val opName = "Map#range"
   override val args = Seq(base.inner)
   override val extraLocalTypeVariables: Set[PDomainType] = Set(keyType, valueType)
 
@@ -1400,7 +1376,7 @@ trait PGlobalCallable extends PGlobalDeclaration with HasFoldingRanges with HasS
   def pres: PDelimited[PSpecification[PKw.PreSpec], Option[PSym.Semi]]
   def posts: PDelimited[PSpecification[PKw.PostSpec], Option[PSym.Semi]]
   override def hint: String = {
-    val firstLine = s"${keyword.pretty} ${idndef.pretty}(${formalArgs.map(_.pretty).mkString(", ")})${returnString.getOrElse("")}"
+    val firstLine = s"${keyword.pretty}${idndef.pretty}${args.pretty}${returnString.getOrElse("")}"
     val contract = (pres.toSeq ++ posts.toSeq).map(_.pretty)
     val bodyString = bodyRange.map(_ => if (contract.length > 0) "\n{ ... }" else " { ... }").getOrElse("")
     s"$firstLine${contract.mkString}$bodyString"
@@ -1453,9 +1429,10 @@ trait PSingleMember extends PMember with PGlobalDeclaration {
 sealed trait PAnyFunction extends PSingleMember with PGlobalDeclaration with PTypedDeclaration with PGlobalCallable with HasSuggestionScopeRanges {
   override def tokenType = TokenType.Function
   override def symbolKind = SymbolKind.Function
-  override def returnString: Option[String] = Some(s": ${resultType.pretty}")
+  override def returnString: Option[String] = Some(s"${c.pretty}${resultType.pretty}")
   // override def getGotoDefinitions: Seq[GotoDefinition] = super.getGotoDefinitions ++ formalArgs.map(_.getGotoDefinitions)
 
+  def c: PSym.Colon
   def resultType: PType
   override def typ: PFunctionType = PFunctionType(formalArgs.map(_.typ), resultType)
 
@@ -1511,8 +1488,8 @@ case class PDomain(annotations: Seq[PAnnotation], domain: PKw.Domain, idndef: PI
   override def tokenType = TokenType.Interface
   override def symbolKind = SymbolKind.Interface
   override def hint = {
-    val tvsStr = typVars.map(_.inner.toSeq.map(_.idndef.pretty).mkString("[", ",", "]")).getOrElse("")
-    s"${domain.pretty} ${idndef.pretty}$tvsStr"
+    val tvsStr = typVars.map(_.pretty).getOrElse("")
+    s"${domain.pretty}${idndef.pretty}$tvsStr"
   }
   override def getFoldingRanges: Seq[FoldingRange] = RangePosition(members).map(FoldingRange(_)).toSeq
   override def getSuggestionScopeRanges: Seq[SuggestionScopeRange] =
@@ -1582,6 +1559,7 @@ case class PFunction(annotations: Seq[PAnnotation], function: PKw.Function, idnd
 
 case class PPredicate(annotations: Seq[PAnnotation], predicate: PKw.Predicate, idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PFormalArgDecl], body: Option[PBracedExp])(val pos: (Position, Position))
   extends PAnyFunction with PGlobalCallableNamedArgs with PPrettySubnodes {
+  override def c = PReserved.implied(PSym.Colon)
   override def resultType = Bool
 
   override def returnString: Option[String] = None
@@ -1618,7 +1596,10 @@ case class PMethod(annotations: Seq[PAnnotation], method: PKw.Method, idndef: PI
   override def keyword = method
   override def tokenType = TokenType.Method
   override def symbolKind = SymbolKind.Method
-  override def returnString: Option[String] = Some(s" returns (${returns.toSeq.flatMap(_.formalReturns.inner.toSeq.map(_.hint)).mkString(", ")})")
+  override def returnString: Option[String] = {
+    val returns = this.returns.getOrElse(PMethodReturns(PReserved.implied(PKw.Returns), PGrouped.impliedParen(PDelimited.empty))(NoPosition, NoPosition))
+    Some(returns.pretty)
+  }
   override def bodyRange: Option[RangePosition] = body.flatMap(RangePosition(_))
   override def getSuggestionScopeRanges: Seq[SuggestionScopeRange] =
     RangePosition(this).map(SuggestionScopeRange(_, CallableSignatureScope)).toSeq ++
@@ -1672,8 +1653,6 @@ trait PExtender extends PNode {
   def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = ???
 
   def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = ???
-
-  def namecheck(n: NameAnalyser): Nothing = ???
 
   def translateMemberSignature(t: Translator): Member = ???
 

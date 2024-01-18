@@ -434,7 +434,7 @@ class FastParser {
     */
   def reservedKwMany[$: P, U](s: => P[_], f: String => Pos => P[U]): P[U] = {
     def parser = (s.! ~~ !identContinues)./.map(s => { p: Pos => (s, p) }).pos
-    parser.flatMap { case (s, p) => f(s)(p) }
+    parser.flatMapX { case (s, p) => Pass ~ f(s)(p) }
   }
 
   /** `(`...`,` ...`,` ...`)` */
@@ -676,7 +676,7 @@ class FastParser {
         /* Type unresolvedType is expected to be replaced with the type of exp1
         * after the latter has been resolved
         * */
-        val logicalVar = PLogicalVarDecl(id, PUnknown()())(id.pos)
+        val logicalVar = PLogicalVarDecl(id, PReserved.implied(PSym.Colon), PUnknown()())(id.pos)
         k => pos => {
           val let = PLet(k, logicalVar, eq, exp1, in, nestedScope)(pos)
           nestedScope.outerLet = let

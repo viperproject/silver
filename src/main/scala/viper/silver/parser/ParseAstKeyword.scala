@@ -12,15 +12,17 @@ import viper.silver.parser.TypeHelper._
 
 trait PReservedString extends PReservedStringLsp {
   def token: String
-  def documentation: BuiltinFeature
-  def display: String = token
+  // If this is non-null, then a hover hint will be displayed.
+  def doc: BuiltinFeature
+  def documentation: Option[BuiltinFeature] = Option(doc)
+  def display: String = s"$leftPad$token$rightPad"
   def leftPad: String = ""
   def rightPad: String = ""
 }
 trait LeftSpace extends PReservedString { override def leftPad = " " }
 trait RightSpace extends PReservedString { override def rightPad = " " }
 case class PReserved[+T <: PReservedString](rs: T)(val pos: (Position, Position)) extends PNode with PLeaf with PReservedLsp[T] {
-  override def display = s"${rs.leftPad}${rs.display}${rs.rightPad}"
+  override def display = rs.display
 }
 object PReserved {
   def implied[T <: PReservedString](rs: T): PReserved[T] = PReserved(rs)(NoPosition, NoPosition)
@@ -119,8 +121,8 @@ trait PKeyword extends PReservedString {
   override def token = keyword
 }
 
-trait PKeywordLang extends PKeyword with PKeywordLsp
-trait PKeywordStmt extends PKeyword with PKeywordStmtLsp
+trait PKeywordLang extends PKeyword with PKeywordLsp with RightSpace
+trait PKeywordStmt extends PKeyword with PKeywordStmtLsp with RightSpace
 trait PKeywordType extends PKeyword with PKeywordTypeLsp
 trait PKeywordConstant extends PKeyword with PKeywordLsp
 
@@ -128,7 +130,7 @@ sealed trait PKeywordAtom
 sealed trait PKeywordIf extends PKeywordStmt
 
 
-abstract class PKw(val keyword: String, val documentation: BuiltinFeature) extends PKeyword
+abstract class PKw(val keyword: String, val doc: BuiltinFeature = null) extends PKeyword
 object PKw {
   case object Import extends PKw("import", BuiltinFeature.Import) with PKeywordLang
   type Import = PReserved[Import.type]
@@ -138,116 +140,121 @@ object PKw {
   type Field = PReserved[Field.type]
   case object Method extends PKw("method", BuiltinFeature.Method) with PKeywordLang
   type Method = PReserved[Method.type]
-  // case class Function(val documentation: BuiltinFeature) extends PKw("function", documentation) with PKeywordLang
-  case object Function extends PKw("function", BuiltinFeature.TODO) with PKeywordLang
+  case object Function extends PKw("function") with PKeywordLang
   type Function = PReserved[Function.type]
   case object Predicate extends PKw("predicate", BuiltinFeature.Predicate) with PKeywordLang
   type Predicate = PReserved[Predicate.type]
   case object Domain extends PKw("domain", BuiltinFeature.Domain) with PKeywordLang
   type Domain = PReserved[Domain.type]
-  case object Interpretation extends PKw("interpretation", BuiltinFeature.TODO) with PKeywordLang
+  case object Interpretation extends PKw("interpretation") with PKeywordLang
   type Interpretation = PReserved[Interpretation.type]
-  case object Axiom extends PKw("axiom", BuiltinFeature.TODO) with PKeywordLang
+  case object Axiom extends PKw("axiom") with PKeywordLang
   type Axiom = PReserved[Axiom.type]
 
-  case object Returns extends PKw("returns", BuiltinFeature.TODO) with PKeywordLang
+  case object Returns extends PKw("returns") with PKeywordLang with LeftSpace
   type Returns = PReserved[Returns.type]
-  case object Unique extends PKw("unique", BuiltinFeature.TODO) with PKeywordLang
+  case object Unique extends PKw("unique") with PKeywordLang
   type Unique = PReserved[Unique.type]
 
   sealed trait Spec extends PReservedString; trait AnySpec extends PreSpec with PostSpec with InvSpec
   trait PreSpec extends Spec; trait PostSpec extends Spec; trait InvSpec extends Spec
-  case object Requires extends PKw("requires", BuiltinFeature.TODO) with PKeywordLang with PreSpec
+  case object Requires extends PKw("requires") with PKeywordLang with PreSpec
   type Requires = PReserved[Requires.type]
-  case object Ensures extends PKw("ensures", BuiltinFeature.TODO) with PKeywordLang with PostSpec
+  case object Ensures extends PKw("ensures") with PKeywordLang with PostSpec
   type Ensures = PReserved[Ensures.type]
-  case object Invariant extends PKw("invariant", BuiltinFeature.TODO) with PKeywordLang with InvSpec
+  case object Invariant extends PKw("invariant") with PKeywordLang with InvSpec
   type Invariant = PReserved[Invariant.type]
 
-  case object Result extends PKw("result", BuiltinFeature.TODO) with PKeywordLang with PKeywordAtom
+  case object Result extends PKw("result") with PKeywordLang with PKeywordAtom {
+    override def rightPad = ""
+  }
   type Result = PReserved[Result.type]
-  case object Exists extends PKw("exists", BuiltinFeature.TODO) with PKeywordLang with PKeywordAtom
+  case object Exists extends PKw("exists") with PKeywordLang with PKeywordAtom
   type Exists = PReserved[Exists.type]
-  case object Forall extends PKw("forall", BuiltinFeature.TODO) with PKeywordLang with PKeywordAtom
+  case object Forall extends PKw("forall") with PKeywordLang with PKeywordAtom
   type Forall = PReserved[Forall.type]
-  case object Forperm extends PKw("forperm", BuiltinFeature.TODO) with PKeywordLang with PKeywordAtom
+  case object Forperm extends PKw("forperm") with PKeywordLang with PKeywordAtom
   type Forperm = PReserved[Forperm.type]
-  case object New extends PKw("new", BuiltinFeature.TODO) with PKeywordLang with PKeywordAtom
+  case object New extends PKw("new") with PKeywordLang with PKeywordAtom {
+    override def rightPad = ""
+  }
   type New = PReserved[New.type]
 
-  case object Lhs extends PKw("lhs", BuiltinFeature.TODO) with PKeywordLang
+  case object Lhs extends PKw("lhs") with PKeywordLang {
+    override def rightPad = ""
+  }
   type Lhs = PReserved[Lhs.type]
 
   // Stmts
-  case object If extends PKw("if", BuiltinFeature.TODO) with PKeywordIf
+  case object If extends PKw("if") with PKeywordIf
   type If = PReserved[If.type]
-  case object Elseif extends PKw("elseif", BuiltinFeature.TODO) with PKeywordIf
+  case object Elseif extends PKw("elseif") with PKeywordIf
   type Elseif = PReserved[Elseif.type]
-  case object Else extends PKw("else", BuiltinFeature.TODO) with PKeywordStmt
+  case object Else extends PKw("else") with PKeywordStmt
   type Else = PReserved[Else.type]
-  case object While extends PKw("while", BuiltinFeature.TODO) with PKeywordStmt
+  case object While extends PKw("while") with PKeywordStmt
   type While = PReserved[While.type]
-  case object Fold extends PKw("fold", BuiltinFeature.TODO) with PKeywordStmt
+  case object Fold extends PKw("fold") with PKeywordStmt
   type Fold = PReserved[Fold.type]
-  case object Unfold extends PKw("unfold", BuiltinFeature.TODO) with PKeywordStmt
+  case object Unfold extends PKw("unfold") with PKeywordStmt
   type Unfold = PReserved[Unfold.type]
-  case object Inhale extends PKw("inhale", BuiltinFeature.TODO) with PKeywordStmt
+  case object Inhale extends PKw("inhale") with PKeywordStmt
   type Inhale = PReserved[Inhale.type]
-  case object Exhale extends PKw("exhale", BuiltinFeature.TODO) with PKeywordStmt
+  case object Exhale extends PKw("exhale") with PKeywordStmt
   type Exhale = PReserved[Exhale.type]
-  case object Package extends PKw("package", BuiltinFeature.TODO) with PKeywordStmt
+  case object Package extends PKw("package") with PKeywordStmt
   type Package = PReserved[Package.type]
-  case object Apply extends PKw("apply", BuiltinFeature.TODO) with PKeywordStmt
+  case object Apply extends PKw("apply") with PKeywordStmt
   type Apply = PReserved[Apply.type]
-  case object Assert extends PKw("assert", BuiltinFeature.TODO) with PKeywordStmt
+  case object Assert extends PKw("assert") with PKeywordStmt
   type Assert = PReserved[Assert.type]
-  case object Assume extends PKw("assume", BuiltinFeature.TODO) with PKeywordStmt
+  case object Assume extends PKw("assume") with PKeywordStmt
   type Assume = PReserved[Assume.type]
-  case object Var extends PKw("var", BuiltinFeature.TODO) with PKeywordStmt
+  case object Var extends PKw("var") with PKeywordStmt
   type Var = PReserved[Var.type]
-  case object Label extends PKw("label", BuiltinFeature.TODO) with PKeywordStmt
+  case object Label extends PKw("label") with PKeywordStmt
   type Label = PReserved[Label.type]
-  case object Goto extends PKw("goto", BuiltinFeature.TODO) with PKeywordStmt
+  case object Goto extends PKw("goto") with PKeywordStmt
   type Goto = PReserved[Goto.type]
-  case object Quasihavoc extends PKw("quasihavoc", BuiltinFeature.TODO) with PKeywordStmt
+  case object Quasihavoc extends PKw("quasihavoc") with PKeywordStmt
   type Quasihavoc = PReserved[Quasihavoc.type]
-  case object Quasihavocall extends PKw("quasihavocall", BuiltinFeature.TODO) with PKeywordStmt
+  case object Quasihavocall extends PKw("quasihavocall") with PKeywordStmt
   type Quasihavocall = PReserved[Quasihavocall.type]
 
   // Constants
-  case object True extends PKw("true", BuiltinFeature.TODO) with PKeywordConstant with PKeywordAtom
+  case object True extends PKw("true") with PKeywordConstant with PKeywordAtom
   type True = PReserved[True.type]
-  case object False extends PKw("false", BuiltinFeature.TODO) with PKeywordConstant with PKeywordAtom
+  case object False extends PKw("false") with PKeywordConstant with PKeywordAtom
   type False = PReserved[False.type]
-  case object Null extends PKw("null", BuiltinFeature.TODO) with PKeywordConstant with PKeywordAtom
+  case object Null extends PKw("null") with PKeywordConstant with PKeywordAtom
   type Null = PReserved[Null.type]
 
-  case object None extends PKw("none", BuiltinFeature.TODO) with PKeywordConstant
+  case object None extends PKw("none") with PKeywordConstant
   type None = PReserved[None.type]
-  case object Wildcard extends PKw("wildcard", BuiltinFeature.TODO) with PKeywordConstant
+  case object Wildcard extends PKw("wildcard") with PKeywordConstant
   type Wildcard = PReserved[Wildcard.type]
-  case object Write extends PKw("write", BuiltinFeature.TODO) with PKeywordConstant
+  case object Write extends PKw("write") with PKeywordConstant
   type Write = PReserved[Write.type]
-  case object Epsilon extends PKw("epsilon", BuiltinFeature.TODO) with PKeywordConstant
+  case object Epsilon extends PKw("epsilon") with PKeywordConstant
   type Epsilon = PReserved[Epsilon.type]
 
   // Types
-  case object Int extends PKw("Int", BuiltinFeature.TODO) with PKeywordType
+  case object Int extends PKw("Int") with PKeywordType
   type Int = PReserved[Int.type]
-  case object Bool extends PKw("Bool", BuiltinFeature.TODO) with PKeywordType
+  case object Bool extends PKw("Bool") with PKeywordType
   type Bool = PReserved[Bool.type]
-  case object Perm extends PKw("Perm", BuiltinFeature.TODO) with PKeywordType
+  case object Perm extends PKw("Perm") with PKeywordType
   type Perm = PReserved[Perm.type]
-  case object Ref extends PKw("Ref", BuiltinFeature.TODO) with PKeywordType
+  case object Ref extends PKw("Ref") with PKeywordType
   type Ref = PReserved[Ref.type]
 
-  case object Set extends PKw("Set", BuiltinFeature.TODO) with PKeywordType
+  case object Set extends PKw("Set") with PKeywordType
   type Set = PReserved[Set.type]
-  case object Seq extends PKw("Seq", BuiltinFeature.TODO) with PKeywordType
+  case object Seq extends PKw("Seq") with PKeywordType
   type Seq = PReserved[Seq.type]
-  case object Map extends PKw("Map", BuiltinFeature.TODO) with PKeywordType
+  case object Map extends PKw("Map") with PKeywordType
   type Map = PReserved[Map.type]
-  case object Multiset extends PKw("Multiset", BuiltinFeature.TODO) with PKeywordType
+  case object Multiset extends PKw("Multiset") with PKeywordType
   type Multiset = PReserved[Multiset.type]
 }
 
@@ -255,14 +262,11 @@ object PKw {
 trait PSymbol extends PReservedString {
   def symbol: String
   override def token = symbol
-
-  // TODO:
-  override def documentation = BuiltinFeature.TODO
 }
 
 trait PSymbolLang extends PSymbol with PSymbolLangLsp
 
-abstract class PSym(val symbol: String) extends PSymbol
+abstract class PSym(val symbol: String, val doc: BuiltinFeature = null) extends PSymbol
 object PSym {
   sealed trait Group extends PSymbol {
     type L <: Group; type R <: Group
@@ -300,9 +304,7 @@ object PSym {
   }
   type Quote = PReserved[Quote.type]
 
-  case object Comma extends PSym(",") with PSymbolLang with RightSpace {
-    override def display = ", "
-  }
+  case object Comma extends PSym(",") with PSymbolLang with RightSpace
   type Comma = PReserved[Comma.type]
   case object Semi extends PSym(";") with PSymbolLang
   type Semi = PReserved[Semi.type]
@@ -437,7 +439,8 @@ object PSymOp {
   type Or = PReserved[Or.type]
 }
 
-trait POperatorKeyword extends PKeyword with PKeywordLsp with POperator
+// Use the token type from `PKeywordLsp`
+trait POperatorKeyword extends PKeyword with POperator with PKeywordLsp
 
 trait PSetToSetOp extends PBinaryOp {
   override def signatures = List(
@@ -458,11 +461,8 @@ trait PSubsetOp extends PBinaryOp {
     Map(POpApp.pArgS(0) -> MakeMultiset(PCollectionOp.infVar), POpApp.pArgS(1) -> MakeMultiset(PCollectionOp.infVar), POpApp.pResS -> Bool))
 }
 
-abstract class PKwOp(val keyword: String) extends POperatorKeyword {
+abstract class PKwOp(val keyword: String, val doc: BuiltinFeature = null) extends POperatorKeyword {
   override def operator = keyword
-
-  // TODO:
-  override def documentation = BuiltinFeature.TODO
 }
 object PKwOp {
   case object In            extends PKwOp("in")           with PBinaryOp with PInOp

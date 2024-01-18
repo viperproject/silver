@@ -12,10 +12,13 @@ import java.nio.file.Path
 import viper.silver.parser.FastParser
 
 /** A trait describing the position of occurrence of an AST node. */
-sealed trait Position
+sealed trait Position {
+  def deltaColumn(delta: Int): Position
+}
 
 /** Describes ''no location'' for cases where a `Position` is expected, but not available. */
 case object NoPosition extends Position {
+  override def deltaColumn(delta: Int): Position = this
   override def toString = "<no position>"
 }
 
@@ -25,6 +28,7 @@ trait HasLineColumn extends Position {
 
   def column: Int
 
+  def deltaColumn(delta: Int): HasLineColumn
   override def toString = s"$line.$column"
 }
 
@@ -35,7 +39,9 @@ trait HasIdentifier extends HasLineColumn {
   def id: String
 }
 
-case class LineColumnPosition(line: Int, column: Int) extends HasLineColumn
+case class LineColumnPosition(line: Int, column: Int) extends HasLineColumn {
+  override def deltaColumn(delta: Int): HasLineColumn = LineColumnPosition(line, column + delta)
+}
 
 /** Represents a source code position by referencing a file, a line and a column.
   * Optionally, an additional end position can be specified.
@@ -57,6 +63,7 @@ trait AbstractSourcePosition extends HasLineColumn {
   private def lineColComponent(lc_pos: HasLineColumn) =
     s"${lc_pos.line}.${lc_pos.column}"
 
+  override def deltaColumn(delta: Int): AbstractSourcePosition
   override def toString: String = end match {
     case None =>
       s"$fileComponent${lineColComponent(start)}"
@@ -79,12 +86,16 @@ object AbstractSourcePosition {
 class SourcePosition(val file: Path, val start: HasLineColumn, val end: Option[HasLineColumn])
   extends AbstractSourcePosition with StructuralEquality {
 
+  override def deltaColumn(delta: Int): SourcePosition =
+    new SourcePosition(file, start.deltaColumn(delta), end.map(_.deltaColumn(delta)))
   protected val equalityDefiningMembers: Seq[Object] =
     file :: start :: end :: Nil
 }
 
 class IdentifierPosition(val file: Path, val start: HasLineColumn, val end: Option[HasLineColumn], val id: String)
   extends AbstractSourcePosition with StructuralEquality with HasIdentifier {
+  override def deltaColumn(delta: Int): IdentifierPosition =
+    new IdentifierPosition(file, start.deltaColumn(delta), end.map(_.deltaColumn(delta)), id)
   protected val equalityDefiningMembers: Seq[Object] =
     file :: start :: end :: id :: Nil
 }
@@ -122,6 +133,8 @@ case class TranslatedPosition(pos: AbstractSourcePosition) extends AbstractSourc
   val file: Path = pos.file
   val start: HasLineColumn = pos.start
   val end: Option[HasLineColumn] = pos.end
+  override def deltaColumn(delta: Int): TranslatedPosition =
+    new TranslatedPosition(pos.deltaColumn(delta))
 }
 
 case class FilePosition(file: Path, vline: Int, col: Int) extends util.parsing.input.Position with HasLineColumn {
@@ -129,6 +142,7 @@ case class FilePosition(file: Path, vline: Int, col: Int) extends util.parsing.i
   override lazy val column: Int = col
   override lazy val lineContents: String = toString
   override lazy val toString: String = s"${file.getFileName}@$vline.$col"
+  override def deltaColumn(delta: Int): FilePosition = FilePosition(file, vline, col + delta)
 }
 
 /**
@@ -138,4 +152,5 @@ case class FilePosition(file: Path, vline: Int, col: Int) extends util.parsing.i
   */
 case class VirtualPosition(identifier: String) extends Position {
   override def toString: String = identifier
+  override def deltaColumn(delta: Int): VirtualPosition = this
 }

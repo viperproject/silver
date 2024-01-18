@@ -271,7 +271,7 @@ case class TypeChecker(names: NameAnalyser) {
       case fa@PFieldAccess(_, _, field) =>
         field.assignUse = true
         names.definition(curMember)(field, Some(PFields.getClass)) match {
-          case Some(PFieldDecl(_, typ)) =>
+          case Some(PFieldDecl(_, _, typ)) =>
             check(fa, typ)
           case _ =>
             messages ++= FastMessaging.message(field, "expected a field as lhs")
@@ -385,6 +385,7 @@ case class TypeChecker(names: NameAnalyser) {
             val td = decl.get.asInstanceOf[PTypedDeclaration]
             if (use.isInstanceOf[PIdnUseExp])
               use.asInstanceOf[PIdnUseExp].typ = td.typ
+            // TODO: is this necessary?
             use.decl = Some(td)
           case None =>
             messages ++= FastMessaging.message(use, errorMessage)
@@ -739,15 +740,6 @@ case class TypeChecker(names: NameAnalyser) {
                 if (!pem.pValueType.isValidOrUndeclared)
                   check(pem.pValueType)
 
-              case pl@PLet(_, variable, _, e, _, ns) =>
-                val oldCurMember = curMember
-                curMember = ns
-                checkInternal(e)
-                variable.typ = e.typ
-                checkInternal(ns.body)
-                pl.typ = ns.body.typ
-                curMember = oldCurMember
-
               case _ =>
             }
           }
@@ -793,6 +785,15 @@ case class TypeChecker(names: NameAnalyser) {
       case piu: PIdnUse =>
         acceptAndCheckTypedEntity[PAnyVarDecl, Nothing](Seq(piu), "expected variable identifier")
 
+      case pl@PLet(_, variable, _, e, _, ns) =>
+        val oldCurMember = curMember
+        curMember = ns
+        checkInternal(e)
+        variable.typ = e.typ
+        checkInternal(ns.body)
+        pl.typ = ns.body.typ
+        curMember = oldCurMember
+
       case pq: PForPerm =>
         val oldCurMember = curMember
         curMember = pq
@@ -813,7 +814,7 @@ case class TypeChecker(names: NameAnalyser) {
         pq._typeSubstitutions = pq.body.typeSubstitutions.toList.distinct
         pq.typ = Bool
         curMember = oldCurMember
-      
+
       case pne: PNewExp => issueError(pne, s"unexpected use of `new` as an expression")
     }
   }
@@ -953,9 +954,10 @@ case class NameAnalyser() {
             }
           case i: PIdnUse =>
             // look up in both maps (if we are not in a method currently, we look in the same map twice, but that is ok)
-            val resolved = getCurrentMap.getOrElse(i.name, globalDeclarationMap.getOrElse(i.name, PUnknownEntity()))
+            val resolved = getCurrentMap.get(i.name).orElse(globalDeclarationMap.get(i.name)).map(_.asInstanceOf[PDeclaration])
+            i.decl = resolved
             (i.parent, resolved) match {
-              case (Some(parent), PUnknownEntity()) =>
+              case (Some(parent), None) =>
                 if (!parent.isInstanceOf[PDomainType] && !parent.isInstanceOf[PGoto] &&
                   !(parent.isInstanceOf[POldExp] && parent.asInstanceOf[POldExp].label.map(_ == i).getOrElse(false)) &&
                   !(i.name == LabelledOld.LhsOldLabel && parent.isInstanceOf[POldExp] && parent.asInstanceOf[POldExp].label.isDefined)) {

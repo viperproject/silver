@@ -25,6 +25,10 @@ case class RangePosition(file: Path, var start: HasLineColumn, var _end: HasLine
     shiftStart(0, delta)
     shiftEnd(0, delta)
   }
+  override def deltaColumn(delta: Int): RangePosition = {
+    shiftInLine(delta)
+    this
+  }
 }
 
 object RangePosition {

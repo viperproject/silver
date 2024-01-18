@@ -15,7 +15,7 @@ object BuiltinFeature {
     |```
     |Standard Import:
     |```
-    import <path/to/provided.vpr>
+    |import <path/to/provided.vpr>
     |```
     |Imports provide a simple mechanism for splitting a Viper program across several source files using the local import. Further, it also makes it possible to make use of programs provided by Viper using the standard import.
     | - A relative or absolute path to a Viper file may be used (according to the Java/Unix style)
