@@ -41,7 +41,7 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
 
     if (!isImported) {
       // Add new parser adt declaration keyword
-      ParserExtension.addNewKeywords(Set[String](PAdtKeyword.keyword, PDeriveKeyword.keyword, PWithoutKeyword.keyword))
+      ParserExtension.addNewKeywords(Set[String](PAdtKeyword.keyword, PDerivesKeyword.keyword, PWithoutKeyword.keyword))
       // Add new parser for adt declaration
       ParserExtension.addNewDeclAtEnd(adtDecl(_))
     }
@@ -68,7 +68,7 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
     *
     */
   def adtDecl[$: P]: P[PAnnotationsPosition => PAdt] =
-    P(P(PAdtKeyword) ~ idndef ~ typeList(domainTypeVarDecl).? ~ adtConstructorDecl.rep.braces.map(PAdtConstructors1.apply _).pos ~~~ adtDerivingDecl.lw.?).map {
+    P(P(PAdtKeyword) ~ idndef ~ typeList(domainTypeVarDecl).? ~ adtConstructorDecl.rep.braces.map(PAdtConstructors1.apply _).pos ~~~ adtDerivesDecl.lw.?).map {
       case (k, name, typparams, c, dec) =>
         ap: PAnnotationsPosition => {
           val adt = PAdt(
@@ -84,9 +84,9 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
         }
     }
 
-  def adtDerivingDecl[$: P] = P((P(PDeriveKeyword) ~ adtDerivingDeclBody.rep.braces.map(PAdtSeq.apply _).pos) map (PAdtDeriving.apply _).tupled).pos
+  def adtDerivesDecl[$: P] = P((P(PDerivesKeyword) ~ adtDerivingDeclBody.rep.braces.map(PAdtSeq.apply _).pos) map (PAdtDeriving.apply _).tupled).pos
 
-  def adtWithout[$: P]: P[PAdtWithout] = P((P(PWithoutKeyword) ~ idnref.delimited(PSym.Comma, min = 1)) map (PAdtWithout.apply _).tupled).pos
+  def adtWithout[$: P]: P[PAdtWithout] = P((P(PWithoutKeyword) ~ idnref.map(i => PAdtFieldRef(i.name)(i.pos)).delimited(PSym.Comma, min = 1)) map (PAdtWithout.apply _).tupled).pos
 
   def adtDerivingDeclBody[$: P]: P[PAdtDerivingInfo] =
     P((idnref ~~~ typ.brackets.lw.? ~~~ adtWithout.lw.?) map ((PAdtDerivingInfo.apply _).tupled)).pos
@@ -112,18 +112,18 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
       case pc@PCall(idnuse, args, typeAnnotated) if declaredConstructorNames.exists(_.name == idnuse.name) => PConstructorCall(idnuse, args, typeAnnotated)(pc.pos)
       // A destructor call or discriminator call might be parsed as left-hand side of a field assignment, which is illegal. Hence in this case
       // we simply treat the calls as an ordinary field access, which results in an identifier not found error.
-      case pfa@PAssign(PDelimited(fieldAcc: PFieldAccess), op, rhs) if declaredConstructorArgsNames.contains(fieldAcc.idnuse.name) ||
-        declaredConstructorNames.exists("is" + _.name == fieldAcc.idnuse.name) =>
+      case pfa@PAssign(PDelimited(fieldAcc: PFieldAccess), op, rhs) if declaredConstructorArgsNames.contains(fieldAcc.idnref.name) ||
+        declaredConstructorNames.exists("is" + _.name == fieldAcc.idnref.name) =>
         PAssign(pfa.targets.update(Seq(fieldAcc.copy(rcv = transformStrategy(fieldAcc.rcv))(fieldAcc.pos))), op, transformStrategy(rhs))(pfa.pos)
-      case pfa@PFieldAccess(rcv, dot, idnuse) if declaredConstructorArgsNames.contains(idnuse.name) => PDestructorCall(rcv, PReserved(PDiscDot)(dot.pos), idnuse)(pfa.pos)
+      case pfa@PFieldAccess(rcv, dot, idnuse) if declaredConstructorArgsNames.contains(idnuse.name) => PDestructorCall(rcv, PReserved(PDiscDot)(dot.pos), PAdtFieldRef(idnuse.name)(idnuse.pos))(pfa.pos)
       case pfa@PFieldAccess(rcv, dot, idnuse) if declaredConstructorNames.exists("is" + _.name == idnuse.name) => {
         val middlePos = idnuse.pos._1.deltaColumn(2)
         PDiscriminatorCall(rcv, PReserved(PDiscDot)(dot.pos), PReserved(PIsKeyword)(idnuse.pos._1, middlePos), PIdnRef(idnuse.name.substring(2))(middlePos, idnuse.pos._2))(pfa.pos)
       }
     }).recurseFunc({
       // Stop the recursion if a destructor call or discriminator call is parsed as left-hand side of a field assignment
-      case PAssign(PDelimited(fieldAcc: PFieldAccess), _, _) if declaredConstructorArgsNames.contains(fieldAcc.idnuse.name) ||
-        declaredConstructorNames.exists("is" + _.name == fieldAcc.idnuse.name) => Seq()
+      case PAssign(PDelimited(fieldAcc: PFieldAccess), _, _) if declaredConstructorArgsNames.contains(fieldAcc.idnref.name) ||
+        declaredConstructorNames.exists("is" + _.name == fieldAcc.idnref.name) => Seq()
       case n: PNode => n.children collect { case ar: AnyRef => ar }
     }).execute(input)
 

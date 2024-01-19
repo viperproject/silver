@@ -115,7 +115,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
     def isWellFoundedFunctionCall(c: PCall): Boolean = {
       if (!c.isDomainFunction)
         return false
-      if (!(c.idnuse.name == "decreases" || c.idnuse.name == "bounded"))
+      if (!(c.idnref.name == "decreases" || c.idnref.name == "bounded"))
         return false
       c.funcDecl match {
         case Some(df: PDomainFunction) => df.domainName.name == "WellFoundedOrder"

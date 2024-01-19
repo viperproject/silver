@@ -32,7 +32,7 @@ class PredicateInstancePlugin(@unused reporter: viper.silver.reporter.Reporter,
    *
    */
   def predicateInstance[$: P]: P[PPredicateInstance] = P((P(PMarkerSymbol) ~ predAcc).map {
-    case (m, p) => PPredicateInstance(m, p.idnuse, p.callArgs)(_)
+    case (m, p) => PPredicateInstance(m, p.idnref, p.callArgs)(_)
   }).pos
 
   /** Called before any processing happened.

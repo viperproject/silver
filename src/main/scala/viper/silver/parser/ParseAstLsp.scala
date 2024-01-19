@@ -49,11 +49,11 @@ trait PLspHoverHint extends PNode with HasHoverHints {
   override def getHoverHints = getHoverHintsRaw
 }
 trait PLspHoverHintRef extends PNode with HasHoverHints {
-  def idnuse: PIdnUseLsp
+  def idnref: PLspIdnUse
 
-  def hintRef: Option[String] = idnuse.decl.map(_.hint)
-  def documentationRef: Option[String] = idnuse.decl.flatMap(_.documentation)
-  def getHoverHintsRef: Seq[HoverHint] = (hintRef, RangePosition(idnuse)) match {
+  def hintRef: Option[String] = idnref.decl.map(_.hint)
+  def documentationRef: Option[String] = idnref.decl.flatMap(_.documentation)
+  def getHoverHintsRef: Seq[HoverHint] = (hintRef, RangePosition(idnref)) match {
     case (Some(h), Some(ip)) => Seq(HoverHint(h, documentationRef, RangePosition(this), SelectionBoundScope(ip)))
     case _ => Nil
   }
@@ -63,17 +63,11 @@ trait PLspHoverHintBoth extends PLspHoverHint with PLspHoverHintRef {
   override def getHoverHints = getHoverHintsRef ++ getHoverHintsRaw
 }
 
-trait PLspStmtWithExp extends PNode with HasSuggestionScopeRanges {
-  def e: PExp
-  override def getSuggestionScopeRanges: Seq[SuggestionScopeRange] =
-    RangePosition(e).map(SuggestionScopeRange(_, ExpressionScope)).toSeq
-}
-
 // --- PNode extensions ---
 ////
 // Identifiers (uses and definitions)
 ////
-trait PIdnUseLsp extends PNode with PLspTokenModifiers with HasSemanticHighlights with HasGotoDefinitions with HasReferenceTos {
+trait PLspIdnUse extends PNode with PLspTokenModifiers with HasSemanticHighlights with HasGotoDefinitions with HasReferenceTos {
   def decl: Option[PDeclaration]
   def assignUse: Boolean
 
@@ -94,51 +88,51 @@ trait PIdnUseLsp extends PNode with PLspTokenModifiers with HasSemanticHighlight
     case _ => Nil
   }
 }
-trait PIdnUseExpLsp extends PIdnUseLsp with PLspHoverHintRef {
-  def idnuse = this
+trait PLspIdnUseExp extends PLspIdnUse with PLspExpRef {
+  override def idnref = this
 }
 
 ////
 // Keywords
 ////
-trait PReservedLsp[+T <: PReservedString] extends PLspMaybeSemanticToken with HasHoverHints {
+trait PLspReserved[+T <: PReservedString] extends PLspMaybeSemanticToken with HasHoverHints {
   val rs: T
   override def maybeTokenType = rs.maybeTokenType
   override def tokenModifiers = rs.tokenModifiers
 
   // Only display hover if there is documentation
-  override def getHoverHints: Seq[HoverHint] = (rs.documentation, RangePosition(this)) match {
-    case (Some(d), Some(rp)) => Seq(HoverHint(this.pretty, Some(d.description), Some(rp), SelectionBoundScope(rp)))
+  override def getHoverHints: Seq[HoverHint] = (rs.documentationAsHint, RangePosition(this)) match {
+    case (true, Some(rp)) => Seq(HoverHint(this.pretty, rs.documentation.map(_.description), Some(rp), SelectionBoundScope(rp)))
     case _ => Nil
   }
 }
 
-trait PReservedStringLsp {
+trait PLspReservedString {
   def maybeTokenType: Option[TokenType.TokenType]
   def tokenModifiers: Seq[TokenModifier.TokenModifier] = Nil
 }
-trait PKeywordLsp extends PReservedStringLsp {
+trait PLspKeyword extends PLspReservedString {
   override def maybeTokenType = Some(TokenType.Keyword)
 }
-trait PKeywordStmtLsp extends PKeywordLsp {
+trait PLspKeywordStmt extends PLspKeyword {
   override def tokenModifiers = Seq(TokenModifier.ControlFlow)
 }
-trait PKeywordTypeLsp extends PReservedStringLsp {
+trait PLspKeywordType extends PLspReservedString {
   override def maybeTokenType = Some(TokenType.Type)
 }
 
-trait PSymbolLangLsp extends PReservedStringLsp {
+trait PLspSymbolLang extends PLspReservedString {
   override def maybeTokenType = None
 }
 
-trait POperatorLsp extends PReservedStringLsp {
+trait PLspOperator extends PLspReservedString {
   override def maybeTokenType = Some(TokenType.Operator)
 }
 
 ////
 // Variable declarations
 ////
-trait PAnyVarDeclLsp extends PDeclarationLsp {
+trait PLspAnyVarDecl extends PLspDeclaration {
   def typ: PType
   override def hint = pretty
   override def detail = Some(typ.pretty)
@@ -147,25 +141,25 @@ trait PAnyVarDeclLsp extends PDeclarationLsp {
   override def completionKind = CompletionKind.Variable
 }
 
-trait PFormalArgDeclLsp extends PDeclarationLsp {
+trait PLspFormalArgDecl extends PLspDeclaration with PLspAnyVarDecl {
   override def tokenType = TokenType.Parameter
   override def description = "Argument Binding"
   override def tokenModifiers = Seq(TokenModifier.Readonly)
 }
-trait PFormalReturnDeclLsp extends PDeclarationLsp {
+trait PLspFormalReturnDecl extends PLspDeclaration with PLspAnyVarDecl {
   override def tokenType = TokenType.Variable
   override def description = "Return Variable"
 }
-trait PLogicalVarDeclLsp extends PDeclarationLsp  {
+trait PLspLogicalVarDecl extends PLspDeclaration with PLspAnyVarDecl {
   override def tokenType = TokenType.Parameter
   override def description = "Logical Binding"
   override def tokenModifiers = Seq(TokenModifier.Readonly)
 }
-trait PLocalVarDeclLsp extends PDeclarationLsp {
+trait PLspLocalVarDecl extends PLspDeclaration with PLspAnyVarDecl {
   override def tokenType = TokenType.Variable
   override def description = "Local Variable"
 }
-trait PFieldDeclLsp extends PDeclarationLsp {
+trait PLspFieldDecl extends PLspDeclaration {
   def decl: Option[PFields]
   def typ: PType
 
@@ -182,15 +176,17 @@ trait PFieldDeclLsp extends PDeclarationLsp {
 ////
 // Types
 ////
-trait PDomainTypeLsp extends PLspHoverHintRef {
-  def domain: PIdnUseLsp
-  override def idnuse = domain
+trait PLspDomainType extends PLspHoverHintRef {
+  def domain: PLspIdnUse
+  override def idnref = domain
 }
 
 ////
 // Operator applications
 ////
-trait PExpLsp extends PLspHoverHint with PPrettySubnodes {
+
+// Operators which don't have a `PIdnRef`
+trait PLspExp extends PLspHoverHint with PPrettySubnodes {
   def ops: Seq[PReserved[POperator]] = subnodes flatMap (_ shallowCollect({
     case r: PReserved[_] if r.rs.isInstanceOf[POperator] => Some(r.asInstanceOf[PReserved[POperator]])
     case _: PExp => None
@@ -204,10 +200,13 @@ trait PExpLsp extends PLspHoverHint with PPrettySubnodes {
     })
     s"$pretty: ${typ.pretty}"
   }
+  override def documentation: Option[String] = ops.flatMap(_.rs.documentation).headOption.map(_.description)
 }
-trait PCallLsp extends PLspHoverHintBoth with HasInlayHints {
+trait PLspExpRef extends PLspExp with PLspHoverHintBoth
+
+trait PLspCall extends PLspExpRef with HasInlayHints {
   def args: Seq[PExp]
-  def formalArgs: Seq[PAnyFormalArgDecl] = idnuse.decl match {
+  def formalArgs: Seq[PAnyFormalArgDecl] = idnref.decl match {
     case (Some(function: PGlobalCallable)) => function.formalArgs
     case _ => Nil
   }
@@ -230,12 +229,81 @@ trait PCallLsp extends PLspHoverHintBoth with HasInlayHints {
   }
 }
 
+////
+// Statements
+////
+
+trait PLspStmtWithExp extends PNode with HasSuggestionScopeRanges {
+  def e: PExp
+  override def getSuggestionScopeRanges: Seq[SuggestionScopeRange] =
+    RangePosition(e).map(SuggestionScopeRange(_, ExpressionScope)).toSeq
+}
+
+////
+// Members
+////
+
+trait PLspCallable extends PLspDeclaration with HasSuggestionScopeRanges with HasFoldingRanges with HasSignatureHelps {
+  def keyword: PReserved[_]
+  def args: PDelimited.Comma[PSym.Paren, PAnyFormalArgDecl]
+  def formalArgs: Seq[PAnyFormalArgDecl]
+  def bodyRange: Option[RangePosition]
+  def returnString: Option[String]
+  def pres: PDelimited[PSpecification[PKw.PreSpec], Option[PSym.Semi]]
+  def posts: PDelimited[PSpecification[PKw.PostSpec], Option[PSym.Semi]]
+
+  override def hint: String = {
+    val firstLine = s"${keyword.pretty}${idndef.pretty}${args.pretty}${returnString.getOrElse("")}"
+    val contract = (pres.toSeq ++ posts.toSeq).map(_.pretty)
+    val bodyString = bodyRange.map(_ => if (contract.length > 0) "\n{ ... }" else " { ... }").getOrElse("")
+    s"$firstLine${contract.mkString}$bodyString"
+  }
+  override def getSignatureHelps: Seq[SignatureHelp] = {
+    val bound = SelectionBoundKeyword(idndef.name)
+    val start = SignatureHelpPart(false, s"${keyword.pretty} ${idndef.pretty}(", None)
+    val args = formalArgs.map(fa => SignatureHelpPart(true, fa.pretty, None))
+    val tail = SignatureHelpPart(false, ")" + returnString.getOrElse(""), None)
+    def addCommas(args: Seq[SignatureHelpPart]): Seq[SignatureHelpPart] = if (args.length <= 1) args :+ tail else {
+      args.head +: SignatureHelpPart(false, ", ", None) +: addCommas(args.drop(1))
+    }
+    val help = start +: addCommas(args)
+    Seq(SignatureHelp(help, documentation, bound))
+  }
+  override def getFoldingRanges: Seq[FoldingRange] = {
+    val thisRange = RangePosition(this).filter(rp => rp.start.line != rp._end.line)
+    val bodyRangeFilter = bodyRange.filter(rp => rp.start.line != rp._end.line)
+    val sameStart = thisRange.zip(bodyRangeFilter).map(rps => rps._1.start.line == rps._2.start.line).getOrElse(false)
+    val ranges = if (sameStart) thisRange.toSeq else (thisRange.toSeq ++ bodyRangeFilter.toSeq)
+    ranges.map(FoldingRange(_))
+  }
+  override def newText: Option[(String, InsertTextFormat.InsertTextFormat)] = {
+    val args = formalArgs.zipWithIndex.map {
+      case (ad: PFormalArgDecl, i) => s"$${${i+1}:${ad.idndef.pretty}}"
+      case (_, i) => s"$${${i+1}:arg${i+1}}"
+    }
+    Some((s"${idndef.pretty}(${args.mkString(", ")})", InsertTextFormat.Snippet))
+  }
+}
+
+trait PLspAnyFunction extends PLspCallable {
+  override def tokenType = TokenType.Function
+  override def symbolKind = SymbolKind.Function
+  override def returnString: Option[String] = Some(s"${c.pretty}${resultType.pretty}")
+  // override def getGotoDefinitions: Seq[GotoDefinition] = super.getGotoDefinitions ++ formalArgs.map(_.getGotoDefinitions)
+
+  def c: PSym.Colon
+  def resultType: PType
+
+  override def getSuggestionScopeRanges: Seq[SuggestionScopeRange] =
+    RangePosition(this).map(SuggestionScopeRange(_, CallableSignatureScope)).toSeq ++
+    bodyRange.map(SuggestionScopeRange(_, ExpressionScope)).toSeq
+  override def completionScope: Map[SuggestionScope,Byte] = Map(ExpressionScope -> 0, StatementScope -> -50)
+  override def completionKind: CompletionKind.CompletionKind = CompletionKind.Function
+}
 
 
 
-
-
-trait PDeclarationLsp extends PNode with PLspHoverHint with PLspSemanticToken with PLspDocumentSymbol with HasCompletionProposals with HasGotoDefinitions with HasReferenceTos {
+trait PLspDeclaration extends PNode with PLspHoverHint with PLspSemanticToken with PLspDocumentSymbol with HasCompletionProposals with HasGotoDefinitions with HasReferenceTos {
   def idndef: PIdnDef
 
   def declRange: Option[RangePosition] = RangePosition(this)
@@ -280,16 +348,20 @@ trait PDeclarationLsp extends PNode with PLspHoverHint with PLspSemanticToken wi
   }
 }
 
-trait PGlobalDeclarationLsp extends PDeclarationLsp with PAnnotated {
+trait PLspGlobalDeclaration extends PLspDeclaration with PAnnotated {
   override def documentation: Option[String] = {
-    val docs = annotations.filter(_.key.name == "doc").map(_.values.inner.toSeq.map(_.grouped.inner).mkString("\n"))
+    val docs = annotations.filter(_.key.str == "doc").map(_.values.inner.toSeq.map(_.grouped.inner).mkString("\n"))
     if (docs.isEmpty) None else Some(docs.mkString("\n\n"))
   }
 }
 
-trait PAnnotationLsp extends PNode with HasSemanticHighlights {
-  def key: PAnnotationKey
+trait PLspAnnotation extends PNode with HasSemanticHighlights {
+  def key: PRawString
   def values: PGrouped[PSym.Paren, PDelimited[PStringLiteral, PSym.Comma]]
+  // Make strings display as comments if the annotation is a doc annotation
+  val initValues = if (key.str == "doc") values.inner.toSeq foreach (_.tokenType = TokenType.Comment)
+
+  // Gets the range positions of all lines of the annotation
   def multilineRangePositions: Seq[RangePosition] = (RangePosition(this), RangePosition(values.l), RangePosition(values.r)) match {
     case (Some(rp), Some(lRp), Some(rRp)) => {
       var old = Option(RangePosition(rp.file, rp.start, lRp._end))
@@ -309,12 +381,10 @@ trait PAnnotationLsp extends PNode with HasSemanticHighlights {
     }
     case _ => Nil
   }
-  override def getSemanticHighlights: Seq[SemanticHighlight] =
-    if (key.name == "doc") multilineRangePositions.map(SemanticHighlight(_, TokenType.Comment))
-    else RangePosition(key).map(SemanticHighlight(_, TokenType.Decorator)).toSeq
+  override def getSemanticHighlights: Seq[SemanticHighlight] = RangePosition(key).map(SemanticHighlight(_, TokenType.Decorator)).toSeq
 }
 
-trait PStringLiteralLsp extends PNode with HasSemanticHighlights {
+trait PLspStringLiteral extends PNode with HasSemanticHighlights {
   def grouped: PGrouped[_, String]
   // Semantic highlights which span multiple lines are not supported, thus we must break the string up
   // Use the line lengths of the string literal that we have saved to calculate the range position for each line
@@ -339,10 +409,11 @@ trait PStringLiteralLsp extends PNode with HasSemanticHighlights {
       assert(linesRp.last._end.column == rp._end.column, s"Multiline string literal range end column positions do not match up: ${linesRp.last} vs $rp")
       linesRp
     })
-  override def getSemanticHighlights: Seq[SemanticHighlight] = multilineRangePositions.map(sp => SemanticHighlight(sp, TokenType.String)).toSeq
+  var tokenType: TokenType.TokenType = TokenType.String
+  override def getSemanticHighlights: Seq[SemanticHighlight] = multilineRangePositions.map(sp => SemanticHighlight(sp, tokenType)).toSeq
 }
 
-trait PProgramLsp extends PNode with HasSemanticHighlights with PLspDocumentSymbol with HasGotoDefinitions with HasHoverHints with HasFoldingRanges with HasInlayHints with HasCodeLens with HasSignatureHelps with HasReferenceTos with HasCompletionProposals with HasSuggestionScopeRanges {
+trait PLspProgram extends PNode with HasSemanticHighlights with PLspDocumentSymbol with HasGotoDefinitions with HasHoverHints with HasFoldingRanges with HasInlayHints with HasCodeLens with HasSignatureHelps with HasReferenceTos with HasCompletionProposals with HasSuggestionScopeRanges {
   override def getSemanticHighlights: Seq[SemanticHighlight] = subnodes.flatMap(_ deepCollect { case sn: HasSemanticHighlights => sn.getSemanticHighlights }).flatten
   override def getGotoDefinitions: Seq[GotoDefinition] = subnodes.flatMap(_ deepCollect { case sn: HasGotoDefinitions => sn.getGotoDefinitions }).flatten
   override def getHoverHints: Seq[HoverHint] = subnodes.flatMap(_ deepCollect { case sn: HasHoverHints => sn.getHoverHints }).flatten

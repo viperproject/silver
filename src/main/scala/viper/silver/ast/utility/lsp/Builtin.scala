@@ -163,12 +163,15 @@ object BuiltinFeature {
   // TODO: Map, range, domain
   // TODO: Unfolding, Applying
   // TODO: Old, Let, Forall, Exists, Forperm
+  case object Old extends BuiltinFeature(
+  """Evaluates the wrapped expression in a different (older) version of the heap. For an unlabelled `old(e)` this is the heap at the start of the current method call.
+    |For a labelled `old[l](e)`, it is the heap at the position of the label `l`. For the labelled old to be well-defined, the label `l` must be in the same method as the old expression,
+    |and must have been encountered by the time the old expression is evaluated. Old expressions cannot be used in functions, predicates or preconditions
+    |(labelled old also cannot be used in postconditions: they would be meaningless for the caller). It is not supported to refer back to a label inside a loop body from outside of the loop body.
+    |Note that old expressions do not affect the value of variable references; `old(x.f)`, for example, evaluates to the value that the field `f` of the object that the variable `x` currently
+    |points to had at the beginning of the method. That is to say, variables are unaffected by old expressions and will always use their current value.
+  """.stripMargin.replaceAll("\n", " "))
   // TODO: acc, wildcard, write, none, epsilon, perm, unique
-  // TODO: 
-  
-  case object TODO extends BuiltinFeature(
-  """TODO""".stripMargin.replaceAll("\n", " ")
-  )
 }
 
 case object DefaultCompletionProposals extends HasCompletionProposals {

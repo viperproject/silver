@@ -10,18 +10,21 @@ import viper.silver.ast.utility.lsp.BuiltinFeature
 import viper.silver.ast.{NoPosition, Position}
 import viper.silver.parser.TypeHelper._
 
-trait PReservedString extends PReservedStringLsp {
+trait PReservedString extends PLspReservedString {
   def token: String
   // If this is non-null, then a hover hint will be displayed.
   def doc: BuiltinFeature
   def documentation: Option[BuiltinFeature] = Option(doc)
+  // Should the IDE display the documentation as a hint?
+  // Enabled for all but operators where the operator itself will display the documentation.
+  def documentationAsHint: Boolean = true
   def display: String = s"$leftPad$token$rightPad"
   def leftPad: String = ""
   def rightPad: String = ""
 }
 trait LeftSpace extends PReservedString { override def leftPad = " " }
 trait RightSpace extends PReservedString { override def rightPad = " " }
-case class PReserved[+T <: PReservedString](rs: T)(val pos: (Position, Position)) extends PNode with PLeaf with PReservedLsp[T] {
+case class PReserved[+T <: PReservedString](rs: T)(val pos: (Position, Position)) extends PNode with PLeaf with PLspReserved[T] {
   override def display = rs.display
 }
 object PReserved {
@@ -121,10 +124,10 @@ trait PKeyword extends PReservedString {
   override def token = keyword
 }
 
-trait PKeywordLang extends PKeyword with PKeywordLsp with RightSpace
-trait PKeywordStmt extends PKeyword with PKeywordStmtLsp with RightSpace
-trait PKeywordType extends PKeyword with PKeywordTypeLsp
-trait PKeywordConstant extends PKeyword with PKeywordLsp
+trait PKeywordLang extends PKeyword with PLspKeyword with RightSpace
+trait PKeywordStmt extends PKeyword with PLspKeywordStmt with RightSpace
+trait PKeywordType extends PKeyword with PLspKeywordType
+trait PKeywordConstant extends PKeyword with PLspKeyword
 
 sealed trait PKeywordAtom
 sealed trait PKeywordIf extends PKeywordStmt
@@ -264,7 +267,9 @@ trait PSymbol extends PReservedString {
   override def token = symbol
 }
 
-trait PSymbolLang extends PSymbol with PSymbolLangLsp
+trait PSymbolLang extends PSymbol with PLspSymbolLang {
+  override def documentationAsHint: Boolean = false
+}
 
 abstract class PSym(val symbol: String, val doc: BuiltinFeature = null) extends PSymbol
 object PSym {
@@ -326,9 +331,10 @@ object PSym {
 }
 
 /** Anything that can act as an operator. */
-trait POperator extends PReservedString with POperatorLsp {
+trait POperator extends PReservedString with PLspOperator {
   def operator: String
   override def token = operator
+  override def documentationAsHint: Boolean = false
 }
 
 trait PSymbolOp extends PSymbol with POperator {
@@ -439,8 +445,8 @@ object PSymOp {
   type Or = PReserved[Or.type]
 }
 
-// Use the token type from `PKeywordLsp`
-trait POperatorKeyword extends PKeyword with POperator with PKeywordLsp
+// Use the token type from `PLspKeyword`
+trait POperatorKeyword extends PKeyword with POperator with PLspKeyword
 
 trait PSetToSetOp extends PBinaryOp {
   override def signatures = List(
@@ -472,30 +478,30 @@ object PKwOp {
   case object Setminus      extends PKwOp("setminus")     with PBinaryOp with PSetToSetOp
   case object Subset        extends PKwOp("subset")       with PBinaryOp with PSubsetOp
 
-  case object Unfolding   extends PKwOp("unfolding")  with PKeywordAtom with RightSpace
+  case object Unfolding   extends PKwOp("unfolding")                with PKeywordAtom with RightSpace
   type Unfolding = PReserved[Unfolding.type]
-  case object Applying    extends PKwOp("applying")   with PKeywordAtom with RightSpace
+  case object Applying    extends PKwOp("applying")                 with PKeywordAtom with RightSpace
   type Applying = PReserved[Applying.type]
-  case object Let         extends PKwOp("let")        with PKeywordAtom with RightSpace
+  case object Let         extends PKwOp("let")                      with PKeywordAtom with RightSpace
   type Let = PReserved[Let.type]
 
-  case object Perm        extends PKwOp("perm")       with PKeywordAtom
+  case object Perm        extends PKwOp("perm")                     with PKeywordAtom
   type Perm = PReserved[Perm.type]
-  case object Acc         extends PKwOp("acc")        with PKeywordAtom
+  case object Acc         extends PKwOp("acc")                      with PKeywordAtom
   type Acc = PReserved[Acc.type]
-  case object Old         extends PKwOp("old")        with PKeywordAtom
+  case object Old         extends PKwOp("old", BuiltinFeature.Old)  with PKeywordAtom
   type Old = PReserved[Old.type]
-  case object Domain      extends PKwOp("domain")     with PKeywordAtom
+  case object Domain      extends PKwOp("domain")                   with PKeywordAtom
   type Domain = PReserved[Domain.type]
-  case object Range       extends PKwOp("range")      with PKeywordAtom
+  case object Range       extends PKwOp("range")                    with PKeywordAtom
   type Range = PReserved[Range.type]
 
-  case object Seq         extends PKwOp("Seq")        with PKeywordAtom
+  case object Seq         extends PKwOp("Seq")                      with PKeywordAtom
   type Seq = PReserved[Seq.type]
-  case object Set         extends PKwOp("Set")        with PKeywordAtom
+  case object Set         extends PKwOp("Set")                      with PKeywordAtom
   type Set = PReserved[Set.type]
-  case object Multiset    extends PKwOp("Multiset")   with PKeywordAtom
+  case object Multiset    extends PKwOp("Multiset")                 with PKeywordAtom
   type Multiset = PReserved[Multiset.type]
-  case object Map         extends PKwOp("Map")        with PKeywordAtom
+  case object Map         extends PKwOp("Map")                      with PKeywordAtom
   type Map = PReserved[Map.type]
 }

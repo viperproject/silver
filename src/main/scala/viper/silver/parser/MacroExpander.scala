@@ -359,7 +359,7 @@ object MacroExpander {
             replacerOnBody(body, mapParamsToArgs(parameters, arguments), call.pos)
           } catch {
             case problem: ParseTreeDuplicationError =>
-              throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError:)\n" + problem.getMessage, call.pos)
+              throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError : )\n" + problem.getMessage, call.pos)
           }
       }.applyOrElse(macroCall, (_: PNode) => macroCall)
     }
@@ -379,7 +379,7 @@ object MacroExpander {
             // Check if macro's body can be the left-hand side of an assignment and,
             // if that's the case, add it in a corresponding assignment statement
             body match {
-              case target: PAssignTarget => target
+              case target: PExp with PAssignTarget => target
               case _ => throw ParseException("The body of this macro is not a suitable left-hand side for an assignment statement", call.pos)
             }
           }
@@ -425,10 +425,22 @@ object MacroExpander {
       // Variable binding: add bound variables to the context so that they don't get replaced
       case (b: PBinder, ctx) => (b, ctx.updateContext(ctx.c.copy(boundVars = ctx.c.boundVars ++ b.boundVars.map(_.idndef.name))))
       // Variable use: macro parameters are replaced by their respective argument expressions
-      case (varUse: PIdnUse, ctx) if !ctx.c.boundVars.contains(varUse.name) =>
+      case (varUse: PIdnUseExp, ctx) if !ctx.c.boundVars.contains(varUse.name) =>
         if (ctx.c.paramToArgMap.contains(varUse.name))
           (ctx.c.paramToArgMap(varUse.name), ctx.updateContext(ctx.c.copy(paramToArgMap = ctx.c.paramToArgMap.empty)))
         else {
+          freeVars += varUse.name
+          (varUse, ctx)
+        }
+      case (varUse: PIdnRef, ctx) if !ctx.c.boundVars.contains(varUse.name) =>
+        if (ctx.c.paramToArgMap.contains(varUse.name)) {
+          val replacement = ctx.c.paramToArgMap(varUse.name)
+          if (replacement.isInstanceOf[PIdnUseExp]) {
+            val repExp = replacement.asInstanceOf[PIdnUseExp]
+            (PIdnRef(repExp.name)(repExp.pos), ctx.updateContext(ctx.c.copy(paramToArgMap = ctx.c.paramToArgMap.empty)))
+          } else
+            throw ParseException(s"Macro expansion cannot substitute expression `${replacement.pretty}` in non-expression position at ${varUse.pos._1}.", replacement.pos)
+        } else {
           freeVars += varUse.name
           (varUse, ctx)
         }

@@ -7,15 +7,11 @@
 package viper.silver.plugin.standard.termination
 
 import viper.silver.ast._
-import viper.silver.ast.utility.lsp.BuiltinFeature
 import viper.silver.parser.TypeHelper.Bool
 import viper.silver.parser._
 
-case object PDecreasesKeyword extends PKw("decreases", TODODecreasesDoc) with PKeywordLang with PKw.AnySpec
-case object PIfKeyword extends PKw("if", TODODecreasesDoc) with PKeywordLang
-case object TODODecreasesDoc extends BuiltinFeature(
-  """TODO""".stripMargin.replaceAll("\n", " ")
-)
+case object PDecreasesKeyword extends PKw("decreases") with PKeywordLang with PKw.AnySpec
+case object PIfKeyword extends PKw("if") with PKeywordLang
 
 case object PWildcardSym extends PSym("_") with PSymbolLang
 

@@ -196,7 +196,7 @@ case class Translator(program: PProgram) {
       case PAssign(PDelimited(idnuse: PIdnUse), _, rhs) =>
         LocalVarAssign(LocalVar(idnuse.name, ttyp(idnuse.decl.get.asInstanceOf[PAssignableVarDecl].typ))(pos, subInfo), exp(rhs))(pos, info)
       case PAssign(PDelimited(field: PFieldAccess), _, rhs) =>
-        FieldAssign(FieldAccess(exp(field.rcv), findField(field.idnuse))(field), exp(rhs))(pos, info)
+        FieldAssign(FieldAccess(exp(field.rcv), findField(field.idnref))(field), exp(rhs))(pos, info)
       case lv: PVars =>
         // there are no declarations in the Viper AST; rather they are part of the scope signature
         lv.assign map stmt getOrElse Statements.EmptyStmt
@@ -232,7 +232,10 @@ case class Translator(program: PProgram) {
       case PGoto(_, label) =>
         Goto(label.name)(pos, info)
       case PIf(_, cond, thn, els) =>
-        If(exp(cond), stmt(thn).asInstanceOf[Seqn], els map (stmt(_).asInstanceOf[Seqn]) getOrElse Statements.EmptyStmt)(pos, info)
+        If(exp(cond), stmt(thn).asInstanceOf[Seqn], els map (stmt(_) match {
+          case s: Seqn => s
+          case s => Seqn(Seq(s), Nil)(s.pos, s.info)
+        }) getOrElse Statements.EmptyStmt)(pos, info)
       case PElse(_, els) => stmt(els)
       case PWhile(_, cond, invs, body) =>
         While(exp(cond), invs.toSeq map (inv => exp(inv.e)), stmt(body).asInstanceOf[Seqn])(pos, info)
@@ -262,7 +265,7 @@ case class Translator(program: PProgram) {
     * }
     * ```
     */
-  def methodCallAssign(errorNode: PNode, targets: Seq[PAssignTarget], assign: Seq[LocalVar] => Stmt): Stmt = {
+  def methodCallAssign(errorNode: PNode, targets: Seq[PExp with PAssignTarget], assign: Seq[LocalVar] => Stmt): Stmt = {
     val tTargets = targets map exp
     val ts = tTargets.zipWithIndex.map {
       case (lv: LocalVar, _) => (None, lv)
@@ -320,12 +323,12 @@ case class Translator(program: PProgram) {
     pexp match {
       case PAnnotatedExp(ann, e) =>
         val (resPexp, innerMap) = extractAnnotation(e)
-        val combinedValue = if (innerMap.contains(ann.key.name)) {
-          ann.values.inner.toSeq.map(_.grouped.inner) ++ innerMap(ann.key.name)
+        val combinedValue = if (innerMap.contains(ann.key.str)) {
+          ann.values.inner.toSeq.map(_.grouped.inner) ++ innerMap(ann.key.str)
         } else {
           ann.values.inner.toSeq.map(_.grouped.inner)
         }
-        (resPexp, innerMap.updated(ann.key.name, combinedValue))
+        (resPexp, innerMap.updated(ann.key.str, combinedValue))
       case _ => (pexp, Map())
     }
   }
@@ -334,12 +337,12 @@ case class Translator(program: PProgram) {
     pStmt match {
       case PAnnotatedStmt(ann, s) =>
         val (resPStmt, innerMap) = extractAnnotationFromStmt(s)
-        val combinedValue = if (innerMap.contains(ann.key.name)) {
-          ann.values.inner.toSeq.map(_.grouped.inner) ++ innerMap(ann.key.name)
+        val combinedValue = if (innerMap.contains(ann.key.str)) {
+          ann.values.inner.toSeq.map(_.grouped.inner) ++ innerMap(ann.key.str)
         } else {
           ann.values.inner.toSeq.map(_.grouped.inner)
         }
-        (resPStmt, innerMap.updated(ann.key.name, combinedValue))
+        (resPStmt, innerMap.updated(ann.key.str, combinedValue))
       case _ => (pStmt, Map())
     }
   }
@@ -514,8 +517,8 @@ case class Translator(program: PProgram) {
         Unfolding(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos, info)
       case PApplying(_, wand, _, e) =>
         Applying(exp(wand).asInstanceOf[MagicWand], exp(e))(pos, info)
-      case PLet(_, variable, _, exp1, _, PLetNestedScope(body)) =>
-        Let(liftLogicalDecl(variable), exp(exp1), exp(body))(pos, info)
+      case pl@PLet(_, _, _, exp1, _, PLetNestedScope(body)) =>
+        Let(liftLogicalDecl(pl.decl), exp(exp1), exp(body))(pos, info)
       case _: PLetNestedScope =>
         sys.error("unexpected node PLetNestedScope, should only occur as a direct child of PLet nodes")
       case PExists(_, vars, _, triggers, e) =>
@@ -726,7 +729,7 @@ object Translator {
     if (annotations.isEmpty) {
       NoInfo
     } else {
-      AnnotationInfo(annotations.groupBy(_.key).map{ case (k, v) => k.name -> v.flatMap(_.values.inner.toSeq.map(_.grouped.inner)) })
+      AnnotationInfo(annotations.groupBy(_.key).map{ case (k, v) => k.str -> v.flatMap(_.values.inner.toSeq.map(_.grouped.inner)) })
     }
   }
 }

@@ -260,7 +260,7 @@ case class TypeChecker(names: NameAnalyser) {
   def checkAssign(stmt: PAssign): Unit = {
     // Check targets
     stmt.targets.toSeq foreach {
-      case idnuse: PIdnUse =>
+      case idnuse: PIdnUseExp =>
         idnuse.assignUse = true
         names.definition(curMember)(idnuse) match {
           case Some(decl: PAssignableVarDecl) =>
@@ -326,16 +326,18 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   def acceptNonAbstractPredicateAccess(exp: PExp, messageIfAbstractPredicate: String): Unit = {
-    exp match {
-      case acc: PAccPred if acc.loc.isInstanceOf[PCall] =>
-        val idnuse = acc.loc.asInstanceOf[PCall].func
-        val ad = names.definition(curMember)(idnuse)
-        ad match {
-          case Some(predicate: PPredicate) =>
-            if (predicate.body.isEmpty) messages ++= FastMessaging.message(idnuse, messageIfAbstractPredicate)
-          case _ => messages ++= FastMessaging.message(exp, "expected predicate access")
-        }
+    val call = exp match {
+      case acc: PAccPred if acc.loc.isInstanceOf[PCall] => acc.loc.asInstanceOf[PCall]
+      case call: PCall => call
 
+      case _ =>
+        messages ++= FastMessaging.message(exp, "expected predicate access")
+        return
+    }
+    val ad = names.definition(curMember)(call.idnref)
+    ad match {
+      case Some(predicate: PPredicate) =>
+        if (predicate.body.isEmpty) messages ++= FastMessaging.message(call.idnref, messageIfAbstractPredicate)
       case _ => messages ++= FastMessaging.message(exp, "expected predicate access")
     }
   }
@@ -785,11 +787,10 @@ case class TypeChecker(names: NameAnalyser) {
       case piu: PIdnUse =>
         acceptAndCheckTypedEntity[PAnyVarDecl, Nothing](Seq(piu), "expected variable identifier")
 
-      case pl@PLet(_, variable, _, e, _, ns) =>
+      case pl@PLet(_, _, _, e, _, ns) =>
         val oldCurMember = curMember
-        curMember = ns
+        curMember = pl
         checkInternal(e)
-        variable.typ = e.typ
         checkInternal(ns.body)
         pl.typ = ns.body.typ
         curMember = oldCurMember
@@ -952,11 +953,13 @@ case class NameAnalyser() {
                 }
                 map.put(d.idndef.name, d)
             }
-          case i: PIdnUse =>
-            // look up in both maps (if we are not in a method currently, we look in the same map twice, but that is ok)
-            val resolved = getCurrentMap.get(i.name).orElse(globalDeclarationMap.get(i.name)).map(_.asInstanceOf[PDeclaration])
-            i.decl = resolved
-            (i.parent, resolved) match {
+          case i: PIdnUseName =>
+            if (i.decl.isEmpty) {
+              // look up in both maps (if we are not in a method currently, we look in the same map twice, but that is ok)
+              val resolved = getCurrentMap.get(i.name).orElse(globalDeclarationMap.get(i.name)).map(_.asInstanceOf[PDeclaration])
+              i.decl = resolved
+            }
+            (i.parent, i.decl) match {
               case (Some(parent), None) =>
                 if (!parent.isInstanceOf[PDomainType] && !parent.isInstanceOf[PGoto] &&
                   !(parent.isInstanceOf[POldExp] && parent.asInstanceOf[POldExp].label.map(_ == i).getOrElse(false)) &&
@@ -990,7 +993,7 @@ case class NameAnalyser() {
         n match {
           case _: PDeclaration => true
           case _: PScope => true
-          case _: PIdnUse => true
+          case _: PIdnUseName => true
           case _ => target.isDefined
         }
       }

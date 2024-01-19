@@ -7,15 +7,12 @@
 package viper.silver.plugin.standard.predicateinstance
 
 import viper.silver.ast._
-import viper.silver.ast.utility.lsp.BuiltinFeature
 import viper.silver.parser._
 
 import scala.collection.mutable
 
-case object PPredicateInstanceKeyword extends PKw("PredicateInstance", TODOPredicateInstanceDoc) with PKeywordType
-case object TODOPredicateInstanceDoc extends BuiltinFeature(
-  """TODO""".stripMargin.replaceAll("\n", " ")
-)
+case object PPredicateInstanceKeyword extends PKw("PredicateInstance") with PKeywordType
+
 /**
  * Syntactic marker for predicate instances
  */
