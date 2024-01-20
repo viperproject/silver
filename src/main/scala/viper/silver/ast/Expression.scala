@@ -16,11 +16,6 @@ import viper.silver.verifier.{ConsistencyError, VerificationResult}
 
 /** Expressions. */
 sealed trait Exp extends Hashable with Typed with Positioned with Infoed with TransformableErrors with PrettyExpression {
-  var sourcePExp : Option[PExp] = None
-
-  def setSourcePExp(pexp: PExp): Unit = {
-    sourcePExp = Some(pexp)
-  }
 
   lazy val isPure = Expressions.isPure(this)
   def isHeapDependent(p: Program) = Expressions.isHeapDependent(this, p)

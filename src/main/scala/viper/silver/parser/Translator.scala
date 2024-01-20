@@ -187,7 +187,8 @@ case class Translator(program: PProgram) {
   def stmt(pStmt: PStmt): Stmt = {
     val pos = pStmt
     val (s, annotations) = extractAnnotationFromStmt(pStmt)
-    val info = if (annotations.isEmpty) NoInfo else AnnotationInfo(annotations)
+    val sourcePNodeInfo = SourcePNodeInfo(pStmt)
+    val info = if (annotations.isEmpty) sourcePNodeInfo else ConsInfo(sourcePNodeInfo, AnnotationInfo(annotations))
     val subInfo = NoInfo
     s match {
       case PAssign(targets, PCall(method, args, _)) if members(method.name).isInstanceOf[Method] =>
@@ -355,17 +356,12 @@ case class Translator(program: PProgram) {
     }
   }
 
-  def exp(parseExp: PExp): Exp = {
-    val e = expInternal(parseExp)
-    e.setSourcePExp(parseExp)
-    e
-  }
-
   /** Takes a `PExp` and turns it into an `Exp`. */
-  def expInternal(parseExp: PExp): Exp = {
+  def exp(parseExp: PExp): Exp = {
     val pos = parseExp
     val (pexp, annotationMap) = extractAnnotation(parseExp)
-    val info = if (annotationMap.isEmpty) NoInfo else AnnotationInfo(annotationMap)
+    val sourcePNodeInfo = SourcePNodeInfo(parseExp)
+    val info = if (annotationMap.isEmpty) sourcePNodeInfo else ConsInfo(sourcePNodeInfo, AnnotationInfo(annotationMap))
     pexp match {
       case piu @ PIdnUse(name) =>
         piu.decl match {
