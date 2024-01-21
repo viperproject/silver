@@ -490,11 +490,38 @@ case class TypeChecker(names: NameAnalyser) {
     Right(pss)
   }
 
+  def getParentAxiom(n: PNode): Option[PAxiom] = n match {
+    case a: PAxiom => Some(a)
+    case _ => n.parent.flatMap(getParentAxiom)
+  }
+
   def ground(exp: PExp, pts: PTypeSubstitution): PTypeSubstitution = {
     pts.m.flatMap(kv => kv._2.freeTypeVariables &~ pts.m.keySet).foldLeft(pts)((ts, fv) => {
-      messages ++= FastMessaging.message(exp,
-        s"Unconstrained type parameter, substituting default type ${PTypeSubstitution.defaultType}.", error = false)
-      ts.add(PTypeVar(fv), PTypeSubstitution.defaultType).toOption.get
+      var chosenType: PType = PTypeSubstitution.defaultType
+      getParentAxiom(curMember) match {
+        case Some(ax: PAxiom) if ax.parent.exists(p => p.isInstanceOf[PDomain]) =>
+          // If we are inside the domain that defines the type variable, then we choose the type variable itself
+          // as the default.
+          val domain = ax.parent.get.asInstanceOf[PDomain]
+          // The name pf domain function application type variables has the form
+          // domainName + PTypeVar.domainNameSep + typeVarName + PTypeVar.sep + index
+          if (fv.startsWith(domain.idndef.name + PTypeVar.domainNameSep)) {
+            var tvName = fv.substring(domain.idndef.name.length + 1)
+            if (tvName.contains(PTypeVar.sep)) {
+              tvName = tvName.substring(0, tvName.indexOf(PTypeVar.sep))
+              if (domain.typVars.exists(tv => tv.idndef.name == tvName)) {
+                // The type variable refers to an actual type variable of the current domain.
+                chosenType = PTypeVar(tvName)
+              }
+            }
+          }
+        case _ =>
+      }
+      if (chosenType == PTypeSubstitution.defaultType) {
+        messages ++= FastMessaging.message(exp,
+          s"Unconstrained type parameter, substituting default type ${PTypeSubstitution.defaultType}.", error = false)
+      }
+      ts.add(PTypeVar(fv), chosenType).toOption.get
     })
   }
 
@@ -642,7 +669,7 @@ case class TypeChecker(names: NameAnalyser) {
 
                         case pdf@PDomainFunction(_, _, _, _, _) =>
                           val domain = names.definition(curMember)(pdf.domainName).get.asInstanceOf[PDomain]
-                          val fdtv = PTypeVar.freshTypeSubstitution((domain.typVars map (tv => tv.idndef.name)).distinct) //fresh domain type variables
+                          val fdtv = PTypeVar.freshTypeSubstitution((domain.typVars map (tv => tv.idndef.name)).distinct, Some(domain.idndef.name)) //fresh domain type variables
                           pfa.domainTypeRenaming = Some(fdtv)
                           pfa._extraLocalTypeVariables = (domain.typVars map (tv => PTypeVar(tv.idndef.name))).toSet
                           extraReturnTypeConstraint = explicitType
