@@ -87,3 +87,25 @@ function inp_to_seq_2(inp: pointer, n: Int): Seq[Int]
 {
   Seq[Int]()
 }
+
+// Regression test for a bug in the original fix:
+
+adt tree {
+    leaf(value: Int)
+    node(left: tree, right: tree)
+}
+
+function leafCount(t: tree): Int
+    decreases 1
+{
+    id(t.isleaf && t.isleaf ?
+        (1) :
+        //:: ExpectedOutput(termination.failed:tuple.false)
+        (leafCount(t.left) + leafCount(t.right)))
+}
+
+function id(i: Int): Int
+    decreases 0
+{
+    i
+}
