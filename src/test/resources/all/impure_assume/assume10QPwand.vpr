@@ -1,7 +1,6 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-//:: IgnoreFile(/carbon/issue/255/)
 
 field f: Int
 
@@ -44,6 +43,7 @@ method m(xs: Set[Ref], ys: Set[Ref], zs: Set[Ref],
   assume CONTAINED(a, xs1, b, ys1, c, zs1)
   assume CONTAINED(a, xs2, b, ys2, c, zs2)
 
+  //:: UnexpectedOutput(assert.failed:wand.not.found, /carbon/issue/257/)
   assert WAND(a, b, c, q) && WAND(a, b, c, q)
 
   //:: ExpectedOutput(assert.failed:assertion.false)

@@ -16,7 +16,7 @@ method m2(x: Ref, y: Ref, z: Ref) {
     inhale p2(z, y)
     inhale x != z
 
-    //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/243)
+    //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/243/)
     assert !forperm a: Ref [p2(a,y)] :: a == z
     unfold p2(x,y)
     assert forperm a: Ref [p2(a,y)] :: a == z
