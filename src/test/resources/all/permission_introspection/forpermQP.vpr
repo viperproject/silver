@@ -14,6 +14,7 @@ field f: Int
        inhale acc(g.f)
        inhale forall a: Ref :: a == g ==> acc(a.f) && a.f < 3
 
+       //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/243)
        assert !forperm a: Ref [a.f] :: a.f > 3
 
        inhale forall a: Ref :: a == x || a == y ==> a.f == 4

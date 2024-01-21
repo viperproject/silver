@@ -42,6 +42,7 @@ method m3(xs: Seq[Ref], y: Ref, zs: Seq[Ref]) {
         assume !(z in xs)
         package acc(z.f) --* acc(y.f)
         assume forall x: Ref :: {acc(x.f) --* acc(y.f)} x in zs ==> x != y
+        //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/243)
         assert z != y
 }
 
