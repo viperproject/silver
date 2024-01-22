@@ -705,9 +705,11 @@ class FastParser {
 
   def newExpFields[$: P]: P[Option[Seq[PIdnUse]]] = P(P("*").map(_ => None) | P(idnuse.rep(sep = ","./)).map(Some(_)))
 
-  def funcApp[$: P]: P[PCall] = FP(idnuse ~ parens(actualArgList)).map {
-    case (pos, (func, args)) =>
+  def funcApp[$: P]: P[PCall] = FP(idnuse ~~ FP(" ".repX(1)).? ~~ parens(actualArgList)).map {
+    case (pos, (func, Some((space, _)), args)) =>
+      _warnings = _warnings :+ ParseWarning("Whitespace between a function identifier and the opening paren is deprecated, remove the spaces", SourcePosition(_file, space._1, space._2))
       PCall(func, args, None)(pos)
+    case (pos, (func, None, args)) => PCall(func, args, None)(pos)
   }
 
   def maybeTypedFuncApp[$: P](bracketed: Boolean): P[PCall] = P(if (!bracketed) funcApp else FP(funcApp ~~~ (":" ~/ typ).lw.?).map {
