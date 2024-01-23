@@ -11,7 +11,7 @@ import viper.silver.frontend.{SilFrontend}
 trait ProgramSubmitter {
 
   /** Protocol, IP address and port of server hosting the viper-data-collection API */
-  val API_HOST = "http://localhost:8080"
+  val API_HOST = ""
 
   /** Whether program will be submitted to database */
   protected def allowSubmission: Boolean
