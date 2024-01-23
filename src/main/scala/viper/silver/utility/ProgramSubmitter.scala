@@ -90,7 +90,6 @@ class ManualProgramSubmitter(
   def setSuccess(success: Boolean): Unit = succeeded = success
 
   override def runtime: Long = System.currentTimeMillis() - startTime
-
 }
 
 /** ProgramSubmitter that takes a [[SilFrontend]] to read out verification metrics, so they don't have to be manually defined.
@@ -122,29 +121,6 @@ trait FEProgramSubmitter extends ProgramSubmitter {
 
   def setName(n: String): Unit = {
     programName = n
-  }
-
-  /** Converts metadata to JSON Obj and submits it to [[API_HOST]]/submit-program. Only submits if --submitForEvaluation
-    * flag was passed.
-    */
-  override def submit(): Unit = {
-    if (API_HOST != "" && allowSubmission) {
-      val submission =
-        Obj(
-          "originalName" -> programName,
-          "program" -> program,
-          "frontend" -> originalFrontend,
-          "args" -> Arr.from[String](args),
-          "originalVerifier" -> originalVerifier,
-          "success" -> succeeded,
-          "runtime" -> runtime
-        )
-      try {
-        requests.post(s"$API_HOST/submit-program", data = submission)
-      } catch {
-        case _: Exception => println("Program couldn't be submitted")
-      }
-    }
   }
 }
 
