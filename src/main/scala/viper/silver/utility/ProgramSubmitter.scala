@@ -64,7 +64,10 @@ trait ProgramSubmitter {
 
 }
 
-/** To use when no [[SilFrontend]] is available. [[setProgram]] and [[setSuccess]] have to be called manually. */
+/** To use when no [[SilFrontend]] is available.
+  *
+  * Methods to call before calling [[submit]]: [[setProgram]] and [[setSuccess]]
+  */
 class ManualProgramSubmitter(
     var allowSubmission: Boolean,
     var program: String,
@@ -114,8 +117,9 @@ trait FEProgramSubmitter extends ProgramSubmitter {
   }
 }
 
-/** [[FEProgramSubmitter]] implementation that assumes program is available in local file. Before submit() is valid to call,
-  * setArgs() has to be called
+/** [[FEProgramSubmitter]] implementation that assumes program is available in local file.
+  *
+  * Methods to call before calling [[submit]]: [[setArgs]]
   */
 class FileProgramSubmitter(fe: SilFrontend) extends FEProgramSubmitter {
 
@@ -150,8 +154,9 @@ class FileProgramSubmitter(fe: SilFrontend) extends FEProgramSubmitter {
   }
 }
 
-/** [[FEProgramSubmitter]] implementation that creates a submission from a program AST, for cases where no local file is available. Before submit()
-  * is valid to call, setProgram() and setArgs() have to be called.
+/** [[FEProgramSubmitter]] implementation that creates a submission from a program AST, for cases where no local file is available.
+  *
+  * Methods to call before calling [[submit]]: [[setProgram]] and [[setArgs]]
   */
 class ViperProgramSubmitter(fe: SilFrontend) extends FEProgramSubmitter {
   private var viperProgram: Program = null
