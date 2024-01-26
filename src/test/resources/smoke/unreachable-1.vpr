@@ -1,0 +1,5 @@
+method test()
+    requires false
+{
+    unreachable
+}
