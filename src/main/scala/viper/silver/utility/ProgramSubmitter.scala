@@ -16,9 +16,6 @@ trait ProgramSubmitter {
   /** Whether program will be submitted to database */
   protected def allowSubmission: Boolean
 
-  /** Original filename of program to submit */
-  protected def programName: String
-
   /** Plaintext Viper program that was verified */
   protected def program: String
 
@@ -38,7 +35,6 @@ trait ProgramSubmitter {
     if (API_HOST != "" && allowSubmission) {
       val submission =
         Obj(
-          "originalName" -> programName,
           "program" -> program,
           "frontend" -> originalFrontend,
           "args" -> Arr.from[String](args),
@@ -71,7 +67,6 @@ trait ProgramSubmitter {
 /** To use when no [[SilFrontend]] is available. [[setProgram]] and [[setSuccess]] have to be called manually. */
 class ManualProgramSubmitter(
     var allowSubmission: Boolean,
-    var programName: String,
     var program: String,
     var originalFrontend: String,
     var originalVerifier: String,
@@ -98,7 +93,6 @@ class ManualProgramSubmitter(
 trait FEProgramSubmitter extends ProgramSubmitter {
 
   var args: Array[String] = Array()
-  var programName = ""
 
   /** Instance of frontend responsible for verification, used to read out verification metrics */
   protected val frontend: SilFrontend
@@ -117,10 +111,6 @@ trait FEProgramSubmitter extends ProgramSubmitter {
   def setArgs(arguments: Array[String]): Unit = {
     args =
       arguments.filter(a => a != "--submitForEvaluation" && !a.endsWith(".vpr"))
-  }
-
-  def setName(n: String): Unit = {
-    programName = n
   }
 }
 
@@ -141,7 +131,6 @@ class FileProgramSubmitter(fe: SilFrontend) extends FEProgramSubmitter {
       case Some(p) => p
       case None    => ""
     }
-    setName(programPath.split("/").last)
     super.setArgs(arguments)
   }
 
