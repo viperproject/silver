@@ -56,7 +56,7 @@ class RefutePlugin(@unused reporter: viper.silver.reporter.Reporter,
             If(nonDetLocalVarDecl.localVar,
               Seqn(Seq(
                 Assert(exp)(r.pos, RefuteInfo(r)),
-                Inhale(BoolLit(false)(r.pos))(r.pos)
+                Inhale(BoolLit(false)(r.pos))(r.pos, Synthesized)
               ), Seq())(r.pos),
               Seqn(Seq(), Seq())(r.pos))(r.pos)
           ),

@@ -31,20 +31,21 @@ trait SilFrontend extends DefaultFrontend {
    */
   object ApplicationExitReason extends Enumeration {
     type PreVerificationFailureReasons = Value
-    val UNKNOWN_EXIT_REASON            = Value(-2)
-    val NOTHING_TO_BE_DONE             = Value(-1)
-    val VERIFICATION_SUCCEEDED         = Value( 0) // POSIX standard
-    val VERIFICATION_FAILED            = Value( 1)
-    val COMMAND_LINE_ARGS_PARSE_FAILED = Value( 2)
-    val ISSUE_WITH_PLUGINS             = Value( 3)
-    val SYSTEM_DEPENDENCY_UNSATISFIED  = Value( 4)
+    val UNKNOWN_EXIT_REASON = Value(-2)
+    val NOTHING_TO_BE_DONE = Value(-1)
+    val VERIFICATION_SUCCEEDED = Value(0) // POSIX standard
+    val VERIFICATION_FAILED = Value(1)
+    val COMMAND_LINE_ARGS_PARSE_FAILED = Value(2)
+    val ISSUE_WITH_PLUGINS = Value(3)
+    val SYSTEM_DEPENDENCY_UNSATISFIED = Value(4)
   }
 
   protected var _appExitReason: ApplicationExitReason.Value = ApplicationExitReason.UNKNOWN_EXIT_REASON
+
   def appExitCode: Int = _appExitReason.id
 
   protected def specifyAppExitCode(): Unit = {
-      if ( _state >= DefaultStates.Verification ) {
+    if (_state >= DefaultStates.Verification) {
       _appExitReason = result match {
         case Success => ApplicationExitReason.VERIFICATION_SUCCEEDED
         case Failure(_) => ApplicationExitReason.VERIFICATION_FAILED
@@ -55,7 +56,10 @@ trait SilFrontend extends DefaultFrontend {
   def resetPlugins(): Unit = {
     val pluginsArg: Option[String] = if (_config != null) {
       // concat defined plugins and default plugins
-      val list = _config.plugin.toOption ++ (if (_config.disableDefaultPlugins()) Seq() else defaultPlugins)
+      val list = (if (_config.enableSmokeDetection()) Set(smokeDetectionPlugin, refutePlugin) else Set()) ++
+        (if (_config.disableDefaultPlugins()) Set() else defaultPlugins) ++
+        _config.plugin.toOption.toSet
+
       if (list.isEmpty) {
         None
       } else {
@@ -75,12 +79,13 @@ trait SilFrontend extends DefaultFrontend {
   def createVerifier(fullCmd: String): Verifier
 
   /** Configures the verifier by passing it the command line arguments ''args''.
-    * Returns the verifier's effective configuration.
-    */
+   * Returns the verifier's effective configuration.
+   */
   def configureVerifier(args: Seq[String]): SilFrontendConfig
 
   /** The Viper verifier to be used for verification (after it has been initialized). */
   def verifier: Verifier = _ver
+
   protected var _ver: Verifier = _
 
   override protected type ParsingResult = PProgram
@@ -88,7 +93,11 @@ trait SilFrontend extends DefaultFrontend {
 
   /** The current configuration. */
   protected var _config: SilFrontendConfig = _
+
   def config: SilFrontendConfig = _config
+
+  private val refutePlugin: String = "viper.silver.plugin.standard.refute.RefutePlugin"
+  private val smokeDetectionPlugin: String = "viper.silver.plugin.standard.smoke.SmokeDetectionPlugin"
 
   /**
    * Default plugins are always activated and are run as last plugins.
@@ -97,9 +106,10 @@ trait SilFrontend extends DefaultFrontend {
   private val defaultPlugins: Seq[String] = Seq(
     "viper.silver.plugin.standard.adt.AdtPlugin",
     "viper.silver.plugin.standard.termination.TerminationPlugin",
-    "viper.silver.plugin.standard.refute.RefutePlugin",
-    "viper.silver.plugin.standard.predicateinstance.PredicateInstancePlugin"
+    "viper.silver.plugin.standard.predicateinstance.PredicateInstancePlugin",
+    refutePlugin
   )
+
   /** For testing of plugin import feature */
   def defaultPluginCount: Int = defaultPlugins.size
 
@@ -116,6 +126,7 @@ trait SilFrontend extends DefaultFrontend {
   def plugins: SilverPluginManager = _plugins
 
   protected var _startTime: Long = _
+
   def startTime: Time = _startTime
 
   def getTime: Long = System.currentTimeMillis() - _startTime
@@ -124,13 +135,13 @@ trait SilFrontend extends DefaultFrontend {
     Consistency.resetMessages()
   }
 
-  def setVerifier(verifier:Verifier): Unit = {
+  def setVerifier(verifier: Verifier): Unit = {
     _ver = verifier
   }
 
   def prepare(args: Seq[String]): Boolean = {
 
-    reporter report CopyrightReport(_ver.signature)//${_ver.copyright}") // we agreed on 11/03/19 to drop the copyright
+    reporter report CopyrightReport(_ver.signature) //${_ver.copyright}") // we agreed on 11/03/19 to drop the copyright
 
     /* Parse command line arguments and populate _config */
     parseCommandLine(args)
@@ -189,16 +200,16 @@ trait SilFrontend extends DefaultFrontend {
       finish()
     }
     catch {
-        case MissingDependencyException(msg) =>
-          println("Missing dependency exception: " + msg)
-          reporter report MissingDependencyReport(msg)
+      case MissingDependencyException(msg) =>
+        println("Missing dependency exception: " + msg)
+        reporter report MissingDependencyReport(msg)
     }
   }
 
   override def reset(input: Path): Unit = {
     super.reset(input)
 
-    if(_config != null) {
+    if (_config != null) {
       resetPlugins()
     }
   }
@@ -224,7 +235,7 @@ trait SilFrontend extends DefaultFrontend {
   }
 
   override def verification(): Unit = {
-    def filter(input: Program): Result[Program]  = {
+    def filter(input: Program): Result[Program] = {
       plugins.beforeMethodFilter(input) match {
         case Some(inputPlugin) =>
           // Filter methods according to command-line arguments.
@@ -277,7 +288,10 @@ trait SilFrontend extends DefaultFrontend {
         val result = fp.parse(inputPlugin, file, Some(plugins))
         if (result.errors.forall(p => p.isInstanceOf[ParseWarning])) {
           reporter report WarningsDuringParsing(result.errors)
-          Succ({result.initProperties(); result})
+          Succ({
+            result.initProperties();
+            result
+          })
         }
         else Fail(result.errors)
       case None => Fail(plugins.errors)
@@ -326,7 +340,7 @@ trait SilFrontend extends DefaultFrontend {
     }
   }
 
-  def doConsistencyCheck(input: Program): Result[Program]= {
+  def doConsistencyCheck(input: Program): Result[Program] = {
     var errors = input.checkTransitively
     if (backendTypeFormat.isDefined)
       errors = errors ++ Consistency.checkBackendTypes(input, backendTypeFormat.get)
