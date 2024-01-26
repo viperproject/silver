@@ -382,8 +382,6 @@ class FastParser {
   // Actual Parser starts from here
   def identContinues[$: P] = CharIn("0-9", "A-Z", "a-z", "$_")
 
-  def versionStarts[$: P] = CharIn("@")
-
   def keyword[$: P](check: String) = check ~~ !identContinues
 
   def parens[$: P, T](p: => P[T]) = "(" ~ p ~ ")"
@@ -401,9 +399,7 @@ class FastParser {
 
   // Note that `typedfuncApp` is before `"(" ~ exp ~ ")"` to ensure that the latter doesn't gobble up the brackets for the former
   // and then look like an `funcApp` up untill the `: type` part, after which we need to backtrack all the way back (or error if cut)
-  def atom(implicit ctx : P[_]) : P[PExp] = P(ParserExtension.newExpAtStart(ctx) | versionedidnuse
-    | debugOld
-    | annotatedAtom
+  def atom(implicit ctx : P[_]) : P[PExp] = P(ParserExtension.newExpAtStart(ctx) | annotatedAtom
     | integer | booltrue | boolfalse | nul | old
     | result | unExp | typedFuncApp
     | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | applying
@@ -436,31 +432,11 @@ class FastParser {
 
   def identifier[$: P]: P[Unit] = CharIn("A-Z", "a-z", "$_") ~~ CharIn("0-9", "A-Z", "a-z", "$_").repX
 
-  def versionedIdentifier[$: P]: P[Unit] = CharIn("A-Z", "a-z", "$_") ~~ CharIn("0-9", "A-Z", "a-z", "$_").repX ~~ CharIn("@") ~~ CharIn("0-9") ~~ CharIn("0-9").repX
-
   def annotationIdentifier[$: P]: P[String] = (CharIn("A-Z", "a-z", "$_") ~~ CharIn("0-9", "A-Z", "a-z", "$_.").repX).!
 
   def ident[$: P]: P[String] = identifier.!.filter(a => !keywords.contains(a)).opaque("identifier")
 
-  def versionedIdent[$: P]: P[String] = versionedIdentifier.!.opaque("versionedIdentifier")
-
   def idnuse[$: P]: P[PIdnUse] = FP(ident).map { case (pos, id) => PIdnUse(id)(pos) }
-
-  def versionedidnuse[$: P]: P[PVersionedIdnUse] = FP(versionedIdent).map { case (pos, id) => {
-    val parts = id.split("@")
-    PVersionedIdnUse(name=parts(0), version=parts(1))(pos)
-  } }
-
-  def debugOldLabel[$: P]: P[String] = (StringIn("line") ~~ CharIn("@") ~~ CharIn("0-9", "A-Z", "a-z", "$_.").repX).!.opaque("debugOldLabel")
-
-  def debugOldLabelUse[$: P]: P[PVersionedIdnUse] = FP(debugOldLabel).map { case (pos, id) => {
-    val parts = id.split("@")
-    PVersionedIdnUse(name = parts(0), version = parts(1))(pos)
-  }
-  }
-
-  def debugOld[$: P]: P[PExp] = P(StringIn("old") ~ FP("[" ~ debugOldLabelUse ~ "]" ~ parens(exp)).map {
-    case (pos, (a, b)) => PDebugLabelledOld(a, b)(pos)})
 
   def oldLabel[$: P]: P[PIdnUse] = idnuse | FP(LabelledOld.LhsOldLabel.!).map {
     case (pos, lhsOldLabel) => PIdnUse(lhsOldLabel)(pos)

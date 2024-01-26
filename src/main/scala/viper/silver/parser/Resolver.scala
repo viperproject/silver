@@ -40,7 +40,6 @@ case class TypeChecker(names: NameAnalyser) {
   var curMember: PScope = null
   var curFunction: PFunction = null
   var resultAllowed: Boolean = false
-  var debugVariableTypes: Map[String, PType] = Map.empty
 
   /** to record error messages */
   var messages: FastMessaging.Messages = Nil
@@ -357,19 +356,6 @@ case class TypeChecker(names: NameAnalyser) {
           use.decl = td
         case None =>
           messages ++= FastMessaging.message(use, errorMessage)
-      }
-    }
-  }
-
-  def acceptAndCheckTypedEntityWithVersion[T1: ClassTag, T2: ClassTag]
-  (idnUses: Seq[PVersionedIdnUse], errorMessage: => String): Unit = {
-
-    idnUses.foreach { use =>
-      val decl1 = debugVariableTypes.get(use.versionedName)
-
-      decl1 match {
-        case Some(value) => use.typ = value
-        case None => messages ++= FastMessaging.message(use, errorMessage)
       }
     }
   }
@@ -739,9 +725,6 @@ case class TypeChecker(names: NameAnalyser) {
       case piu: PIdnUse =>
         acceptAndCheckTypedEntity[PAnyVarDecl, Nothing](Seq(piu), "expected variable identifier")
 
-      case pviu: PVersionedIdnUse =>
-        acceptAndCheckTypedEntityWithVersion[PAnyVarDecl, Nothing](Seq(pviu), "expected variable identifier with version")
-
       case pl@PLet(e, ns) =>
         val oldCurMember = curMember
         curMember = ns
@@ -925,7 +908,7 @@ case class NameAnalyser() {
                 }
               case _ =>
             }
-          case i@PVersionedIdnUse(name, _, _) =>
+          case i@PVersionedIdnUse(name, _, _) => // TODO ake: maybe extract to DebugTypechecker
             // look up in both maps (if we are not in a method currently, we look in the same map twice, but that is ok)
             getCurrentMap.getOrElse(name, globalDeclarationMap.getOrElse(name, PUnknownEntity())) match {
               case PUnknownEntity() =>

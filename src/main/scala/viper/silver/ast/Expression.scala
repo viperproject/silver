@@ -16,7 +16,6 @@ import viper.silver.verifier.{ConsistencyError, VerificationResult}
 
 /** Expressions. */
 sealed trait Exp extends Hashable with Typed with Positioned with Infoed with TransformableErrors with PrettyExpression {
-
   lazy val isPure = Expressions.isPure(this)
   def isHeapDependent(p: Program) = Expressions.isHeapDependent(this, p)
   def isTopLevelHeapDependent(p: Program) = Expressions.isTopLevelHeapDependent(this, p)

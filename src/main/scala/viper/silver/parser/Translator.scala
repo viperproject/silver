@@ -11,7 +11,9 @@ import viper.silver.ast.utility._
 import viper.silver.ast.{SourcePosition, _}
 import viper.silver.plugin.standard.adt.{Adt, AdtType}
 
+import scala.collection.mutable
 import scala.language.implicitConversions
+import scala.reflect.internal.util.NoPosition.Pos
 
 /**
  * Takes an abstract syntax tree after parsing is done and translates it into
@@ -128,7 +130,7 @@ case class Translator(program: PProgram) {
 
   private def translate(f: PFieldDecl) = findField(f.idndef)
 
-  private val members = collection.mutable.HashMap[String, Node]()
+  protected val members: mutable.Map[String, Node] = collection.mutable.HashMap[String, Node]()
   def getMembers() = members
   /**
     * Translate the signature of a member, so that it can be looked up later.
@@ -362,6 +364,10 @@ case class Translator(program: PProgram) {
     val (pexp, annotationMap) = extractAnnotation(parseExp)
     val sourcePNodeInfo = SourcePNodeInfo(parseExp)
     val info = if (annotationMap.isEmpty) sourcePNodeInfo else ConsInfo(sourcePNodeInfo, AnnotationInfo(annotationMap))
+    expInternal(pexp, pos, info)
+  }
+
+  protected def expInternal(pexp: PExp, pos: PExp, info: Info): Exp = {
     pexp match {
       case piu @ PIdnUse(name) =>
         piu.decl match {
@@ -369,11 +375,6 @@ case class Translator(program: PProgram) {
           // A malformed AST where a field, function or other declaration is used as a variable.
           // Should have been caught by the type checker.
           case _ => sys.error("should not occur in type-checked program")
-        }
-      case pviu@PVersionedIdnUse(_, _, _) =>
-        pexp.typ match {
-          case null => sys.error("should not occur in type-checked program")
-          case _ => LocalVarWithVersion(pviu.versionedName, ttyp(pexp.typ))(pos, info)
         }
       case pbe @ PBinExp(left, op, right) =>
         val (l, r) = (exp(left), exp(right))
@@ -569,8 +570,6 @@ case class Translator(program: PProgram) {
         Old(exp(e))(pos, info)
       case PLabelledOld(lbl,e) =>
         LabelledOld(exp(e),lbl.name)(pos, info)
-      case PDebugLabelledOld(lbl, e) =>
-        DebugLabelledOld(exp(e), lbl.versionedName)(pos, info)
       case PCondExp(cond, thn, els) =>
         CondExp(exp(cond), exp(thn), exp(els))(pos, info)
       case PCurPerm(res) =>
