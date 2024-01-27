@@ -201,7 +201,7 @@ object CfgGenerator {
       case Seqn(ss, scopedDecls) =>
         val locals = scopedDecls.collect { case l: LocalVarDecl => l }
         for (local <- locals) {
-          val decl = LocalVarDeclStmt(local)(pos = local.pos)
+          val decl = LocalVarDeclStmt(local)(pos = local.pos, info = local.info)
           addStatement(WrappedStmt(decl))
         }
         ss.foreach(run)

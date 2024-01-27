@@ -205,9 +205,9 @@ case class Translator(program: PProgram) {
         }
         methodCallAssign(s, Seq(target), lv => NewStmt(lv.head, fields)(pos, info))
       case PAssign(Seq(idnuse: PIdnUse), rhs) =>
-        LocalVarAssign(LocalVar(idnuse.name, ttyp(idnuse.typ))(pos, subInfo), exp(rhs))(pos, info)
+        LocalVarAssign(LocalVar(idnuse.name, ttyp(idnuse.typ))(pos, ConsInfo(SourcePNodeInfo(idnuse), subInfo)), exp(rhs))(pos, info)
       case PAssign(Seq(field: PFieldAccess), rhs) =>
-        FieldAssign(FieldAccess(exp(field.rcv), findField(field.idnuse))(field), exp(rhs))(pos, info)
+        FieldAssign(FieldAccess(exp(field.rcv), findField(field.idnuse))(field, SourcePNodeInfo(field)), exp(rhs))(pos, info)
       case lv@PVars(vars, init) =>
         // there are no declarations in the Viper AST; rather they are part of the scope signature
         init match {
@@ -222,7 +222,7 @@ case class Translator(program: PProgram) {
           case _ => None
         }
         val locals = plocals.flatten.map {
-          case p@PVars(vars, _) => vars.map(v => LocalVarDecl(v.idndef.name, ttyp(v.typ))(p))
+          case p@PVars(vars, _) => vars.map(v => LocalVarDecl(v.idndef.name, ttyp(v.typ))(pos = p, info = SourcePNodeInfo(v)))
         }.flatten
         Seqn(ss filterNot (_.isInstanceOf[PSkip]) map stmt, locals)(pos, info)
       case PFold(e) =>
@@ -682,15 +682,15 @@ case class Translator(program: PProgram) {
 
   /** Takes a `PFormalArgDecl` and turns it into a `LocalVarDecl`. */
   def liftArgDecl(formal: PFormalArgDecl) =
-      LocalVarDecl(formal.idndef.name, ttyp(formal.typ))(formal.idndef)
+      LocalVarDecl(formal.idndef.name, ttyp(formal.typ))(pos = formal.idndef, info = SourcePNodeInfo(formal))
 
   /** Takes a `PFormalReturnDecl` and turns it into a `LocalVarDecl`. */
   def liftReturnDecl(formal: PFormalReturnDecl) =
-      LocalVarDecl(formal.idndef.name, ttyp(formal.typ))(formal.idndef)
+      LocalVarDecl(formal.idndef.name, ttyp(formal.typ))(pos = formal.idndef, info = SourcePNodeInfo(formal))
 
   /** Takes a `PLogicalVarDecl` and turns it into a `LocalVarDecl`. */
   def liftLogicalDecl(logical: PLogicalVarDecl) =
-      LocalVarDecl(logical.idndef.name, ttyp(logical.typ))(logical.idndef)
+      LocalVarDecl(logical.idndef.name, ttyp(logical.typ))(pos = logical.idndef, info = SourcePNodeInfo(logical))
 
   /** Takes a `PType` and turns it into a `Type`. */
   def ttyp(t: PType): Type = t match {
