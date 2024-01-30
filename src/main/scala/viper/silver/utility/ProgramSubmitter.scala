@@ -27,7 +27,11 @@ trait ProgramSubmitter {
 
   /** Verifier used to verify program */
   protected def originalVerifier: String
+
+  /** Was verification successful*/
   protected def succeeded: Boolean
+
+  /** Time between verification start and end */
   protected def runtime: Long
 
   /** Sends program and metadata to viper-data-collection API */
@@ -103,13 +107,13 @@ trait FEProgramSubmitter extends ProgramSubmitter {
   override def allowSubmission: Boolean =
     frontend.config.submitForEvaluation.getOrElse(false)
 
-  def originalFrontend: String = originalVerifier
+  override def originalFrontend: String = originalVerifier
 
-  def originalVerifier: String = frontend.getVerifierName.capitalize
+  override def originalVerifier: String = frontend.getVerifierName.capitalize
 
-  def succeeded: Boolean = didVerSucceed(frontend.getVerificationResult)
+  override def succeeded: Boolean = didVerSucceed(frontend.getVerificationResult)
 
-  def runtime: Long = frontend.getTime
+  override def runtime: Long = frontend.getTime
 
   def setArgs(arguments: Array[String]): Unit = {
     args =
