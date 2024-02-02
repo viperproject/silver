@@ -1,6 +1,8 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
+//:: IgnoreFile(/silicon/issue/104/)
+
 // NOTES (important points are also commented in the code below)
 // (1) The definition of list(xs) precludes the case xs==null. But, without unfolding the predicate, this information is not available. This is important for e.g.,
 // showing that length increases by 1 when prepending. For now, the explicit non-nullity of the argument has been conjoined everywhere.
