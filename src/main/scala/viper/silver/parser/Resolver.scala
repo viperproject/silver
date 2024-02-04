@@ -855,8 +855,8 @@ case class NameAnalyser() {
     }
   }
 
-  private def check(n: PNode, target: Option[PNode]): Unit = {
-    var curMember: PScope = null
+  def check(n: PNode, target: Option[PNode], initialCurMember: PScope = null): Unit = {
+    var curMember: PScope = initialCurMember
 
     def getMap(d: PNode): mutable.HashMap[String, PDeclaration] =
       d match {
