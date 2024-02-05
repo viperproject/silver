@@ -6,18 +6,11 @@
 
 package viper.silver.parser
 
-import viper.silver.ast.utility.lsp.BuiltinFeature
 import viper.silver.ast.{NoPosition, Position}
 import viper.silver.parser.TypeHelper._
 
 trait PReservedString extends PLspReservedString {
   def token: String
-  // If this is non-null, then a hover hint will be displayed.
-  def doc: BuiltinFeature
-  def documentation: Option[BuiltinFeature] = Option(doc)
-  // Should the IDE display the documentation as a hint?
-  // Enabled for all but operators where the operator itself will display the documentation.
-  def documentationAsHint: Boolean = true
   def display: String = s"$leftPad$token$rightPad"
   def leftPad: String = ""
   def rightPad: String = ""
@@ -133,21 +126,23 @@ sealed trait PKeywordAtom
 sealed trait PKeywordIf extends PKeywordStmt
 
 
-abstract class PKw(val keyword: String, val doc: BuiltinFeature = null) extends PKeyword
+abstract class PKw(val keyword: String) extends PKeyword
 object PKw {
-  case object Import extends PKw("import", BuiltinFeature.Import) with PKeywordLang
+  case object Import extends PKw("import") with PKeywordLang
   type Import = PReserved[Import.type]
-  case object Define extends PKw("define", BuiltinFeature.Macro) with PKeywordLang
+  case object Define extends PKw("define") with PKeywordLang
   type Define = PReserved[Define.type]
-  case object Field extends PKw("field", BuiltinFeature.Field) with PKeywordLang
+  case object Field extends PKw("field") with PKeywordLang
   type Field = PReserved[Field.type]
-  case object Method extends PKw("method", BuiltinFeature.Method) with PKeywordLang
+  case object Method extends PKw("method") with PKeywordLang
   type Method = PReserved[Method.type]
   case object Function extends PKw("function") with PKeywordLang
   type Function = PReserved[Function.type]
-  case object Predicate extends PKw("predicate", BuiltinFeature.Predicate) with PKeywordLang
+  case object FunctionD extends PKw("function") with PKeywordLang
+  type FunctionD = PReserved[FunctionD.type]
+  case object Predicate extends PKw("predicate") with PKeywordLang
   type Predicate = PReserved[Predicate.type]
-  case object Domain extends PKw("domain", BuiltinFeature.Domain) with PKeywordLang
+  case object Domain extends PKw("domain") with PKeywordLang
   type Domain = PReserved[Domain.type]
   case object Interpretation extends PKw("interpretation") with PKeywordLang
   type Interpretation = PReserved[Interpretation.type]
@@ -267,11 +262,9 @@ trait PSymbol extends PReservedString {
   override def token = symbol
 }
 
-trait PSymbolLang extends PSymbol with PLspSymbolLang {
-  override def documentationAsHint: Boolean = false
-}
+trait PSymbolLang extends PSymbol with PLspSymbolLang
 
-abstract class PSym(val symbol: String, val doc: BuiltinFeature = null) extends PSymbol
+abstract class PSym(val symbol: String) extends PSymbol
 object PSym {
   sealed trait Group extends PSymbol {
     type L <: Group; type R <: Group
@@ -335,7 +328,6 @@ trait POperator extends PReservedString with PLspOperator {
   def operator: String
   def requirePureArgs = false
   override def token = operator
-  override def documentationAsHint: Boolean = false
 }
 
 trait PSymbolOp extends PSymbol with POperator {
@@ -482,7 +474,7 @@ trait PSubsetOp extends PBinaryOp with PCollectionOp {
     Map(POpApp.pArgS(0) -> MakeMultiset(PCollectionOp.infVar), POpApp.pArgS(1) -> MakeMultiset(PCollectionOp.infVar), POpApp.pResS -> Bool))
 }
 
-abstract class PKwOp(val keyword: String, val doc: BuiltinFeature = null) extends POperatorKeyword {
+abstract class PKwOp(val keyword: String) extends POperatorKeyword {
   override def operator = keyword
 }
 object PKwOp {
@@ -504,7 +496,7 @@ object PKwOp {
   type Perm = PReserved[Perm.type]
   case object Acc         extends PKwOp("acc")                      with PKeywordAtom
   type Acc = PReserved[Acc.type]
-  case object Old         extends PKwOp("old", BuiltinFeature.Old)  with PKeywordAtom
+  case object Old         extends PKwOp("old")  with PKeywordAtom
   type Old = PReserved[Old.type]
   case object Domain      extends PKwOp("domain")                   with PKeywordAtom
   type Domain = PReserved[Domain.type]

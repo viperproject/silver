@@ -143,7 +143,7 @@ case class Translator(program: PProgram) {
       case pf@PFunction(_, _, _, _, _, typ, _, _, _) =>
         Function(name, pf.formalArgs map liftArgDecl, ttyp(typ), null, null, null)(pos, Translator.toInfo(p.annotations, pf))
       case pdf@PDomainFunction(_, unique, _, _, _, _, typ, interp) =>
-        DomainFunc(name, pdf.formalArgs map liftAnyArgDecl, ttyp(typ), unique.isDefined, interp.map(_.i.grouped.inner))(pos, Translator.toInfo(p.annotations, pdf), pdf.domain.idndef.name)
+        DomainFunc(name, pdf.formalArgs map liftAnyArgDecl, ttyp(typ), unique.isDefined, interp.map(_.i.str))(pos, Translator.toInfo(p.annotations, pdf), pdf.domain.idndef.name)
       case pd@PDomain(_, _, _, typVars, interp, _) =>
         Domain(name, null, null, typVars map (_.inner.toSeq map (t => TypeVar(t.idndef.name))) getOrElse Nil, interp.map(_.interps))(pos, Translator.toInfo(p.annotations, pd))
       case pp: PPredicate =>
@@ -319,9 +319,9 @@ case class Translator(program: PProgram) {
       case PAnnotatedExp(ann, e) =>
         val (resPexp, innerMap) = extractAnnotation(e)
         val combinedValue = if (innerMap.contains(ann.key.str)) {
-          ann.values.inner.toSeq.map(_.grouped.inner) ++ innerMap(ann.key.str)
+          ann.values.inner.toSeq.map(_.str) ++ innerMap(ann.key.str)
         } else {
-          ann.values.inner.toSeq.map(_.grouped.inner)
+          ann.values.inner.toSeq.map(_.str)
         }
         (resPexp, innerMap.updated(ann.key.str, combinedValue))
       case _ => (pexp, Map())
@@ -333,9 +333,9 @@ case class Translator(program: PProgram) {
       case PAnnotatedStmt(ann, s) =>
         val (resPStmt, innerMap) = extractAnnotationFromStmt(s)
         val combinedValue = if (innerMap.contains(ann.key.str)) {
-          ann.values.inner.toSeq.map(_.grouped.inner) ++ innerMap(ann.key.str)
+          ann.values.inner.toSeq.map(_.str) ++ innerMap(ann.key.str)
         } else {
-          ann.values.inner.toSeq.map(_.grouped.inner)
+          ann.values.inner.toSeq.map(_.str)
         }
         (resPStmt, innerMap.updated(ann.key.str, combinedValue))
       case _ => (pStmt, Map())
@@ -723,7 +723,7 @@ object Translator {
     if (annotations.isEmpty) {
       NoInfo
     } else {
-      AnnotationInfo(annotations.groupBy(_.key).map{ case (k, v) => k.str -> v.flatMap(_.values.inner.toSeq.map(_.grouped.inner)) })
+      AnnotationInfo(annotations.groupBy(_.key).map{ case (k, v) => k.str -> v.flatMap(_.values.inner.toSeq.map(_.str)) })
     }
   }
 }

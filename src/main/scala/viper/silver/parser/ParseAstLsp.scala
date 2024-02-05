@@ -8,7 +8,7 @@ package viper.silver.parser
 
 import viper.silver.ast.utility.lsp._
 import java.nio.file.Path
-import viper.silver.ast.LineColumnPosition
+import viper.silver.ast.{LineColumnPosition, NoPosition}
 
 // --- Useful common traits ---
 trait PLspTokenModifiers {
@@ -101,8 +101,8 @@ trait PLspReserved[+T <: PReservedString] extends PLspMaybeSemanticToken with Ha
   override def tokenModifiers = rs.tokenModifiers
 
   // Only display hover if there is documentation
-  override def getHoverHints: Seq[HoverHint] = (rs.documentationAsHint, RangePosition(this)) match {
-    case (true, Some(rp)) => Seq(HoverHint(this.pretty, rs.documentation.map(_.description), Some(rp), SelectionBoundScope(rp)))
+  override def getHoverHints: Seq[HoverHint] = (!Documentation.skip(rs), RangePosition(this)) match {
+    case (true, Some(rp)) => Seq(HoverHint(this.pretty, Documentation(rs), Some(rp), SelectionBoundScope(rp)))
     case _ => Nil
   }
 }
@@ -177,12 +177,28 @@ trait PLspFieldDecl extends PLspDeclaration {
   override def description = "Field"
 }
 
+trait PLspDefineParam extends PLspAnyVarDecl {
+  override def typeMaybe: Option[PType] = None
+  override def description: String = "Macro Parameter"
+  override def tokenType: TokenType.TokenType = TokenType.Parameter
+}
+
 ////
 // Types
 ////
 trait PLspDomainType extends PLspHoverHintRef {
   def domain: PLspIdnUse
   override def idnref = domain
+}
+
+trait PLspTypeVarDecl extends PLspDeclaration {
+  override def symbolKind: SymbolKind.SymbolKind = SymbolKind.TypeParameter
+  override def hint: String = this.pretty
+  override def completionScope: Map[SuggestionScope,Byte] = Map(TypeScope -> 0)
+  override def completionKind: CompletionKind.CompletionKind = CompletionKind.TypeParameter
+  override def completionChars: Option[Map[Char, Byte]] = Some(Map(':' -> 50))
+  override def tokenType = TokenType.TypeParameter
+  override def description: String = "Type Variable"
 }
 
 ////
@@ -204,7 +220,7 @@ trait PLspExp extends PLspHoverHint with PPrettySubnodes {
     })
     s"$pretty: ${typ.pretty}"
   }
-  override def documentation: Option[String] = ops.flatMap(_.rs.documentation).headOption.map(_.description)
+  override def documentation: Option[String] = ops.flatMap(op => Documentation(op.rs)).headOption
 }
 trait PLspExpRef extends PLspExp with PLspHoverHintBoth
 
@@ -242,6 +258,22 @@ trait PLspStmtWithExp extends PNode with HasSuggestionScopeRanges {
   def e: PExp
   override def getSuggestionScopeRanges: Seq[SuggestionScopeRange] =
     RangePosition(e).map(SuggestionScopeRange(_, ExpressionScope)).toSeq
+}
+
+trait PLspLabel extends PLspDeclaration {
+  override def completionScope: Map[SuggestionScope,Byte] = Map(LabelScope -> 0, StatementScope -> -50)
+  override def completionKind: CompletionKind.CompletionKind = CompletionKind.Event
+  override def tokenType = TokenType.Event
+  override def symbolKind: SymbolKind.SymbolKind = SymbolKind.Event
+  override def description: String = "Label"
+  override def hint: String = this.pretty
+}
+
+trait PLspGoto extends PLspSemanticToken {
+  def target: PIdnRef[PLabel]
+  override def tokenType = TokenType.Event
+  override def tokenPosition = RangePosition(target)
+  // override def getHoverHints: Seq[HoverHint] = target.hoverHint(RangePosition(target))
 }
 
 ////
@@ -306,6 +338,119 @@ trait PLspAnyFunction extends PLspCallable {
   override def completionKind: CompletionKind.CompletionKind = CompletionKind.Function
 }
 
+trait PLspImport extends PLspDocumentSymbol {
+  def file: PStringLiteral
+  def resolved: Option[Path]
+
+  override def getSymbol: Option[DocumentSymbol] = (RangePosition(this), RangePosition(file), resolved) match {
+    case (Some(tp), Some(fp), Some(resolved)) =>
+      // We avoid any circular dependencies since `resolved` is only set for imports which caused a
+      // file to actually be imported.
+      Some(DocumentSymbol(resolved.getFileName.toString(), None, tp, fp, SymbolKind.File, Nil, Some(resolved)))
+    case _ => None
+  }
+}
+
+trait PLspDefine extends PLspDeclaration {
+  def body: PNode
+
+  override def symbolKind: SymbolKind.SymbolKind = SymbolKind.Function
+  override def completionScope: Map[SuggestionScope,Byte] = body match {
+    case _: PExp => Map(ExpressionScope -> 0, TypeScope -> 0, StatementScope -> -50)
+    case _: PStmt => Map(StatementScope -> 0)
+    case _ => Map(MemberScope -> -50)
+  }
+  override def completionKind: CompletionKind.CompletionKind = CompletionKind.Snippet
+  override def tokenType = TokenType.Macro
+  override def description: String = "Macro"
+  override def hint: String = this.pretty
+}
+
+trait PLspDomain extends PLspDeclaration with HasFoldingRanges with HasSuggestionScopeRanges {
+  def domain: PKw.Domain
+  def idndef: PIdnDef
+  def typVars:Option[PDelimited.Comma[PSym.Bracket, PTypeVarDecl]]
+  def members: PGrouped[PSym.Brace, PDomainMembers]
+
+  override def tokenType = TokenType.Interface
+  override def symbolKind = SymbolKind.Interface
+  override def hint = {
+    val tvsStr = typVars.map(_.pretty).getOrElse("")
+    s"${domain.pretty}${idndef.pretty}$tvsStr"
+  }
+  override def getFoldingRanges: Seq[FoldingRange] = RangePosition(members).map(FoldingRange(_)).toSeq
+  override def getSuggestionScopeRanges: Seq[SuggestionScopeRange] =
+    RangePosition(members).map(SuggestionScopeRange(_, DomainScope)).toSeq
+  override def completionScope: Map[SuggestionScope,Byte] = Map(TypeScope -> 0)
+  override def completionKind: CompletionKind.CompletionKind = CompletionKind.Interface
+  override def completionChars: Option[Map[Char, Byte]] = Some(Map(':' -> 50))
+  override def description: String = "Domain"
+}
+
+trait PLspDomainFunction extends PLspCallable {
+  def function: PKw.FunctionD
+  override def keyword = function
+  override def pres = PDelimited.empty
+  override def posts = PDelimited.empty
+  override def bodyRange: Option[RangePosition] = None
+  override def description: String = "Domain Function"
+}
+
+trait PLspAxiom extends HasFoldingRanges {
+  def exp: PBracedExp
+  override def getFoldingRanges: Seq[FoldingRange] = RangePosition(exp).map(FoldingRange(_)).toSeq
+}
+
+trait PLspFunction extends PLspCallable {
+  def function: PKw.Function
+  def body: Option[PBracedExp]
+  override def keyword = function
+  override def bodyRange: Option[RangePosition] = body.flatMap(RangePosition(_))
+  override def description: String = "Function"
+}
+
+trait PLspPredicate extends PLspCallable with PLspAnyFunction {
+  def predicate: PKw.Predicate
+  def body: Option[PBracedExp]
+
+  override def c = PReserved.implied(PSym.Colon)
+  override def returnString: Option[String] = None
+
+  override def tokenType = TokenType.Struct
+  override def symbolKind: SymbolKind.SymbolKind = SymbolKind.Struct
+  override def keyword = predicate
+  override def pres = PDelimited.empty
+  override def posts = PDelimited.empty
+  override def bodyRange: Option[RangePosition] = body.flatMap(RangePosition(_))
+  override def completionKind: CompletionKind.CompletionKind = CompletionKind.Struct
+  override def description: String = "Predicate"
+}
+
+trait PLspMethod extends PLspCallable {
+  def method: PKw.Method
+  def body: Option[PSeqn]
+  def returns: Option[PMethodReturns]
+
+  override def keyword = method
+  override def tokenType = TokenType.Method
+  override def symbolKind = SymbolKind.Method
+  override def returnString: Option[String] = {
+    val returns = this.returns.getOrElse(PMethodReturns(PReserved.implied(PKw.Returns), PGrouped.impliedParen(PDelimited.empty))(NoPosition, NoPosition))
+    Some(returns.pretty)
+  }
+  override def bodyRange: Option[RangePosition] = body.flatMap(RangePosition(_))
+  override def getSuggestionScopeRanges: Seq[SuggestionScopeRange] =
+    RangePosition(this).map(SuggestionScopeRange(_, CallableSignatureScope)).toSeq ++
+    bodyRange.map(SuggestionScopeRange(_, StatementScope)).toSeq
+  override def completionScope: Map[SuggestionScope,Byte] = Map(StatementScope -> 0, ExpressionScope -> -20)
+  override def completionKind: CompletionKind.CompletionKind = CompletionKind.Method
+  override def typeHint: Option[String] = {
+    val args = formalArgs.map(_.typ.pretty).mkString("(", ", ", ")")
+    val rets = returns.toSeq.flatMap(_.formalReturns.inner.toSeq.map(_.typ.pretty)).mkString("(", ", ", ")")
+    Some(s"$args returns $rets")
+  }
+  override def description: String = "Method"
+}
 
 
 trait PLspDeclaration extends PNode with PLspHoverHint with PLspSemanticToken with PLspDocumentSymbol with HasCompletionProposals with HasGotoDefinitions with HasReferenceTos {
@@ -390,12 +535,12 @@ trait PLspAnnotation extends PNode with HasSemanticHighlights {
 }
 
 trait PLspStringLiteral extends PNode with HasSemanticHighlights {
-  def grouped: PGrouped[_, String]
+  def grouped: PGrouped[_, PRawString]
   // Semantic highlights which span multiple lines are not supported, thus we must break the string up
   // Use the line lengths of the string literal that we have saved to calculate the range position for each line
   def multilineRangePositions: Seq[RangePosition] = RangePosition(this).toSeq.flatMap(rp => {
       var last = rp.start
-      val lines = grouped.inner.split("\n")
+      val lines = grouped.inner.str.split("\n")
       val startLen = grouped.l.rs.symbol.length()
       val endLen = grouped.r.rs.symbol.length()
       val linesRp = lines.zipWithIndex.map(line => {
@@ -431,4 +576,33 @@ trait PLspProgram extends PNode with HasSemanticHighlights with PLspDocumentSymb
     DefaultCompletionProposals.getCompletionProposals ++ subnodes.flatMap(_ deepCollect { case sn: HasCompletionProposals => sn.getCompletionProposals }).flatten
   override def getSuggestionScopeRanges: Seq[SuggestionScopeRange] = subnodes.flatMap(_ deepCollect { case sn: HasSuggestionScopeRanges => sn.getSuggestionScopeRanges }).flatten
   override def getSymbol: Option[DocumentSymbol] = None
+}
+
+object Documentation {
+  def skip(rs: PReservedString): Boolean = rs.isInstanceOf[PSymbolLang] || rs.isInstanceOf[POperator]
+  def apply(rs: PReservedString): Option[String] = Some(rs match {
+    case PKw.Import => BuiltinFeature.Import.description
+    case PKw.Define => BuiltinFeature.Macro.description
+    case PKw.Field => BuiltinFeature.Field.description
+    case PKw.Method => BuiltinFeature.Method.description
+    case PKw.Function => BuiltinFeature.Function.description
+    case PKw.FunctionD => BuiltinFeature.DomainFunction.description
+    case PKw.Predicate => BuiltinFeature.Predicate.description
+    case PKw.Domain => BuiltinFeature.Domain.description
+    case PKw.Axiom => BuiltinFeature.DomainAxiom.description
+
+    case PKw.Assert => BuiltinFeature.Assert.description
+    case PKw.Assume => BuiltinFeature.Assume.description
+    case PKw.Exhale => BuiltinFeature.Exhale.description
+    case PKw.Inhale => BuiltinFeature.Inhale.description
+    case PKw.Var => BuiltinFeature.LocalVarDecl.description
+    case PKw.Fold => BuiltinFeature.Fold.description
+    case PKw.Unfold => BuiltinFeature.Unfold.description
+    case PKw.New => BuiltinFeature.New.description
+    case PKw.Package => BuiltinFeature.Package.description
+    case PKw.Apply => BuiltinFeature.Apply.description
+
+    case PKwOp.Old => BuiltinFeature.Old.description
+    case _ => return None
+  })
 }

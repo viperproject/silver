@@ -220,7 +220,7 @@ class FastParser {
       def appendNewImports(imports: Seq[PImport], current: Path, fromLocal: Boolean): Unit = {
         for (ip <- imports) {
           if (ip.local) {
-            val localPath = current.resolveSibling(ip.file.grouped.inner).normalize()
+            val localPath = current.resolveSibling(ip.file.str).normalize()
             if (fromLocal) {
               if(!localsToImport.contains(localPath)){
                 ip.resolved = Some(localPath)
@@ -237,7 +237,7 @@ class FastParser {
               }
             }
           } else {
-            val standardPath = Paths.get(ip.file.grouped.inner).normalize()
+            val standardPath = Paths.get(ip.file.str).normalize()
             if(!standardsToImport.contains(standardPath)){
               ip.resolved = Some(standardPath)
               standardsToImport.append(standardPath)
@@ -491,7 +491,7 @@ class FastParser {
 
   def atomParen[$: P](bracketed: Boolean = false): P[PExp] = P(expParen(true).parens.map{ g => g.inner.brackets = Some(g); g.inner } | atom(bracketed))
 
-  def stringLiteral[$: P]: P[PStringLiteral] = P(CharsWhile(_ != '\"').!.quotes map (PStringLiteral.apply _)).pos
+  def stringLiteral[$: P]: P[PStringLiteral] = P((CharsWhile(_ != '\"').! map PRawString.apply).pos.quotes map (PStringLiteral.apply _)).pos
 
   def annotation[$: P]: P[PAnnotation] = P((P(PSym.At) ~~ annotationIdentifier ~ argList(stringLiteral)) map (PAnnotation.apply _).tupled).pos
 
@@ -968,7 +968,7 @@ class FastParser {
       i
   })
 
-  def relativeFilePath[$: P]: P[String] = (CharIn("~.").? ~~ (CharIn("/").? ~~ CharIn(".", "A-Z", "a-z", "0-9", "_\\- \n\t")).rep(1)).!
+  def relativeFilePath[$: P]: P[PRawString] = ((CharIn("~.").? ~~ (CharIn("/").? ~~ CharIn(".", "A-Z", "a-z", "0-9", "_\\- \n\t")).rep(1)).! map PRawString.apply).pos
 
   def domainInterp[$: P]: P[PDomainInterpretation] = P((ident.map(PRawString.apply).pos ~ PSym.Colon ~ stringLiteral) map (PDomainInterpretation.apply _).tupled).pos
   def domainInterps[$: P]: P[PDomainInterpretations] =
@@ -999,7 +999,7 @@ class FastParser {
     case (unique, (function, idn, args, c, typ), interpretation, s) => ap: PAnnotationsPosition => PDomainFunction1(ap.annotations, unique, function, idn, args, c, typ, interpretation, s)(ap.pos)
   }
 
-  def domainFunctionSignature[$: P] = P(P(PKw.Function) ~ idndef ~ argList(domainFunctionArg) ~ PSym.Colon ~ typ)
+  def domainFunctionSignature[$: P] = P(P(PKw.FunctionD) ~ idndef ~ argList(domainFunctionArg) ~ PSym.Colon ~ typ)
 
   def domainFunctionArg[$: P]: P[PDomainFunctionArg] = P(idnTypeBinding.map(PDomainFunctionArg(_)) | typ.map(PDomainFunctionArg(None, None, _) _).pos)
 
