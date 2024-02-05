@@ -8,7 +8,7 @@ import java.nio.file.Paths
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast.{LocalVar, Perm, Program}
 import viper.silver.frontend.{SilFrontend, SilFrontendConfig}
-import viper.silver.parser.{PIdnDef, PPredicate, PProgram}
+import viper.silver.parser.{PDelimited, PGrouped, PIdnDef, PKw, PPredicate, PProgram, PReserved}
 import viper.silver.plugin.{SilverPlugin, SilverPluginManager}
 import viper.silver.reporter.{Reporter, StdIOReporter}
 import viper.silver.verifier.errors.Internal
@@ -17,10 +17,6 @@ import viper.silver.verifier._
 import viper.silver.ast.NoPosition
 
 import scala.annotation.unused
-import viper.silver.parser.PReserved
-import viper.silver.parser.PKw
-import viper.silver.parser.PGrouped
-import viper.silver.parser.PDelimited
 
 trait TestPlugin {
   def test(): Boolean = true

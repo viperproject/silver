@@ -11,8 +11,7 @@ import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast._
 import viper.silver.ast.utility.rewriter._
 import viper.silver.ast.utility._
-import viper.silver.parser.{PBinExp, PIdnUseExp, PNode, PSymOp}
-import viper.silver.parser.PReserved
+import viper.silver.parser.{PBinExp, PIdnUseExp, PNode, PReserved, PSymOp}
 
 class RewriterTests extends AnyFunSuite with FileComparisonHelper {
   test("Performance_BinomialHeap") {
