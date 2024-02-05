@@ -5,13 +5,13 @@ field b: Bool
 field f: Int
 
 function getFirst(x: Ref): Int
-//:: ExpectedOutput(consistency.error)
+//:: ExpectedOutput(typechecker.error)
 requires acc(x.b) && (acc(x.b) --* acc(x.b) && (x.b ? acc(x.f) : true)) {
     applying (acc(x.b) --* acc(x.b) && (x.b ? acc(x.f) : true)) in x.b ? x.f : 0
 }
 
 function getSecond(x: Ref): Int
-//:: ExpectedOutput(consistency.error)
+//:: ExpectedOutput(typechecker.error)
 requires acc(x.b) && (acc(x.b) --* acc(x.b) && (x.b ? true : acc(x.f))) {
     applying (acc(x.b) --* acc(x.b) && (x.b ? true : acc(x.f))) in x.b ? 0 : x.f
 }
