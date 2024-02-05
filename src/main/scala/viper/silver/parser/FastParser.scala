@@ -98,7 +98,7 @@ object FastParserCompanion {
     ).pos
 
     def delimitedTrailing[$: P, U](sep: => P[U], min: Int = 0, max: Int = Int.MaxValue, exactly: Int = -1)(implicit lineCol: LineCol, _file: Path): P[PDelimited[T, Option[U]]] =
-      P((p() ~~~ sep.lw.?./).rep(min = min, max = max, exactly = exactly)
+      P((p().lw ~~~ sep.lw.?./).repX(min = min, max = max, exactly = exactly)
         .map(seq => {
           val (ts, us) = seq.unzip
           PDelimited(ts.headOption, us.zip(ts.drop(1)), us.lastOption)(_)
@@ -897,7 +897,7 @@ class FastParser {
     P((P(PKw.Else) ~ stmtBlock()) map (PElse.apply _).tupled).pos
 
   def whileStmt[$: P]: P[PKw.While => Pos => PWhile] =
-    P((parenthesizedExp ~ semiSeparated(invariant) ~ stmtBlock()) map { case (cond, invs, body) => PWhile(_, cond, invs, body) })
+    P((parenthesizedExp ~~ semiSeparated(invariant) ~ stmtBlock()) map { case (cond, invs, body) => PWhile(_, cond, invs, body) })
 
   def invariant(implicit ctx : P[_]) : P[PSpecification[PKw.InvSpec]] = P((P(PKw.Invariant) ~ exp).map((PSpecification.apply _).tupled).pos | ParserExtension.invSpecification(ctx))
 
@@ -914,7 +914,7 @@ class FastParser {
   def goto[$: P]: P[PKw.Goto => Pos => PGoto] = P(idnref[$, PLabel] map { i => PGoto(_, i) _ })
 
   def label[$: P]: P[PKw.Label => Pos => PLabel] =
-    P((idndef ~ semiSeparated(invariant)) map { case (i, inv) => k=> PLabel(k, i, inv) _ })
+    P((idndef ~~ semiSeparated(invariant)) map { case (i, inv) => k=> PLabel(k, i, inv) _ })
 
   def packageWand[$: P]: P[PKw.Package => Pos => PPackageWand] =
     P((magicWandExp() ~~~ stmtBlock().lw.?) map { case (wand, proof) => PPackageWand(_, wand, proof) _ })
@@ -1016,7 +1016,7 @@ class FastParser {
   })
 
   def functionDecl[$: P]: P[PKw.Function => PAnnotationsPosition => PFunction] = P((idndef ~ argList(formalArg) ~ PSym.Colon ~ typ
-    ~ semiSeparated(precondition) ~ semiSeparated(postcondition) ~~~ bracedExp.lw.?
+    ~~ semiSeparated(precondition) ~~ semiSeparated(postcondition) ~~~ bracedExp.lw.?
   ) map { case (idn, args, c, typ, d, e, f) => k =>
       ap: PAnnotationsPosition => PFunction(ap.annotations, k, idn, args, c, typ, d, e, f)(ap.pos)
   })
@@ -1032,7 +1032,7 @@ class FastParser {
   }
 
   def methodDecl[$: P]: P[PKw.Method => PAnnotationsPosition => PMethod] =
-    P((idndef ~ argList(formalArg) ~~~ methodReturns.lw.? ~ semiSeparated(precondition) ~ semiSeparated(postcondition) ~~~ stmtBlock().lw.?) map {
+    P((idndef ~ argList(formalArg) ~~~ methodReturns.lw.? ~~ semiSeparated(precondition) ~~ semiSeparated(postcondition) ~~~ stmtBlock().lw.?) map {
         case (idn, args, rets, pres, posts, body) => k =>
           ap: PAnnotationsPosition => PMethod(ap.annotations, k, idn, args, rets, pres, posts, body)(ap.pos)
     })
