@@ -29,7 +29,7 @@ object Consistency {
     recordIfNot(suspect, !property, message)
 
   /** Names that are not allowed for use in programs. */
-  def reservedNames: Set[String] = FastParserCompanion.basicKeywords
+  def reservedNames: Set[String] = FastParserCompanion.basicKeywords.map(_.keyword)
 
   /** Returns true iff the string `name` is a valid identifier. */
   val identFirstLetter = "[a-zA-Z$_]"

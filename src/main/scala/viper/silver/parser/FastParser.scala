@@ -130,41 +130,42 @@ object FastParserCompanion {
     def ~~~/[V, R](other: LW[V])(implicit s: Implicits.Sequencer[T, V, R], ctx: P[Any]): P[R] = (p() ~~/ other.p()).asInstanceOf[P[R]]
   }
 
-  val basicKeywords = immutable.Set("result",
+  val basicKeywords: Set[PKeyword] = immutable.Set(PKw.Result,
     // types
-    "Int", "Perm", "Bool", "Ref", "Rational",
+    PKw.Int, PKw.Perm, PKw.Bool, PKw.Ref, PKw.Rational,
     // boolean constants
-    "true", "false",
+    PKw.True, PKw.False,
     // null
-    "null",
+    PKw.Null,
     // preamble importing
-    "import",
+    PKw.Import,
     // declaration keywords
-    "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "field", "define", "interpretation",
+    PKw.Method, PKw.Function, PKw.Predicate, PKw.Domain, PKw.Axiom, PKw.Var, PKw.Returns, PKw.Field, PKw.Define, PKw.Interpretation,
     // specifications
-    "requires", "ensures", "invariant",
+    PKw.Requires, PKw.Ensures, PKw.Invariant,
     // statements
-    "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "package", "apply", "quasihavoc", "quasihavocall",
+    PKw.Fold, PKw.Unfold, PKw.Inhale, PKw.Exhale, PKw.New, PKw.Assert, PKw.Assume, PKw.Package, PKw.Apply, PKw.Quasihavoc, PKw.Quasihavocall,
     // control flow
-    "while", "if", "elseif", "else", "goto", "label",
+    PKw.While, PKw.If, PKw.Elseif, PKw.Else, PKw.Goto, PKw.Label,
     // sequences
-    "Seq",
+    PKw.Seq,
     // sets and multisets
-    "Set", "Multiset", "union", "intersection", "setminus", "subset",
+    PKw.Set, PKw.Multiset, PKwOp.Union, PKwOp.Intersection, PKwOp.Setminus, PKwOp.Subset,
     // maps
-    "Map", "range",
+    PKw.Map, PKwOp.Range, PKwOp.Domain,
     // prover hint expressions
-    "unfolding", "in", "applying",
+    PKwOp.Unfolding, PKwOp.In, PKwOp.Applying,
     // old expression
-    "old", "lhs",
+    PKwOp.Old, PKw.Lhs,
     // other expressions
-    "let",
+    PKwOp.Let,
     // quantification
-    "forall", "exists", "forperm",
+    PKw.Forall, PKw.Exists, PKw.Forperm,
     // permission syntax
-    "acc", "wildcard", "write", "none", "epsilon", "perm",
+    PKwOp.Acc, PKw.Wildcard, PKw.Write, PKw.None, PKw.Epsilon, PKw.Perm,
     // modifiers
-    "unique")
+    PKw.Unique
+  )
 }
 
 class FastParser {
@@ -420,7 +421,7 @@ class FastParser {
     }
   }
 
-  lazy val keywords = FastParserCompanion.basicKeywords | ParserExtension.extendedKeywords
+  lazy val keywords: Set[String] = (FastParserCompanion.basicKeywords | ParserExtension.extendedKeywords).map(_.keyword)
 
   // Actual Parser starts from here
   import FastParserCompanion.{ExtendedParsing, identContinues, identStarts, LeadingWhitespace, Pos, PositionParsing, reservedKw, reservedSym}
@@ -697,7 +698,7 @@ class FastParser {
         case "Rational" => Pass.map { _ =>
             val p = pos.asInstanceOf[(HasLineColumn, HasLineColumn)]
             _warnings = _warnings :+ ParseWarning("Rational is deprecated, use Perm instead", SourcePosition(_file, p._1, p._2))
-            PPrimitiv(PReserved(PKw.Perm)(pos))(_)
+            PPrimitiv(PReserved(PKw.Rational)(pos))(_)
           }
         case "Int" => Pass.map(_ => PPrimitiv(PReserved(PKw.Int)(pos))(_))
         case "Bool" => Pass.map(_ => PPrimitiv(PReserved(PKw.Bool)(pos))(_))
@@ -1065,7 +1066,7 @@ class FastParser {
     private var _postSpecification: Option[Extension[PSpecification[PKw.PostSpec]]] = None
     private var _invSpecification: Option[Extension[PSpecification[PKw.InvSpec]]] = None
 
-    private var _extendedKeywords: Set[String] = Set()
+    private var _extendedKeywords: Set[PKeyword] = Set()
 
 
     /**
@@ -1117,7 +1118,7 @@ class FastParser {
       case Some(ext) => ext
     }
 
-    override def extendedKeywords : Set[String] = _extendedKeywords
+    override def extendedKeywords : Set[PKeyword] = _extendedKeywords
 
     def addNewDeclAtEnd(t: Extension[PAnnotationsPosition => PExtender]) : Unit = _newDeclAtEnd match {
       case None => _newDeclAtEnd = Some(t)
@@ -1164,7 +1165,7 @@ class FastParser {
       case Some(s) => _invSpecification = Some(combine(s, t))
     }
 
-    def addNewKeywords(t : Set[String]) : Unit = {
+    def addNewKeywords(t : Set[PKeyword]) : Unit = {
       _extendedKeywords ++= t
     }
   }

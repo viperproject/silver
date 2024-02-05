@@ -383,7 +383,11 @@ case class PPrimitiv[T <: PKeywordType](name: PReserved[T])(val pos: (Position, 
   override def isValidOrUndeclared = true
   override def substitute(ts: PTypeSubstitution): PType = this
   override val subNodes = Seq()
-  override def umbrella: Option[PType] = if (name.rs == PKw.Bool) Some(TypeHelper.Impure) else None
+  override def umbrella: Option[PType] = name.rs.asInstanceOf[PKeywordType] match {
+    case PKw.Bool => Some(TypeHelper.Impure)
+    case PKw.Rational => Some(TypeHelper.Perm)
+    case _ => None
+  }
 
   override def pretty = name.pretty
 }

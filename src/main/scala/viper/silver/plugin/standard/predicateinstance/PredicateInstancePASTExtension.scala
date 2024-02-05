@@ -29,10 +29,9 @@ case class PPredicateInstance(m: PReserved[PMarkerSymbol.type], idnuse: PIdnRef[
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
     if (idnuse.decls.isEmpty)
-      // Already reported by name analyser
-      return None
+      Some(Seq(s"undefined predicate instance `${idnuse.name}`"))
     if (idnuse.decls.size > 1)
-      Some(Seq("predicate instance is ambiguous"))
+      Some(Seq(s"ambiguous predicate instance `${idnuse.name}`"))
     else {
       // type checking should be the same as for PPredicateAccess nodes
       val predicateAccess = PCall(idnuse.retype(), args, None)(pos)

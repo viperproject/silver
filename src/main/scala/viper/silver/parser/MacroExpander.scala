@@ -358,7 +358,7 @@ object MacroExpander {
             replacerOnBody(body, mapParamsToArgs(parameters, arguments), call.pos)
           } catch {
             case problem: ParseTreeDuplicationError =>
-              throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError : )\n" + problem.getMessage, call.pos)
+              throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError:)\n" + problem.getMessage, call.pos)
           }
       }.applyOrElse(macroCall, (_: PNode) => macroCall)
     }

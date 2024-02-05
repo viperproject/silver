@@ -58,7 +58,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
    */
   override def beforeParse(input: String, isImported: Boolean): String = {
     // Add new keyword
-    ParserExtension.addNewKeywords(Set[String](PDecreasesKeyword.keyword))
+    ParserExtension.addNewKeywords(Set(PDecreasesKeyword))
     // Add new parser to the precondition
     ParserExtension.addNewPreCondition(decreases(_))
     // Add new parser to the postcondition

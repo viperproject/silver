@@ -248,6 +248,8 @@ object PKw {
   type Perm = PReserved[Perm.type]
   case object Ref extends PKw("Ref") with PKeywordType
   type Ref = PReserved[Ref.type]
+  case object Rational extends PKw("Rational") with PKeywordType
+  type Rational = PReserved[Rational.type]
 
   case object Set extends PKw("Set") with PKeywordType
   type Set = PReserved[Set.type]

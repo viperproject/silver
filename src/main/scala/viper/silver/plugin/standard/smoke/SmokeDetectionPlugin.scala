@@ -27,7 +27,7 @@ class SmokeDetectionPlugin(@unused reporter: viper.silver.reporter.Reporter,
   /** Add `unreachable` to the parser. */
   override def beforeParse(input: String, isImported: Boolean): String = {
     // Add new keyword
-    ParserExtension.addNewKeywords(Set[String](PUnreachableKeyword.keyword))
+    ParserExtension.addNewKeywords(Set(PUnreachableKeyword))
     // Add new parser to the precondition
     ParserExtension.addNewStmtAtEnd(unreachable(_))
     input

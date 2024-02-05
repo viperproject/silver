@@ -6,7 +6,7 @@
 
 package viper.silver.plugin
 
-import viper.silver.parser.{NameAnalyser, PAnnotationsPosition, PExp, PExtender, PSpecification, PKw, PReserved, PStmt, PTypeSubstitution, Translator, TypeChecker}
+import viper.silver.parser.{NameAnalyser, PAnnotationsPosition, PExp, PExtender, PKeyword, PSpecification, PKw, PReserved, PStmt, PTypeSubstitution, Translator, TypeChecker}
 import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.ast.{Declaration, ErrorTrafo, Exp, ExtensionExp, ExtensionMember, ExtensionStmt, Info, Member, Node, NoPosition, Position, Stmt, Type}
 import viper.silver.verifier.VerificationResult
@@ -86,7 +86,7 @@ trait ParserPluginTemplate {
   /**
     * This rule extends the keywords. So new strings added to the set will be considered as keywords.
     */
-  def extendedKeywords= Set[String]()
+  def extendedKeywords = Set[PKeyword]()
 
   case class PExampleDeclaration()(val pos: (Position, Position)) extends PExtender{
     // The typechecker for this PAst node

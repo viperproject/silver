@@ -32,7 +32,7 @@ class RefutePlugin(@unused reporter: viper.silver.reporter.Reporter,
   /** Add refute to the parser. */
   override def beforeParse(input: String, isImported: Boolean): String = {
     // Add new keyword
-    ParserExtension.addNewKeywords(Set[String](PRefuteKeyword.keyword))
+    ParserExtension.addNewKeywords(Set(PRefuteKeyword))
     // Add new parser to the precondition
     ParserExtension.addNewStmtAtEnd(refute(_))
     input

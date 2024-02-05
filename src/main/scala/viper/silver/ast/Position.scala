@@ -18,7 +18,7 @@ sealed trait Position {
 
 /** Describes ''no location'' for cases where a `Position` is expected, but not available. */
 case object NoPosition extends Position {
-  override def deltaColumn(delta: Int): Position = this
+  override def deltaColumn(delta: Int) = this
   override def toString = "<no position>"
 }
 
@@ -46,7 +46,7 @@ trait HasIdentifier extends HasLineColumn {
 }
 
 case class LineColumnPosition(line: Int, column: Int) extends HasLineColumn {
-  override def deltaColumn(delta: Int): HasLineColumn = LineColumnPosition(line, column + delta)
+  override def deltaColumn(delta: Int) = LineColumnPosition(line, column + delta)
 }
 
 /** Represents a source code position by referencing a file, a line and a column.

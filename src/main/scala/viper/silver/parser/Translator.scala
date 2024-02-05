@@ -659,6 +659,7 @@ case class Translator(program: PProgram) {
       case PKw.Bool => Bool
       case PKw.Ref => Ref
       case PKw.Perm => Perm
+      case PKw.Rational => Perm
     }
     case PSeqType(_, elemType) =>
       SeqType(ttyp(elemType.inner))

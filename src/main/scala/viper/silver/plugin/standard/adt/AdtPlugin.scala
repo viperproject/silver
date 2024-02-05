@@ -41,7 +41,7 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
 
     if (!isImported) {
       // Add new parser adt declaration keyword
-      ParserExtension.addNewKeywords(Set[String](PAdtKeyword.keyword, PDerivesKeyword.keyword, PWithoutKeyword.keyword))
+      ParserExtension.addNewKeywords(Set(PAdtKeyword, PDerivesKeyword, PWithoutKeyword))
       // Add new parser for adt declaration
       ParserExtension.addNewDeclAtEnd(adtDecl(_))
     }
