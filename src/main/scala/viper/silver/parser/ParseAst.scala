@@ -270,7 +270,7 @@ sealed trait PIdnUseName[T <: PDeclarationInner] extends PIdnUse {
 /** Any `PNode` which should be ignored (as well as it's children) by the `NameAnalyser`. */
 trait PNameAnalyserOpaque extends PNode
 
-case class PIdnUseExp(name: String)(val pos: (Position, Position)) extends PIdnUseName[PTypedVarDecl] with PExp with PAssignTarget with PMaybeMacroExp with PLspIdnUseExp {
+case class PIdnUseExp(name: String)(val pos: (Position, Position)) extends PIdnUseName[PTypedVarDecl] with PExp with PAssignTarget with PMaybeMacroExp {
   override def ctag = scala.reflect.classTag[PTypedVarDecl]
 
   override def possibleMacro = Some(this)
@@ -288,7 +288,7 @@ case class PIdnUseExp(name: String)(val pos: (Position, Position)) extends PIdnU
 
   override def rename(newName: String) = PIdnUseExp(newName)(pos)
 }
-case class PIdnRef[T <: PDeclarationInner](name: String)(val pos: (Position, Position))(implicit val ctag: scala.reflect.ClassTag[T]) extends PIdnUseName[T] with PLspIdnUse {
+case class PIdnRef[T <: PDeclarationInner](name: String)(val pos: (Position, Position))(implicit val ctag: scala.reflect.ClassTag[T]) extends PIdnUseName[T] {
   override def rename(newName: String): PIdnUse = PIdnRef(newName)(pos)
   /** Changes the type of declaration which is referenced, preserves all previously added `decls` but discards `filters`. */
   def retype[U <: PDeclarationInner]()(implicit ctag: scala.reflect.ClassTag[U]): PIdnRef[U] = {
@@ -327,26 +327,26 @@ sealed trait PTypedVarDecl extends PTypedDeclaration with PDeclarationInner with
 sealed trait PAssignableVarDecl extends PTypedVarDecl
 
 /** Any argument to a method, function or predicate. */
-case class PFormalArgDecl(idndef: PIdnDef, c: PSym.Colon, typ: PType)(val pos: (Position, Position)) extends PAnyFormalArgDecl with PTypedVarDecl with PMemberDeclaration with PMemberUniqueDeclaration with PLspFormalArgDecl
+case class PFormalArgDecl(idndef: PIdnDef, c: PSym.Colon, typ: PType)(val pos: (Position, Position)) extends PAnyFormalArgDecl with PTypedVarDecl with PMemberDeclaration with PMemberUniqueDeclaration
 object PFormalArgDecl {
   def apply(d: PIdnTypeBinding): PFormalArgDecl = PFormalArgDecl(d.idndef, d.c, d.typ)(d.pos)
 }
 /** The return arguments of methods. */
-case class PFormalReturnDecl(idndef: PIdnDef, c: PSym.Colon, typ: PType)(val pos: (Position, Position)) extends PAssignableVarDecl with PMemberDeclaration with PMemberUniqueDeclaration with PLspFormalReturnDecl
+case class PFormalReturnDecl(idndef: PIdnDef, c: PSym.Colon, typ: PType)(val pos: (Position, Position)) extends PAssignableVarDecl with PMemberDeclaration with PMemberUniqueDeclaration
 object PFormalReturnDecl {
   def apply(d: PIdnTypeBinding): PFormalReturnDecl = PFormalReturnDecl(d.idndef, d.c, d.typ)(d.pos)
 }
 
-case class PLogicalVarDecl(idndef: PIdnDef, c: PSym.Colon, typ: PType)(val pos: (Position, Position)) extends PTypedVarDecl with PLocalDeclaration with PScopeUniqueDeclaration with PLspLogicalVarDecl
+case class PLogicalVarDecl(idndef: PIdnDef, c: PSym.Colon, typ: PType)(val pos: (Position, Position)) extends PTypedVarDecl with PLocalDeclaration with PScopeUniqueDeclaration
 object PLogicalVarDecl {
   def apply(d: PIdnTypeBinding): PLogicalVarDecl = PLogicalVarDecl(d.idndef, d.c, d.typ)(d.pos)
 }
 /** Declaration of a local variable. */
-case class PLocalVarDecl(idndef: PIdnDef, c: PSym.Colon, typ: PType)(val pos: (Position, Position)) extends PAssignableVarDecl with PLocalDeclaration with PScopeUniqueDeclaration with PLspLocalVarDecl
+case class PLocalVarDecl(idndef: PIdnDef, c: PSym.Colon, typ: PType)(val pos: (Position, Position)) extends PAssignableVarDecl with PLocalDeclaration with PScopeUniqueDeclaration
 object PLocalVarDecl {
   def apply(d: PIdnTypeBinding): PLocalVarDecl = PLocalVarDecl(d.idndef, d.c, d.typ)(d.pos)
 }
-case class PFieldDecl(idndef: PIdnDef, c: PSym.Colon, typ: PType)(val pos: (Position, Position)) extends PTypedDeclaration with PGlobalDeclaration with PGlobalUniqueDeclaration with PLspFieldDecl {
+case class PFieldDecl(idndef: PIdnDef, c: PSym.Colon, typ: PType)(val pos: (Position, Position)) extends PTypedDeclaration with PGlobalDeclaration with PGlobalUniqueDeclaration {
   var decl: Option[PFields] = None
   override def annotations = decl.toSeq.flatMap(_.annotations)
   override def pretty = s"${idndef.pretty}: ${typ.pretty}"
@@ -388,7 +388,7 @@ case class PPrimitiv[T <: PKeywordType](name: PReserved[T])(val pos: (Position, 
   override def pretty = name.pretty
 }
 
-case class PDomainType(domain: PIdnRef[PTypeDeclaration], args: Option[PDelimited.Comma[PSym.Bracket, PType]])(val pos: (Position, Position)) extends PGenericType with PLspDomainType with HasExtraVars {
+case class PDomainType(domain: PIdnRef[PTypeDeclaration], args: Option[PDelimited.Comma[PSym.Bracket, PType]])(val pos: (Position, Position)) extends PGenericType with HasExtraVars {
   val genericName = domain.name
   override val typeArguments = typeArgs
   var kind: PDomainTypeKinds.Kind = PDomainTypeKinds.Unresolved
@@ -894,7 +894,7 @@ trait PCallLike extends POpApp {
 }
 
 case class PCall(idnref: PIdnRef[PGlobalCallable], callArgs: PDelimited.Comma[PSym.Paren, PExp], typeAnnotated: Option[(PSym.Colon, PType)])(val pos: (Position, Position))
-  extends PCallLike with PLocationAccess with PAccAssertion with PAssignTarget with PMaybeMacroExp with PLspCall {
+  extends PCallLike with PLocationAccess with PAccAssertion with PAssignTarget with PMaybeMacroExp {
   override def possibleMacro = if (typeAnnotated.isEmpty) Some(idnref) else None
   override def macroArgs = args
   override def loc = this
@@ -954,7 +954,7 @@ case class PCall(idnref: PIdnRef[PGlobalCallable], callArgs: PDelimited.Comma[PS
   }
 }
 
-class PBinExp(val left: PExp, val op: PReserved[PBinaryOp], val right: PExp)(val pos: (Position, Position)) extends POpApp with PLspExp {
+class PBinExp(val left: PExp, val op: PReserved[PBinaryOp], val right: PExp)(val pos: (Position, Position)) extends POpApp {
   override val args = Seq(left, right)
 
   override val extraLocalTypeVariables = if (op.rs.isInstanceOf[PCollectionOp]) Set(PCollectionOp.infVar) else Set()
@@ -992,12 +992,12 @@ object PBinExp {
 
 case class PMagicWandExp(override val left: PExp, wand: PSymOp.Wand, override val right: PExp)(override val pos: (Position, Position)) extends PBinExp(left, wand, right)(pos) with PResourceAccess
 
-case class PUnExp(op: PReserved[PUnaryOp], exp: PExp)(val pos: (Position, Position)) extends POpApp with PLspExp {
+case class PUnExp(op: PReserved[PUnaryOp], exp: PExp)(val pos: (Position, Position)) extends POpApp {
   override val args = Seq(exp)
   override val signatures = op.rs.signatures
 }
 
-case class PCondExp(cond: PExp, q: PSymOp.Question, thn: PExp, c: PSymOp.Colon, els: PExp)(val pos: (Position, Position)) extends POpApp with PLspExp {
+case class PCondExp(cond: PExp, q: PSymOp.Question, thn: PExp, c: PSymOp.Colon, els: PExp)(val pos: (Position, Position)) extends POpApp {
   override val args = Seq(cond, thn, els)
   val signatures: List[PTypeSubstitution] = List(
     Map(POpApp.pArgS(0) -> Bool, POpApp.pArgS(2) -> POpApp.pArg(1), POpApp.pResS -> POpApp.pArg(1))
@@ -1005,7 +1005,7 @@ case class PCondExp(cond: PExp, q: PSymOp.Question, thn: PExp, c: PSymOp.Colon, 
 }
 
 // Simple literals
-sealed trait PSimpleLiteral extends PExp with PLspExp {
+sealed trait PSimpleLiteral extends PExp {
   override final val typeSubstitutions = Seq(PTypeSubstitution.id)
 
   def forceSubstitution(ts: PTypeSubstitution) = {}
@@ -1042,7 +1042,7 @@ trait PLocationAccess extends PResourceAccess {
   def idnref: PIdnUse
 }
 
-case class PFieldAccess(rcv: PExp, dot: PSymOp.Dot, idnref: PIdnRef[PFieldDecl])(val pos: (Position, Position)) extends PLocationAccess with PAssignTarget with PLspExpRef {
+case class PFieldAccess(rcv: PExp, dot: PSymOp.Dot, idnref: PIdnRef[PFieldDecl])(val pos: (Position, Position)) extends PLocationAccess with PAssignTarget {
   override final val args = Seq(rcv)
 
   override def signatures = idnref.decl match {
@@ -1053,19 +1053,19 @@ case class PFieldAccess(rcv: PExp, dot: PSymOp.Dot, idnref: PIdnRef[PFieldDecl])
   }
 }
 
-case class PUnfolding(unfolding: PKwOp.Unfolding, acc: PAccAssertion, in: PKwOp.In, exp: PExp)(val pos: (Position, Position)) extends PHeapOpApp with PLspExp {
+case class PUnfolding(unfolding: PKwOp.Unfolding, acc: PAccAssertion, in: PKwOp.In, exp: PExp)(val pos: (Position, Position)) extends PHeapOpApp {
   override val args = Seq(acc, exp)
   override val signatures: List[PTypeSubstitution] =
     List(Map(POpApp.pArgS(0) -> Predicate, POpApp.pResS -> POpApp.pArg(1)))
 }
 
-case class PApplying(applying: PKwOp.Applying, wand: PExp, in: PKwOp.In, exp: PExp)(val pos: (Position, Position)) extends PHeapOpApp with PLspExp {
+case class PApplying(applying: PKwOp.Applying, wand: PExp, in: PKwOp.In, exp: PExp)(val pos: (Position, Position)) extends PHeapOpApp {
   override val args = Seq(wand, exp)
   override val signatures: List[PTypeSubstitution] =
     List(Map(POpApp.pArgS(0) -> Wand, POpApp.pResS -> POpApp.pArg(1)))
 }
 
-sealed trait PBinder extends PExp with PScope with PLspExp {
+sealed trait PBinder extends PExp with PScope {
   def boundVars: Seq[PLogicalVarDecl]
 
   def body: PExp
@@ -1112,7 +1112,7 @@ case class PForPerm(keyword: PKw.Forperm, vars: PDelimited[PLogicalVarDecl, PSym
  * already be in scope while checking `e1`, which wouldn't be correct.
  */
 // let variable == exp in nestedScope
-case class PLet(l: PKwOp.Let, variable: PIdnDef, eq: PSymOp.EqEq, exp: PGrouped.Paren[PExp], in: PKwOp.In, nestedScope: PLetNestedScope)(val pos: (Position, Position)) extends PExp with PScope with PLspExp {
+case class PLet(l: PKwOp.Let, variable: PIdnDef, eq: PSymOp.EqEq, exp: PGrouped.Paren[PExp], in: PKwOp.In, nestedScope: PLetNestedScope)(val pos: (Position, Position)) extends PExp with PScope {
   def decl: PLogicalVarDecl = PLogicalVarDecl(variable, PReserved.implied(PSym.Colon), exp.inner.typ)(variable.pos)
 
   override def typeSubstitutions = (for (ts1 <- nestedScope.body.typeSubstitutions; ts2 <- exp.inner.typeSubstitutions) yield (ts1 * ts2).toOption).flatten.toList.distinct
@@ -1123,14 +1123,14 @@ case class PLet(l: PKwOp.Let, variable: PIdnDef, eq: PSymOp.EqEq, exp: PGrouped.
   }
 }
 
-case class PLetNestedScope(body: PExp)(val pos: (Position, Position)) extends PTypedVarDecl with PLocalDeclaration with PScopeUniqueDeclaration with PLspLetNestedScope {
+case class PLetNestedScope(body: PExp)(val pos: (Position, Position)) extends PTypedVarDecl with PLocalDeclaration with PScopeUniqueDeclaration {
   def outerLet: PLet = getAncestor[PLet].get
   override def idndef: PIdnDef = outerLet.variable
   override def typ: PType = outerLet.exp.inner.typ
 }
 
 // [in,ex]
-case class PInhaleExhaleExp(l: PSymOp.LBracket, in: PExp, c: PSymOp.Comma, ex: PExp, r: PSymOp.RBracket)(val pos: (Position, Position)) extends PHeapOpApp with PLspExp {
+case class PInhaleExhaleExp(l: PSymOp.LBracket, in: PExp, c: PSymOp.Comma, ex: PExp, r: PSymOp.RBracket)(val pos: (Position, Position)) extends PHeapOpApp {
   override val args = Seq(in, ex)
 
   val signatures: List[PTypeSubstitution] = List(
@@ -1173,7 +1173,7 @@ case class PCurPerm(op: PKwOp.Perm, res: PGrouped.Paren[PResourceAccess])(val po
 case class PPairArgument[+T, +U](first: T, c: PSym.Comma, second: U)(val pos: (Position, Position)) extends PNode with PPrettySubnodes
 case class PMaybePairArgument[+T, +U](first: T, second: Option[(PSym.Comma, U)])(val pos: (Position, Position)) extends PNode with PPrettySubnodes
 
-sealed trait PAccAssertion extends PExp with PLspExp {
+sealed trait PAccAssertion extends PExp {
   def loc: PLocationAccess
   def perm: PExp
 }
@@ -1247,7 +1247,7 @@ case class PEmptySeq(op: PKwOp.Seq, pAnnotatedType: Option[PGrouped[PSym.Bracket
 case class PExplicitSeq(op: PKwOp.Seq, callArgs: PDelimited.Comma[PSym.Paren, PExp])(val pos: (Position, Position)) extends PSeqLiteral with PExplicitCollectionLiteral
 
 // [low..high)
-case class PRangeSeq(l: PSymOp.LBracket, low: PExp, ds: PSymOp.DotDot, high: PExp, r: PSymOp.RParen)(val pos: (Position, Position)) extends POpApp with PLspExp {
+case class PRangeSeq(l: PSymOp.LBracket, low: PExp, ds: PSymOp.DotDot, high: PExp, r: PSymOp.RParen)(val pos: (Position, Position)) extends POpApp {
   override val args = Seq(low, high)
 
   override val signatures: List[PTypeSubstitution] = List(
@@ -1255,7 +1255,7 @@ case class PRangeSeq(l: PSymOp.LBracket, low: PExp, ds: PSymOp.DotDot, high: PEx
 }
 
 // base[idx]
-case class PLookup(base: PExp, l: PSymOp.LBracket, idx: PExp, r: PSymOp.RBracket)(val pos: (Position, Position)) extends POpApp with PLspExp {
+case class PLookup(base: PExp, l: PSymOp.LBracket, idx: PExp, r: PSymOp.RBracket)(val pos: (Position, Position)) extends POpApp {
   val keyType: PDomainType = POpApp.pArg(1)
 
   override val args = Seq(base, idx)
@@ -1267,7 +1267,7 @@ case class PLookup(base: PExp, l: PSymOp.LBracket, idx: PExp, r: PSymOp.RBracket
   )
 }
 
-case class PSeqSlice(seq: PExp, l: PSymOp.LBracket, s: Option[PExp], d: PSymOp.DotDot, e: Option[PExp], r: PSymOp.RBracket)(val pos: (Position, Position)) extends POpApp with PLspExp {
+case class PSeqSlice(seq: PExp, l: PSymOp.LBracket, s: Option[PExp], d: PSymOp.DotDot, e: Option[PExp], r: PSymOp.RBracket)(val pos: (Position, Position)) extends POpApp {
   // override val opName = "Seq#Slice"
   val elementType = PTypeVar("#E")
   override val extraLocalTypeVariables = Set(elementType)
@@ -1282,7 +1282,7 @@ case class PSeqSlice(seq: PExp, l: PSymOp.LBracket, s: Option[PExp], d: PSymOp.D
   }))
 }
 
-case class PUpdate(base: PExp, l: PSymOp.LBracket, key: PExp, a: PSymOp.Assign, value: PExp, r: PSymOp.RBracket)(val pos: (Position, Position)) extends POpApp with PLspExp {
+case class PUpdate(base: PExp, l: PSymOp.LBracket, key: PExp, a: PSymOp.Assign, value: PExp, r: PSymOp.RBracket)(val pos: (Position, Position)) extends POpApp {
   val keyType: PDomainType = POpApp.pArg(1)
   val elementType: PDomainType = POpApp.pArg(2)
 
@@ -1296,7 +1296,7 @@ case class PUpdate(base: PExp, l: PSymOp.LBracket, key: PExp, a: PSymOp.Assign, 
   )
 }
 
-case class PSize(l: PSymOp.Or, seq: PExp, r: PSymOp.Or)(val pos: (Position, Position)) extends POpApp with PLspExp {
+case class PSize(l: PSymOp.Or, seq: PExp, r: PSymOp.Or)(val pos: (Position, Position)) extends POpApp {
   val keyType: PDomainType = PTypeVar("#K")
   val elementType: PDomainType = PTypeVar("#E")
 
@@ -1332,7 +1332,7 @@ case class PExplicitMultiset(op: PKwOp.Multiset, callArgs: PDelimited.Comma[PSym
 
 /* ** Maps */
 
-sealed trait PMapLiteral extends POpApp with PLspExp {
+sealed trait PMapLiteral extends POpApp {
   // override val opName = "Map#Map"
   override def args: Seq[PExp] = callArgs.inner.toSeq
   def callArgs: PDelimited.Comma[PSym.Paren, PExp]
@@ -1375,7 +1375,7 @@ case class PExplicitMap(op: PKwOp.Map, callArgs: PDelimited.Comma[PSym.Paren, PM
   * A key-value pair (i.e., an entry of an `PExplicitMap`) is
   * considered to be a singleton map literal itself.
   */
-case class PMaplet(key: PExp, a: PSymOp.Assign, value: PExp)(val pos: (Position, Position)) extends POpApp with PPrettySubnodes with PLspExp {
+case class PMaplet(key: PExp, a: PSymOp.Assign, value: PExp)(val pos: (Position, Position)) extends POpApp with PPrettySubnodes {
   // override val opName = "Map#Maplet"
   override def args: Seq[PExp] = Seq(key, value)
   override def signatures: List[PTypeSubstitution] = List(Map(
@@ -1383,7 +1383,7 @@ case class PMaplet(key: PExp, a: PSymOp.Assign, value: PExp)(val pos: (Position,
   ))
 }
 
-case class PMapDomain(keyword: PKwOp.Domain, base: PGrouped.Paren[PExp])(val pos: (Position, Position)) extends POpApp with PLspExp {
+case class PMapDomain(keyword: PKwOp.Domain, base: PGrouped.Paren[PExp])(val pos: (Position, Position)) extends POpApp {
   val keyType: PDomainType = PTypeVar("#K")
   val valueType: PDomainType = PTypeVar("#E")
 
@@ -1397,7 +1397,7 @@ case class PMapDomain(keyword: PKwOp.Domain, base: PGrouped.Paren[PExp])(val pos
   ))
 }
 
-case class PMapRange(keyword: PKwOp.Range, base: PGrouped.Paren[PExp])(val pos: (Position, Position)) extends POpApp with PLspExp {
+case class PMapRange(keyword: PKwOp.Range, base: PGrouped.Paren[PExp])(val pos: (Position, Position)) extends POpApp {
   val keyType: PDomainType = PTypeVar("#K")
   val valueType: PDomainType = PTypeVar("#E")
 
@@ -1430,21 +1430,21 @@ case class PSeqn(ss: PDelimited.Block[PStmt])(val pos: (Position, Position)) ext
   */
 case class PMacroSeqn(ss: PDelimited.Block[PStmt])(val pos: (Position, Position)) extends PStmt
 
-case class PFold(fold: PKw.Fold, e: PExp)(val pos: (Position, Position)) extends PStmt with PLspStmtWithExp
+case class PFold(fold: PKw.Fold, e: PExp)(val pos: (Position, Position)) extends PStmt
 
-case class PUnfold(unfold: PKw.Unfold, e: PExp)(val pos: (Position, Position)) extends PStmt with PLspStmtWithExp
+case class PUnfold(unfold: PKw.Unfold, e: PExp)(val pos: (Position, Position)) extends PStmt
 
 case class PPackageWand(pckg: PKw.Package, e: PExp, proofScript: Option[PSeqn])(val pos: (Position, Position)) extends PStmt
 
-case class PApplyWand(apply: PKw.Apply, e: PExp)(val pos: (Position, Position)) extends PStmt with PLspStmtWithExp
+case class PApplyWand(apply: PKw.Apply, e: PExp)(val pos: (Position, Position)) extends PStmt
 
-case class PExhale(exhale: PKw.Exhale, e: PExp)(val pos: (Position, Position)) extends PStmt with PLspStmtWithExp
+case class PExhale(exhale: PKw.Exhale, e: PExp)(val pos: (Position, Position)) extends PStmt
 
-case class PAssert(assert: PKw.Assert, e: PExp)(val pos: (Position, Position)) extends PStmt with PLspStmtWithExp
+case class PAssert(assert: PKw.Assert, e: PExp)(val pos: (Position, Position)) extends PStmt
 
-case class PAssume(assume: PKw.Assume, e: PExp)(val pos: (Position, Position)) extends PStmt with PLspStmtWithExp
+case class PAssume(assume: PKw.Assume, e: PExp)(val pos: (Position, Position)) extends PStmt
 
-case class PInhale(inhale: PKw.Inhale, e: PExp)(val pos: (Position, Position)) extends PStmt with PLspStmtWithExp
+case class PInhale(inhale: PKw.Inhale, e: PExp)(val pos: (Position, Position)) extends PStmt
 
 /** Can also represent a method call or statement macro with no `:=` when `targets` is empty. */
 case class PAssign(targets: PDelimited[PExp with PAssignTarget, PSym.Comma], op: Option[PSymOp.Assign], rhs: PExp)(val pos: (Position, Position)) extends PStmt
@@ -1459,14 +1459,14 @@ case class PVars(keyword: PKw.Var, vars: PDelimited[PLocalVarDecl, PSym.Comma], 
   def assign: Option[PAssign] = init map (i => PAssign(vars.update(vars.toSeq.map(_.toIdnUse)), Some(i._1), i._2)(pos))
 }
 
-case class PLabel(label: PKw.Label, idndef: PIdnDef, invs: PDelimited[PSpecification[PKw.InvSpec], Option[PSym.Semi]])(val pos: (Position, Position)) extends PStmt with PMemberDeclaration with PBackwardDeclaration with PLspLabel
+case class PLabel(label: PKw.Label, idndef: PIdnDef, invs: PDelimited[PSpecification[PKw.InvSpec], Option[PSym.Semi]])(val pos: (Position, Position)) extends PStmt with PMemberDeclaration with PBackwardDeclaration
 
-case class PGoto(goto: PKw.Goto, target: PIdnRef[PLabel])(val pos: (Position, Position)) extends PStmt with PLspGoto
+case class PGoto(goto: PKw.Goto, target: PIdnRef[PLabel])(val pos: (Position, Position)) extends PStmt
 
 // Should this be sealed?
 sealed trait PTypeDeclaration extends PDeclarationInner
 
-case class PTypeVarDecl(idndef: PIdnDef)(val pos: (Position, Position)) extends PMemberDeclaration with PTypeDeclaration with PPrettySubnodes with PLspTypeVarDecl
+case class PTypeVarDecl(idndef: PIdnDef)(val pos: (Position, Position)) extends PMemberDeclaration with PTypeDeclaration with PPrettySubnodes
 
 case class PSkip()(val pos: (Position, Position)) extends PStmt
 
@@ -1475,7 +1475,7 @@ case class PQuasihavoc(quasihavoc: PKw.Quasihavoc, lhs: Option[(PExp, PSymOp.Imp
 case class PQuasihavocall(quasihavocall: PKw.Quasihavocall, vars: PDelimited[PLogicalVarDecl, PSym.Comma], colons: PSym.ColonColon, lhs: Option[(PExp, PSymOp.Implies)], e: PExp)(val pos: (Position, Position)) extends PStmt with PScope
 
 /* new(f1, ..., fn) or new(*) */
-case class PNewExp(keyword: PKw.New, fields: PGrouped.Paren[Either[PSym.Star, PDelimited[PIdnRef[PFieldDecl], PSym.Comma]]])(val pos: (Position, Position)) extends PExp with PLspExp {
+case class PNewExp(keyword: PKw.New, fields: PGrouped.Paren[Either[PSym.Star, PDelimited[PIdnRef[PFieldDecl], PSym.Comma]]])(val pos: (Position, Position)) extends PExp {
   override final val typeSubstitutions = Seq(PTypeSubstitution.id)
   def forceSubstitution(ts: PTypeSubstitution) = {}
 }
@@ -1515,7 +1515,7 @@ sealed trait PAssignTarget
 /** An entity is a declaration (named) or an error node */
 sealed trait PEntity
 
-trait PDeclarationInner extends PNode with PLspDeclaration {
+trait PDeclarationInner extends PNode {
   def idndef: PIdnDef
 }
 
@@ -1543,7 +1543,7 @@ sealed trait PUnnamedTypedDeclaration extends PNode {
 }
 
 // Can be referenced from anywhere within the `PProgram` (needs `PBackwardDeclaration` since PProgram reorders declarations)
-trait PGlobalDeclaration extends PDeclaration with PBackwardDeclaration with PAnnotated with PLspGlobalDeclaration
+trait PGlobalDeclaration extends PDeclaration with PBackwardDeclaration with PAnnotated
 
 // Can be referenced from anywhere within the containing `PMember`
 trait PMemberDeclaration extends PDeclaration
@@ -1581,7 +1581,7 @@ trait PSingleMember extends PMember with PGlobalDeclaration with PGlobalUniqueDe
   override def declares = Seq(this)
 }
 
-trait PAnyFunction extends PScope with PTypedDeclaration with PGlobalCallable with PLspAnyFunction {
+trait PAnyFunction extends PScope with PTypedDeclaration with PGlobalCallable {
   def resultType: PType
   override def typ: PFunctionType = PFunctionType(formalArgs.map(_.typ), resultType)
 }
@@ -1589,7 +1589,7 @@ trait PAnyFunction extends PScope with PTypedDeclaration with PGlobalCallable wi
 ///////////////////////////////////////////////////////////////////////////
 // Program Members
 
-case class PProgram(imports: Seq[PImport], macros: Seq[PDefine], domains: Seq[PDomain], fields: Seq[PFields], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod], extensions: Seq[PExtender])(val pos: (Position, Position), val errors: Seq[ParseReport]) extends PNode with PLspProgram {
+case class PProgram(imports: Seq[PImport], macros: Seq[PDefine], domains: Seq[PDomain], fields: Seq[PFields], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod], extensions: Seq[PExtender])(val pos: (Position, Position), val errors: Seq[ParseReport]) extends PNode {
   override def pretty =  {
     val all = Seq(imports, macros, domains, fields, functions, predicates, methods, extensions).filter(_.length > 0)
     all.map(_.map(_.pretty).mkString("\n")).mkString("\n")
@@ -1597,17 +1597,17 @@ case class PProgram(imports: Seq[PImport], macros: Seq[PDefine], domains: Seq[PD
   override def getExtraVals: Seq[Any] = Seq(pos, errors)
 }
 
-case class PImport(annotations: Seq[PAnnotation], imprt: PKw.Import, file: PStringLiteral)(val pos: (Position, Position)) extends PNode with PPrettySubnodes with PLspImport {
+case class PImport(annotations: Seq[PAnnotation], imprt: PKw.Import, file: PStringLiteral)(val pos: (Position, Position)) extends PNode with PPrettySubnodes {
   var local: Boolean = true
   var resolved: Option[Path] = None
 }
 
-case class PDefineParam(idndef: PIdnDef)(val pos: (Position, Position)) extends PNode with PLocalDeclaration with PPrettySubnodes with PLspDefineParam
+case class PDefineParam(idndef: PIdnDef)(val pos: (Position, Position)) extends PNode with PLocalDeclaration with PPrettySubnodes
 
-case class PDefine(annotations: Seq[PAnnotation], define: PKw.Define, idndef: PIdnDef, parameters: Option[PDelimited.Comma[PSym.Paren, PDefineParam]], body: PNode)(val pos: (Position, Position)) extends PSingleMember with PStmt with PNameAnalyserOpaque with PLspDefine
+case class PDefine(annotations: Seq[PAnnotation], define: PKw.Define, idndef: PIdnDef, parameters: Option[PDelimited.Comma[PSym.Paren, PDefineParam]], body: PNode)(val pos: (Position, Position)) extends PSingleMember with PStmt with PNameAnalyserOpaque
 
 case class PDomain(annotations: Seq[PAnnotation], domain: PKw.Domain, idndef: PIdnDef, typVars: Option[PDelimited.Comma[PSym.Bracket, PTypeVarDecl]], interpretations: Option[PDomainInterpretations], members: PGrouped[PSym.Brace, PDomainMembers])
-                  (val pos: (Position, Position)) extends PSingleMember with PTypeDeclaration with PPrettySubnodes with PLspDomain {
+                  (val pos: (Position, Position)) extends PSingleMember with PTypeDeclaration with PPrettySubnodes {
   def typVarsSeq: Seq[PTypeVarDecl] = typVars.map(_.inner.toSeq).getOrElse(Nil)
 }
 
@@ -1617,9 +1617,9 @@ case class PDomainFunctionInterpretation(k: PKw.Interpretation, i: PStringLitera
 trait PDomainMember extends PScope {
   def domain: PDomain = getAncestor[PDomain].get
 }
-case class PDomainFunction(annotations: Seq[PAnnotation], unique: Option[PKw.Unique], function: PKw.FunctionD, idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PDomainFunctionArg], c: PSym.Colon, resultType: PType, interpretation: Option[PDomainFunctionInterpretation])(val pos: (Position, Position)) extends PSingleMember with PAnyFunction with PDomainMember with PPrettySubnodes with PLspDomainFunction
+case class PDomainFunction(annotations: Seq[PAnnotation], unique: Option[PKw.Unique], function: PKw.FunctionD, idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PDomainFunctionArg], c: PSym.Colon, resultType: PType, interpretation: Option[PDomainFunctionInterpretation])(val pos: (Position, Position)) extends PSingleMember with PAnyFunction with PDomainMember with PPrettySubnodes
 
-case class PAxiom(annotations: Seq[PAnnotation], axiom: PKw.Axiom, idndef: Option[PIdnDef], exp: PBracedExp)(val pos: (Position, Position)) extends PDomainMember with PPrettySubnodes with PLspAxiom
+case class PAxiom(annotations: Seq[PAnnotation], axiom: PKw.Axiom, idndef: Option[PIdnDef], exp: PBracedExp)(val pos: (Position, Position)) extends PDomainMember with PPrettySubnodes
 case class PDomainMembers(funcs: PDelimited[PDomainFunction, Option[PSym.Semi]], axioms: PDelimited[PAxiom, Option[PSym.Semi]])(val pos: (Position, Position)) extends PNode {
   override def pretty: String = {
     val fPretty = if (funcs.length == 0) "" else s"\n  ${funcs.prettyLines.replace("\n", "\n  ")}\n"
@@ -1648,15 +1648,15 @@ case class PSpecification[+T <: PKw.Spec](k: PReserved[PKw.Spec], e: PExp)(val p
 }
 
 case class PFunction(annotations: Seq[PAnnotation], function: PKw.Function, idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PFormalArgDecl], c: PSym.Colon, resultType: PType, pres: PDelimited[PSpecification[PKw.PreSpec], Option[PSym.Semi]], posts: PDelimited[PSpecification[PKw.PostSpec], Option[PSym.Semi]], body: Option[PBracedExp])
-                    (val pos: (Position, Position)) extends PSingleMember with PAnyFunction with PGlobalCallableNamedArgs with PPrettySubnodes with PLspFunction
+                    (val pos: (Position, Position)) extends PSingleMember with PAnyFunction with PGlobalCallableNamedArgs with PPrettySubnodes
 
 case class PPredicate(annotations: Seq[PAnnotation], predicate: PKw.Predicate, idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PFormalArgDecl], body: Option[PBracedExp])(val pos: (Position, Position))
-  extends PSingleMember with PAnyFunction with PGlobalCallableNamedArgs with PPrettySubnodes with PLspPredicate {
+  extends PSingleMember with PAnyFunction with PGlobalCallableNamedArgs with PPrettySubnodes {
   override def resultType = Predicate
 }
 
 case class PMethod(annotations: Seq[PAnnotation], method: PKw.Method, idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PFormalArgDecl], returns: Option[PMethodReturns], pres: PDelimited[PSpecification[PKw.PreSpec], Option[PSym.Semi]], posts: PDelimited[PSpecification[PKw.PostSpec], Option[PSym.Semi]], body: Option[PSeqn])
-                  (val pos: (Position, Position)) extends PSingleMember with PGlobalCallableNamedArgs with PPrettySubnodes with PLspMethod {
+                  (val pos: (Position, Position)) extends PSingleMember with PGlobalCallableNamedArgs with PPrettySubnodes {
   def formalReturns: Seq[PFormalReturnDecl] = returns.map(_.formalReturns.inner.toSeq).getOrElse(Nil)
 }
 
@@ -1667,7 +1667,7 @@ case class PMethodReturns(k: PKw.Returns, formalReturns: PGrouped.Paren[PDelimit
   */
 case class PAnnotationsPosition(annotations: Seq[PAnnotation], pos: (Position, Position))
 
-case class PAnnotation(at: PSym.At, key: PRawString, values: PGrouped.Paren[PDelimited[PStringLiteral, PSym.Comma]])(val pos: (Position, Position)) extends PNode with PPrettySubnodes with PLspAnnotation {
+case class PAnnotation(at: PSym.At, key: PRawString, values: PGrouped.Paren[PDelimited[PStringLiteral, PSym.Comma]])(val pos: (Position, Position)) extends PNode with PPrettySubnodes {
   override def pretty: String = super.pretty + "\n"
 }
 
@@ -1677,7 +1677,7 @@ case class PRawString(str: String)(val pos: (Position, Position)) extends PNode 
 }
 
 // Any enclosed string (e.g. `"hello"`)
-case class PStringLiteral(grouped: PGrouped[_, PRawString])(val pos: (Position, Position)) extends PNode with PPrettySubnodes with PLspStringLiteral {
+case class PStringLiteral(grouped: PGrouped[_, PRawString])(val pos: (Position, Position)) extends PNode with PPrettySubnodes {
   def str: String = grouped.inner.str
 }
 

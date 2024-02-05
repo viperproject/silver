@@ -8,12 +8,10 @@ package viper.silver.plugin.standard.adt
 
 import viper.silver.FastMessaging
 import viper.silver.ast._
-import viper.silver.ast.utility.lsp._
 import viper.silver.parser._
 import viper.silver.plugin.standard.adt.PAdtConstructor.findAdtConstructor
 
 import scala.annotation.unused
-import viper.silver.ast.utility.lsp.SymbolKind
 import viper.silver.ast.utility.rewriter.HasExtraVars
 
 /**
@@ -24,7 +22,7 @@ case object PDerivesKeyword extends PKw("derives") with PKeywordLang
 case object PWithoutKeyword extends PKw("without") with PKeywordLang
 
 case class PAdt(annotations: Seq[PAnnotation], adt: PReserved[PAdtKeyword.type], idndef: PIdnDef, typVars: Option[PDelimited.Comma[PSym.Bracket, PTypeVarDecl]], c: PAdtSeq[PAdtConstructor], derive: Option[PAdtDeriving])
-               (val pos: (Position, Position)) extends PExtender with PSingleMember with PGlobalDeclaration with PPrettySubnodes with HasFoldingRanges { // with PSemanticDeclaration with PGlobalSymbol
+               (val pos: (Position, Position)) extends PExtender with PSingleMember with PGlobalDeclaration with PPrettySubnodes {
   def typVarsSeq: Seq[PTypeVarDecl] = typVars.map(_.inner.toSeq).getOrElse(Nil)
   def constructors: Seq[PAdtConstructor] = c.inner
 
@@ -78,17 +76,6 @@ case class PAdt(annotations: Seq[PAnnotation], adt: PReserved[PAdtKeyword.type],
     adtType.kind = PAdtTypeKinds.Adt
     adtType
   }
-
-  override def tokenType = TokenType.Enum
-  override def symbolKind = SymbolKind.Enum
-  def tvsPretty: String = typVars.map(_.pretty).getOrElse("")
-  override def hint = {
-    s"${adt.pretty}${idndef.pretty}$tvsPretty"
-  }
-  override def getFoldingRanges: Seq[FoldingRange] = RangePosition(this).map(FoldingRange(_)).toSeq
-  override def completionScope: Map[SuggestionScope,Byte] = Map(TypeScope -> 0)
-  override def completionKind: CompletionKind.CompletionKind = CompletionKind.Enum
-  override def description: String = "Adt"
 }
 
 object PAdt {
@@ -113,7 +100,7 @@ case class PAdtSeq[T <: PNode](seq: PGrouped[PSym.Brace, Seq[T]])(val pos: (Posi
 }
 
 /** Any argument to a method, function or predicate. */
-case class PAdtFieldDecl(idndef: PIdnDef, c: PSym.Colon, typ: PType)(val pos: (Position, Position)) extends PAnyFormalArgDecl with PTypedDeclaration with PGlobalDeclaration with PMemberUniqueDeclaration with PAdtChild with PLspFormalArgDecl {
+case class PAdtFieldDecl(idndef: PIdnDef, c: PSym.Colon, typ: PType)(val pos: (Position, Position)) extends PAnyFormalArgDecl with PTypedDeclaration with PGlobalDeclaration with PMemberUniqueDeclaration with PAdtChild {
   def constructor: PAdtConstructor = getAncestor[PAdtConstructor].get
   def annotations: Seq[PAnnotation] = Nil
 }
@@ -121,7 +108,8 @@ object PAdtFieldDecl {
   def apply(d: PIdnTypeBinding): PAdtFieldDecl = PAdtFieldDecl(d.idndef, d.c, d.typ)(d.pos)
 }
 
-case class PAdtConstructor(annotations: Seq[PAnnotation], idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PAdtFieldDecl])(val pos: (Position, Position)) extends PExtender with PAnyFunction with PGlobalUniqueDeclaration with PPrettySubnodes with PAdtChild with PLspAnyFunction {
+case class PAdtConstructor(annotations: Seq[PAnnotation], idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PAdtFieldDecl])(val pos: (Position, Position)) extends PExtender with PAnyFunction with PGlobalUniqueDeclaration with PPrettySubnodes with PAdtChild {
+  override def resultType: PType = adt.getAdtType
   def fieldDecls: Seq[PAdtFieldDecl] = this.args.inner.toSeq
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
     this.formalArgs foreach (a => t.check(a.typ))
@@ -145,24 +133,6 @@ case class PAdtConstructor(annotations: Seq[PAnnotation], idndef: PIdnDef, args:
   override def translateMember(t: Translator): AdtConstructor = {
     findAdtConstructor(idndef, t)
   }
-
-  override def c: PSym.Colon = PReserved.implied(PSym.Colon)
-  override def resultType: PType = adt.getAdtType
-
-  override def tokenType = TokenType.EnumMember
-  override def symbolKind = SymbolKind.EnumMember
-  override def keyword = adt.adt
-  override def bodyRange: Option[RangePosition] = None
-  override def returnString: Option[String] = Some(s": ${adt.idndef.pretty}${adt.tvsPretty}")
-  override def pres = PDelimited.empty
-  override def posts = PDelimited.empty
-  // TODO:
-  // override def getHoverHints: Seq[HoverHint] = super.getHoverHints ++
-  //   Seq(HoverHint(s"```\nadt ${adtName.pretty}.is${idndef.name}: Bool\n```", None, SelectionBoundKeyword("is" + idndef.name))) ++
-  //   formalArgs.map(arg => HoverHint(s"\n```adt ${adtName.pretty}.${arg.idndef.pretty}: ${arg.typ.pretty}\n```", None, SelectionBoundKeyword(arg.idndef.name)))
-  override def completionScope: Map[SuggestionScope,Byte] = Map(ExpressionScope -> 0, StatementScope -> -50)
-  override def completionKind: CompletionKind.CompletionKind = CompletionKind.EnumMember
-  override def description: String = "Adt Constructor"
 }
 
 object PAdtConstructor {
@@ -215,7 +185,7 @@ case class PAdtDerivingInfo(idndef: PIdnDef, param: Option[PGrouped[PSym.Bracket
 }
 
 case class PAdtType(adt: PIdnRef[PAdt], args: Option[PDelimited.Comma[PSym.Bracket, PType]])
-                   (val pos: (Position, Position)) extends PExtender with PGenericType with HasSemanticHighlights with HasExtraVars {
+                   (val pos: (Position, Position)) extends PExtender with PGenericType with HasExtraVars {
 
   var kind: PAdtTypeKinds.Kind = PAdtTypeKinds.Unresolved
 
@@ -278,10 +248,6 @@ case class PAdtType(adt: PIdnRef[PAdt], args: Option[PDelimited.Comma[PSym.Brack
 
   override def withTypeArguments(s: Seq[PType]): PAdtType =
     if (s.length == 0 && args.isEmpty) this else copy(args = Some(args.get.update(s)))(pos)
-
-  override def getSemanticHighlights: Seq[SemanticHighlight] =
-    RangePosition(adt).map(sp => SemanticHighlight(sp, TokenType.Enum)).toSeq
-
   override def copyExtraVars(from: Any): Unit = this.kind = from.asInstanceOf[PAdtType].kind
 }
 
@@ -458,7 +424,7 @@ object PAdtOpApp {
 }
 
 case class PConstructorCall(idnref: PIdnRef[PAdtConstructor], callArgs: PDelimited.Comma[PSym.Paren, PExp], typeAnnotated: Option[(PSym.Colon, PType)])
-                           (val pos: (Position, Position) = (NoPosition, NoPosition)) extends PAdtOpApp with PCallLike with PLocationAccess with HasSemanticHighlights with PLspCall {
+                           (val pos: (Position, Position) = (NoPosition, NoPosition)) extends PAdtOpApp with PCallLike with PLocationAccess {
   def constructor: Option[PAdtConstructor] = idnref.decl.filter(_.isInstanceOf[PAdtConstructor]).map(_.asInstanceOf[PAdtConstructor])
   def adt: Option[PAdt] = constructor.map(_.adt)
   override def signatures: List[PTypeSubstitution] = {
@@ -486,13 +452,10 @@ case class PConstructorCall(idnref: PIdnRef[PAdtConstructor], callArgs: PDelimit
       case _ => sys.error("type unification error - should report and not crash")
     }
   }
-
-  override def getSemanticHighlights: Seq[SemanticHighlight] =
-    RangePosition(idnref).map(sp => SemanticHighlight(sp, TokenType.EnumMember)).toSeq
 }
 
 case class PDestructorCall(rcv: PExp, dot: PReserved[PDiscDot.type], idnref: PIdnRef[PAdtFieldDecl])
-                          (val pos: (Position, Position) = (NoPosition, NoPosition)) extends PAdtOpApp with HasSemanticHighlights with PLspExpRef {
+                          (val pos: (Position, Position) = (NoPosition, NoPosition)) extends PAdtOpApp {
   def field: Option[PAdtFieldDecl] = idnref.decl.filter(_.isInstanceOf[PAdtFieldDecl]).map(_.asInstanceOf[PAdtFieldDecl])
   def adt: Option[PAdt] = field.map(_.constructor.adt)
 
@@ -521,9 +484,6 @@ case class PDestructorCall(rcv: PExp, dot: PReserved[PDiscDot.type], idnref: PId
       case _ => sys.error("type unification error - should report and not crash")
     }
   }
-
-  override def getSemanticHighlights: Seq[SemanticHighlight] =
-    RangePosition(idnref).map(sp => SemanticHighlight(sp, TokenType.EnumMember)).toSeq
 }
 
 case object PIsKeyword extends PKwOp("is") {
@@ -532,7 +492,7 @@ case object PIsKeyword extends PKwOp("is") {
 case object PDiscDot extends PSym(".") with PSymbolOp
 
 case class PDiscriminatorCall(rcv: PExp, dot: PReserved[PDiscDot.type], is: PReserved[PIsKeyword.type], idnref: PIdnRef[PAdtConstructor])
-                             (val pos: (Position, Position) = (NoPosition, NoPosition)) extends PAdtOpApp with HasSemanticHighlights with PLspExpRef {
+                             (val pos: (Position, Position) = (NoPosition, NoPosition)) extends PAdtOpApp {
   def constructor: Option[PAdtConstructor] = idnref.decl.filter(_.isInstanceOf[PAdtConstructor]).map(_.asInstanceOf[PAdtConstructor])
   def adt: Option[PAdt] = constructor.map(_.adt)
   override def signatures: List[PTypeSubstitution] = if (adt.isDefined) {
@@ -560,8 +520,4 @@ case class PDiscriminatorCall(rcv: PExp, dot: PReserved[PDiscDot.type], is: PRes
       case _ => sys.error("type unification error - should report and not crash")
     }
   }
-
-  override def getSemanticHighlights: Seq[SemanticHighlight] =
-    RangePosition(idnref).map(sp => SemanticHighlight(sp, TokenType.EnumMember)).toSeq
-
 }

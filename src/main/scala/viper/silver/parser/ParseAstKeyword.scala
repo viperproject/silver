@@ -9,7 +9,7 @@ package viper.silver.parser
 import viper.silver.ast.{NoPosition, Position}
 import viper.silver.parser.TypeHelper._
 
-trait PReservedString extends PLspReservedString {
+trait PReservedString {
   def token: String
   def display: String = s"$leftPad$token$rightPad"
   def leftPad: String = ""
@@ -17,7 +17,7 @@ trait PReservedString extends PLspReservedString {
 }
 trait LeftSpace extends PReservedString { override def leftPad = " " }
 trait RightSpace extends PReservedString { override def rightPad = " " }
-case class PReserved[+T <: PReservedString](rs: T)(val pos: (Position, Position)) extends PNode with PLeaf with PLspReserved[T] {
+case class PReserved[+T <: PReservedString](rs: T)(val pos: (Position, Position)) extends PNode with PLeaf {
   override def display = rs.display
 }
 object PReserved {
@@ -120,10 +120,10 @@ trait PKeyword extends PReservedString {
   override def token = keyword
 }
 
-trait PKeywordLang extends PKeyword with PLspKeyword with RightSpace
-trait PKeywordStmt extends PKeyword with PLspKeywordStmt with RightSpace
-trait PKeywordType extends PKeyword with PLspKeywordType
-trait PKeywordConstant extends PKeyword with PLspKeyword
+trait PKeywordLang extends PKeyword with RightSpace
+trait PKeywordStmt extends PKeyword with RightSpace
+trait PKeywordType extends PKeyword
+trait PKeywordConstant extends PKeyword
 
 sealed trait PKeywordAtom
 sealed trait PKeywordIf extends PKeywordStmt
@@ -265,7 +265,7 @@ trait PSymbol extends PReservedString {
   override def token = symbol
 }
 
-trait PSymbolLang extends PSymbol with PLspSymbolLang
+trait PSymbolLang extends PSymbol
 
 abstract class PSym(val symbol: String) extends PSymbol
 object PSym {
@@ -327,7 +327,7 @@ object PSym {
 }
 
 /** Anything that can act as an operator. */
-trait POperator extends PReservedString with PLspOperator {
+trait POperator extends PReservedString {
   def operator: String
   def requirePureArgs = false
   override def token = operator
@@ -456,7 +456,7 @@ object PSymOp {
 }
 
 // Use the token type from `PLspKeyword`
-trait POperatorKeyword extends PKeyword with POperator with PLspKeyword
+trait POperatorKeyword extends PKeyword with POperator
 
 trait PSetToSetOp extends PBinaryOp with PCollectionOp {
   override def signatures = List(
