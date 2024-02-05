@@ -33,6 +33,9 @@ case class DocumentSymbol(
   /** What are the sub-symbols */
   var children: Seq[DocumentSymbol] = Seq(),
 ) extends HasRangePositions with BelongsToFile {
+  require(range.file == selectionRange.file, "Range and selection range must be in the same file")
+  require(range.start <= selectionRange.start && selectionRange._end <= range._end, "Selection range must be within range")
+
   override def rangePositions: Seq[RangePosition] = Seq(range, selectionRange) ++ children.flatMap(_.rangePositions)
   override def file = range.file
 }

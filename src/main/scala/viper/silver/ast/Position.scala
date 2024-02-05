@@ -28,6 +28,12 @@ trait HasLineColumn extends Position {
 
   def column: Int
 
+  def <=(other: HasLineColumn): Boolean = {
+    if (line < other.line) true
+    else if (line > other.line) false
+    else column <= other.column
+  }
+
   def deltaColumn(delta: Int): HasLineColumn
   override def toString = s"$line.$column"
 }

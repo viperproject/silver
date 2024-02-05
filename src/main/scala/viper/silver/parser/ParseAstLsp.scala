@@ -177,6 +177,11 @@ trait PLspFieldDecl extends PLspDeclaration {
   override def description = "Field"
 }
 
+trait PLspLetNestedScope extends PLspLogicalVarDecl {
+  def outerLet: PLet
+  override def declRange = RangePosition(outerLet)
+}
+
 trait PLspDefineParam extends PLspAnyVarDecl {
   override def typeMaybe: Option[PType] = None
   override def description: String = "Macro Parameter"
@@ -466,7 +471,7 @@ trait PLspDeclaration extends PNode with PLspHoverHint with PLspSemanticToken wi
     case (Some(tp), Some(ip)) => Seq(GotoDefinition(tp, ip, SelectionBoundScope(ip)))
     case _ => Nil
   }
-  override def getReferenceTos: Seq[ReferenceTo] = RangePosition(idndef).map(rp => ReferenceTo(rp, rp)).toSeq
+  override def getReferenceTos: Seq[ReferenceTo] = idndefRange.map(rp => ReferenceTo(rp, rp)).toSeq
   override def hovers: Seq[PNode] = Seq(idndef)
 
   def completionScope: Map[SuggestionScope, Byte]
@@ -492,7 +497,7 @@ trait PLspDeclaration extends PNode with PLspHoverHint with PLspSemanticToken wi
   def imports: Option[Path] = None
   def tags: Seq[SymbolTag.SymbolTag] = if (isDeprecated) Seq(SymbolTag.Deprecated) else Nil
 
-  override def getSymbol: Option[DocumentSymbol] = (RangePosition(this), RangePosition(idndef)) match {
+  override def getSymbol: Option[DocumentSymbol] = (declRange, idndefRange) match {
     case (Some(range), Some(selectionRange)) => Some(DocumentSymbol(idndef.pretty, detail, range, selectionRange, symbolKind, tags, None, getSymbolChildren))
     case _ => None
   }

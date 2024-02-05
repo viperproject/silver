@@ -549,7 +549,7 @@ class FastParser {
   def exp[$: P]: P[PExp] = P(expParen(false))
 
   /** Expression should be parenthesized (e.g. for `if (exp)`). We could consider making these parentheses optional in the future. */
-  def parenthesizedExp[$: P]: P[PExp] = exp.parens map { g => g.inner.brackets = Some(g); g.inner }
+  def parenthesizedExp[$: P]: P[PGrouped.Paren[PExp]] = exp.parens
 
   def indexSuffix[$: P]: P[(PSymOp.LBracket, PExp, PSymOp.RBracket) => Pos => SuffixedExpressionGenerator[PExp]] = P(
     (P(PSymOp.Assign) ~ exp).map { case (a, v) => (l: PSymOp.LBracket, i: PExp, r: PSymOp.RBracket) => pos: Pos

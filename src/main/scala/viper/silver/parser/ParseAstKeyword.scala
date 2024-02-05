@@ -32,11 +32,14 @@ case class PGrouped[G <: PSym.Group, +T](l: PReserved[G#L], inner: T, r: PReserv
     s"${l.pretty}${iPretty}${r.pretty}"
   }
 }
-case object PGrouped {
+object PGrouped {
+  /** Grouped and delimited. */
+  type Paren[+T] = PGrouped[PSym.Paren, T]
+
   def implied[G <: PSym.Group, T](l: G#L, inner: T, r: G#R): PGrouped[G, T] =
     PGrouped[G, T](PReserved.implied(l), inner, PReserved.implied(r))(NoPosition, NoPosition)
   def impliedBracket[T](inner: T): PGrouped[PSym.Bracket, T] = implied[PSym.Bracket, T](PSym.LBracket, inner, PSym.RBracket)
-  def impliedParen[T](inner: T): PGrouped[PSym.Paren, T] = implied[PSym.Paren, T](PSym.LParen, inner, PSym.RParen)
+  def impliedParen[T](inner: T): PGrouped.Paren[T] = implied[PSym.Paren, T](PSym.LParen, inner, PSym.RParen)
 }
 
 class PDelimited[+T, +D](

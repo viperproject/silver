@@ -227,13 +227,13 @@ case class Translator(program: PProgram) {
       case PGoto(_, label) =>
         Goto(label.name)(pos, info)
       case PIf(_, cond, thn, els) =>
-        If(exp(cond), stmt(thn).asInstanceOf[Seqn], els map (stmt(_) match {
+        If(exp(cond.inner), stmt(thn).asInstanceOf[Seqn], els map (stmt(_) match {
           case s: Seqn => s
           case s => Seqn(Seq(s), Nil)(s.pos, s.info)
         }) getOrElse Statements.EmptyStmt)(pos, info)
       case PElse(_, els) => stmt(els)
       case PWhile(_, cond, invs, body) =>
-        While(exp(cond), invs.toSeq map (inv => exp(inv.e)), stmt(body).asInstanceOf[Seqn])(pos, info)
+        While(exp(cond.inner), invs.toSeq map (inv => exp(inv.e)), stmt(body).asInstanceOf[Seqn])(pos, info)
       case PQuasihavoc(_, lhs, e) =>
         val (newLhs, newE) = havocStmtHelper(lhs, e)
         Quasihavoc(newLhs, newE)(pos, info)
@@ -509,7 +509,7 @@ case class Translator(program: PProgram) {
       case PApplying(_, wand, _, e) =>
         Applying(exp(wand).asInstanceOf[MagicWand], exp(e))(pos, info)
       case pl@PLet(_, _, _, exp1, _, PLetNestedScope(body)) =>
-        Let(liftLogicalDecl(pl.decl), exp(exp1), exp(body))(pos, info)
+        Let(liftLogicalDecl(pl.decl), exp(exp1.inner), exp(body))(pos, info)
       case _: PLetNestedScope =>
         sys.error("unexpected node PLetNestedScope, should only occur as a direct child of PLet nodes")
       case PExists(_, vars, _, triggers, e) =>

@@ -242,13 +242,13 @@ case class TypeChecker(names: NameAnalyser) {
         invs.toSeq foreach (i => check(i.e, Impure))
       case PGoto(_, _) =>
       case PIf(_, cond, thn, els) =>
-        check(cond, Bool)
+        check(cond.inner, Bool)
         check(thn)
         els foreach check
       case PElse(_, els) =>
         check(els)
       case PWhile(_, cond, invs, body) =>
-        check(cond, Bool)
+        check(cond.inner, Bool)
         invs.toSeq foreach (inv => {
           check(inv.e, Impure)
           checkNoPermForpermExceptInhaleExhale(inv.e)
@@ -785,7 +785,7 @@ case class TypeChecker(names: NameAnalyser) {
       case pl@PLet(_, _, _, e, _, ns) =>
         val oldCurMember = curMember
         curMember = pl
-        checkInternal(e)
+        checkInternal(e.inner)
         checkInternal(ns.body)
         pl.typ = ns.body.typ
         curMember = oldCurMember
