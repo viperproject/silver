@@ -1,7 +1,6 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-//:: IgnoreFile(/carbon/issue/244/)
 field f: Int
 field g: Int
 field h: Bool
@@ -23,7 +22,6 @@ method test01(x: Ref)
   unfold acc(P(x))
   apply A
   assert acc(x.g) && ((x.f) + (x.g) > 0)
-  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/110/)
   assert x.g == 1
 }
 

@@ -1,8 +1,6 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-//:: IgnoreFile(/carbon/issue/257/)
-
 field f: Int
 
 method m1(xs: Set[Ref], y: Ref, zs: Seq[Ref]) {
@@ -31,6 +29,7 @@ method m2(xs: Set[Ref], ys: Set[Ref], z: Ref) {
     assume y.f == 0
     fold p1(y)
     //:: MissingOutput(assert.failed:assertion.false, /Silicon/issue/000/)
+    //:: MissingOutput(assert.failed:assertion.false, /carbon/issue/000/)
     //:: ExpectedOutput(assert.failed:assertion.false)
     assert y != z
 }
@@ -44,6 +43,7 @@ method m3(xs: Seq[Ref], y: Ref, zs: Seq[Ref]) {
         assume !(z in xs)
         package acc(z.f) --* acc(y.f)
         assume forall x: Ref :: {acc(x.f) --* acc(y.f)} x in zs ==> x != y
+        //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/000/)
         assert z != y
 }
 
