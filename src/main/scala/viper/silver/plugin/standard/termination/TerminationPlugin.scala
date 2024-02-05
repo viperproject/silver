@@ -78,9 +78,9 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
     val transformPredicateInstances = StrategyBuilder.Slim[PNode]({
       case pc@PCall(idnUse, args, None) if input.predicates.exists(_.idndef.name == idnUse.name) =>
         // PCall represents the predicate access before the translation into the AST
-        PPredicateInstance(PReserved.implied(PMarkerSymbol), idnUse, args)(pc.pos)
+        PPredicateInstance(PReserved.implied(PMarkerSymbol), idnUse.retype(), args)(pc.pos)
       case PAccPred(_, PGrouped(_, PMaybePairArgument(pc@PCall(idnUse, args, None), _), _)) if input.predicates.exists(_.idndef.name == idnUse.name) =>
-        PPredicateInstance(PReserved.implied(PMarkerSymbol), idnUse, args)(pc.pos)
+        PPredicateInstance(PReserved.implied(PMarkerSymbol), idnUse.retype(), args)(pc.pos)
       case d => d
     }).recurseFunc({
       case PUnfolding(_, _, _, exp) => // ignore predicate access when it is used for unfolding
@@ -95,18 +95,18 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
     // Apply the predicate access to instance transformation only to decreases clauses.
     val newProgram: PProgram = StrategyBuilder.Slim[PNode]({
       case dt: PDecreasesTuple =>
-        decreasesClauses = decreasesClauses :+ dt
-        transformPredicateInstances.execute(dt): PDecreasesTuple
+        val transformedDt = transformPredicateInstances.execute(dt): PDecreasesTuple
+        decreasesClauses = decreasesClauses :+ transformedDt
+        transformedDt
       case dc : PDecreasesClause =>
         decreasesClauses = decreasesClauses :+ dc
         dc
       case d => d
     }).recurseFunc({ // decreases clauses can only appear in functions/methods pres, posts and methods bodies
-      case PProgram(_, _, _, _, functions, _, methods, _, _) => Seq(functions, methods)
+      case PProgram(_, _, _, _, functions, _, methods, _) => Seq(functions, methods)
       case PFunction(_, _, _, _, _, _, pres, posts, _) => Seq(pres, posts)
       case PMethod(_, _, _, _, _, pres, posts, body) => Seq(pres, posts, body)
     }).execute(input)
-
     newProgram
   }
 
@@ -118,7 +118,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
       if (!(c.idnref.name == "decreases" || c.idnref.name == "bounded"))
         return false
       c.funcDecl match {
-        case Some(df: PDomainFunction) => df.domainName.name == "WellFoundedOrder"
+        case Some(df: PDomainFunction) => df.domain.idndef.name == "WellFoundedOrder"
         case _ => false
       }
     }
@@ -155,14 +155,13 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
       return input
 
     var usesPredicate = false
-    val allClauseTypes: Set[Any] = decreasesClauses.flatMap{
-      case PDecreasesTuple(Seq(), _) => Nil
-      case PDecreasesTuple(exps, _) => exps.toSeq.map(e => e.typ match {
-        case PUnknown() if e.isInstanceOf[PCall] =>
-          usesPredicate = usesPredicate || e.asInstanceOf[PCall].funcDecl.map(_.isInstanceOf[PPredicate]).getOrElse(false)
-          Nil
-        case _ => e.typ
-      })
+    val allClauseTypes: Set[PType] = decreasesClauses.flatMap {
+      case PDecreasesTuple(exps, _) => exps.toSeq.flatMap(_ match {
+          case _: PPredicateInstance =>
+            usesPredicate = true
+            None
+          case e => Some(e.typ)
+        })
       case _ => Seq()
     }.toSet
     val presentDomains = input.domains.map(_.idndef.name).toSet
@@ -196,7 +195,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
       val importPProgram = PAstProvider.generateViperPAst(importOnlyProgram)
       val mergedDomains = input.domains.filter(_.idndef.name != "WellFoundedOrder") ++ importPProgram.get.domains
 
-      val mergedProgram = input.copy(domains = mergedDomains)(input.pos)
+      val mergedProgram = input.copy(domains = mergedDomains)(input.pos, input.errors)
       super.beforeTranslate(mergedProgram)
     } else {
       super.beforeTranslate(input)
@@ -359,7 +358,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
       }
   }).recurseFunc({
     case Program(_, _, functions, _, methods, _) => Seq(functions, methods)
-    case Method(_, _, _, _, _, body) => Seq(body)
+    case method: Method => Seq(method.body)
   })
 
   /**

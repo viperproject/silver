@@ -30,7 +30,7 @@ case class Translator(program: PProgram) {
     // assert(TypeChecker.messagecount == 0, "Expected previous phases to succeed, but found error messages.") // AS: no longer sharing state with these phases
 
     program match {
-      case PProgram(_, _, pdomains, pfields, pfunctions, ppredicates, pmethods, pextensions, _) =>
+      case PProgram(_, _, pdomains, pfields, pfunctions, ppredicates, pmethods, pextensions) =>
 
         /* [2022-03-14 Alessandro] Domain signatures need no be translated first, since signatures of other declarations
          * like domain functions, and ordinary functions might depend on the domain signature. Especially this is the case
@@ -80,12 +80,7 @@ case class Translator(program: PProgram) {
     case PMethod(_, _, idndef, _, _, pres, posts, body) =>
       val m = findMethod(idndef)
 
-      val newBody = body.map(actualBody => {
-        val b = stmt(actualBody).asInstanceOf[Seqn]
-        val newScopedDecls = b.scopedSeqnDeclarations ++ b.deepCollect {case l: Label => l}
-
-        b.copy(scopedSeqnDeclarations = newScopedDecls)(b.pos, b.info, b.errT)
-      })
+      val newBody = body.map(actualBody => stmt(actualBody).asInstanceOf[Seqn])
 
       val finalMethod = m.copy(pres = pres.toSeq map (p => exp(p.e)), posts = posts.toSeq map (p => exp(p.e)), body = newBody)(m.pos, m.info, m.errT)
 
@@ -105,9 +100,9 @@ case class Translator(program: PProgram) {
 
   private def translate(a: PAxiom): DomainAxiom = a match {
     case pa@PAxiom(anns, _, Some(name), e) =>
-      NamedDomainAxiom(name.name, exp(e.e.inner))(a, Translator.toInfo(anns, pa), domainName = pa.domainName.name)
+      NamedDomainAxiom(name.name, exp(e.e.inner))(a, Translator.toInfo(anns, pa), domainName = pa.domain.idndef.name)
     case pa@PAxiom(anns, _, None, e) =>
-      AnonymousDomainAxiom(exp(e.e.inner))(a, Translator.toInfo(anns, pa), domainName = pa.domainName.name)
+      AnonymousDomainAxiom(exp(e.e.inner))(a, Translator.toInfo(anns, pa), domainName = pa.domain.idndef.name)
   }
 
   private def translate(f: PFunction): Function = f match {
@@ -148,7 +143,7 @@ case class Translator(program: PProgram) {
       case pf@PFunction(_, _, _, _, _, typ, _, _, _) =>
         Function(name, pf.formalArgs map liftArgDecl, ttyp(typ), null, null, null)(pos, Translator.toInfo(p.annotations, pf))
       case pdf@PDomainFunction(_, unique, _, _, _, _, typ, interp) =>
-        DomainFunc(name, pdf.formalArgs map liftAnyArgDecl, ttyp(typ), unique.isDefined, interp.map(_.i.grouped.inner))(pos, Translator.toInfo(p.annotations, pdf),pdf.domainName.name)
+        DomainFunc(name, pdf.formalArgs map liftAnyArgDecl, ttyp(typ), unique.isDefined, interp.map(_.i.grouped.inner))(pos, Translator.toInfo(p.annotations, pdf), pdf.domain.idndef.name)
       case pd@PDomain(_, _, _, typVars, interp, _) =>
         Domain(name, null, null, typVars map (_.inner.toSeq map (t => TypeVar(t.idndef.name))) getOrElse Nil, interp.map(_.interps))(pos, Translator.toInfo(p.annotations, pd))
       case pp: PPredicate =>
@@ -355,7 +350,7 @@ case class Translator(program: PProgram) {
     pexp match {
       case piu @ PIdnUseExp(name) =>
         piu.decl match {
-          case Some(_: PAnyVarDecl) => LocalVar(name, ttyp(pexp.typ))(pos, info)
+          case Some(_: PTypedVarDecl) => LocalVar(name, ttyp(pexp.typ))(pos, info)
           // A malformed AST where a field, function or other declaration is used as a variable.
           // Should have been caught by the type checker.
           case _ => sys.error("should not occur in type-checked program")
@@ -470,12 +465,8 @@ case class Translator(program: PProgram) {
         IntLit(i)(pos, info)
       case p@PResultLit(_) =>
         // find function
-        var par: PNode = p.parent.get
-        while (!par.isInstanceOf[PFunction]) {
-          if (par == null) sys.error("cannot use 'result' outside of function")
-          par = par.parent.get
-        }
-        Result(ttyp(par.asInstanceOf[PFunction].typ.resultType))(pos, info)
+        val func = p.getAncestor[PFunction].get
+        Result(ttyp(func.typ.resultType))(pos, info)
       case bool: PBoolLit =>
         if (bool.b) TrueLit()(pos, info) else FalseLit()(pos, info)
       case PNullLit(_) =>
@@ -552,7 +543,7 @@ case class Translator(program: PProgram) {
         }
       case POldExp(_, lbl, e) =>
         val ee = exp(e.inner)
-        lbl.map(l => LabelledOld(ee, l.inner.name)(pos, info)).getOrElse(Old(ee)(pos, info))
+        lbl.map(l => LabelledOld(ee, l.inner.fold(_.rs.keyword, _.name))(pos, info)).getOrElse(Old(ee)(pos, info))
       case PCondExp(cond, _, thn, _, els) =>
         CondExp(exp(cond), exp(thn), exp(els))(pos, info)
       case PCurPerm(_, res) =>
@@ -597,8 +588,8 @@ case class Translator(program: PProgram) {
 
       case PSeqSlice(seq, _, s, _, e, _) =>
         val es = exp(seq)
-        val ss = s.map(exp).map(SeqTake(es, _)(pos, info)).getOrElse(es)
-        e.map(exp).map(SeqDrop(ss, _)(pos, info)).getOrElse(ss)
+        val ss = e.map(exp).map(SeqTake(es, _)(pos, info)).getOrElse(es)
+        s.map(exp).map(SeqDrop(ss, _)(pos, info)).getOrElse(ss)
 
       case PUpdate(base, _, key, _, value, _) => base.typ match {
         case _: PSeqType => SeqUpdate(exp(base), exp(key), exp(value))(pos, info)
@@ -645,7 +636,8 @@ case class Translator(program: PProgram) {
   def liftAnyArgDecl(formal: PAnyFormalArgDecl) =
     formal match {
       case f: PFormalArgDecl => liftArgDecl(f)
-      case u: PUnnamedFormalArgDecl => UnnamedLocalVarDecl(ttyp(u.typ))(u.typ)
+      case PDomainFunctionArg(Some(idndef), _, typ) => LocalVarDecl(idndef.name, ttyp(typ))(idndef)
+      case PDomainFunctionArg(None, _, typ) => UnnamedLocalVarDecl(ttyp(typ))(typ)
     }
 
   /** Takes a `PFormalArgDecl` and turns it into a `LocalVarDecl`. */
@@ -696,7 +688,9 @@ case class Translator(program: PProgram) {
           assert(typ.typeArgs.isEmpty)
           TypeVar(name.name) // not a domain, i.e. it must be a type variable
       }
-    case PWandType() => Wand
+    case TypeHelper.Wand => Wand
+    case TypeHelper.Predicate => Bool
+    case TypeHelper.Impure => Bool
     case t: PExtender => t.translateType(this)
     case PUnknown() =>
       sys.error("unknown type unexpected here")

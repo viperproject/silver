@@ -6,10 +6,17 @@
 
 package viper.silver.ast.utility.rewriter
 
-import viper.silver.parser.Transformer.ParseTreeDuplicationError
+import viper.silver.parser.PNode
 import viper.silver.ast.{AtomicType, BackendFuncApp, DomainFuncApp, ErrorTrafo, FuncApp, Info, Node, Position}
 
 import scala.reflect.runtime.{universe => reflection}
+
+trait HasExtraValList {
+  def getExtraVals: Seq[Any]
+}
+trait HasExtraVars {
+  def copyExtraVars(from: Any): Unit
+}
 
 /**
   * Trait Rewritable provides an interface that specifies which methods are required for the rewriter to work with.
@@ -39,8 +46,8 @@ trait Rewritable extends Product {
         val firstArgList = children
         var secondArgList = Seq.empty[Any]
         import viper.silver.ast.{DomainType, DomainAxiom, FuncApp, DomainFunc, DomainFuncApp}
-        import viper.silver.parser.{PAxiom, PDomainFunction, PDomainType, PNode}
         this match {
+          // TODO: remove the following cases by implementing `HasExtraValList` on the respective classes
           case dt: DomainType => secondArgList = Seq(dt.typeParameters)
           case da: DomainAxiom => secondArgList = Seq(da.pos, da.info, da.domainName, da.errT)
           case fa: FuncApp => secondArgList = Seq(fa.pos, fa.info, fa.typ, fa.errT)
@@ -48,9 +55,14 @@ trait Rewritable extends Product {
           case df: DomainFuncApp => secondArgList = Seq(df.pos, df.info, df.typ, df.domainName, df.errT)
           case ba: BackendFuncApp => secondArgList = Seq(ba.pos, ba.info, ba.typ, ba.interpretation, ba.errT)
           case no: Node => secondArgList = no.getMetadata
-          case pa: PAxiom => secondArgList = Seq(pa.domainName) ++ Seq(pos.getOrElse(pa.pos))
-          case pd: PDomainFunction => secondArgList = Seq(pd.domainName) ++ Seq(pos.getOrElse(pd.pos))
-          case pn: PNode => secondArgList = Seq(pos.getOrElse(pn.pos))
+
+          case evl: HasExtraValList => {
+            secondArgList = evl.getExtraVals.map(ev => {
+              // Replace positions with the new one
+              val replace = pos.isDefined && ev.isInstanceOf[(_, _)] && ev.asInstanceOf[(_, _)]._1.isInstanceOf[Position] && ev.asInstanceOf[(_, _)]._2.isInstanceOf[Position]
+              if (replace) pos.get else ev
+            })
+          }
           case _ =>
         }
 
@@ -62,9 +74,9 @@ trait Rewritable extends Product {
         }
 
         // Copy member values, as they aren't in the parameters' list.
-        this match {
-          case dt: PDomainType =>
-            newNode.asInstanceOf[PDomainType].kind = dt.kind
+        newNode match {
+          case ev: HasExtraVars =>
+            ev.copyExtraVars(this)
           case _ =>
         }
 
@@ -109,4 +121,9 @@ trait Rewritable extends Product {
       newNode.asInstanceOf[this.type]
     }
   }
+
+  def initProperties(): Unit = ()
 }
+
+case class ParseTreeDuplicationError(original: PNode, newChildren: Seq[Any])
+    extends RuntimeException(s"Cannot duplicate $original with new children $newChildren")

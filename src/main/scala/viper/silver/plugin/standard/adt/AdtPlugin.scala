@@ -20,7 +20,7 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
                 config: viper.silver.frontend.SilFrontendConfig,
                 fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
 
-  import fp.{annotation, argList, formalArg, idndef, idnref, typ, typeList, domainTypeVarDecl, ParserExtension, lineCol, _file}
+  import fp.{annotation, argList, idnTypeBinding, idndef, idnref, typ, typeList, domainTypeVarDecl, ParserExtension, lineCol, _file}
   import FastParserCompanion.{ExtendedParsing, LeadingWhitespace, PositionParsing, reservedKw, reservedSym, whitespace}
 
   /**
@@ -71,27 +71,25 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
     P(P(PAdtKeyword) ~ idndef ~ typeList(domainTypeVarDecl).? ~ adtConstructorDecl.rep.braces.map(PAdtConstructors1.apply _).pos ~~~ adtDerivesDecl.lw.?).map {
       case (k, name, typparams, c, dec) =>
         ap: PAnnotationsPosition => {
-          val adt = PAdt(
+          PAdt(
             ap.annotations,
             k,
             name,
             typparams,
-            PAdtSeq(c.seq.update(c.seq.inner map (c => PAdtConstructor(c.annotations, c.idndef, c.args)(null)(c.pos))))(c.pos),
+            PAdtSeq(c.seq.update(c.seq.inner map (c => PAdtConstructor(c.annotations, c.idndef, c.args)(c.pos))))(c.pos),
             dec,
           )(ap.pos)
-          adt.c.seq.inner.toSeq.foreach(_.adt = adt)
-          adt
         }
     }
 
   def adtDerivesDecl[$: P] = P((P(PDerivesKeyword) ~ adtDerivingDeclBody.rep.braces.map(PAdtSeq.apply _).pos) map (PAdtDeriving.apply _).tupled).pos
 
-  def adtWithout[$: P]: P[PAdtWithout] = P((P(PWithoutKeyword) ~ idnref.map(i => PAdtFieldRef(i.name)(i.pos)).delimited(PSym.Comma, min = 1)) map (PAdtWithout.apply _).tupled).pos
+  def adtWithout[$: P]: P[PAdtWithout] = P((P(PWithoutKeyword) ~ idnref[$, PAdtFieldDecl].delimited(PSym.Comma, min = 1)) map (PAdtWithout.apply _).tupled).pos
 
   def adtDerivingDeclBody[$: P]: P[PAdtDerivingInfo] =
-    P((idnref ~~~ typ.brackets.lw.? ~~~ adtWithout.lw.?) map ((PAdtDerivingInfo.apply _).tupled)).pos
+    P((idndef ~~~ typ.brackets.lw.? ~~~ adtWithout.lw.?) map ((PAdtDerivingInfo.apply _).tupled)).pos
 
-  def adtConstructorDecl[$: P]: P[PAdtConstructor1] = P((annotation.rep ~ idndef ~ argList(formalArg) ~~~ P(PSym.Semi).lw.?) map (PAdtConstructor1.apply _).tupled).pos
+  def adtConstructorDecl[$: P]: P[PAdtConstructor1] = P((annotation.rep ~ idndef ~ argList(idnTypeBinding.map(PAdtFieldDecl(_))) ~~~ P(PSym.Semi).lw.?) map (PAdtConstructor1.apply _).tupled).pos
 
   override def beforeResolve(input: PProgram): PProgram = {
     if (deactivated) {
@@ -102,21 +100,22 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
     val declaredAdtNames = input.extensions.collect { case a: PAdt => a.idndef.name }.toSet
     val declaredConstructorNames = input.extensions.collect { case a: PAdt => a.constructors.map(c => c.idndef) }.flatten.toSet
     val declaredConstructorArgsNames = input.extensions.collect { case a: PAdt =>
-      a.constructors flatMap (c => c.formalArgs collect { case PFormalArgDecl(idndef, _, _) => idndef.name })
+      a.constructors flatMap (_.fieldDecls map (_.idndef.name))
     }.flatten.toSet
 
     def transformStrategy[T <: PNode](input: T): T = StrategyBuilder.Slim[PNode]({
       // If derives import is missing deriving info is ignored
       case pa@PAdt(anns, adt, idndef, typVars, constructors, _) if !derivesImported => PAdt(anns, adt, idndef, typVars, constructors, None)(pa.pos)
-      case pa@PDomainType(idnuse, args) if declaredAdtNames.contains(idnuse.name) => PAdtType(idnuse, args)(pa.pos)
-      case pc@PCall(idnuse, args, typeAnnotated) if declaredConstructorNames.exists(_.name == idnuse.name) => PConstructorCall(idnuse, args, typeAnnotated)(pc.pos)
+      case pa@PDomainType(idnuse, args) if declaredAdtNames.contains(idnuse.name) => PAdtType(idnuse.retype(), args)(pa.pos)
+      case pc@PCall(idnuse, args, typeAnnotated) if declaredConstructorNames.exists(_.name == idnuse.name) => PConstructorCall(idnuse.retype(), args, typeAnnotated)(pc.pos)
       // A destructor call or discriminator call might be parsed as left-hand side of a field assignment, which is illegal. Hence in this case
       // we simply treat the calls as an ordinary field access, which results in an identifier not found error.
       case pfa@PAssign(PDelimited(fieldAcc: PFieldAccess), op, rhs) if declaredConstructorArgsNames.contains(fieldAcc.idnref.name) ||
         declaredConstructorNames.exists("is" + _.name == fieldAcc.idnref.name) =>
         PAssign(pfa.targets.update(Seq(fieldAcc.copy(rcv = transformStrategy(fieldAcc.rcv))(fieldAcc.pos))), op, transformStrategy(rhs))(pfa.pos)
-      case pfa@PFieldAccess(rcv, dot, idnuse) if declaredConstructorArgsNames.contains(idnuse.name) => PDestructorCall(rcv, PReserved(PDiscDot)(dot.pos), PAdtFieldRef(idnuse.name)(idnuse.pos))(pfa.pos)
-      case pfa@PFieldAccess(rcv, dot, idnuse) if declaredConstructorNames.exists("is" + _.name == idnuse.name) => {
+      case pfa@PFieldAccess(rcv, dot, idnuse) if declaredConstructorArgsNames.contains(idnuse.name) =>
+        PDestructorCall(rcv, PReserved(PDiscDot)(dot.pos), idnuse.retype())(pfa.pos)
+      case pfa@PFieldAccess(rcv, dot, idnuse) if idnuse.decls.forall(!_.isInstanceOf[PFieldDecl]) && declaredConstructorNames.exists("is" + _.name == idnuse.name) => {
         val middlePos = idnuse.pos._1.deltaColumn(2)
         PDiscriminatorCall(rcv, PReserved(PDiscDot)(dot.pos), PReserved(PIsKeyword)(idnuse.pos._1, middlePos), PIdnRef(idnuse.name.substring(2))(middlePos, idnuse.pos._2))(pfa.pos)
       }

@@ -68,7 +68,7 @@ trait PLspHoverHintBoth extends PLspHoverHint with PLspHoverHintRef {
 // Identifiers (uses and definitions)
 ////
 trait PLspIdnUse extends PNode with PLspTokenModifiers with HasSemanticHighlights with HasGotoDefinitions with HasReferenceTos {
-  def decl: Option[PDeclaration]
+  def decl: Option[PDeclarationInner]
   def assignUse: Boolean
 
   override def tokenModifiers = (if (assignUse) Seq(TokenModifier.Modification) else Nil)
@@ -133,29 +133,33 @@ trait PLspOperator extends PLspReservedString {
 // Variable declarations
 ////
 trait PLspAnyVarDecl extends PLspDeclaration {
-  def typ: PType
+  def typeMaybe: Option[PType]
   override def hint = pretty
-  override def detail = Some(typ.pretty)
+  override def detail = typeMaybe.map(_.pretty)
   override def symbolKind = SymbolKind.Variable
   override def completionScope = Map(ExpressionScope -> 0, StatementScope -> -50)
   override def completionKind = CompletionKind.Variable
 }
+trait PLspTypedVarDecl extends PLspAnyVarDecl {
+  def typ: PType
+  override def typeMaybe = Some(typ)
+}
 
-trait PLspFormalArgDecl extends PLspDeclaration with PLspAnyVarDecl {
+trait PLspFormalArgDecl extends PLspDeclaration with PLspTypedVarDecl {
   override def tokenType = TokenType.Parameter
   override def description = "Argument Binding"
   override def tokenModifiers = Seq(TokenModifier.Readonly)
 }
-trait PLspFormalReturnDecl extends PLspDeclaration with PLspAnyVarDecl {
+trait PLspFormalReturnDecl extends PLspDeclaration with PLspTypedVarDecl {
   override def tokenType = TokenType.Variable
   override def description = "Return Variable"
 }
-trait PLspLogicalVarDecl extends PLspDeclaration with PLspAnyVarDecl {
+trait PLspLogicalVarDecl extends PLspDeclaration with PLspTypedVarDecl {
   override def tokenType = TokenType.Parameter
   override def description = "Logical Binding"
   override def tokenModifiers = Seq(TokenModifier.Readonly)
 }
-trait PLspLocalVarDecl extends PLspDeclaration with PLspAnyVarDecl {
+trait PLspLocalVarDecl extends PLspDeclaration with PLspTypedVarDecl {
   override def tokenType = TokenType.Variable
   override def description = "Local Variable"
 }
@@ -216,7 +220,8 @@ trait PLspCall extends PLspExpRef with HasInlayHints {
     parts.head == d || parts.last == d
   }
   override def getInlayHints: Seq[InlayHint] = formalArgs.zip(args).flatMap {
-    case (_: PUnnamedFormalArgDecl, _) => None
+    case (PDomainFunctionArg(None, _, _), _) => None
+    case (PDomainFunctionArg(Some(decl), _, _), PIdnUseExp(use)) if idnUseMatchesArg(decl.name, use) => None
     case (PFormalArgDecl(decl, _, _), PIdnUseExp(use)) if idnUseMatchesArg(decl.name, use) => None
     case (PFormalArgDecl(decl, _, _), arg) => (RangePosition(decl), RangePosition(arg)) match {
       case (Some(declRp), Some(argRp)) => {

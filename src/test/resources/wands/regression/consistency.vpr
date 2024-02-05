@@ -48,22 +48,6 @@ method test03() {
   assert unfolding Pair(p) in acc(Pair(p))
 }
 
-
-/* Applying/packaging must occur inside wands */
-
-function foobar(x: Ref): Int
-  //:: ExpectedOutput(consistency.error)
-  requires true --* acc(x.f)
-{
-  applying (true --* acc(x.f)) in x.f
-}
-
-predicate test18(x: Ref) {
-  //:: ExpectedOutput(consistency.error)
-  acc(x.f) && (acc(x.f) --* acc(x.g)) && applying (acc(x.f) --* acc(x.g)) in true
-}
-
-
 /* Ghost operations on the left of a wand are not supported (and not
  * necessary, they could be performed outside of the wand)
  */

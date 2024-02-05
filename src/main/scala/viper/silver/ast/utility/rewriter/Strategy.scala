@@ -356,6 +356,7 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
       case Traverse.Innermost => rewriteInnermost(node, contextUsed)
     }
     changed = !(result eq node)
+    result.initProperties()
     result
   }
 

@@ -1,3 +1,5 @@
+//:: IgnoreFile(/Carbon/issue/488/)
+
 domain huh {
     function myfun(b: Bool): Bool
 }

@@ -333,6 +333,7 @@ object PSym {
 /** Anything that can act as an operator. */
 trait POperator extends PReservedString with PLspOperator {
   def operator: String
+  def requirePureArgs = false
   override def token = operator
   override def documentationAsHint: Boolean = false
 }
@@ -362,6 +363,7 @@ trait PLogicalOp extends PBinaryOp {
   override def signatures = List(Map(POpApp.pArgS(0) -> Bool, POpApp.pArgS(1) -> Bool, POpApp.pResS -> Bool))
 }
 trait PEqOp extends PBinaryOp {
+  override def requirePureArgs = true
   override def signatures = List(Map(POpApp.pArgS(1) -> POpApp.pArg(0), POpApp.pResS -> Bool))
 }
 trait PCollectionOp extends PBinaryOp
@@ -372,10 +374,8 @@ object PCollectionOp {
 object PSymOp {
   case object Wand    extends PSym("--*") with PSymbolOp with PBinaryOp {
     override def signatures = List(
-      Map(POpApp.pArgS(0) -> Bool, POpApp.pArgS(1) -> Bool, POpApp.pResS -> TypeHelper.Wand),
-      Map(POpApp.pArgS(0) -> Bool, POpApp.pArgS(1) -> Bool, POpApp.pResS -> Bool),
-      Map(POpApp.pArgS(0) -> Bool, POpApp.pArgS(1) -> TypeHelper.Wand, POpApp.pResS -> TypeHelper.Wand),
-      Map(POpApp.pArgS(0) -> Bool, POpApp.pArgS(1) -> TypeHelper.Wand, POpApp.pResS -> Bool))
+      Map(POpApp.pArgS(0) -> Impure, POpApp.pArgS(1) -> Impure, POpApp.pResS -> TypeHelper.Wand),
+    )
   }
   type Wand = PReserved[Wand.type]
 
@@ -386,24 +386,38 @@ object PSymOp {
   case object Ge      extends PSym(">=")  with PSymbolOp with PBinaryOp with PCmpOp
   case object Lt      extends PSym("<")   with PSymbolOp with PBinaryOp with PCmpOp
   case object Gt      extends PSym(">")   with PSymbolOp with PBinaryOp with PCmpOp
-  case object AndAnd  extends PSym("&&")  with PSymbolOp with PBinaryOp with PLogicalOp
+  case object AndAnd  extends PSym("&&")  with PSymbolOp with PBinaryOp {
+    override def signatures = List(
+      Map(POpApp.pArgS(0) -> Bool, POpApp.pArgS(1) -> Bool, POpApp.pResS -> Bool),
+      Map(POpApp.pArgS(0) -> Impure, POpApp.pArgS(1) -> Impure, POpApp.pResS -> Impure),
+    )
+  }
   case object OrOr    extends PSym("||")  with PSymbolOp with PBinaryOp with PLogicalOp
-  case object Implies extends PSym("==>") with PSymbolOp with PBinaryOp with PLogicalOp
+  case object Implies extends PSym("==>") with PSymbolOp with PBinaryOp {
+    override def signatures = List(
+      Map(POpApp.pArgS(0) -> Bool, POpApp.pArgS(1) -> Bool, POpApp.pResS -> Bool),
+      Map(POpApp.pArgS(0) -> Bool, POpApp.pArgS(1) -> Impure, POpApp.pResS -> Impure),
+    )
+  }
   type Implies = PReserved[Implies.type]
   case object Iff    extends PSym("<==>") with PSymbolOp with PBinaryOp with PLogicalOp
   case object Mul     extends PSym("*")   with PSymbolOp with PBinaryOp {
     override def signatures = List(
       Map(POpApp.pArgS(0) -> Perm, POpApp.pArgS(1) -> Perm, POpApp.pResS -> Perm),
+      // The following two are not necessary if `Int` is a subtype of `Perm`
       Map(POpApp.pArgS(0) -> Int, POpApp.pArgS(1) -> Perm, POpApp.pResS -> Perm),
       Map(POpApp.pArgS(0) -> Perm, POpApp.pArgS(1) -> Int, POpApp.pResS -> Perm),
-      Map(POpApp.pArgS(0) -> Int, POpApp.pArgS(1) -> Int, POpApp.pResS -> Int))
+      Map(POpApp.pArgS(0) -> Int, POpApp.pArgS(1) -> Int, POpApp.pResS -> Int),
+    )
   }
   case object Div     extends PSym("/")   with PSymbolOp with PBinaryOp {
     override def signatures = List(
+      // The following two are not necessary if `Int` is a subtype of `Perm`
       Map(POpApp.pArgS(0) -> Int, POpApp.pArgS(1) -> Int, POpApp.pResS -> Perm),
       Map(POpApp.pArgS(0) -> Perm, POpApp.pArgS(1) -> Int, POpApp.pResS -> Perm),
+      Map(POpApp.pArgS(0) -> Int, POpApp.pArgS(1) -> Int, POpApp.pResS -> Int),
       Map(POpApp.pArgS(0) -> Perm, POpApp.pArgS(1) -> Perm, POpApp.pResS -> Perm),
-      Map(POpApp.pArgS(0) -> Int, POpApp.pArgS(1) -> Int, POpApp.pResS -> Int))
+    )
   }
   case object ArithDiv extends PSym("\\") with PSymbolOp with PBinaryOp with PIntOp
   case object Mod     extends PSym("%")   with PSymbolOp with PBinaryOp with PIntOp
@@ -411,7 +425,8 @@ object PSymOp {
   case object Minus   extends PSym("-")   with PSymbolOp with PBinaryOp with PArithOp
   case object Append  extends PSym("++")  with PSymbolOp with PBinaryOp with PCollectionOp {
     override def signatures = List(
-      Map(POpApp.pArgS(0) -> MakeSeq(PCollectionOp.infVar), POpApp.pArgS(1) -> MakeSeq(PCollectionOp.infVar), POpApp.pResS -> MakeSeq(PCollectionOp.infVar)))
+      Map(POpApp.pArgS(0) -> MakeSeq(PCollectionOp.infVar), POpApp.pArgS(1) -> MakeSeq(PCollectionOp.infVar), POpApp.pResS -> MakeSeq(PCollectionOp.infVar)),
+    )
   }
 
   case object Neg     extends PSym("-")   with PSymbolOp with PUnaryOp {
@@ -448,20 +463,20 @@ object PSymOp {
 // Use the token type from `PLspKeyword`
 trait POperatorKeyword extends PKeyword with POperator with PLspKeyword
 
-trait PSetToSetOp extends PBinaryOp {
+trait PSetToSetOp extends PBinaryOp with PCollectionOp {
   override def signatures = List(
     Map(POpApp.pArgS(0) -> MakeSet(PCollectionOp.infVar), POpApp.pArgS(1) -> MakeSet(PCollectionOp.infVar), POpApp.pResS -> MakeSet(PCollectionOp.infVar)),
     Map(POpApp.pArgS(0) -> MakeMultiset(PCollectionOp.infVar), POpApp.pArgS(1) -> MakeMultiset(PCollectionOp.infVar), POpApp.pResS -> MakeMultiset(PCollectionOp.infVar))
   )
 }
-trait PInOp extends PBinaryOp {
+trait PInOp extends PBinaryOp with PCollectionOp {
   override def signatures = List(
     Map(POpApp.pArgS(1) -> MakeSet(POpApp.pArg(0)), POpApp.pResS -> Bool),
     Map(POpApp.pArgS(1) -> MakeSeq(POpApp.pArg(0)), POpApp.pResS -> Bool),
     Map(POpApp.pArgS(1) -> MakeMultiset(POpApp.pArg(0)), POpApp.pResS -> Int),
     Map(POpApp.pArgS(1) -> MakeMap(POpApp.pArg(0), PCollectionOp.infVar), POpApp.pResS -> Bool))
 }
-trait PSubsetOp extends PBinaryOp {
+trait PSubsetOp extends PBinaryOp with PCollectionOp {
   override def signatures = List(
     Map(POpApp.pArgS(0) -> MakeSet(PCollectionOp.infVar), POpApp.pArgS(1) -> MakeSet(PCollectionOp.infVar), POpApp.pResS -> Bool),
     Map(POpApp.pArgS(0) -> MakeMultiset(PCollectionOp.infVar), POpApp.pArgS(1) -> MakeMultiset(PCollectionOp.infVar), POpApp.pResS -> Bool))

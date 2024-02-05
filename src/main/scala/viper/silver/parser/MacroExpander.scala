@@ -7,8 +7,7 @@
 package viper.silver.parser
 
 import viper.silver.ast.{FilePosition, Position, SourcePosition}
-import viper.silver.ast.utility.rewriter.{ContextA, PartialContextC, StrategyBuilder}
-import viper.silver.parser.Transformer.ParseTreeDuplicationError
+import viper.silver.ast.utility.rewriter.{ContextA, ParseTreeDuplicationError, PartialContextC, StrategyBuilder}
 import viper.silver.verifier.ParseWarning
 
 import scala.collection.mutable
@@ -63,7 +62,7 @@ object MacroExpander {
       val (replacer, freeVars) = makeReplacer()
       // Execute with empty replacer, thus no variables will be replaced but freeVars will be filled
       replacer.execute(define)
-      val parameters = define.parameters.map(_.inner.toSeq).getOrElse(Seq.empty[PIdnDef]).map(_.name).toSet
+      val parameters = define.parameters.map(_.inner.toSeq).getOrElse(Seq.empty).map(_.idndef.name).toSet
       val nonUsedParameter = parameters -- freeVars
 
       if (nonUsedParameter.nonEmpty) {
@@ -151,7 +150,7 @@ object MacroExpander {
       linearizeMethod(doExpandDefines(localMacros ++ globalMacros, methodWithoutMacros, p))
     })
 
-    PProgram(p.imports, p.macros, domains, p.fields, functions, predicates, methods, p.extensions, p.errors ++ warnings)(p.pos)
+    PProgram(p.imports, p.macros, domains, p.fields, functions, predicates, methods, p.extensions)(p.pos, p.errors ++ warnings)
   }
 
 
@@ -203,8 +202,8 @@ object MacroExpander {
     }
 
     // Create a map that maps the formal parameters to the actual arguments of a macro call
-    def mapParamsToArgs(params: Seq[PIdnDef], args: Seq[PExp]): Map[String, PExp] = {
-      params.map(_.name).zip(args).toMap
+    def mapParamsToArgs(params: Seq[PDefineParam], args: Seq[PExp]): Map[String, PExp] = {
+      params.map(_.idndef.name).zip(args).toMap
     }
 
     /* Abstraction over several possible `PNode`s that can represent macro applications */
@@ -427,17 +426,17 @@ object MacroExpander {
       // Variable use: macro parameters are replaced by their respective argument expressions
       case (varUse: PIdnUseExp, ctx) if !ctx.c.boundVars.contains(varUse.name) =>
         if (ctx.c.paramToArgMap.contains(varUse.name))
-          (ctx.c.paramToArgMap(varUse.name), ctx.updateContext(ctx.c.copy(paramToArgMap = ctx.c.paramToArgMap.empty)))
+          (ctx.c.paramToArgMap(varUse.name).deepCopyAll, ctx.updateContext(ctx.c.copy(paramToArgMap = ctx.c.paramToArgMap.empty)))
         else {
           freeVars += varUse.name
           (varUse, ctx)
         }
-      case (varUse: PIdnRef, ctx) if !ctx.c.boundVars.contains(varUse.name) =>
+      case (varUse: PIdnRef[_], ctx) if !ctx.c.boundVars.contains(varUse.name) =>
         if (ctx.c.paramToArgMap.contains(varUse.name)) {
-          val replacement = ctx.c.paramToArgMap(varUse.name)
+          val replacement = ctx.c.paramToArgMap(varUse.name).deepCopyAll
           if (replacement.isInstanceOf[PIdnUseExp]) {
             val repExp = replacement.asInstanceOf[PIdnUseExp]
-            (PIdnRef(repExp.name)(repExp.pos), ctx.updateContext(ctx.c.copy(paramToArgMap = ctx.c.paramToArgMap.empty)))
+            (PIdnRef(repExp.name)(repExp.pos)(varUse.ctag), ctx.updateContext(ctx.c.copy(paramToArgMap = ctx.c.paramToArgMap.empty)))
           } else
             throw ParseException(s"Macro expansion cannot substitute expression `${replacement.pretty}` in non-expression position at ${varUse.pos._1}.", replacement.pos)
         } else {

@@ -59,7 +59,7 @@ class RefutePlugin(@unused reporter: viper.silver.reporter.Reporter,
             Seq(nonDetLocalVarDecl)
           )(r.pos)
       }).recurseFunc({
-        case Method(_, _, _, _, _, body) => Seq(body)
+        case method: Method => Seq(method.body)
       }).execute[Method](method)
     })
     Program(input.domains, input.fields, input.functions, input.predicates, transformedMethods, input.extensions)(input.pos, input.info, input.errT)

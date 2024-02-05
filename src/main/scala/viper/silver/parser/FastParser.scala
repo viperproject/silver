@@ -41,7 +41,7 @@ object FastParserCompanion {
   def identStarts[$: P] = CharIn("A-Z", "a-z", "$_")
   def identContinues[$: P] = CharIn("0-9", "A-Z", "a-z", "$_")
 
-  type Pos = (Position, Position)
+  type Pos = (FilePosition, FilePosition)
   import scala.language.implicitConversions
   implicit def LeadingWhitespaceStr[$: P](p: String): LeadingWhitespace[Unit] = new LeadingWhitespace(() => P(p))
   implicit def LeadingWhitespace[T](p: => P[T]) = new LeadingWhitespace(() => p)
@@ -62,7 +62,7 @@ object FastParserCompanion {
     def ~~~[$: P, V, R](other: LW[V])(implicit s: Implicits.Sequencer[T, V, R]): P[R] = (p() ~~ other.p()).asInstanceOf[P[R]]
     def ~~~/[$: P, V, R](other: LW[V])(implicit s: Implicits.Sequencer[T, V, R]): P[R] = (p() ~~/ other.p()).asInstanceOf[P[R]]
   }
-  class PositionParsing[T](val p: () => P[((Position, Position)) => T]) extends AnyVal {
+  class PositionParsing[T](val p: () => P[((FilePosition, FilePosition)) => T]) extends AnyVal {
     def pos(implicit ctx: P[Any], lineCol: LineCol, _file: Path): P[T] = {
       // TODO: switch over to this?
       // Index ~~ p() ~~ Index map { case (start, f, end) => {
@@ -71,7 +71,7 @@ object FastParserCompanion {
       //   f((FilePosition(_file, startPos._1, startPos._2), FilePosition(_file, finishPos._1, finishPos._2)))
       // }}
       val startPos = lineCol.getPos(ctx.index)
-      val res: P[((Position, Position)) => T] = p()
+      val res: P[((FilePosition, FilePosition)) => T] = p()
       val finishPos = lineCol.getPos(ctx.index)
       res.map(_((FilePosition(_file, startPos._1, startPos._2), FilePosition(_file, finishPos._1, finishPos._2))))
     }
@@ -286,7 +286,7 @@ class FastParser {
           j += 1
         }
       }
-      PProgram(imports, macros, domains, fields, functions, predicates, methods, extensions, errors)(p.pos)
+      PProgram(imports, macros, domains, fields, functions, predicates, methods, extensions)(p.pos, errors)
     }
 
 
@@ -304,7 +304,7 @@ class FastParser {
           case _ =>
             SourcePosition(_file, 0, 0)
         }
-        PProgram(Nil, Nil, Nil, Nil, Nil, Nil, Nil, Nil, Seq(ParseError(msg, location)))((NoPosition, NoPosition))
+        PProgram(Nil, Nil, Nil, Nil, Nil, Nil, Nil, Nil)((NoPosition, NoPosition), Seq(ParseError(msg, location)))
     }
   }
 
@@ -517,9 +517,9 @@ class FastParser {
 
   def idnuse[$: P]: P[PIdnUseExp] = P(ident map (PIdnUseExp.apply _)).pos
 
-  def idnref[$: P]: P[PIdnRef] = P(ident map (PIdnRef.apply _)).pos
+  def idnref[$: P, T <: PDeclarationInner](implicit ctag: scala.reflect.ClassTag[T]): P[PIdnRef[T]] = P(ident map (PIdnRef.apply[T] _)).pos
 
-  def oldLabel[$: P]: P[PLabelUse] = P((P(PKw.Lhs) map (PLhsLabel.apply _)).pos | idnuse)
+  def oldLabel[$: P]: P[Either[PKw.Lhs, PIdnRef[PLabel]]] = P((P(PKw.Lhs) map (Left(_))) | (idnref[$, PLabel] map (Right(_))))
 
   def old[$: P]: P[PKwOp.Old => Pos => POldExp] = P(oldLabel.brackets.? ~ exp.parens).map {
     case (lbl, g) => POldExp(_, lbl, g)
@@ -560,7 +560,7 @@ class FastParser {
       => SuffixedExpressionGenerator[PExp](e0 => PLookup(e0, l, e1, r)(e0.pos._1, pos._2)) })
 
   def fieldAccess[$: P]: P[SuffixedExpressionGenerator[PExp]] =
-    P(((!P(PSymOp.DotDot) ~~ PSymOp.Dot) ~ idnref) map { case (dot, id) => pos: Pos => SuffixedExpressionGenerator[PExp](e => PFieldAccess(e, dot, id)(e.pos._1, pos._2)) }).pos
+    P(((!P(PSymOp.DotDot) ~~ PSymOp.Dot) ~ idnref[$, PFieldDecl]) map { case (dot, id) => pos: Pos => SuffixedExpressionGenerator[PExp](e => PFieldAccess(e, dot, id)(e.pos._1, pos._2)) }).pos
 
   def sliceEnd[$: P]: P[((PSymOp.LBracket, PSymOp.RBracket)) => Pos => SuffixedExpressionGenerator[PExp]] =
     P((P(PSymOp.DotDot) ~ exp).map { case (d, n) => b => pos: Pos
@@ -617,9 +617,9 @@ class FastParser {
 
   def chainComp(op: PReserved[PBinaryOp], right: PExp)(pos: Pos)(from: PExp) = SuffixedExpressionGenerator(_ match {
       case left@PBinExp(_, op0, middle) if cmpOps.contains(op0.rs.token) && left != from =>
-        PBinExp(left, PReserved(PSymOp.AndAnd)(NoPosition, NoPosition), PBinExp(middle, op, right)(middle.pos._1, pos._2))(left.pos._1, pos._2)
+        PBinExp(left, PReserved(PSymOp.AndAnd)(NoPosition, NoPosition), PBinExp(middle.deepCopyAll.asInstanceOf[PExp], op, right)(middle.pos._1, pos._2))(left.pos._1, pos._2)
       case left@PBinExp(_, PReserved(PSymOp.AndAnd), PBinExp(_, op0, middle)) if cmpOps.contains(op0.rs.token) && left != from =>
-        PBinExp(left, PReserved(PSymOp.AndAnd)(NoPosition, NoPosition), PBinExp(middle, op, right)(middle.pos._1, pos._2))(left.pos._1, pos._2)
+        PBinExp(left, PReserved(PSymOp.AndAnd)(NoPosition, NoPosition), PBinExp(middle.deepCopyAll.asInstanceOf[PExp], op, right)(middle.pos._1, pos._2))(left.pos._1, pos._2)
       case left => PBinExp(left, op, right)(left.pos._1, pos._2)
   })
 
@@ -674,11 +674,7 @@ class FastParser {
     P(idndef ~ PSymOp.EqEq ~ parenthesizedExp ~ PKwOp.In ~ exp).map {
       case (id, eq, exp1, in, exp2) =>
         val nestedScope = PLetNestedScope(exp2)(exp2.pos)
-        k => pos => {
-          val let = PLet(k, id, eq, exp1, in, nestedScope)(pos)
-          nestedScope.outerLet = let
-          let
-        }
+        k => PLet(k, id, eq, exp1, in, nestedScope)(_)
     }
 
   def idndef[$: P]: P[PIdnDef] = P(ident map (PIdnDef.apply _)).pos
@@ -717,7 +713,7 @@ class FastParser {
 
   def typ[$: P]: P[PType] = P(typReservedKw | domainTyp | macroType)
 
-  def domainTyp[$: P]: P[PDomainType] = P((idnref ~~~ typeList(typ).lw.?) map (PDomainType.apply _).tupled).pos
+  def domainTyp[$: P]: P[PDomainType] = P((idnref[$, PTypeDeclaration] ~~~ typeList(typ).lw.?) map (PDomainType.apply _).tupled).pos
 
   def seqType[$: P]: P[PKw.Seq => Pos => PSeqType] = P(typ.brackets map { t => PSeqType(_, t) })
 
@@ -804,11 +800,15 @@ class FastParser {
 
   def newExp[$: P]: P[PKw.New => Pos => PNewExp] = P(newExpFields.parens map { n => PNewExp(_, n) })
 
-  def newExpFields[$: P]: P[Either[PSym.Star, PDelimited[PIdnUseExp, PSym.Comma]]] = P(P(PSym.Star).map(Left(_)) | P(idnuse.delimited(PSym.Comma).map(Right(_))))
+  def newExpFields[$: P]: P[Either[PSym.Star, PDelimited[PIdnRef[PFieldDecl], PSym.Comma]]] = P(P(PSym.Star).map(Left(_)) | P(idnref[$, PFieldDecl].delimited(PSym.Comma).map(Right(_))))
 
-  def funcApp[$: P]: P[PCall] = P((idnref ~ argList(exp)) map {
-    case (func, args) => PCall(func, args, None)(_)
-  }).pos
+  def funcApp[$: P]: P[PCall] = P(idnref[$, PGlobalCallable] ~~ " ".repX(1).map { _ => pos: Pos => pos }.pos.? ~~ argList(exp)).map {
+    case (func, space, args) =>
+      space.foreach { space =>
+        _warnings = _warnings :+ ParseWarning("Whitespace between a function identifier and the opening paren is deprecated, remove the spaces", SourcePosition(_file, space._1, space._2))
+      }
+      PCall(func, args, None)(_)
+  }.pos
 
   def maybeTypedFuncApp[$: P](bracketed: Boolean): P[PCall] = P(if (!bracketed) funcApp else (funcApp ~~~ (P(PSym.Colon) ~ typ).lw.?).map {
     case (func, typeGiven) => func.copy(typeAnnotated = typeGiven)(_)
@@ -905,13 +905,13 @@ class FastParser {
     P((nonEmptyIdnTypeList(PLocalVarDecl(_)) ~~~ (P(PSymOp.Assign) ~ exp).lw.?) map { case (a, i) => PVars(_, a, i) })
 
   def defineDecl[$: P]: P[PKw.Define => PAnnotationsPosition => PDefine] =
-    P((idndef ~~~/ NoCut(argList(idndef)).lw.? ~ (stmtBlock(false) | exp)) map {
+    P((idndef ~~~/ NoCut(argList((idndef map PDefineParam.apply).pos)).lw.? ~ (stmtBlock(false) | exp)) map {
       case (idn, args, body) => k => ap: PAnnotationsPosition => PDefine(ap.annotations, k, idn, args, body)(ap.pos)
     })
 
   def defineDeclStmt[$: P]: P[PKw.Define => Pos => PDefine] = P(defineDecl.map { f => k => pos: Pos => f(k)(PAnnotationsPosition(Nil, pos)) })
 
-  def goto[$: P]: P[PKw.Goto => Pos => PGoto] = P(idnuse map { i => PGoto(_, i) _ })
+  def goto[$: P]: P[PKw.Goto => Pos => PGoto] = P(idnref[$, PLabel] map { i => PGoto(_, i) _ })
 
   def label[$: P]: P[PKw.Label => Pos => PLabel] =
     P((idndef ~ semiSeparated(invariant)) map { case (i, inv) => k=> PLabel(k, i, inv) _ })
@@ -954,8 +954,7 @@ class FastParser {
         decls.collect { case p: PPredicate => p }, // Predicates
         decls.collect { case m: PMethod => m }, // Methods
         decls.collect { case e: PExtender => e }, // Extensions
-        warnings // Parse Warnings
-      )(_)
+      )(_, warnings) // Parse Warnings
     }
   }).pos
 
@@ -981,8 +980,8 @@ class FastParser {
       val members = block.inner.members
       val funcs1 = members collect { case m: PDomainFunction1 => m }
       val axioms1 = members collect { case m: PAxiom1 => m }
-      val funcs = funcs1 map (f => (PDomainFunction(f.annotations, f.unique, f.function, f.idndef, f.args, f.c, f.typ, f.interpretation)(PIdnRef(name.name)(name.pos))(f.pos), f.s))
-      val axioms = axioms1 map (a => (PAxiom(a.annotations, a.axiom, a.idndef, a.exp)(PIdnRef(name.name)(name.pos))(a.pos), a.s))
+      val funcs = funcs1 map (f => (PDomainFunction(f.annotations, f.unique, f.function, f.idndef, f.args, f.c, f.typ, f.interpretation)(f.pos), f.s))
+      val axioms = axioms1 map (a => (PAxiom(a.annotations, a.axiom, a.idndef, a.exp)(a.pos), a.s))
       val allMembers = block.update(PDomainMembers(PDelimited(funcs)(NoPosition, NoPosition), PDelimited(axioms)(NoPosition, NoPosition))(block.pos))
       k => ap: PAnnotationsPosition => PDomain(
         ap.annotations,
@@ -1000,11 +999,11 @@ class FastParser {
     case (unique, (function, idn, args, c, typ), interpretation, s) => ap: PAnnotationsPosition => PDomainFunction1(ap.annotations, unique, function, idn, args, c, typ, interpretation, s)(ap.pos)
   }
 
-  def domainFunctionSignature[$: P] = P(P(PKw.Function) ~ idndef ~ argList(formalArg | unnamedFormalArg) ~ PSym.Colon ~ typ)
+  def domainFunctionSignature[$: P] = P(P(PKw.Function) ~ idndef ~ argList(domainFunctionArg) ~ PSym.Colon ~ typ)
 
-  def formalArg[$: P]: P[PFormalArgDecl] = P(idnTypeBinding.map(PFormalArgDecl(_)))
+  def domainFunctionArg[$: P]: P[PDomainFunctionArg] = P(idnTypeBinding.map(PDomainFunctionArg(_)) | typ.map(PDomainFunctionArg(None, None, _) _).pos)
 
-  def unnamedFormalArg[$: P] = P(typ map (PUnnamedFormalArgDecl.apply _)).pos
+  def formalArg[$: P]: P[PFormalArgDecl] = P(idnTypeBinding map (PFormalArgDecl(_)))
 
   def bracedExp[$: P]: P[PBracedExp] = P(exp.braces map (PBracedExp(_) _)).pos
 

@@ -18,7 +18,7 @@ case object PPredicateInstanceKeyword extends PKw("PredicateInstance") with PKey
  */
 case object PMarkerSymbol extends PSym("#") with PSymbolLang
 
-case class PPredicateInstance(m: PReserved[PMarkerSymbol.type], idnuse: PIdnRef, args: PDelimited.Comma[PSym.Paren, PExp])(val pos: (Position, Position)) extends PExtender with PExp {
+case class PPredicateInstance(m: PReserved[PMarkerSymbol.type], idnuse: PIdnRef[PPredicate], args: PDelimited.Comma[PSym.Paren, PExp])(val pos: (Position, Position)) extends PExtender with PExp {
 
   typ = PPrimitiv(PReserved(PPredicateInstanceKeyword)(NoPosition, NoPosition))(NoPosition, NoPosition)
 
@@ -28,16 +28,16 @@ case class PPredicateInstance(m: PReserved[PMarkerSymbol.type], idnuse: PIdnRef,
   override def forceSubstitution(ts: PTypeSubstitution): Unit = {}
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
-    // TODO: Don't know if this is correct
-    // check that idnuse is the id of a predicate
-    n.definition(member = null)(idnuse) match {
-      case Some(p: PPredicate) =>
-        // type checking should be the same as for PPredicateAccess nodes
-        val predicateAccess = PCall(idnuse, args, None)(p.pos)
-        predicateAccess.funcDecl = Some(p)
-        t.checkInternal(predicateAccess)
-        None
-      case _ => Some(Seq("expected predicate"))
+    if (idnuse.decls.isEmpty)
+      // Already reported by name analyser
+      return None
+    if (idnuse.decls.size > 1)
+      Some(Seq("predicate instance is ambiguous"))
+    else {
+      // type checking should be the same as for PPredicateAccess nodes
+      val predicateAccess = PCall(idnuse.retype(), args, None)(pos)
+      t.checkInternal(predicateAccess)
+      None
     }
   }
 
