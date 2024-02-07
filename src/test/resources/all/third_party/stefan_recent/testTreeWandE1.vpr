@@ -2,6 +2,7 @@
 // http://creativecommons.org/publicdomain/zero/1.0/
 
 //:: IgnoreFile(/Carbon/issue/253/)
+//:: IgnoreFile(/silicon/issues/801/)
 field Wand_state_contains_for_state_contains__lemma: Int
 
 field Wand_state_contains_for_state_contains__in_1: Ref
