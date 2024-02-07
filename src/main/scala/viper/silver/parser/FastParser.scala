@@ -803,7 +803,7 @@ class FastParser {
 
   def newExpFields[$: P]: P[Either[PSym.Star, PDelimited[PIdnRef[PFieldDecl], PSym.Comma]]] = P(P(PSym.Star).map(Left(_)) | P(idnref[$, PFieldDecl].delimited(PSym.Comma).map(Right(_))))
 
-  def funcApp[$: P]: P[PCall] = P(idnref[$, PGlobalCallable] ~~ " ".repX(1).map { _ => pos: Pos => pos }.pos.? ~~ argList(exp)).map {
+  def funcApp[$: P]: P[PCall] = P(idnref[$, PCallable] ~~ " ".repX(1).map { _ => pos: Pos => pos }.pos.? ~~ argList(exp)).map {
     case (func, space, args) =>
       space.foreach { space =>
         _warnings = _warnings :+ ParseWarning("Whitespace between a function identifier and the opening paren is deprecated, remove the spaces", SourcePosition(_file, space._1, space._2))
@@ -853,7 +853,7 @@ class FastParser {
   // delimited sequence of field access, function application or identifier)
   def assign[$: P]: P[PAssign] = P(
     (assignTarget.delimited(PSym.Comma, min = 1) ~~~ (P(PSymOp.Assign).map(Some(_)) ~ exp).lw.?)
-      filter (a => a._2.isDefined || (a._1.length == 1 && a._1.head.isInstanceOf[PMaybeMacroExp]))
+      filter (a => a._2.isDefined || (a._1.length == 1 && (a._1.head.isInstanceOf[PIdnUse] || a._1.head.isInstanceOf[PCall])))
       map (a => if (a._2.isDefined) PAssign(a._1, a._2.get._1, a._2.get._2) _ else PAssign(PDelimited.empty, None, a._1.head) _)
     ).pos
 

@@ -425,6 +425,8 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
           rewriteTopDown(t5, context)).asInstanceOf[A]
 
         case Some(value) => Some(rewriteTopDown(value, context)).asInstanceOf[A]
+        case Left(value) => Left(rewriteTopDown(value, context)).asInstanceOf[A]
+        case Right(value) => Right(rewriteTopDown(value, context)).asInstanceOf[A]
 
         case node: N @unchecked =>
           // Rewrite node and context
@@ -478,6 +480,8 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
           rewriteBottomUp(t5, context)).asInstanceOf[A]
 
         case Some(value) => Some(rewriteBottomUp(value, context)).asInstanceOf[A]
+        case Left(value) => Left(rewriteBottomUp(value, context)).asInstanceOf[A]
+        case Right(value) => Right(rewriteBottomUp(value, context)).asInstanceOf[A]
 
         case node: N @unchecked =>
           val c = context.addAncestor(node).asInstanceOf[C]
@@ -529,6 +533,8 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
           rewriteInnermost(t5, context)).asInstanceOf[A]
 
         case Some(value) => Some(rewriteInnermost(value, context)).asInstanceOf[A]
+        case Left(value) => Left(rewriteInnermost(value, context)).asInstanceOf[A]
+        case Right(value) => Right(rewriteInnermost(value, context)).asInstanceOf[A]
 
         case node: N @unchecked =>
           // Rewrite node and context

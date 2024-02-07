@@ -108,7 +108,7 @@ object PAdtFieldDecl {
   def apply(d: PIdnTypeBinding): PAdtFieldDecl = PAdtFieldDecl(d.idndef, d.c, d.typ)(d.pos)
 }
 
-case class PAdtConstructor(annotations: Seq[PAnnotation], idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PAdtFieldDecl])(val pos: (Position, Position)) extends PExtender with PAnyFunction with PGlobalUniqueDeclaration with PPrettySubnodes with PAdtChild {
+case class PAdtConstructor(annotations: Seq[PAnnotation], idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PAdtFieldDecl])(val pos: (Position, Position)) extends PExtender with PNoSpecsFunction with PGlobalUniqueDeclaration with PPrettySubnodes with PAdtChild {
   override def resultType: PType = adt.getAdtType
   def fieldDecls: Seq[PAdtFieldDecl] = this.args.inner.toSeq
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
@@ -133,6 +133,10 @@ case class PAdtConstructor(annotations: Seq[PAnnotation], idndef: PIdnDef, args:
   override def translateMember(t: Translator): AdtConstructor = {
     findAdtConstructor(idndef, t)
   }
+
+  override def keyword = adt.adt
+  override def c = PReserved.implied(PSym.Colon)
+  override def body = None
 }
 
 object PAdtConstructor {

@@ -34,7 +34,7 @@ object MacroExpander {
     val uniqueMacroNames = new mutable.HashMap[String, (Position, Position)]()
     for (define <- globalMacros) {
       if (uniqueMacroNames.contains(define.idndef.name)) {
-        throw ParseException(s"Another macro named '${define.idndef.name}' already " +
+        throw ParseException(s"another macro named `${define.idndef.name}` already " +
           s"exists at ${uniqueMacroNames(define.idndef.name)}", define.pos)
       } else {
         uniqueMacroNames += ((define.idndef.name, define.pos))
@@ -44,7 +44,7 @@ object MacroExpander {
     // Check if macros names aren't already taken by other identifiers
     for (name <- globalNamesWithoutMacros) {
       if (uniqueMacroNames.contains(name)) {
-        throw ParseException(s"The macro name '$name' has already been used by another identifier", uniqueMacroNames(name))
+        throw ParseException(s"the macro name `$name` has already been used by another identifier", uniqueMacroNames(name))
       }
     }
 
@@ -53,7 +53,7 @@ object MacroExpander {
     StrategyBuilder.ContextVisitor[PNode, InsideMagicWandContext](
       {
         case (_: PPackageWand, c) => c.updateContext(c.c.copy(true))
-        case (d: PDefine, c) if c.c.inside => throw ParseException("Macros cannot be defined inside magic wands proof scripts", d.pos)
+        case (d: PDefine, c) if c.c.inside => throw ParseException("macros cannot be defined inside magic wands proof scripts", d.pos)
         case (_, c) => c
       }, InsideMagicWandContext()).execute(p)
 
@@ -68,7 +68,7 @@ object MacroExpander {
       if (nonUsedParameter.nonEmpty) {
         val start = define.pos._1.asInstanceOf[FilePosition]
         val end = define.pos._2.asInstanceOf[FilePosition]
-        Seq(ParseWarning(s"In macro ${define.idndef.name}, the following parameters were defined but not used: " +
+        Seq(ParseWarning(s"in macro `${define.idndef.name}`, the following parameters were defined but not used: " +
           s"${nonUsedParameter.mkString(", ")} ", SourcePosition(start.file, start, end)))
       }
       else
@@ -173,13 +173,26 @@ object MacroExpander {
     def scope: Set[String] = scopeAtMacroCall ++ scopeOfExpandedMacros
 
     // Handy method to get a macro from its name string
-    def getMacroByName(name: PIdnUse): PDefine = macros.find(_.idndef.name == name.name) match {
+    def getMacroByName(name: PIdnUse): PDefine = getMacro(name) match {
       case Some(mac) => mac
-      case None => throw ParseException(s"Macro " + name.name + " used but not present in scope", name.pos)
+      case None => throw ParseException(s"macro `${name.name}` used but not present in scope", name.pos)
     }
 
-    // Check if a string is a valid macro name
-    def isMacro(name: Option[PIdnUse]): Boolean = name.map(name => macros.exists(_.idndef.name == name.name)).getOrElse(false)
+    // Optionally get a macro from its name
+    def getMacro(name: PIdnUse): Option[PDefine] = macros.find(_.idndef.name == name.name)
+    // Optionally get a macro from its name, any macros matched should not have parameters
+    def getMacroPlain(name: PIdnUse): Option[PDefine] = {
+      val m = getMacro(name)
+      if (m.forall(_.parameters.isEmpty)) m
+      else {
+        val suggestion = m.get.parameters.get.pretty
+        throw ParseException(s"macro `${name.name}` is defined with parameters but referenced without, try adding `${suggestion}`", name.pos)
+      }
+    }
+    // Does not `ParseException` since if the macro has no parameters
+    // then we'll replace the `PIdnRef` inside the call using `getMacroPlain`.
+    def getMacroArgs(call: PCall): Option[PDefine] =
+      if (call.typeAnnotated.isEmpty) getMacro(call.idnref).filter(_.parameters.isDefined) else None
 
     object getFreshVarName {
       private val namesToNumbers = mutable.Map.empty[String, Int]
@@ -210,11 +223,26 @@ object MacroExpander {
     case class MacroApp(idnuse: PIdnUse, arguments: Seq[PExp], node: PNode)
 
     val matchOnMacroCall: PartialFunction[PNode, MacroApp] = {
-      case assign@PAssign(PDelimited(), _, app: PMaybeMacroExp) if isMacro(app.possibleMacro) =>
-        MacroApp(app.possibleMacro.get, app.macroArgs, assign)
-      case app: PMaybeMacroExp if isMacro(app.possibleMacro) => MacroApp(app.possibleMacro.get, app.macroArgs, app)
-      case typ@PDomainType(domain, None) if isMacro(Some(domain)) => MacroApp(domain, Seq(), typ)
-      case app: PMacroType => MacroApp(app.use.possibleMacro.get, app.use.macroArgs, app)
+      // Macro references in statement position (without arguments)
+      case assign@PAssign(_, None, idnuse: PIdnUseExp) if getMacroPlain(idnuse).exists(_.body.isInstanceOf[PStmt]) =>
+        MacroApp(idnuse, Nil, assign)
+      // Macro references in statement position (with arguments)
+      case assign@PAssign(_, None, app: PCall) if getMacroArgs(app).exists(_.body.isInstanceOf[PStmt]) =>
+        MacroApp(app.idnref, app.args, assign)
+
+      // Macro references in type position (without arguments)
+      case typ@PDomainType(domain, None) if getMacroPlain(domain).isDefined =>
+        MacroApp(domain, Nil, typ)
+      // Macro references in type position (with arguments)
+      case app: PMacroType =>
+        MacroApp(app.use.idnref, app.use.args, app)
+
+      // Other macro refs (without arguments)
+      case ref: PIdnUse if getMacroPlain(ref).isDefined =>
+        MacroApp(ref, Nil, ref)
+      // Other macro refs (with arguments)
+      case app: PCall if getMacroArgs(app).isDefined =>
+        MacroApp(app.idnref, app.args, app)
     }
 
     def detectCyclicMacros(start: PNode, seen: Map[String, PDefine]): Unit = {
@@ -314,7 +342,7 @@ object MacroExpander {
             throw ParseException("Number of macro arguments does not match", call.pos)
 
           (call, body) match {
-            case (_: PStmt, _: PStmt) | (_: PExp, _: PExp) | (_: PType, _: PType) =>
+            case (_: PStmt, _: PStmt) | (_: PExp, _: PExp) | (_: PType, _: PType) | (_: PIdnRef[_], _: PIdnUse) =>
             case _ =>
               val expandedType = body match {
                 case _: PExp => "Expression"
@@ -326,6 +354,7 @@ object MacroExpander {
                 case _: PExp => "expression"
                 case _: PStmt => "statement"
                 case _: PType => "type"
+                case _: PIdnRef[_] => "identifier"
                 case _ => "unknown"
               }
               throw ParseException(s"$expandedType macro used in $callType position", call.pos)
@@ -342,7 +371,7 @@ object MacroExpander {
             case _ => /* All good */
           }
 
-          try {
+          val newNode = try {
             scopeAtMacroCall = NameAnalyser().namesInScope(program, Some(macroCall))
             arguments.foreach(
               StrategyBuilder.SlimVisitor[PNode] {
@@ -360,6 +389,11 @@ object MacroExpander {
             case problem: ParseTreeDuplicationError =>
               throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError:)\n" + problem.getMessage, call.pos)
           }
+          // The body of the macro might be a PIdnUseExp, but the macro call might be a PIdnRef
+          macroCall match {
+            case macroCall: PIdnRef[_] => macroCall.replace(newNode, true)
+            case _ => newNode
+          }
       }.applyOrElse(macroCall, (_: PNode) => macroCall)
     }
 
@@ -371,7 +405,7 @@ object MacroExpander {
       case (assign@PAssign(targets, op, rhs), ctx) =>
         val expandedTargets = targets.toSeq map {
           case call: PCall => {
-            if (!isMacro(call.possibleMacro))
+            if (getMacroArgs(call).isEmpty)
               throw ParseException("The only calls that can be on the left-hand side of an assignment statement are calls to macros", call.pos)
             val body = ExpandMacroIfValid(call, ctx)
 
@@ -390,13 +424,6 @@ object MacroExpander {
       // Handles all other calls to macros
       case (node, ctx) => (ExpandMacroIfValid(node, ctx), ctx)
 
-    }.recurseFunc {
-      /* Don't recurse into the PIdnUse of nodes that themselves could represent macro
-       * applications. Otherwise, the expansion of nested macros will fail due to attempting
-       * to construct invalid AST nodes.
-       * Recursing into such PIdnUse nodes caused Silver issue #205.
-       */
-      case PCall(_, args, typeAnnotated) => Seq(args, typeAnnotated)
     }.repeat
 
     try {
@@ -422,7 +449,8 @@ object MacroExpander {
     // Strategy to replace macro's parameters by their respective arguments
     val replacer = StrategyBuilder.Context[PNode, ReplaceContext]({
       // Variable binding: add bound variables to the context so that they don't get replaced
-      case (b: PBinder, ctx) => (b, ctx.updateContext(ctx.c.copy(boundVars = ctx.c.boundVars ++ b.boundVars.map(_.idndef.name))))
+      case (b: PBinder, ctx) =>
+        (b, ctx.updateContext(ctx.c.copy(boundVars = ctx.c.boundVars ++ b.boundVars.map(_.idndef.name))))
       // Variable use: macro parameters are replaced by their respective argument expressions
       case (varUse: PIdnUseExp, ctx) if !ctx.c.boundVars.contains(varUse.name) =>
         if (ctx.c.paramToArgMap.contains(varUse.name))
@@ -434,11 +462,7 @@ object MacroExpander {
       case (varUse: PIdnRef[_], ctx) if !ctx.c.boundVars.contains(varUse.name) =>
         if (ctx.c.paramToArgMap.contains(varUse.name)) {
           val replacement = ctx.c.paramToArgMap(varUse.name).deepCopyAll
-          if (replacement.isInstanceOf[PIdnUseExp]) {
-            val repExp = replacement.asInstanceOf[PIdnUseExp]
-            (PIdnRef(repExp.name)(repExp.pos)(varUse.ctag), ctx.updateContext(ctx.c.copy(paramToArgMap = ctx.c.paramToArgMap.empty)))
-          } else
-            throw ParseException(s"Macro expansion cannot substitute expression `${replacement.pretty}` in non-expression position at ${varUse.pos._1}.", replacement.pos)
+          (varUse.replace(replacement, false), ctx.updateContext(ctx.c.copy(paramToArgMap = ctx.c.paramToArgMap.empty)))
         } else {
           freeVars += varUse.name
           (varUse, ctx)

@@ -270,11 +270,8 @@ sealed trait PIdnUseName[T <: PDeclarationInner] extends PIdnUse {
 /** Any `PNode` which should be ignored (as well as it's children) by the `NameAnalyser`. */
 trait PNameAnalyserOpaque extends PNode
 
-case class PIdnUseExp(name: String)(val pos: (Position, Position)) extends PIdnUseName[PTypedVarDecl] with PExp with PAssignTarget with PMaybeMacroExp {
+case class PIdnUseExp(name: String)(val pos: (Position, Position)) extends PIdnUseName[PTypedVarDecl] with PExp with PAssignTarget {
   override def ctag = scala.reflect.classTag[PTypedVarDecl]
-
-  override def possibleMacro = Some(this)
-  override def macroArgs: Seq[PExp] = Seq()
 
   /* Should be set during resolving. Intended to preserve information
    * that is needed by the translator.
@@ -295,6 +292,10 @@ case class PIdnRef[T <: PDeclarationInner](name: String)(val pos: (Position, Pos
     val newRef = PIdnRef(name)(pos)
     newRef._decls = _decls
     newRef
+  }
+  def replace(n: PNode, errorAtTarget: Boolean): PIdnRef[T] = n match {
+    case n: PIdnUse => PIdnRef(n.name)(n.pos)(ctag)
+    case _ => throw ParseException(s"Macro expansion cannot substitute expression `${n.pretty}` at ${n.pos._1} in non-expression position at ${pos._1}.", if (errorAtTarget) pos else n.pos)
   }
   override def getExtraVals: Seq[Any] = Seq(pos, ctag)
 }
@@ -897,10 +898,8 @@ trait PCallLike extends POpApp {
   def callArgs: PDelimited.Comma[PSym.Paren, PExp]
 }
 
-case class PCall(idnref: PIdnRef[PGlobalCallable], callArgs: PDelimited.Comma[PSym.Paren, PExp], typeAnnotated: Option[(PSym.Colon, PType)])(val pos: (Position, Position))
-  extends PCallLike with PLocationAccess with PAccAssertion with PAssignTarget with PMaybeMacroExp {
-  override def possibleMacro = if (typeAnnotated.isEmpty) Some(idnref) else None
-  override def macroArgs = args
+case class PCall(idnref: PIdnRef[PCallable], callArgs: PDelimited.Comma[PSym.Paren, PExp], typeAnnotated: Option[(PSym.Colon, PType)])(val pos: (Position, Position))
+  extends PCallLike with PLocationAccess with PAccAssertion with PAssignTarget {
   override def loc = this
   override def perm = PFullPerm.implied()
 
@@ -1505,12 +1504,6 @@ trait PAnnotated extends PNode {
   def annotations: Seq[PAnnotation]
 }
 
-// Macros
-sealed trait PMaybeMacroExp {
-  def possibleMacro: Option[PIdnUse]
-  def macroArgs: Seq[PExp]
-}
-
 // Assignments
 sealed trait PAssignTarget
 
@@ -1561,11 +1554,19 @@ case class PBracedExp(e: PGrouped[PSym.Brace, PExp])(val pos: (Position, Positio
   override def pretty = s" ${e.l.pretty}\n  ${e.inner.pretty.replace("\n", "\n  ")}\n${e.r.pretty}"
 }
 
-// Maybe we can lift the `PGlobalUniqueDeclaration` restriction?
-trait PGlobalCallable extends PGlobalDeclaration {
+trait PCallable extends PDeclarationInner {
+  def keyword: PReserved[PKeywordLang]
+  def idndef: PIdnDef
   def args: PDelimited.Comma[PSym.Paren, PAnyFormalArgDecl]
+  def returnNodes: Seq[PNode]
+  def pres: PDelimited[PSpecification[PKw.PreSpec], Option[PSym.Semi]]
+  def posts: PDelimited[PSpecification[PKw.PostSpec], Option[PSym.Semi]]
+  def body: Option[PNode]
+
   def formalArgs: Seq[PAnyFormalArgDecl] = args.inner.toSeq
 }
+
+trait PGlobalCallable extends PCallable with PGlobalDeclaration
 trait PGlobalCallableNamedArgs extends PGlobalCallable {
   override def args: PDelimited.Comma[PSym.Paren, PFormalArgDecl]
   override def formalArgs: Seq[PFormalArgDecl] = args.inner.toSeq
@@ -1586,8 +1587,16 @@ trait PSingleMember extends PMember with PGlobalDeclaration with PGlobalUniqueDe
 }
 
 trait PAnyFunction extends PScope with PTypedDeclaration with PGlobalCallable {
+  def c: PSym.Colon
   def resultType: PType
   override def typ: PFunctionType = PFunctionType(formalArgs.map(_.typ), resultType)
+
+  override def returnNodes: Seq[PNode] = Seq(c, resultType)
+}
+
+trait PNoSpecsFunction extends PAnyFunction {
+  override def pres = PDelimited.empty
+  override def posts = PDelimited.empty
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1621,7 +1630,9 @@ case class PDomainFunctionInterpretation(k: PKw.Interpretation, i: PStringLitera
 trait PDomainMember extends PScope {
   def domain: PDomain = getAncestor[PDomain].get
 }
-case class PDomainFunction(annotations: Seq[PAnnotation], unique: Option[PKw.Unique], function: PKw.FunctionD, idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PDomainFunctionArg], c: PSym.Colon, resultType: PType, interpretation: Option[PDomainFunctionInterpretation])(val pos: (Position, Position)) extends PSingleMember with PAnyFunction with PDomainMember with PPrettySubnodes
+case class PDomainFunction(annotations: Seq[PAnnotation], unique: Option[PKw.Unique], keyword: PKw.FunctionD, idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PDomainFunctionArg], c: PSym.Colon, resultType: PType, interpretation: Option[PDomainFunctionInterpretation])(val pos: (Position, Position)) extends PSingleMember with PNoSpecsFunction with PDomainMember with PPrettySubnodes {
+  override def body = None
+}
 
 case class PAxiom(annotations: Seq[PAnnotation], axiom: PKw.Axiom, idndef: Option[PIdnDef], exp: PBracedExp)(val pos: (Position, Position)) extends PDomainMember with PPrettySubnodes
 case class PDomainMembers(funcs: PDelimited[PDomainFunction, Option[PSym.Semi]], axioms: PDelimited[PAxiom, Option[PSym.Semi]])(val pos: (Position, Position)) extends PNode {
@@ -1651,17 +1662,19 @@ case class PSpecification[+T <: PKw.Spec](k: PReserved[PKw.Spec], e: PExp)(val p
   override def pretty: String = "\n  " + super.pretty
 }
 
-case class PFunction(annotations: Seq[PAnnotation], function: PKw.Function, idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PFormalArgDecl], c: PSym.Colon, resultType: PType, pres: PDelimited[PSpecification[PKw.PreSpec], Option[PSym.Semi]], posts: PDelimited[PSpecification[PKw.PostSpec], Option[PSym.Semi]], body: Option[PBracedExp])
+case class PFunction(annotations: Seq[PAnnotation], keyword: PKw.Function, idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PFormalArgDecl], c: PSym.Colon, resultType: PType, pres: PDelimited[PSpecification[PKw.PreSpec], Option[PSym.Semi]], posts: PDelimited[PSpecification[PKw.PostSpec], Option[PSym.Semi]], body: Option[PBracedExp])
                     (val pos: (Position, Position)) extends PSingleMember with PAnyFunction with PGlobalCallableNamedArgs with PPrettySubnodes
 
-case class PPredicate(annotations: Seq[PAnnotation], predicate: PKw.Predicate, idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PFormalArgDecl], body: Option[PBracedExp])(val pos: (Position, Position))
-  extends PSingleMember with PAnyFunction with PGlobalCallableNamedArgs with PPrettySubnodes {
+case class PPredicate(annotations: Seq[PAnnotation], keyword: PKw.Predicate, idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PFormalArgDecl], body: Option[PBracedExp])(val pos: (Position, Position))
+  extends PSingleMember with PNoSpecsFunction with PGlobalCallableNamedArgs with PPrettySubnodes {
+  override def c = PReserved.implied(PSym.Colon)
   override def resultType = Predicate
 }
 
-case class PMethod(annotations: Seq[PAnnotation], method: PKw.Method, idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PFormalArgDecl], returns: Option[PMethodReturns], pres: PDelimited[PSpecification[PKw.PreSpec], Option[PSym.Semi]], posts: PDelimited[PSpecification[PKw.PostSpec], Option[PSym.Semi]], body: Option[PSeqn])
+case class PMethod(annotations: Seq[PAnnotation], keyword: PKw.Method, idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PFormalArgDecl], returns: Option[PMethodReturns], pres: PDelimited[PSpecification[PKw.PreSpec], Option[PSym.Semi]], posts: PDelimited[PSpecification[PKw.PostSpec], Option[PSym.Semi]], body: Option[PSeqn])
                   (val pos: (Position, Position)) extends PSingleMember with PGlobalCallableNamedArgs with PPrettySubnodes {
   def formalReturns: Seq[PFormalReturnDecl] = returns.map(_.formalReturns.inner.toSeq).getOrElse(Nil)
+  override def returnNodes = returns.toSeq
 }
 
 case class PMethodReturns(k: PKw.Returns, formalReturns: PGrouped.Paren[PDelimited[PFormalReturnDecl, PSym.Comma]])(val pos: (Position, Position)) extends PNode with PPrettySubnodes
