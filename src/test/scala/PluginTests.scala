@@ -119,15 +119,9 @@ class TestPluginAddPredicate extends SilverPlugin {
   override def beforeResolve(input: PProgram): PProgram = {
     val p = (NoPosition, NoPosition)
     PProgram(
-      input.imports,
-      input.macros,
-      input.domains,
-      input.fields,
-      input.functions,
-      input.predicates :+ PPredicate(Seq(), PReserved.implied(PKw.Predicate), PIdnDef("testPredicate")(p), PGrouped.impliedParen(PDelimited.empty), None)(p),
-      input.methods,
-      input.extensions,
-    )(p, input.errors)
+      input.imported,
+      input.members :+ PPredicate(Seq(), PReserved.implied(PKw.Predicate), PIdnDef("testPredicate")(p), PGrouped.impliedParen(PDelimited.empty), None)(p),
+    )(input.pos, input.localErrors)
   }
 
   /** Called after methods are filtered but before the verification by the backend happens.

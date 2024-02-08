@@ -150,6 +150,9 @@ case class FilePosition(file: Path, vline: Int, col: Int) extends util.parsing.i
   override lazy val toString: String = s"${file.getFileName}@$vline.$col"
   override def deltaColumn(delta: Int): FilePosition = FilePosition(file, vline, col + delta)
 }
+object FilePosition {
+  def apply(pos: (Int, Int))(implicit file: Path): FilePosition = FilePosition(file, pos._1, pos._2)
+}
 
 /**
   * A virtual position that can be used for nodes that do not naturally have a position like, e.g., synthesized nodes.

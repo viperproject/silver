@@ -103,9 +103,9 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
         dc
       case d => d
     }).recurseFunc({ // decreases clauses can only appear in functions/methods pres, posts and methods bodies
-      case PProgram(_, _, _, _, functions, _, methods, _) => Seq(functions, methods)
       case PFunction(_, _, _, _, _, _, pres, posts, _) => Seq(pres, posts)
       case PMethod(_, _, _, _, _, pres, posts, body) => Seq(pres, posts, body)
+      case _: PMember => Nil
     }).execute(input)
     newProgram
   }
@@ -192,10 +192,9 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
     }) ++ predImport.toSet
     if (importStmts.nonEmpty) {
       val importOnlyProgram = importStmts.mkString("\n")
-      val importPProgram = PAstProvider.generateViperPAst(importOnlyProgram)
-      val mergedDomains = input.domains.filter(_.idndef.name != "WellFoundedOrder") ++ importPProgram.get.domains
-
-      val mergedProgram = input.copy(domains = mergedDomains)(input.pos, input.errors)
+      val importPProgram = PAstProvider.generateViperPAst(importOnlyProgram).get.filterMembers(_.isInstanceOf[PDomain])
+      val inputFiltered = input.filterMembers(m => !(m.isInstanceOf[PDomain] && m.asInstanceOf[PDomain].idndef.name == "WellFoundedOrder"))
+      val mergedProgram = PProgram(inputFiltered.imported :+ importPProgram, inputFiltered.members)(input.pos, input.localErrors)
       super.beforeTranslate(mergedProgram)
     } else {
       super.beforeTranslate(input)

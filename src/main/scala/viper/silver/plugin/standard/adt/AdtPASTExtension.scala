@@ -96,7 +96,7 @@ trait PAdtChild extends PNode {
 
 case class PAdtSeq[T <: PNode](seq: PGrouped[PSym.Brace, Seq[T]])(val pos: (Position, Position)) extends PExtender {
   def inner: Seq[T] = seq.inner
-  override def pretty = s"${seq.l.pretty}\n  ${seq.inner.map(_.pretty).mkString("  \n")}\n${seq.r.pretty}"
+  override def pretty = s"${seq.l.pretty}\n  ${seq.inner.map(_.pretty).mkString("\n  ")}\n${seq.r.pretty}"
 }
 
 /** Any argument to a method, function or predicate. */

@@ -8,7 +8,7 @@ package viper.silver.parser
 
 import java.net.URL
 import java.nio.file.{Path, Paths}
-import viper.silver.ast.{FilePosition, LineCol, NoPosition, Position, SourcePosition}
+import viper.silver.ast.{FilePosition, LineCol, NoPosition, SourcePosition}
 import viper.silver.ast.utility.{DiskLoader, FileLoader}
 import viper.silver.plugin.{ParserPluginTemplate, SilverPluginManager}
 import viper.silver.verifier.{ParseError, ParseWarning}
@@ -16,8 +16,6 @@ import viper.silver.verifier.{ParseError, ParseWarning}
 import scala.collection.{immutable, mutable}
 import scala.util.{Failure, Success}
 import viper.silver.ast.HasLineColumn
-
-case class ParseException(msg: String, pos: (Position, Position)) extends Exception
 
 case class SuffixedExpressionGenerator[+E <: PExp](func: PExp => E) extends (PExp => PExp) {
   override def apply(v1: PExp): E = func(v1)
@@ -66,14 +64,14 @@ object FastParserCompanion {
     def pos(implicit ctx: P[Any], lineCol: LineCol, _file: Path): P[T] = {
       // TODO: switch over to this?
       // Index ~~ p() ~~ Index map { case (start, f, end) => {
-      //   val startPos = lineCol.getPos(start)
-      //   val finishPos = lineCol.getPos(end)
-      //   f((FilePosition(_file, startPos._1, startPos._2), FilePosition(_file, finishPos._1, finishPos._2)))
+      //   val startPos = FilePosition(lineCol.getPos(start))
+      //   val finishPos = FilePosition(lineCol.getPos(end))
+      //   f((startPos, finishPos))
       // }}
-      val startPos = lineCol.getPos(ctx.index)
+      val startPos = FilePosition(lineCol.getPos(ctx.index))
       val res: P[((FilePosition, FilePosition)) => T] = p()
-      val finishPos = lineCol.getPos(ctx.index)
-      res.map(_((FilePosition(_file, startPos._1, startPos._2), FilePosition(_file, finishPos._1, finishPos._2))))
+      val finishPos = FilePosition(lineCol.getPos(ctx.index))
+      res.map(_((startPos, finishPos)))
     }
   }
 
@@ -169,26 +167,6 @@ object FastParserCompanion {
 }
 
 class FastParser {
-  import fastparse._
-
-  implicit val whitespace = {
-    import NoWhitespace._
-    implicit ctx: ParsingRun[_] =>
-      NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
-  }
-
-  implicit val lineCol: LineCol = new LineCol(this)
-
-  /* When importing a file from standard library, e.g. `include <inc.vpr>`, the file is expected
-   * to be located in `resources/${standard_import_directory}`, e.g. `resources/import/inv.vpr`.
-   */
-  val standard_import_directory = "import"
-
-  var _line_offset: Array[Int] = null
-  /** The file we are currently parsing (for creating positions later). */
-  implicit var _file: Path = null
-  private var _warnings: Seq[ParseWarning] = Seq()
-
   def parse(s: String, f: Path, plugins: Option[SilverPluginManager] = None, loader: FileLoader = DiskLoader) = {
     // Strategy to handle imports
     // Idea: Import every import reference and merge imported methods, functions, imports, .. into current program
@@ -198,143 +176,44 @@ class FastParser {
     //       (normalize a path is a purely syntactic operation. if sally were a symbolic link removing sally/.. might
     //       result in a path that no longer locates the intended file. toRealPath() might be an alternative)
 
-    def resolveImports(p: PProgram) = {
-      val localsToImport = new mutable.ArrayBuffer[Path]()
-      val localImportStatements = new mutable.HashMap[Path, PImport]()
-      val standardsToImport = new mutable.ArrayBuffer[Path]()
-      val standardImportStatements = new mutable.HashMap[Path, PImport]()
-
-      // assume p is a program from the user space (local).
-      val filePath = f.toAbsolutePath.normalize()
-      localsToImport.append(filePath)
-
-      var imports = p.imports
-      var macros = p.macros
-      var domains = p.domains
-      var fields = p.fields
-      var functions = p.functions
-      var methods = p.methods
-      var predicates = p.predicates
-      var extensions = p.extensions
-      var errors = p.errors
-
-      def appendNewImports(imports: Seq[PImport], current: Path, fromLocal: Boolean): Unit = {
-        for (ip <- imports) {
-          if (ip.local) {
-            val localPath = current.resolveSibling(ip.file.str).normalize()
-            if (fromLocal) {
-              if(!localsToImport.contains(localPath)){
-                ip.resolved = Some(localPath)
-                localsToImport.append(localPath)
-                localImportStatements.update(localPath, ip)
-              }
-            } else {
-              // local import get transformed to standard imports
-              if (!standardsToImport.contains(localPath)) {
-                ip.resolved = Some(localPath)
-                ip.local = false
-                standardsToImport.append(localPath)
-                standardImportStatements.update(localPath, ip)
-              }
-            }
-          } else {
-            val standardPath = Paths.get(ip.file.str).normalize()
-            if(!standardsToImport.contains(standardPath)){
-              ip.resolved = Some(standardPath)
-              standardsToImport.append(standardPath)
-              standardImportStatements.update(standardPath, ip)
-            }
-          }
-        }
-      }
-
-      def appendNewProgram(newProg: PProgram): Unit = {
-        imports ++= newProg.imports
-        macros ++= newProg.macros
-        domains ++= newProg.domains
-        fields ++= newProg.fields
-        functions ++= newProg.functions
-        methods ++= newProg.methods
-        predicates ++= newProg.predicates
-        extensions ++= newProg.extensions
-        errors ++= newProg.errors
-      }
-
-      appendNewImports(p.imports, filePath, true)
-
-      // resolve imports from imported programs
-      var i = 1 // localsToImport
-      var j = 0 // standardsToImport
-      while (i < localsToImport.length || j < standardsToImport.length) {
-        // at least one local or standard import has not yet been resolved
-        if (i < localsToImport.length){
-          // import a local file
-
-          val current = localsToImport(i)
-          val newProg = importLocal(current, localImportStatements(current), plugins, loader)
-
-          appendNewProgram(newProg)
-          appendNewImports(newProg.imports, current, true)
-          i += 1
-        }else{
-          // no more local imports
-          // import a standard file
-          val current = standardsToImport(j)
-          val newProg = importStandard(current, standardImportStatements(current), plugins)
-
-          appendNewProgram(newProg)
-          appendNewImports(newProg.imports, current, false)
-          j += 1
-        }
-      }
-      PProgram(imports, macros, domains, fields, functions, predicates, methods, extensions)(p.pos, errors)
-    }
-
-
-    try {
-      val program = RecParser(f).parses(s)
-      val importedProgram = resolveImports(program)                             // Import programs
-      val expandedProgram = MacroExpander.expandDefines(importedProgram)        // Expand macros
-      expandedProgram
-    }
-    catch {
-      case ParseException(msg, pos) =>
-        val location = pos match {
-          case (start: FilePosition, end: FilePosition) =>
-            SourcePosition(start.file, start, end)
-          case _ =>
-            SourcePosition(_file, 0, 0)
-        }
-        PProgram(Nil, Nil, Nil, Nil, Nil, Nil, Nil, Nil)((NoPosition, NoPosition), Seq(ParseError(msg, location)))
-    }
+    val file = f.toAbsolutePath().normalize()
+    val data = ParserData(plugins, loader, mutable.HashSet(file))
+    val program = RecParser(file, data, false).parses(s)
+    MacroExpander.expandDefines(program)
   }
 
-  case class RecParser(file: Path) {
+  case class ParserData(plugins: Option[SilverPluginManager], loader: FileLoader, local: mutable.HashSet[Path], std: mutable.HashSet[Path] = mutable.HashSet.empty)
+
+  case class RecParser(file: Path, data: ParserData, isStd: Boolean) {
 
     def parses(s: String): PProgram = {
-      _file = file.toAbsolutePath
+      val program = parseFile(file, s)
 
-      // Add an empty line at the end to make `computeFrom(s.length)` return `(lines.length, 1)`, as the old
-      // implementation of `computeFrom` used to do.
-      val lines = s.linesWithSeparators
-      _line_offset = (lines.map(_.length) ++ Seq(0)).toArray
-      var offset = 0
-      for (i <- _line_offset.indices) {
-        val line_length = _line_offset(i)
-        _line_offset(i) = offset
-        offset += line_length
-      }
-
-      fastparse.parse(s, entireProgram(_)) match {
-        case fastparse.Parsed.Success(prog, _) => prog
-        case fail: fastparse.Parsed.Failure =>
-          val trace = fail.trace()
-          val fullStack = fastparse.Parsed.Failure.formatStack(trace.input, trace.stack)
-          val msg = s"${trace.aggregateMsg}. Occurred while parsing: $fullStack"
-          val (line, col) = lineCol.getPos(trace.index)
-          val pos = FilePosition(_file, line, col)
-          throw ParseException(msg, (pos, pos))
-      }
+      val imported = program.imports.flatMap(ip => {
+        // Normalize the path
+        val importPath =
+          if (ip.local) file.resolveSibling(ip.file.str).normalize()
+          else Paths.get(ip.file.str).normalize()
+        // Do the import
+        if (ip.local && !isStd) {
+          if (data.local.add(importPath)) {
+            ip.resolved = Some(importPath)
+            Some(importLocal(importPath, ip, data))
+          } else {
+            None
+          }
+        } else {
+          // if `ip.local && isStd` local import get transformed to standard imports
+          if (data.std.add(importPath)) {
+            ip.resolved = Some(importPath)
+            ip.local = false
+            Some(importStandard(importPath, ip, data))
+          } else {
+            None
+          }
+        }
+      })
+      program.newImported(imported)
     }
   }
 
@@ -346,17 +225,19 @@ class FastParser {
     * @param importStmt Import statement.
     * @return `PProgram` node corresponding to the imported program.
     */
-  def importProgram(imported_source: String, path: Path, importStmt: PImport, plugins: Option[SilverPluginManager]): PProgram = {
+  def importProgram(imported_source: String, path: Path, importStmt: PImport, data: ParserData, isStd: Boolean): PProgram = {
 
-    val transformed_source = if (plugins.isDefined){
-      plugins.get.beforeParse(imported_source, isImported = true) match {
+    val transformed_source = if (data.plugins.isDefined){
+      data.plugins.get.beforeParse(imported_source, isImported = true) match {
         case Some(transformed) => transformed
-        case None => throw ParseException(s"Plugin failed: ${plugins.get.errors.map(_.toString).mkString(", ")}", importStmt.pos)
+        case None =>
+          val pos = SourcePosition(importStmt.pos._1.file, importStmt.pos._1, importStmt.pos._2)
+          return PProgram.error(ParseError(s"Plugin failed: ${data.plugins.get.errors.map(_.toString).mkString(", ")}", pos))
       }
     } else {
       imported_source
     }
-    RecParser(path).parses(transformed_source)
+    RecParser(path, data, isStd).parses(transformed_source)
   }
 
   /**
@@ -367,7 +248,7 @@ class FastParser {
     * @param importStmt Import statement.
     * @return `PProgram` node corresponding to the imported program.
     */
-  def importStandard(path: Path, importStmt: PImport, plugins: Option[SilverPluginManager]): PProgram = {
+  def importStandard(path: Path, importStmt: PImport, data: ParserData): PProgram = {
     /* Prefix the standard library import (`path`) with the directory in which standard library
      * files are expected (`standard_import_directory`). The result is a OS-specific path, e.g.
      * "import\my\stdlib.vpr".
@@ -393,18 +274,21 @@ class FastParser {
           source.getLines().toArray
         } catch {
           case e@(_: RuntimeException | _: java.io.IOException) =>
-            throw ParseException(s"could not import file ($e)", importStmt.pos)
+            val pos = SourcePosition(importStmt.pos._1.file, importStmt.pos._1, importStmt.pos._2)
+            return PProgram.error(ParseError(s"could not import file ($e)", pos))
         } finally {
           source.close()
         }
       } catch {
         case _: java.lang.NullPointerException =>
-          throw ParseException(s"""file <$path> does not exist""", importStmt.pos)
+          val pos = SourcePosition(importStmt.pos._1.file, importStmt.pos._1, importStmt.pos._2)
+          return PProgram.error(ParseError(s"file <$path> does not exist", pos))
         case e@(_: RuntimeException | _: java.io.IOException) =>
-          throw ParseException(s"could not import file ($e)", importStmt.pos)
+          val pos = SourcePosition(importStmt.pos._1.file, importStmt.pos._1, importStmt.pos._2)
+          return PProgram.error(ParseError(s"could not import file ($e)", pos))
       }
     val imported_source = buffer.mkString("\n") + "\n"
-    importProgram(imported_source, path, importStmt, plugins)
+    importProgram(imported_source, path, importStmt, data, true)
   }
 
   /**
@@ -414,17 +298,42 @@ class FastParser {
     * @param importStmt Import statement.
     * @return `PProgram` node corresponding to the imported program.
     */
-  def importLocal(path: Path, importStmt: PImport, plugins: Option[SilverPluginManager], loader: FileLoader): PProgram = {
-    loader.loadContent(path) match {
-      case Failure(exception) => throw ParseException(s"""could not import file ($exception)""", importStmt.pos)
-      case Success(value) => importProgram(value, path, importStmt, plugins)
+  def importLocal(path: Path, importStmt: PImport, data: ParserData): PProgram = {
+    data.loader.loadContent(path) match {
+      case Failure(exception) =>
+        val pos = SourcePosition(importStmt.pos._1.file, importStmt.pos._1, importStmt.pos._2)
+        return PProgram.error(ParseError(s"could not import file ($exception)", pos))
+      case Success(value) => importProgram(value, path, importStmt, data, false)
     }
   }
 
-  lazy val keywords: Set[String] = (FastParserCompanion.basicKeywords | ParserExtension.extendedKeywords).map(_.keyword)
-
+  //////////////////////////
   // Actual Parser starts from here
+  //////////////////////////
+
+  import fastparse._
   import FastParserCompanion.{ExtendedParsing, identContinues, identStarts, LeadingWhitespace, Pos, PositionParsing, reservedKw, reservedSym}
+
+
+  implicit val whitespace = {
+    import NoWhitespace._
+    implicit ctx: ParsingRun[_] =>
+      NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
+  }
+
+  implicit val lineCol: LineCol = new LineCol(this)
+
+  /* When importing a file from standard library, e.g. `include <inc.vpr>`, the file is expected
+   * to be located in `resources/${standard_import_directory}`, e.g. `resources/import/inv.vpr`.
+   */
+  val standard_import_directory = "import"
+
+  var _line_offset: Array[Int] = null
+  /** The file we are currently parsing (for creating positions later). */
+  implicit var _file: Path = null
+  private var _warnings: Seq[ParseWarning] = Seq()
+
+  lazy val keywords: Set[String] = (FastParserCompanion.basicKeywords | ParserExtension.extendedKeywords).map(_.keyword)
 
   def reservedSymMany[$: P, T <: PSymbol](clashes: => Option[P[_]], s: => P[_], f: String => T): P[PReserved[T]] =
     P(!clashes.getOrElse(Fail) ~~ s.!./.map { op => PReserved(f(op))(_) }).pos
@@ -506,13 +415,13 @@ class FastParser {
 
   def unExp[$: P]: P[PUnExp] = P(((P(PSymOp.Neg) | PSymOp.Not) ~ suffixExpr()) map (PUnExp.apply _).tupled).pos
 
-  def strInteger[$: P]: P[String] = P(CharIn("0-9").rep(1)).!
+  def strInteger[$: P]: P[String] = P(CharIn("0-9").repX(1).!./)
 
-  def integer[$: P]: P[PIntLit] = P((strInteger.filter(s => s.matches("\\S+"))) map { s => PIntLit(BigInt(s))(_) }).pos
+  def integer[$: P]: P[PIntLit] = P((strInteger) map { s => PIntLit(BigInt(s))(_) }).pos
 
   def identifier[$: P]: P[Unit] = identStarts ~~ identContinues.repX
 
-  def annotationIdentifier[$: P]: P[PRawString] = P(((identStarts ~~ CharIn("0-9", "A-Z", "a-z", "$_.").repX).!) map PRawString.apply).pos
+  def annotationIdentifier[$: P]: P[PRawString] = P((identStarts ~~ CharIn("0-9", "A-Z", "a-z", "$_.").repX).!./ map PRawString.apply).pos
 
   def ident[$: P]: P[String] = identifier.!.filter(a => !keywords.contains(a)).opaque("identifier")
 
@@ -923,7 +832,7 @@ class FastParser {
   def applyWand[$: P]: P[PKw.Apply => Pos => PApplyWand] =
     P(magicWandExp() map { wand => PApplyWand(_, wand) _ })
 
-  def memberReservedKw[$: P]: P[PAnnotationsPosition => PNode] = {
+  def memberReservedKw[$: P]: P[PAnnotationsPosition => PMember] = {
     reservedKwMany(
       StringIn("import", "define", "field", "method", "domain", "function", "predicate"),
       str => pos => str match {
@@ -938,26 +847,15 @@ class FastParser {
     )
   }
 
-  def programMember(implicit ctx : P[_]): P[PNode] =
+  def programMember(implicit ctx : P[_]): P[PMember] =
     annotated(ParserExtension.newDeclAtStart(ctx) | memberReservedKw | ParserExtension.newDeclAtEnd(ctx))
 
   def programDecl[$: P]: P[PProgram] =
-    P(programMember.rep.map {
-    case decls => {
+    P(programMember.rep map (members => {
       val warnings = _warnings
       _warnings = Seq()
-      PProgram(
-        decls.collect { case i: PImport => i }, // Imports
-        decls.collect { case d: PDefine => d }, // Macros
-        decls.collect { case d: PDomain => d }, // Domains
-        decls.collect { case f: PFields => f }, // Fields
-        decls.collect { case f: PFunction => f }, // Functions
-        decls.collect { case p: PPredicate => p }, // Predicates
-        decls.collect { case m: PMethod => m }, // Methods
-        decls.collect { case e: PExtender => e }, // Extensions
-      )(_, warnings) // Parse Warnings
-    }
-  }).pos
+      PProgram(Nil, members)(_, warnings)
+    })).pos
 
   def preambleImport[$: P]: P[PKw.Import => PAnnotationsPosition => PImport] = P(
     (relativeFilePath.quotes.map { case s => pos: Pos => (true, PStringLiteral(s)(pos)) }
@@ -1042,6 +940,80 @@ class FastParser {
 
   def entireProgram[$: P]: P[PProgram] = P(Start ~ programDecl ~ End)
 
+  def end[$: P]: P[Unit] = Pass ~ End
+
+  def parseFile(file: Path, s: String): PProgram = {
+    ////
+    // Setup
+    ////
+
+    _file = file
+    // Add an empty line at the end to make `computeFrom(s.length)` return
+    // `(lines.length, 1)`, as the old implementation of `computeFrom` used to do.
+    val lines = s.linesWithSeparators
+    _line_offset = (lines.map(_.length) ++ Seq(0)).toArray
+    var offset = 0
+    for (i <- _line_offset.indices) {
+      val line_length = _line_offset(i)
+      _line_offset(i) = offset
+      offset += line_length
+    }
+
+    ////
+    // Parsing
+    ////
+
+    // Assume entire file is correct and try parsing it quickly
+    fastparse.parse(s, entireProgram(_)) match {
+      case Parsed.Success(value, _) => return value
+      case _: Parsed.Failure =>
+    }
+    // There was a parsing error, parse member by member to get all errors
+    var startIndex = 0
+    var members: Seq[PMember] = Nil
+    var errors: Seq[ParseError] = Nil
+    var logFailure = true
+
+    var res = fastparse.parse(s, end(_))
+    while (!res.isSuccess) {
+      startIndex = res.asInstanceOf[fastparse.Parsed.Failure].index
+      fastparse.parse(s, programMember(_), false, startIndex) match {
+        case fastparse.Parsed.Success(newMember, newIndex) =>
+          members = members :+ newMember
+          assert(startIndex < newIndex)
+          startIndex = newIndex
+          logFailure = true
+        case fail: fastparse.Parsed.Failure =>
+          // Advance index
+          if (startIndex < fail.index) {
+            // We partially parsed a member, but then failed to parse the rest.
+            // We should log the failure regardless of the previous iteration.
+            startIndex = fail.index
+            logFailure = true
+          } else {
+            // We failed to parse anything, so simply advance by one character.
+            // We may want to do this advancing using e.g. negative lookahead
+            // for `programMember` with fastparse if this is too slow. Failure
+            // will be logged only if previous iteration was a success.
+            startIndex += 1
+          }
+          // Log failure
+          if (logFailure) {
+            val trace = fail.trace()
+            val fullStack = fastparse.Parsed.Failure.formatStack(trace.input, trace.stack)
+            val msg = s"${trace.aggregateMsg}. Occurred while parsing: $fullStack"
+            val pos = FilePosition(lineCol.getPos(trace.index))
+            errors = errors :+ ParseError(msg, pos)
+            logFailure = false
+          }
+      }
+      res = fastparse.parse(s, end(_), false, startIndex)
+    }
+    val warnings = _warnings
+    _warnings = Nil
+    val pos = (FilePosition(lineCol.getPos(0)), FilePosition(lineCol.getPos(res.get.index)))
+    PProgram(Nil, members)(pos, errors ++ warnings)
+  }
 
   object ParserExtension extends ParserPluginTemplate {
 
@@ -1053,8 +1025,8 @@ class FastParser {
       * and after the plugins are loaded, the parsers are added to these variables and when any parser is required,
       * can be referenced back.
       */
-    private var _newDeclAtEnd: Option[Extension[PAnnotationsPosition => PExtender]] = None
-    private var _newDeclAtStart: Option[Extension[PAnnotationsPosition => PExtender]] = None
+    private var _newDeclAtEnd: Option[Extension[PAnnotationsPosition => PExtender with PMember]] = None
+    private var _newDeclAtStart: Option[Extension[PAnnotationsPosition => PExtender with PMember]] = None
 
     private var _newExpAtEnd: Option[Extension[PExp]] = None
     private var _newExpAtStart: Option[Extension[PExp]] = None
@@ -1073,12 +1045,12 @@ class FastParser {
       * For more details regarding the functionality of each of these initial parser extensions
       * and other hooks for the parser extension, please refer to ParserPluginTemplate.scala
       */
-    override def newDeclAtStart : Extension[PAnnotationsPosition => PExtender] = _newDeclAtStart match {
+    override def newDeclAtStart : Extension[PAnnotationsPosition => PExtender with PMember] = _newDeclAtStart match {
       case None => super.newDeclAtStart
       case Some(ext) => ext
     }
 
-    override def newDeclAtEnd : Extension[PAnnotationsPosition => PExtender] = _newDeclAtEnd match {
+    override def newDeclAtEnd : Extension[PAnnotationsPosition => PExtender with PMember] = _newDeclAtEnd match {
       case None => super.newDeclAtEnd
       case Some(ext) => ext
     }
@@ -1120,12 +1092,12 @@ class FastParser {
 
     override def extendedKeywords : Set[PKeyword] = _extendedKeywords
 
-    def addNewDeclAtEnd(t: Extension[PAnnotationsPosition => PExtender]) : Unit = _newDeclAtEnd match {
+    def addNewDeclAtEnd(t: Extension[PAnnotationsPosition => PExtender with PMember]) : Unit = _newDeclAtEnd match {
       case None => _newDeclAtEnd = Some(t)
       case Some(s) => _newDeclAtEnd = Some(combine(s, t))
     }
 
-    def addNewDeclAtStart(t: Extension[PAnnotationsPosition => PExtender]) : Unit = _newDeclAtStart match {
+    def addNewDeclAtStart(t: Extension[PAnnotationsPosition => PExtender with PMember]) : Unit = _newDeclAtStart match {
       case None => _newDeclAtStart = Some(t)
       case Some(s) => _newDeclAtStart = Some(combine(s, t))
     }

@@ -9,7 +9,7 @@ package viper.silver.parser
 import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
 import viper.silver.ast.utility.Visitor
 import viper.silver.ast.utility.rewriter.{Rewritable, StrategyBuilder, HasExtraVars, HasExtraValList}
-import viper.silver.ast.{Exp, Member, NoPosition, Position, Stmt, Type}
+import viper.silver.ast.{Exp, FilePosition, HasLineColumn, Member, NoPosition, Position, SourcePosition, Stmt, Type}
 import viper.silver.parser.TypeHelper._
 import viper.silver.verifier.ParseReport
 
@@ -19,6 +19,11 @@ import java.nio.file.Path
 
 trait Where {
   val pos: (Position, Position)
+  def errorPosition: Position = pos match {
+        case (slc: FilePosition, flc: HasLineColumn) => SourcePosition(slc.file, slc, flc)
+        case (slc: FilePosition, _) => SourcePosition(slc.file, slc.line, slc.column)
+        case other => other._1
+      }
 }
 
 /**
@@ -293,9 +298,9 @@ case class PIdnRef[T <: PDeclarationInner](name: String)(val pos: (Position, Pos
     newRef._decls = _decls
     newRef
   }
-  def replace(n: PNode, errorAtTarget: Boolean): PIdnRef[T] = n match {
-    case n: PIdnUse => PIdnRef(n.name)(n.pos)(ctag)
-    case _ => throw ParseException(s"Macro expansion cannot substitute expression `${n.pretty}` at ${n.pos._1} in non-expression position at ${pos._1}.", if (errorAtTarget) pos else n.pos)
+  def replace(n: PNode): Option[PIdnRef[T]] = n match {
+    case n: PIdnUse => Some(PIdnRef(n.name)(n.pos)(ctag))
+    case _ => None
   }
   override def getExtraVals: Seq[Any] = Seq(pos, ctag)
 }
@@ -1602,22 +1607,48 @@ trait PNoSpecsFunction extends PAnyFunction {
 ///////////////////////////////////////////////////////////////////////////
 // Program Members
 
-case class PProgram(imports: Seq[PImport], macros: Seq[PDefine], domains: Seq[PDomain], fields: Seq[PFields], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod], extensions: Seq[PExtender])(val pos: (Position, Position), val errors: Seq[ParseReport]) extends PNode {
-  override def pretty =  {
+case class PProgram(imported: Seq[PProgram], members: Seq[PMember])(val pos: (Position, Position), val localErrors: Seq[ParseReport]) extends PNode {
+  val imports: Seq[PImport] = members.collect { case i: PImport => i } ++ imported.flatMap(_.imports)
+  val macros: Seq[PDefine] = members.collect { case m: PDefine => m } ++ imported.flatMap(_.macros)
+  val domains: Seq[PDomain] = members.collect { case d: PDomain => d } ++ imported.flatMap(_.domains)
+  val fields: Seq[PFields] = members.collect { case f: PFields => f } ++ imported.flatMap(_.fields)
+  val functions: Seq[PFunction] = members.collect { case f: PFunction => f } ++ imported.flatMap(_.functions)
+  val predicates: Seq[PPredicate] = members.collect { case p: PPredicate => p } ++ imported.flatMap(_.predicates)
+  val methods: Seq[PMethod] = members.collect { case m: PMethod => m } ++ imported.flatMap(_.methods)
+  val extensions: Seq[PExtender] = members.collect { case e: PExtender => e } ++ imported.flatMap(_.extensions)
+  val errors: Seq[ParseReport] = localErrors ++ imported.flatMap(_.errors)
+
+  override def pretty = {
+    val prefix = if (pos._1.isInstanceOf[FilePosition]) s"// ${pos._1.asInstanceOf[FilePosition].file.toString()} \n" else ""
+    val m = members.map(_.pretty).mkString("\n")
+    val i = imported.map(_.pretty).mkString("\n")
+    prefix + m + "\n\n" + i
+  }
+  // Pretty print members in a specific order
+  def prettyOrdered: String = {
     val all = Seq(imports, macros, domains, fields, functions, predicates, methods, extensions).filter(_.length > 0)
     all.map(_.map(_.pretty).mkString("\n")).mkString("\n")
   }
-  override def getExtraVals: Seq[Any] = Seq(pos, errors)
+
+  override def getExtraVals: Seq[Any] = Seq(pos, localErrors)
+
+  def filterMembers(f: PMember => Boolean): PProgram = PProgram(imported.map(_.filterMembers(f)), members.filter(f))(pos, localErrors)
+  def newImported(newImported: Seq[PProgram]): PProgram = if (newImported.isEmpty) this else PProgram(imported ++ newImported, members)(pos, localErrors)
 }
 
-case class PImport(annotations: Seq[PAnnotation], imprt: PKw.Import, file: PStringLiteral)(val pos: (Position, Position)) extends PNode with PPrettySubnodes {
+object PProgram {
+  def error(error: ParseReport): PProgram = PProgram(Nil, Nil)((error.pos, error.pos), Seq(error))
+}
+
+case class PImport(annotations: Seq[PAnnotation], imprt: PKw.Import, file: PStringLiteral)(val pos: (FilePosition, FilePosition)) extends PMember with PPrettySubnodes {
   var local: Boolean = true
   var resolved: Option[Path] = None
+  def declares = Nil
 }
 
 case class PDefineParam(idndef: PIdnDef)(val pos: (Position, Position)) extends PNode with PLocalDeclaration with PPrettySubnodes
 
-case class PDefine(annotations: Seq[PAnnotation], define: PKw.Define, idndef: PIdnDef, parameters: Option[PDelimited.Comma[PSym.Paren, PDefineParam]], body: PNode)(val pos: (Position, Position)) extends PSingleMember with PStmt with PNameAnalyserOpaque
+case class PDefine(annotations: Seq[PAnnotation], define: PKw.Define, idndef: PIdnDef, parameters: Option[PDelimited.Comma[PSym.Paren, PDefineParam]], body: PNode)(val pos: (FilePosition, FilePosition)) extends PSingleMember with PStmt with PNameAnalyserOpaque
 
 case class PDomain(annotations: Seq[PAnnotation], domain: PKw.Domain, idndef: PIdnDef, typVars: Option[PDelimited.Comma[PSym.Bracket, PTypeVarDecl]], interpretations: Option[PDomainInterpretations], members: PGrouped[PSym.Brace, PDomainMembers])
                   (val pos: (Position, Position)) extends PSingleMember with PTypeDeclaration with PPrettySubnodes {
@@ -1682,7 +1713,7 @@ case class PMethodReturns(k: PKw.Returns, formalReturns: PGrouped.Paren[PDelimit
 /**
   * Used for parsing annotation for top level members. Passed as an argument to the members to construct them.
   */
-case class PAnnotationsPosition(annotations: Seq[PAnnotation], pos: (Position, Position))
+case class PAnnotationsPosition(annotations: Seq[PAnnotation], pos: (FilePosition, FilePosition))
 
 case class PAnnotation(at: PSym.At, key: PRawString, values: PGrouped.Paren[PDelimited[PStringLiteral, PSym.Comma]])(val pos: (Position, Position)) extends PNode with PPrettySubnodes {
   override def pretty: String = super.pretty + "\n"

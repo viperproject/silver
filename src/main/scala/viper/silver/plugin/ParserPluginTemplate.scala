@@ -6,7 +6,7 @@
 
 package viper.silver.plugin
 
-import viper.silver.parser.{NameAnalyser, PAnnotationsPosition, PExp, PExtender, PKeyword, PSpecification, PKw, PReserved, PStmt, PTypeSubstitution, Translator, TypeChecker}
+import viper.silver.parser.{NameAnalyser, PAnnotationsPosition, PExp, PExtender, PKeyword, PSpecification, PKw, PMember, PReserved, PStmt, PTypeSubstitution, Translator, TypeChecker}
 import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.ast.{Declaration, ErrorTrafo, Exp, ExtensionExp, ExtensionMember, ExtensionStmt, Info, Member, Node, NoPosition, Position, Stmt, Type}
 import viper.silver.verifier.VerificationResult
@@ -28,7 +28,7 @@ trait ParserPluginTemplate {
     * will not cause any effects in the pre existing parser and any other viper codes.
     *
     */
-  def newDeclAtEnd : Extension[PAnnotationsPosition => PExtender] = ParserPluginTemplate.defaultExtension
+  def newDeclAtEnd : Extension[PAnnotationsPosition => PExtender with PMember] = ParserPluginTemplate.defaultExtension
 
   /**
     * The high level declarations that are checked at the start of the parser. These have the highest priority over
@@ -36,7 +36,7 @@ trait ParserPluginTemplate {
     * if that particular top level construct is either particularly different from the top-level constructs in viper
     * or the programmer needs this particular rules to be executed with priority.
     */
-  def newDeclAtStart : Extension[PAnnotationsPosition => PExtender] = ParserPluginTemplate.defaultExtension
+  def newDeclAtStart : Extension[PAnnotationsPosition => PExtender with PMember] = ParserPluginTemplate.defaultExtension
 
   /**
     * The newStmt parser which is essentially an extension of the stmt rules in the new parser.
@@ -179,7 +179,7 @@ object ParserPluginTemplate {
     implicit ctx : P[_] => P(left(ctx) | right(ctx))
   }
 
-  def defaultExtension : Extension[PAnnotationsPosition => PExtender] = Fail(_)
+  def defaultExtension : Extension[PAnnotationsPosition => PExtender with PMember] = Fail(_)
   def defaultStmtExtension : Extension[PStmt] = Fail(_)
   def defaultExpExtension : Extension[PExp] = Fail(_)
 }

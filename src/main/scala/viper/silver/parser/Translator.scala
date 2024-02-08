@@ -29,47 +29,46 @@ case class Translator(program: PProgram) {
   def translate: Option[Program] /*(Program, Seq[Messaging.Record])*/ = {
     // assert(TypeChecker.messagecount == 0, "Expected previous phases to succeed, but found error messages.") // AS: no longer sharing state with these phases
 
-    program match {
-      case PProgram(_, _, pdomains, pfields, pfunctions, ppredicates, pmethods, pextensions) =>
+    val (pdomains, pfields, pfunctions, ppredicates, pmethods, pextensions) =
+      (program.domains, program.fields, program.functions, program.predicates, program.methods, program.extensions)
 
-        /* [2022-03-14 Alessandro] Domain signatures need no be translated first, since signatures of other declarations
-         * like domain functions, and ordinary functions might depend on the domain signature. Especially this is the case
-         * when signatures contain user-defined domain types. The same applies for extensions since they might introduce
-         * new top-level declarations that behave similar as domains.
-         */
-        pdomains foreach translateMemberSignature
-        pextensions foreach translateMemberSignature
+    /* [2022-03-14 Alessandro] Domain signatures need no be translated first, since signatures of other declarations
+      * like domain functions, and ordinary functions might depend on the domain signature. Especially this is the case
+      * when signatures contain user-defined domain types. The same applies for extensions since they might introduce
+      * new top-level declarations that behave similar as domains.
+      */
+    pdomains foreach translateMemberSignature
+    pextensions foreach translateMemberSignature
 
-        /* [2022-03-14 Alessandro] Following signatures can be translated independently of each other but must be translated
-         * after signatures of domains and extensions because of the above mentioned reasons.
-         */
-        pdomains flatMap (_.members.inner.funcs.toSeq) foreach translateMemberSignature
-        (pfields ++ pfunctions ++ ppredicates ++ pmethods) foreach translateMemberSignature
+    /* [2022-03-14 Alessandro] Following signatures can be translated independently of each other but must be translated
+      * after signatures of domains and extensions because of the above mentioned reasons.
+      */
+    pdomains flatMap (_.members.inner.funcs.toSeq) foreach translateMemberSignature
+    (pfields ++ pfunctions ++ ppredicates ++ pmethods) foreach translateMemberSignature
 
-        /* [2022-03-14 Alessandro] After the signatures are translated, the actual full translations can be done
-         * independently of each other.
-         */
-        val extensions = pextensions map translate
-        val domain = (pdomains map translate) ++ extensions filter (t => t.isInstanceOf[Domain])
-        val fields = (pfields flatMap (_.fields.toSeq map translate)) ++ extensions filter (t => t.isInstanceOf[Field])
-        val functions = (pfunctions map translate) ++ extensions filter (t => t.isInstanceOf[Function])
-        val predicates = (ppredicates map translate) ++ extensions filter (t => t.isInstanceOf[Predicate])
-        val methods = (pmethods map translate) ++ extensions filter (t => t.isInstanceOf[Method])
+    /* [2022-03-14 Alessandro] After the signatures are translated, the actual full translations can be done
+      * independently of each other.
+      */
+    val extensions = pextensions map translate
+    val domain = (pdomains map translate) ++ extensions filter (t => t.isInstanceOf[Domain])
+    val fields = (pfields flatMap (_.fields.toSeq map translate)) ++ extensions filter (t => t.isInstanceOf[Field])
+    val functions = (pfunctions map translate) ++ extensions filter (t => t.isInstanceOf[Function])
+    val predicates = (ppredicates map translate) ++ extensions filter (t => t.isInstanceOf[Predicate])
+    val methods = (pmethods map translate) ++ extensions filter (t => t.isInstanceOf[Method])
 
 
 
-        val finalProgram = ImpureAssumeRewriter.rewriteAssumes(Program(domain.asInstanceOf[Seq[Domain]], fields.asInstanceOf[Seq[Field]],
-                functions.asInstanceOf[Seq[Function]], predicates.asInstanceOf[Seq[Predicate]], methods.asInstanceOf[Seq[Method]],
-                    (extensions filter (t => t.isInstanceOf[ExtensionMember])).asInstanceOf[Seq[ExtensionMember]])(program))
+    val finalProgram = ImpureAssumeRewriter.rewriteAssumes(Program(domain.asInstanceOf[Seq[Domain]], fields.asInstanceOf[Seq[Field]],
+            functions.asInstanceOf[Seq[Function]], predicates.asInstanceOf[Seq[Predicate]], methods.asInstanceOf[Seq[Method]],
+                (extensions filter (t => t.isInstanceOf[ExtensionMember])).asInstanceOf[Seq[ExtensionMember]])(program))
 
-        finalProgram.deepCollect {
-          case fp: ForPerm => Consistency.checkForPermArguments(fp, finalProgram)
-          case trig: Trigger => Consistency.checkTriggers(trig, finalProgram)
-        }
-
-        if (Consistency.messages.isEmpty) Some(finalProgram) // all error messages generated during translation should be Consistency messages
-        else None
+    finalProgram.deepCollect {
+      case fp: ForPerm => Consistency.checkForPermArguments(fp, finalProgram)
+      case trig: Trigger => Consistency.checkTriggers(trig, finalProgram)
     }
+
+    if (Consistency.messages.isEmpty) Some(finalProgram) // all error messages generated during translation should be Consistency messages
+    else None
   }
 
   private def translate(t: PExtender): Member = {
