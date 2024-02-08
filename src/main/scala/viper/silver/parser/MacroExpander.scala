@@ -387,10 +387,11 @@ object MacroExpander {
               throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError:)\n" + problem.getMessage, call.pos)
           }
           // The body of the macro might be a PIdnUseExp, but the macro call might be a PIdnRef
-          macroCall match {
+          val replaced = macroCall match {
             case macroCall: PIdnRef[_] => macroCall.replace(newNode, true)
             case _ => newNode
           }
+          ExpandMacroIfValid(replaced, ctx)
       }.applyOrElse(macroCall, (_: PNode) => macroCall)
     }
 
