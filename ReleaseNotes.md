@@ -1,3 +1,78 @@
+## Release 2024.1
+
+**Date 16/02/24**
+
+### Changes in Viper Language
+
+- unfold, fold, unfolding only strictly positive (which also fixes an unsoundness) ([Silver#444](https://github.com/viperproject/silver/pull/444))
+- no longer using Int as default for unconstrained type args inside domain ([Silver#758](https://github.com/viperproject/silver/pull/758))
+- opaque annotation ([Silicon#767](https://github.com/viperproject/silicon/pull/767)) and ([Carbon#474](https://github.com/viperproject/carbon/pull/474))
+
+### API changes:
+- error and reason sealed ([Silver#749](https://github.com/viperproject/silver/pull/749))
+- re-designed Parse AST?
+
+### Changes in plugins:
+- smoke detection plugin ([Silver#762](https://github.com/viperproject/silver/pull/762))
+- auto-generating well-foundedness axioms for adt types ([Silver#743](https://github.com/viperproject/silver/pull/743))
+- incomplete termination plugin fix ([Silver#754](https://github.com/viperproject/silver/pull/754))
+- decreases clauses can now be written anywhere in function spec ([Silver#738](https://github.com/viperproject/silver/pull/738))
+- refute works properly if the ast has info nodes ([Silver#736](https://github.com/viperproject/silver/pull/736))
+
+### Other Viper-level improvements:
+- fixing incompleteness where domain axioms were not instantiated properly ([Silver#???](https://github.com/viperproject/silver/pull/???))
+- improved parsing and type checking errors ([Silver#723](https://github.com/viperproject/silver/pull/723))
+- trigger inference improvements:
+  - proper treatment of let-expressions when generating triggers ([Silver#753](https://github.com/viperproject/silver/pull/753))
+  - trigger inference no longer incorrectly omits old ([Silver#747](https://github.com/viperproject/silver/pull/747))
+
+### Backend-specific Upgrades/Changes
+
+#### Symbolic Execution Backend (Silicon)
+
+- Soundness fixes:
+  - fixed an old wand unsoundness and incompleteness ([Silicon#757](https://github.com/viperproject/silicon/pull/757))
+  - fixed goto loop well-def check ([Silicon#774](https://github.com/viperproject/silicon/pull/774))
+  - fixed map unsoundness ([Silicon#770](https://github.com/viperproject/silicon/pull/770))
+- Completeness improvements:
+  - optionally Carbon's sequence, set, ... axioms ([Silicon#642](https://github.com/viperproject/silicon/pull/642))
+  - QP exhale inside package with qvar-dependent permission expression ([Silicon#797](https://github.com/viperproject/silicon/pull/797))
+  - fixed function incompleteness ([Silicon#744](https://github.com/viperproject/silicon/pull/744))
+  - three mce improvements:
+    - pulling assumptions out of quants to improve mce ([Silicon#760](https://github.com/viperproject/silicon/pull/760))
+    - new mce improvement ([Silicon#795](https://github.com/viperproject/silicon/pull/795))
+    - mce enabled for functions ???
+- Fixed crashes
+  - Z3 API + interpreted functions fix ([Silicon#752](https://github.com/viperproject/silicon/pull/752))
+  - fixed crash ([Silicon#759](https://github.com/viperproject/silicon/pull/750))
+  - validation for noOfParV ([Silicon#762](https://github.com/viperproject/silicon/pull/762))
+- Performance improvements
+  - QP snapshot map cache fix ([Silicon#792](https://github.com/viperproject/silicon/pull/792))
+  - qp heuristics ([Silicon#789](https://github.com/viperproject/silicon/pull/789))
+- Other improvements
+  - flag to easily disable NL int TODO
+  - prover args per method annotation ([Silicon#784](https://github.com/viperproject/silicon/pull/784))
+  - symbexlog fix ([Silicon#790](https://github.com/viperproject/silicon/pull/790))
+
+#### Verification Condition Generation Backend (Carbon)
+
+- Soundness fixes:
+  - Exhaling quantified wands is now sound ([Carbon#473](https://github.com/viperproject/carbon/pull/473))
+
+- Other improvements:
+  - Support for missing features: ([Carbon#473](https://github.com/viperproject/carbon/pull/473))
+    - quantified wands
+    - wands as triggers
+    - perm for wands
+    - forperm with more than one quantified variable
+    - forperm for wands
+  - overall timeout option ([Carbon#483](https://github.com/viperproject/carbon/pull/483))
+  - internal encoding improvements:
+    - old state ([Carbon#482](https://github.com/viperproject/carbon/pull/482))
+    - if statements ([Carbon#478](https://github.com/viperproject/carbon/pull/478))
+    - method calls ([Carbon#477](https://github.com/viperproject/carbon/pull/477))
+
+
 ## Release 2023.7
 
 **Date 31/07/23**
