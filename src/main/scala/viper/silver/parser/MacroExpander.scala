@@ -181,16 +181,10 @@ object MacroExpander {
     // Optionally get a macro from its name
     def getMacro(name: PIdnUse): Option[PDefine] = macros.find(_.idndef.name == name.name)
     // Optionally get a macro from its name, any macros matched should not have parameters
-    def getMacroPlain(name: PIdnUse): Option[PDefine] = {
-      val m = getMacro(name)
-      if (m.forall(_.parameters.isEmpty)) m
-      else {
-        val suggestion = m.get.parameters.get.pretty
-        throw ParseException(s"macro `${name.name}` is defined with parameters but referenced without, try adding `${suggestion}`", name.pos)
-      }
-    }
-    // Does not `ParseException` since if the macro has no parameters
-    // then we'll replace the `PIdnRef` inside the call using `getMacroPlain`.
+    def getMacroPlain(name: PIdnUse): Option[PDefine] = getMacro(name)
+
+    // Skip any macro without parameters since we want to replace just the `PIdnRef` of the call,
+    // not the whole `PCall` itself.
     def getMacroArgs(call: PCall): Option[PDefine] =
       if (call.typeAnnotated.isEmpty) getMacro(call.idnref).filter(_.parameters.isDefined) else None
 
@@ -215,46 +209,45 @@ object MacroExpander {
     }
 
     // Create a map that maps the formal parameters to the actual arguments of a macro call
-    def mapParamsToArgs(params: Seq[PDefineParam], args: Seq[PExp]): Map[String, PExp] = {
-      params.map(_.idndef.name).zip(args).toMap
+    def mapParamsToArgs(params: Option[Seq[PDefineParam]], args: Option[Seq[PExp]]): Map[String, PExp] = {
+      params.getOrElse(Nil).map(_.idndef.name).zip(args.getOrElse(Nil)).toMap
     }
 
     /* Abstraction over several possible `PNode`s that can represent macro applications */
-    case class MacroApp(idnuse: PIdnUse, arguments: Seq[PExp], node: PNode)
+    case class MacroApp(node: PNode, arguments: Option[Seq[PExp]], macroDefinition: PDefine)
 
     val matchOnMacroCall: PartialFunction[PNode, MacroApp] = {
       // Macro references in statement position (without arguments)
-      case assign@PAssign(_, None, idnuse: PIdnUseExp) if getMacroPlain(idnuse).exists(_.body.isInstanceOf[PStmt]) =>
-        MacroApp(idnuse, Nil, assign)
+      case assign@PAssign(_, None, idnuse: PIdnUseExp) if getMacroPlain(idnuse).isDefined =>
+        MacroApp(assign, None, getMacroPlain(idnuse).get)
       // Macro references in statement position (with arguments)
-      case assign@PAssign(_, None, app: PCall) if getMacroArgs(app).exists(_.body.isInstanceOf[PStmt]) =>
-        MacroApp(app.idnref, app.args, assign)
+      case assign@PAssign(_, None, app: PCall) if getMacroArgs(app).isDefined =>
+        MacroApp(assign, Some(app.args), getMacroArgs(app).get)
 
       // Macro references in type position (without arguments)
-      case typ@PDomainType(domain, None) if getMacroPlain(domain).isDefined =>
-        MacroApp(domain, Nil, typ)
+      case typ@PDomainType(idnuse, None) if getMacroPlain(idnuse).isDefined =>
+        MacroApp(typ, None, getMacroPlain(idnuse).get)
       // Macro references in type position (with arguments)
       case app: PMacroType =>
-        MacroApp(app.use.idnref, app.use.args, app)
+        MacroApp(app, Some(app.use.args), getMacroByName(app.use.idnref))
 
       // Other macro refs (without arguments)
-      case ref: PIdnUse if getMacroPlain(ref).isDefined =>
-        MacroApp(ref, Nil, ref)
+      case idnuse: PIdnUse if getMacroPlain(idnuse).isDefined =>
+        MacroApp(idnuse, None, getMacroPlain(idnuse).get)
       // Other macro refs (with arguments)
       case app: PCall if getMacroArgs(app).isDefined =>
-        MacroApp(app.idnref, app.args, app)
+        MacroApp(app, Some(app.args), getMacroArgs(app).get)
     }
 
     def detectCyclicMacros(start: PNode, seen: Map[String, PDefine]): Unit = {
       start.visit(
-        matchOnMacroCall.andThen { case MacroApp(idnuse, _, _) =>
-          seen.get(idnuse.name) match {
+        matchOnMacroCall.andThen { case MacroApp(_, _, macroDefinition) =>
+          seen.get(macroDefinition.idndef.name) match {
             case None => {
-              val macroDef = getMacroByName(idnuse)
-              detectCyclicMacros(macroDef.body, seen + (idnuse.name -> macroDef))
+              detectCyclicMacros(macroDefinition.body, seen + (macroDefinition.idndef.name -> macroDefinition))
             }
             case Some(macroDef) =>
-              throw ParseException("Recursive macro declaration found: " + idnuse.name, macroDef.pos)
+              throw ParseException("Recursive macro declaration found: " + macroDef.idndef.name, macroDef.pos)
           }
         }
       )
@@ -333,12 +326,16 @@ object MacroExpander {
 
     def ExpandMacroIfValid(macroCall: PNode, ctx: ContextA[PNode]): PNode = {
       matchOnMacroCall.andThen {
-        case MacroApp(idnuse, arguments, call) =>
-          val macroDefinition = getMacroByName(idnuse)
-          val parameters = macroDefinition.parameters.map(_.inner.toSeq).getOrElse(Nil)
+        case MacroApp(call, arguments, macroDefinition) =>
+          val parameters = macroDefinition.parameters.map(_.inner.toSeq)
           val body = macroDefinition.body
 
-          if (arguments.length != parameters.length)
+          if (arguments.isEmpty && parameters.isDefined) {
+            // `arguments.isDefined && parameters.isEmpty` cannot happen, we rule this out in `getMacroArgs`
+            val suggestion = macroDefinition.parameters.get.pretty
+            throw ParseException(s"macro `${macroDefinition.idndef.name}` is defined with parameters but referenced without, try adding `${suggestion}`", call.pos)
+          }
+          if (arguments.map(_.length) != parameters.map(_.length))
             throw ParseException("Number of macro arguments does not match", call.pos)
 
           (call, body) match {
@@ -373,12 +370,12 @@ object MacroExpander {
 
           val newNode = try {
             scopeAtMacroCall = NameAnalyser().namesInScope(program, Some(macroCall))
-            arguments.foreach(
+            arguments.foreach(_.foreach(
               StrategyBuilder.SlimVisitor[PNode] {
                 case id: PIdnDef => scopeAtMacroCall += id.name
                 case _ =>
               }.execute[PNode](_)
-            )
+            ))
             StrategyBuilder.SlimVisitor[PNode]({
               case id: PIdnDef => scopeAtMacroCall += id.name
               case _ =>
