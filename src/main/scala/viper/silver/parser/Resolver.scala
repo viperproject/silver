@@ -335,7 +335,11 @@ case class TypeChecker(names: NameAnalyser) {
           case Left(_) =>
         }
       case PAssign(targets, _, rhs) if targets.length == 1 => check(rhs, targets.head.typ)
-      // Case `targets.length != 1 && !rhs.isInstanceOf[PCall]`:
+      // Anything after this has to satisfy `targets.length != 1 && !rhs.isInstanceOf[PCall]`:
+      // Parsed `expr`
+      case _ if stmt.op.isEmpty => messages ++= FastMessaging.message(stmt, "invalid expression in statement position, only method calls with no returns are allowed in a statement position")
+      // Parsed `:= expr`
+      case _ if stmt.targets.isEmpty => messages ++= FastMessaging.message(stmt, "expected a target when assigning an expression")
       case _ => messages ++= FastMessaging.message(stmt, "expected a method call when assigning to multiple targets")
     }
   }
