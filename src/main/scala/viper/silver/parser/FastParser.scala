@@ -1002,7 +1002,8 @@ class FastParser {
             val trace = fail.trace()
             val fullStack = fastparse.Parsed.Failure.formatStack(trace.input, trace.stack)
             val msg = s"${trace.aggregateMsg}. Occurred while parsing: $fullStack"
-            val pos = FilePosition(lineCol.getPos(trace.index))
+            val fPos = FilePosition(lineCol.getPos(trace.index))
+            val pos = SourcePosition(fPos.file, fPos, fPos)
             errors = errors :+ ParseError(msg, pos)
             logFailure = false
           }

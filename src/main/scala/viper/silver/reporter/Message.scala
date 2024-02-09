@@ -192,6 +192,7 @@ case class ProgramDefinitionsReport(definitions: List[Definition]) extends Messa
   override val name: String = "program_definitions"
 }
 
+/** The `PProgram` result of parsing or typechecking, `semanticAnalysisSuccess` is true if the program came from after typechecking. */
 case class PProgramReport(semanticAnalysisSuccess: Boolean, pProgram: PProgram) extends Message {
 
   override lazy val toString: String = s"pprogram_report(semanticAnalysisSuccess=$semanticAnalysisSuccess, pProgram=${pProgram.toString})"
