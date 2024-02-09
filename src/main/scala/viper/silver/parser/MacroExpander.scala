@@ -72,7 +72,7 @@ object MacroExpander {
 
       if (nonUsedParameter.nonEmpty) {
         Some(ParseWarning(s"in macro `${define.idndef.name}`, the following parameters were defined but not used: " +
-          s"${nonUsedParameter.mkString(", ")} ", define.errorPosition))
+          s"${nonUsedParameter.mkString(", ")}", define.errorPosition))
       }
       else
         None
