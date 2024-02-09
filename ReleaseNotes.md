@@ -4,73 +4,70 @@
 
 ### Changes in Viper Language
 
-- unfold, fold, unfolding only strictly positive (which also fixes an unsoundness) ([Silver#444](https://github.com/viperproject/silver/pull/444))
-- no longer using Int as default for unconstrained type args inside domain ([Silver#758](https://github.com/viperproject/silver/pull/758))
-- opaque annotation ([Silicon#767](https://github.com/viperproject/silicon/pull/767)) and ([Carbon#474](https://github.com/viperproject/carbon/pull/474))
+- ``unfold``, ``fold``, and ``unfolding`` now require a strictly positive permission amount (i.e., ``none`` is no longer allowed) ([Silicon#754](https://github.com/viperproject/silicon/pull/754)) and ([Carbon#469](https://github.com/viperproject/carbon/pull/469)). This fixes an unsoundness ([Silver#444](https://github.com/viperproject/silver/pull/444)). A new error reason ``NonPositivePermission`` is reported if this condition is not satisfied ([Silver#744](https://github.com/viperproject/silver/pull/744)).
+- When generic functions are used inside axioms of their own domain and the type arguments are not constrained, Viper no longer uses ``Int`` as the type argument, but instead uses the domain's type parameter itself (i.e., it states that the axiom must hold for all type arguments). ([Silver#758](https://github.com/viperproject/silver/pull/758))
+- Functions can be annotated as ``@opaque()``, which means that their definitions are not available by default. For opaque functions, any use of the function can be annotated with ``@reveal()`` to make the definition available for that specific function application. ([Silicon#767](https://github.com/viperproject/silicon/pull/767)) and ([Carbon#474](https://github.com/viperproject/carbon/pull/474))
 
 ### API changes:
-- error and reason sealed ([Silver#749](https://github.com/viperproject/silver/pull/749))
-- re-designed Parse AST?
+- The classes ``ErrorReason`` and ``VerificationError`` are now sealed. Code that extended them must now extend ``ExtensionAbstractVerificationError`` and ``ExtensionAbstractErrorReason``, respectively. ([Silver#749](https://github.com/viperproject/silver/pull/749))
+- The ParseAST has been heavily reworked, which may require adaptations in plugins that work on the ParseAST level. ([Silver#764](https://github.com/viperproject/silver/pull/764))
 
 ### Changes in plugins:
-- smoke detection plugin ([Silver#762](https://github.com/viperproject/silver/pull/762))
-- auto-generating well-foundedness axioms for adt types ([Silver#743](https://github.com/viperproject/silver/pull/743))
-- incomplete termination plugin fix ([Silver#754](https://github.com/viperproject/silver/pull/754))
-- decreases clauses can now be written anywhere in function spec ([Silver#738](https://github.com/viperproject/silver/pull/738))
-- refute works properly if the ast has info nodes ([Silver#736](https://github.com/viperproject/silver/pull/736))
+- Viper now includes a new smoke detection plugin that automatically checks if e.g. preconditions are unsatisfiable or branches are reachable by inserting ``refute false`` in various locations in the program. The plugin is not enabled by default. ([Silver#762](https://github.com/viperproject/silver/pull/762))
+- The ADT plugin now automatically generates well-foundedness axioms for each declared ADT type if the termination plugin is used, s.t. ADT values can be used as termination measures without the user having to declare them. ([Silver#743](https://github.com/viperproject/silver/pull/743))
+- Two bug fixes in the termination plugin:
+  - An incompleteness in the termination plugin affecting functions whose preconditions contain quantified permissions has been fixed ([Silver#754](https://github.com/viperproject/silver/pull/754))
+  - ``decreases`` clauses with predicate instances can now be written anywhere in function specifications (previously could not be after the postcondition) ([Silver#738](https://github.com/viperproject/silver/pull/738))
+- Fixed a bug in the refute plugin that prevented it from working inside loops in Carbon ([Silver#736](https://github.com/viperproject/silver/pull/736))
 
 ### Other Viper-level improvements:
-- fixing incompleteness where domain axioms were not instantiated properly ([Silver#???](https://github.com/viperproject/silver/pull/???))
-- improved parsing and type checking errors ([Silver#723](https://github.com/viperproject/silver/pull/723))
-- trigger inference improvements:
-  - proper treatment of let-expressions when generating triggers ([Silver#753](https://github.com/viperproject/silver/pull/753))
-  - trigger inference no longer incorrectly omits old ([Silver#747](https://github.com/viperproject/silver/pull/747))
+- Substantially improved parsing and type checking errors (as well as parsing performance) ([Silver#764](https://github.com/viperproject/silver/pull/764))
+- Fixed a bug where domain axioms were not instantiated for all relevant cases ([Silver#742](https://github.com/viperproject/silver/pull/742))
+- Two improvements in trigger inference:
+  - Proper treatment of ``let``-expressions when generating triggers ([Silver#753](https://github.com/viperproject/silver/pull/753))
+  - Trigger inference no longer incorrectly omits ``old`` ([Silver#747](https://github.com/viperproject/silver/pull/747))
 
 ### Backend-specific Upgrades/Changes
 
 #### Symbolic Execution Backend (Silicon)
 
 - Soundness fixes:
-  - fixed an old wand unsoundness and incompleteness ([Silicon#757](https://github.com/viperproject/silicon/pull/757))
-  - fixed goto loop well-def check ([Silicon#774](https://github.com/viperproject/silicon/pull/774))
-  - fixed map unsoundness ([Silicon#770](https://github.com/viperproject/silicon/pull/770))
+  - Fixed a long-standing unsoundness and incompleteness related to packaging magic wands ([Silicon#757](https://github.com/viperproject/silicon/pull/757))
+  - Fixed an incorrect well-definedness check of branch conditions inside ``goto``-loops ([Silicon#774](https://github.com/viperproject/silicon/pull/774))
+  - Fixed a missing check for map lookups ([Silicon#770](https://github.com/viperproject/silicon/pull/770))
 - Completeness improvements:
-  - optionally Carbon's sequence, set, ... axioms ([Silicon#642](https://github.com/viperproject/silicon/pull/642))
-  - QP exhale inside package with qvar-dependent permission expression ([Silicon#797](https://github.com/viperproject/silicon/pull/797))
-  - fixed function incompleteness ([Silicon#744](https://github.com/viperproject/silicon/pull/744))
-  - three mce improvements:
-    - pulling assumptions out of quants to improve mce ([Silicon#760](https://github.com/viperproject/silicon/pull/760))
-    - new mce improvement ([Silicon#795](https://github.com/viperproject/silicon/pull/795))
-    - mce enabled for functions ???
-- Fixed crashes
-  - Z3 API + interpreted functions fix ([Silicon#752](https://github.com/viperproject/silicon/pull/752))
-  - fixed crash ([Silicon#759](https://github.com/viperproject/silicon/pull/750))
-  - validation for noOfParV ([Silicon#762](https://github.com/viperproject/silicon/pull/762))
+  - Silicon now uses Carbon's more complete axiomatization for sequences, sets and multisets. This usually comes with little or no performance cost, but we have observed individual examples where the new axioms caused non-termination or significantly worse verification time. **We would be very grateful if users who observe additional examples where the new axiomatization leads to severe problems filed issues or sent us the problematic examples in some other way.** Silicon's old axiomatization is still available and can be used via the command line option ``--useOldAxiomatization``. ([Silicon#642](https://github.com/viperproject/silicon/pull/642))
+  - Fixed an incompleteness when exhaling a quantified permission with a permission amount that depends on the quantified variable inside a ``package`` block ([Silicon#797](https://github.com/viperproject/silicon/pull/797))
+  - Fixed an issue where a function definition was available too late ([Silicon#744](https://github.com/viperproject/silicon/pull/744))
+  - Two completeness improvements of exhale mode 1 (aka ``moreCompleteExhale``) ([Silicon#760](https://github.com/viperproject/silicon/pull/760)) and ([Silicon#795](https://github.com/viperproject/silicon/pull/795))
+- Fixed crashes:
+  - when using Z3 via its API and interpreted functions ([Silicon#752](https://github.com/viperproject/silicon/pull/752))
+  - when using predicate or wand triggers inside functions ([Silicon#759](https://github.com/viperproject/silicon/pull/750))
 - Performance improvements
-  - QP snapshot map cache fix ([Silicon#792](https://github.com/viperproject/silicon/pull/792))
-  - qp heuristics ([Silicon#789](https://github.com/viperproject/silicon/pull/789))
+  - More consistent caching for quantified permissions ([Silicon#792](https://github.com/viperproject/silicon/pull/792))
+  - Better heuristics for quantified permissions ([Silicon#789](https://github.com/viperproject/silicon/pull/789))
 - Other improvements
-  - flag to easily disable NL int TODO
-  - prover args per method annotation ([Silicon#784](https://github.com/viperproject/silicon/pull/784))
-  - symbexlog fix ([Silicon#790](https://github.com/viperproject/silicon/pull/790))
+  - Added a command line flag ``--disableNL`` to easily disable non-linear integer arithmetic reasoning in Z3 ([Silicon#783](https://github.com/viperproject/silicon/pull/783))
+  - Added support for an experimental method annotation ``@proverArgs(key=value)`` that allows setting Z3 configuration parameters on a per-method basis ([Silicon#784](https://github.com/viperproject/silicon/pull/784))
+  - Fixed incorrect branch conditions in symbolic execution log ([Silicon#790](https://github.com/viperproject/silicon/pull/790))
 
 #### Verification Condition Generation Backend (Carbon)
 
 - Soundness fixes:
-  - Exhaling quantified wands is now sound ([Carbon#473](https://github.com/viperproject/carbon/pull/473))
+  - Exhaling quantified magic wands is now sound ([Carbon#473](https://github.com/viperproject/carbon/pull/473))
 
 - Other improvements:
-  - Support for missing features: ([Carbon#473](https://github.com/viperproject/carbon/pull/473))
-    - quantified wands
-    - wands as triggers
-    - perm for wands
-    - forperm with more than one quantified variable
-    - forperm for wands
-  - overall timeout option ([Carbon#483](https://github.com/viperproject/carbon/pull/483))
-  - internal encoding improvements:
-    - old state ([Carbon#482](https://github.com/viperproject/carbon/pull/482))
-    - if statements ([Carbon#478](https://github.com/viperproject/carbon/pull/478))
-    - method calls ([Carbon#477](https://github.com/viperproject/carbon/pull/477))
+  - Added support for several missing features: ([Carbon#473](https://github.com/viperproject/carbon/pull/473))
+    - quantified magic wands
+    - magic wands as triggers
+    - ``perm`` for magic wands
+    - ``forperm`` with more than one quantified variable
+    - ``forperm`` for magic wands
+  - Added a command line option ``--timeout=n`` to set an overall verification timeout (in seconds) ([Carbon#483](https://github.com/viperproject/carbon/pull/483))
+  - Several internal encoding improvements:
+    - Improved encoding of the old state ([Carbon#482](https://github.com/viperproject/carbon/pull/482))
+    - Improved encoding of ``if`` statements ([Carbon#478](https://github.com/viperproject/carbon/pull/478))
+    - Improved encoding of method calls ([Carbon#477](https://github.com/viperproject/carbon/pull/477))
 
 
 ## Release 2023.7
