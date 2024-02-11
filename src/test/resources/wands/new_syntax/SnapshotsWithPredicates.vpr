@@ -5,7 +5,7 @@ field f: Int
 field g: Int
 
 predicate wandPair(x: Ref) {
-    //:: ExpectedOutput(consistency.error)
+    //:: ExpectedOutput(typechecker.error)
     acc(x.f) --* acc(x.f) && acc(x.g)
 }
 

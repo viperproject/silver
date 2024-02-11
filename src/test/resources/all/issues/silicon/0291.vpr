@@ -5,8 +5,8 @@ field f : Int
 field g : Int
 
 function f1(x: Ref) : Int
-  //:: ExpectedOutput(consistency.error)
+  //:: ExpectedOutput(typechecker.error)
   requires(perm(x.f) == perm(x.g))
-  //:: ExpectedOutput(consistency.error)
+  //:: ExpectedOutput(typechecker.error)
   ensures(forperm r: Ref [r.f] :: false)
 { 2 }

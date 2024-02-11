@@ -34,7 +34,7 @@ class ConsistencyTests extends AnyFunSuite with Matchers {
     val prog : Program = Program(Seq(), Seq(Field("j", Int)(NoPosition, NoInfo, NoTrafos), Field("j", Bool)(NoPosition, NoInfo, NoTrafos)), Seq(), Seq(), Seq(method1), Seq())(NoPosition, NoInfo, NoTrafos)
 
     prog.checkTransitively should be (Seq(
-      ConsistencyError("Duplicate identifier j found.", NoPosition),
+      ConsistencyError("Duplicate identifier `j` found.", NoPosition),
       ConsistencyError("Local variable i not found.", NoPosition),
       ConsistencyError("No matching identifier f1 found of type Function.", NoPosition),
       ConsistencyError("No matching identifier lbl1 found of type Label.", NoPosition),

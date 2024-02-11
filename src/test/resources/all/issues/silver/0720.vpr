@@ -4,6 +4,6 @@
 predicate p(flag: Bool)
 
 method client() {
-    //:: ExpectedOutput(consistency.error)
+    //:: ExpectedOutput(typechecker.error)
     inhale p(p(false))
 }
