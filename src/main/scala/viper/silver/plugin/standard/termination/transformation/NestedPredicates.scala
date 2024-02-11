@@ -131,7 +131,7 @@ trait NestedPredicates extends ProgramManager with ErrorReporter {
    * @return an assignment of the given variable to the representation of a predicate with the corresponding arguments
    */
   private def generatePredicateAssign(assLocation: LocalVar, pred: PredicateAccess): LocalVarAssign = {
-    val pi = PredicateInstance(pred.args, pred.predicateName)(pred.pos, pred.info, pred.errT)
+    val pi = PredicateInstance(pred.predicateName, pred.args)(pred.pos, pred.info, pred.errT)
     LocalVarAssign(assLocation, pi)(pred.pos)
   }
 

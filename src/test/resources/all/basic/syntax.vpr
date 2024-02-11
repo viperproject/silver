@@ -36,9 +36,10 @@ method m(this : Ref)
     y := df(this.g)
 }
 
-  //:: ExpectedOutput(typechecker.error)
+//:: ExpectedOutput(typechecker.error)
 method m54(this:Ref)  returns (this:Ref)
 {    
+    //:: ExpectedOutput(typechecker.error)
     this := this
 }
 

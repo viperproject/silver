@@ -6,7 +6,7 @@ field g: Int
 field h: Bool
 
 predicate P(x: Ref) {
-  //:: ExpectedOutput(consistency.error)
+  //:: ExpectedOutput(typechecker.error)
   (acc(x.f) && x.f > 0) --* (acc(x.f) && acc(x.g) && ((x.f) + (x.g) > 0))
 }
 

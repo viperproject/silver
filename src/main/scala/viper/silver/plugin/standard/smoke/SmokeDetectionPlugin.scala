@@ -17,19 +17,17 @@ class SmokeDetectionPlugin(@unused reporter: viper.silver.reporter.Reporter,
                            @unused config: viper.silver.frontend.SilFrontendConfig,
                            fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
 
-  import fp.{FP, ParserExtension, keyword}
-
-  /** Keyword used to define `unreachable` statement. */
-  private val unreachableKeyword: String = "unreachable"
+  import fp.{ParserExtension, lineCol, _file}
+  import viper.silver.parser.FastParserCompanion.{PositionParsing, reservedKw}
 
   /** Parser for `unreachable` statements. */
   def unreachable[$: P]: P[PUnreachable] =
-    FP(keyword(unreachableKeyword)).map { case (pos, _) => PUnreachable()(pos) }
+    P(P(PUnreachableKeyword) map PUnreachable.apply).pos
 
   /** Add `unreachable` to the parser. */
   override def beforeParse(input: String, isImported: Boolean): String = {
     // Add new keyword
-    ParserExtension.addNewKeywords(Set[String](unreachableKeyword))
+    ParserExtension.addNewKeywords(Set(PUnreachableKeyword))
     // Add new parser to the precondition
     ParserExtension.addNewStmtAtEnd(unreachable(_))
     input

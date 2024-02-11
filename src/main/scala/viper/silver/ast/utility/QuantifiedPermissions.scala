@@ -141,9 +141,9 @@ object QuantifiedPermissions {
       val currentRoot = toVisit.dequeue()
 
       val relevantNodes: Seq[Node] = currentRoot match {
-        case m@Method(_, _, _, pres, posts, _) if m != root =>
+        case m: Method if m != root =>
           // use only specification of called methods
-          pres ++ posts
+          m.pres ++ m.posts
         case f@Function(_, _, _, pres, posts, _) if f != root =>
           // use only specification of called functions
           pres ++ posts

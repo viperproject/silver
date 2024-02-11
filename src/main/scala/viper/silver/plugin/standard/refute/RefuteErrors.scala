@@ -19,9 +19,9 @@ case class RefuteFailed(override val offendingNode: Refute, override val reason:
     "Smoke detection: False could be proven here (which should never hold)." else
     "Refute holds in all cases or could not be reached (e.g. see Silicon `numberOfErrorsToReport`)."
 
+  override def pos = offendingNode.exp.pos
   override def withNode(offendingNode: errors.ErrorNode = this.offendingNode): RefuteFailed =
     RefuteFailed(this.offendingNode, this.reason, this.cached)
-
   override def withReason(r: ErrorReason): RefuteFailed = RefuteFailed(offendingNode, r, cached)
 }
 

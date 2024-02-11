@@ -6,13 +6,13 @@
 
 package viper.silver.frontend
 
-import java.nio.file.{Files, Path}
+import java.nio.file.Path
 
 import org.slf4j.LoggerFactory
 import ch.qos.logback.classic.Logger
 
-import scala.io.Source
 import viper.silver.ast._
+import viper.silver.ast.utility.{DiskLoader, FileLoader}
 import viper.silver.reporter.StdIOReporter
 import viper.silver.verifier._
 import viper.silver.reporter.Reporter
@@ -159,6 +159,7 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
 
   protected var _state: DefaultStates.Value = DefaultStates.Initial
   protected var _verifier: Option[Verifier] = None
+  protected var _loader: FileLoader = DiskLoader
   protected var _input: Option[String] = None
   protected var _inputFile: Option[Path] = None
   protected var _errors: Seq[AbstractError] = Seq()
@@ -190,6 +191,8 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
 
   def state = _state
   def errors = _errors
+  def pProgram = _parsingResult
+  def saProgram = _semanticAnalysisResult
   def program = _program
 
   def getVerificationResult: Option[VerificationResult] = _verificationResult
@@ -203,7 +206,7 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
     if (state < DefaultStates.Initialized) sys.error("The translator has not been initialized.")
     _state = DefaultStates.InputSet
     _inputFile = Some(input)
-    _input = Some(Source.fromInputStream(Files.newInputStream(input)).mkString)
+    _input = _loader.loadContent(input).toOption
     _errors = Seq()
     _parsingResult = None
     _semanticAnalysisResult = None

@@ -11,7 +11,7 @@ import ch.qos.logback.classic.Logger
 import viper.silver.ast.Program
 import viper.silver.logger.ViperStdOutLogger
 import viper.silver.plugin.SilverPluginManager
-import viper.silver.reporter.{AstConstructionFailureMessage, AstConstructionSuccessMessage, Reporter}
+import viper.silver.reporter.Reporter
 import viper.silver.verifier.{Failure, Success, VerificationResult, Verifier}
 
 import java.nio.file.Path

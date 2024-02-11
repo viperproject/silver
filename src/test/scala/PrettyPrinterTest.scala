@@ -50,7 +50,7 @@ class PrettyPrinterTest extends AnyFunSuite with Matchers {
 
     val code_id = code.hashCode.asInstanceOf[Short].toString
     AstProvider.setCode(code)
-    AstProvider.execute(Array("--ignoreFile", code_id))
+    AstProvider.execute(Seq("--ignoreFile", code_id))
 
     if (AstProvider.errors.isEmpty) {
       Some(AstProvider.translationResult)

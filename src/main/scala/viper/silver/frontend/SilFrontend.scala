@@ -6,7 +6,7 @@
 
 package viper.silver.frontend
 
-import viper.silver.ast.utility.Consistency
+import viper.silver.ast.utility.{Consistency, FileLoader}
 import viper.silver.ast._
 import viper.silver.parser._
 import viper.silver.plugin.SilverPluginManager
@@ -173,12 +173,15 @@ trait SilFrontend extends DefaultFrontend {
    * the Viper program to the verifier.  The resulting error messages (if any) will be
    * shown in a user-friendly fashion.
    */
-  def execute(args: Seq[String]): Unit = {
+  def execute(args: Seq[String], loader: Option[FileLoader] = None): Unit = {
     setStartTime()
 
     /* Create the verifier */
     _ver = createVerifier(args.mkString(" "))
 
+    if (loader.isDefined) {
+      _loader = loader.get
+    }
     if (!prepare(args)) return
 
     // initialize the translator
@@ -285,7 +288,7 @@ trait SilFrontend extends DefaultFrontend {
     val file = _inputFile.get
     plugins.beforeParse(input, isImported = false) match {
       case Some(inputPlugin) =>
-        val result = fp.parse(inputPlugin, file, Some(plugins))
+        val result = fp.parse(inputPlugin, file, Some(plugins), _loader)
         if (result.errors.forall(p => p.isInstanceOf[ParseWarning])) {
           reporter report WarningsDuringParsing(result.errors)
           Succ({
