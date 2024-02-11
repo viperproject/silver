@@ -41,8 +41,6 @@ object Expressions {
          | _: MultisetExp
          | _: MapExp
          | _: ForPerm
-         | _: Exists
-         | _: Forall
       => true
   }
 

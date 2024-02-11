@@ -66,15 +66,6 @@ trait PNode extends Where with Product with Rewritable with HasExtraValList {
     Visitor.visitOpt(this, PNode.callSubnodes, f1, f2)
   }
 
-  // /** @see [[Transformer.transform()]] */
-  // def transform(pre: PartialFunction[PNode, PNode] = PartialFunction.empty)
-  //              (recursive: PNode => Boolean = !pre.isDefinedAt(_),
-  //               post: PartialFunction[PNode, PNode] = PartialFunction.empty,
-  //               allowChangingNodeType: Boolean = false,
-  //               resultCheck: PartialFunction[(PNode, PNode), Unit] = PartialFunction.empty)
-  // : this.type =
-  //   Transformer.transform[this.type](this, pre)(recursive, post, allowChangingNodeType, resultCheck)
-
   /** @see [[Visitor.deepCollect()]] */
   def deepCollect[A](f: PartialFunction[PNode, A]): Seq[A] =
     Visitor.deepCollect(Seq(this), PNode.callSubnodes)(f)
@@ -1168,7 +1159,6 @@ case class PEpsilon(keyword: PKw.Epsilon)(val pos: (Position, Position)) extends
 
 trait PCallKeyword extends POpApp {
   def op: PReserved[POperatorKeyword]
-  // override def opName: String = op.rs.keyword
 }
 
 case class PCurPerm(op: PKwOp.Perm, res: PGrouped.Paren[PResourceAccess])(val pos: (Position, Position)) extends PCallKeyword with PHeapOpApp {
@@ -1200,9 +1190,6 @@ case class POldExp(op: PKwOp.Old, label: Option[PGrouped[PSym.Bracket, Either[PK
   override val args = Seq(e.inner)
   override def requirePure = args
   override val signatures: List[PTypeSubstitution] = List(Map(POpApp.pResS -> POpApp.pArg(0)))
-
-  // override def getSemanticHighlights: Seq[SemanticHighlight] = label.toSeq.flatMap(RangePosition(_).map(sp => SemanticHighlight(sp, TokenType.Event)))
-  // override def getHoverHints: Seq[HoverHint] = label.toSeq.flatMap(l => l.hoverHint(RangePosition(l)))
 }
 
 sealed trait PCollectionLiteral extends PCallKeyword {
@@ -1212,7 +1199,6 @@ sealed trait PCollectionLiteral extends PCallKeyword {
 
   def pCollectionType(pType: PType): PType
 
-  // def collectionName: String = opName
   def explicitType: Option[PType]
 }
 
@@ -1276,7 +1262,6 @@ case class PLookup(base: PExp, l: PSymOp.LBracket, idx: PExp, r: PSymOp.RBracket
 }
 
 case class PSeqSlice(seq: PExp, l: PSymOp.LBracket, s: Option[PExp], d: PSymOp.DotDot, e: Option[PExp], r: PSymOp.RBracket)(val pos: (Position, Position)) extends POpApp {
-  // override val opName = "Seq#Slice"
   val elementType = PTypeVar("#E")
   override val extraLocalTypeVariables = Set(elementType)
   override val args = seq +: (s.toSeq ++ e.toSeq)
@@ -1294,7 +1279,6 @@ case class PUpdate(base: PExp, l: PSymOp.LBracket, key: PExp, a: PSymOp.Assign, 
   val keyType: PDomainType = POpApp.pArg(1)
   val elementType: PDomainType = POpApp.pArg(2)
 
-  // override val opName = "update"
   override val args = Seq(base, key, value)
   override val extraLocalTypeVariables: Set[PDomainType] = Set(keyType, elementType)
 
@@ -1308,7 +1292,6 @@ case class PSize(l: PSymOp.Or, seq: PExp, r: PSymOp.Or)(val pos: (Position, Posi
   val keyType: PDomainType = PTypeVar("#K")
   val elementType: PDomainType = PTypeVar("#E")
 
-  // override val opName = "size"
   override val extraLocalTypeVariables: Set[PDomainType] = Set(keyType, elementType)
   override val args = Seq(seq)
 
@@ -1341,7 +1324,6 @@ case class PExplicitMultiset(op: PKwOp.Multiset, callArgs: PDelimited.Comma[PSym
 /* ** Maps */
 
 sealed trait PMapLiteral extends POpApp {
-  // override val opName = "Map#Map"
   override def args: Seq[PExp] = callArgs.inner.toSeq
   def callArgs: PDelimited.Comma[PSym.Paren, PExp]
   def pKeyType: PType
@@ -1384,7 +1366,6 @@ case class PExplicitMap(op: PKwOp.Map, callArgs: PDelimited.Comma[PSym.Paren, PM
   * considered to be a singleton map literal itself.
   */
 case class PMaplet(key: PExp, a: PSymOp.Assign, value: PExp)(val pos: (Position, Position)) extends POpApp with PPrettySubnodes {
-  // override val opName = "Map#Maplet"
   override def args: Seq[PExp] = Seq(key, value)
   override def signatures: List[PTypeSubstitution] = List(Map(
     POpApp.pResS -> MakeMap(POpApp.pArg(0), POpApp.pArg(1))
@@ -1395,7 +1376,6 @@ case class PMapDomain(keyword: PKwOp.Domain, base: PGrouped.Paren[PExp])(val pos
   val keyType: PDomainType = PTypeVar("#K")
   val valueType: PDomainType = PTypeVar("#E")
 
-  // override val opName = "Map#domain"
   override val args = Seq(base.inner)
   override val extraLocalTypeVariables: Set[PDomainType] = Set(keyType, valueType)
 
@@ -1409,7 +1389,6 @@ case class PMapRange(keyword: PKwOp.Range, base: PGrouped.Paren[PExp])(val pos: 
   val keyType: PDomainType = PTypeVar("#K")
   val valueType: PDomainType = PTypeVar("#E")
 
-  // override val opName = "Map#range"
   override val args = Seq(base.inner)
   override val extraLocalTypeVariables: Set[PDomainType] = Set(keyType, valueType)
 
