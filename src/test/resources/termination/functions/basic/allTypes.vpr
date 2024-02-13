@@ -50,13 +50,13 @@ ensures result == 1
     !b ? booleans_e(!b) : 1
 }
 
-function rationals(r: Rational): Rational
+function rationals(r: Perm): Perm
 decreases r
 {
     r >= 0/1 ? rationals(r - 1/1) : r
 }
 
-function rationals_e(r: Rational): Rational
+function rationals_e(r: Perm): Perm
 decreases r
 {
     //:: ExpectedOutput(termination.failed:tuple.false)

@@ -1,6 +1,6 @@
 adt SpecialList[T, S] {
     SpecialNil()
-    //:: ExpectedOutput(typechecker.error)
     TCons(elemT: T, tail: SpecialList[T,S])
+    //:: ExpectedOutput(typechecker.error)
     SCons(elemS: S, tail: SpecialList[T,S])
 }

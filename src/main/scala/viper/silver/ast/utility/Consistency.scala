@@ -29,7 +29,7 @@ object Consistency {
     recordIfNot(suspect, !property, message)
 
   /** Names that are not allowed for use in programs. */
-  def reservedNames: Set[String] = FastParserCompanion.basicKeywords
+  def reservedNames: Set[String] = FastParserCompanion.basicKeywords.map(_.keyword)
 
   /** Returns true iff the string `name` is a valid identifier. */
   val identFirstLetter = "[a-zA-Z$_]"
@@ -171,7 +171,7 @@ object Consistency {
     for (c@MethodCall(_, _, targets) <- b; t <- targets if argVars.contains(t)) {
       s :+= ConsistencyError(s"$c is a reassignment of formal argument $t.", c.pos)
     }
-    for (n@NewStmt(l, _) <- b if argVars.contains(l)){
+    for (n@NewStmt(l, _) <- b if argVars.contains(l)) {
       s :+= ConsistencyError(s"$n is a reassignment of formal argument $l.", n.pos)
     }
     s

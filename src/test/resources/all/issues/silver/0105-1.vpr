@@ -7,8 +7,8 @@ domain Process {
   function p_ping(): Process
   function p_ping_omega(): Process
 
-  //:: ExpectedOutput(parser.error)
   axiom ping_axiom_2_post_TWO {
+    //:: ExpectedOutput(parser.error)
     (exists  :: p_ping_omega() == p_seq(p_ping_omega(), p_ping()))
   }
 }

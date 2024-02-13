@@ -1,0 +1,22 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+/* Consistency checks (performed on the real Silver AST, not the parser AST) */
+/* These checks are now also performed by the resolver during typechecking */
+
+field f: Int
+field g: Int
+
+/* Applying/packaging must occur inside wands */
+
+function foobar(x: Ref): Int
+  //:: ExpectedOutput(typechecker.error)
+  requires true --* acc(x.f)
+{
+  applying (true --* acc(x.f)) in x.f
+}
+
+predicate test18(x: Ref) {
+  //:: ExpectedOutput(typechecker.error)
+  acc(x.f) && (acc(x.f) --* acc(x.g)) && applying (acc(x.f) --* acc(x.g)) in true
+}

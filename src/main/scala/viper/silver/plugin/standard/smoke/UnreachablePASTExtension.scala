@@ -9,8 +9,10 @@ package viper.silver.plugin.standard.smoke
 import viper.silver.ast.{Position, Stmt}
 import viper.silver.parser._
 
-case class PUnreachable()(val pos: (Position, Position)) extends PExtender with PStmt {
-  override val getSubnodes: Seq[PNode] = Seq()
+/** Keyword used to define `unreachable` statement. */
+case object PUnreachableKeyword extends PKw("unreachable") with PKeywordStmt
+
+case class PUnreachable(kw: PReserved[PUnreachableKeyword.type])(val pos: (Position, Position)) extends PExtender with PStmt {
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
     None
   }
