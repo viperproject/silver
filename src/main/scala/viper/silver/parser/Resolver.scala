@@ -226,14 +226,10 @@ case class TypeChecker(names: NameAnalyser) {
         checkMagicWand(e)
       case PExhale(_, e) =>
         check(e, Impure)
-        if (e.typ == Bool)
-          messages ++= FastMessaging.message(stmt, "found `exhale` of pure boolean expression, use `assert` instead", error = false)
       case PAssert(_, e) =>
         check(e, Impure)
       case PInhale(_, e) =>
         check(e, Impure)
-        if (e.typ == Bool)
-          messages ++= FastMessaging.message(stmt, "found `inhale` of pure boolean expression, use `assume` instead", error = false)
       case PAssume(_, e) =>
         check(e, Impure)
       case assign: PAssign =>
