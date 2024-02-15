@@ -57,7 +57,6 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
     case Unfolding(acc, unfBody) =>
       val permCheck = transformExp(acc.perm, c, false)
       val unfoldBody = transformExp(unfBody, c, inhaleExp)
-      // only unfold and fold if body contains something
       val unfold = Unfold(acc)()
       val nonDetVarDecl = LocalVarDecl(uniqueName("b"), Bool)(e.pos, e.info, e.errT)
       val assumeFalse = Inhale(FalseLit()())()
