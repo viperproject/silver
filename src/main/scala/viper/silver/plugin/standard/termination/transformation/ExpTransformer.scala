@@ -62,7 +62,7 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
       val assumeFalse = Inhale(FalseLit()())()
       val thenBranch = Seqn(Seq(permCheck, unfold, unfoldBody, assumeFalse), Nil)()
       val elseBranch = if (inhaleExp) Seqn(Seq(Inhale(e)(e.pos, e.info)), Nil)() else EmptyStmt
-      If(nonDetVarDecl.localVar, thenBranch, elseBranch)()
+      Seqn(Seq(If(nonDetVarDecl.localVar, thenBranch, elseBranch)()), Seq(nonDetVarDecl))()
     case Applying(wand, body) =>
       // note that this case is untested -- it's not possible to write a function with an `applying` expression
       val nonDetVarDecl = LocalVarDecl(uniqueName("b"), Bool)(e.pos, e.info, e.errT)
