@@ -10,7 +10,7 @@
 
 ### API changes:
 - The classes ``ErrorReason`` and ``VerificationError`` are now sealed. Code that extended them must now extend ``ExtensionAbstractVerificationError`` and ``ExtensionAbstractErrorReason``, respectively. ([Silver#749](https://github.com/viperproject/silver/pull/749))
-- The ParseAST has been heavily reworked, which may require adaptations in plugins that work on the ParseAST level. ([Silver#764](https://github.com/viperproject/silver/pull/764))
+- The ParseAST has been heavily reworked, which may require adaptations in plugins that work on the ParseAST level. Additionally, the order of constructor arguments of the ``PredicateInstance`` class in the predicate instance plugin has been switched. ([Silver#764](https://github.com/viperproject/silver/pull/764))
 
 ### Changes in plugins:
 - Viper now includes a new smoke detection plugin that automatically checks if e.g. preconditions are unsatisfiable or branches are reachable by inserting ``refute false`` in various locations in the program. The plugin is not enabled by default. ([Silver#762](https://github.com/viperproject/silver/pull/762))
