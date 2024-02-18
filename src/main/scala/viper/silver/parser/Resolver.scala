@@ -908,7 +908,7 @@ case class NameAnalyser() {
                 }
               case _ =>
             }
-          case i@PVersionedIdnUse(name, _, _) => // TODO ake: maybe extract to DebugTypechecker
+          case i@PVersionedIdnUse(name, _, _) =>
             // look up in both maps (if we are not in a method currently, we look in the same map twice, but that is ok)
             getCurrentMap.getOrElse(name, globalDeclarationMap.getOrElse(name, PUnknownEntity())) match {
               case PUnknownEntity() =>
