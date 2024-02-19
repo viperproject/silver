@@ -126,7 +126,7 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
   override val typ: Wand.type = Wand
 
   //maybe rename this sometime
-  def subexpressionsToEvaluate(p: Program): Seq[Exp] = {
+  def subexpressionsToEvaluate(p: Program): Seq[Exp] = { // TODO ake
     /* The code collects expressions that can/are to be evaluated in a fixed state, i.e.
      * a state that is known when this method is called.
      * Among other things, such expressions may not be heap-dependent (unless they are nested
