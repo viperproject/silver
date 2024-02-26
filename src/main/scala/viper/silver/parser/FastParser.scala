@@ -30,9 +30,11 @@ object FastParserCompanion {
       NoTrace((" " | "\t").rep)
   }
 
+  // TODO why is this duplicated? see FastParser below
   implicit val whitespace = {
     import NoWhitespace._
     implicit ctx: ParsingRun[_] =>
+      // NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ !StringIn("/") ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
       NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
   }
 
@@ -315,9 +317,11 @@ class FastParser {
   import FastParserCompanion.{ExtendedParsing, identContinues, identStarts, LeadingWhitespace, Pos, PositionParsing, reservedKw, reservedSym}
 
 
+  // TODO why is this duplicated? see FastParserCompanion
   implicit val whitespace = {
     import NoWhitespace._
     implicit ctx: ParsingRun[_] =>
+      // NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ !StringIn("/") ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
       NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
   }
 
@@ -403,6 +407,19 @@ class FastParser {
 
   def stringLiteral[$: P]: P[PStringLiteral] = P((CharsWhile(_ != '\"').! map PRawString.apply).pos.quotes map (PStringLiteral.apply _)).pos
 
+  // it might be preferable to remove this and instead do a preprocessing step inside the doc plugin
+  // which replaces '///some docstring' by the corresponding annotation '@doc("some docstring")'
+  // TODO does the position make sense?
+  def docAnnotation[$: P]: P[PAnnotation] = P("///" ~~ CharsWhile(_ != '\n', 0).!).map{
+    case s: String => p: (FilePosition, FilePosition) =>
+      val annotationParser: P[_] => P[PAnnotation] = annotation(_)
+      fastparse.parse("@doc(\"" + s + "\")", annotationParser) match {
+        case Parsed.Success(ann, _) => new PAnnotation(ann.at, ann.key, ann.values)(p)
+        case Parsed.Failure(_, _, _) => throw new Exception("parsing ///-annotation failed") // this should not happen
+      }
+  }.pos
+
+  // def annotation[$: P]: P[PAnnotation] = P(docAnnotation) | P((P(PSym.At) ~~ annotationIdentifier ~ argList(stringLiteral)) map (PAnnotation.apply _).tupled).pos
   def annotation[$: P]: P[PAnnotation] = P((P(PSym.At) ~~ annotationIdentifier ~ argList(stringLiteral)) map (PAnnotation.apply _).tupled).pos
 
   def annotated[$: P, T](inner: => P[PAnnotationsPosition => T]): P[T] = P((annotation.rep(0) ~ inner).map {
