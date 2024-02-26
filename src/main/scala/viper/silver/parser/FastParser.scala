@@ -809,7 +809,16 @@ class FastParser {
   def whileStmt[$: P]: P[PKw.While => Pos => PWhile] =
     P((parenthesizedExp ~~ semiSeparated(invariant) ~ stmtBlock()) map { case (cond, invs, body) => PWhile(_, cond, invs, body) })
 
-  def invariant(implicit ctx : P[_]) : P[PSpecification[PKw.InvSpec]] = P((P(PKw.Invariant) ~ exp).map((PSpecification.apply _).tupled).pos | ParserExtension.invSpecification(ctx))
+  // TODO does this handle positions correctly/consistently?
+  // TODO is the look-ahead &(...) really necessary, or can one ensure backtracking in a cleaner way?
+  // see also annotatedPrecondition, annotatedPostcondition
+  def annotatedInvariant(implicit ctx : P[_]) : P[PSpecification[PKw.InvSpec]] =
+    P(&(annotation ~ invariant) ~ annotation ~ invariant).map{ case (ann, spec) => p: (FilePosition, FilePosition) =>
+      new PSpecification[PKw.InvSpec](spec.k, PAnnotatedExp(ann, spec.e)(p))(p) }.pos
+
+  def invariant(implicit ctx : P[_]) : P[PSpecification[PKw.InvSpec]] =
+    P(annotatedInvariant | (P(PKw.Invariant) ~ exp).map((PSpecification.apply _).tupled).pos | ParserExtension.invSpecification(ctx))
+    // P((P(PKw.Invariant) ~ exp).map((PSpecification.apply _).tupled).pos | ParserExtension.invSpecification(ctx))
 
   def localVars[$: P]: P[PKw.Var => Pos => PVars] =
     P((nonEmptyIdnTypeList(PLocalVarDecl(_)) ~~~ (P(PSymOp.Assign) ~ exp).lw.?) map { case (a, i) => PVars(_, a, i) })
@@ -920,10 +929,21 @@ class FastParser {
       ap: PAnnotationsPosition => PFunction(ap.annotations, k, idn, args, c, typ, d, e, f)(ap.pos)
   })
 
+  def annotatedPrecondition(implicit ctx : P[_]) : P[PSpecification[PKw.PreSpec]] =
+    P(&(annotation ~ precondition) ~ annotation ~ precondition).map{ case (ann, spec) => p: (FilePosition, FilePosition) =>
+      new PSpecification[PKw.PreSpec](spec.k, PAnnotatedExp(ann, spec.e)(p))(p) }.pos // p or spec.pos?
 
-  def precondition(implicit ctx : P[_]) : P[PSpecification[PKw.PreSpec]] = P((P(PKw.Requires) ~ exp).map((PSpecification.apply _).tupled).pos | ParserExtension.preSpecification(ctx))
+  def precondition(implicit ctx : P[_]) : P[PSpecification[PKw.PreSpec]] =
+    P((P(PKw.Requires) ~ exp).map((PSpecification.apply _).tupled).pos | ParserExtension.preSpecification(ctx) | annotatedPrecondition)
+    // P((P(PKw.Requires) ~ exp).map((PSpecification.apply _).tupled).pos | ParserExtension.preSpecification(ctx))
 
-  def postcondition(implicit ctx : P[_]) : P[PSpecification[PKw.PostSpec]] = P((P(PKw.Ensures) ~ exp).map((PSpecification.apply _).tupled).pos | ParserExtension.postSpecification(ctx))
+  def annotatedPostcondition(implicit ctx : P[_]) : P[PSpecification[PKw.PostSpec]] =
+    P(&(annotation ~ postcondition) ~ annotation ~ postcondition).map{ case (ann, spec) => p: (FilePosition, FilePosition) =>
+      new PSpecification[PKw.PostSpec](spec.k, PAnnotatedExp(ann, spec.e)(p))(p) }.pos
+
+  def postcondition(implicit ctx : P[_]) : P[PSpecification[PKw.PostSpec]] =
+    P((P(PKw.Ensures) ~ exp).map((PSpecification.apply _).tupled).pos | ParserExtension.postSpecification(ctx) | annotatedPostcondition)
+    // P((P(PKw.Ensures) ~ exp).map((PSpecification.apply _).tupled).pos | ParserExtension.postSpecification(ctx))
 
   def predicateDecl[$: P]: P[PKw.Predicate => PAnnotationsPosition => PPredicate] = P(idndef ~ argList(formalArg) ~~~ bracedExp.lw.?).map {
     case (idn, args, c) => k =>
