@@ -1,3 +1,9 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2024 ETH Zurich.
+
 package viper.silver.plugin.standard.reasoning.analysis
 
 import viper.silver.ast.{Assume, BinExp, Declaration, Exp, FieldAssign, If, Inhale, Label, LocalVar, LocalVarAssign, LocalVarDecl, MethodCall, Seqn, Stmt, UnExp, While}
