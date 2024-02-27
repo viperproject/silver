@@ -261,7 +261,9 @@ trait SilFrontend extends DefaultFrontend {
 
     if (state == DefaultStates.ConsistencyCheck && _errors.isEmpty) {
       filter(_program.get) match {
-        case Succ(program) => _program = Some(program)
+        case Succ(program) =>
+          _program = Some(program)
+          reporter report PluginTransformationsAppliedMessage(program)
         case Fail(errors) => _errors ++= errors
       }
     }

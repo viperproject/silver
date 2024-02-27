@@ -1,0 +1,12 @@
+method foo()
+//:: ExpectedOutput(typechecker.error)
+requires oldCall[l](lemma())
+{
+    var x: Int
+    x := oldCall[l](lemma())
+    //:: ExpectedOutput(typechecker.error)
+    x := 42 + oldCall[l](lemma())
+}
+
+method lemma() returns (x: Int)
+isLemma

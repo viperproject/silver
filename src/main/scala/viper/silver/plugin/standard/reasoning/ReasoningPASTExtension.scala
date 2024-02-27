@@ -2,7 +2,7 @@ package viper.silver.plugin.standard.reasoning
 
 import viper.silver.ast.{ExtensionExp, Label, LocalVar, LocalVarDecl, Position, Seqn, Stmt, Trigger}
 import viper.silver.parser.TypeHelper.Bool
-import viper.silver.parser.{NameAnalyser, PCall, PCallable, PDelimited, PExp, PExtender, PGrouped, PIdnRef, PIdnUseExp, PKeywordLang, PKeywordStmt, PKw, PLabel, PLocalVarDecl, PNode, PReserved, PSeqn, PStmt, PSym, PSymOp, PTrigger, PType, PTypeSubstitution, Translator, TypeChecker}
+import viper.silver.parser.{NameAnalyser, PAssignTarget, PCall, PCallable, PDelimited, PExp, PExtender, PGrouped, PIdnRef, PKeywordLang, PKeywordStmt, PKw, PLabel, PLocalVarDecl, PNode, PReserved, PSeqn, PStmt, PSym, PSymOp, PTrigger, PType, PTypeSubstitution, Translator, TypeChecker}
 
 case object PObtainKeyword extends PKw("obtain") with PKeywordLang with PKeywordStmt
 case object PWhereKeyword extends PKw("where") with PKeywordLang
@@ -118,8 +118,8 @@ case class PLemmaClause()(val pos: (Position,Position)) extends PExtender with P
   }
 }
 
-case class POldCall(lhs: Option[(PDelimited[PIdnUseExp, PSym.Comma], PSymOp.Assign)], oldCallKw: PReserved[POldCallKeyword.type], lbl: PGrouped[PSym.Bracket, Either[PKw.Lhs, PIdnRef[PLabel]]], call: PGrouped[PSym.Paren, PCall])(val pos: (Position, Position)) extends PExtender with PStmt {
-  lazy val targets: Seq[PIdnUseExp] = lhs.map(_._1.toSeq).getOrElse(Seq.empty)
+case class POldCall(lhs: PDelimited[PExp with PAssignTarget, PSym.Comma], op: Option[PSymOp.Assign], oldCallKw: PReserved[POldCallKeyword.type], lbl: PGrouped[PSym.Bracket, Either[PKw.Lhs, PIdnRef[PLabel]]], call: PGrouped[PSym.Paren, PCall])(val pos: (Position, Position)) extends PExtender with PStmt {
+  lazy val targets: Seq[PExp with PAssignTarget] = lhs.toSeq
   lazy val idnref: PIdnRef[PCallable] = call.inner.idnref
   lazy val args: Seq[PExp] = call.inner.args
 
@@ -136,4 +136,44 @@ case class POldCall(lhs: Option[(PDelimited[PIdnUseExp, PSym.Comma], PSymOp.Assi
     val labelName = lbl.inner.fold(_.rs.keyword, _.name)
     OldCall(idnref.name, args map t.exp, (targets map t.exp).asInstanceOf[Seq[LocalVar]], Label(labelName, Seq())(t.liftPos(lbl)))(t.liftPos(this))
   }
+}
+
+/**
+  * oldCall that does not assign any return parameters.
+  * Note that this node is only used for parsing and is translated to `POldCall` before typechecking
+  */
+case class POldCallStmt(oldCallKw: PReserved[POldCallKeyword.type], lbl: PGrouped[PSym.Bracket, Either[PKw.Lhs, PIdnRef[PLabel]]], funcApp: PGrouped[PSym.Paren, PCall])(val pos: (Position, Position)) extends PExtender with PStmt {
+  lazy val call: PCall = funcApp.inner
+  lazy val idnref: PIdnRef[PCallable] = call.idnref
+  lazy val args: Seq[PExp] = call.args
+
+  // POldCallStmt are always transformed by `beforeResolve` in `ReasoningPlugin`. Thus, calling `typecheck` indicates a logical error
+  override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = throw new AssertionError(s"POldCallStmt '$this' should have been transformed before typechecking")
+
+  // we do not translate this expression but `POldCall` which is created before resolution
+  override def translateStmt(t: Translator): Stmt = throw new AssertionError(s"POldCallStmt '$this' should have been transformed before typechecking")
+}
+
+/**
+  * Note that this node is only used for parsing and is translated to `POldCall` before typechecking
+  */
+case class POldCallExp(oldCallKw: PReserved[POldCallKeyword.type], lbl: PGrouped[PSym.Bracket, Either[PKw.Lhs, PIdnRef[PLabel]]], call: PGrouped[PSym.Paren, PCall])(val pos: (Position, Position)) extends PExtender with PExp {
+  lazy val idnref: PIdnRef[PCallable] = call.inner.idnref
+  lazy val args: Seq[PExp] = call.inner.args
+
+  override def typeSubstitutions: Seq[PTypeSubstitution] = Seq(PTypeSubstitution.id)
+
+  override def forceSubstitution(ts: PTypeSubstitution): Unit = {}
+
+  override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = typecheck(t, n)
+
+  override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
+    // this node should get translated to `POldCall` but `beforeResolve` in `ReasoningPlugin` performs this translation
+    // only if its parent node is a PAssign. Thus, an invocation of this function indicates that this expression occurs
+    // at an unsupported location within the AST.
+    Some(Seq(s"oldCalls are only supported as statements or as the right-hand side of an assignment"))
+  }
+
+  // we do not translate this expression but `POldCall` which is created before resolution
+  override def translateExp(t: Translator): ExtensionExp = throw new AssertionError(s"POldCallExp '$this' should have been transformed before typechecking")
 }

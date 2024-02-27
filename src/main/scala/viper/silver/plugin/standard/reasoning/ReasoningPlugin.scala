@@ -5,7 +5,7 @@ import fastparse._
 import org.jgrapht.Graph
 import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 import viper.silver.ast._
-import viper.silver.ast.utility.rewriter.Traverse
+import viper.silver.ast.utility.rewriter.{StrategyBuilder, Traverse}
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.parser.FastParserCompanion.whitespace
 import viper.silver.parser._
@@ -59,12 +59,25 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
   // lemma clause is completely artificial and is created out of nowhere at the parser's current position
   def lemmaClause[$: P]: P[PLemmaClause] = (Pass(()) map { _ => PLemmaClause()(_) }).pos
 
-  /** parser for oldCall statement */
+  /** parsers for oldCall statement */
+  /*
+  Note that the following definition of old call, i.e., `a, b := oldCall[L](lemma())` causes issues with backtracking
+  because depending on whether `oldCall` is added at the beginning and end of the list of statement parsers, the parser
+  has to backtrack to parse assignments and old calls, resp.
   def oldCall[$: P]: P[POldCall] =
-    P(((fp.idnuse.delimited(PSym.Comma) ~ PSymOp.Assign).? ~ P(POldCallKeyword) ~ fp.oldLabel.brackets ~ fp.funcApp.parens) map {
+   P(((fp.idnuse.delimited(PSym.Comma) ~ P(PSymOp.Assign)).? ~ P(POldCallKeyword) ~ fp.oldLabel.brackets ~ fp.funcApp.parens) map {
       case (lhs, oldCallKw, lbl, call) => POldCall(lhs, oldCallKw, lbl, call)(_)
+   }).pos
+  */
+  def oldCallStmt[$: P]: P[POldCallStmt] =
+      P((P(POldCallKeyword) ~/ fp.oldLabel.brackets ~/ fp.funcApp.parens) map {
+      case (oldCallKw, lbl, funcApp) => POldCallStmt(oldCallKw, lbl, funcApp)(_)
     }).pos
 
+  def oldCallExp[$: P]: P[POldCallExp] =
+    P((P(POldCallKeyword) ~ fp.oldLabel.brackets ~ fp.funcApp.parens) map {
+      case (oldCallKw, lbl, call) => POldCallExp(oldCallKw, lbl, call)(_)
+  }).pos
 
   /** Add existential elimination and universal introduction to the parser. */
   override def beforeParse(input: String, isImported: Boolean): String = {
@@ -90,9 +103,25 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
     ParserExtension.addNewPostCondition(lemma(_))
 
     /** add the oldCall as a new stmt */
-    ParserExtension.addNewStmtAtStart(oldCall(_))
+    ParserExtension.addNewStmtAtEnd(oldCallStmt(_))
+    ParserExtension.addNewExpAtEnd(oldCallExp(_))
 
     input
+  }
+
+
+  override def beforeResolve(input: PProgram): PProgram = {
+    // we change `oldCallExp` and `oldCallStmt` (which made parsing easier) to `oldCall`, which makes the translation easier
+    def transformStrategy[T <: PNode](input: T): T = StrategyBuilder.Slim[PNode]({
+      case a@PAssign(delimitedTargets, op, c: POldCallExp) => POldCall(delimitedTargets, op, c.oldCallKw, c.lbl, c.call)(a.pos)
+      case o@POldCallStmt(oldCallKw, lbl, call) => POldCall(PDelimited(None, Nil, None)(oldCallKw.pos), None, oldCallKw, lbl, call)(o.pos)
+    }).recurseFunc({
+      // only visit statements
+      case _: PExp => Seq()
+      case n: PNode => n.children collect { case ar: AnyRef => ar }
+    }).execute(input)
+
+    transformStrategy(input)
   }
 
 

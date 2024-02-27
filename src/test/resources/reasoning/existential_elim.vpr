@@ -14,7 +14,7 @@ field f: Int
 
 method ex2()
 {
-    //:: ExpectedOutput(consistency.error)
+    //:: ExpectedOutput(typechecker.error)
     obtain x: Ref where {x.f} acc(x.f)
 }
 

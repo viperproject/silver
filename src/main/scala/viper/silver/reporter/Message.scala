@@ -8,7 +8,7 @@ package viper.silver.reporter
 
 import viper.silver.reporter.BackendSubProcessStages.BackendSubProcessStage
 import viper.silver.verifier._
-import viper.silver.ast.{QuantifiedExp, Trigger}
+import viper.silver.ast.{Program, QuantifiedExp, Trigger}
 import viper.silver.parser.PProgram
 
 /**
@@ -325,4 +325,9 @@ case class QuantifierChosenTriggersMessage(quantifier: QuantifiedExp, triggers: 
 case class VerificationTerminationMessage() extends Message {
   override val toString: String = "verification_termination_message"
   override val name: String = "verification_termination_message"
+}
+
+case class PluginTransformationsAppliedMessage(program: Program) extends Message {
+  override val toString: String = "plugin_transformations_applied_message"
+  override val name: String = "plugin_transformations_applied_message"
 }

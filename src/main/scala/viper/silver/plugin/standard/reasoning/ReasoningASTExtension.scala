@@ -142,3 +142,25 @@ case class OldCall(methodName: String, args: Seq[Exp], rets: Seq[LocalVar], l:La
 
   override val extensionSubnodes: Seq[Node] = args ++ rets
 }
+/*
+case class OldCall(methodName: String, args: Seq[Exp], l:Label)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionExp {
+  override lazy val check: Seq[ConsistencyError] = {
+    var s = Seq.empty[ConsistencyError]
+    if (!Consistency.noResult(this))
+      s :+= ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)
+    s ++= args.flatMap(Consistency.checkPure)
+    s
+  }
+
+  override lazy val prettyPrint: PrettyPrintPrimitives#Cont =
+    text("oldCall") <> brackets(show(l)) <> text(methodName) <> nest(defaultIndent, parens(ssep(args map show, group(char(',') <> line))))
+
+  override val extensionSubnodes: Seq[Node] = args
+
+  override def extensionIsPure: Boolean = true
+
+  override def typ: Type = ???
+
+  override def verifyExtExp(): VerificationResult = ???
+}
+ */

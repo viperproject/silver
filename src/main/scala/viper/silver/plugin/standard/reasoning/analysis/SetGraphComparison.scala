@@ -14,7 +14,7 @@ trait SetGraphComparison extends VarAnalysisSet {
 
   def computeGraph(graph_analysis: VarAnalysisGraph, vars: Set[LocalVarDecl], blk: Stmt): (Graph[LocalVarDecl, DefaultEdge]/*, Map[LocalVarDecl,LocalVarDecl]*/) = {
 
-    var allVertices: Map[LocalVarDecl, LocalVarDecl] = Map[LocalVarDecl, LocalVarDecl]()
+    var allVertices: Map[LocalVarDecl, LocalVarDecl] = Map.empty
 
     /** add heap variables to vertices */
     allVertices += (graph_analysis.heap_vertex -> graph_analysis.createInitialVertex(graph_analysis.heap_vertex))
@@ -92,7 +92,7 @@ trait SetGraphComparison extends VarAnalysisSet {
 
 
     /** compare for each variable */
-    graphForMethods.foreach((mg) => {
+    graphForMethods.foreach(mg => {
       val methodname = mg._1
       val graph = mg._2
 

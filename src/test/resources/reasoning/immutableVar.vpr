@@ -12,7 +12,7 @@ method xassigned()
     //:: ExpectedOutput(consistency.error)
     prove forall x:Int {P(x)} assuming P(x) implies Q(x) {
         var y:Int := x+1
-        x:=2 
+        x:=2
     }
 }
 

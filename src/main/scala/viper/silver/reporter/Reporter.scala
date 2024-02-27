@@ -6,6 +6,8 @@
 
 package viper.silver.reporter
 
+import viper.silver.ast.pretty.FastPrettyPrinter
+
 import java.io.FileWriter
 import scala.collection.mutable._
 
@@ -82,7 +84,8 @@ case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv
   }
 }
 
-case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = true) extends Reporter {
+trait StdIOReporterTrait extends Reporter {
+  def timeInfo: Boolean
 
   var counter = 0
 
@@ -192,6 +195,24 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
         println( s"Cannot properly print message of unsupported type: $msg" )
     }
     counter = counter + 1
+  }
+}
+
+case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = true) extends StdIOReporterTrait
+
+case class TransformationReporter(name: String = "transformation_reporter", path: String = "transformed.vpr", timeInfo: Boolean = true) extends StdIOReporterTrait {
+  def this() = this("transformation_reporter", "transformed.vpr", true)
+
+  override def report(msg: Message): Unit = {
+    msg match {
+      case PluginTransformationsAppliedMessage(program) =>
+        val file = new FileWriter(path, false)
+        file.write(FastPrettyPrinter.pretty(program))
+        file.flush()
+        file.close()
+      case _ =>
+    }
+    super.report(msg)
   }
 }
 

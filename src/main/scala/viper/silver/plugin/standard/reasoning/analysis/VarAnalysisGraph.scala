@@ -3,14 +3,11 @@ package viper.silver.plugin.standard.reasoning.analysis
 import org.jgrapht.Graph
 import org.jgrapht.graph.{AbstractBaseGraph, DefaultDirectedGraph, DefaultEdge}
 import viper.silver.ast.{AccessPredicate, Apply, Assert, Assume, BinExp, CurrentPerm, DomainFuncApp, Exhale, Exp, FieldAccess, FieldAssign, Fold, ForPerm, FuncApp, Goto, If, Inhale, Int, Label, LocalVar, LocalVarAssign, LocalVarDecl, MethodCall, Package, Program, Ref, Seqn, Stmt, UnExp, Unfold, While}
-import viper.silver.plugin.standard.reasoning.{FlowAnnotation, OldCall, Var}
-import viper.silver.plugin.standard.reasoning.{ExistentialElim, UniversalIntro}
-
+import viper.silver.plugin.standard.reasoning.{ExistentialElim, FlowAnnotation, Heap, OldCall, UniversalIntro, Var}
 import viper.silver.verifier.{AbstractError, ConsistencyError}
 
 import java.io.StringWriter
 import scala.jdk.CollectionConverters._
-
 
 
 case class VarAnalysisGraph(prog: Program,
@@ -79,7 +76,7 @@ case class VarAnalysisGraph(prog: Program,
     * @param vertices represent the variables that are in scope
     * @return an identity graph
     */
-  def createIdentityGraph(vertices: Map[LocalVarDecl,LocalVarDecl]): Graph[LocalVarDecl, DefaultEdge] = {
+  private def createIdentityGraph(vertices: Map[LocalVarDecl,LocalVarDecl]): Graph[LocalVarDecl, DefaultEdge] = {
     val graph: Graph[LocalVarDecl, DefaultEdge] = createEmptyGraph(vertices)
     for ((v,v_init)<-vertices) {
       graph.addEdge(v_init, v)
@@ -93,8 +90,7 @@ case class VarAnalysisGraph(prog: Program,
     * @param vertices the vertices representing variables which should be checked
     * @return graph
     */
-  def addIdentityEdges(graph: Graph[LocalVarDecl,DefaultEdge], vertices:Map[LocalVarDecl,LocalVarDecl]): Graph[LocalVarDecl, DefaultEdge] = {
-
+  private def addIdentityEdges(graph: Graph[LocalVarDecl,DefaultEdge], vertices:Map[LocalVarDecl,LocalVarDecl]): Graph[LocalVarDecl, DefaultEdge] = {
     for ((v,v_init)<-vertices) {
       if (graph.incomingEdgesOf(v).isEmpty) {
         graph.addEdge(v_init, v, new DefaultEdge)
@@ -128,7 +124,7 @@ case class VarAnalysisGraph(prog: Program,
     * @param exp   expressions from which all variables should be returned
     * @return set of Variable declarations
     */
-  def getVarsFromExpr(graph: Graph[LocalVarDecl, DefaultEdge], exp: Exp): Set[LocalVarDecl] = {
+  private def getVarsFromExpr(graph: Graph[LocalVarDecl, DefaultEdge], exp: Exp): Set[LocalVarDecl] = {
     val vars: Set[LocalVarDecl] = Set()
     exp match {
       case l@LocalVar(_, _) =>
@@ -136,7 +132,7 @@ case class VarAnalysisGraph(prog: Program,
         graph.vertexSet().forEach(v => if (v.name == l.name) {
           l_decl = v
         })
-        if (l_decl.name == "") {
+        if (l_decl.name.isEmpty) {
           l_decl = LocalVarDecl(l.name, l.typ)()
         }
         vars + l_decl
@@ -147,7 +143,7 @@ case class VarAnalysisGraph(prog: Program,
       case UnExp(exp) =>
         getVarsFromExpr(graph, exp)
 
-      case FuncApp(_,exps) =>
+      case FuncApp(_, exps) =>
         var allVars = vars
         if (!vars.contains(heap_vertex)) {
           allVars += heap_vertex
@@ -162,7 +158,7 @@ case class VarAnalysisGraph(prog: Program,
         })
         allVars
 
-      case DomainFuncApp(_,exps,_) =>
+      case DomainFuncApp(_, exps, _) =>
         var allVars = vars
         exps.foreach(e => {
           val exp_vars = getVarsFromExpr(graph, e)
@@ -179,8 +175,7 @@ case class VarAnalysisGraph(prog: Program,
           vars
         }
 
-
-      case FieldAccess(v,_) =>
+      case FieldAccess(v, _) =>
         val allVars = vars ++ getVarsFromExpr(graph,v)
         if(!allVars.contains(heap_vertex))
           allVars + heap_vertex
@@ -196,8 +191,7 @@ case class VarAnalysisGraph(prog: Program,
         })
         allVars
 
-      case _ =>
-        Set()
+      case _ => Set()
     }
   }
 
@@ -207,8 +201,7 @@ case class VarAnalysisGraph(prog: Program,
     * @return copied graph
     */
   def copyGraph(graph: Graph[LocalVarDecl, DefaultEdge]): Graph[LocalVarDecl, DefaultEdge] = {
-    val copied_graph = graph.asInstanceOf[AbstractBaseGraph[LocalVarDecl, DefaultEdge]].clone().asInstanceOf[DefaultDirectedGraph[LocalVarDecl, DefaultEdge]]
-    copied_graph
+    graph.asInstanceOf[AbstractBaseGraph[LocalVarDecl, DefaultEdge]].clone().asInstanceOf[DefaultDirectedGraph[LocalVarDecl, DefaultEdge]]
   }
 
   /**
@@ -217,7 +210,7 @@ case class VarAnalysisGraph(prog: Program,
     * @param graph2
     * @return graph
     */
-  def unionEdges(graph1: Graph[LocalVarDecl, DefaultEdge], graph2: Graph[LocalVarDecl, DefaultEdge]): Graph[LocalVarDecl,DefaultEdge] = {
+  private def unionEdges(graph1: Graph[LocalVarDecl, DefaultEdge], graph2: Graph[LocalVarDecl, DefaultEdge]): Graph[LocalVarDecl,DefaultEdge] = {
     val new_graph = copyGraph(graph1)
     if (graph1.vertexSet().equals(graph2.vertexSet())) {
       for (e2: DefaultEdge <- graph2.edgeSet().asScala.toSet) {
@@ -228,8 +221,7 @@ case class VarAnalysisGraph(prog: Program,
         }
       }
     } else {
-      /* should not happen */
-      ()
+      throw new AssertionError(s"cannot union edges since graphs have different vertex sets")
     }
     new_graph
   }
@@ -243,7 +235,7 @@ case class VarAnalysisGraph(prog: Program,
     * @param vertices
     * @return merged graph
     */
-  def mergeGraphs(graph1: Graph[LocalVarDecl, DefaultEdge], graph2: Graph[LocalVarDecl, DefaultEdge], vertices: Map[LocalVarDecl, LocalVarDecl]): Graph[LocalVarDecl,DefaultEdge] = {
+  private def mergeGraphs(graph1: Graph[LocalVarDecl, DefaultEdge], graph2: Graph[LocalVarDecl, DefaultEdge], vertices: Map[LocalVarDecl, LocalVarDecl]): Graph[LocalVarDecl,DefaultEdge] = {
     val new_graph = createEmptyGraph(vertices)
     for (e1: DefaultEdge <- graph1.edgeSet().asScala.toSet) {
       val src = graph1.getEdgeSource(e1)
@@ -254,8 +246,7 @@ case class VarAnalysisGraph(prog: Program,
           new_graph.addEdge(src, graph2.getEdgeTarget(e2), new DefaultEdge)
         }
       } else {
-        /* should not happen */
-        ()
+        throw new AssertionError(s"Vertex not found for declaration $trgt")
       }
     }
     new_graph
@@ -270,16 +261,15 @@ case class VarAnalysisGraph(prog: Program,
       case Seqn(ss, scopedSeqnDeclarations) =>
         var allVertices: Map[LocalVarDecl,LocalVarDecl] = vertices
         for (d <- scopedSeqnDeclarations) {
-          if (d.isInstanceOf[LocalVarDecl]) {
-            val d_decl = d.asInstanceOf[LocalVarDecl]
-            val d_init = createInitialVertex(d_decl)
-            allVertices += (d_decl -> d_init)
+          d match {
+            case decl: LocalVarDecl =>
+              val d_init = createInitialVertex(decl)
+              allVertices += (decl -> d_init)
           }
         }
         var new_graph: Graph[LocalVarDecl, DefaultEdge] = createIdentityGraph(allVertices)
         for (s <- ss) {
           val comp_graph = compute_graph(s, allVertices)
-
           new_graph = mergeGraphs(new_graph, comp_graph, allVertices)
         }
 
@@ -299,8 +289,8 @@ case class VarAnalysisGraph(prog: Program,
         val cond_graph = copyGraph(id_graph)
         val thn_graph = compute_graph(thn, vertices)
         val els_graph = compute_graph(els, vertices)
-        val writtenToThn = getModifiedVars(vertices, thn).getOrElse(Set())
-        val writtenToEls = getModifiedVars(vertices, els).getOrElse(Set())
+        val writtenToThn = getModifiedVars(vertices, thn).getOrElse(Set.empty)
+        val writtenToEls = getModifiedVars(vertices, els).getOrElse(Set.empty)
         val allWrittenTo = writtenToThn ++ writtenToEls
         for (w <- allWrittenTo) {
           if (cond_graph.containsVertex(w)) {
@@ -314,14 +304,11 @@ case class VarAnalysisGraph(prog: Program,
           cond_graph.removeEdge(vertices(v),v)
         })
         val thn_els_graph = unionEdges(thn_graph, els_graph)
-        val res_graph = unionEdges(cond_graph, thn_els_graph)
-        res_graph
+        unionEdges(cond_graph, thn_els_graph)
 
       case While(cond, _, body) =>
-
         /** analyse one iteration of the while loop */
         val one_iter_graph: Graph[LocalVarDecl, DefaultEdge] = compute_graph(If(cond, body, Seqn(Seq(), Seq())(body.pos))(body.pos), vertices)
-
         var edges_equal: Boolean = false
         var merge_graph = copyGraph(one_iter_graph)
         while(!edges_equal) {
@@ -332,7 +319,6 @@ case class VarAnalysisGraph(prog: Program,
             for (e1: DefaultEdge <- last_iter_graph.edgeSet().asScala.toSet) {
               if (merge_graph.getEdge(last_iter_graph.getEdgeSource(e1), last_iter_graph.getEdgeTarget(e1)) == null) {
                 edges_equal = false
-
               } else {
                 edges_equal = true
               }
@@ -345,7 +331,6 @@ case class VarAnalysisGraph(prog: Program,
         var new_graph: Graph[LocalVarDecl,DefaultEdge] = createEmptyGraph(vertices)
         val rhs_vars = getVarsFromExpr(new_graph, rhs)
         val lhs_decl: LocalVarDecl = LocalVarDecl(lhs.name,lhs.typ)(lhs.pos)
-
         for (v <- rhs_vars) {
           /** if the variable on the right hand side is a field access */
           if (v.equals(heap_vertex)) {
@@ -356,7 +341,6 @@ case class VarAnalysisGraph(prog: Program,
             new_graph.addEdge(v_init, lhs_decl, new DefaultEdge)
           }
         }
-
         /** Since variables that are not assigned to should have an edge from their initial value to their 'end'-value */
         val vert_wout_lhs = vertices - lhs_decl
         new_graph = addIdentityEdges(new_graph, vert_wout_lhs)
@@ -365,7 +349,6 @@ case class VarAnalysisGraph(prog: Program,
       case Inhale(exp) =>
         val id_graph = createIdentityGraph(vertices)
         expInfluencesAllVertices(exp, id_graph, vertices)
-
 
       /** same as inhale */
       case Assume(exp) =>
@@ -387,19 +370,14 @@ case class VarAnalysisGraph(prog: Program,
           id_graph
         }
 
-
       case Assert(_) => createIdentityGraph(vertices)
 
-
-      case Label(_, _) =>
-        createIdentityGraph(vertices)
+      case Label(_, _) => createIdentityGraph(vertices)
 
       case MethodCall(methodName, args, targets) =>
-      val met = prog.findMethod(methodName)
-        val methodcall_graph: Graph[LocalVarDecl, DefaultEdge] = createEmptyGraph(vertices)
-
+        val met = prog.findMethod(methodName)
+        val methodcall_graph = createEmptyGraph(vertices)
         createInfluencedByGraph(methodcall_graph,vertices,args,targets,met.formalArgs, met.formalReturns,met.posts)
-
 
       case FieldAssign(_, rhs) =>
         val id_graph = createIdentityGraph(vertices)
@@ -416,8 +394,7 @@ case class VarAnalysisGraph(prog: Program,
         id_graph
 
         /** TODO: technically not implemented correctly */
-      case ExistentialElim(_,_,_) =>
-        createIdentityGraph(vertices)
+      case ExistentialElim(_,_,_) => createIdentityGraph(vertices)
 
       case UniversalIntro(varList,_,_,_,blk) =>
         val new_vertices: Map[LocalVarDecl, LocalVarDecl] = vertices ++ varList.map(v => (v -> createInitialVertex(v)))
@@ -427,7 +404,6 @@ case class VarAnalysisGraph(prog: Program,
           new_graph.removeVertex(new_vertices(v))
         })
         new_graph
-
 
       case Fold(acc) =>
         val id_graph = createIdentityGraph(vertices)
@@ -461,43 +437,40 @@ case class VarAnalysisGraph(prog: Program,
         })
         id_graph
 
-      case g@Goto(_) =>
-        reportErrorWithMsg(ConsistencyError(s"${g} is an undefined statement for the modular information flow analysis", g.pos))
+      case g: Goto =>
+        reportErrorWithMsg(ConsistencyError(s"$g is an undefined statement for the modular information flow analysis", g.pos))
         createEmptyGraph(vertices)
 
-      case OldCall(methodName,args,targets,_) =>
+      case OldCall(methodName, args, targets, _) =>
         val met = prog.findMethod(methodName)
         val methodcall_graph: Graph[LocalVarDecl, DefaultEdge] = createEmptyGraph(vertices)
 
         createInfluencedByGraph(methodcall_graph, vertices, args, targets, met.formalArgs, met.formalReturns, met.posts)
 
-      case s@_ =>
-        reportErrorWithMsg(ConsistencyError(s"${s} is an undefined statement for the modular information flow analysis", s.pos))
+      case _ =>
+        reportErrorWithMsg(ConsistencyError(s"$stmt is an undefined statement for the modular information flow analysis", stmt.pos))
         createEmptyGraph(vertices)
     }
   }
 
-
   /**
     * creates an edge between every variable in the expression to every variable that is in scope and returns resulting graph
     */
-  def expInfluencesAllVertices(exp:Exp, graph: Graph[LocalVarDecl, DefaultEdge], vertices: Map[LocalVarDecl,LocalVarDecl]) : Graph[LocalVarDecl, DefaultEdge] = {
+  private def expInfluencesAllVertices(exp:Exp, graph: Graph[LocalVarDecl, DefaultEdge], vertices: Map[LocalVarDecl,LocalVarDecl]) : Graph[LocalVarDecl, DefaultEdge] = {
     val id_graph = createIdentityGraph(vertices)
     val vars = getVarsFromExpr(graph, exp)
     vars.foreach(v => {
       val init_v = vertices(v)
-
       vertices.keySet.foreach(k => {
         id_graph.addEdge(init_v, k, new DefaultEdge)
       })
-
     })
     id_graph
   }
 
   /** creates graph for methodcall and oldcall. maps expressions passed to methods to the method arguments, computes the graph based on the flow annotation,
     * and finally maps the return variables to the variables that the method is assigned to. */
-  def createInfluencedByGraph(graph: Graph[LocalVarDecl, DefaultEdge], vertices: Map[LocalVarDecl,LocalVarDecl], arg_names: Seq[Exp], ret_names: Seq[LocalVar], method_arg_names: Seq[LocalVarDecl], method_ret_names: Seq[LocalVarDecl],  posts: Seq[Exp]): Graph[LocalVarDecl, DefaultEdge] = {
+  private def createInfluencedByGraph(graph: Graph[LocalVarDecl, DefaultEdge], vertices: Map[LocalVarDecl,LocalVarDecl], arg_names: Seq[Exp], ret_names: Seq[LocalVar], method_arg_names: Seq[LocalVarDecl], method_ret_names: Seq[LocalVarDecl], posts: Seq[Exp]): Graph[LocalVarDecl, DefaultEdge] = {
     /** set of all target variables that have not been included in the influenced by expression up until now */
     var retSet: Set[LocalVarDecl] = method_ret_names.toSet + heap_vertex
 
@@ -505,7 +478,7 @@ case class VarAnalysisGraph(prog: Program,
     val method_arg_names_incl_heap = method_arg_names ++ Seq(heap_vertex)
 
     /** create .arg_ declaration for each argument */
-    var method_args: Map[LocalVarDecl, LocalVarDecl] = Map()
+    var method_args: Map[LocalVarDecl, LocalVarDecl] = Map.empty
     var method_arg_counter: Int = 0
     method_arg_names_incl_heap.foreach(method_arg => {
       method_args += (method_arg -> LocalVarDecl(".arg" + method_arg_counter, method_arg.typ)(method_arg.pos))
@@ -555,7 +528,10 @@ case class VarAnalysisGraph(prog: Program,
       case FlowAnnotation(returned, arguments) =>
 
         /** returned has to be instance of LocalVar */
-        val returned_var: LocalVar = if (returned.isInstanceOf[Var]) returned.asInstanceOf[Var].var_decl.asInstanceOf[LocalVar] else heap_vertex.localVar
+        val returned_var: LocalVar = returned match {
+          case v: Var => v.var_decl.asInstanceOf[LocalVar]
+          case _: Heap => heap_vertex.localVar
+        }
         /** create LocalVarDecl such that it can be added in the graph */
         val return_decl = LocalVarDecl(returned_var.name, returned_var.typ)(returned_var.pos)
         retSet -= return_decl
@@ -566,15 +542,17 @@ case class VarAnalysisGraph(prog: Program,
 
         arguments.foreach(argument => {
           /** argument has to be instance of LocalVar */
-          val argument_var: LocalVar = if (argument.isInstanceOf[Var]) argument.asInstanceOf[Var].var_decl.asInstanceOf[LocalVar] else heap_vertex.localVar
+          val argument_var: LocalVar = argument match {
+            case v: Var => v.var_decl.asInstanceOf[LocalVar]
+            case _: Heap => heap_vertex.localVar
+          }
           val argument_decl = LocalVarDecl(argument_var.name, argument_var.typ)(argument_var.pos)
           /** get corresponding .arg variable and add edge from .arg to .ret vertex */
           val prov_decl = method_args(argument_decl)
           methodcall_graph.addEdge(prov_decl, method_rets(return_decl), new DefaultEdge)
         })
 
-      case _ => ()
-
+      case _ =>
     }
 
     /** now need to add to graph the edges from the method return variables to the target variables */
@@ -670,9 +648,9 @@ case class VarAnalysisGraph(prog: Program,
             case None => output = getModifiedVars(vertices, s)
             case Some(v) => output = Some(v ++ getModifiedVars(vertices, s).getOrElse(Set[LocalVarDecl]()))
           }
-
         }
         output
+
       case LocalVarAssign(lhs, _) =>
         var res: Option[Set[LocalVarDecl]] = None
         for (vs <- vertices) {
@@ -684,9 +662,10 @@ case class VarAnalysisGraph(prog: Program,
           }
         }
         res
+
       case If(_, thn, els) =>
-        val writtenThn: Option[Set[LocalVarDecl]] = getModifiedVars(vertices, thn)
-        val writtenEls: Option[Set[LocalVarDecl]] = getModifiedVars(vertices, els)
+        val writtenThn = getModifiedVars(vertices, thn)
+        val writtenEls = getModifiedVars(vertices, els)
         (writtenThn, writtenEls) match {
           case (None, None) => None
           case (Some(_), None) => writtenThn
@@ -697,21 +676,11 @@ case class VarAnalysisGraph(prog: Program,
       case While(_, _, body) =>
         getModifiedVars(vertices, body)
 
-      case MethodCall(_, _, _) =>
-        None
-
-
-      case Inhale(_) =>
-        None
-
-      case Assume(_) =>
-        None
-
-      case Label(_, _) =>
-        None
-
-      case _ =>
-        None
+      case MethodCall(_, _, _) => None
+      case Inhale(_) => None
+      case Assume(_) => None
+      case Label(_, _) => None
+      case _ => None
     }
   }
 }
