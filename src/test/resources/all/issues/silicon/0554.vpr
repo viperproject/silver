@@ -1,0 +1,81 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field data: Int
+field next_child: Ref
+field next_sibling: Ref
+
+predicate tree(this: Ref) {
+  acc(this.data) && acc(this.next_child) && acc(this.next_sibling) &&
+  (this.next_child != null ==> tree(this.next_child)) &&
+  (this.next_sibling != null ==> tree(this.next_sibling))
+   && ((this.next_child == null && this.next_sibling == null) || (this.next_child != null && this.next_sibling != null)) // remove this clause and the assert fails
+}
+
+method treeTest()
+{
+  var t : Ref
+  t := new(*)
+  t.next_child := null
+  t.next_sibling := null
+  fold tree(t)
+
+  var t0 : Ref
+  t0 := new(*)
+  t0.next_child := null
+  t0.next_sibling := null
+  fold tree(t0)
+
+  var t1 : Ref
+  t1 := new(*)
+  t1.next_child := t
+  t1.next_sibling := t0
+  fold tree(t1)
+
+  var t2 : Ref
+  t2 := new(*)
+  t2.next_child := null
+  t2.next_sibling := null
+  fold tree(t2)
+
+  var t5: Ref
+  inhale tree(t5)
+  //assert unfolding tree(t5) in true
+
+  var ctr : Ref
+  ctr := cloneTree(t5)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false  // this verifies!
+}
+
+method cloneTree(this: Ref) returns (res: Ref)
+  requires acc(tree(this), 1/2)
+  ensures acc(tree(this), 1/2) && tree(res)
+  //:: ExpectedOutput(postcondition.violated:assertion.false)
+  ensures (unfolding acc(tree(this), 1/2) in
+          unfolding acc(tree(res), write) in  // change write to 1/2 and assert false fails
+          ((this.next_child == res.next_child) && (this.next_sibling == res.next_sibling)))   // this postcondition doesn't hold in the else-case, but still verifies
+{
+  res := new(*)
+
+  unfold acc(tree(this), 1/2)
+
+  if(this.next_child == null && this.next_sibling == null) {
+      res.next_child := null
+      res.next_sibling := null
+
+  } else {
+
+      var tmp_child: Ref
+      var tmp_sibling: Ref
+      tmp_child := cloneTree(this.next_child)
+
+
+      tmp_sibling := cloneTree(this.next_sibling)
+      res.data := this.data
+      res.next_child := tmp_child
+      res.next_sibling := tmp_sibling
+  }
+  fold acc(tree(this), 1/2)
+  fold tree(res)
+}

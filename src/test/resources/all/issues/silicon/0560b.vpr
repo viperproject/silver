@@ -1,0 +1,129 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+domain Tree {
+
+    // Constructors
+    function Leaf(): Tree
+    function Node(v: Int, lft: Tree, rgt: Tree): Tree
+
+    function isLeaf(t: Tree): Bool
+    function isNode(t: Tree): Bool
+
+    axiom type_is_leaf {
+        forall t: Tree ::
+            isLeaf(t) == (type(t) == type_Leaf())
+    }
+
+    axiom construct_over_destruct_Leaf {
+        forall t: Tree ::
+            isLeaf(t) ==>
+                t == Leaf()
+    }
+
+    axiom type_is_node {
+        forall t: Tree ::
+            isNode(t) == (type(t) == type_Node())
+    }
+
+    axiom construct_over_destruct_Node {
+        forall t: Tree ::
+            isNode(t) ==>
+                t == Node(getVal(t), getLeft(t), getRight(t))
+    }
+
+    // Deconstructors
+    function getVal(t: Tree): Int
+    function getLeft(t: Tree): Tree
+    function getRight(t: Tree): Tree
+
+    axiom destruct_over_construct {
+        forall v: Int, lft: Tree, rgt: Tree ::
+            getVal(Node(v, lft, rgt)) == v
+         && getLeft(Node(v, lft, rgt)) == lft
+         && getRight(Node(v, lft, rgt)) == rgt
+    }
+
+    // Types
+    function type(t: Tree): Int
+    unique function type_Leaf(): Int
+    unique function type_Node(): Int
+
+    axiom type_of_Leaf {
+        type(Leaf()) == type_Leaf()
+    }
+
+    axiom type_of_Node {
+        forall v: Int, lft: Tree, rgt: Tree ::
+            type(Node(v, lft, rgt)) == type_Node()
+    }
+
+    axiom all_types {
+        forall t: Tree ::
+            (type(t) == type_Leaf() && t == Leaf())
+         || (type(t) == type_Node() && exists v: Int, lft: Tree, rgt: Tree :: t == Node(v, lft, rgt))
+    }
+}
+
+function height(t: Tree): Int
+{
+  isLeaf(t) ? 0 :
+    (height(getLeft(t)) > height(getRight(t)) ? height(getLeft(t)) + 1 : height(getRight(t)) + 1)
+}
+
+
+method computeTreeHeight(t: Tree) returns (res: Int)
+  ensures res == height(t)
+{
+  if (isLeaf(t)){
+    res := 0
+  }else{
+    var current: Seq[Tree]
+    var next: Seq[Tree]
+    current := Seq(t)
+    next := Seq[Tree]()
+    res := 0
+
+    while (|current| > 0)
+      //:: MissingOutput(invariant.not.preserved:assertion.false, /silicon/issue/34/)
+      //:: ExpectedOutput(invariant.not.preserved:assertion.false)
+      invariant |current| == 0 ==> res == height(t)
+    {
+      res := res + 1
+      next := Seq[Tree]()
+
+      while (|current| > 0)
+        //:: MissingOutput(invariant.not.preserved:assertion.false, /silicon/issue/34/)
+        //:: ExpectedOutput(invariant.not.preserved:assertion.false)
+        //:: ExpectedOutput(invariant.not.established:assertion.false)
+        invariant forall i: Int :: i >= 0 && i < |current| &&
+          (forall k: Int :: k >= 0 && k < |current| &&
+            height(current[i]) > height(current[k])) &&
+          forall j: Int :: j >= 0 && j < |next| &&
+          (forall k: Int :: k >= 0 && k < |next| &&
+            height(next[j]) > height(next[k]))
+              ==> height(next[j]) == height(current[i]) - 1
+      {
+        var node : Tree := current[0]
+        POP(current)
+        if (isNode(getLeft(node))){
+          PUSH(next, getLeft(node))
+        }
+        if (isNode(getRight(node))){
+          PUSH(next, getRight(node))
+        }
+      }
+      current := next
+
+    }
+  }
+}
+
+define PUSH(stck, v) {
+  stck := Seq(v) ++ stck
+}
+
+define POP(stck) {
+  stck := stck[1..]
+}

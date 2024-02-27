@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 // Side remark: none of these quantifiers admit any (natural) triggers
 
 predicate P()

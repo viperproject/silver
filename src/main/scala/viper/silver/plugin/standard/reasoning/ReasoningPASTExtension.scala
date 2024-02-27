@@ -12,7 +12,7 @@ case object PImpliesKeyword extends PKw("implies") with PKeywordLang
 case object PInfluencedKeyword extends PKw("influenced") with PKeywordLang with PKw.PostSpec
 case object PByKeyword extends PKw("by") with PKeywordLang
 case object PHeapKeyword extends PKw("heap") with PKeywordLang
-case object PIsLemmaKeyword extends PKw("isLemma") with PKeywordLang with PKw.AnySpec
+case object PIsLemmaKeyword extends PKw("isLemma") with PKeywordLang with PKw.MethodSpec
 case object POldCallKeyword extends PKw("oldCall") with PKeywordLang with PKeywordStmt
 
 case class PExistentialElim(obtainKw: PReserved[PObtainKeyword.type], delimitedVarDecls: PDelimited[PLocalVarDecl, PSym.Comma], whereKw: PReserved[PWhereKeyword.type], trig: Seq[PTrigger], e: PExp)(val pos: (Position, Position)) extends PExtender with PStmt {
