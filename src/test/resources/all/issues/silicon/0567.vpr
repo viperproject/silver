@@ -13,13 +13,11 @@ method test02(i: Int)
   requires forall y: Int :: {id(y)} id(y) == i
   // ensures id(0) == 0 && id(1) == 1 // Required by Silicon, but not by Carbon
   ensures  forall y: Int :: {id(y)} id(y) == y && id(y) == i // Holds (in Silicon and Carbon)
-  //:: UnexpectedOutput(postcondition.violated:assertion.false, /silicon/issue/567/)
   ensures  forall y: Int :: {id(y)} id(y) == y && y == i     // Fails in Silicon
 {}
 
 // Analogous to test02
 method test03(i: Int) {
   inhale forall y: Int :: {id(y)} id(y) == i
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/567/)
   assert forall y: Int :: {id(y)} id(y) == y && y == i     // Fails in Silicon
 }
