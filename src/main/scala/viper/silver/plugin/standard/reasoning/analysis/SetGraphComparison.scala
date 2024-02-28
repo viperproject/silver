@@ -14,11 +14,11 @@ import viper.silver.verifier.AbstractError
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 
 trait SetGraphComparison extends VarAnalysisSet {
-  def computeSet(v: Declaration, blk: Stmt): Set[LocalVarDecl] = {
+  private def computeSet(v: Declaration, blk: Stmt): Set[LocalVarDecl] = {
     get_tainted_vars_stmt(Set(v), blk).map(v => v.asInstanceOf[LocalVarDecl])
   }
 
-  def computeGraph(graph_analysis: VarAnalysisGraph, vars: Set[LocalVarDecl], blk: Stmt): (Graph[LocalVarDecl, DefaultEdge]/*, Map[LocalVarDecl,LocalVarDecl]*/) = {
+  private def computeGraph(graph_analysis: VarAnalysisGraph, vars: Set[LocalVarDecl], blk: Stmt): (Graph[LocalVarDecl, DefaultEdge]/*, Map[LocalVarDecl,LocalVarDecl]*/) = {
 
     var allVertices: Map[LocalVarDecl, LocalVarDecl] = Map.empty
 

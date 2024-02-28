@@ -16,12 +16,10 @@ trait VarAnalysisSet {
 
   def reportErrorWithMsg(error: AbstractError): Unit
 
-
   def executeTaintedSetAnalysis(tainted: Set[Declaration], vars_outside_blk: mutable.Set[Declaration], blk: Seqn, u: UniversalIntro, reportError: AbstractError => Unit): Unit = {
     /** check whether any additional variables are tainted inside of the block */
     var all_tainted = Set[Declaration]()
     all_tainted = get_tainted_vars_stmt(tainted, blk)
-
 
     /** remove the variables that were tainted to begin with */
     vars_outside_blk --= mutable.Set(u.transitiveScopedDecls: _*)
@@ -48,6 +46,7 @@ trait VarAnalysisSet {
           output = get_tainted_vars_stmt(output, s)
         }
         output
+
       case LocalVarAssign(lhs, rhs) =>
         if (is_expr_tainted(tainted, rhs)) {
           tainted ++ Set(LocalVarDecl(lhs.name, lhs.typ)(stmt.pos))

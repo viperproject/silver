@@ -6,9 +6,10 @@
 
 package viper.silver.plugin.standard.reasoning
 
-import viper.silver.ast.{ExtensionExp, Label, LocalVar, LocalVarDecl, Position, Seqn, Stmt, Trigger}
+import viper.silver.FastMessaging
+import viper.silver.ast.{ExtensionExp, LocalVar, LocalVarDecl, Position, Seqn, Stmt, Trigger}
 import viper.silver.parser.TypeHelper.Bool
-import viper.silver.parser.{NameAnalyser, PAssignTarget, PCall, PCallable, PDelimited, PExp, PExtender, PGrouped, PIdnRef, PKeywordLang, PKeywordStmt, PKw, PLabel, PLocalVarDecl, PNode, PReserved, PSeqn, PStmt, PSym, PSymOp, PTrigger, PType, PTypeSubstitution, Translator, TypeChecker}
+import viper.silver.parser.{NameAnalyser, PAssignTarget, PCall, PCallable, PDelimited, PExp, PExtender, PGrouped, PIdnRef, PIdnUseExp, PKeywordLang, PKeywordStmt, PKw, PLabel, PLocalVarDecl, PReserved, PSeqn, PStmt, PSym, PSymOp, PTrigger, PType, PTypeSubstitution, Translator, TypeChecker}
 
 case object PObtainKeyword extends PKw("obtain") with PKeywordLang with PKeywordStmt
 case object PWhereKeyword extends PKw("where") with PKeywordLang
@@ -18,7 +19,7 @@ case object PImpliesKeyword extends PKw("implies") with PKeywordLang
 case object PInfluencedKeyword extends PKw("influenced") with PKeywordLang with PKw.PostSpec
 case object PByKeyword extends PKw("by") with PKeywordLang
 case object PHeapKeyword extends PKw("heap") with PKeywordLang
-case object PIsLemmaKeyword extends PKw("isLemma") with PKeywordLang with PKw.MethodSpec
+case object PIsLemmaKeyword extends PKw("isLemma") with PKeywordLang with PKw.PreSpec with PKw.PostSpec
 case object POldCallKeyword extends PKw("oldCall") with PKeywordLang with PKeywordStmt
 
 case class PExistentialElim(obtainKw: PReserved[PObtainKeyword.type], delimitedVarDecls: PDelimited[PLocalVarDecl, PSym.Comma], whereKw: PReserved[PWhereKeyword.type], trig: Seq[PTrigger], e: PExp)(val pos: (Position, Position)) extends PExtender with PStmt {
@@ -90,21 +91,30 @@ case class PFlowAnnotation(v: PFlowVar, byKw: PReserved[PByKeyword.type], groupe
   }
 }
 
-sealed trait PFlowVar extends PNode {
-  def translate(t:Translator): FlowVar
+sealed trait PFlowVar extends PExtender with PExp {
+  override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = typecheck(t, n)
+
+  override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = None
+
+  def translate(t: Translator): FlowVar
+
+  override def typeSubstitutions: Seq[PTypeSubstitution] = Seq(PTypeSubstitution.id)
+
+  override def forceSubstitution(ts: PTypeSubstitution): Unit = {}
 }
 
 case class PHeap(heap: PReserved[PHeapKeyword.type])(val pos: (Position,Position)) extends PFlowVar {
-  override def translate(t:Translator): Heap = {
+  override def translate(t: Translator): Heap = {
     Heap()(t.liftPos(this))
   }
 
   override def pretty: String = PHeapKeyword.keyword
 }
 
-case class PVar(decl:PExp)(val pos: (Position,Position)) extends PFlowVar {
-  override def translate(t:Translator): Var = {
-    Var(t.exp(decl))(t.liftPos(this))
+case class PVar(decl: PIdnUseExp)(val pos: (Position,Position)) extends PFlowVar {
+  override def translate(t: Translator): Var = {
+    // due to the implementation of `t.exp`, a LocalVar should be returned
+    Var(t.exp(decl).asInstanceOf[LocalVar])(t.liftPos(this))
   }
 
   override def pretty: String = decl.pretty
@@ -115,9 +125,9 @@ case class PLemmaClause()(val pos: (Position,Position)) extends PExtender with P
 
   override def forceSubstitution(ts: PTypeSubstitution): Unit = {}
 
-  override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = {
-    None
-  }
+  override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = typecheck(t, n)
+
+  override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = None
 
   override def translateExp(t: Translator): ExtensionExp = {
     Lemma()(t.liftPos(this))
@@ -135,12 +145,17 @@ case class POldCall(lhs: PDelimited[PExp with PAssignTarget, PSym.Comma], op: Op
     )
     targets.foreach(r =>
       t.checkTopTyped(r, None))
+    targets filter {
+      case _: PIdnUseExp => false
+      case _ => true
+    } foreach(target => t.messages ++= FastMessaging.message(target, s"expected an identifier but got $target"))
     None
   }
 
   override def translateStmt(t: Translator): Stmt = {
     val labelName = lbl.inner.fold(_.rs.keyword, _.name)
-    OldCall(idnref.name, args map t.exp, (targets map t.exp).asInstanceOf[Seq[LocalVar]], Label(labelName, Seq())(t.liftPos(lbl)))(t.liftPos(this))
+    val translatedTargets = targets.map(target => t.exp(target).asInstanceOf[LocalVar]) // due to the typecheck and the implementation of `t.exp`, a LocalVar should be returned
+    OldCall(idnref.name, args map t.exp, translatedTargets, labelName)(t.liftPos(this))
   }
 }
 

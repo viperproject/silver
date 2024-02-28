@@ -50,7 +50,7 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
 
   def heap[$: P]: P[PHeap] = P(P(PHeapKeyword) map (PHeap(_) _)).pos // note that the parentheses are not redundant
 
-  def singleVar[$: P]: P[PVar] = P(exp map (PVar(_) _)).pos // note that the parentheses are not redundant
+  def singleVar[$: P]: P[PVar] = P(fp.idnuse map (PVar(_) _)).pos // note that the parentheses are not redundant
   def vars_and_heap[$: P]: P[Seq[PFlowVar]] = (heap | singleVar).delimited(PSym.Comma).map(_.toSeq)
 
   def influenced_by[$: P]: P[PFlowAnnotation] = P(((heap | singleVar) ~ P(PByKeyword) ~/ vars_and_heap.braces) map {
@@ -183,8 +183,10 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
       case o@OldCall(methodName, args, rets, lbl) =>
         /** check whether called method is a lemma */
         val currmethod = input.findMethod(methodName)
-        var isLemma:Boolean = currmethod.pres.exists(p => p.isInstanceOf[Lemma])
-        isLemma = isLemma || currmethod.posts.exists(p => p.isInstanceOf[Lemma])
+        val isLemma = (currmethod.pres ++ currmethod.posts).exists {
+          case _: Lemma => true
+          case _ => false
+        }
 
         if (!isLemma) {
           reportError(ConsistencyError(s"method ${currmethod.name} called in old context must be lemma", o.pos))
@@ -230,7 +232,7 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
 
         Seqn(
           new_pres.map(p =>
-            Assert(LabelledOld(p, lbl.name)(p.pos))(o.pos)
+            Assert(LabelledOld(p, lbl)(p.pos))(o.pos)
           )
             ++
 
@@ -241,7 +243,7 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
 
 
             new_posts.map(p =>
-            Inhale(LabelledOld(p, lbl.name)(p.pos))(o.pos)
+            Inhale(LabelledOld(p, lbl)(p.pos))(o.pos)
           ),
           new_v_decls
         )(o.pos)
@@ -298,19 +300,16 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
         /** add heap variables to vertices */
         allVertices += (graph_analysis.heap_vertex -> graph_analysis.createInitialVertex(graph_analysis.heap_vertex))
 
-        vars_outside_blk.foreach(v => {
-          if (v.isInstanceOf[LocalVarDecl]) {
-            val v_decl = v.asInstanceOf[LocalVarDecl]
+        vars_outside_blk.foreach {
+          case v_decl: LocalVarDecl =>
             val v_init = graph_analysis.createInitialVertex(v_decl)
             allVertices += (v_decl -> v_init)
 
             /** add all variable to the graph */
             graph.addVertex(v_init)
             graph.addVertex(v_decl)
-          }
-        })
-
-
+          case _ =>
+        }
 
         /**
           * get all variables that are assigned to inside the block and take intersection with universal introduction
@@ -319,10 +318,8 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
         val written_vars: Option[Set[LocalVarDecl]] = graph_analysis.getModifiedVars(allVertices ,blk)
         checkReassigned(written_vars, v, reportError, u)
 
-
         /** execute modular flow analysis using graphs for the universal introduction statement */
         graph_analysis.executeTaintedGraphAnalysis(tainted, blk, allVertices, u)
-
 
         /**
           * SET VERSION
@@ -332,14 +329,12 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
         executeTaintedSetAnalysis(tainted_decls, vars_outside_blk, blk, u, reportError)
         */
 
-
         /** Translate the new syntax into Viper language */
         val (new_v_map, new_exp1) = substituteWithFreshVars(v, exp1, usedNames)
         val new_exp2 = applySubstitution(new_v_map, exp2)
         val arb_vars = new_v_map.map(vars => vars._2)
         val new_trigs = trigs.map(t => Trigger(t.exps.map(e1 => applySubstitution(new_v_map, e1)))(t.pos))
         val lbl = uniqueName("l", usedNames)
-
 
         Seqn(
           Seq(

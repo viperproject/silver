@@ -17,9 +17,6 @@ import scala.collection.mutable
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 
 trait BeforeVerifyHelper {
-
-
-
   /** methods to rename variables for the encoding of the new syntax */
   def uniqueName(name: String, usedNames: mutable.Set[String]): String = {
     var i = 1
@@ -46,8 +43,7 @@ trait BeforeVerifyHelper {
   def applySubstitutionWithExp[E <: Exp](mapping: Seq[(LocalVarDecl, Exp)], exp: E): E = {
     Expressions.instantiateVariables(exp, mapping.map(_._1.localVar), mapping.map(_._2))
   }
-
-
+  
   /**
     * get all variables that are assigned to inside the block and take intersection with universal introduction
     * variables. If they are contained throw error since these variables should be immutable
@@ -68,12 +64,15 @@ trait BeforeVerifyHelper {
     }
   }
 
-
+  private def specifiesLemma(m: Method): Boolean = (m.pres ++ m.posts).exists {
+    case _: Lemma => true
+    case _ => false
+  }
+  
   /** check if isLemma precondition is correct */
-  def checkLemma(input: Program, reportError: AbstractError => Unit) = {
+  def checkLemma(input: Program, reportError: AbstractError => Unit): Unit = {
     input.methods.foreach(method => {
-      var containsLemma: Boolean = method.pres.exists(p => p.isInstanceOf[Lemma])
-      containsLemma = (containsLemma || method.posts.exists(p => p.isInstanceOf[Lemma]))
+      val containsLemma = specifiesLemma(method)
       var containsDecreases = false
       if (containsLemma) {
         /** check preconditions for decreases clause */
@@ -142,8 +141,7 @@ trait BeforeVerifyHelper {
         false
       case m@MethodCall(methodName, _, _) =>
         val mc = prog.findMethod(methodName)
-        var containsLemma: Boolean = mc.pres.exists(p => p.isInstanceOf[Lemma])
-        containsLemma = containsLemma || mc.posts.exists(p => p.isInstanceOf[Lemma])
+        val containsLemma = specifiesLemma(mc)
 
         /** if called method is not a lemma report error */
         if (!containsLemma) {
@@ -182,7 +180,10 @@ trait BeforeVerifyHelper {
           influenced_exists = true
 
           /** create target variable of flowannotation based on whether it is the heap or another return variable */
-          val target_var: LocalVar = if (target.isInstanceOf[Var]) target.asInstanceOf[Var].var_decl.asInstanceOf[LocalVar] else body_graph_analysis.heap_vertex.localVar
+          val target_var: LocalVar = target match {
+            case value: Var => value.decl
+            case _ => body_graph_analysis.heap_vertex.localVar
+          }
           val target_decl: LocalVarDecl = LocalVarDecl(target_var.name, target_var.typ)(v.pos)
 
           /** check whether the target variable is in fact a return variable */
@@ -197,7 +198,10 @@ trait BeforeVerifyHelper {
           args.foreach(arg => {
 
             /** decide for each variable in the set of variables of the flow annotation whether they represent a normal variable or the heap */
-            val arg_var: LocalVar = if (arg.isInstanceOf[Var]) arg.asInstanceOf[Var].var_decl.asInstanceOf[LocalVar] else body_graph_analysis.heap_vertex.localVar
+            val arg_var: LocalVar = arg match {
+              case value: Var => value.decl
+              case _ => body_graph_analysis.heap_vertex.localVar
+            }
             val arg_decl: LocalVarDecl = LocalVarDecl(arg_var.name, arg_var.typ)(arg_var.pos)
 
             /** check that each variable in the set is a method argument */

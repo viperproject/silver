@@ -535,7 +535,7 @@ case class VarAnalysisGraph(prog: Program,
 
         /** returned has to be instance of LocalVar */
         val returned_var: LocalVar = returned match {
-          case v: Var => v.var_decl.asInstanceOf[LocalVar]
+          case v: Var => v.decl
           case _: Heap => heap_vertex.localVar
         }
         /** create LocalVarDecl such that it can be added in the graph */
@@ -549,7 +549,7 @@ case class VarAnalysisGraph(prog: Program,
         arguments.foreach(argument => {
           /** argument has to be instance of LocalVar */
           val argument_var: LocalVar = argument match {
-            case v: Var => v.var_decl.asInstanceOf[LocalVar]
+            case v: Var => v.decl
             case _: Heap => heap_vertex.localVar
           }
           val argument_decl = LocalVarDecl(argument_var.name, argument_var.typ)(argument_var.pos)
