@@ -4,6 +4,7 @@
 field val : Int
 
 function bool2Ref(b: Bool) : Ref
+  decreases *
   ensures result != null && bool2Ref(true) != bool2Ref(false) // injectivity - doesn't change the behaviour
 
 method m(x:Ref)

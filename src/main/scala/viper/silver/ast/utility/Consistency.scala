@@ -29,7 +29,7 @@ object Consistency {
     recordIfNot(suspect, !property, message)
 
   /** Names that are not allowed for use in programs. */
-  def reservedNames: Set[String] = FastParserCompanion.basicKeywords
+  def reservedNames: Set[String] = FastParserCompanion.basicKeywords.map(_.keyword)
 
   /** Returns true iff the string `name` is a valid identifier. */
   val identFirstLetter = "[a-zA-Z$_]"
@@ -171,7 +171,7 @@ object Consistency {
     for (c@MethodCall(_, _, targets) <- b; t <- targets if argVars.contains(t)) {
       s :+= ConsistencyError(s"$c is a reassignment of formal argument $t.", c.pos)
     }
-    for (n@NewStmt(l, _) <- b if argVars.contains(l)){
+    for (n@NewStmt(l, _) <- b if argVars.contains(l)) {
       s :+= ConsistencyError(s"$n is a reassignment of formal argument $l.", n.pos)
     }
     s
@@ -194,6 +194,20 @@ object Consistency {
   def checkPost(e: Exp) : Seq[ConsistencyError]  = {
     (if(!(e isSubtype Bool)) Seq(ConsistencyError(s"Postcondition $e: ${e.typ} must be boolean.", e.pos)) else Seq()) ++
     (if(!noLabelledOld(e)) Seq(ConsistencyError("Labelled-old expressions are not allowed in postconditions.", e.pos)) else Seq())
+  }
+
+  def checkWildcardUsage(e: Exp): Seq[ConsistencyError] = {
+    val containedWildcards = e.shallowCollect{
+      case w: WildcardPerm => w
+    }
+    if (containedWildcards.nonEmpty) {
+      e match {
+        case _: WildcardPerm => Seq()
+        case _ => Seq(ConsistencyError("Wildcard occurs inside compound expression (should only occur directly in an accessibility predicate).", e.pos))
+      }
+    } else {
+      Seq()
+    }
   }
 
   /** checks that all quantified variables appear in all triggers */
@@ -229,6 +243,7 @@ object Consistency {
   def validTrigger(e: Exp, program: Program): Boolean = {
     e match {
       case Old(nested) => validTrigger(nested, program) // case corresponds to OldTrigger node
+      case LabelledOld(nested, _) => validTrigger(nested, program)
       case wand: MagicWand => wand.subexpressionsToEvaluate(program).forall(e => !e.existsDefined {case _: ForbiddenInTrigger => })
       case _ : PossibleTrigger | _: FieldAccess | _: PredicateAccess => !e.existsDefined { case _: ForbiddenInTrigger => }
       case _ => false

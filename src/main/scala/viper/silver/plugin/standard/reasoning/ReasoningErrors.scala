@@ -9,7 +9,7 @@ package viper.silver.plugin.standard.reasoning
 import viper.silver.verifier._
 import viper.silver.verifier.reasons.ErrorNode
 
-case class ExistentialElimFailed(override val offendingNode: ErrorNode, override val reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
+case class ExistentialElimFailed(override val offendingNode: ErrorNode, override val reason: ErrorReason, override val cached: Boolean = false) extends ExtensionAbstractVerificationError {
   override val id = "existential elimination.failed"
   override val text = " no witness could be found."
 
@@ -19,7 +19,7 @@ case class ExistentialElimFailed(override val offendingNode: ErrorNode, override
   override def withReason(r: ErrorReason): ExistentialElimFailed = ExistentialElimFailed(offendingNode, r, cached)
 }
 
-case class UniversalIntroFailed(override val offendingNode: ErrorNode, override val reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
+case class UniversalIntroFailed(override val offendingNode: ErrorNode, override val reason: ErrorReason, override val cached: Boolean = false) extends ExtensionAbstractVerificationError {
   override val id = "universal introduction.failed"
   override val text = " not true for all vars."
 
@@ -29,7 +29,7 @@ case class UniversalIntroFailed(override val offendingNode: ErrorNode, override 
   override def withReason(r: ErrorReason): UniversalIntroFailed = UniversalIntroFailed(offendingNode, r, cached)
 }
 
-case class FlowAnalysisFailed(override val offendingNode: ErrorNode, override val reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
+case class FlowAnalysisFailed(override val offendingNode: ErrorNode, override val reason: ErrorReason, override val cached: Boolean = false) extends ExtensionAbstractVerificationError {
   override val id = "flow analysis.failed"
   override val text = " ."
 

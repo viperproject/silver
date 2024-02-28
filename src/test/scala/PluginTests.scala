@@ -8,7 +8,7 @@ import java.nio.file.Paths
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast.{LocalVar, Perm, Program}
 import viper.silver.frontend.{SilFrontend, SilFrontendConfig}
-import viper.silver.parser.{PIdnDef, PPredicate, PProgram}
+import viper.silver.parser.{PDelimited, PGrouped, PIdnDef, PKw, PPredicate, PProgram, PReserved}
 import viper.silver.plugin.{SilverPlugin, SilverPluginManager}
 import viper.silver.reporter.{Reporter, StdIOReporter}
 import viper.silver.verifier.errors.Internal
@@ -119,16 +119,9 @@ class TestPluginAddPredicate extends SilverPlugin {
   override def beforeResolve(input: PProgram): PProgram = {
     val p = (NoPosition, NoPosition)
     PProgram(
-      input.imports,
-      input.macros,
-      input.domains,
-      input.fields,
-      input.functions,
-      input.predicates :+ PPredicate(PIdnDef("testPredicate")(p), Seq(), None)(p),
-      input.methods,
-      input.extensions,
-      input.errors
-    )(p)
+      input.imported,
+      input.members :+ PPredicate(Seq(), PReserved.implied(PKw.Predicate), PIdnDef("testPredicate")(p), PGrouped.impliedParen(PDelimited.empty), None)(p),
+    )(input.pos, input.localErrors)
   }
 
   /** Called after methods are filtered but before the verification by the backend happens.

@@ -72,4 +72,6 @@ package object reporter {
   // TODO: discuss if "Declaration" is a better term than e.g. "Definition"
   case class Definition(name: String, typ: SymbolKind, location: DefPosition,
                         scope: Option[DefScope] = None)
+
+  case class Import(file: File, from: Option[DefScope])
 }

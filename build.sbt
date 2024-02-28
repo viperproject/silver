@@ -7,7 +7,7 @@
 // Settings common to Silver and backends
 // Compilation settings
 
-ThisBuild / scalaVersion := "2.13.4"
+ThisBuild / scalaVersion := "2.13.10"
 ThisBuild / scalacOptions ++= Seq(
   "-encoding", "UTF-8",               // Enforce UTF-8, instead of relying on properly set locales
   "-deprecation",                     // Warn when using deprecated language features
@@ -54,6 +54,8 @@ lazy val silver = (project in file("."))
     libraryDependencies += "org.jgrapht" % "jgrapht-core" % "1.5.0",                            // Graphs
     libraryDependencies += "org.slf4j" % "slf4j-api" % "1.7.30",                                // Logging
     libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3",                      // Logging
+    libraryDependencies += "com.lihaoyi" %% "requests" % "0.3.0",                               // Data collection
+    libraryDependencies += "com.lihaoyi" %% "upickle" % "1.0.0",                                // Data collection
 
     // Test settings.
     Test / parallelExecution := false,

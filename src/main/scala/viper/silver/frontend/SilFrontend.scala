@@ -6,14 +6,13 @@
 
 package viper.silver.frontend
 
-import viper.silver.ast.utility.Consistency
-import viper.silver.ast.{SourcePosition, _}
+import viper.silver.ast.utility.{Consistency, FileLoader}
+import viper.silver.ast._
 import viper.silver.parser._
 import viper.silver.plugin.SilverPluginManager
 import viper.silver.plugin.SilverPluginManager.PluginException
 import viper.silver.reporter._
 import viper.silver.verifier._
-import fastparse.Parsed
 import java.nio.file.{Path, Paths}
 import viper.silver.FastMessaging
 
@@ -32,25 +31,44 @@ trait SilFrontend extends DefaultFrontend {
    */
   object ApplicationExitReason extends Enumeration {
     type PreVerificationFailureReasons = Value
-    val UNKNOWN_EXIT_REASON            = Value(-2)
-    val NOTHING_TO_BE_DONE             = Value(-1)
-    val VERIFICATION_SUCCEEDED         = Value( 0) // POSIX standard
-    val VERIFICATION_FAILED            = Value( 1)
-    val COMMAND_LINE_ARGS_PARSE_FAILED = Value( 2)
-    val ISSUE_WITH_PLUGINS             = Value( 3)
-    val SYSTEM_DEPENDENCY_UNSATISFIED  = Value( 4)
+    val UNKNOWN_EXIT_REASON = Value(-2)
+    val NOTHING_TO_BE_DONE = Value(-1)
+    val VERIFICATION_SUCCEEDED = Value(0) // POSIX standard
+    val VERIFICATION_FAILED = Value(1)
+    val COMMAND_LINE_ARGS_PARSE_FAILED = Value(2)
+    val ISSUE_WITH_PLUGINS = Value(3)
+    val SYSTEM_DEPENDENCY_UNSATISFIED = Value(4)
   }
 
   protected var _appExitReason: ApplicationExitReason.Value = ApplicationExitReason.UNKNOWN_EXIT_REASON
+
   def appExitCode: Int = _appExitReason.id
 
   protected def specifyAppExitCode(): Unit = {
-      if ( _state >= DefaultStates.Verification ) {
+    if (_state >= DefaultStates.Verification) {
       _appExitReason = result match {
         case Success => ApplicationExitReason.VERIFICATION_SUCCEEDED
         case Failure(_) => ApplicationExitReason.VERIFICATION_FAILED
       }
     }
+  }
+
+  def resetPlugins(): Unit = {
+    val pluginsArg: Option[String] = if (_config != null) {
+      // concat defined plugins and default plugins
+      val list = (if (_config.enableSmokeDetection()) Set(smokeDetectionPlugin, refutePlugin) else Set()) ++
+        (if (_config.disableDefaultPlugins()) Set() else defaultPlugins) ++
+        _config.plugin.toOption.toSet
+
+      if (list.isEmpty) {
+        None
+      } else {
+        Some(list.mkString(":"))
+      }
+    } else {
+      None
+    }
+    _plugins = SilverPluginManager(pluginsArg)(reporter, logger, _config, fp)
   }
 
   /**
@@ -61,12 +79,13 @@ trait SilFrontend extends DefaultFrontend {
   def createVerifier(fullCmd: String): Verifier
 
   /** Configures the verifier by passing it the command line arguments ''args''.
-    * Returns the verifier's effective configuration.
-    */
+   * Returns the verifier's effective configuration.
+   */
   def configureVerifier(args: Seq[String]): SilFrontendConfig
 
   /** The Viper verifier to be used for verification (after it has been initialized). */
   def verifier: Verifier = _ver
+
   protected var _ver: Verifier = _
 
   override protected type ParsingResult = PProgram
@@ -74,7 +93,11 @@ trait SilFrontend extends DefaultFrontend {
 
   /** The current configuration. */
   protected var _config: SilFrontendConfig = _
+
   def config: SilFrontendConfig = _config
+
+  private val refutePlugin: String = "viper.silver.plugin.standard.refute.RefutePlugin"
+  private val smokeDetectionPlugin: String = "viper.silver.plugin.standard.smoke.SmokeDetectionPlugin"
 
   /**
    * Default plugins are always activated and are run as last plugins.
@@ -83,11 +106,11 @@ trait SilFrontend extends DefaultFrontend {
   private val defaultPlugins: Seq[String] = Seq(
     "viper.silver.plugin.standard.adt.AdtPlugin",
     "viper.silver.plugin.standard.termination.TerminationPlugin",
-    "viper.silver.plugin.standard.refute.RefutePlugin",
     "viper.silver.plugin.standard.predicateinstance.PredicateInstancePlugin",
-    "viper.silver.plugin.standard.reasoning.ReasoningPlugin"
-
+    "viper.silver.plugin.standard.reasoning.ReasoningPlugin",
+    refutePlugin
   )
+
   /** For testing of plugin import feature */
   def defaultPluginCount: Int = defaultPlugins.size
 
@@ -104,6 +127,7 @@ trait SilFrontend extends DefaultFrontend {
   def plugins: SilverPluginManager = _plugins
 
   protected var _startTime: Long = _
+
   def startTime: Time = _startTime
 
   def getTime: Long = System.currentTimeMillis() - _startTime
@@ -112,13 +136,13 @@ trait SilFrontend extends DefaultFrontend {
     Consistency.resetMessages()
   }
 
-  def setVerifier(verifier:Verifier): Unit = {
+  def setVerifier(verifier: Verifier): Unit = {
     _ver = verifier
   }
 
   def prepare(args: Seq[String]): Boolean = {
 
-    reporter report CopyrightReport(_ver.signature)//${_ver.copyright}") // we agreed on 11/03/19 to drop the copyright
+    reporter report CopyrightReport(_ver.signature) //${_ver.copyright}") // we agreed on 11/03/19 to drop the copyright
 
     /* Parse command line arguments and populate _config */
     parseCommandLine(args)
@@ -150,12 +174,15 @@ trait SilFrontend extends DefaultFrontend {
    * the Viper program to the verifier.  The resulting error messages (if any) will be
    * shown in a user-friendly fashion.
    */
-  def execute(args: Seq[String]): Unit = {
+  def execute(args: Seq[String], loader: Option[FileLoader] = None): Unit = {
     setStartTime()
 
     /* Create the verifier */
     _ver = createVerifier(args.mkString(" "))
 
+    if (loader.isDefined) {
+      _loader = loader.get
+    }
     if (!prepare(args)) return
 
     // initialize the translator
@@ -177,23 +204,17 @@ trait SilFrontend extends DefaultFrontend {
       finish()
     }
     catch {
-        case MissingDependencyException(msg) =>
-          println("Missing dependency exception: " + msg)
-          reporter report MissingDependencyReport(msg)
+      case MissingDependencyException(msg) =>
+        println("Missing dependency exception: " + msg)
+        reporter report MissingDependencyReport(msg)
     }
   }
 
   override def reset(input: Path): Unit = {
     super.reset(input)
 
-    if(_config != null) {
-
-      // concat defined plugins and default plugins
-      val pluginsArg: Option[String] = {
-        val list = _config.plugin.toOption ++ defaultPlugins
-        if (list.isEmpty) { None } else { Some(list.mkString(":")) }
-      }
-      _plugins = SilverPluginManager(pluginsArg)(reporter, logger, _config, fp)
+    if (_config != null) {
+      resetPlugins()
     }
   }
 
@@ -218,7 +239,7 @@ trait SilFrontend extends DefaultFrontend {
   }
 
   override def verification(): Unit = {
-    def filter(input: Program): Result[Program]  = {
+    def filter(input: Program): Result[Program] = {
       plugins.beforeMethodFilter(input) match {
         case Some(inputPlugin) =>
           // Filter methods according to command-line arguments.
@@ -249,7 +270,8 @@ trait SilFrontend extends DefaultFrontend {
   }
 
   def finish(): Unit = {
-    val res = plugins.beforeFinish(result)
+    val tRes = result.transformedResult()
+    val res = plugins.beforeFinish(tRes)
     _verificationResult = Some(res)
     res match {
       case Success =>
@@ -267,23 +289,15 @@ trait SilFrontend extends DefaultFrontend {
     val file = _inputFile.get
     plugins.beforeParse(input, isImported = false) match {
       case Some(inputPlugin) =>
-        val result = fp.parse(inputPlugin, file, Some(plugins))
-          result match {
-            case Parsed.Success(e@ PProgram(_, _, _, _, _, _, _, _, err_list), _) =>
-              if (err_list.isEmpty || err_list.forall(p => p.isInstanceOf[ParseWarning])) {
-                reporter report WarningsDuringParsing(err_list)
-                Succ({e.initProperties(); e})
-              }
-              else Fail(err_list)
-            case fail @ Parsed.Failure(_, index, _) =>
-              val msg = fail.trace().longAggregateMsg
-              val (line, col) = fp.lineCol.getPos(index)
-              Fail(List(ParseError(s"Expected $msg", SourcePosition(file, line, col))))
-            //? val pos = extra.input.prettyIndex(index).split(":").map(_.toInt)
-              //? Fail(List(ParseError(s"Expected $msg", SourcePosition(file, pos(0), pos(1)))))
-            case error: ParseError => Fail(List(error))
-          }
-
+        val result = fp.parse(inputPlugin, file, Some(plugins), _loader)
+        if (result.errors.forall(p => p.isInstanceOf[ParseWarning])) {
+          reporter report WarningsDuringParsing(result.errors)
+          Succ({
+            result.initProperties();
+            result
+          })
+        }
+        else Fail(result.errors)
       case None => Fail(plugins.errors)
     }
   }
@@ -330,7 +344,7 @@ trait SilFrontend extends DefaultFrontend {
     }
   }
 
-  def doConsistencyCheck(input: Program): Result[Program]= {
+  def doConsistencyCheck(input: Program): Result[Program] = {
     var errors = input.checkTransitively
     if (backendTypeFormat.isDefined)
       errors = errors ++ Consistency.checkBackendTypes(input, backendTypeFormat.get)

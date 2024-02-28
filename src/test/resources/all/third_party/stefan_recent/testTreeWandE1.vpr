@@ -76,9 +76,14 @@ function Tree__tolist(t: Ref): Seq[Int]
   (t == null ? Seq[Int]() : (unfolding acc(Tree__state(t), write) in Tree__tolist(t.Tree__left) ++ Seq(t.Tree__data) ++ Tree__tolist(t.Tree__right)))
 }
 
+/*function Tree__sorted_list(s: Seq[Int]): Bool
+{
+  (forall i: Int :: (1 < i) && (i < |s|) ==> (s[i - 1] <= s[i])) // clear matching loop :(
+}*/
+
 function Tree__sorted_list(s: Seq[Int]): Bool
 {
-  (forall i: Int :: (1 < i) && (i < |s|) ==> (s[i - 1] <= s[i]))
+  (forall i: Int, j: Int :: {s[i],s[j]} (1 <= i) && (i < j) && (j < |s|) ==> (s[i] <= s[j]))
 }
 
 function Tree__sorted(t: Ref): Bool

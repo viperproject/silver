@@ -21,91 +21,69 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
                       @unused config: viper.silver.frontend.SilFrontendConfig,
                       fp: FastParser) extends SilverPlugin with ParserPluginTemplate with SetGraphComparison with BeforeVerifyHelper {
 
-  import fp.{FP, ParserExtension, block, exp, idndef, idnuse, keyword, trigger, typ, formalArgList, pre, post, LeadingWhitespace, oldLabel, parens}
-  import viper.silver.parser.FastParserCompanion.LW
+  import fp.{exp, ParserExtension, lineCol, _file}
+  import FastParserCompanion.{ExtendedParsing, PositionParsing, reservedKw, reservedSym}
 
 
   override def reportErrorWithMsg(error: AbstractError): Unit = reportError(error)
 
   /** Parser for existential elimination statements. */
-  def existential_elim[_: P]: P[PExistentialElim] =
-    FP(keyword("obtain") ~/ (idndef ~ ":" ~ typ).rep(sep = ",") ~/ keyword("where") ~/ trigger.rep ~/ exp).map { case (pos, (varList, t, e)) => PExistentialElim(varList.map { case (id, typ) => PLocalVarDecl(id, typ, None)(e.pos) }, t, e)(pos) }
+  def existential_elim[$: P]: P[PExistentialElim] =
+    P((P(PObtainKeyword) ~/ fp.nonEmptyIdnTypeList(PLocalVarDecl(_)) ~/ P(PWhereKeyword) ~/ fp.trigger.rep ~ exp).map {
+      case (obtainKw, varDecls, whereKw, triggers, e) => PExistentialElim(obtainKw, varDecls, whereKw, triggers, e)(_)
+    }).pos
 
   /** Parser for universal introduction statements. */
-  def universal_intro[_: P]: P[PUniversalIntro] =
-    FP(keyword("prove") ~/ keyword("forall") ~/ (idndef ~ ":" ~ typ).rep(sep = ",") ~/ trigger.rep(sep = ",") ~/ keyword("assuming") ~/ exp ~/ keyword("implies") ~/ exp ~/ block).map { case (pos, (varList, triggers, e1, e2, b)) => PUniversalIntro(varList.map { case (id, typ) => PLocalVarDecl(id, typ, None)(e1.pos) }, triggers, e1, e2, b)(pos) }
-
+  def universal_intro[$: P]: P[PUniversalIntro] =
+    P((P(PProveKeyword) ~/ PKw.Forall ~/ fp.nonEmptyIdnTypeList(PLocalVarDecl(_)) ~/ fp.trigger.rep ~/ P(PAssumingKeyword) ~/ exp ~/ P(PImpliesKeyword) ~/ exp ~/ fp.stmtBlock()).map {
+      case (proveKw, forallKw, varDecls, triggers, assumingKw, p, impliesKw, q, b) => PUniversalIntro(proveKw, forallKw, varDecls, triggers, assumingKw, p, impliesKw, q, b)(_)
+    }).pos
 
   /** Parser for new influence by condition */
-  def influenced_by[_: P]: P[PFlowAnnotation] =
-    P(keyword("influenced") ~/ (influenced_by_var | influenced_by_heap))
+  def flowSpec[$: P]: P[PSpecification[PInfluencedKeyword.type]] =
+    P((P(PInfluencedKeyword) ~ influenced_by) map (PSpecification.apply _).tupled).pos
 
-  def influenced_by_var[_: P]: P[PFlowAnnotation] = FP(idnuse ~/ keyword("by") ~ "{" ~/ (heap_then_vars | vars_then_opt_heap) ~/ "}").map {
-    case (pos, (v_idnuse: PExp, (varList: Seq[PExp], None))) =>
-      PFlowAnnotation(PVar(v_idnuse)(v_idnuse.pos), varList.map(vl => PVar(vl)(vl.pos)))(pos)
-    case (pos, (v_idnuse: PExp, varList: Option[Seq[PExp]])) =>
-      PFlowAnnotation(PVar(v_idnuse)(v_idnuse.pos), (varList.getOrElse(Seq()).map(vl => PVar(vl)(vl.pos))) ++ Seq(PHeap()(v_idnuse.pos)))(pos)
-    case (pos, (v_idnuse: PExp, (varList1: Seq[PExp], varList2: Some[Seq[PExp]]))) =>
-      PFlowAnnotation(PVar(v_idnuse)(v_idnuse.pos), ((varList1 ++ varList2.getOrElse(Seq())).map(vl => PVar(vl)(vl.pos))) ++ Seq(PHeap()(v_idnuse.pos)))(pos)
+  def heap[$: P]: P[PHeap] = P(P(PHeapKeyword) map (PHeap(_) _)).pos // note that the parentheses are not redundant
 
-  }
+  def singleVar[$: P]: P[PVar] = P(exp map (PVar(_) _)).pos // note that the parentheses are not redundant
+  def vars_and_heap[$: P]: P[Seq[PFlowVar]] = (heap | singleVar).delimited(PSym.Comma).map(_.toSeq)
 
-  def vars_then_opt_heap[_: P]: P[(Seq[PExp], Option[Seq[PExp]])] = P(idnuse.rep(sep = ",") ~/ ("," ~/ keyword("heap") ~/ ("," ~/ idnuse.rep(sep = ",")).?).?.map {
-    /** If there is no heap keyword */
-    case None => None
-
-    /** If there is the heap keyword but no further variables */
-    case Some(None) => Some(Seq())
-
-    /** If there is the heap keyword and additionally further variables */
-    case Some(Some(varList)) => Some(varList)
-
-  })
-
-  def heap_then_vars[_: P]: P[Option[Seq[PExp]]] = P(keyword("heap") ~/ ("," ~/ idnuse.rep(sep = ",")).?)
-
-
-  def influenced_by_heap[_: P]: P[PFlowAnnotation] = FP(keyword("heap") ~/ keyword("by") ~ "{" ~/ (heap_then_vars | vars_then_opt_heap) ~/ "}").map {
-    case (pos, (varList: Seq[PExp], None)) =>
-      reportError(ConsistencyError("The heap should always be influenced by the heap.", SourcePosition(pos._1.file, pos._1, pos._2)))
-      PFlowAnnotation(PHeap()(pos),varList.map(vl => PVar(vl)(vl.pos)))(pos)
-    case (pos, varList: Option[Seq[PExp]]) =>
-      PFlowAnnotation(PHeap()(pos), (varList.getOrElse(Seq()).map(vl => PVar(vl)(vl.pos))) ++ Seq(PHeap()(pos)))(pos)
-    case (pos, (varList1: Seq[PExp], varList2: Some[Seq[PExp]])) =>
-      PFlowAnnotation(PHeap()(pos), (varList1 ++ varList2.getOrElse(Seq())).map(vl => PVar(vl)(vl.pos)) ++ Seq(PHeap()(pos)))(pos)
-  }
+  def influenced_by[$: P]: P[PFlowAnnotation] = P(((heap | singleVar) ~ P(PByKeyword) ~/ vars_and_heap.braces) map {
+    case (v, byKw, groupedVarList) => PFlowAnnotation(v, byKw, groupedVarList)(_)
+  }).pos
 
   /** parser for lemma annotation */
-  def lemma[_: P]: P[PLemma] = FP(keyword("isLemma")).map { case (pos,()) => PLemma()(pos)}
+  def lemma[$: P]: P[PSpecification[PIsLemmaKeyword.type]] =
+    P((P(PIsLemmaKeyword) ~ lemmaClause) map (PSpecification.apply _).tupled).pos
+
+  // lemma clause is completely artificial and is created out of nowhere at the parser's current position
+  def lemmaClause[$: P]: P[PLemmaClause] = (Pass(()) map { _ => PLemmaClause()(_) }).pos
 
   /** parser for oldCall statement */
-  def oldCall[_: P]: P[POldCall] = FP((idnuse.rep(sep = ",") ~ ":=").? ~ keyword("oldCall") ~ "[" ~ oldLabel ~ "]" ~ "(" ~ idnuse ~ parens(exp.rep(sep = ",")) ~ ")").map {
-    case (pos, (None, lbl, method, args)) =>
-      POldCall(Nil, lbl, method, args)(pos)
-    case (pos, (Some(targets), lbl, method, args)) =>
-      POldCall(targets, lbl, method, args)(pos)
-  }
-
+  def oldCall[$: P]: P[POldCall] =
+    P(((fp.idnuse.delimited(PSym.Comma) ~ PSymOp.Assign).? ~ P(POldCallKeyword) ~ fp.oldLabel.brackets ~ fp.funcApp.parens) map {
+      case (lhs, oldCallKw, lbl, call) => POldCall(lhs, oldCallKw, lbl, call)(_)
+    }).pos
 
 
   /** Add existential elimination and universal introduction to the parser. */
   override def beforeParse(input: String, isImported: Boolean): String = {
     /** keywords for existential elimination and universal introduction */
-    ParserExtension.addNewKeywords(Set[String]("obtain", "where", "prove", "forall", "assuming", "implies"))
+    ParserExtension.addNewKeywords(Set(PObtainKeyword, PWhereKeyword, PProveKeyword, PAssumingKeyword, PImpliesKeyword))
 
     /** keywords for flow annotation and therefore modular flow analysis */
-    ParserExtension.addNewKeywords(Set[String]("influenced", "by", "heap"))
+    ParserExtension.addNewKeywords(Set(PInfluencedKeyword, PByKeyword, PHeapKeyword))
 
     /** keyword to declare a lemma and to call the lemma in an old context*/
-    ParserExtension.addNewKeywords(Set[String]("isLemma"))
-    ParserExtension.addNewKeywords(Set[String]("oldCall"))
+    ParserExtension.addNewKeywords(Set(PIsLemmaKeyword))
+    ParserExtension.addNewKeywords(Set(POldCallKeyword))
 
     /** adding existential elimination and universal introduction to the parser */
     ParserExtension.addNewStmtAtEnd(existential_elim(_))
     ParserExtension.addNewStmtAtEnd(universal_intro(_))
 
     /** add influenced by flow annotation to as a postcondition */
-    ParserExtension.addNewPostCondition(influenced_by(_))
+    ParserExtension.addNewPostCondition(flowSpec(_))
 
     /** add lemma as an annotation either as a pre- or a postcondition */
     ParserExtension.addNewPreCondition(lemma(_))

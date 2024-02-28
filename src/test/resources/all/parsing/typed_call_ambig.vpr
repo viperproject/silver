@@ -1,0 +1,8 @@
+domain huh {
+    function myfun(b: Bool): Bool
+}
+
+method m()
+{
+  assert (myfun(forall i: Int :: i > 0 || i <= 0)) || true
+}

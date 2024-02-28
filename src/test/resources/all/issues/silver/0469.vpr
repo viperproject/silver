@@ -6,6 +6,6 @@ field b: Bool
 method t(l: Seq[Int], x: Ref, cond: Bool)
   requires |l| == 3 && forall i: Int :: (0 <= i && i < |l|) ==> l[i] == 4
 {
-  //:: ExpectedOutput(consistency.error)
+  //:: ExpectedOutput(typechecker.error)
   assert l[(acc(x.b) && x.b) ? 1 : 2] == 4;
 }

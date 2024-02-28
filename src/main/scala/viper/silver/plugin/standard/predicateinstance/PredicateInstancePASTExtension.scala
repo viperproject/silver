@@ -11,32 +11,36 @@ import viper.silver.parser._
 
 import scala.collection.mutable
 
+case object PPredicateInstanceKeyword extends PKw("PredicateInstance") with PKeywordType
 
-case class PPredicateInstance(args: Seq[PExp], idnuse: PIdnUse)(val pos: (Position, Position)) extends PExtender with PExp {
+/**
+ * Syntactic marker for predicate instances
+ */
+case object PMarkerSymbol extends PSym("#") with PSymbolLang
 
-  typ = PPrimitiv("PredicateInstance")()
+case class PPredicateInstance(m: PReserved[PMarkerSymbol.type], idnuse: PIdnRef[PPredicate], args: PDelimited.Comma[PSym.Paren, PExp])(val pos: (Position, Position)) extends PExtender with PExp {
+
+  typ = PPrimitiv(PReserved(PPredicateInstanceKeyword)(NoPosition, NoPosition))(NoPosition, NoPosition)
 
   // TODO: Don't know if this is correct
   private val _typeSubstitutions = new scala.collection.mutable.ArrayDeque[PTypeSubstitution]()
   final override def typeSubstitutions: mutable.ArrayDeque[PTypeSubstitution] = _typeSubstitutions
   override def forceSubstitution(ts: PTypeSubstitution): Unit = {}
 
-  override def getSubnodes(): Seq[PNode] = args :+ idnuse
-
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
-    // TODO: Don't know if this is correct
-    // check that idnuse is the id of a predicate
-    n.definition(member = null)(idnuse) match {
-      case Some(p: PPredicate) =>
-        // type checking should be the same as for PPredicateAccess nodes
-        val predicateAccess = PPredicateAccess(args, idnuse)(p.pos)
-        t.checkInternal(predicateAccess)
-        None
-      case _ => Some(Seq("expected predicate"))
+    if (idnuse.decls.isEmpty)
+      Some(Seq(s"undefined predicate instance `${idnuse.name}`"))
+    if (idnuse.decls.size > 1)
+      Some(Seq(s"ambiguous predicate instance `${idnuse.name}`"))
+    else {
+      // type checking should be the same as for PPredicateAccess nodes
+      val predicateAccess = PCall(idnuse.retype(), args, None)(pos)
+      t.checkInternal(predicateAccess)
+      None
     }
   }
 
   override def translateExp(t: Translator): ExtensionExp = {
-    PredicateInstance(args map t.exp, idnuse.name)(t.liftPos(this))
+    PredicateInstance(idnuse.name, args.inner.toSeq map t.exp)(t.liftPos(this))
   }
 }

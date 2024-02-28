@@ -13,11 +13,14 @@ import scala.annotation.unused
 /** Describes the outcome of a verification attempt of a Viper program.
 
   */
-sealed trait VerificationResult
+sealed trait VerificationResult {
+  def transformedResult(): VerificationResult
+}
 
 /** A successful verification. */
 object Success extends VerificationResult {
   override def toString = "Verification successful."
+  override def transformedResult(): VerificationResult = this
 }
 
 /** A non-successful verification.
@@ -29,6 +32,7 @@ case class Failure(errors: Seq[AbstractError]) extends VerificationResult {
     s"Verification failed with ${errors.size} errors:\n  " +
       (errors map (e => "[" + e.fullId + "] " + e.readableMessage)).mkString("\n  ")
   }
+  override def transformedResult(): VerificationResult = Failure(errors.map(_.transformedError()))
 }
 
 /**
@@ -67,6 +71,8 @@ trait AbstractError {
     assert(members_with_this_node.length == 1)
     members_with_this_node.last
   }
+
+  def transformedError(): AbstractError = this
 }
 
 abstract class ParseReport(@unused message: String, @unused pos: Position) extends AbstractError
@@ -90,6 +96,13 @@ case class TypecheckerWarning(message: String, override val pos: Position)
   extends AbstractError {
   def fullId = "typechecker.warning"
   def readableMessage = s"Type checker warning: $message ($pos)"
+}
+
+/** A case class used for treating certain verifier reports as non-critical. */
+case class VerifierWarning(message: String, override val pos: Position)
+  extends AbstractError {
+  def fullId = "verifier.warning"
+  def readableMessage = s"Verifier warning: $message ($pos)"
 }
 
 /** An error during consistency-checking an AST node */
@@ -132,5 +145,8 @@ case class TimeoutOccurred(n: Long, units: String) extends AbstractError {
 case class AbortedExceptionally(cause: Throwable) extends AbstractError {
   def pos = NoPosition
   def fullId = "exceptional.error"
-  def readableMessage = s"Verification aborted exceptionally"
+  def readableMessage = s"Verification aborted exceptionally (${cause.toString()}, ${
+    cause.printStackTrace()
+    cause.getStackTrace().tail.head.toString()
+  })"
 }

@@ -513,7 +513,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
             line <> show(exp)
           ) <> line)
     }
-    showComment(m) <@> memberDoc
+    showComment(m) <@> showAnnotation(m).getOrElse(nil) <@> memberDoc
   }
 
 
@@ -541,10 +541,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
             case None =>
               nil
             case Some(actualBody) =>
-              braces(nest(defaultIndent,
-                lineIfSomeNonEmpty(actualBody.children) <>
-                ssep(Seq(showStmt(actualBody)), line)
-              ) <> line)
+              showBlock(actualBody)
           })
       case Predicate(name, formalArgs, body) =>
         text("predicate") <+> name <> nest(defaultIndent, parens(showVars(formalArgs))) <+> (body match {
@@ -568,7 +565,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
         showDomain(d)
       case e:ExtensionMember => e.prettyPrint
     }
-    showComment(m) <@> memberDoc
+    showComment(m) <@> showAnnotation(m).getOrElse(nil) <@> memberDoc
   }
 
   /** Shows contracts and use `name` as the contract name (usually `requires` or `ensures`). */
@@ -634,11 +631,20 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
   }
 
   /** Show some node inside square braces (with nesting). */
-  def showBlock(stmt: Stmt): Cont = {
-    braces(nest(defaultIndent,
-      lineIfSomeNonEmpty(stmt match {case s: Seqn => s.scopedDecls; case _ => Seq()}, stmt.children) <>
-        showStmt(stmt)
-    ) <> line)
+  def showBlock(stmt: Stmt): Cont = stmt match {
+    case Seqn(stmts, scopedDecls) =>
+      val locals = scopedDecls.collect { case l: LocalVarDecl => l }
+      val nonEmptyStmts = stmts.filter {
+        case s@Seqn(ss, sd) => ss.nonEmpty || sd.nonEmpty || s.info.comment.nonEmpty
+        case _ => true
+      }
+      braces(nest(defaultIndent,
+        lineIfSomeNonEmpty(scopedDecls, nonEmptyStmts) <>
+          ssep((locals map (text("var") <+> showVar(_))) ++ (nonEmptyStmts map show), line)) <> line)
+    case s =>
+      braces(nest(defaultIndent,
+        line <> showStmt(s)
+      ))
   }
 
   /** Show a statement. */
@@ -662,6 +668,19 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
           case Nil => call
           case _ => ssep(targets map show, char(',') <> space) <+> ":=" <+> call
         }
+      case Seqn(stmts, scopedDecls) if scopedDecls.nonEmpty =>
+        val locals = scopedDecls.collect {case l: LocalVarDecl => l}
+        val nonEmptyStmts = stmts.filter{
+          case s@Seqn(ss, sd) => ss.nonEmpty || sd.nonEmpty || s.info.comment.nonEmpty
+          case _ => true
+        }
+        if (stmts.isEmpty && locals.isEmpty)
+          nil
+        else {
+          braces(nest(defaultIndent,
+            lineIfSomeNonEmpty(scopedDecls, stmts) <>
+            ssep((locals map (text("var") <+> showVar(_))) ++ (nonEmptyStmts map show), line)) <> line)
+        }
       case seqn@Seqn(stmts, scopedDecls) =>
         val locals = scopedDecls.collect {case l: LocalVarDecl => l}
         if (stmts.isEmpty && locals.isEmpty && seqn.info.comment.isEmpty)
@@ -677,10 +696,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
           nest(defaultIndent,
             showContracts("invariant", invs)
           ) <+> lineIfSomeNonEmpty(invs) <>
-          braces(nest(defaultIndent,
-            lineIfSomeNonEmpty(body.scopedDecls, body.children) <>
-              ssep(Seq(showStmt(body)), line)
-          ) <> line)
+          showBlock(body)
       case If(cond, thn, els) =>
         text("if") <+> parens(show(cond)) <+> showBlock(thn) <> showElse(els)
       case Label(name, invs) =>
@@ -704,7 +720,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       case e: ExtensionStmt => e.prettyPrint
       case null => uninitialized
     }
-    showComment(stmt) <@> stmtDoc
+    showComment(stmt) <@> showAnnotation(stmt).getOrElse(nil) <@> stmtDoc
   }
 
   def showElse(els: Stmt): Cont = els match {
@@ -728,142 +744,162 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
     }
   }
 
-  override def toParenDoc(e: PrettyExpression): Cont = e match {
-    case IntLit(i) => value(i)
-    case BoolLit(b) => value(b)
-    case NullLit() => value(null)
-    case AbstractLocalVar(n) => n
-    case FieldAccess(rcv, field) =>
-      show(rcv) <> "." <> field.name
-    case PredicateAccess(params, predicateName) =>
-      text(predicateName) <> parens(ssep(params map show, group(char (',') <> line)))
-    case Unfolding(acc, exp) =>
-      group(parens(text("unfolding") <+> nest(defaultIndent, show(acc)) <+> "in" <> nest(defaultIndent, line <> show(exp))))
-    case Applying(wand, exp) =>
-      parens(text("applying") <+> nest(defaultIndent, show(wand)) <+> "in" <> nest(defaultIndent, line <> show(exp)))
-    case Old(exp) =>
-      text("old") <> parens(show(exp))
-    case LabelledOld(exp,label) =>
-      text("old") <> brackets(label) <> parens(show(exp))
-    case Let(v, exp, body) =>
-      parens(text("let") <+> text(v.name) <+> "==" <> nest(defaultIndent, line <> parens(show(exp))) <+>
-        "in" <> nest(defaultIndent, line <> show(body)))
-    case CondExp(cond, thn, els) =>
-      group(parens(show(cond) <+> "?" <> nest(defaultIndent, line <> show(thn) <+> ":" <@> show(els))))
-    case Exists(v, triggers, exp) =>
-      parens(text("exists") <+> showVars(v) <+> "::" <>
-        nest(defaultIndent, (if (triggers.isEmpty) nil else space <> ssep(triggers map show, space)) <+>
-          show(exp)))
-    case Forall(v, triggers, exp) =>
-      group(parens(text("forall") <+> showVars(v) <+> "::" <>
-        nest(defaultIndent, (if (triggers.isEmpty) nil else line <> ssep(triggers map show, line)) <@>
-          show(exp))))
-    case ForPerm(vars, resource, exp) =>
-      group(parens(text("forperm")
-        <> nest(defaultIndent, line <> showVars(vars)
+  def showAnnotation(n: Infoed, breakLines: Boolean = true): Option[Cont] = {
+    if (n == null) {
+      None
+    } else {
+      n.info.getUniqueInfo[AnnotationInfo] match {
+        case Some(ai) if ai.values.nonEmpty =>
+          val docs = ai.values.map(v => char('@') <> v._1 <> parens(ssep(v._2.map(v => text(s"\"${v}\"")), text(", ")))).toSeq
+          Some(ssep(docs, if (breakLines) line else space))
+        case _ => None
+      }
+    }
+  }
+
+  override def toParenDoc(e: PrettyExpression): Cont = {
+    val res: Cont = e match {
+      case IntLit(i) => value(i)
+      case BoolLit(b) => value(b)
+      case NullLit() => value(null)
+      case AbstractLocalVar(n) => n
+      case FieldAccess(rcv, field) =>
+        show(rcv) <> "." <> field.name
+      case PredicateAccess(params, predicateName) =>
+        text(predicateName) <> parens(ssep(params map show, group(char (',') <> line)))
+      case Unfolding(acc, exp) =>
+        group(parens(text("unfolding") <+> nest(defaultIndent, show(acc)) <+> "in" <> nest(defaultIndent, line <> show(exp))))
+      case Applying(wand, exp) =>
+        parens(text("applying") <+> nest(defaultIndent, show(wand)) <+> "in" <> nest(defaultIndent, line <> show(exp)))
+      case Old(exp) =>
+        text("old") <> parens(show(exp))
+      case LabelledOld(exp,label) =>
+        text("old") <> brackets(label) <> parens(show(exp))
+      case Let(v, exp, body) =>
+        parens(text("let") <+> text(v.name) <+> "==" <> nest(defaultIndent, line <> parens(show(exp))) <+>
+          "in" <> nest(defaultIndent, line <> show(body)))
+      case CondExp(cond, thn, els) =>
+        group(parens(show(cond) <+> "?" <> nest(defaultIndent, line <> show(thn) <+> ":" <@> show(els))))
+      case Exists(v, triggers, exp) =>
+        parens(text("exists") <+> showVars(v) <+> "::" <>
+          nest(defaultIndent, (if (triggers.isEmpty) nil else space <> ssep(triggers map show, space)) <+>
+            show(exp)))
+      case Forall(v, triggers, exp) =>
+        group(parens(text("forall") <+> showVars(v) <+> "::" <>
+          nest(defaultIndent, (if (triggers.isEmpty) nil else line <> ssep(triggers map show, line)) <@>
+            show(exp))))
+      case ForPerm(vars, resource, exp) =>
+        group(parens(text("forperm")
+          <> nest(defaultIndent, line <> showVars(vars)
           <+> brackets(show(resource)) <+> "::" <+> show(exp))))
 
-    case InhaleExhaleExp(in, ex) =>
-      group(brackets(show(in) <> char (',') <@> show(ex)))
-    case WildcardPerm() =>
-      "wildcard"
-    case FullPerm() =>
-      "write"
-    case NoPerm() =>
-      "none"
-    case EpsilonPerm() =>
-      "epsilon"
-    case CurrentPerm(loc) =>
-      text("perm") <> parens(show(loc))
-    case mw: MagicWand => showPrettyBinaryExp(mw)
+      case InhaleExhaleExp(in, ex) =>
+        group(brackets(show(in) <> char (',') <@> show(ex)))
+      case WildcardPerm() =>
+        "wildcard"
+      case FullPerm() =>
+        "write"
+      case NoPerm() =>
+        "none"
+      case EpsilonPerm() =>
+        "epsilon"
+      case CurrentPerm(loc) =>
+        text("perm") <> parens(show(loc))
+      case mw: MagicWand => showPrettyBinaryExp(mw)
       /** [2018-10-09 Malte] Here to prevent the next case from matching, which would result in
         * infinite recursion. See the comment in [[viper.silver.ast.utility.Nodes.subnodes]]
         * for details.
         */
-    case AccessPredicate(loc, perm) =>
-      text("acc") <> parens(show(loc) <> "," <+> show(perm))
-    case FuncApp(funcname, args) =>
-      text(funcname) <> parens(ssep(args map show, group(char (',') <> line)))
-    case dfa@DomainFuncApp(funcname, args, tvMap) =>
-      if (tvMap.nonEmpty)
-        // Type may be underconstrained, so to be safe we explicitly print out the type.
-        parens(text(funcname) <> parens(ssep(args map show, group(char (',') <> line))) <> char(':') <+> show(dfa.typ))
-      else
+      case AccessPredicate(loc, perm) =>
+        text("acc") <> parens(show(loc) <> "," <+> show(perm))
+      case FuncApp(funcname, args) =>
         text(funcname) <> parens(ssep(args map show, group(char (',') <> line)))
-    case BackendFuncApp(funcName, args) =>
-      text(funcName) <> parens(ssep(args map show, group(char(',') <> line)))
-    case EmptySeq(elemTyp) =>
-      text("Seq[") <> showType(elemTyp) <> "]()"
-    case ExplicitSeq(elems) =>
-      text("Seq") <> parens(ssep(elems map show, group(char (',') <> line)))
-    case RangeSeq(low, high) =>
-      text("[") <> show(low) <> ".." <> show(high) <> ")"
-    case si@SeqIndex(seq: PrettyOperatorExpression, idx) =>
-      bracket(seq, si, LeftAssociative) <> brackets(show(idx))
-    case SeqIndex(seq, idx) =>
-      show(seq) <> brackets(show(idx))
-    case st@SeqTake(seq: PrettyOperatorExpression, n) =>
-      bracket(seq, st, LeftAssociative) <> brackets(text("..") <> show(n))
-    case SeqTake(seq, n) =>
-      show(seq) <> brackets(text("..") <> show(n))
-    case sd@SeqDrop(SeqTake(seq: PrettyOperatorExpression, n1), n2) =>
-      bracket(seq, sd, LeftAssociative) <> brackets(show(n2) <> ".." <> show(n1))
-    case SeqDrop(SeqTake(seq, n1), n2) =>
-      show(seq) <> brackets(show(n2) <> ".." <> show(n1))
-    case SeqDrop(seq, n) =>
-      show(seq) <> brackets(show(n) <> "..")
-    case SeqUpdate(seq, idx, elem) =>
-      show(seq) <> group(brackets(show(idx) <+> ":=" <@> show(elem)))
-    case SeqLength(seq) =>
-      surround(show(seq),char ('|'))
-    case SeqContains(elem, seq) =>
-      group(parens(show(elem) <+> "in" <@> show(seq)))
+      case dfa@DomainFuncApp(funcname, args, tvMap) =>
+        if (tvMap.nonEmpty)
+        // Type may be underconstrained, so to be safe we explicitly print out the type.
+          parens(text(funcname) <> parens(ssep(args map show, group(char (',') <> line))) <> char(':') <+> show(dfa.typ))
+        else
+          text(funcname) <> parens(ssep(args map show, group(char (',') <> line)))
+      case BackendFuncApp(funcName, args) =>
+        text(funcName) <> parens(ssep(args map show, group(char(',') <> line)))
+      case EmptySeq(elemTyp) =>
+        text("Seq[") <> showType(elemTyp) <> "]()"
+      case ExplicitSeq(elems) =>
+        text("Seq") <> parens(ssep(elems map show, group(char (',') <> line)))
+      case RangeSeq(low, high) =>
+        text("[") <> show(low) <> ".." <> show(high) <> ")"
+      case si@SeqIndex(seq: PrettyOperatorExpression, idx) =>
+        bracket(seq, si, LeftAssociative) <> brackets(show(idx))
+      case SeqIndex(seq, idx) =>
+        show(seq) <> brackets(show(idx))
+      case st@SeqTake(seq: PrettyOperatorExpression, n) =>
+        bracket(seq, st, LeftAssociative) <> brackets(text("..") <> show(n))
+      case SeqTake(seq, n) =>
+        show(seq) <> brackets(text("..") <> show(n))
+      case sd@SeqDrop(SeqTake(seq: PrettyOperatorExpression, n1), n2) =>
+        bracket(seq, sd, LeftAssociative) <> brackets(show(n2) <> ".." <> show(n1))
+      case SeqDrop(SeqTake(seq, n1), n2) =>
+        show(seq) <> brackets(show(n2) <> ".." <> show(n1))
+      case SeqDrop(seq, n) =>
+        show(seq) <> brackets(show(n) <> "..")
+      case SeqUpdate(seq, idx, elem) =>
+        show(seq) <> group(brackets(show(idx) <+> ":=" <@> show(elem)))
+      case SeqLength(seq) =>
+        surround(show(seq),char ('|'))
+      case SeqContains(elem, seq) =>
+        group(parens(show(elem) <+> "in" <@> show(seq)))
 
-    case EmptySet(elemTyp) =>
-      text("Set[") <> showType(elemTyp) <> "]()"
-    case ExplicitSet(elems) =>
-      text("Set") <> parens(ssep(elems map show, group(char (',') <> line)))
-    case EmptyMultiset(elemTyp) =>
-      text("Multiset[") <> showType(elemTyp) <> "]()"
-    case ExplicitMultiset(elems) =>
-      text("Multiset") <> parens(ssep(elems map show, group(char (',') <> line)))
-    case AnySetUnion(left, right) =>
-      group(parens(show(left) <+> "union" <@> show(right)))
-    case AnySetIntersection(left, right) =>
-      group(parens(show(left) <+> "intersection" <@> show(right)))
-    case AnySetSubset(left, right) =>
-      group(parens(show(left) <+> "subset" <@> show(right)))
-    case AnySetMinus(left, right) =>
-      group(parens(show(left) <+> "setminus" <@> show(right)))
-    case AnySetContains(elem, s) =>
-      group(parens(show(elem) <+> "in" <@> show(s)))
-    case AnySetCardinality(s) =>
-      surround(show(s),char ('|'))
+      case EmptySet(elemTyp) =>
+        text("Set[") <> showType(elemTyp) <> "]()"
+      case ExplicitSet(elems) =>
+        text("Set") <> parens(ssep(elems map show, group(char (',') <> line)))
+      case EmptyMultiset(elemTyp) =>
+        text("Multiset[") <> showType(elemTyp) <> "]()"
+      case ExplicitMultiset(elems) =>
+        text("Multiset") <> parens(ssep(elems map show, group(char (',') <> line)))
+      case AnySetUnion(left, right) =>
+        group(parens(show(left) <+> "union" <@> show(right)))
+      case AnySetIntersection(left, right) =>
+        group(parens(show(left) <+> "intersection" <@> show(right)))
+      case AnySetSubset(left, right) =>
+        group(parens(show(left) <+> "subset" <@> show(right)))
+      case AnySetMinus(left, right) =>
+        group(parens(show(left) <+> "setminus" <@> show(right)))
+      case AnySetContains(elem, s) =>
+        group(parens(show(elem) <+> "in" <@> show(s)))
+      case AnySetCardinality(s) =>
+        surround(show(s),char ('|'))
 
-    case EmptyMap(keyType, valueType) =>
-      text("Map") <> brackets(showType(keyType) <> "," <> showType(valueType)) <> "()"
-    case ExplicitMap(elems) =>
-      text("Map") <> parens(ssep(elems map show, group(char(',') <> line)))
-    case Maplet(key, value) =>
-      show(key) <+> ":=" <+> show(value)
-    case MapLookup(base, key) =>
-      show(base) <> brackets(show(key))
-    case MapContains(key, base) =>
-      group(parens(show(key) <+> "in" <@> show(base)))
-    case MapCardinality(base) =>
-      surround(show(base), char('|'))
-    case MapUpdate(base, key, value) =>
-      show(base) <> group(brackets(show(key) <+> ":=" <@> show(value)))
-    case MapDomain(base) =>
-      text("domain") <> parens(show(base))
-    case MapRange(base) =>
-      text("range") <> parens(show(base))
+      case EmptyMap(keyType, valueType) =>
+        text("Map") <> brackets(showType(keyType) <> "," <> showType(valueType)) <> "()"
+      case ExplicitMap(elems) =>
+        text("Map") <> parens(ssep(elems map show, group(char(',') <> line)))
+      case Maplet(key, value) =>
+        show(key) <+> ":=" <+> show(value)
+      case MapLookup(base, key) =>
+        show(base) <> brackets(show(key))
+      case MapContains(key, base) =>
+        group(parens(show(key) <+> "in" <@> show(base)))
+      case MapCardinality(base) =>
+        surround(show(base), char('|'))
+      case MapUpdate(base, key, value) =>
+        show(base) <> group(brackets(show(key) <+> ":=" <@> show(value)))
+      case MapDomain(base) =>
+        text("domain") <> parens(show(base))
+      case MapRange(base) =>
+        text("range") <> parens(show(base))
 
-    case null => uninitialized
-    case u: PrettyUnaryExpression => showPrettyUnaryExp(u)
-    case b: PrettyBinaryExpression => showPrettyBinaryExp(b)
-    case e: ExtensionExp => e.prettyPrint
-    case _ => sys.error(s"unknown expression: ${e.getClass}")
+      case null => uninitialized
+      case u: PrettyUnaryExpression => showPrettyUnaryExp(u)
+      case b: PrettyBinaryExpression => showPrettyBinaryExp(b)
+      case e: ExtensionExp => e.prettyPrint
+      case _ => sys.error(s"unknown expression: ${e.getClass}")
+    }
+    val annotation = showAnnotation(e.asInstanceOf[Infoed], false)
+    annotation match {
+      case None => res
+      case Some(a) => a <@> parens(res)
+    }
   }
 
   def showPrettyUnaryExp(u: PrettyUnaryExpression): Cont = {
