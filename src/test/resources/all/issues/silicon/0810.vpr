@@ -1,0 +1,219 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+domain PyType  {
+
+  function extends_(sub: PyType, super: PyType): Bool
+
+  function issubtype(sub: PyType, super: PyType): Bool
+
+  function isnotsubtype(sub: PyType, super: PyType): Bool
+
+  function typeof(obj: Ref): PyType
+
+  function get_basic(t: PyType): PyType
+
+  function union_type_1(arg_1: PyType): PyType
+
+  function union_type_2(arg_1: PyType, arg_2: PyType): PyType
+
+  function union_type_3(arg_1: PyType, arg_2: PyType, arg_3: PyType): PyType
+
+  function union_type_4(arg_1: PyType, arg_2: PyType, arg_3: PyType, arg_4: PyType): PyType
+
+  unique function object(): PyType
+
+  unique function list_basic(): PyType
+
+  function list(arg0: PyType): PyType
+
+  unique function set_basic(): PyType
+
+  function set(arg0: PyType): PyType
+
+  function set_arg(typ: PyType, index: Int): PyType
+
+  unique function dict_basic(): PyType
+
+  function dict(arg0: PyType, arg1: PyType): PyType
+
+  function dict_arg(typ: PyType, index: Int): PyType
+
+  unique function int(): PyType
+
+  unique function float(): PyType
+
+  unique function bool(): PyType
+
+  unique function NoneType(): PyType
+
+  unique function Exception(): PyType
+
+  unique function ConnectionRefusedError(): PyType
+
+  unique function traceback(): PyType
+
+  unique function str(): PyType
+
+  unique function bytes(): PyType
+
+  unique function __prim__perm(): PyType
+
+  unique function PSeq_basic(): PyType
+
+  function PSeq(arg0: PyType): PyType
+
+  function PSeq_arg(typ: PyType, index: Int): PyType
+
+  unique function PSet_basic(): PyType
+
+  function PSet(arg0: PyType): PyType
+
+  function PSet_arg(typ: PyType, index: Int): PyType
+
+  unique function PMultiset_basic(): PyType
+
+  function PMultiset(arg0: PyType): PyType
+
+  function PMultiset_arg(typ: PyType, index: Int): PyType
+
+  unique function slice(): PyType
+
+  unique function range_0(): PyType
+
+  unique function Iterator_basic(): PyType
+
+  function Iterator(arg0: PyType): PyType
+
+  function Iterator_arg(typ: PyType, index: Int): PyType
+
+  unique function Thread_0(): PyType
+
+  unique function LevelType(): PyType
+
+  unique function type(): PyType
+
+  unique function Place(): PyType
+
+  unique function __prim__Seq_type(): PyType
+
+  unique function Node(): PyType
+
+  axiom issubtype_transitivity {
+    (forall sub: PyType, middle: PyType, super: PyType ::
+      { issubtype(sub, middle), issubtype(middle, super) }
+      issubtype(sub, middle) && issubtype(middle, super) ==>
+      issubtype(sub, super))
+  }
+
+  axiom issubtype_reflexivity {
+    (forall type_: PyType ::
+      { issubtype(type_, type_) }
+      issubtype(type_, type_))
+  }
+
+  axiom extends_implies_subtype {
+    (forall sub: PyType, sub2: PyType ::
+      { extends_(sub, sub2) }
+      extends_(sub, sub2) ==> issubtype(sub, sub2))
+  }
+
+  axiom issubtype_exclusion {
+    (forall sub: PyType, sub2: PyType, super: PyType ::
+      { extends_(sub, super), extends_(sub2, super) }
+      extends_(sub, super) && extends_(sub2, super) && sub != sub2 ==>
+      isnotsubtype(sub, sub2) && isnotsubtype(sub2, sub))
+  }
+
+
+
+  axiom issubtype_exclusion_propagation {
+    (forall sub: PyType, middle: PyType, super: PyType ::
+      { issubtype(sub, middle), isnotsubtype(middle, super) }
+      issubtype(sub, middle) && isnotsubtype(middle, super) ==>
+      !issubtype(sub, super))
+  }
+
+  axiom subtype_list {
+    (forall var0: PyType ::
+      { list(var0) }
+      extends_(list(var0), object()) &&
+      get_basic(list(var0)) == list_basic())
+  }
+
+  axiom subtype_int {
+    extends_(int(), float()) && get_basic(int()) == int()
+  }
+
+  axiom subtype_float {
+    extends_(float(), object()) && get_basic(float()) == float()
+  }
+
+  axiom subtype_bool {
+    extends_(bool(), int())
+  }
+}
+
+field list_acc: Seq[Ref]
+
+field Node_function_name: Ref
+
+field Node_children: Ref
+
+
+method mcan_node_be_compressed(marked_execution_tree: Ref)
+{
+    inhale acc(marked_execution_tree.Node_children, write) &&
+               issubtype(typeof(marked_execution_tree.Node_children), list(Node()))
+    inhale acc(marked_execution_tree.Node_children.list_acc, write)
+
+    //:: ExpectedOutput(inhale.failed:qp.not.injective)
+    inhale (forall iii: Ref ::
+                 (
+                 typeof(iii) == int() &&
+                 (int___ge__(int___unbox__(iii), 0) &&
+                 int___lt__(int___unbox__(iii), list___len__(marked_execution_tree.Node_children)))) ==>
+                 acc(list___getitem__(marked_execution_tree.Node_children, iii).Node_function_name, write))
+}
+
+function __prim__int___box__(prim: Int): Ref
+  decreases _
+  ensures typeof(result) == int()
+  ensures int___unbox__(result) == prim
+
+
+function int___unbox__(box: Ref): Int
+  decreases _
+  requires issubtype(typeof(box), int())
+  ensures !issubtype(typeof(box), bool()) ==>
+    __prim__int___box__(result) == box
+
+function int___ge__(self: Int, other: Int): Bool
+  decreases _
+{
+  self >= other
+}
+
+function int___lt__(self: Int, other: Int): Bool
+  decreases _
+{
+  self < other
+}
+
+function list___len__(self: Ref): Int
+  decreases _
+  requires acc(self.list_acc, wildcard)
+{
+  |self.list_acc|
+}
+
+function list___getitem__(self: Ref, key: Ref): Ref
+  requires issubtype(typeof(key), int())
+  requires acc(self.list_acc, wildcard)
+  requires (let ln ==
+      (list___len__(self)) in
+      (int___unbox__(key) < 0 ==> int___unbox__(key) >= -ln) &&
+      (int___unbox__(key) >= 0 ==> int___unbox__(key) < ln))
+
+
+
