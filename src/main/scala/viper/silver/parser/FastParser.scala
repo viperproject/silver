@@ -418,8 +418,7 @@ class FastParser {
       PAnnotation(at = PReserved.implied(PSym.At), key = annotationKey, values = PGrouped.impliedParen(annotationValues))(p)
   }.pos
 
-  // def annotation[$: P]: P[PAnnotation] = P(docAnnotation) | P((P(PSym.At) ~~ annotationIdentifier ~ argList(stringLiteral)) map (PAnnotation.apply _).tupled).pos
-  def annotation[$: P]: P[PAnnotation] = P((P(PSym.At) ~~ annotationIdentifier ~ argList(stringLiteral)) map (PAnnotation.apply _).tupled).pos
+  def annotation[$: P]: P[PAnnotation] = P(P((P(PSym.At) ~~ annotationIdentifier ~ argList(stringLiteral)) map (PAnnotation.apply _).tupled).pos | docAnnotation)
 
   def annotated[$: P, T](inner: => P[PAnnotationsPosition => T]): P[T] = P((annotation.rep(0) ~ inner).map {
     case (annotations, i) => pos: Pos => i(PAnnotationsPosition(annotations, pos))
@@ -823,18 +822,17 @@ class FastParser {
     P((P(PKw.Else) ~ stmtBlock()) map (PElse.apply _).tupled).pos
 
   def whileStmt[$: P]: P[PKw.While => Pos => PWhile] =
-    P((parenthesizedExp ~~ semiSeparated(invariant) ~ stmtBlock()) map { case (cond, invs, body) => PWhile(_, cond, invs, body) })
+    P((parenthesizedExp ~~ semiSeparated(annotatedInvariant) ~ stmtBlock()) map { case (cond, invs, body) => PWhile(_, cond, invs, body) })
 
   // TODO does this handle positions correctly/consistently?
-  // TODO is the look-ahead &(...) really necessary, or can one ensure backtracking in a cleaner way?
   // see also annotatedPrecondition, annotatedPostcondition
   def annotatedInvariant(implicit ctx : P[_]) : P[PSpecification[PKw.InvSpec]] =
-    P(&(annotation ~ invariant) ~ annotation ~ invariant).map{ case (ann, spec) => p: (FilePosition, FilePosition) =>
-      new PSpecification[PKw.InvSpec](spec.k, PAnnotatedExp(ann, spec.e)(p))(p) }.pos
+    P(annotation.rep(0) ~ invariant).map{ case (anns, spec) => p: (FilePosition, FilePosition) =>
+            PSpecification[PKw.InvSpec](spec.k, spec.e, anns)(p) }.pos
 
   def invariant(implicit ctx : P[_]) : P[PSpecification[PKw.InvSpec]] =
-    P(annotatedInvariant | (P(PKw.Invariant) ~ exp).map((PSpecification.apply _).tupled).pos | ParserExtension.invSpecification(ctx))
-    // P((P(PKw.Invariant) ~ exp).map((PSpecification.apply _).tupled).pos | ParserExtension.invSpecification(ctx))
+    P((P(PKw.Invariant) ~ exp).map{ case (kw, e) => p: (FilePosition, FilePosition) =>
+      PSpecification[PKw.InvSpec](kw, e)(p) }.pos | ParserExtension.invSpecification(ctx))
 
   def localVars[$: P]: P[PKw.Var => Pos => PVars] =
     P((nonEmptyIdnTypeList(PLocalVarDecl(_)) ~~~ (P(PSymOp.Assign) ~ exp).lw.?) map { case (a, i) => PVars(_, a, i) })
@@ -849,7 +847,7 @@ class FastParser {
   def goto[$: P]: P[PKw.Goto => Pos => PGoto] = P(idnref[$, PLabel] map { i => PGoto(_, i) _ })
 
   def label[$: P]: P[PKw.Label => Pos => PLabel] =
-    P((idndef ~~ semiSeparated(invariant)) map { case (i, inv) => k=> PLabel(k, i, inv) _ })
+    P((idndef ~~ semiSeparated(annotatedInvariant)) map { case (i, inv) => k=> PLabel(k, i, inv) _ })
 
   def packageWand[$: P]: P[PKw.Package => Pos => PPackageWand] =
     P((magicWandExp() ~~~ stmtBlock().lw.?) map { case (wand, proof) => PPackageWand(_, wand, proof) _ })
@@ -940,26 +938,26 @@ class FastParser {
   })
 
   def functionDecl[$: P]: P[PKw.Function => PAnnotationsPosition => PFunction] = P((idndef ~ argList(formalArg) ~ PSym.Colon ~ typ
-    ~~ semiSeparated(precondition) ~~ semiSeparated(postcondition) ~~~ bracedExp.lw.?
+    ~~ semiSeparated(annotatedPrecondition) ~~ semiSeparated(annotatedPostcondition) ~~~ bracedExp.lw.?
   ) map { case (idn, args, c, typ, d, e, f) => k =>
       ap: PAnnotationsPosition => PFunction(ap.annotations, k, idn, args, c, typ, d, e, f)(ap.pos)
   })
 
   def annotatedPrecondition(implicit ctx : P[_]) : P[PSpecification[PKw.PreSpec]] =
-    P(&(annotation ~ precondition) ~ annotation ~ precondition).map{ case (ann, spec) => p: (FilePosition, FilePosition) =>
-      new PSpecification[PKw.PreSpec](spec.k, PAnnotatedExp(ann, spec.e)(p))(p) }.pos // p or spec.pos?
+    P(annotation.rep(0) ~ precondition).map{ case (anns, spec) => p: (FilePosition, FilePosition) =>
+            PSpecification[PKw.PreSpec](spec.k, spec.e, anns)(p) }.pos
 
   def precondition(implicit ctx : P[_]) : P[PSpecification[PKw.PreSpec]] =
-    P((P(PKw.Requires) ~ exp).map((PSpecification.apply _).tupled).pos | ParserExtension.preSpecification(ctx) | annotatedPrecondition)
-    // P((P(PKw.Requires) ~ exp).map((PSpecification.apply _).tupled).pos | ParserExtension.preSpecification(ctx))
+    P((P(PKw.Requires) ~ exp).map{ case (kw, e) => p: (FilePosition, FilePosition) =>
+        PSpecification[PKw.PreSpec](kw, e)(p)}.pos | ParserExtension.preSpecification(ctx))
 
   def annotatedPostcondition(implicit ctx : P[_]) : P[PSpecification[PKw.PostSpec]] =
-    P(&(annotation ~ postcondition) ~ annotation ~ postcondition).map{ case (ann, spec) => p: (FilePosition, FilePosition) =>
-      new PSpecification[PKw.PostSpec](spec.k, PAnnotatedExp(ann, spec.e)(p))(p) }.pos
+    P(annotation.rep(0) ~ postcondition).map{ case (anns, spec) => p: (FilePosition, FilePosition) =>
+      PSpecification[PKw.PostSpec](spec.k, spec.e, anns)(p) }.pos
 
   def postcondition(implicit ctx : P[_]) : P[PSpecification[PKw.PostSpec]] =
-    P((P(PKw.Ensures) ~ exp).map((PSpecification.apply _).tupled).pos | ParserExtension.postSpecification(ctx) | annotatedPostcondition)
-    // P((P(PKw.Ensures) ~ exp).map((PSpecification.apply _).tupled).pos | ParserExtension.postSpecification(ctx))
+    P((P(PKw.Ensures) ~ exp).map{ case (kw, e) => p: (FilePosition, FilePosition) =>
+        PSpecification[PKw.PostSpec](kw, e)(p)}.pos | ParserExtension.postSpecification(ctx))
 
   def predicateDecl[$: P]: P[PKw.Predicate => PAnnotationsPosition => PPredicate] = P(idndef ~ argList(formalArg) ~~~ bracedExp.lw.?).map {
     case (idn, args, c) => k =>
@@ -967,7 +965,7 @@ class FastParser {
   }
 
   def methodDecl[$: P]: P[PKw.Method => PAnnotationsPosition => PMethod] =
-    P((idndef ~ argList(formalArg) ~~~ methodReturns.lw.? ~~ semiSeparated(precondition) ~~ semiSeparated(postcondition) ~~~ stmtBlock().lw.?) map {
+    P((idndef ~ argList(formalArg) ~~~ methodReturns.lw.? ~~ semiSeparated(annotatedPrecondition) ~~ semiSeparated(annotatedPostcondition) ~~~ stmtBlock().lw.?) map {
         case (idn, args, rets, pres, posts, body) => k =>
           ap: PAnnotationsPosition => PMethod(ap.annotations, k, idn, args, rets, pres, posts, body)(ap.pos)
     })
