@@ -843,7 +843,7 @@ trait Edges { this: Vertices =>
       case d: ast.Domain =>
         d.axioms.flatMap { ax =>
 
-          // usages of the domain that the axiom is defined in are removed
+          // usages of the domain containing the axiom are removed
           def removeAxiomDomain(x: Seq[Vertices.Vertex]): Seq[Vertices.Vertex] = {
             x.filter {
               case v: Vertices.DomainType => v.v.domainName != d.name
