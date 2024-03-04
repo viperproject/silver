@@ -410,11 +410,12 @@ class FastParser {
   // TODO check positions
   def docAnnotation[$: P]: P[PAnnotation] = P("///" ~~ CharsWhile(_ != '\n', 0).!).map{
     case s: String => p: (FilePosition, FilePosition) =>
-      val annotationParser: P[_] => P[PAnnotation] = annotation(_)
-      fastparse.parse("@doc(\"" + s + "\")", annotationParser) match {
-        case Parsed.Success(ann, _) => new PAnnotation(ann.at, ann.key, ann.values)(p)
-        case Parsed.Failure(_, _, _) => throw new Exception("parsing ///-annotation failed") // this should not happen
-      }
+      val annotationKey = PRawString("doc")(NoPosition, NoPosition)
+      val docstring = PStringLiteral(PGrouped.apply[PSym.Quote.type, PRawString]
+                                       (PReserved.implied(PSym.Quote), PRawString(s)(NoPosition, NoPosition), PReserved.implied(PSym.Quote))
+                                                   (NoPosition, NoPosition))(NoPosition, NoPosition)
+      val annotationValues = PDelimited.implied[PStringLiteral, PSym.Comma](Seq(docstring), PReserved.implied(PSym.Comma))
+      PAnnotation(at = PReserved.implied(PSym.At), key = annotationKey, values = PGrouped.impliedParen(annotationValues))(p)
   }.pos
 
   // def annotation[$: P]: P[PAnnotation] = P(docAnnotation) | P((P(PSym.At) ~~ annotationIdentifier ~ argList(stringLiteral)) map (PAnnotation.apply _).tupled).pos
