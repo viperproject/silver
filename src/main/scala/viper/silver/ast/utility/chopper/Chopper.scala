@@ -844,7 +844,7 @@ trait Edges { this: Vertices =>
       case d: ast.Domain =>
         d.axioms.flatMap { ax =>
 
-          // usages of the domain that the axiom is defined in are removed
+          // usages of the domain containing the axiom are removed
           def removeAxiomDomain(x: Seq[Vertices.Vertex]): Seq[Vertices.Vertex] = {
             x.filter {
               case v: Vertices.DomainType => v.v.domainName != d.name
@@ -917,8 +917,8 @@ trait Edges { this: Vertices =>
   /**
     * Returns all entities referenced in the argument node.
     * May only be used as the target of a dependency.
-    * The result is an unsorted sequence of vertices.
-    * The vertices are never sorted, and duplicates are fine.
+    * The result is an unsorted sequence of vertices, which
+    * may contain duplicates.
     * Note that they are sorted indirectly when the edges are sorted.
     * */
   protected def directUsages: PartialFunction[ast.Node, Seq[Vertices.Vertex]] = {
