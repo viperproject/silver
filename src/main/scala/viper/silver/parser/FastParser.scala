@@ -827,7 +827,7 @@ class FastParser {
   // TODO does this handle positions correctly/consistently?
   // see also annotatedPrecondition, annotatedPostcondition
   def annotatedInvariant(implicit ctx : P[_]) : P[PSpecification[PKw.InvSpec]] =
-    P(annotation.rep(0) ~ invariant).map{ case (anns, spec) => p: (FilePosition, FilePosition) =>
+    NoCut(P(annotation.rep(0) ~ invariant)).map{ case (anns, spec) => p: (FilePosition, FilePosition) =>
             PSpecification[PKw.InvSpec](spec.k, spec.e, anns)(p) }.pos
 
   def invariant(implicit ctx : P[_]) : P[PSpecification[PKw.InvSpec]] =
@@ -944,7 +944,7 @@ class FastParser {
   })
 
   def annotatedPrecondition(implicit ctx : P[_]) : P[PSpecification[PKw.PreSpec]] =
-    P(annotation.rep(0) ~ precondition).map{ case (anns, spec) => p: (FilePosition, FilePosition) =>
+    NoCut(P(annotation.rep(0) ~ precondition)).map{ case (anns, spec) => p: (FilePosition, FilePosition) =>
             PSpecification[PKw.PreSpec](spec.k, spec.e, anns)(p) }.pos
 
   def precondition(implicit ctx : P[_]) : P[PSpecification[PKw.PreSpec]] =
@@ -952,7 +952,7 @@ class FastParser {
         PSpecification[PKw.PreSpec](kw, e)(p)}.pos | ParserExtension.preSpecification(ctx))
 
   def annotatedPostcondition(implicit ctx : P[_]) : P[PSpecification[PKw.PostSpec]] =
-    P(annotation.rep(0) ~ postcondition).map{ case (anns, spec) => p: (FilePosition, FilePosition) =>
+    NoCut(P(annotation.rep(0) ~ postcondition)).map{ case (anns, spec) => p: (FilePosition, FilePosition) =>
       PSpecification[PKw.PostSpec](spec.k, spec.e, anns)(p) }.pos
 
   def postcondition(implicit ctx : P[_]) : P[PSpecification[PKw.PostSpec]] =
