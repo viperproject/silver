@@ -906,8 +906,8 @@ trait Edges { this: Vertices =>
   /**
     * Returns all entities referenced in the argument node.
     * May only be used as the target of a dependency.
-    * The result is an unsorted sequence of vertices.
-    * The vertices are never sorted, and duplicates are fine.
+    * The result is an unsorted sequence of vertices, which
+    * may contain duplicates.
     * Note that they are sorted indirectly when the edges are sorted.
     * */
   protected def directUsages: PartialFunction[ast.Node, Seq[Vertices.Vertex]] = {
