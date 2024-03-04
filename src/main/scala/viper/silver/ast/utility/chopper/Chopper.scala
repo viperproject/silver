@@ -7,6 +7,7 @@
 package viper.silver.ast.utility.chopper
 
 import viper.silver.ast
+import viper.silver.ast.QuantifiedExp
 import viper.silver.ast.utility.{Nodes, Visitor}
 
 import scala.annotation.tailrec
@@ -715,7 +716,7 @@ object Vertices {
     * 1) applying [[Vertices.toDefVertex]] to the predicate referenced by `predicateName` returns a [[Vertices.PredicateBody]] instance.
     * 2) The result is used as the target of a dependency.
     * */
-  def predicateBody_check_that_call_is_ok(predicateName: String): PredicateBody = Vertices.PredicateBody(predicateName)
+  def unsageGetPredicateBody(predicateName: String): PredicateBody = Vertices.PredicateBody(predicateName)
 }
 
 trait Vertices {
@@ -859,17 +860,27 @@ trait Edges { this: Vertices =>
               * depend on the axiom.
               */
             val outsideQuantifiers = Visitor.deepCollect[ast.Node, Seq[Vertices.Vertex]](Seq(ax.exp), {
-              case x: ast.Forall if x.triggers.nonEmpty => Seq.empty
-              case x: ast.Exists if x.triggers.nonEmpty => Seq.empty
+              case x: ast.QuantifiedExp => Seq.empty
               case x => Nodes.subnodes(x)
             })(directUsages).flatten
 
-            val quantifierTriggers = (ax.exp deepCollect {
-              case x: ast.Forall if x.triggers.nonEmpty => x.triggers.flatMap(usages)
-              case x: ast.Exists if x.triggers.nonEmpty => x.triggers.flatMap(usages)
+            def fromQuantifier(triggers: Seq[ast.Trigger], qexp: QuantifiedExp): Seq[Vertices.Vertex] = {
+              val triggerUsages = triggers.map(usages)
+              if (triggerUsages.exists(_.isEmpty)) {
+                // if there is a trigger w/o usages, we are conservative and
+                // use all usages occurring in the quantified expression
+                usages(qexp)
+              } else {
+                triggerUsages.flatten
+              }
+            }
+
+            val fromQuantifiers = (ax.exp deepCollect {
+              case x: ast.Forall => fromQuantifier(x.triggers, x)
+              case x: ast.Exists => fromQuantifier(x.triggers, x)
             }).flatten
 
-            removeAxiomDomain(outsideQuantifiers ++ quantifierTriggers).map(_ -> mid)
+            removeAxiomDomain(outsideQuantifiers ++ fromQuantifiers).map(_ -> mid)
           }
 
           dependenciesFromAxiom ++ dependenciesToAxiom
@@ -922,9 +933,9 @@ trait Edges { this: Vertices =>
       case n: ast.DomainFuncApp => Seq(Vertices.DomainFunction(n.funcname))
       case n: ast.PredicateAccess => Seq(Vertices.PredicateSig(n.predicateName))
       // The call is fine because the result is used as the target of a dependency.
-      case n: ast.Unfold => Seq(Vertices.predicateBody_check_that_call_is_ok(n.acc.loc.predicateName))
-      case n: ast.Fold => Seq(Vertices.predicateBody_check_that_call_is_ok(n.acc.loc.predicateName))
-      case n: ast.Unfolding => Seq(Vertices.predicateBody_check_that_call_is_ok(n.acc.loc.predicateName))
+      case n: ast.Unfold => Seq(Vertices.unsageGetPredicateBody(n.acc.loc.predicateName))
+      case n: ast.Fold => Seq(Vertices.unsageGetPredicateBody(n.acc.loc.predicateName))
+      case n: ast.Unfolding => Seq(Vertices.unsageGetPredicateBody(n.acc.loc.predicateName))
       case n: ast.FieldAccess => Seq(Vertices.Field(n.field.name))
       case n: ast.Type => usagesInType(n).collect { case t: ast.DomainType => Vertices.DomainType(t) }
     }
