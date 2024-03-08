@@ -271,13 +271,28 @@ trait SilFrontend extends DefaultFrontend {
   def finish(): Unit = {
     val tRes = result.transformedResult()
     val res = plugins.beforeFinish(tRes)
-    _verificationResult = Some(res)
-    res match {
+    val filteredRes = res match {
+      case Success => res
+      case Failure(errors) =>
+        Failure(errors.distinctBy(failureFilterAndGroupingCriterion))
+    }
+    _verificationResult = Some(filteredRes)
+    filteredRes match {
       case Success =>
         reporter report OverallSuccessMessage(verifier.name, getTime)
       case f: Failure =>
         reporter report OverallFailureMessage(verifier.name, getTime, f)
     }
+  }
+
+  private def failureFilterAndGroupingCriterion(e: AbstractError): String = {
+    // apply transformers if available:
+    val transformedError = e match {
+      case e: AbstractVerificationError => e.transformedError()
+      case e => e
+    }
+    // create a string that identifies the given failure:
+    transformedError.readableMessage
   }
 
   protected def parseCommandLine(args: Seq[String]): Unit = {
