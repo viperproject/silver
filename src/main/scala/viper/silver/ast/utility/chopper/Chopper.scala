@@ -7,7 +7,7 @@
 package viper.silver.ast.utility.chopper
 
 import viper.silver.ast
-import viper.silver.ast.QuantifiedExp
+import viper.silver.ast.{AnnotationInfo, QuantifiedExp}
 import viper.silver.ast.utility.{Nodes, Visitor}
 
 import scala.annotation.tailrec
@@ -517,6 +517,7 @@ object Penalty {
                             method: Int,
                             methodSpec: Int,
                             function: Int,
+                            functionSig: Int,
                             predicate: Int,
                             predicateSig: Int,
                             field: Int,
@@ -534,7 +535,7 @@ object Penalty {
     * Followed by predicates with a body and domain axioms.
     */
   val defaultPenaltyConfig: PenaltyConfig = PenaltyConfig(
-    method = 0, methodSpec = 0, function = 20, predicate = 10, predicateSig = 2, field = 1,
+    method = 0, methodSpec = 0, function = 20, functionSig = 5, predicate = 10, predicateSig = 2, field = 1,
     domainType = 1, domainFunction = 1, domainAxiom = 5,
     sharedThreshold = 50
   )
@@ -544,7 +545,8 @@ object Penalty {
     override def penalty(xs: Vertices.Vertex): Int = xs match {
       case _: Vertices.Method => conf.method
       case _: Vertices.MethodSpec => conf.methodSpec
-      case _: Vertices.Function => conf.function
+      case _: Vertices.FunctionBody => conf.function
+      case _: Vertices.FunctionSig => conf.functionSig
       case _: Vertices.PredicateBody => conf.predicate
       case _: Vertices.PredicateSig => conf.predicateSig
       case _: Vertices.Field => conf.field
@@ -670,19 +672,22 @@ object Vertices {
     * */
   sealed trait Vertex
 
-  /** Represents a Viper method member. */
-  case class Method private[Vertices](methodName: String) extends Vertex
-
   /** Represents a Viper method member without the body. */
   case class MethodSpec(methodName: String) extends Vertex
 
-  /** Represents a Viper function member. */
-  case class Function(functionName: String) extends Vertex
+  /** Represents a Viper method member. */
+  case class Method private[Vertices](methodName: String) extends Vertex
 
-  /** Represents a Viper predicate member. */
-  case class PredicateSig(predicateName: String) extends Vertex
+  /** Represents an opaque Viper function member without the body. */
+  case class FunctionSig(functionName: String) extends Vertex
+
+  /** Represents an opaque Viper function member. */
+  case class FunctionBody private[Vertices](functionName: String) extends Vertex
 
   /** Represents a Viper predicate member without the body. */
+  case class PredicateSig(predicateName: String) extends Vertex
+
+  /** Represents a Viper predicate member. */
   case class PredicateBody private[Vertices](predicateName: String) extends Vertex
 
   /** Represents a Viper field member. */
@@ -712,11 +717,21 @@ object Vertices {
     private[Vertices] def apply(predicateName: String): PredicateBody = new PredicateBody(predicateName)
   }
 
+  object FunctionBody {
+    private[Vertices] def apply(functionName: String): FunctionBody = new FunctionBody(functionName)
+  }
+
   /** This function is only allowed to be called in the following cases:
     * 1) applying [[Vertices.toDefVertex]] to the predicate referenced by `predicateName` returns a [[Vertices.PredicateBody]] instance.
     * 2) The result is used as the target of a dependency.
     * */
-  def unsageGetPredicateBody(predicateName: String): PredicateBody = Vertices.PredicateBody(predicateName)
+  def unsafeGetPredicateBody(predicateName: String): PredicateBody = Vertices.PredicateBody(predicateName)
+
+  /** This function is only allowed to be called in the following cases:
+    * 1) applying [[Vertices.toDefVertex]] to the predicate referenced by `predicateName` returns a [[Vertices.PredicateBody]] instance.
+    * 2) The result is used as the target of a dependency.
+    * */
+  def unsafeGetFunctionBody(functionName: String): FunctionBody = Vertices.FunctionBody(functionName)
 }
 
 trait Vertices {
@@ -725,15 +740,9 @@ trait Vertices {
   def toDefVertex(m: ast.Member): Vertex = {
 
     m match {
-      case m: ast.Method => m.body match {
-        case Some(_) => Vertices.Method(m.name)
-        case None => Vertices.MethodSpec(m.name)
-      }
-      case m: ast.Predicate => m.body match {
-        case Some(_) => Vertices.PredicateBody(m.name)
-        case None => Vertices.PredicateSig(m.name)
-      }
-      case m: ast.Function => Vertices.Function(m.name)
+      case m: ast.Method => Vertices.Method(m.name)
+      case m: ast.Predicate => Vertices.PredicateBody(m.name)
+      case m: ast.Function => Vertices.FunctionBody(m.name)
       case m: ast.Field => Vertices.Field(m.name)
       case m: ast.Domain => Vertices.DomainType(ast.DomainType(domain = m, (m.typVars zip m.typVars).toMap))
       case _: ast.ExtensionMember =>
@@ -747,7 +756,7 @@ trait Vertices {
   def toUseVertex(m: ast.Member): Vertex = {
     m match {
       case m: ast.Method => Vertices.MethodSpec(m.name)
-      case m: ast.Function => Vertices.Function(m.name)
+      case m: ast.Function => Vertices.FunctionSig(m.name)
       case m: ast.Predicate => Vertices.PredicateSig(m.name)
       case m: ast.Field => Vertices.Field(m.name)
       case m: ast.Domain => Vertices.DomainType(ast.DomainType(domain = m, (m.typVars zip m.typVars).toMap))
@@ -776,7 +785,12 @@ trait Vertices {
         val filteredStubs = stubs.filterNot(stub => ms.exists(_.name == stub.name))
         (ms ++ filteredStubs).toSeq
       }
-      val funcs = vertices.collect { case v: Function => functionTable(v.functionName) }.toSeq
+      val funcs = {
+        val fsigs = vertices.collect { case v: FunctionSig => val f = functionTable(v.functionName); f.copy(body = None)(f.pos, f.info, f.errT) }.toSeq
+        val fbodies = vertices.collect { case v: FunctionBody => functionTable(v.functionName) }.toSeq
+        val filteredSigs = fsigs.filterNot(sig => fbodies.exists(_.name == sig.name))
+        fbodies ++ filteredSigs
+      }
       val preds = {
         val psigs = vertices.collect { case v: PredicateSig => val p = predicateTable(v.predicateName); p.copy(body = None)(p.pos, p.info, p.errT) }.toSeq
         val pbodies = vertices.collect { case v: PredicateBody => predicateTable(v.predicateName) }.toSeq
@@ -836,10 +850,17 @@ trait Edges { this: Vertices =>
 
       case p: ast.Predicate =>
         dependenciesToChildren(member, defVertex) ++
-          p.formalArgs.flatMap(dependenciesToChildren(_, useVertex)) ++
-          Seq(defVertex -> useVertex)
+          p.formalArgs.flatMap(dependenciesToChildren(_, useVertex))
 
-      case _: ast.Function | _: ast.Field => dependenciesToChildren(member, defVertex)
+      case f: ast.Function =>
+        dependenciesToChildren(member, defVertex) ++
+          (f.pres ++ f.posts ++ f.formalArgs ++ f.result).flatMap(dependenciesToChildren(_, useVertex)) ++
+          (f.info.getUniqueInfo[AnnotationInfo] match {
+            case Some(ai) if ai.values.contains("opaque") => Seq()
+            case _ => Seq(useVertex -> defVertex) // for non opaque functions a use dependency is a def dependency
+          })
+
+      case _: ast.Field => dependenciesToChildren(member, defVertex)
 
       case d: ast.Domain =>
         d.axioms.flatMap { ax =>
@@ -860,7 +881,7 @@ trait Edges { this: Vertices =>
               * depend on the axiom.
               */
             val outsideQuantifiers = Visitor.deepCollect[ast.Node, Seq[Vertices.Vertex]](Seq(ax.exp), {
-              case x: ast.QuantifiedExp => Seq.empty
+              case _: ast.QuantifiedExp => Seq.empty
               case x => Nodes.subnodes(x)
             })(directUsages).flatten
 
@@ -929,13 +950,17 @@ trait Edges { this: Vertices =>
 
     {
       case n: ast.MethodCall => Seq(Vertices.MethodSpec(n.methodName))
-      case n: ast.FuncApp => Seq(Vertices.Function(n.funcname))
+      // The call is fine because the result is used as the target of a dependency.
+      case n: ast.FuncApp => n.info.getUniqueInfo[AnnotationInfo] match {
+        case Some(ai) if ai.values.contains("reveal") => Seq(Vertices.unsafeGetFunctionBody(n.funcname))
+        case _ => Seq(Vertices.FunctionSig(n.funcname))
+      }
       case n: ast.DomainFuncApp => Seq(Vertices.DomainFunction(n.funcname))
       case n: ast.PredicateAccess => Seq(Vertices.PredicateSig(n.predicateName))
       // The call is fine because the result is used as the target of a dependency.
-      case n: ast.Unfold => Seq(Vertices.unsageGetPredicateBody(n.acc.loc.predicateName))
-      case n: ast.Fold => Seq(Vertices.unsageGetPredicateBody(n.acc.loc.predicateName))
-      case n: ast.Unfolding => Seq(Vertices.unsageGetPredicateBody(n.acc.loc.predicateName))
+      case n: ast.Unfold => Seq(Vertices.unsafeGetPredicateBody(n.acc.loc.predicateName))
+      case n: ast.Fold => Seq(Vertices.unsafeGetPredicateBody(n.acc.loc.predicateName))
+      case n: ast.Unfolding => Seq(Vertices.unsafeGetPredicateBody(n.acc.loc.predicateName))
       case n: ast.FieldAccess => Seq(Vertices.Field(n.field.name))
       case n: ast.Type => usagesInType(n).collect { case t: ast.DomainType => Vertices.DomainType(t) }
     }
