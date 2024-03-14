@@ -678,10 +678,10 @@ object Vertices {
   /** Represents a Viper method member. */
   case class Method private[Vertices](methodName: String) extends Vertex
 
-  /** Represents an opaque Viper function member without the body. */
+  /** Represents a Viper function member without the body. */
   case class FunctionSpec(functionName: String) extends Vertex
 
-  /** Represents an opaque Viper function member. */
+  /** Represents a Viper function member. */
   case class Function private[Vertices](functionName: String) extends Vertex
 
   /** Represents a Viper predicate member without the body. */
