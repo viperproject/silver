@@ -231,7 +231,7 @@ class ChopperTests extends AnyFunSuite with Matchers with Inside {
     result.length shouldBe 2
     result shouldEqual Vector(
       ast.Program(Seq.empty, Seq.empty, Seq.empty, Seq(caller1, calleeStub), Seq.empty, Seq.empty)(),
-      ast.Program(Seq.empty, Seq.empty, Seq.empty, Seq(caller2, callee), Seq.empty, Seq.empty)(),
+      ast.Program(Seq.empty, Seq.empty, Seq.empty, Seq(callee, caller2), Seq.empty, Seq.empty)(),
     )
   }
 

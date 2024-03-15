@@ -7,7 +7,7 @@
 package viper.silver.ast.utility.chopper
 
 import viper.silver.ast
-import viper.silver.ast.{AnnotationInfo, QuantifiedExp}
+import viper.silver.ast.AnnotationInfo
 import viper.silver.ast.utility.{Nodes, Visitor}
 
 import scala.annotation.tailrec
@@ -805,7 +805,10 @@ trait Vertices {
         val totalDs = (ds ++ fs.keys ++ as.keys).distinct
 
         totalDs.map { d =>
-          d.copy(functions = fs.getOrElse(d, Seq.empty), axioms = as.getOrElse(d, Seq.empty))(d.pos, d.info, d.errT)
+          d.copy(
+            functions = fs.getOrElse(d, Seq.empty),
+            axioms = as.getOrElse(d, Seq.empty),
+          )(d.pos, d.info, d.errT)
         }
       }
 
@@ -814,7 +817,7 @@ trait Vertices {
         functions = funcs,
         predicates = preds,
         fields = fields,
-        domains = domains
+        domains = domains,
       )(program.pos, program.info, program.errT)
     }
   }
@@ -885,7 +888,7 @@ trait Edges { this: Vertices =>
               case x => Nodes.subnodes(x)
             })(directUsages).flatten
 
-            def fromQuantifier(triggers: Seq[ast.Trigger], qexp: QuantifiedExp): Seq[Vertices.Vertex] = {
+            def fromQuantifier(triggers: Seq[ast.Trigger], qexp: ast.QuantifiedExp): Seq[Vertices.Vertex] = {
               val triggerUsages = triggers.map(usages)
               if (triggerUsages.exists(_.isEmpty)) {
                 // if there is a trigger w/o usages, we are conservative and
