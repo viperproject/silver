@@ -326,3 +326,12 @@ case class VerificationTerminationMessage() extends Message {
   override val toString: String = "verification_termination_message"
   override val name: String = "verification_termination_message"
 }
+
+case class BlockReachedMessage(label: String) extends  Message {
+  override val toString: String = s"block_reached_message(label=$label)"
+  override val name: String = "block_reached_message"
+}
+case class BlockProcessedMessage(label: String, verificationResult: String) extends  Message {
+  override val toString: String = s"block_processed_message(label=$label, result=\"${verificationResult.toString()}\")"
+  override val name: String = "block_processed_message"
+}
