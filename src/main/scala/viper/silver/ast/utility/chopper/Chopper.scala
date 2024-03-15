@@ -786,8 +786,8 @@ trait Vertices {
         (ms ++ filteredStubs).toSeq
       }
       val funcs = {
-        val fs = vertices.collect { case v: FunctionSpec => val f = functionTable(v.functionName); f.copy(body = None)(f.pos, f.info, f.errT) }.toSeq
-        val stubs = vertices.collect { case v: Function => functionTable(v.functionName) }.toSeq
+        val fs = vertices.collect { case v: Function => functionTable(v.functionName) }.toSeq
+        val stubs = vertices.collect { case v: FunctionSpec => val f = functionTable(v.functionName); f.copy(body = None)(f.pos, f.info, f.errT) }.toSeq
         val filteredStubs = fs.filterNot(stub => stubs.exists(_.name == stub.name))
         fs ++ filteredStubs
       }
