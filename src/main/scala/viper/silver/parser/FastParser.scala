@@ -30,12 +30,10 @@ object FastParserCompanion {
       NoTrace((" " | "\t").rep)
   }
 
-  // TODO why is this duplicated? see FastParser below
   implicit val whitespace = {
     import NoWhitespace._
     implicit ctx: ParsingRun[_] =>
       NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ !StringIn("/") ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
-      // NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
   }
 
   def identStarts[$: P] = CharIn("A-Z", "a-z", "$_")
@@ -314,16 +312,7 @@ class FastParser {
   //////////////////////////
 
   import fastparse._
-  import FastParserCompanion.{ExtendedParsing, identContinues, identStarts, LeadingWhitespace, Pos, PositionParsing, reservedKw, reservedSym}
-
-
-  // TODO why is this duplicated? see FastParserCompanion
-  implicit val whitespace = {
-    import NoWhitespace._
-    implicit ctx: ParsingRun[_] =>
-      NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ !StringIn("/") ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
-      // NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
-  }
+  import FastParserCompanion.{ExtendedParsing, identContinues, identStarts, LeadingWhitespace, Pos, PositionParsing, reservedKw, reservedSym, whitespace}
 
   implicit val lineCol: LineCol = new LineCol(this)
 
