@@ -396,14 +396,11 @@ class FastParser {
 
   def stringLiteral[$: P]: P[PStringLiteral] = P((CharsWhile(_ != '\"').! map PRawString.apply).pos.quotes map (PStringLiteral.apply _)).pos
 
-  // TODO check positions
   def docAnnotation[$: P]: P[PAnnotation] = P("///" ~~ CharsWhile(_ != '\n', 0).!).map{
-    case s: String => p: (FilePosition, FilePosition) =>
+    case s: String => p: Pos =>
       val annotationKey = PRawString("doc")(NoPosition, NoPosition)
-      val docstring = PStringLiteral(PGrouped.apply[PSym.Quote.type, PRawString]
-                                       (PReserved.implied(PSym.Quote), PRawString(s)(NoPosition, NoPosition), PReserved.implied(PSym.Quote))
-                                                   (NoPosition, NoPosition))(NoPosition, NoPosition)
-      val annotationValues = PDelimited.implied[PStringLiteral, PSym.Comma](Seq(docstring), PReserved.implied(PSym.Comma))
+      val docstring = PStringLiteral(PGrouped[PSym.Quote.type, PRawString](PReserved.implied(PSym.Quote), PRawString(s)(p), PReserved.implied(PSym.Quote))(p))(p)
+      val annotationValues = PDelimited[PStringLiteral, PSym.Comma](Some(docstring), Seq(), None)(p)
       PAnnotation(at = PReserved.implied(PSym.At), key = annotationKey, values = PGrouped.impliedParen(annotationValues))(p)
   }.pos
 
@@ -813,14 +810,12 @@ class FastParser {
   def whileStmt[$: P]: P[PKw.While => Pos => PWhile] =
     P((parenthesizedExp ~~ semiSeparated(annotatedInvariant) ~ stmtBlock()) map { case (cond, invs, body) => PWhile(_, cond, invs, body) })
 
-  // TODO does this handle positions correctly/consistently?
-  // see also annotatedPrecondition, annotatedPostcondition
   def annotatedInvariant(implicit ctx : P[_]) : P[PSpecification[PKw.InvSpec]] =
-    NoCut(P(annotation.rep(0) ~ invariant)).map{ case (anns, spec) => p: (FilePosition, FilePosition) =>
+    NoCut(P(annotation.rep(0) ~ invariant)).map{ case (anns, spec) => p: Pos =>
             PSpecification[PKw.InvSpec](spec.k, spec.e, anns)(p) }.pos
 
   def invariant(implicit ctx : P[_]) : P[PSpecification[PKw.InvSpec]] =
-    P((P(PKw.Invariant) ~ exp).map{ case (kw, e) => p: (FilePosition, FilePosition) =>
+    P((P(PKw.Invariant) ~ exp).map{ case (kw, e) => p: Pos =>
       PSpecification[PKw.InvSpec](kw, e)(p) }.pos | ParserExtension.invSpecification(ctx))
 
   def localVars[$: P]: P[PKw.Var => Pos => PVars] =
@@ -933,7 +928,7 @@ class FastParser {
   })
 
   def annotatedPrecondition(implicit ctx : P[_]) : P[PSpecification[PKw.PreSpec]] =
-    NoCut(P(annotation.rep(0) ~ precondition)).map{ case (anns, spec) => p: (FilePosition, FilePosition) =>
+    NoCut(P(annotation.rep(0) ~ precondition)).map{ case (anns, spec) => p: Pos =>
             PSpecification[PKw.PreSpec](spec.k, spec.e, anns)(p) }.pos
 
   def precondition(implicit ctx : P[_]) : P[PSpecification[PKw.PreSpec]] =
@@ -941,11 +936,11 @@ class FastParser {
         PSpecification[PKw.PreSpec](kw, e)(p)}.pos | ParserExtension.preSpecification(ctx))
 
   def annotatedPostcondition(implicit ctx : P[_]) : P[PSpecification[PKw.PostSpec]] =
-    NoCut(P(annotation.rep(0) ~ postcondition)).map{ case (anns, spec) => p: (FilePosition, FilePosition) =>
+    NoCut(P(annotation.rep(0) ~ postcondition)).map{ case (anns, spec) => p: Pos =>
       PSpecification[PKw.PostSpec](spec.k, spec.e, anns)(p) }.pos
 
   def postcondition(implicit ctx : P[_]) : P[PSpecification[PKw.PostSpec]] =
-    P((P(PKw.Ensures) ~ exp).map{ case (kw, e) => p: (FilePosition, FilePosition) =>
+    P((P(PKw.Ensures) ~ exp).map{ case (kw, e) => p: Pos =>
         PSpecification[PKw.PostSpec](kw, e)(p)}.pos | ParserExtension.postSpecification(ctx))
 
   def predicateDecl[$: P]: P[PKw.Predicate => PAnnotationsPosition => PPredicate] = P(idndef ~ argList(formalArg) ~~~ bracedExp.lw.?).map {
