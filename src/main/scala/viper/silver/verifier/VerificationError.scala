@@ -135,6 +135,20 @@ object CounterexampleTransformer {
   }
 }
 
+trait BiAbductionQuestion
+
+trait AbductionQuestionTransformer {
+  def f: BiAbductionQuestion => BiAbductionQuestion
+}
+
+object AbductionQuestionTransformer {
+  def apply(ff: BiAbductionQuestion => BiAbductionQuestion): AbductionQuestionTransformer = {
+    new AbductionQuestionTransformer {
+      def f: BiAbductionQuestion => BiAbductionQuestion = ff
+    }
+  }
+}
+
 object Model {
   def apply(modelString: String) : Model = {
     fastparse.parse(modelString, ModelParser.model(_)) match {
@@ -329,16 +343,18 @@ object errors {
     def withReason(r: ErrorReason) = PreconditionInAppFalse(offendingNode, r, cached)
   }
 
-  case class ErrorWrapperWithExampleTransformer(wrappedError: AbstractVerificationError, transformer: CounterexampleTransformer) extends AbstractVerificationError {
+  case class ErrorWrapperWithTransformers(wrappedError: AbstractVerificationError,
+                                          ceTransformer: CounterexampleTransformer,
+                                          aqTransformer: AbductionQuestionTransformer) extends AbstractVerificationError {
     val id = wrappedError.id
     val text = "Wrapped error, should be unwrapped"
     val offendingNode = wrappedError.offendingNode
     val reason = wrappedError.reason
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) =
-      ErrorWrapperWithExampleTransformer(wrappedError.withNode(offendingNode).asInstanceOf[AbstractVerificationError], transformer)
+      ErrorWrapperWithTransformers(wrappedError.withNode(offendingNode).asInstanceOf[AbstractVerificationError], ceTransformer, aqTransformer)
 
-    def withReason(r: ErrorReason) = ErrorWrapperWithExampleTransformer(wrappedError.withReason(r), transformer)
+    def withReason(r: ErrorReason) = ErrorWrapperWithTransformers(wrappedError.withReason(r), ceTransformer, aqTransformer)
 
     override def readableMessage(withId: Boolean, withPosition: Boolean) = wrappedError.readableMessage(withId, withPosition)
   }
@@ -346,8 +362,10 @@ object errors {
   def PreconditionInAppFalse(offendingNode: FuncApp): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => PreconditionInAppFalse(offendingNode, reason))
 
-  def ErrorWrapperWithExampleTransformer(pve: PartialVerificationError, transformer: CounterexampleTransformer) : PartialVerificationError =
-    PartialVerificationError((reason: ErrorReason) => ErrorWrapperWithExampleTransformer(pve.f(reason).asInstanceOf[AbstractVerificationError], transformer))
+  def ErrorWrapperWithTransformers(pve: PartialVerificationError,
+                                   ceTransformer: CounterexampleTransformer,
+                                   aqTransformer: AbductionQuestionTransformer) : PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => ErrorWrapperWithTransformers(pve.f(reason).asInstanceOf[AbstractVerificationError], ceTransformer, aqTransformer))
 
   case class ExhaleFailed(offendingNode: Exhale, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "exhale.failed"
