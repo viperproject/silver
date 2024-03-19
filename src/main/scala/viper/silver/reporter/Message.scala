@@ -327,11 +327,11 @@ case class VerificationTerminationMessage() extends Message {
   override val name: String = "verification_termination_message"
 }
 
-case class BlockReachedMessage(label: String) extends  Message {
-  override val toString: String = s"block_reached_message(label=$label)"
+case class BlockReachedMessage(methodName: String, label: String, pathId: Int) extends  Message {
+  override val toString: String = s"block_reached_message(methodName=$methodName, label=$label, pathId=$pathId)"
   override val name: String = "block_reached_message"
 }
-case class BlockProcessedMessage(label: String, verificationResult: String) extends  Message {
-  override val toString: String = s"block_processed_message(label=$label, result=\"${verificationResult.toString()}\")"
+case class BlockProcessedMessage(methodName: String, label: String, pathId: Int, verificationResult: String) extends  Message {
+  override val toString: String = s"block_processed_message(methodName=$methodName, label=$label, pathId=$pathId, result=\"${if (verificationResult.toString() == "Success") "Success" else "Failure"}\")"
   override val name: String = "block_processed_message"
 }
