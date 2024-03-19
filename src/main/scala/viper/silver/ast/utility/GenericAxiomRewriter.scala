@@ -11,8 +11,8 @@ import scala.collection.immutable.ListSet
 
 abstract class GenericAxiomRewriter[Type <: AnyRef,
                                     Exp <: AnyRef : ClassTag,
-                                    Var <: Exp : ClassTag,
-                                    Quantification <: Exp : ClassTag,
+                                    Var <: Exp,
+                                    Quantification <: Exp,
                                     Eq <: Exp,
                                     And <: Exp,
                                     Implies <: Exp,

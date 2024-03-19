@@ -37,14 +37,14 @@ object Nodes {
           case Method(_, formalArgs, formalReturns, pres, posts, body) =>
             formalArgs ++ formalReturns ++ pres ++ posts ++ body.toSeq
           case Predicate(_, formalArg, body) => formalArg ++ body.toSeq
-          case Domain(_, functions, axioms, typVars) =>
+          case Domain(_, functions, axioms, typVars, _) =>
             functions ++ axioms ++ typVars
           case t: ExtensionMember => t.extensionSubnodes
         }
       case dm: DomainMember =>
         dm match {
           case da: DomainAxiom => Seq(da.exp)
-          case DomainFunc(_, formalArgs, _, _) => formalArgs
+          case DomainFunc(_, formalArgs, _, _, _) => formalArgs
         }
       case s: Stmt =>
         s match {
@@ -66,6 +66,8 @@ object Nodes {
           case Label(_, invs) => invs
           case Goto(_) => Nil
           case LocalVarDeclStmt(decl) => Seq(decl)
+          case Quasihavoc(lhs, e) => lhs.toSeq :+ e
+          case Quasihavocall(vars, lhs, e) => vars ++ lhs.toSeq :+ e
           case e: ExtensionStmt => e.extensionSubnodes
         }
       case _: LocalVarDecl => Nil

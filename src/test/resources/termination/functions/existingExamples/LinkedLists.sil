@@ -11,9 +11,9 @@ predicate list(xs: Ref) {
 }
 
 function length(xs: Ref): Int
-  decreases list(xs)
   requires acc(list(xs)) && xs != null // (1)
   ensures result > 0
+  decreases list(xs)
 { unfolding acc(list(xs)) in 1 + (xs.next == null ? 0 : length(xs.next)) } // (1)
 
 function sum(xs: Ref): Int

@@ -9,7 +9,7 @@ package viper.silver.ast.utility
 import scala.reflect.ClassTag
 import viper.silver.ast._
 import viper.silver.ast.utility.rewriter.Traverse
-import viper.silver.ast.utility.Triggers.TriggerGeneration
+import viper.silver.ast.utility.Triggers.{DefaultTriggerGeneration, TriggerGeneration}
 import viper.silver.utility.Sanitizer
 
 /** Utility methods for expressions. */
@@ -189,6 +189,10 @@ object Expressions {
           case f: FuncApp => prog.findFunction(f.funcname).pres
           case Div(_, q) => List(NeCmp(q, IntLit(0)(p))(p))
           case Mod(_, q) => List(NeCmp(q, IntLit(0)(p))(p))
+          case SeqIndex(s, idx) => List(GeCmp(idx, IntLit(0)(p))(p), LtCmp(idx, SeqLength(s)(p))(p))
+          case MapLookup(m, k) => List(MapContains(k, m)(p))
+          case Unfolding(pred, _) => List(pred)
+          case Applying(wand, _) => List(wand)
           case _ => Nil
         }
         // Only use non-trivial conditions for the subnodes.
@@ -209,7 +213,7 @@ object Expressions {
             val Seq(leftConds, rightConds) = nonTrivialSubConds
             reduceOrProofObs(left, leftConds, rightConds, p)
           case CondExp(cond, _, _) =>
-            val Seq(condConds, thenConds, elseConds) = nonTrivialSubConds
+            val Seq(condConds, thenConds, elseConds, _) = nonTrivialSubConds
             reduceCondExpProofObs(cond, condConds, thenConds, elseConds, p)
           case _ => subConds.flatten
         }
@@ -266,17 +270,17 @@ object Expressions {
   }
 
   /** See [[viper.silver.ast.utility.Triggers.TriggerGeneration.generateTriggerSetGroups]] */
-  def generateTriggerGroups(exp: QuantifiedExp): Seq[(Seq[TriggerGeneration.TriggerSet], Seq[LocalVarDecl])] = {
-    TriggerGeneration.generateTriggerSetGroups(exp.variables map (_.localVar), exp.exp)
-                     .map{case (triggers, vars) => (triggers, vars map (v => LocalVarDecl(v.name, v.typ)()))}
+  def generateTriggerGroups(exp: QuantifiedExp, tg: TriggerGeneration = DefaultTriggerGeneration): Seq[(Seq[tg.TriggerSet], Seq[LocalVarDecl])] = {
+    tg.generateTriggerSetGroups(exp.variables map (_.localVar), exp.exp)
+      .map{case (triggers, vars) => (triggers, vars map (v => LocalVarDecl(v.name, v.typ)()))}
   }
 
   /** Returns the first group of trigger sets (together with newly introduced
     * variables) returned by [[Expressions.generateTriggerGroups]], or `None`
     * if the latter didn't return any group.
     */
-  def generateTriggerSet(exp: QuantifiedExp): Option[(Seq[LocalVarDecl], Seq[TriggerGeneration.TriggerSet])] = {
-    val gen = Expressions.generateTriggerGroups(exp)
+  def generateTriggerSet(exp: QuantifiedExp, tg: TriggerGeneration = DefaultTriggerGeneration): Option[(Seq[LocalVarDecl], Seq[tg.TriggerSet])] = {
+    val gen = Expressions.generateTriggerGroups(exp, tg)
 
     if (gen.nonEmpty)
       gen.find(pair => pair._2.isEmpty) match {

@@ -1,0 +1,32 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+function Void$discriminant(self: Ref): Int
+  requires acc(Void(self))
+  ensures false
+{
+  unfolding acc(Void(self)) in 8
+}
+
+predicate Void(self: Ref) {
+  false
+}
+
+method m_void$$unreachable$opensqu$0$closesqu$() returns (_0: Ref)
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+
+field f: Int
+
+function foo(x: Ref): Int
+  requires acc(x.f) && acc(x.f)
+  ensures false
+{ x.f }
+
+method m() {
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}

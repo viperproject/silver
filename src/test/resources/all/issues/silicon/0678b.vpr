@@ -1,0 +1,11 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+
+method mWand(r: Ref)
+    requires acc(r.f) --* false
+{
+    assume exists x: Ref :: { acc(x.f) --* false } perm(acc(x.f) --* false) > none
+}

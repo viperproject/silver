@@ -1,0 +1,19 @@
+//:: ExpectedOutput(refute.failed:refutation.true)
+method x()
+    ensures false
+{
+    //:: ExpectedOutput(refute.failed:refutation.true)
+    assume 0 == 1
+}
+
+method test()
+{
+    var b: Bool
+
+    //:: ExpectedOutput(refute.failed:refutation.true)
+    if (b) {
+        x()
+    } else {
+        
+    }
+}

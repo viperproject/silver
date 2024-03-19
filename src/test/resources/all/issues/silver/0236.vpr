@@ -1,0 +1,36 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+domain Option[T] {
+  axiom  {
+    Option_discr(Option_None()) == 0
+  }
+  function Option_discr(Option[T]): Int
+  function Option_None(): Option[T]
+  function Option_Some(T): Option[T]
+}
+
+method m() {
+    assert Option_discr((Option_None(): Option[Bool])) == 0;
+    assert Option_discr((Option_None(): Option[Ref])) == 0;
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert Option_discr((Option_None(): Option[Perm])) == 1;
+}
+
+
+domain Option2[T] {
+  axiom ax_Option2_None_discr {
+    forall o: Option2[T] :: Option2_discr(o) >= 0 && Option2_discr(Option2_None()) == 0
+  }
+  function Option2_discr(Option2[T]): Int
+  function Option2_None(): Option2[T]
+  function Option2_Some(T): Option2[T]
+}
+
+method m2() {
+    assert Option2_discr((Option2_None(): Option2[Bool])) == 0
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert Option2_discr((Option2_None(): Option2[Bool])) == 1
+}

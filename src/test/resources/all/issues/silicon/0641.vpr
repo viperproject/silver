@@ -1,0 +1,8 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+method bar(x: Seq[Ref])
+  requires forall i: Int, j: Int :: 0 <= i && i < |x| && 0 <= j && j < |x| && i != j ==> x[i] != x[j]
+  requires forall i: Int :: 0 <= i && i < |x| ==> let y == (x[i]) in acc(y.f) && y.f >= 5

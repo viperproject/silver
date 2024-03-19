@@ -7,6 +7,7 @@
 package viper.silver.ast.utility.rewriter
 import viper.silver.ast.utility.rewriter.Traverse.Traverse
 
+import scala.annotation.unused
 import scala.collection.mutable
 import scala.reflect.runtime.{universe => reflection}
 
@@ -92,7 +93,7 @@ trait StrategyInterface[N <: Rewritable] {
     *                          rewritten.
     * @return Updated node that will be built into the AST
     */
-  protected def preserveMetaData(old: N, now: N, directlyRewritten: Boolean): N = now
+  protected def preserveMetaData(@unused old: N, now: N, @unused directlyRewritten: Boolean): N = now
 }
 
 /**
@@ -355,6 +356,7 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
       case Traverse.Innermost => rewriteInnermost(node, contextUsed)
     }
     changed = !(result eq node)
+    result.initProperties()
     result
   }
 
@@ -423,6 +425,8 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
           rewriteTopDown(t5, context)).asInstanceOf[A]
 
         case Some(value) => Some(rewriteTopDown(value, context)).asInstanceOf[A]
+        case Left(value) => Left(rewriteTopDown(value, context)).asInstanceOf[A]
+        case Right(value) => Right(rewriteTopDown(value, context)).asInstanceOf[A]
 
         case node: N @unchecked =>
           // Rewrite node and context
@@ -476,6 +480,8 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
           rewriteBottomUp(t5, context)).asInstanceOf[A]
 
         case Some(value) => Some(rewriteBottomUp(value, context)).asInstanceOf[A]
+        case Left(value) => Left(rewriteBottomUp(value, context)).asInstanceOf[A]
+        case Right(value) => Right(rewriteBottomUp(value, context)).asInstanceOf[A]
 
         case node: N @unchecked =>
           val c = context.addAncestor(node).asInstanceOf[C]
@@ -527,6 +533,8 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
           rewriteInnermost(t5, context)).asInstanceOf[A]
 
         case Some(value) => Some(rewriteInnermost(value, context)).asInstanceOf[A]
+        case Left(value) => Left(rewriteInnermost(value, context)).asInstanceOf[A]
+        case Right(value) => Right(rewriteInnermost(value, context)).asInstanceOf[A]
 
         case node: N @unchecked =>
           // Rewrite node and context
@@ -594,12 +602,14 @@ class RepeatedStrategy[N <: Rewritable](s: StrategyInterface[N]) extends Strateg
     * @return rewritten root
     */
   override def execute[T <: N](node: N): T = {
-    val result: T = s.execute[T](node)
-    if (!s.hasChanged) {
-      result
-    } else {
-      execute[T](result)
+    var result: T = s.execute[T](node)
+    var j = 1
+    while (s.hasChanged) {
+      result = s.execute[T](result)
+      j += 1
+      assert(j < 10000, "Infinite loop detected")
     }
+    result
   }
 
   /**
@@ -615,12 +625,13 @@ class RepeatedStrategy[N <: Rewritable](s: StrategyInterface[N]) extends Strateg
       node
     }
     else {
-      val result = s.execute[T](node)
-      if (s.hasChanged) {
-        result
-      } else {
-        execute[T](result, i - 1)
+      var result: T = s.execute[T](node)
+      var j = 1
+      while (s.hasChanged && j < i) {
+        result = s.execute[T](result)
+        j += 1
       }
+      result
     }
   }
 

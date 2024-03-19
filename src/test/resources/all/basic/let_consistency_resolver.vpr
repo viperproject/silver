@@ -12,11 +12,12 @@ method test02() {
   assert (let y == (0) in true) && y == 0
 }
 
-//:: ExpectedOutput(typechecker.error)
 method test03(y: Int) {
+  //:: ExpectedOutput(typechecker.error)
   assert let y == (0) in true
 }
 
+//:: ExpectedOutput(typechecker.error)
 method test03() {
   //:: ExpectedOutput(typechecker.error)
   assert let y == (0) in let y == (true) in true

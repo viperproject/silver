@@ -56,25 +56,16 @@ trait NestedPredicates extends ProgramManager with ErrorReporter {
         val pred = program.findPredicate(pap.loc.predicateName)
         pred.body match {
           case Some(body) =>
-            if (nestedFunc.isDefined) {
-              val formalArgs = ListMap(pred.formalArgs.map(_.localVar).zip(pap.loc.args): _*)
-              //Generate nested-assumption
-              transformPredicateBody(body.replace(formalArgs), varP, pap.perm)
-            } else {
-              if (nestedFunc.isEmpty) {
-                reportNestedNotDefined(pap.pos)
-              }
-              EmptyStmt
-            }
+            val formalArgs = ListMap(pred.formalArgs.map(_.localVar).zip(pap.loc.args): _*)
+            //Generate nested-assumption
+            transformPredicateBody(body.replace(formalArgs), varP, pap.perm)
           case None => EmptyStmt //Predicate has no body
         }
       }
       Seqn(Seq(assignP, unfold, nested), Seq(varP))()
 
     } else {
-      if (nestedFunc.isEmpty) {
-        reportNestedNotDefined(pap.pos)
-      }
+      reportNestedNotDefined(pap.pos)
       EmptyStmt
     }
   }
@@ -140,7 +131,7 @@ trait NestedPredicates extends ProgramManager with ErrorReporter {
    * @return an assignment of the given variable to the representation of a predicate with the corresponding arguments
    */
   private def generatePredicateAssign(assLocation: LocalVar, pred: PredicateAccess): LocalVarAssign = {
-    val pi = PredicateInstance(pred.args, pred.predicateName)(pred.pos, pred.info, pred.errT)
+    val pi = PredicateInstance(pred.predicateName, pred.args)(pred.pos, pred.info, pred.errT)
     LocalVarAssign(assLocation, pi)(pred.pos)
   }
 
@@ -177,9 +168,5 @@ trait NestedPredicates extends ProgramManager with ErrorReporter {
 
   private def reportNestedNotDefined(pos: Position): Unit = {
     reportError(ConsistencyError("nestedPredicates function is needed but not declared.", pos))
-  }
-
-  private def reportPredicateInstanceNotDefined(pos: Position): Unit = {
-    reportError(ConsistencyError("PredicateInstance domain is needed but not declared.", pos))
   }
 }

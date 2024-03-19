@@ -1,0 +1,48 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+domain array {
+  function array_loc(a: array, i: Int): Ref
+  function alen(a: array): Int
+  function loc_inv_1(loc: Ref): array
+  function loc_inv_2(loc: Ref): Int
+
+  axiom {
+    (forall a: array, i: Int :: { array_loc(a, i) } loc_inv_1(array_loc(a, i)) == a && loc_inv_2(array_loc(a, i)) == i)
+  }
+
+  axiom {
+    (forall a: array :: { alen(a) } alen(a) >= 0)
+  }
+}
+
+field int: Int
+
+function aloc(a: array, i: Int): Ref
+  requires 0 <= i
+  requires i < alen(a)
+{
+  array_loc(a, i)
+}
+
+method main(arr1: array, arr2: array)
+  requires alen(arr1) == 6
+  requires alen(arr2) == 12
+  requires (forall i: Int :: { aloc(arr1, i).int } (0 <= i && i < 6) ==> acc(aloc(arr1, i).int, 1 / 2))
+  requires (forall i: Int :: { aloc(arr1, i).int } (0 <= i && i < 6) ==> aloc(arr1, i).int == 0)
+
+  requires (forall i: Int :: { aloc(arr2, i).int } (0 <= i && i < 12) ==> acc(aloc(arr2, i).int, write))
+  requires (forall i: Int :: { aloc(arr2, i).int } (0 <= i && i < 6) ==> aloc(arr2, i).int == 0 * (aloc(arr1, i).int - aloc(arr1, 0).int))
+{
+  var x: Int := 0
+  while (true)
+    invariant x == x
+    invariant (forall i: Int :: { aloc(arr2, i).int } (0 <= i && i < 6) ==> acc(aloc(arr2, i).int, write))
+    invariant (forall i: Int :: { aloc(arr2, i).int } (6 <= i && i < 12) ==> acc(aloc(arr2, i).int, 1 / 2))
+    invariant (forall i: Int :: { aloc(arr1, i).int } (0 <= i && i < 6) ==> acc(aloc(arr1, i).int, 1 / 2))
+  {
+    assert aloc(arr2, 6).int == aloc(arr2, 6).int
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert 3 + 8 == 38
+  }
+}

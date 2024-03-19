@@ -1,0 +1,51 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <decreases/declaration.vpr>
+
+field f: Int
+
+function test(x: Ref): Bool
+    decreases
+{
+    //:: ExpectedOutput(termination.failed:termination.condition.false)
+    exists x2: Ref :: x == x2 && nonTerminating(x2)
+}
+
+function test2(): Bool
+    decreases
+{
+    // in general `partiallyTerminating` is non-terminating
+    //:: ExpectedOutput(termination.failed:termination.condition.false)
+    exists x2: Int :: partiallyTerminating(x2)
+}
+
+function test3(x: Int): Bool
+    decreases
+    requires x == 42
+{
+    // `partiallyTerminating` terminates for input `42` so this is fine
+    exists x2: Int :: x == x2 && partiallyTerminating(x2)
+}
+
+function test4(x: Int): Bool
+    decreases
+{
+    // in general `partiallyTerminating` is non-terminating
+    //:: ExpectedOutput(termination.failed:termination.condition.false)
+    (exists x2: Int :: x == x2) && partiallyTerminating(x)
+}
+
+function test5(x: Int): Bool
+    decreases
+{
+    // this is fine due to short-circuiting
+    (exists x2: Int :: x == x2 && x != x2) && partiallyTerminating(x)
+}
+
+function nonTerminating(x: Ref): Bool
+    decreases *
+
+function partiallyTerminating(x: Int): Bool
+    decreases if x == 42
+    decreases *

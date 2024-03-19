@@ -7,14 +7,15 @@
 // Settings common to Silver and backends
 // Compilation settings
 
-ThisBuild / scalaVersion := "2.13.4"
+ThisBuild / scalaVersion := "2.13.10"
 ThisBuild / scalacOptions ++= Seq(
   "-encoding", "UTF-8",               // Enforce UTF-8, instead of relying on properly set locales
   "-deprecation",                     // Warn when using deprecated language features
   "-unchecked",                       // Warn on generated code assumptions
   "-feature",                         // Warn on features that requires explicit import
   "-Wunused",                         // Warn on unused imports
-  "-Ypatmat-exhaust-depth", "40"      // Increase depth of pattern matching analysis
+  "-Ypatmat-exhaust-depth", "40",     // Increase depth of pattern matching analysis
+  // "-Xfatal-warnings",                 // Treat Warnings as errors to guarantee code quality in future changes
 )
 
 // Enforce UTF-8, instead of relying on properly set locales
@@ -47,12 +48,14 @@ lazy val silver = (project in file("."))
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.2",                            // Testing
     libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2",    // Parsing
     libraryDependencies += "com.lihaoyi" %% "fastparse" % "2.2.2",                              // Parsing
-    libraryDependencies += "org.rogach" %% "scallop" % "4.0.1",                                 // CLI parsing
+    libraryDependencies += "org.rogach" %% "scallop" % "4.0.4",                                 // CLI parsing
     libraryDependencies += "commons-io" % "commons-io" % "2.8.0",                               // I/O
     libraryDependencies += "com.google.guava" % "guava" % "29.0-jre",                           // Collections
     libraryDependencies += "org.jgrapht" % "jgrapht-core" % "1.5.0",                            // Graphs
     libraryDependencies += "org.slf4j" % "slf4j-api" % "1.7.30",                                // Logging
     libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3",                      // Logging
+    libraryDependencies += "com.lihaoyi" %% "requests" % "0.3.0",                               // Data collection
+    libraryDependencies += "com.lihaoyi" %% "upickle" % "1.0.0",                                // Data collection
 
     // Test settings.
     Test / parallelExecution := false,

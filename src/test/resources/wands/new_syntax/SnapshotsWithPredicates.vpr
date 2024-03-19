@@ -1,12 +1,11 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-//:: IgnoreFile(/carbon/issue/244/)
 field f: Int
 field g: Int
 
 predicate wandPair(x: Ref) {
-    //:: ExpectedOutput(consistency.error)
+    //:: ExpectedOutput(typechecker.error)
     acc(x.f) --* acc(x.f) && acc(x.g)
 }
 

@@ -1,0 +1,32 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+method main1(b: Bool)
+{
+    if (b) {
+        var x: Int
+        x := 45
+        assert x > 34
+    }
+    {
+      var x: Int
+      x := 45
+      assert x > 34
+    }
+}
+
+method main2(b: Bool)
+{
+    if (b) {
+        var x: Int
+        x := 45
+        assert x > 34
+    }
+
+    //:: ExpectedOutput(typechecker.error)
+    var x: Int
+    x := 45
+    assert x > 34
+
+}

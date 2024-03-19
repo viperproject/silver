@@ -6,9 +6,9 @@
 
 package viper.silver.plugin
 
-import viper.silver.parser.{NameAnalyser, PExp, PExtender, PStmt, PTypeSubstitution, Translator, TypeChecker}
+import viper.silver.parser.{NameAnalyser, PAnnotationsPosition, PExp, PExtender, PKeyword, PSpecification, PKw, PMember, PReserved, PStmt, PTypeSubstitution, Translator, TypeChecker}
 import viper.silver.ast.pretty.PrettyPrintPrimitives
-import viper.silver.ast.{Declaration, ErrorTrafo, Exp, ExtensionExp, ExtensionMember, ExtensionStmt, Info, Member, Node, Position, Stmt, Type}
+import viper.silver.ast.{Declaration, ErrorTrafo, Exp, ExtensionExp, ExtensionMember, ExtensionStmt, Info, Member, Node, NoPosition, Position, Stmt, Type}
 import viper.silver.verifier.VerificationResult
 
 import scala.collection.Set
@@ -28,7 +28,7 @@ trait ParserPluginTemplate {
     * will not cause any effects in the pre existing parser and any other viper codes.
     *
     */
-  def newDeclAtEnd : Extension[PExtender] = ParserPluginTemplate.defaultExtension
+  def newDeclAtEnd : Extension[PAnnotationsPosition => PExtender with PMember] = ParserPluginTemplate.defaultExtension
 
   /**
     * The high level declarations that are checked at the start of the parser. These have the highest priority over
@@ -36,7 +36,7 @@ trait ParserPluginTemplate {
     * if that particular top level construct is either particularly different from the top-level constructs in viper
     * or the programmer needs this particular rules to be executed with priority.
     */
-  def newDeclAtStart : Extension[PExtender] = ParserPluginTemplate.defaultExtension
+  def newDeclAtStart : Extension[PAnnotationsPosition => PExtender with PMember] = ParserPluginTemplate.defaultExtension
 
   /**
     * The newStmt parser which is essentially an extension of the stmt rules in the new parser.
@@ -68,22 +68,25 @@ trait ParserPluginTemplate {
   /**
     * The specification rule provides an extension to the precondition expressions
     */
-  def preSpecification : Extension[PExp] = ParserPluginTemplate.defaultExpExtension
+  def preSpecification : Extension[PSpecification[PKw.PreSpec]] =
+    fp => ParserPluginTemplate.defaultExpExtension(fp).map(x => PSpecification(PReserved.implied(PKw.Requires), x)(NoPosition, NoPosition))
 
   /**
     * The specification rule provides an extension to the postcondition expressions
     */
-  def postSpecification : Extension[PExp] = ParserPluginTemplate.defaultExpExtension
+  def postSpecification : Extension[PSpecification[PKw.PostSpec]] =
+    fp => ParserPluginTemplate.defaultExpExtension(fp).map(x => PSpecification(PReserved.implied(PKw.Ensures), x)(NoPosition, NoPosition))
 
   /**
     * The specification rule provides an extension to the loop invariant specification expressions
     */
-  def invSpecification : Extension[PExp] = ParserPluginTemplate.defaultExpExtension
+  def invSpecification : Extension[PSpecification[PKw.InvSpec]] =
+    fp => ParserPluginTemplate.defaultExpExtension(fp).map(x => PSpecification(PReserved.implied(PKw.Invariant), x)(NoPosition, NoPosition))
 
   /**
     * This rule extends the keywords. So new strings added to the set will be considered as keywords.
     */
-  def extendedKeywords= Set[String]()
+  def extendedKeywords = Set[PKeyword]()
 
   case class PExampleDeclaration()(val pos: (Position, Position)) extends PExtender{
     // The typechecker for this PAst node
@@ -91,6 +94,7 @@ trait ParserPluginTemplate {
     // These two founction for translating PAst to Ast nodes are applicable only in the case of this class being a high level declaration
     override def translateMember(t: Translator): Member = ???
     override def translateMemberSignature(t: Translator): Member = super.translateMemberSignature(t)
+    override def pretty = ""
   }
 
   case class PExampleStmt()(val pos: (Position, Position)) extends PExtender with PStmt{
@@ -138,6 +142,8 @@ trait ParserPluginTemplate {
     override def errT: ErrorTrafo = ???
     override def info: Info = ???
     override def prettyPrint: PrettyPrintPrimitives#Cont = ???
+    /** declarations contributed by this statement that should be added to the parent scope */
+    override def declarationsInParentScope: Seq[Declaration] = ???
   }
 
   /**
@@ -173,7 +179,7 @@ object ParserPluginTemplate {
     implicit ctx : P[_] => P(left(ctx) | right(ctx))
   }
 
-  def defaultExtension : Extension[PExtender] = Fail(_)
+  def defaultExtension : Extension[PAnnotationsPosition => PExtender with PMember] = Fail(_)
   def defaultStmtExtension : Extension[PStmt] = Fail(_)
   def defaultExpExtension : Extension[PExp] = Fail(_)
 }

@@ -5,21 +5,21 @@ field f: Int
 field g: Int
 
 method m1(x: Ref)
-  //:: ExpectedOutput(consistency.error)
+  //:: ExpectedOutput(typechecker.error)
   requires perm(x.f) == perm(x.g)
   //this is fine because perm occurs in inhale/exhale
   requires [perm(x.f) > perm(x.g), true]
 {}
 
 function f1(x: Ref): Bool
-  //:: ExpectedOutput(consistency.error)
+  //:: ExpectedOutput(typechecker.error)
   requires forperm r: Ref [r.f] :: true
   //this is fine because perm occurs in inhale/exhale
   requires [forperm r: Ref [r.f] :: true, true]
 
 method invariant_test(x: Ref) {
   while (true)
-    //:: ExpectedOutput(consistency.error)
+    //:: ExpectedOutput(typechecker.error)
     invariant perm(x.f) == perm(x.g)
     //this is fine because perm occurs in inhale/exhale
     invariant [perm(x.f) > perm(x.g), true]

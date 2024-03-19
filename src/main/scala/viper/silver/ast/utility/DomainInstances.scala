@@ -168,10 +168,13 @@ object DomainInstances {
           case Some(ps) =>
             ps.flatMap(f = pair => {
               //            assert(dfa.funcname==pair._1.funcname)
-              val d2 = p.findDomain(pair._2.domainName)
+              val d2 = p.findDomain(dfa.domainName)
               val tvs = d2.typVars
-              tryUnifyWithDefault(tvs, tvs.map(pair._1.typVarMap.getOrElse(_, Program.defaultType)), tvs.map(dfa.typVarMap.getOrElse(_, Program.defaultType))) match {
-                case Some(ts) => Set[Type](DomainType(pair._2.domainName, ts)(tvs))
+              val axDom = p.findDomain(pair._2.domainName)
+              val axTvs = axDom.typVars
+              tryUnifyWithDefault(axTvs, tvs.map(pair._1.typVarMap.get(_).get), tvs.map(dfa.typVarMap.get(_).get)) match {
+                case Some(ts) =>
+                  Set[Type](DomainType(pair._2.domainName, ts)(axTvs))
                 case None => Set[Type]()
               }
             }).toSet

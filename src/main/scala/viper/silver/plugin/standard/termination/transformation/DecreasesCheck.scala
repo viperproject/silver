@@ -43,9 +43,17 @@ trait DecreasesCheck extends ProgramManager with ErrorReporter {
     val rCondition = requiredCondition.getOrElse(TrueLit()(errT = reTrafo))
     val gCondition = givenCondition.getOrElse(TrueLit()(errT = reTrafo))
 
-    val or = Or(Not(rCondition)(errT = reTrafo), gCondition)(errT = reTrafo)
-
-    Assert(or)(errT = errTrafo)
+    // Generates the statement "assert !rCondition || gCondition". If either rCondition or gCondition are the
+    // true literal, their respective disjuncts are simplified or even removed. This ensures that trivial assertions
+    // like "assert true" and "assert !true || true" are kept to a minimum.
+    (rCondition, gCondition) match {
+      case (_, _: TrueLit) => EmptyStmt
+      case (_: TrueLit, _) =>
+        // gCondition must use reTrafo to produce precise error messages
+        val (pos, info, _) = gCondition.meta
+        Assert(gCondition.withMeta(pos, info, reTrafo))(errT = errTrafo)
+      case (_, _) => Assert(Or(Not(rCondition)(errT = reTrafo), gCondition)(errT = reTrafo))(errT = errTrafo)
+    }
   }
 
 
@@ -165,10 +173,10 @@ trait DecreasesCheck extends ProgramManager with ErrorReporter {
   }
 
   def reportDecreasingNotDefined(pos: Position): Unit = {
-    reportError(ConsistencyError("Function \"decreasing\" is required but not declared.", pos))
+    reportError(ConsistencyError("function \"decreasing\" is required but not declared.", pos))
   }
 
   def reportBoundedNotDefined(pos: Position): Unit = {
-    reportError(ConsistencyError("Function \"bounded\" is required but not defined.", pos))
+    reportError(ConsistencyError("function \"bounded\" is required but not defined.", pos))
   }
 }

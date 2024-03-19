@@ -1,0 +1,48 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+function otherFunc(s: Seq[Int], i: Int): Bool
+    requires |s| > 1
+{
+  true
+}
+
+method foo(x: Ref, y: Ref, s: Seq[Int], i: Int)
+{
+    package (|s| > 3 ? (i > 1 && i < |s| - 2 && otherFunc(s, i)) : (i > 1 && i < |s| - 2))  --* true {
+    }
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert |s| > 0
+}
+
+
+field f: Int
+
+predicate p(x:Ref) {acc(x.f)}
+
+method tst(x: Ref)
+  requires acc(x.f, 1/2) && x.f == 3
+{
+    package acc(x.f, 1/2) && x.f == 2 --* p(x)
+    {
+        fold p(x)
+        assert x.f == 3
+    }
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+field data: Int
+
+method bar(x: Ref)
+    requires acc(x.data)
+{
+    package acc(x.data) --* false {
+        assert acc(x.data) && acc(x.data)
+        //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/470/)
+        assert false
+    }
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}

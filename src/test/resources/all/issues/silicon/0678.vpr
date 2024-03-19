@@ -1,0 +1,17 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+predicate P(x: Int)
+field f: Int
+
+method mPred(r: Int)
+    requires P(r)
+{
+    assume exists x: Int :: { P(x) } perm(P(x)) > none
+}
+
+method mField(r: Ref)
+    requires acc(r.f)
+{
+    assume exists x: Ref :: { x.f } perm(x.f) > none
+}

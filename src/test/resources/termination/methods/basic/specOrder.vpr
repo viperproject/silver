@@ -1,0 +1,92 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <decreases/int.vpr>
+
+// Viper permits writing decreases measures anywhere in a method's specification
+// and this test case checks that the transformations correctly account for this
+
+method m1(x:Int, y:Int) returns (res: Int)
+  decreases
+  requires x>0 && y>0
+  ensures  true
+{
+  if (y >= x) {
+    res := 8
+  } else {
+    //:: ExpectedOutput(termination.failed:tuple.false)
+    res := m1(y, y)
+  }
+}
+
+method m2(x:Int, y:Int) returns (res: Int)
+  requires x>0 && y>0
+  decreases
+  ensures  true
+{
+  if (y >= x) {
+    res := 8
+  } else {
+    //:: ExpectedOutput(termination.failed:tuple.false)
+    res := m2(y, y)
+  }
+}
+
+method m3(x:Int, y:Int) returns (res: Int)
+  requires x>0 && y>0
+  ensures  true
+  decreases
+{
+  if (y >= x) {
+    res := 8
+  } else {
+    //:: ExpectedOutput(termination.failed:tuple.false)
+    res := m3(y, y)
+  }
+}
+
+
+// the following methods check that the termination plugin considers ALL stated termination measures independently of
+// how they are mixed with pre- and postconditions
+
+method m4(x:Int, y:Int) returns (res: Int)
+  decreases _ if y >= x
+  decreases x if y < x // verification of this method does not result in a verification failure in case this termination measure is ignored / dropped by the plugin
+  requires x>0 && y>0
+  ensures  true
+{
+  if (y >= x) {
+    res := 8
+  } else {
+    //:: ExpectedOutput(termination.failed:tuple.condition.false)
+    res := m4(y, y)
+  }
+}
+
+method m5(x:Int, y:Int) returns (res: Int)
+  decreases _ if y >= x
+  requires x>0 && y>0
+  decreases x if y < x // verification of this method does not result in a verification failure in case this termination measure is ignored / dropped by the plugin
+  ensures  true
+{
+  if (y >= x) {
+    res := 8
+  } else {
+    //:: ExpectedOutput(termination.failed:tuple.condition.false)
+    res := m5(y, y)
+  }
+}
+
+method m6(x:Int, y:Int) returns (res: Int)
+  decreases _ if y >= x
+  requires x>0 && y>0
+  ensures  true
+  decreases x if y < x // verification of this method does not result in a verification failure in case this termination measure is ignored / dropped by the plugin
+{
+  if (y >= x) {
+    res := 8
+  } else {
+    //:: ExpectedOutput(termination.failed:tuple.condition.false)
+    res := m6(y, y)
+  }
+}

@@ -1,0 +1,13 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <decreases/declaration.vpr>
+
+field f: Int
+
+function test(x: Ref): Bool
+    decreases
+    requires acc(x.f, wildcard)
+{
+    true
+}

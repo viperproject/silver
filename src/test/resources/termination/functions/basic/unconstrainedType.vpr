@@ -1,0 +1,13 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+domain Huh {}
+
+function fac(i: Int, h: Huh): Int
+  requires i >= 0
+  decreases h
+{
+  //:: ExpectedOutput(termination.failed:tuple.false)
+  i == 0 ? 1 : i * fac(i - 1, h)
+}

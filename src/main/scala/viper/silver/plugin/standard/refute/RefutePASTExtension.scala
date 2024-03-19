@@ -10,8 +10,10 @@ import viper.silver.ast.{Position, Stmt}
 import viper.silver.parser.TypeHelper.Bool
 import viper.silver.parser._
 
-case class PRefute(e: PExp)(val pos: (Position, Position)) extends PExtender with PStmt {
-  override val getSubnodes: Seq[PNode] = Seq(e)
+/** Keyword used to define refute statements. */
+case object PRefuteKeyword extends PKw("refute") with PKeywordStmt
+
+case class PRefute(refute: PReserved[PRefuteKeyword.type], e: PExp)(val pos: (Position, Position)) extends PExtender with PStmt {
 
   override def typecheck(t: TypeChecker, n: NameAnalyser):Option[Seq[String]] = {
     t.check(e, Bool)

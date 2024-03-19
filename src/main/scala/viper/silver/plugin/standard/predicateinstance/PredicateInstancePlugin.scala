@@ -14,29 +14,26 @@ import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier.{ConsistencyError, Failure, Success, VerificationResult}
 import viper.silver.verifier.errors.PreconditionInAppFalse
 import fastparse._
-import viper.silver.parser.FastParserCompanion.whitespace
+import viper.silver.reporter.Entity
 
+import scala.annotation.unused
 import scala.collection.immutable.ListMap
 
-class PredicateInstancePlugin(reporter: viper.silver.reporter.Reporter,
-                              logger: ch.qos.logback.classic.Logger,
-                              config: viper.silver.frontend.SilFrontendConfig,
+class PredicateInstancePlugin(@unused reporter: viper.silver.reporter.Reporter,
+                              @unused logger: ch.qos.logback.classic.Logger,
+                              @unused config: viper.silver.frontend.SilFrontendConfig,
                               fp: FastParser)  extends SilverPlugin with ParserPluginTemplate {
 
-  import fp.{FP, predAcc, ParserExtension}
-
-  /**
-   * Syntactic marker for predicate instances
-   */
-  val PredicateInstanceMarker: String = "@"
-
-  val PredicateInstanceDomainName = "PredicateInstance"
+  import fp.{predAcc, ParserExtension, lineCol, _file}
+  import FastParserCompanion.{PositionParsing, reservedSym, whitespace}
 
   /**
    * Parser for declaring predicate instances.
    *
    */
-  def predicateInstance[_: P]: P[PPredicateInstance] = FP(PredicateInstanceMarker ~/ P(predAcc)).map{ case (pos, p) => PPredicateInstance(p.args, p.idnuse)(pos) }
+  def predicateInstance[$: P]: P[PPredicateInstance] = P((P(PMarkerSymbol) ~ predAcc).map {
+    case (m, p) => PPredicateInstance(m, p.idnref.retype(), p.callArgs)(_)
+  }).pos
 
   /** Called before any processing happened.
    *
@@ -56,7 +53,7 @@ class PredicateInstancePlugin(reporter: viper.silver.reporter.Reporter,
    * (to the respective predicate instance functions)
    */
   override def beforeVerify(input: Program): Program = {
-    val PredicateInstanceDomain: Option[Domain] =  input.domains.find(_.name == "PredicateInstance")
+    val PredicateInstanceDomain: Option[Domain] =  input.findDomainOptionally("PredicateInstance")
 
     // list of all created predicate instance functions
     var createdPIFunctions = ListMap[String, Function]()
@@ -94,10 +91,16 @@ class PredicateInstancePlugin(reporter: viper.silver.reporter.Reporter,
     newProgram
   }
 
+  override def mapEntityVerificationResult(entity: Entity, input: VerificationResult): VerificationResult =
+    translateVerificationResult(input)
+
   /**
    * Initiate the error transformer for possibly predicate instances related errors
    */
-  override def mapVerificationResult(input: VerificationResult): VerificationResult = {
+  override def mapVerificationResult(@unused program: Program, input: VerificationResult): VerificationResult =
+    translateVerificationResult(input)
+
+  private def translateVerificationResult(input: VerificationResult): VerificationResult = {
     input match {
       case Success => input
       case Failure(errors) =>

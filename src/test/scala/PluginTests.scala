@@ -5,17 +5,18 @@
 // Copyright (c) 2011-2021 ETH Zurich.
 
 import java.nio.file.Paths
-
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast.{LocalVar, Perm, Program}
 import viper.silver.frontend.{SilFrontend, SilFrontendConfig}
-import viper.silver.parser.{PIdnDef, PPredicate, PProgram}
+import viper.silver.parser.{PDelimited, PGrouped, PIdnDef, PKw, PPredicate, PProgram, PReserved}
 import viper.silver.plugin.{SilverPlugin, SilverPluginManager}
 import viper.silver.reporter.{Reporter, StdIOReporter}
 import viper.silver.verifier.errors.Internal
 import viper.silver.verifier.reasons.FeatureUnsupported
 import viper.silver.verifier._
 import viper.silver.ast.NoPosition
+
+import scala.annotation.unused
 
 trait TestPlugin {
   def test(): Boolean = true
@@ -118,16 +119,9 @@ class TestPluginAddPredicate extends SilverPlugin {
   override def beforeResolve(input: PProgram): PProgram = {
     val p = (NoPosition, NoPosition)
     PProgram(
-      input.imports,
-      input.macros,
-      input.domains,
-      input.fields,
-      input.functions,
-      input.predicates :+ PPredicate(PIdnDef("testPredicate")(p), Seq(), None)(p),
-      input.methods,
-      input.extensions,
-      input.errors
-    )(p)
+      input.imported,
+      input.members :+ PPredicate(Seq(), PReserved.implied(PKw.Predicate), PIdnDef("testPredicate")(p), PGrouped.impliedParen(PDelimited.empty), None)(p),
+    )(input.pos, input.localErrors)
   }
 
   /** Called after methods are filtered but before the verification by the backend happens.
@@ -148,7 +142,7 @@ class TestPluginMapErrors extends SilverPlugin with TestPlugin with FakeResult {
   var error2: Internal = Internal(FeatureUnsupported(LocalVar("test2", Perm)(), "Test2"))
   var finish = false
 
-  override def mapVerificationResult(input: VerificationResult): VerificationResult = {
+  override def mapVerificationResult(@unused program: Program, input: VerificationResult): VerificationResult = {
     input match {
       case Success =>
 //        println(">>> detected VerificationResult is Success")
@@ -197,7 +191,7 @@ class TestPluginMapVsFinish extends SilverPlugin with TestPlugin {
     input
   }
 
-  override def mapVerificationResult(input: VerificationResult): VerificationResult = {
+  override def mapVerificationResult(@unused program: Program, input: VerificationResult): VerificationResult = {
     assert(!finish)
     input
   }

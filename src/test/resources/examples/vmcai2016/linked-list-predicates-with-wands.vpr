@@ -21,7 +21,7 @@ predicate lseg(this: Ref, end: Ref)
 function contentNodes(this: Ref, end: Ref): Seq[Int]
   requires acc(lseg(this, end))
   ensures  this == end ==> result == Seq[Int]()
-  ensures  this != end ==> result[0] == unfolding acc(lseg(this, end)) in this.data
+  ensures  this != end ==> |result| > 0 && result[0] == unfolding acc(lseg(this, end)) in this.data
   ensures  forall i: Int, j: Int :: 0 <= i && i < j && j < |result| ==> result[i] <= result[j]
 {
   this == end ? Seq[Int]() :
@@ -138,6 +138,8 @@ method insert(this: Ref, elem: Int) returns (index: Int)
       invariant ptr.next != null ==> ptr.data <= unfolding acc(lseg(ptr.next, null)) in ptr.next.data
       invariant A --* B
     {
+
+      assert A --* B
       var prev: Ref := ptr
 
       unfold acc(lseg(ptr.next, null))
@@ -146,7 +148,8 @@ method insert(this: Ref, elem: Int) returns (index: Int)
 
       package (A) --* B {
           fold acc(lseg(prev, null))
-          apply acc(lseg(prev, null)) && contentNodes(prev, null)[0] == old(content(this))[index-1] --* B
+          apply acc(lseg(prev, null)) && contentNodes(prev, null)[0] == old(content(this))[index-2] --*
+                (acc(lseg(hd, null)) && contentNodes(hd, null) == old(content(this))[0..index-2] ++ old[lhs](contentNodes(prev, null)))
       }
     }
 
@@ -194,7 +197,7 @@ field held: Int
 field changed: Bool
 
 method test(lock: Ref)
-  ensures [true, forperm[held] r :: false]
+  ensures [true, forperm r: Ref [r.held] :: false]
 {
   /* Acquire lock (without deadlock checking) */
   inhale acc(List(lock)) && acc(lock.held) && acc(lock.changed)

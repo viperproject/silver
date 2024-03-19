@@ -8,6 +8,8 @@ package viper.silver.reporter
 
 import viper.silver.reporter.BackendSubProcessStages.BackendSubProcessStage
 import viper.silver.verifier._
+import viper.silver.ast.{QuantifiedExp, Trigger}
+import viper.silver.parser.PProgram
 
 /**
   * The only possible messages for the reporter are defined in this file.
@@ -67,9 +69,9 @@ object VerificationResultMessage {
   : VerificationResultMessage = {
 
     result match {
-      case Success => 
+      case Success =>
         OverallSuccessMessage(verifier, verificationTime)
-      case failure: Failure => 
+      case failure: Failure =>
         OverallFailureMessage(verifier, verificationTime, failure)
     }
   }
@@ -84,21 +86,21 @@ object VerificationResultMessage {
   : VerificationResultMessage = {
 
     result match {
-      case Success => 
+      case Success =>
         EntitySuccessMessage(verifier, entity, verificationTime)
-      case failure: Failure => 
+      case failure: Failure =>
         EntityFailureMessage(verifier, entity, verificationTime, failure)
     }
   }
 
-  def apply(verifier: String, entity: Entity, verificationTime: Time, 
+  def apply(verifier: String, entity: Entity, verificationTime: Time,
             result: VerificationResult, cached: Boolean)
   : VerificationResultMessage = {
 
     result match {
-      case Success => 
+      case Success =>
         EntitySuccessMessage(verifier, entity, verificationTime, cached)
-      case failure: Failure => 
+      case failure: Failure =>
         EntityFailureMessage(verifier, entity, verificationTime, failure, cached)
     }
   }
@@ -111,14 +113,14 @@ object CachedEntityMessage {
   def apply(verifier: String, entity: Entity, result: VerificationResult)
   : VerificationResultMessage =
     result match {
-      case Success => 
+      case Success =>
         EntitySuccessMessage(verifier, entity, 0L.asInstanceOf[Time], cached = true)
       case failure: Failure =>
         EntityFailureMessage(verifier, entity, 0L.asInstanceOf[Time], failure, cached = true)
     }
 }
 
-// Overall results concern results for the entire program (e.g. those presently 
+// Overall results concern results for the entire program (e.g. those presently
 // produced by the Carbon backend)
 case class OverallSuccessMessage(verifier: String, verificationTime: Time)
   extends VerificationResultMessage {
@@ -136,9 +138,9 @@ case class OverallFailureMessage(verifier: String, verificationTime: Time, resul
     s"verifier=${verifier}, time=${verificationTime.toString}, result=${result.toString})"
 }
 
-// Entity results concern results for specific program entities (these are presently 
+// Entity results concern results for specific program entities (these are presently
 // produced by the Silicon backend)
-case class EntitySuccessMessage(verifier: String, concerning: Entity, 
+case class EntitySuccessMessage(verifier: String, concerning: Entity,
                                 verificationTime: Time, cached: Boolean = false)
   extends VerificationResultMessage {
 
@@ -149,13 +151,22 @@ case class EntitySuccessMessage(verifier: String, concerning: Entity,
  val result: VerificationResult = Success
 }
 
-case class EntityFailureMessage(verifier: String, concerning: Entity, 
+case class EntityFailureMessage(verifier: String, concerning: Entity,
                                 verificationTime: Time, result: Failure, cached: Boolean = false)
   extends VerificationResultMessage {
 
   override def toString: String = s"entity_failure_message(" +
       s"verifier=$verifier, concerning=${print(concerning)}, " +
       s"time=${verificationTime.toString}, result=${result.toString}, cached=$cached)"
+}
+
+case class BranchFailureMessage(verifier: String, concerning: Entity,
+                                result: Failure, cached: Boolean = false)
+  extends VerificationResultMessage {
+
+  override def toString: String = s"branch_failure_message(" +
+    s"verifier=$verifier, concerning=${print(concerning)}, " +
+    s"result=${result.toString}, cached=$cached)"
 }
 
 case class StatisticsReport(nOfMethods: Int, nOfFunctions: Int, nOfPredicates: Int, 
@@ -179,6 +190,13 @@ case class ProgramDefinitionsReport(definitions: List[Definition]) extends Messa
 
   override lazy val toString: String = s"program_definitions_report(definitions=${definitions.toString}"
   override val name: String = "program_definitions"
+}
+
+/** The `PProgram` result of parsing or typechecking, `semanticAnalysisSuccess` is true if the program came from after typechecking. */
+case class PProgramReport(semanticAnalysisSuccess: Boolean, pProgram: PProgram) extends Message {
+
+  override lazy val toString: String = s"pprogram_report(semanticAnalysisSuccess=$semanticAnalysisSuccess, pProgram=${pProgram.toString})"
+  override val name: String = "pprogram"
 }
 
 // TODO: Variable level of detail?
@@ -251,6 +269,11 @@ case class WarningsDuringTypechecking(warnings: Seq[TypecheckerWarning]) extends
   override val name: String = "warnings_during_typechecking"
 }
 
+case class WarningsDuringVerification(warnings: Seq[VerifierWarning]) extends Message {
+  override lazy val toString: String = s"warnings_during_verification(warnings=${warnings.toString})"
+  override val name: String = "warnings_during_verification"
+}
+
 abstract class SimpleMessage(val text: String) extends Message {
   override lazy val toString: String = s"$name(text=$text)"
   override val name: String = "simple_message"
@@ -258,6 +281,10 @@ abstract class SimpleMessage(val text: String) extends Message {
 
 case class ConfigurationConfirmation(override val text: String) extends SimpleMessage(text) {
   override val name: String = "configuration_confirmation"
+}
+
+case class AnnotationWarning(override val text: String) extends SimpleMessage(text) {
+  override val name: String = "annotation_warning"
 }
 
 case class InternalWarningMessage(override val text: String) extends SimpleMessage(text) {
@@ -269,11 +296,33 @@ case class CopyrightReport(override val text: String) extends SimpleMessage(text
 }
 
 case class MissingDependencyReport(override val text: String) extends SimpleMessage(text) {
-  override val name = "missing_dependency_report"
+  override val name: String = "missing_dependency_report"
 }
 
 // FIXME: for debug purposes only: a pong message can be reported to indicate
 // FIXME: that the verification backend is alive.
 case class PongMessage(override val text: String) extends SimpleMessage(text) {
   override val name: String = "dbg__pong"
+}
+
+// quantifier refers to the name/qid of a smt quantifier
+case class QuantifierInstantiationsMessage(quantifier: String, instantiations: Int,
+                                           max_gen: Int, max_cost: Int) extends Message {
+  override lazy val toString: String = s"quantifier_instantiations_message(" +
+    s"quantifier=$quantifier, instantiations=${instantiations.toString}, " +
+    s"max_gen=$max_gen, max_cost=$max_cost)"
+  override val name: String = "quantifier_instantiations_message"
+}
+
+case class QuantifierChosenTriggersMessage(quantifier: QuantifiedExp, triggers: Seq[Trigger], oldTriggers: Seq[Trigger]) extends Message {
+  override lazy val toString: String = s"quantifier_chosen_triggers_message(type=$quant_type, quantifier=${quantifier.toString}, triggers=$triggers_string), oldTriggers=$oldTriggers_string)"
+  override val name: String = "quantifier_chosen_triggers_message"
+  lazy val triggers_string: String = triggers.map((trigger) => trigger.exps.mkString("{", ", ", "}")).mkString("[", ", ", "]")
+  lazy val oldTriggers_string: String = oldTriggers.map((trigger) => trigger.exps.mkString("{", ", ", "}")).mkString("[", ", ", "]")
+  val quant_type: String = quantifier.getClass.getSimpleName
+}
+
+case class VerificationTerminationMessage() extends Message {
+  override val toString: String = "verification_termination_message"
+  override val name: String = "verification_termination_message"
 }

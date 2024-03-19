@@ -6,12 +6,12 @@ field val: Int
 define wandA(a) acc(a.val) --* acc(a.val)
 
 function reqA(a: Ref): Int
-  //:: ExpectedOutput(consistency.error)
+  //:: ExpectedOutput(typechecker.error)
   requires wandA(a)
 
 predicate predA(a: Ref)
 {
-  //:: ExpectedOutput(consistency.error)
+  //:: ExpectedOutput(typechecker.error)
   wandA(a)
 }
 

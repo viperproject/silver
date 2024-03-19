@@ -358,9 +358,9 @@ trait Info {
       case _ => Seq.empty
     }
 
-  def removeUniqueInfo[T <: Info]: Info = this match {
+  def removeUniqueInfo[T <: Info : ClassTag]: Info = this match {
     case ConsInfo(a, b) => MakeInfoPair(a.removeUniqueInfo[T], b.removeUniqueInfo[T])
-    case t: T => NoInfo
+    case _: T => NoInfo
     case info => info
   }
 }
@@ -371,6 +371,11 @@ case object NoInfo extends Info {
   override val isCached = false
 }
 
+case class AnnotationInfo(values: Map[String, Seq[String]]) extends Info {
+  override val isCached = false
+  override val comment = Nil
+}
+
 /** A simple `Info` that contains a list of comments. */
 case class SimpleInfo(comment: Seq[String]) extends Info {
   override val isCached = false
@@ -378,6 +383,12 @@ case class SimpleInfo(comment: Seq[String]) extends Info {
 
 /** An `Info` instance for labelling a quantifier as auto-triggered. */
 case object AutoTriggered extends Info {
+  override val comment = Nil
+  override val isCached = false
+}
+
+/** An `Info` for specifying the weight of a quantifier in the SMT encoding. */
+case class WeightedQuantifier(weight: Int) extends Info {
   override val comment = Nil
   override val isCached = false
 }
