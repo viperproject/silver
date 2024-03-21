@@ -860,7 +860,7 @@ trait Edges { this: Vertices =>
           (f.pres ++ f.posts ++ f.formalArgs ++ f.result).flatMap(dependenciesToChildren(_, useVertex)) ++
           (f.info.getUniqueInfo[AnnotationInfo] match {
             case Some(ai) if ai.values.contains("opaque") => Seq()
-            case _ => Seq(useVertex -> defVertex) // for non opaque functions a use dependency is a def dependency
+            case _ => Seq(useVertex -> defVertex) // for non opaque functions, a use dependency is a def dependency
           })
 
       case _: ast.Field => dependenciesToChildren(member, defVertex)
