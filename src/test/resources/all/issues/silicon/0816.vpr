@@ -1,0 +1,25 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+method keydict___init__() returns (self: Ref)
+    ensures forall key: Ref :: {keydict___item__(self, key)} acc(keydict___item__(self, key).keydict_val) && !keydict___contains__(self, key)
+
+function keydict___item__(self: Ref, key: Ref): Ref
+    ensures keydict___item__inv(self, result) == key
+
+function keydict___item__inv(self: Ref, val_ref: Ref): Ref
+
+field keydict_val: Option[Ref]
+
+
+function keydict___contains__(self: Ref, key: Ref) : Bool
+    requires acc(keydict___item__(self, key).keydict_val, wildcard)
+    ensures result == keydict___item__(self, key).keydict_val.isSome
+
+
+
+adt Option[T] {
+    Some(value:T)
+    None()
+}
