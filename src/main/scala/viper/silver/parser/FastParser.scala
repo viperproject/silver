@@ -33,7 +33,7 @@ object FastParserCompanion {
   implicit val whitespace = {
     import NoWhitespace._
     implicit ctx: ParsingRun[_] =>
-      NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ !StringIn("/") ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
+      NoTrace((("/*" ~ (!"*/" ~ AnyChar).rep ~ "*/") | ((("//" ~ !("/")) | "////") ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
   }
 
   def identStarts[$: P] = CharIn("A-Z", "a-z", "$_")
