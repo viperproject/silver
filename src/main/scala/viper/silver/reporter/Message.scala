@@ -327,11 +327,15 @@ case class VerificationTerminationMessage() extends Message {
   override val name: String = "verification_termination_message"
 }
 
+/** Reported when a block of a method CFG is reached.
+  */
 case class BlockReachedMessage(methodName: String, label: String, pathId: Int) extends  Message {
   override val toString: String = s"block_reached_message(methodName=$methodName, label=$label, pathId=$pathId)"
   override val name: String = "block_reached_message"
 }
-case class BlockProcessedMessage(methodName: String, label: String, pathId: Int, verificationResult: String) extends  Message {
-  override val toString: String = s"block_processed_message(methodName=$methodName, label=$label, pathId=$pathId, result=\"${if (verificationResult.toString() == "Success") "Success" else "Failure"}\")"
-  override val name: String = "block_processed_message"
+/** Reported when an execution path through a method has completed.
+  */
+case class PathProcessedMessage(methodName: String, label: String, pathId: Int, verificationResultKind: String) extends  Message {
+  override val toString: String = s"Path_processed_message(methodName=$methodName, label=$label, pathId=$pathId, result=$verificationResultKind)"
+  override val name: String = "Path_processed_message"
 }
