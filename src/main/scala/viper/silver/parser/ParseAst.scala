@@ -1668,7 +1668,7 @@ case class PFields(annotations: Seq[PAnnotation], field: PKw.Field, fields: PDel
   override def declares: Seq[PGlobalDeclaration] = fields.toSeq
 }
 
-case class PSpecification[+T <: PKw.Spec](k: PReserved[PKw.Spec], e: PExp)(val pos: (Position, Position)) extends PNode with PPrettySubnodes {
+case class PSpecification[+T <: PKw.Spec](k: PReserved[PKw.Spec], e: PExp, annotations: Seq[PAnnotation] = Seq())(val pos: (Position, Position)) extends PNode with PPrettySubnodes {
   override def pretty: String = "\n  " + super.pretty
 }
 
