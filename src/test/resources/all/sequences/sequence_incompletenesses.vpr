@@ -94,8 +94,8 @@ method colourings1(a: Array)
       invariant 0 <= i && i <= |slot(a,n-1).val|
       invariant acc(slot(a,n).val)
       invariant |slot(a,n).val| == i
-      invariant forall j:Int :: 0 <= j && j < |slot(a,n-1).val| ==>
-        valid(slot(a,n-1).val[j],n-1,true)
+      invariant forall j:Int, n1: Int :: { slot(a,n1).val[j] } n1 == n - 1 && 0 <= j && j < |slot(a,n-1).val| ==>
+        valid(slot(a,n1).val[j],n - 1,true)
       invariant forall j : Int :: {slot(a,n).val[j]} 0 <= j && j < i ==> valid(slot(a,n).val[j],n,true)
     {
       var oldSoln : Seq[Int] := slot(a,n-1).val[i]
@@ -165,8 +165,8 @@ method colourings2(a: Array)
       invariant 0 <= i && i <= |slot(a,n-1).val|
       invariant acc(slot(a,n).val)
       invariant |slot(a,n).val| == i
-      invariant forall j:Int :: 0 <= j && j < |slot(a,n-1).val| ==>
-        valid(slot(a,n-1).val[j],n-1,true)
+      invariant forall j:Int, n1: Int :: { slot(a,n1).val[j] } n1 == n - 1 && 0 <= j && j < |slot(a,n-1).val| ==>
+        valid(slot(a,n1).val[j],n-1,true)
       invariant forall j : Int :: {slot(a,n).val[j]} 0 <= j && j < i ==> valid(slot(a,n).val[j],n,true)
     {
       var oldSoln : Seq[Int] := slot(a,n-1).val[i]
@@ -234,8 +234,8 @@ method colourings(a: Array)
       invariant 0 <= i && i <= |slot(a,n-1).val|
       invariant acc(slot(a,n).val)
       invariant |slot(a,n).val| == i
-      invariant forall j:Int :: 0 <= j && j < |slot(a,n-1).val| ==>
-        valid(slot(a,n-1).val[j],n-1,true)
+      invariant forall j:Int, n1: Int :: { slot(a,n1).val[j] } n1 == n - 1 && 0 <= j && j < |slot(a,n-1).val| ==>
+        valid(slot(a,n1).val[j],n-1,true)
       invariant forall j : Int :: {slot(a,n).val[j]} 0 <= j && j < i ==> valid(slot(a,n).val[j],n,true)
     {
       var oldSoln : Seq[Int] := slot(a,n-1).val[i]
