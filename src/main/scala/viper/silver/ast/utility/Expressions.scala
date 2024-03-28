@@ -204,16 +204,16 @@ object Expressions {
         // Combine the conditions of the subnodes depending on what node we currently have.
         val finalSubConds = n match {
           case And(left, _) =>
-            val Seq(leftConds, rightConds, _) = nonTrivialSubConds
+            val Seq(leftConds, rightConds, Seq()) = nonTrivialSubConds
             reduceAndProofObs(left, leftConds, rightConds, p)
           case Implies(left, _) =>
-            val Seq(leftConds, rightConds, _) = nonTrivialSubConds
+            val Seq(leftConds, rightConds, Seq()) = nonTrivialSubConds
             reduceImpliesProofObs(left, leftConds, rightConds, p)
           case Or(left, _) =>
-            val Seq(leftConds, rightConds, _) = nonTrivialSubConds
+            val Seq(leftConds, rightConds, Seq()) = nonTrivialSubConds
             reduceOrProofObs(left, leftConds, rightConds, p)
           case CondExp(cond, _, _) =>
-            val Seq(condConds, thenConds, elseConds, _) = nonTrivialSubConds
+            val Seq(condConds, thenConds, elseConds, Seq()) = nonTrivialSubConds
             reduceCondExpProofObs(cond, condConds, thenConds, elseConds, p)
           case _ => subConds.flatten
         }
