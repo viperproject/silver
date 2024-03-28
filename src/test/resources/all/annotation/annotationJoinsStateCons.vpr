@@ -1,0 +1,105 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+// We test annotations by using annotations that make Silicon less complete and making sure we get the expected
+// errors. Carbon should ignore the annotations and thus verify everything.
+// We mark the errors as "unexpected" and stemming from a Silicon issue s.t. the tests pass in Carbon if there are
+// no errors and in Silicon if there are the expected errors.
+
+@stateConsolidationMode("minimal")
+method testMin1(r: Ref, b: Bool)
+{
+    inhale acc(r.f, 1/2)
+    inhale acc(r.f, 1/2)
+    //:: UnexpectedOutput(exhale.failed:insufficient.permission, /silicon/issue/000/)
+    exhale acc(r.f)
+}
+
+@stateConsolidationMode("0")
+method testMin2(r: Ref, b: Bool)
+{
+    inhale acc(r.f, 1/2)
+    inhale acc(r.f, 1/2)
+    //:: UnexpectedOutput(exhale.failed:insufficient.permission, /silicon/issue/000/)
+    exhale acc(r.f)
+}
+
+method testMin3(r: Ref, b: Bool)
+{
+    inhale acc(r.f, 1/2)
+    inhale acc(r.f, 1/2)
+    exhale acc(r.f)
+}
+
+@stateConsolidationMode("default")
+method testMin4(r: Ref, b: Bool)
+{
+    inhale acc(r.f, 1/2)
+    inhale acc(r.f, 1/2)
+    exhale acc(r.f)
+}
+
+@stateConsolidationMode("minimal")
+@moreJoins("all")
+method testJoin1(r: Ref, b: Bool)
+{
+    if (b) {
+        inhale acc(r.f)
+    } else {
+        inhale acc(r.f)
+    }
+    //:: UnexpectedOutput(exhale.failed:insufficient.permission, /silicon/issue/000/)
+    exhale acc(r.f)
+}
+
+@stateConsolidationMode("minimal")
+@moreJoins("2")
+method testJoin2(r: Ref, b: Bool)
+{
+    if (b) {
+        inhale acc(r.f)
+    } else {
+        inhale acc(r.f)
+    }
+    //:: UnexpectedOutput(exhale.failed:insufficient.permission, /silicon/issue/000/)
+    exhale acc(r.f)
+}
+
+@stateConsolidationMode("minimal")
+method testJoin3(r: Ref, b: Bool)
+{
+    if (b) {
+        inhale acc(r.f)
+    } else {
+        inhale acc(r.f)
+    }
+    exhale acc(r.f)
+}
+
+@stateConsolidationMode("minimal")
+@moreJoins("0")
+method testJoin4(r: Ref, b: Bool)
+{
+    if (b) {
+        inhale acc(r.f)
+    } else {
+        inhale acc(r.f)
+    }
+    exhale acc(r.f)
+}
+
+@stateConsolidationMode("minimal")
+@moreJoins("1")
+method testJoin5(r: Ref, b: Bool)
+{
+    if (b) {
+        inhale acc(r.f)
+    } else {
+        inhale acc(r.f)
+    }
+    exhale acc(r.f)
+}
+
+
