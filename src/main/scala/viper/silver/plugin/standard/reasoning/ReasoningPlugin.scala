@@ -7,14 +7,12 @@
 package viper.silver.plugin.standard.reasoning
 
 import fastparse._
-import org.jgrapht.Graph
-import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 import viper.silver.ast._
 import viper.silver.ast.utility.rewriter.{StrategyBuilder, Traverse}
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.parser.FastParserCompanion.whitespace
 import viper.silver.parser._
-import viper.silver.plugin.standard.reasoning.analysis.{SetGraphComparison, VarAnalysisGraph}
+import viper.silver.plugin.standard.reasoning.analysis.{SetGraphComparison, VarAnalysisGraphMap}
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier._
 
@@ -22,7 +20,7 @@ import scala.annotation.unused
 import scala.collection.mutable
 
 class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
-                      @unused logger: ch.qos.logback.classic.Logger,
+                      logger: ch.qos.logback.classic.Logger,
                       @unused config: viper.silver.frontend.SilFrontendConfig,
                       fp: FastParser) extends SilverPlugin with ParserPluginTemplate with SetGraphComparison with BeforeVerifyHelper {
 
@@ -268,66 +266,22 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
       case u@UniversalIntro(v, trigs, exp1, exp2, blk) =>
         val boolvar = LocalVarDecl(uniqueName("b", usedNames), Bool)(exp1.pos)
 
-        val vars_outside_blk: mutable.Set[Declaration] = mutable.Set()
-
         /** Get all variables that are in scope in the current method but not inside the block */
-        input.methods.foreach(m => m.body.get.ss.foreach(s => {
-          if (s.contains(u)) {
-            vars_outside_blk ++= mutable.Set(m.transitiveScopedDecls: _*)
-          }
-        }))
-
-        /** Qunatified variables in the universal introduction statement are tainted */
         val tainted: Set[LocalVarDecl] = v.toSet
-
-
-        /**
-          * GRAPH VERSION
-          */
-
-        val graph_analysis: VarAnalysisGraph = VarAnalysisGraph(input, reportError)
-
+        val vars_outside_blk = (input.methods.flatMap(m => m.body.get.ss.filter(s => s.contains(u)).flatMap(_ => Set(m.transitiveScopedDecls: _*))).toSet -- Set(u.transitiveScopedDecls: _*)) ++ tainted
 
         /** create graph with vars that are in scope only outside of the universal introduction code block including the qunatified variables*/
-        vars_outside_blk --= mutable.Set(u.transitiveScopedDecls: _*)
-        vars_outside_blk ++= v
-
-        val graph: Graph[LocalVarDecl, DefaultEdge] = new DefaultDirectedGraph[LocalVarDecl, DefaultEdge](classOf[DefaultEdge])
-
-        /** Map that contains all variables where the key is represents the variables final value and the value the variables initial value before a statement. */
-        var allVertices: Map[LocalVarDecl, LocalVarDecl] = Map[LocalVarDecl, LocalVarDecl]()
-
-        /** add heap variables to vertices */
-        allVertices += (graph_analysis.heap_vertex -> graph_analysis.createInitialVertex(graph_analysis.heap_vertex))
-
-        vars_outside_blk.foreach {
-          case v_decl: LocalVarDecl =>
-            val v_init = graph_analysis.createInitialVertex(v_decl)
-            allVertices += (v_decl -> v_init)
-
-            /** add all variable to the graph */
-            graph.addVertex(v_init)
-            graph.addVertex(v_decl)
-          case _ =>
-        }
-
+        val analysis: VarAnalysisGraphMap = VarAnalysisGraphMap(input, logger, reportError)
         /**
           * get all variables that are assigned to inside the block and take intersection with universal introduction
           * variables. If they are contained throw error since quantified variables should be immutable
           */
-        val written_vars: Option[Set[LocalVarDecl]] = graph_analysis.getModifiedVars(allVertices ,blk)
+        val written_vars: Set[LocalVarDecl] = analysis.getModifiedVars(blk)
         checkReassigned(written_vars, v, reportError, u)
 
-        /** execute modular flow analysis using graphs for the universal introduction statement */
-        graph_analysis.executeTaintedGraphAnalysis(tainted, blk, allVertices, u)
-
-        /**
-          * SET VERSION
-          */
-        /*
-        val tainted_decls: Set[Declaration] = tainted.map(t => t.asInstanceOf[Declaration])
-        executeTaintedSetAnalysis(tainted_decls, vars_outside_blk, blk, u, reportError)
-        */
+        val volatileVars: Set[LocalVarDecl] = analysis.getVarsFromExpr(exp1) ++ analysis.getVarsFromExpr(exp2) -- v
+        /** execute modular flow analysis using graph maps for the universal introduction statement */
+        analysis.executeTaintedGraphAnalysis(vars_outside_blk.collect({ case v:LocalVarDecl => v }), tainted, blk, volatileVars, u)
 
         /** Translate the new syntax into Viper language */
         val (new_v_map, new_exp1) = substituteWithFreshVars(v, exp1, usedNames)

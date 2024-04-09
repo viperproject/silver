@@ -53,15 +53,13 @@ trait BeforeVerifyHelper {
     * @param reportError: Method to report the error when a qunatified variable was modified
     * @param u: universal introduction statement, used for details in error message
     */
-  def checkReassigned(modified_vars: Option[Set[LocalVarDecl]], quantified_vars: Seq[LocalVarDecl], reportError: AbstractError => Unit, u: UniversalIntro): Unit = {
-    if (modified_vars.isDefined) {
-      val reassigned_vars: Set[LocalVarDecl] = modified_vars.get.intersect(quantified_vars.toSet)
+  def checkReassigned(modified_vars: Set[LocalVarDecl], quantified_vars: Seq[LocalVarDecl], reportError: AbstractError => Unit, u: UniversalIntro): Unit = {
+      val reassigned_vars: Set[LocalVarDecl] = modified_vars.intersect(quantified_vars.toSet)
       if (reassigned_vars.nonEmpty) {
         val reassigned_names: String = reassigned_vars.mkString(", ")
         val reassigned_pos: String = reassigned_vars.map(_.pos).mkString(", ")
         reportError(ConsistencyError("Universal Introduction variable(s) (" + reassigned_names + ") might have been reassigned at position(s) (" + reassigned_pos + ")", u.pos))
       }
-    }
   }
 
   private def specifiesLemma(m: Method): Boolean = (m.pres ++ m.posts).exists {
