@@ -51,7 +51,7 @@ case class VarAnalysisGraphMap(prog: Program,
         } else {
           "variables " + vars
         }
-        reportErrorWithMsg(ConsistencyError(s"Tainted $err might influence assume statement", v._1))
+        reportErrorWithMsg(ConsistencyError(s"Tainted $err (${u.pos}) might influence assume statement", v._1))
       }
     })
   }
@@ -72,11 +72,10 @@ case class VarAnalysisGraphMap(prog: Program,
       methodAssumeAnalysisMap.put(method, overApproximateAssumeInfluences(method))
     } else {
       methodAnalysisStarted.addOne(method)
-      val varDecls = method.formalReturns.toSet ++ method.formalArgs.toSet + heapVertex
-      val initialGraph = varDecls.map(k => k -> Set(k)).toMap + (heapVertex -> Set(heapVertex))
+      val initialGraph: GraphMap = (method.formalArgs.map(k => k -> Set(k)) ++ method.formalReturns.map(k => k -> Set[LocalVarDecl]())).toMap + (heapVertex -> Set(heapVertex))
 
       val stmt = Seqn(method.body.get.ss, method.body.get.scopedSeqnDeclarations.filter({
-        case l: LocalVarDecl => !varDecls.contains(l)
+        case l: LocalVarDecl => !initialGraph.contains(l)
         case _ => true
       }))(method.body.get.pos, method.body.get.info, method.body.get.errT)
 
@@ -241,7 +240,7 @@ case class VarAnalysisGraphMap(prog: Program,
     val methodArgExpMapping = (method.formalArgs zip callArgs).map(methodArg =>
       methodArg._1 -> getResolvedVarsFromExp(methodArg._2, graphMap)
     ).toMap + (heapVertex -> Set(heapVertex))
-    val retVarMapping = (callTargets.map(l => getLocalVarDeclFromLocalVar(l)) zip method.formalArgs)
+    val retVarMapping = (callTargets.map(l => getLocalVarDeclFromLocalVar(l)) zip method.formalReturns)
       .map(vars => vars._2 -> vars._1).toMap + (heapVertex -> heapVertex)
 
     if(!methodAnalysisMap.contains(method)) {
@@ -257,6 +256,11 @@ case class VarAnalysisGraphMap(prog: Program,
 
     // We set the position to the method call instead of the assume statement, so potential error are more readable.
     assumeAnalysis.addAll(methodAssumeAnalysis.map(v => pos -> (v._2.flatMap(v => methodArgExpMapping(v)) ++ pathInfluencingVars)))
+
+    logger.warn("{}", methodAnalysisMap(method))
+    logger.warn("{}", retVarMapping)
+
+    logger.warn("{}", resolvedMethodMap)
     graphMap ++ resolvedMethodMap
   }
 
