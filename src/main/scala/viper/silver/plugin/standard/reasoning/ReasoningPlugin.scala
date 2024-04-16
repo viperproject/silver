@@ -12,7 +12,7 @@ import viper.silver.ast.utility.rewriter.{StrategyBuilder, Traverse}
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.parser.FastParserCompanion.whitespace
 import viper.silver.parser._
-import viper.silver.plugin.standard.reasoning.analysis.{SetGraphComparison, VarAnalysisGraphMap}
+import viper.silver.plugin.standard.reasoning.analysis.VarAnalysisGraphMap
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier._
 
@@ -22,36 +22,33 @@ import scala.collection.mutable
 class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
                       logger: ch.qos.logback.classic.Logger,
                       @unused config: viper.silver.frontend.SilFrontendConfig,
-                      fp: FastParser) extends SilverPlugin with ParserPluginTemplate with SetGraphComparison with BeforeVerifyHelper {
+                      fp: FastParser) extends SilverPlugin with ParserPluginTemplate with BeforeVerifyHelper {
 
   import fp.{exp, ParserExtension, lineCol, _file}
   import FastParserCompanion.{ExtendedParsing, PositionParsing, reservedKw, reservedSym}
 
-
-  override def reportErrorWithMsg(error: AbstractError): Unit = reportError(error)
-
   /** Parser for existential elimination statements. */
-  def existential_elim[$: P]: P[PExistentialElim] =
+  def existentialElim[$: P]: P[PExistentialElim] =
     P((P(PObtainKeyword) ~/ fp.nonEmptyIdnTypeList(PLocalVarDecl(_)) ~/ P(PWhereKeyword) ~/ fp.trigger.rep ~ exp).map {
       case (obtainKw, varDecls, whereKw, triggers, e) => PExistentialElim(obtainKw, varDecls, whereKw, triggers, e)(_)
     }).pos
 
   /** Parser for universal introduction statements. */
-  def universal_intro[$: P]: P[PUniversalIntro] =
+  def universalIntro[$: P]: P[PUniversalIntro] =
     P((P(PProveKeyword) ~/ PKw.Forall ~/ fp.nonEmptyIdnTypeList(PLocalVarDecl(_)) ~/ fp.trigger.rep ~/ P(PAssumingKeyword) ~/ exp ~/ P(PImpliesKeyword) ~/ exp ~/ fp.stmtBlock()).map {
       case (proveKw, forallKw, varDecls, triggers, assumingKw, p, impliesKw, q, b) => PUniversalIntro(proveKw, forallKw, varDecls, triggers, assumingKw, p, impliesKw, q, b)(_)
     }).pos
 
   /** Parser for new influence by condition */
   def flowSpec[$: P]: P[PSpecification[PInfluencedKeyword.type]] =
-    P((P(PInfluencedKeyword) ~ influenced_by) map (PSpecification.apply _).tupled).pos
+    P((P(PInfluencedKeyword) ~ influencedBy) map (PSpecification.apply _).tupled).pos
 
   def heap[$: P]: P[PHeap] = P(P(PHeapKeyword) map (PHeap(_) _)).pos // note that the parentheses are not redundant
 
   def singleVar[$: P]: P[PVar] = P(fp.idnuse map (PVar(_) _)).pos // note that the parentheses are not redundant
-  def vars_and_heap[$: P]: P[Seq[PFlowVar]] = (heap | singleVar).delimited(PSym.Comma).map(_.toSeq)
+  def varsAndHeap[$: P]: P[Seq[PFlowVar]] = (heap | singleVar).delimited(PSym.Comma).map(_.toSeq)
 
-  def influenced_by[$: P]: P[PFlowAnnotation] = P(((heap | singleVar) ~ P(PByKeyword) ~/ vars_and_heap.braces) map {
+  def influencedBy[$: P]: P[PFlowAnnotation] = P(((heap | singleVar) ~ P(PByKeyword) ~/ varsAndHeap.braces) map {
     case (v, byKw, groupedVarList) => PFlowAnnotation(v, byKw, groupedVarList)(_)
   }).pos
 
@@ -95,8 +92,8 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
     ParserExtension.addNewKeywords(Set(POldCallKeyword))
 
     /** adding existential elimination and universal introduction to the parser */
-    ParserExtension.addNewStmtAtEnd(existential_elim(_))
-    ParserExtension.addNewStmtAtEnd(universal_intro(_))
+    ParserExtension.addNewStmtAtEnd(existentialElim(_))
+    ParserExtension.addNewStmtAtEnd(universalIntro(_))
 
     /** add influenced by flow annotation to as a postcondition */
     ParserExtension.addNewPostCondition(flowSpec(_))
@@ -129,30 +126,18 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
 
 
   override def beforeVerify(input: Program): Program = {
-
-    /** for evaluation purposes */
-    //val begin_time = System.currentTimeMillis()
-
     val usedNames: mutable.Set[String] = collection.mutable.Set(input.transitiveScopedDecls.map(_.name): _*)
 
     /** check that lemma terminates (has a decreases clause) and that it is pure */
     checkLemma(input, reportError)
-
-    /** check that influenced by expressions are exact or overapproximate the body of the method. */
-    checkInfluencedBy(input, reportError)
-
-
-    /** method call to compare the analysis of the set-approach vs. the graph approach */
-    //compareGraphSet(input, reportError)
-
+    /** create graph with vars that are in scope only outside of the universal introduction code block including the qunatified variables */
+    val analysis: VarAnalysisGraphMap = VarAnalysisGraphMap(input, logger, reportError)
 
     val newAst: Program = ViperStrategy.Slim({
 
       /** remove the influenced by postconditions.
         * remove isLemma */
       case m: Method =>
-
-
         var postconds: Seq[Exp] = Seq()
         m.posts.foreach {
           case _: FlowAnnotation =>
@@ -227,7 +212,6 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
           rTov += (r -> new_v)
         }
 
-
         Seqn(
           new_pres.map(p =>
             Assert(LabelledOld(p, lbl)(p.pos))(o.pos)
@@ -245,7 +229,6 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
           ),
           new_v_decls
         )(o.pos)
-
 
       case e@ExistentialElim(v, trigs, exp) =>
         val (new_v_map, new_exp) = substituteWithFreshVars(v, exp, usedNames)
@@ -266,28 +249,26 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
       case u@UniversalIntro(v, trigs, exp1, exp2, blk) =>
         val boolvar = LocalVarDecl(uniqueName("b", usedNames), Bool)(exp1.pos)
 
-        /** Get all variables that are in scope in the current method but not inside the block */
+        /** Get all variables that are in scope in the current method */
         val tainted: Set[LocalVarDecl] = v.toSet
-        val vars_outside_blk = (input.methods.flatMap(m => m.body.get.ss.filter(s => s.contains(u)).flatMap(_ => Set(m.transitiveScopedDecls: _*))).toSet -- Set(u.transitiveScopedDecls: _*)) ++ tainted
-
-        /** create graph with vars that are in scope only outside of the universal introduction code block including the qunatified variables*/
-        val analysis: VarAnalysisGraphMap = VarAnalysisGraphMap(input, logger, reportError)
+        val varsOutside = (input.methods.flatMap(m => m.body.get.ss.filter(s => s.contains(u)).flatMap(_ => Set(m.transitiveScopedDecls: _*))).toSet -- Set(u.transitiveScopedDecls: _*)) ++ tainted
         /**
           * get all variables that are assigned to inside the block and take intersection with universal introduction
           * variables. If they are contained throw error since quantified variables should be immutable
           */
-        val written_vars: Set[LocalVarDecl] = analysis.getModifiedVars(blk)
-        checkReassigned(written_vars, v, reportError, u)
+        val writtenVars: Set[LocalVarDecl] = analysis.getModifiedVars(blk)
+        checkReassigned(writtenVars, v, reportError, u)
 
-        val volatileVars: Set[LocalVarDecl] = analysis.getVarsFromExpr(exp1) ++ analysis.getVarsFromExpr(exp2) -- v
+        /** Contains all variables that must not be tainted */
+        val volatileVars: Set[LocalVarDecl] = analysis.getLocalVarDeclsFromExpr(exp1) ++ analysis.getLocalVarDeclsFromExpr(exp2) -- v
         /** execute modular flow analysis using graph maps for the universal introduction statement */
-        analysis.executeTaintedGraphAnalysis(vars_outside_blk.collect({ case v:LocalVarDecl => v }), tainted, blk, volatileVars, u)
+        analysis.executeTaintedGraphAnalysis(varsOutside.collect({ case v:LocalVarDecl => v }), tainted, blk, volatileVars, u)
 
         /** Translate the new syntax into Viper language */
-        val (new_v_map, new_exp1) = substituteWithFreshVars(v, exp1, usedNames)
-        val new_exp2 = applySubstitution(new_v_map, exp2)
-        val arb_vars = new_v_map.map(vars => vars._2)
-        val new_trigs = trigs.map(t => Trigger(t.exps.map(e1 => applySubstitution(new_v_map, e1)))(t.pos))
+        val (newVarMap, newExp1) = substituteWithFreshVars(v, exp1, usedNames)
+        val newExp2 = applySubstitution(newVarMap, exp2)
+        val quantifiedVars = newVarMap.map(vars => vars._2)
+        val newTrigs = trigs.map(t => Trigger(t.exps.map(e1 => applySubstitution(newVarMap, e1)))(t.pos))
         val lbl = uniqueName("l", usedNames)
 
         Seqn(
@@ -304,19 +285,13 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
             )(exp1.pos),
             blk,
             Assert(Implies(boolvar.localVar, exp2)(exp2.pos))(exp2.pos),
-            Inhale(Forall(arb_vars, new_trigs, Implies(LabelledOld(new_exp1, lbl)(exp2.pos), new_exp2)(exp2.pos))(exp2.pos))(exp2.pos)
+            Inhale(Forall(quantifiedVars, newTrigs, Implies(LabelledOld(newExp1, lbl)(exp2.pos), newExp2)(exp2.pos))(exp2.pos))(exp2.pos)
           ),
           Seq(boolvar) ++ v
         )(exp1.pos)
 
     }, Traverse.TopDown).execute[Program](input)
-    /** for evaluation purposes */
-    /*
-    val end_time = System.currentTimeMillis()
-    println("--------------------------------------------------------------------------")
-    println("beforeVerify time: " + (end_time - begin_time) + "ms")
-    println("--------------------------------------------------------------------------")
-    */
+
     newAst
   }
 }

@@ -6,15 +6,13 @@
 
 package viper.silver.plugin.standard.reasoning
 
-import org.jgrapht.graph.DefaultEdge
+
 import viper.silver.ast.utility.Expressions
-import viper.silver.ast.{Apply, Exhale, Exp, FieldAssign, Fold, Inhale, LocalVar, LocalVarDecl, Method, MethodCall, Package, Position, Program, Seqn, Stmt, Unfold}
-import viper.silver.plugin.standard.reasoning.analysis.VarAnalysisGraph
+import viper.silver.ast.{Apply, Exhale, Exp, FieldAssign, Fold, Inhale, LocalVarDecl, Method, MethodCall, Package, Program, Seqn, Stmt, Unfold}
 import viper.silver.plugin.standard.termination.{DecreasesSpecification, DecreasesStar, DecreasesTuple, DecreasesWildcard}
 import viper.silver.verifier.{AbstractError, ConsistencyError}
 
 import scala.collection.mutable
-import scala.jdk.CollectionConverters.CollectionHasAsScala
 
 trait BeforeVerifyHelper {
   /** methods to rename variables for the encoding of the new syntax */
@@ -151,105 +149,5 @@ trait BeforeVerifyHelper {
       case _ =>
         pure
     }
-  }
-
-  /** check that influenced by expressions are exact or overapproximate the body of the method. */
-  def checkInfluencedBy(input: Program, reportError: AbstractError => Unit): Unit = {
-    val body_graph_analysis: VarAnalysisGraph = VarAnalysisGraph(input, reportError)
-    input.methods.foreach(method => {
-      var return_vars = method.formalReturns.toSet ++ Seq(body_graph_analysis.heap_vertex)
-      val arg_vars = method.formalArgs.toSet ++ Seq(body_graph_analysis.heap_vertex)
-
-      /** helper variable for error message, maps local variable to its position */
-      var influenced_by_pos: Map[LocalVarDecl, Position] = Map()
-
-
-      val init_args_decl = method.formalArgs.map(a => body_graph_analysis.createInitialVertex(a))
-      val init_rets_decl = method.formalReturns.map(r => body_graph_analysis.createInitialVertex(r))
-      val method_vars: Map[LocalVarDecl, LocalVarDecl] = ((method.formalArgs zip init_args_decl) ++ (method.formalReturns zip init_rets_decl) ++ Seq((body_graph_analysis.heap_vertex, body_graph_analysis.createInitialVertex(body_graph_analysis.heap_vertex)))).toMap
-      val empty_body_graph = body_graph_analysis.createEmptyGraph(method_vars)
-      val heap_vert = LocalVarDecl(body_graph_analysis.heap_vertex.name, body_graph_analysis.heap_vertex.typ)()
-
-      val influenced_graph = body_graph_analysis.copyGraph(empty_body_graph)
-      var influenced_exists: Boolean = false
-      /** iterate through method postconditions to find flow annotations */
-      method.posts.foreach {
-        case v@FlowAnnotation(target, args) =>
-          influenced_exists = true
-
-          /** create target variable of flowannotation based on whether it is the heap or another return variable */
-          val target_var: LocalVar = target match {
-            case value: Var => value.decl
-            case _ => body_graph_analysis.heap_vertex.localVar
-          }
-          val target_decl: LocalVarDecl = LocalVarDecl(target_var.name, target_var.typ)(v.pos)
-
-          /** check whether the target variable is in fact a return variable */
-          if (!return_vars.contains(target_decl)) {
-            reportError(ConsistencyError(s"Only return variables can be influenced and only one influenced by expression per return variable can exist. ${target_decl.name} may not be a return variable or might be used several times.", v.pos))
-          }
-          /** keep track of which return variables have an influenced by annotation */
-          return_vars -= target_decl
-          influenced_by_pos += (target_decl -> v.pos)
-
-
-          args.foreach(arg => {
-
-            /** decide for each variable in the set of variables of the flow annotation whether they represent a normal variable or the heap */
-            val arg_var: LocalVar = arg match {
-              case value: Var => value.decl
-              case _ => body_graph_analysis.heap_vertex.localVar
-            }
-            val arg_decl: LocalVarDecl = LocalVarDecl(arg_var.name, arg_var.typ)(arg_var.pos)
-
-            /** check that each variable in the set is a method argument */
-            if (!arg_vars.contains(arg_decl)) {
-              reportError(ConsistencyError(s"Only argument variables can be influencing the return variable. ${arg_decl.name} may not be an argument variable.", v.pos))
-            }
-
-            /** add corresponding edge from method argument to the target variable */
-            influenced_graph.addEdge(method_vars(arg_decl), target_decl, new DefaultEdge)
-          })
-        case _ => ()
-
-      }
-      /** for all remaining variables that didn't have an influenced by annotation create an edge from every method argument to the return variable
-        * to overapproximate the information flow
-        */
-      return_vars.foreach(rv => {
-        (method.formalArgs ++ Seq(body_graph_analysis.heap_vertex)).foreach(a => {
-          if (!influenced_graph.containsVertex(method_vars(a))) {
-            influenced_graph.addVertex(method_vars(a))
-          }
-          if (!influenced_graph.containsVertex(rv)) {
-            influenced_graph.addVertex(rv)
-          }
-          influenced_graph.addEdge(method_vars(a), rv, new DefaultEdge)
-        })
-      })
-
-      /** for evaluation purposes if graph of method body should be created even though there is no influenced by annotation */
-      //val body_graph = body_graph_analysis.compute_graph(method.body.getOrElse(Seqn(Seq(), Seq())()), method_vars)
-
-      /** if influenced by annotation exists create graph of the method body and check whether the influenced by expression is correct */
-      if (influenced_exists) {
-        val body_graph = body_graph_analysis.compute_graph(method.body.getOrElse(Seqn(Seq(), Seq())()), method_vars)
-
-        /** ignore the edges from the .init_ret to the ret vertex since before the method there is no init value of a return variable. */
-        method.formalReturns.foreach(r => {
-          body_graph.removeAllEdges(method_vars(r), r)
-        })
-
-        /** the set of all incoming edges to the return variables of the method body graph should be a subset of the set of the incoming edges of the influenced by graph */
-        (method.formalReturns ++ Seq(heap_vert)).foreach(r => {
-          body_graph.incomingEdgesOf(r).forEach(e => {
-            if (!influenced_graph.containsEdge(body_graph.getEdgeSource(e), body_graph.getEdgeTarget(e))) {
-              val ret_sources: String = body_graph.incomingEdgesOf(r).asScala.map(e => body_graph.getEdgeSource(e).name).toList.sortWith(_ < _).mkString(", ").replace(".init_", "").replace(".", "")
-              reportError(ConsistencyError("influenced by expression may be incorrect. Possible influenced by expression: \n" + "influenced " + r.name.replace(".", "") + " by {" + ret_sources + "}", influenced_by_pos(r)))
-            }
-          })
-        })
-      }
-    })
   }
 }
