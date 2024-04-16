@@ -1,0 +1,195 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+function P(x: Int) : Bool {
+    x == 0
+}
+
+function Q(x: Int) : Bool {
+    x == 0
+}
+
+method assumeF()
+{
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) {
+        //:: ExpectedOutput(consistency.error)
+        assume(x==0)
+
+        //:: ExpectedOutput(consistency.error)
+        assume(P(x) && Q(10))
+        if(x==0) {
+            //:: ExpectedOutput(consistency.error)
+            assume(true)
+        }
+        while(x > 0) {
+            //:: ExpectedOutput(consistency.error)
+            assume(true)
+        }
+    }
+}
+
+method assumeAssignF()
+{
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) {
+        var y: Int := x
+        //:: ExpectedOutput(consistency.error)
+        assume(y==0)
+
+        if(y==0) {
+            //:: ExpectedOutput(consistency.error)
+            assume(true)
+        }
+        while(y > 0) {
+            //:: ExpectedOutput(consistency.error)
+            assume(true)
+        }
+    }
+}
+
+method assumeMultipleF()
+{
+    prove forall x: Int, y: Int {P(x), P(y)} assuming P(x) && P(y) implies Q(x) && Q(y) {
+        //:: ExpectedOutput(consistency.error)
+        assume(y==x)
+
+        if(y==x) {
+            //:: ExpectedOutput(consistency.error)
+            assume(true)
+        }
+        while(y > x) {
+            //:: ExpectedOutput(consistency.error)
+            assume(true)
+        }
+    }
+}
+
+
+method assumeMultipleNestedF()
+{
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) {
+        prove forall y: Int {P(y)} assuming P(y) implies Q(y) {
+            //:: ExpectedOutput(consistency.error)
+            assume(y==x)
+
+            if(y==x) {
+                //:: ExpectedOutput(consistency.error)
+                assume(true)
+            }
+            while(y > x) {
+                //:: ExpectedOutput(consistency.error)
+                assume(true)
+            }
+        }
+    }
+}
+
+method assumeS()
+{
+    var y: Int := 0
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) {
+        assume(y==0)
+        if(y==0) {
+            assume(true)
+        }
+        while(y > 0) {
+            assume(true)
+        }
+    }
+}
+
+method assumeMethodCallF()
+{
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) {
+        //:: ExpectedOutput(consistency.error)
+        assumeSomething(x, x)
+        if(x > 0) {
+            //:: ExpectedOutput(consistency.error)
+            assumeSomething(10, 0)
+        }
+        while(x > 0) {
+            //:: ExpectedOutput(consistency.error)
+            assumeSomething(10, 0)
+        }
+    }
+}
+
+method assumeMethodCallTaintedVarF()
+{
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) {
+        var y: Int := x + 1
+        //:: ExpectedOutput(consistency.error)
+        assumeSomething(y, y)
+        if(y > 0) {
+            //:: ExpectedOutput(consistency.error)
+            assumeSomething(10, 0)
+        }
+        while(y > 0) {
+            //:: ExpectedOutput(consistency.error)
+            assumeSomething(10, 0)
+        }
+    }
+}
+
+method assumeRecMethodCallF()
+{
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) {
+        //:: ExpectedOutput(consistency.error)
+        assumeRec1(x)
+
+        if(x > 0) {
+            //:: ExpectedOutput(consistency.error)
+            assumeRec1(10)
+        }
+        while(x > 0) {
+            //:: ExpectedOutput(consistency.error)
+            assumeRec1(10)
+        }
+    }
+}
+
+method assumeDeepRecMethodCallF()
+{
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) {
+        //:: ExpectedOutput(consistency.error)
+        assumeRec2(x)
+        if(x > 0) {
+            //:: ExpectedOutput(consistency.error)
+            assumeRec2(10)
+        }
+        while(x > 0) {
+            //:: ExpectedOutput(consistency.error)
+            assumeRec2(10)
+        }
+    }
+}
+
+method assumeDeepRecMethodCall1S()
+{
+    var y: Int := 0
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) {
+        assumeRec2(y)
+    }
+}
+
+method assumeRec1(x: Int) {
+    assumeRec1(x - 1)
+    assumeSomething(x, x)
+}
+
+method assumeRec2(x: Int) {
+    assumeRec3(x - 1)
+}
+
+method assumeRec3(x: Int) {
+    assumeRec4(x - 1)
+}
+
+method assumeRec4(x: Int) {
+    assumeRec2(x - 1)
+    assumeSomething(x, x)
+}
+
+method assumeSomething(x: Int, y: Int)
+{
+    assume(x >= y)
+}

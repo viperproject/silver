@@ -1,7 +1,146 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
+function P(x: Int) : Bool {
+    x == 0
+}
+
+function Q(x: Int) : Bool {
+    x == 0
+}
+
+method example1(x:Int, y:Int) returns (res: Int)
+influenced res by {x, y}
+{
+    res := x-y
+}
+
+method example2(x:Int, y:Int) returns (res: Int)
+{
+    res := 0
+}
+
+method mMethodCallNOK1()
+{
+    var z: Int
+    //:: ExpectedOutput(consistency.error)
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) && z == 0 {
+        z := example1(x,x)
+    }
+}
+
+method mMethodCallNOK2()
+{
+    var z: Int
+    //:: ExpectedOutput(consistency.error)
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) && z == 0 {
+        z := example2(x,x)
+    }
+}
+
+//code with influenced by statement
+method example3(x:Int, y:Int) returns (res: Int)
+influenced res by {}
+{
+    res := 0
+}
+
+method mMethodCallOK1()
+{
+    var z: Int
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) && z == 0 {
+        var y:Int := 3
+        z := example3(y,y)
+    }
+}
+
+//method with several return values
+method exampleMult(x:Int, y:Int) returns (diff:Int, id:Int)
+influenced diff by {x, y}
+influenced id by {x}
+{
+    diff := x-y
+    id := x
+}
+
+method mMethodCallNOK3()
+{
+    var z: Int
+    var w: Int
+    //:: ExpectedOutput(consistency.error)
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) && z == x - 3 && w == x {
+        var y: Int := 3
+        z,w := exampleMult(y,x)
+    }
+}
+
+method exampleIncomplete(b:Bool,c:Int) returns (z:Int, w:Int)
+influenced w by {b}
+{
+    z := 3
+    if (b) {
+        w := w + 1
+    }
+}
+
+method mMethodCallNOK4()
+{
+    var y:Int
+    var v:Int
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) && y == 3 && v == x + 1 {
+        var bool:Bool := true
+        y,v := exampleIncomplete(bool,x)
+    }
+}
+
+method exampleCompleteInfluence(b:Bool,c:Int) returns (z:Int, w:Int)
+influenced w by {b}
+influenced z by {}
+{
+    z := 3
+    if (b) {
+        w := 13
+    }
+}
+
+method mMethodCallOK4()
+{
+    var y:Int
+    var v:Int
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) && y == 3 && v == x + 1 {
+        var bool:Bool := true
+        y,v := exampleCompleteInfluence(bool,x)
+    }
+}
+
+
+
 field f: Int
+
+method test()
+{
+    var r: Ref
+    var p: Perm
+    var i: Int
+    var j: Int
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) {
+        r := test1(r)
+        r := test2(r)
+        p := test3(p)
+        p := test4(p)
+        j, i := test5(i, j)
+        j, i := test5_equivalent(i, j)
+        j, i := test5_caller(i, j)
+        j, i := test6(i, j)
+        j, i := test7(i, j)
+        j, i := caller_test6(i, j, r)
+        j, i := caller_test6(i, j, r)
+        caller_caller_test6(i, j, r)
+        test8(r, j)
+        test9(r, i)
+    }
+}
+
 
 // Should be accepted
 method test1(x: Ref) returns (z: Ref)

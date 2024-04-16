@@ -1,0 +1,66 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+function P(x: Int) : Bool {
+    x == 0
+}
+
+function Q(x: Int) : Bool {
+    x == 0
+}
+
+method mInhalingOK()
+{
+    var m: Int := 0
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) {
+        var y: Int := 0
+        inhale (y==0)
+    }
+}
+
+field f: Int
+
+method mInhaleOK2(y: Ref)
+{
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) {
+        inhale (acc(y.f))
+    }
+}
+
+method mExhaleOK(y:Ref)
+requires acc(y.f)
+{
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) {
+        exhale acc(y.f)
+    }
+}
+
+
+method mFieldAssignNOK1(y:Ref)
+requires acc(y.f)
+{
+    //:: ExpectedOutput(consistency.error)
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) && y.f == x {
+        y.f := x
+    }
+}
+
+method mFieldAssignNOK2(y:Ref)
+{
+    var w: Int
+    //:: ExpectedOutput(consistency.error)
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) && w == x {
+        var z: Int := x
+        w := z
+    }
+}
+
+
+method mFieldAssignOK1(y:Ref)
+requires acc(y.f)
+{
+    var z: Int := 0
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) && z >= 0 || z < 0 {
+        z := y.f
+    }
+}

@@ -1,0 +1,88 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+function P(x: Int) : Bool {
+    x == 0
+}
+
+function Q(x: Int) : Bool {
+    x == 0
+}
+
+method mWhileCnd()
+{
+    var z: Int := 0
+    //:: ExpectedOutput(consistency.error)
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) && z >= 0 {
+            while(x>5) {
+                z := z+3
+            }
+        }
+}
+
+method mWhileOK()
+{
+    var z: Int := 0
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) && z >= 0 {
+        var y: Int := 0
+        while(y<5) {
+            z := z+3
+            y := y+1
+        }
+    }
+}
+
+method mWhileOK2()
+{
+    var z: Int := 0
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) && z == 0 {
+        var y: Int := 0
+        while(y<100) { // will never be tainted as the variables are local
+            var x4: Int := 0
+            var x3: Int := 0
+            var x2: Int := 0
+            var x1: Int := 0
+            z := x4
+            x4 := x3
+            x3 := x2
+            x2 := x1
+            x1 := x
+            y := y+1
+        }
+    }
+}
+
+method mWhileNOK()
+{
+    var z: Int := 0
+    //:: ExpectedOutput(consistency.error)
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) && z == x {
+        var y: Int := 0
+        var x2: Int := 0
+        var x1: Int := 0
+
+        while(y<100) { // will be tainted after 3 iterations
+            z := x2
+            x2 := x1
+            x1 := x
+            y := y+1
+        }
+    }
+}
+
+method mWhileNOK2()
+{
+    var z: Int := 0
+    //:: ExpectedOutput(consistency.error)
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) && z == 0 {
+        var y: Int := x
+        var x2: Int := 0
+        var x1: Int := 0
+
+        while(y<100) { // will always be tainted
+            z := x2
+            x2 := x1
+            y := y+1
+        }
+    }
+}
