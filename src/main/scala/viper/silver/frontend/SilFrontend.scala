@@ -269,16 +269,36 @@ trait SilFrontend extends DefaultFrontend {
     _verificationResult = _verificationResult.map(plugins.mapVerificationResult(_program.get, _))
   }
 
+  /**
+    * Finish verification and report results via the reporter. This method is intended to be called only when
+    * Viper is called as a standalone application (i.e., not from a frontend).
+    */
   def finish(): Unit = {
     val tRes = result.transformedResult()
     val res = plugins.beforeFinish(tRes)
-    _verificationResult = Some(res)
-    res match {
+    val filteredRes = res match {
+      case Success => res
+      case Failure(errors) =>
+        // Remove duplicate errors
+        Failure(errors.distinctBy(failureFilterAndGroupingCriterion))
+    }
+    _verificationResult = Some(filteredRes)
+    filteredRes match {
       case Success =>
         reporter report OverallSuccessMessage(verifier.name, getTime)
       case f: Failure =>
         reporter report OverallFailureMessage(verifier.name, getTime, f)
     }
+  }
+
+  private def failureFilterAndGroupingCriterion(e: AbstractError): String = {
+    // apply transformers if available:
+    val transformedError = e match {
+      case e: AbstractVerificationError => e.transformedError()
+      case e => e
+    }
+    // create a string that identifies the given failure:
+    transformedError.readableMessage
   }
 
   protected def parseCommandLine(args: Seq[String]): Unit = {
