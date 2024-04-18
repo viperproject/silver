@@ -293,11 +293,6 @@ case class VarAnalysisGraphMap(prog: Program,
 
     // We set the position to the method call instead of the assume statement, so potential error are more readable.
     assumeAnalysis.addAll(methodAssumeAnalysis.map(v => pos -> (v._2.flatMap(v => methodArgExpMapping(v)) ++ pathInfluencingVars)))
-
-    logger.warn("{}", methodAnalysisMap(method))
-    logger.warn("{}", retVarMapping)
-
-    logger.warn("{}", resolvedMethodMap)
     graphMap ++ resolvedMethodMap
   }
 
