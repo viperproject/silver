@@ -183,7 +183,6 @@ case class VarAnalysisGraphMap(prog: Program,
         val graph = s match {
           case Seqn(ss, _) =>
             ss.foldLeft(scopedGraph) { (graph, subStmt) => computeInfluenceMap(subStmt, graph, pathInfluencingVariables) }
-            // TODO Why is OldCall a Scope statement?
           case o: OldCall =>
             val met = prog.findMethod(o.methodName)
             computeMethodInfluenceMap(graphMap, met, o.args, o.rets, pathInfluencingVariables, o.pos)
