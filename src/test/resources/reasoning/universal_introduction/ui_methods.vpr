@@ -32,7 +32,7 @@ method mMethodCallNOK1()
 method mMethodCallNOK2()
 {
     var z: Int
-    //:: ExpectedOutput(consistency.error)
+    // This should be OK, since the return value in example2 does not depend on its arguments
     prove forall x:Int {P(x)} assuming P(x) implies Q(x) && z == 0 {
         z := example2(x,x)
     }
@@ -179,22 +179,21 @@ method test5(x: Int, y: Int) returns (a: Int, b: Int)
     b := x + y
 }
 
+// Both specifications are over approximated, the heap is not needed
 method test5_equivalent(x: Int, y: Int) returns (a: Int, b: Int)
+//:: ExpectedOutput(consistency.error)
     influenced a by {y, x, heap}
+//:: ExpectedOutput(consistency.error)
     influenced b by {x, heap, y}
 {
     a := x + y
     b := x + y
 }
 
-// The annotation "influenced heap by {heap}" should be rejected,
-// since test5 has no flow-annotation for the heap, thus it should be
-// considered as influenced heap by {heap, x, y}
 method test5_caller(x: Int, y: Int) returns (a: Int, b: Int)
-//:: ExpectedOutput(consistency.error)
     influenced heap by {heap}
-    influenced a by {y, x, heap}
-    influenced b by {x, heap, y}
+    influenced a by {y, x}
+    influenced b by {x, y}
 {
     a, b := test5(x, y)
 }

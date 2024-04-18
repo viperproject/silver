@@ -11,6 +11,7 @@ import viper.silver.ast.utility.Expressions
 import viper.silver.ast.{Apply, Exhale, Exp, FieldAssign, Fold, Inhale, LocalVarDecl, Method, MethodCall, Package, Program, Seqn, Stmt, Unfold}
 import viper.silver.plugin.standard.termination.{DecreasesSpecification, DecreasesStar, DecreasesTuple, DecreasesWildcard}
 import viper.silver.verifier.{AbstractError, ConsistencyError}
+import viper.silver.plugin.standard.reasoning.analysis.AnalysisUtils
 
 import scala.collection.mutable
 
@@ -149,5 +150,36 @@ trait BeforeVerifyHelper {
       case _ =>
         pure
     }
+  }
+
+  /** checks that influences by annotations are used correctly. */
+  def checkInfluencedBy(input: Program, reportError: AbstractError => Unit): Unit = {
+    input.methods.foreach(method => {
+      val argVars = method.formalArgs ++ AnalysisUtils.heapVertex
+      val retVars = method.formalReturns ++ AnalysisUtils.heapVertex
+
+      val seenVars: mutable.Set[LocalVarDecl] = mutable.Set()
+      /** iterate through method postconditions to find flow annotations */
+      method.posts.foreach {
+        case v@FlowAnnotation(target, args) =>
+          val targetVarDecl = AnalysisUtils.getLocalVarDeclFromFlowVar(target)
+
+          if (!retVars.contains(targetVarDecl)) {
+            reportError(ConsistencyError(s"Only return variables can be influenced. ${targetVarDecl.name} is not be a return variable.", v.pos))
+          }
+          if (seenVars.contains(targetVarDecl)) {
+            reportError(ConsistencyError(s"Only one influenced by expression per return variable can exist. ${targetVarDecl.name} is used several times.", v.pos))
+          }
+          seenVars.add(targetVarDecl)
+
+          args.foreach(arg => {
+            val argVarDecl = AnalysisUtils.getLocalVarDeclFromFlowVar(arg)
+            if (!argVars.contains(argVarDecl)) {
+              reportError(ConsistencyError(s"Only method arguments can influence a return variable. ${argVarDecl.name} is not be a method argument.", v.pos))
+            }
+          })
+        case _ => ()
+      }
+    })
   }
 }

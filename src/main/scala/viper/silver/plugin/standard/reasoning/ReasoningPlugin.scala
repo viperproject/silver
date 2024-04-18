@@ -12,7 +12,7 @@ import viper.silver.ast.utility.rewriter.{StrategyBuilder, Traverse}
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.parser.FastParserCompanion.whitespace
 import viper.silver.parser._
-import viper.silver.plugin.standard.reasoning.analysis.VarAnalysisGraphMap
+import viper.silver.plugin.standard.reasoning.analysis.{AnalysisUtils, VarAnalysisGraphMap}
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier._
 
@@ -256,8 +256,9 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
           * get all variables that are assigned to inside the block and take intersection with universal introduction
           * variables. If they are contained throw error since quantified variables should be immutable
           */
-        val writtenVars: Set[LocalVarDecl] = analysis.getModifiedVars(blk)
+        val writtenVars: Set[LocalVarDecl] = AnalysisUtils.getModifiedVars(blk)
         checkReassigned(writtenVars, v, reportError, u)
+        checkInfluencedBy(input, reportError)
 
         /** Contains all variables that must not be tainted */
         val volatileVars: Set[LocalVarDecl] = analysis.getLocalVarDeclsFromExpr(exp1) ++ analysis.getLocalVarDeclsFromExpr(exp2) -- v
