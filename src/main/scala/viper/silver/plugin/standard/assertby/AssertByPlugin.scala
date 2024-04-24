@@ -22,6 +22,7 @@ class AssertByPlugin(@unused reporter: viper.silver.reporter.Reporter,
    * Replace assert ... by statements from the AST.
    */
   override def beforeVerify(input: Program): Program = {
+    println("HEREHERE")
     val transformedMethods = input.methods.map(method => {
       var assertBysInMethod = 0
       ViperStrategy.Slim({
