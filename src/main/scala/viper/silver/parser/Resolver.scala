@@ -227,10 +227,11 @@ case class TypeChecker(names: NameAnalyser) {
       case PExhale(_, e) =>
         check(e, Impure)
       case PAssert(_, e, by) =>
-        check(e, Impure)
         by match {
-          case Some((_, body)) => check(body)
-          case None =>
+          case Some((_, body)) =>
+            check(e, Bool)
+            check(body)
+          case None => check(e, Impure)
         }
       case PInhale(_, e) =>
         check(e, Impure)
