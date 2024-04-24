@@ -219,8 +219,8 @@ case class Translator(program: PProgram) {
         Assume(exp(e))(pos, info)
       case PExhale(_, e) =>
         Exhale(exp(e))(pos, info)
-      case PAssert(_, e) =>
-        Assert(exp(e))(pos, info)
+      case PAssert(_, e, by) =>
+        AssertBy(exp(e), by.map(tup => stmt(tup._2).asInstanceOf[Seqn]))(pos, info)
       case PLabel(_, name, invs) =>
         Label(name.name, invs.toSeq map (_.e) map exp)(pos, info)
       case PGoto(_, label) =>

@@ -226,8 +226,12 @@ case class TypeChecker(names: NameAnalyser) {
         checkMagicWand(e)
       case PExhale(_, e) =>
         check(e, Impure)
-      case PAssert(_, e) =>
+      case PAssert(_, e, by) =>
         check(e, Impure)
+        by match {
+          case Some((_, body)) => check(body)
+          case None =>
+        }
       case PInhale(_, e) =>
         check(e, Impure)
       case PAssume(_, e) =>

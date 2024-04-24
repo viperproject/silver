@@ -1427,7 +1427,7 @@ case class PApplyWand(apply: PKw.Apply, e: PExp)(val pos: (Position, Position)) 
 
 case class PExhale(exhale: PKw.Exhale, e: PExp)(val pos: (Position, Position)) extends PStmt
 
-case class PAssert(assert: PKw.Assert, e: PExp)(val pos: (Position, Position)) extends PStmt
+case class PAssert(assert: PKw.Assert, e: PExp, by: Option[(PKw.By, PSeqn)])(val pos: (Position, Position)) extends PStmt
 
 case class PAssume(assume: PKw.Assume, e: PExp)(val pos: (Position, Position)) extends PStmt
 

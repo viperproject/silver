@@ -662,6 +662,10 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       case Assume(e) => text("assume") <+> nest(defaultIndent, show(e))
       case Exhale(e) => text("exhale") <+> nest(defaultIndent, show(e))
       case Assert(e) => text("assert") <+> nest(defaultIndent, show(e))
+      case AssertBy(e, by) => text("assert") <+> nest(defaultIndent, show(e)) <> (by match {
+        case None => ""
+        case Some(body) => text("by") <+> showStmt(body)
+      })
       case MethodCall(mname, args, targets) =>
         val call = text(mname) <> nest(defaultIndent, parens(ssep(args map show, group(char(',') <> line))))
         targets match {

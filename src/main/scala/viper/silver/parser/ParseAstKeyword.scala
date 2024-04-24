@@ -209,6 +209,8 @@ object PKw {
   type Apply = PReserved[Apply.type]
   case object Assert extends PKw("assert") with PKeywordStmt
   type Assert = PReserved[Assert.type]
+  case object By extends PKw("by") with PKeywordStmt
+  type By = PReserved[By.type]
   case object Assume extends PKw("assume") with PKeywordStmt
   type Assume = PReserved[Assume.type]
   case object Var extends PKw("var") with PKeywordStmt

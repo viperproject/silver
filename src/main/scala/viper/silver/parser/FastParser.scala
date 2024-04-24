@@ -774,7 +774,7 @@ class FastParser {
 
   def exhale[$: P]: P[PKw.Exhale => Pos => PExhale] = P(exp map { e => PExhale(_, e) })
 
-  def assertStmt[$: P]: P[PKw.Assert => Pos => PAssert] = P(exp map { e => PAssert(_, e) })
+  def assertStmt[$: P]: P[PKw.Assert => Pos => PAssert] = P((exp ~~~ (P(PKw.By) ~ stmtBlock()).lw.?) map { case (e, by) => PAssert(_, e, by) })
 
   def inhale[$: P]: P[PKw.Inhale => Pos => PInhale] = P(exp map { e => PInhale(_, e) })
 

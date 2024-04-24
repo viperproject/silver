@@ -22,6 +22,8 @@ object CfgTest {
     val string = Source.fromInputStream(Files.newInputStream(file)).mkString
 
     val parsed = parse(string, file).get
+    println(parsed)
+    println(parsed.pretty)
     val resolver = Resolver(parsed)
     val resolved = resolver.run.get
     val translator = Translator(resolved)
