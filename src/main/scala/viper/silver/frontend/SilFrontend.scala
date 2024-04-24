@@ -97,6 +97,7 @@ trait SilFrontend extends DefaultFrontend {
   def config: SilFrontendConfig = _config
 
   private val refutePlugin: String = "viper.silver.plugin.standard.refute.RefutePlugin"
+  private val assertByPlugin: String = "viper.silver.plugin.standard.assertby.AssertByPlugin"
   private val smokeDetectionPlugin: String = "viper.silver.plugin.standard.smoke.SmokeDetectionPlugin"
 
   /**
@@ -107,7 +108,8 @@ trait SilFrontend extends DefaultFrontend {
     "viper.silver.plugin.standard.adt.AdtPlugin",
     "viper.silver.plugin.standard.termination.TerminationPlugin",
     "viper.silver.plugin.standard.predicateinstance.PredicateInstancePlugin",
-    refutePlugin
+    refutePlugin,
+    assertByPlugin
   )
 
   /** For testing of plugin import feature */
