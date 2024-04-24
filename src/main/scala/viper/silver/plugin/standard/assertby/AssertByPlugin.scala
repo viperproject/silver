@@ -21,8 +21,7 @@ class AssertByPlugin(@unused reporter: viper.silver.reporter.Reporter,
   /**
    * Replace assert ... by statements from the AST.
    */
-/*  override def beforeMethodFilter(input: Program): Program = {
-    println("HEREHERE")
+  override def beforeMethodFilter(input: Program): Program = {
     val transformedMethods = input.methods.map(method => {
       var assertBysInMethod = 0
       ViperStrategy.Slim({
@@ -40,30 +39,6 @@ class AssertByPlugin(@unused reporter: viper.silver.reporter.Reporter,
               ), by.scopedSeqnDeclarations)(r.pos),
               Seqn(Seq(), Seq())(r.pos))(r.pos),
             Assume(exp)(r.pos, Synthesized)
-          ),
-            Seq(nonDetLocalVarDecl)
-          )(r.pos)
-      }).recurseFunc({
-        case method: Method => Seq(method.body)
-      }).execute[Method](method)
-    })
-    Program(input.domains, input.fields, input.functions, input.predicates, transformedMethods, input.extensions)(input.pos, input.info, input.errT)
-  }*/
-
-    override def beforeVerify(input: Program): Program = {
-    val transformedMethods = input.methods.map(method => {
-      var refutesInMethod = 0
-      ViperStrategy.Slim({
-        case r@AssertBy(exp,_) =>
-          refutesInMethod += 1
-          val nonDetLocalVarDecl = LocalVarDecl(s"__plugin_refute_nondet$refutesInMethod", Bool)(r.pos)
-          Seqn(Seq(
-            If(nonDetLocalVarDecl.localVar,
-              Seqn(Seq(
-                Assert(exp)(r.pos, RefuteInfo(r)),
-                Inhale(BoolLit(false)(r.pos))(r.pos, Synthesized)
-              ), Seq())(r.pos),
-              Seqn(Seq(), Seq())(r.pos))(r.pos)
           ),
             Seq(nonDetLocalVarDecl)
           )(r.pos)
