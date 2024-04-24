@@ -38,7 +38,7 @@ class AssertByPlugin(@unused reporter: viper.silver.reporter.Reporter,
                 Inhale(BoolLit(false)(r.pos))(r.pos, Synthesized)
               ), by.scopedSeqnDeclarations)(r.pos),
               Seqn(Seq(), Seq())(r.pos))(r.pos),
-            Assume(exp)(r.pos, Synthesized)
+            Inhale(exp)(r.pos, Synthesized)
           ),
             Seq(nonDetLocalVarDecl)
           )(r.pos)
