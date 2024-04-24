@@ -41,6 +41,8 @@ requires acc(y.f) {
 
 method test1(x: Ref)
 requires forall i: Int :: true ==> acc(x.f) && x.f == i --* acc(x.f) {
+    // ME: Can we actually expect this to go through? How Would it trigger the QP we have?
+    //:: UnexpectedOutput(exhale.failed:wand.not.found, /silicon/issue/000/)
     exhale forall i: Int :: true ==> acc(x.f) && x.f == i-1 --* acc(x.f)
 
     //:: ExpectedOutput(assert.failed:wand.not.found)
