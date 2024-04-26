@@ -29,6 +29,9 @@ field Intint$$$$_E_$$$: Int
 
 // decreases
 function witness_4e2a3fe_F(P0_PI0: Int): ShStruct2[Ref, Ref]
+    ensures witness_rev(result) == P0_PI0
+
+function witness_rev(s: ShStruct2[Ref, Ref]): Int
 
 
 predicate SharedInv_4e2a3fe_F() {
@@ -48,7 +51,9 @@ method processRequest_4e2a3fe_F(id_V0: Int)
   requires (let fn$$0 ==
       (witness_4e2a3fe_F(id_V0)) in
       acc((ShStructget0of2(fn$$0): Ref).Intint$$$$_E_$$$, 1 / 2) &&
-      acc((ShStructget1of2(fn$$0): Ref).Intint$$$$_E_$$$, 1 / 2))
+      acc((ShStructget1of2(fn$$0): Ref).Intint$$$$_E_$$$, 1 / 2) &&
+       true
+      )
   requires acc(SharedInv_4e2a3fe_F(), write)
 {
 
