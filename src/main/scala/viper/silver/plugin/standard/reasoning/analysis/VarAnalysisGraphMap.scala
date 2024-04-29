@@ -99,9 +99,9 @@ case class VarAnalysisGraphMap(prog: Program,
    * If a recursive method is encountered, we fall back to the specified influences or a over approximation for the graph map
    * and an over approximation for the assume analysis
    */
-  private def executeTaintedGraphMethodAnalysis(method: Method): Unit = {
+  def executeTaintedGraphMethodAnalysis(method: Method): Unit = {
     if(methodAnalysisStarted.contains(method) || method.body.isEmpty) {
-      if(methodAnalysisStarted.contains(method)) {
+      if(methodAnalysisStarted.contains(method) && !methodReturnInfluencesFullySpecified(method)) {
         logger.warn(s"Taint analysis does not support recursive method calls. Falling back to specified influences. (${method.name} ${method.pos})")
       }
       methodAnalysisMap.put(method, getDefaultMethodInfluences(method))
@@ -116,7 +116,7 @@ case class VarAnalysisGraphMap(prog: Program,
       }))(method.body.get.pos, method.body.get.info, method.body.get.errT)
 
       val assumeAnalysis: AssumeAnalysis = mutable.Map()
-      val map = computeInfluenceMap(stmt, initialGraph, Set())(assumeAnalysis)
+      var map = computeInfluenceMap(stmt, initialGraph, Set())(assumeAnalysis)
 
       if(!methodAnalysisMap.contains(method)) {
         // Check calculated value against the provided specification if there are any
@@ -124,9 +124,15 @@ case class VarAnalysisGraphMap(prog: Program,
           val returnVar = AnalysisUtils.getLocalVarDeclFromFlowVar(f.v)
           val specifiedInfluences = f.varList.map(AnalysisUtils.getLocalVarDeclFromFlowVar).toSet
           val calculatedInfluences = lookupVar(returnVar, map)
-          if (calculatedInfluences != specifiedInfluences) {
-            reportErrorWithMsg(ConsistencyError(s"Specified influence on return variable $returnVar differs from calculated value. Specified: $specifiedInfluences Calculated: $calculatedInfluences", f.pos))
+
+          if (!calculatedInfluences.subsetOf(specifiedInfluences)) {
+            reportErrorWithMsg(ConsistencyError(s"Specified influence on return variable $returnVar is missing some potential influences. Specified: $specifiedInfluences Calculated: $calculatedInfluences", f.pos))
           }
+
+          if (calculatedInfluences.intersect(specifiedInfluences).size < calculatedInfluences.size) {
+            logger.warn(s"Specified influence on return variable $returnVar potentially assumes too many influences. Specified: $specifiedInfluences Calculated: $calculatedInfluences, (${f.pos})")
+          }
+          map = map + (returnVar -> specifiedInfluences)
         })
 
         methodAnalysisMap.put(method, map)
@@ -134,6 +140,12 @@ case class VarAnalysisGraphMap(prog: Program,
       }
     }
     methodAnalysisStarted -= method
+  }
+
+  private def methodReturnInfluencesFullySpecified(method: Method): Boolean = {
+    val allVars = method.posts.collect({ case f: FlowAnnotation => f.v })
+    val vars = allVars.collect({ case Var(localVar) => getLocalVarDeclFromLocalVar(localVar)})
+    method.formalReturns.map(v => vars.contains(v)).forall(b => b) && allVars.collect({ case h: Heap => h}).nonEmpty
   }
 
   /**

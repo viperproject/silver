@@ -83,6 +83,25 @@ method assumeMultipleNestedF()
     }
 }
 
+method assumeMultipleNestedOuterInfluenceF()
+{
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) {
+        prove forall y: Int {P(y)} assuming P(y) implies Q(y) {
+            //:: ExpectedOutput(consistency.error)
+            assume(1==x)
+
+            if(1==x) {
+                //:: ExpectedOutput(consistency.error)
+                assume(true)
+            }
+            while(1 > x) {
+                //:: ExpectedOutput(consistency.error)
+                assume(true)
+            }
+        }
+    }
+}
+
 method assumeS()
 {
     var y: Int := 0

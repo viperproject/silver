@@ -133,6 +133,11 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
     /** create graph with vars that are in scope only outside of the universal introduction code block including the qunatified variables */
     val analysis: VarAnalysisGraphMap = VarAnalysisGraphMap(input, logger, reportError)
 
+    /** Run taint analysis for all methods annotated with influences */
+    input.methods.filter(m => m.posts.collect({ case i: FlowAnnotation => i }).nonEmpty).foreach(
+      method => analysis.executeTaintedGraphMethodAnalysis(method)
+    )
+
     val newAst: Program = ViperStrategy.Slim({
 
       /** remove the influenced by postconditions.
