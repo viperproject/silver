@@ -28,7 +28,7 @@ trait StatisticalTestSuite extends SilSuite {
 
         intReps
       case None =>
-        val default = 1
+        val default = 2
         info(s"[StatisticalTestSuite] Repetitions defaults to $default")
 
         default
@@ -44,7 +44,7 @@ trait StatisticalTestSuite extends SilSuite {
   protected def targetDirName: String =
     Option(System.getProperty(targetLocationPropertyName)) match {
       case Some(name) => name
-      case None => fail(s"Property '$targetLocationPropertyName' not set")
+      case None => "/home/marco/git/se_vcg_comparison/bench_selection/gobra"// fail(s"Property '$targetLocationPropertyName' not set")
     }
 
   protected def csvFileName: Option[String] = getNonEmptyOptionalSystemProperty(csvFilePropertyName)
@@ -109,6 +109,8 @@ trait StatisticalTestSuite extends SilSuite {
 
   val randomization: Option[(Seq[String], String, Int => Int)] = None
 
+  protected def resetVerifier() = {}
+
   private val testingInstance: SystemUnderTest with TimingUtils = new SystemUnderTest with TimingUtils {
 
     /** In order to support hierarchical test annotations (an UnexpectedError could be attributed to a verifier, e.g.
@@ -138,12 +140,14 @@ trait StatisticalTestSuite extends SilSuite {
       var lastActualErrors: Seq[AbstractError] = null
 
       // collect data
-      val data = for (_ <- 1 to reps if !foundTimeout) yield {
+      val data = for (rep <- 1 to reps if !foundTimeout) yield {
+        resetVerifier()
         BenchmarkStatCollector.initTest()
         randomization match {
           case Some((args, randArg, randFunc)) =>
-            val seed = randFunc(reps)
-            verifier.parseCommandLine(args ++ Seq(s"${randArg}=${seed}", "dummy.vpr"))
+            val seed = randFunc(rep)
+            val name = JPaths.get(targetDirName).toAbsolutePath.relativize(input.file.toAbsolutePath).toString.replaceAll("/", "_") + ".bpl"
+            verifier.parseCommandLine(args ++ Seq(s"${randArg}=${seed}", s"--print=${name}", "dummy.vpr"))
           case _ =>
         }
         val fe = frontend(verifier, input.files)
