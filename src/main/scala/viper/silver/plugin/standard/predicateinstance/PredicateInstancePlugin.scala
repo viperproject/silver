@@ -14,7 +14,6 @@ import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier.{ConsistencyError, Failure, Success, VerificationResult}
 import viper.silver.verifier.errors.PreconditionInAppFalse
 import fastparse._
-import viper.silver.parser.FastParserCompanion.whitespace
 import viper.silver.reporter.Entity
 
 import scala.annotation.unused
@@ -25,20 +24,16 @@ class PredicateInstancePlugin(@unused reporter: viper.silver.reporter.Reporter,
                               @unused config: viper.silver.frontend.SilFrontendConfig,
                               fp: FastParser)  extends SilverPlugin with ParserPluginTemplate {
 
-  import fp.{FP, predAcc, ParserExtension}
-
-  /**
-   * Syntactic marker for predicate instances
-   */
-  val PredicateInstanceMarker: String = "#"
-
-  val PredicateInstanceDomainName = "PredicateInstance"
+  import fp.{predAcc, ParserExtension, lineCol, _file}
+  import FastParserCompanion.{PositionParsing, reservedSym, whitespace}
 
   /**
    * Parser for declaring predicate instances.
    *
    */
-  def predicateInstance[$: P]: P[PPredicateInstance] = FP(PredicateInstanceMarker ~/ P(predAcc)).map{ case (pos, p) => PPredicateInstance(p.args, p.idnuse)(pos) }
+  def predicateInstance[$: P]: P[PPredicateInstance] = P((P(PMarkerSymbol) ~ predAcc).map {
+    case (m, p) => PPredicateInstance(m, p.idnref.retype(), p.callArgs)(_)
+  }).pos
 
   /** Called before any processing happened.
    *

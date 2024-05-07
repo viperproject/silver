@@ -1,0 +1,7 @@
+field f: Bool
+method bar(a: Bool, b: Seq[Ref])
+    requires |b| > 0 && acc(b[0].f)
+{
+  assume a
+  (b[..1][0]).f := a
+}

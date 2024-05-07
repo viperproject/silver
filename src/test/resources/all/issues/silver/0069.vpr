@@ -5,7 +5,7 @@ field f : Int
 
 function g(x:Ref) : Int
   requires acc(x.f,write)
-  //:: ExpectedOutput(consistency.error)
+  //:: ExpectedOutput(typechecker.error)
   ensures acc(x.f,write)
 { 0 }
 
@@ -19,7 +19,7 @@ field val:Ref
 
 function f1(x:Ref):Int
   requires acc(x.val) && 1==1
-  //:: ExpectedOutput(consistency.error)
+  //:: ExpectedOutput(typechecker.error)
   ensures acc(x.val) && 2==3
 
 predicate P(x: Ref) { true }
@@ -29,12 +29,12 @@ function f2(x: Ref): Int
   ensures unfolding acc(P(x), 1/2) in true
 
 function f3(x: Ref): Int
-  //:: ExpectedOutput(consistency.error)
+  //:: ExpectedOutput(typechecker.error)
   requires true --* true
-  //:: ExpectedOutput(consistency.error)
+  //:: ExpectedOutput(typechecker.error)
   ensures true --* true
 
 function f4(x: Ref): Int
-  //:: ExpectedOutput(consistency.error)
+  //:: ExpectedOutput(typechecker.error)
   requires true --* true
   ensures applying (true --* true) in true

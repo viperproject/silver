@@ -214,18 +214,20 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     }
 
     def checkNamesInScope(currentScope: Scope, dMap: immutable.HashMap[String, Declaration]) : Seq[ConsistencyError] = {
-      var declarationMap = dMap
+      var newMap = immutable.HashMap.empty[String, Declaration]
       var s: Seq[ConsistencyError] = Seq.empty[ConsistencyError]
       //check name declarations
       currentScope.scopedDecls.foreach(l=> {
         if(!Consistency.validUserDefinedIdentifier(l.name))
           s :+= ConsistencyError(s"${l.name} is not a valid identifier.", l.pos)
 
-        declarationMap.get(l.name) match {
-          case Some(_: Declaration) => s :+= ConsistencyError(s"Duplicate identifier ${l.name} found.", l.pos)
-          case None => declarationMap += (l.name -> l)
+        newMap.get(l.name) match {
+          case Some(_: Declaration) => s :+= ConsistencyError(s"Duplicate identifier `${l.name}` found.", l.pos)
+          case None => newMap += (l.name -> l)
         }
       })
+      // Override duplicate keys in old map
+      val declarationMap = dMap ++ newMap
 
       //check name uses
       Visitor.visitOpt(currentScope.asInstanceOf[Node], Nodes.subnodes){ n => {
@@ -268,7 +270,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
   lazy val groundTypeInstances = DomainInstances.findNecessaryTypeInstances(this)
 
-  lazy val members: Seq[Member with Serializable] = domains ++ fields ++ functions ++ predicates ++ methods
+  val members: Seq[Member with Serializable] = domains ++ fields ++ functions ++ predicates ++ methods ++ extensions
 
   def findFieldOptionally(name: String): Option[Field] = this.fieldsByName.get(name)
 
@@ -409,11 +411,13 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
   }
 
   def deepCollectInBody[A](f: PartialFunction[Node, A]): Seq[A] = body match {
+    case null => Nil
+    case None => Nil
     case Some(actualBody) => actualBody.deepCollect(f)
-    case None => Seq()
   }
 
-  val scopedDecls: Seq[Declaration] = formalArgs ++ formalReturns
+  def labels: Seq[Label] = deepCollectInBody { case l: Label => l }
+  val scopedDecls: Seq[Declaration] = formalArgs ++ formalReturns ++ labels
 
   override lazy val check: Seq[ConsistencyError] =
     pres.flatMap(Consistency.checkPre) ++
@@ -442,19 +446,6 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
     * Returns a control flow graph that corresponds to this method.
     */
   def toCfg(simplify: Boolean = true, detect: Boolean = true): SilverCfg = CfgGenerator.methodToCfg(this, simplify, detect)
-}
-
-object MethodWithLabelsInScope {
-  def apply(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], body: Option[Seqn])
-                 (pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos): Method = {
-    val newBody = body match {
-      case Some(actualBody) =>
-        val newScopedDecls = actualBody.scopedSeqnDeclarations ++ actualBody.deepCollect({case l: Label => l})
-        Some(actualBody.copy(scopedSeqnDeclarations = newScopedDecls)(actualBody.pos, actualBody.info, actualBody.errT))
-      case _ => body
-    }
-    Method(name, formalArgs, formalReturns, pres, posts, newBody)(pos, info, errT)
-  }
 }
 
 /** A function declaration */
@@ -826,7 +817,7 @@ object BackendFunc {
 /**
   * The Extension Member trait provides the way to expand the Ast to include new Top Level declarations
   */
-trait ExtensionMember extends Member{
+trait ExtensionMember extends Member with Serializable {
   def extensionSubnodes: Seq[Node]
   def prettyPrint: PrettyPrintPrimitives#Cont
 }

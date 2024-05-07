@@ -4,7 +4,6 @@
 // failure filtering by Silicon should not filter out one of the failures but correctly return both errors
 
 import <decreases/int.vpr>
-import <decreases/predicate_instance.vpr>
 
 function factorialPure(n: Int): Int
     decreases // wrong termination measure

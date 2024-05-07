@@ -1,0 +1,53 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field n: Ref, m: Ref
+
+method get_refs() returns (x: Ref, y: Ref)
+    ensures acc(x.n)
+method test1() {
+  var a: Ref, b: Ref
+
+  var c: Ref, d: Ref := get_refs()
+  var e: Ref := new(n)
+
+  c.n, e := get_refs()
+  c.n.n := new(n)
+}
+
+predicate P(x: Ref) { acc(x.n) }
+method foo(x: Ref) returns (a: Ref, b: Ref)
+  requires P(x)
+method test2(x: Ref)
+  requires P(x) && acc((unfolding P(x) in x.n).n) && acc((unfolding P(x) in x.n).m)
+{
+  (unfolding P(x) in x.n).n, (unfolding P(x) in x.n).m := foo(x)
+}
+
+method bar(x: Ref) returns (a: Ref)
+  ensures acc(x.n)
+method test3(x: Ref) {
+  x.n := bar(x)
+}
+
+method baz(x: Ref) returns (a: Ref)
+  requires acc(x.n)
+method test4(x: Ref)
+    requires acc(x.n)
+{
+  //:: ExpectedOutput(assignment.failed:insufficient.permission)
+  x.n := baz(x)
+}
+
+define Macro1(x, y, z) {
+  x.n, y.m := z()
+}
+define Macro2(z) {
+  var c: Ref, d: Ref := z()
+}
+method test5() {
+  var a: Ref, b: Ref
+  inhale acc(a.n) && acc(b.m)
+  Macro1(a, b, get_refs)
+  Macro2(get_refs)
+}

@@ -1,0 +1,8 @@
+//:: ExpectedOutput(refute.failed:refutation.true)
+method test() returns (res: Int)
+    ensures res == 1
+{
+    res := 2
+    //:: ExpectedOutput(refute.failed:refutation.true)
+    assume res == 1
+}

@@ -1,0 +1,9 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+predicate p(flag: Bool)
+
+method client() {
+    //:: ExpectedOutput(typechecker.error)
+    inhale p(p(false))
+}
