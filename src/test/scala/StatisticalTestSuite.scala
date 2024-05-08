@@ -138,11 +138,11 @@ trait StatisticalTestSuite extends SilSuite {
       var lastActualErrors: Seq[AbstractError] = null
 
       // collect data
-      val data = for (_ <- 1 to reps if !foundTimeout) yield {
+      val data = for (r <- 1 to reps if !foundTimeout) yield {
         BenchmarkStatCollector.initTest()
         randomization match {
           case Some((args, randArg, randFunc)) =>
-            val seed = randFunc(reps)
+            val seed = randFunc(r)
             verifier.parseCommandLine(args ++ Seq(s"${randArg}=${seed}", "dummy.vpr"))
           case _ =>
         }
