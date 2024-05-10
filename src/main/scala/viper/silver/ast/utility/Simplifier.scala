@@ -116,10 +116,15 @@ object Simplifier {
         IntLit(left - right)(root.pos, root.info)
       case root @ Mul(IntLit(left), IntLit(right)) =>
         IntLit(left * right)(root.pos, root.info)
-      case root @ Div(IntLit(left), IntLit(right)) if right != bigIntZero =>
+      /* In the general case, Viper uses the SMT division and modulo. Scala's division is not in-sync with SMT division.
+         For nonnegative dividends and divisors, all used division and modulo definitions coincide. So, in order to not
+         not make any assumptions on the SMT division, division and modulo are simplified only if the dividend and divisor
+         are nonnegative. Also see Carbon PR #448.
+       */
+      case root @ Div(IntLit(left), IntLit(right)) if left >= bigIntZero && right > bigIntZero =>
         IntLit(left / right)(root.pos, root.info)
-      case root @ Mod(IntLit(left), IntLit(right)) if right != bigIntZero =>
-        IntLit((right.abs + (left % right)) % right.abs)(root.pos, root.info)
+      case root @ Mod(IntLit(left), IntLit(right)) if left >= bigIntZero && right > bigIntZero =>
+        IntLit(left % right)(root.pos, root.info)
 
       // statement simplifications
       case Seqn(EmptyStmt, _) => EmptyStmt // remove empty Seqn (including unnecessary scopedDecls)
