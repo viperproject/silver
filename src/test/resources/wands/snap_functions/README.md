@@ -17,6 +17,7 @@ This folder contains Viper test files that I used when working on MagicWandSnapF
 | [test09.vpr](./test09.vpr) | Inhaling a magic wand                                                                           | ✓               |
 | [test10.vpr](./test10.vpr) | Magic wand with predicates                                                                      | ✓               |
 | [test11.vpr](./test11.vpr) | Iterate over a List                                                                             | ✓               |
+| [test12.vpr](./test12.vpr) | Applying a quantified magic wand multiple times. Original version verifies this unsoundly       | ✓               |
 
 Other interesting test cases in the [Silver repository](https://github.com/viperproject/silver/tree/master/src/test/resources) during the development of `MagicWandSnapFunctions` were:
 * [wands/examples_paper/conditionals.vpr](https://github.com/viperproject/silver/tree/master/src/test/resources/wands/examples_paper/conditionals.vpr)
