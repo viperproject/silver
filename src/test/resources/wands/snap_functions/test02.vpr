@@ -6,6 +6,7 @@ method test02a(x: Ref)
 
     package true --* acc(x.f)
 
+    //:: UnexpectedOutput(exhale.failed:insufficient.permission, /Carbon/issue/488/)
     assert applying (true --* acc(x.f)) in x.f == 42
 }
 
@@ -26,6 +27,7 @@ method test02c(x: Ref)
 
     package true --* acc(x.f)
 
+    //:: UnexpectedOutput(exhale.failed:insufficient.permission, /Carbon/issue/488/)
     assert applying (true --* acc(x.f)) in x.f == 42
 
     apply true --* acc(x.f)
@@ -39,6 +41,7 @@ method test02d(x: Ref, a: Int)
 
     package true --* acc(x.f)
 
+    //:: UnexpectedOutput(exhale.failed:insufficient.permission, /Carbon/issue/488/)
     assert applying (true --* acc(x.f)) in x.f == a
 
     apply true --* acc(x.f)

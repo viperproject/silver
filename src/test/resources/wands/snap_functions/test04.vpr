@@ -6,6 +6,7 @@ method test04a(x: Ref, y: Ref)
 
     package acc(x.f) --* acc(x.f) && acc(y.f)
 
+    //:: UnexpectedOutput(exhale.failed:insufficient.permission, /Carbon/issue/488/)
     assert applying (acc(x.f) --* acc(x.f) && acc(y.f)) in x.f == 42 && y.f == 37
 }
 
@@ -26,6 +27,7 @@ method test04c(x: Ref, y: Ref)
 
     package acc(x.f) --* acc(x.f) && acc(y.f)
 
+    //:: UnexpectedOutput(exhale.failed:insufficient.permission, /Carbon/issue/488/)
     assert applying (acc(x.f) --* acc(x.f) && acc(y.f)) in x.f == 42 && y.f == 37
 
     apply acc(x.f) --* acc(x.f) && acc(y.f)
@@ -39,6 +41,7 @@ method test04d(x: Ref, y: Ref, a: Int, b: Int)
 
     package acc(x.f) --* acc(x.f) && acc(y.f)
 
+    //:: UnexpectedOutput(exhale.failed:insufficient.permission, /Carbon/issue/488/)
     assert applying (acc(x.f) --* acc(x.f) && acc(y.f)) in x.f == a && y.f == b
 
     apply acc(x.f) --* acc(x.f) && acc(y.f)

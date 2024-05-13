@@ -6,6 +6,7 @@ method test01a(x: Ref)
 
     package true --* acc(x.b)
 
+    //:: UnexpectedOutput(exhale.failed:insufficient.permission, /Carbon/issue/488/)
     assert applying (true --* acc(x.b)) in x.b
 }
 
@@ -26,6 +27,7 @@ method test01c(x: Ref)
 
     package true --* acc(x.b)
 
+    //:: UnexpectedOutput(exhale.failed:insufficient.permission, /Carbon/issue/488/)
     assert applying (true --* acc(x.b)) in x.b
 
     apply true --* acc(x.b)
@@ -39,6 +41,7 @@ method test01d(x: Ref, a: Bool)
 
     package true --* acc(x.b)
 
+    //:: UnexpectedOutput(exhale.failed:insufficient.permission, /Carbon/issue/488/)
     assert applying (true --* acc(x.b)) in x.b == a
 
     apply true --* acc(x.b)

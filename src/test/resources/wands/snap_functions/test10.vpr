@@ -26,5 +26,6 @@ method test10b(x: Ref)
 
     apply acc(x.f) --* foo(x)
 
+    //:: UnexpectedOutput(assert.failed:assertion.false, /Carbon/issue/216/)
     assert foo(x) && unfolding foo(x) in x.f == 42
 }

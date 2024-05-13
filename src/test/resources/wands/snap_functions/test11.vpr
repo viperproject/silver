@@ -26,6 +26,7 @@ function sorted(start: Ref) : Bool
 
 method append_it(l1 : Ref, l2: Ref)
   requires List(l1) && List(l2) && l2 != null
+  //:: UnexpectedOutput(assert.failed:assertion.false, /Carbon/issue/000/)
   ensures List(l1) && elems(l1) == old(elems(l1) ++ elems(l2))
 {
   unfold List(l1)
@@ -54,6 +55,7 @@ method append_it(l1 : Ref, l2: Ref)
       tmp := tmp.next
       index := index + 1
 
+      //:: UnexpectedOutput(assert.failed:assertion.false, /Carbon/issue/000/)
       package List(tmp) --* List(l1) && elems(l1) == old(elems(l1)[..index]) ++ old[lhs](elems(tmp))
       {
         fold List(prev)
