@@ -1,0 +1,52 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+method test(x0: Array, x1:Array)
+  requires (forall j: Int :: {arrR(j, x0, 10)} 0 <= j && j < 10 ==> arrR(j, x0, 10))
+  requires arr(x1, 10)
+  requires (forall j: Int :: { aloc(x1, j) }
+    0 <= j && j < 10 ==> (unfolding acc(arr(x1, 10), write/2) in aloc(x1, j).int) == j)
+  requires (forall j: Int :: { aloc(x0, j) }
+    0 <= j && j < 10 ==> (unfolding arrR(j, x0, 10) in aloc(x0, j).int == 3 * j))
+{
+  assert (unfolding arrR(0, x0, 10) in
+            aloc(x0, 0).int == 3 * 0)
+}
+
+predicate arrR(x: Int, a: Array, n: Int) {
+  alen(a) == n && 0 <= x && x < n && acc(aloc(a, x).int, write)
+}
+
+predicate arr(a: Array, n: Int) {
+  alen(a) == n && (forall i: Int :: { aloc(a, i) } 0 <= i && i < alen(a) ==> acc(aloc(a, i).int, write))
+}
+
+field int: Int
+domain Array  {
+
+  function array_loc(a: Array, i: Int): Ref
+  function alen(a: Array): Int
+  function loc_inv_1(loc: Ref): Array
+  function loc_inv_2(loc: Ref): Int
+
+  axiom {
+    (forall a: Array, i: Int ::
+      { array_loc(a, i) }
+      loc_inv_1(array_loc(a, i)) == a && loc_inv_2(array_loc(a, i)) == i)
+  }
+
+  axiom {
+    (forall a: Array :: { alen(a) } alen(a) >= 0)
+  }
+}
+
+function aloc(a: Array, i: Int): Ref
+  requires 0 <= i
+  requires i < alen(a)
+  decreases
+  ensures loc_inv_1(result) == a
+  ensures loc_inv_2(result) == i
+{
+  array_loc(a, i)
+}
