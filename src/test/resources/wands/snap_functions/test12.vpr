@@ -23,7 +23,6 @@ method test12a(xs: Seq[Ref], y: Ref)
     assert applying (acc(some.f) --* true) in true
 
     //:: ExpectedOutput(assert.failed:assertion.false)
-    //:: MissingOutput(assert.failed:assertion.false, /Silicon/issue/307/)
     assert false
 }
 
@@ -44,7 +43,6 @@ method test12b(xs: Seq[Ref], y: Ref)
     apply acc(some.f) --* acc(some.f)
 
     //:: ExpectedOutput(assert.failed:assertion.false)
-    //:: MissingOutput(assert.failed:assertion.false, /Silicon/issue/307/)
     assert false
 }
 
@@ -65,6 +63,5 @@ method test12c(xs: Seq[Ref], y: Ref)
     some.f := applying (acc(some.f) --* acc(some.f)) in some.f + 1
 
     //:: ExpectedOutput(assert.failed:assertion.false)
-    //:: MissingOutput(assert.failed:assertion.false, /Silicon/issue/307/)
     assert false
 }
