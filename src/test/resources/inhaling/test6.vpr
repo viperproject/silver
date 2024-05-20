@@ -1,0 +1,9 @@
+field f: Int
+
+method test6(x: Ref)
+    requires acc(x.f)
+{
+    assert inhaling (acc(x.f)) in true
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}

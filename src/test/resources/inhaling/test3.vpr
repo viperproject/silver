@@ -1,0 +1,15 @@
+field f: Int
+
+predicate foo(x: Ref) { acc(x.f) }
+
+method test3(x: Ref, y: Ref)
+    requires foo(x) && foo(y)
+    requires unfolding foo(x) in x.f == 10
+    requires unfolding foo(y) in y.f == 42
+{
+    exhale foo(x)
+
+    assert inhaling (foo(x)) in unfolding foo(y) in y.f == 42
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert inhaling (foo(x)) in unfolding foo(x) in x.f == 10
+}
