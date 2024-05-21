@@ -321,6 +321,9 @@ object PSym {
   // Used for annotations
   case object At extends PSym("@") with PSymbolLang
   type At = PReserved[At.type]
+  // Used for documentation
+  case object TripleSlash extends PSym("///") with PSymbolLang
+  type TripleSlash = PReserved[TripleSlash.type]
   // Used for `new(*)`
   case object Star extends PSym("*") with PSymbolLang
   type Star = PReserved[Star.type]

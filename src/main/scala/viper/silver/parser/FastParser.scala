@@ -396,15 +396,11 @@ class FastParser {
 
   def stringLiteral[$: P]: P[PStringLiteral] = P((CharsWhile(_ != '\"').! map PRawString.apply).pos.quotes map (PStringLiteral.apply _)).pos
 
-  def docAnnotation[$: P]: P[PAnnotation] = P("///" ~~ CharsWhile(_ != '\n', 0).!).map{
-    case s: String => p: Pos =>
-      val annotationKey = PRawString("doc")(NoPosition, NoPosition)
-      val docstring = PStringLiteral(PGrouped[PSym.Quote.type, PRawString](PReserved.implied(PSym.Quote), PRawString(s)(p), PReserved.implied(PSym.Quote))(p))(p)
-      val annotationValues = PDelimited[PStringLiteral, PSym.Comma](Some(docstring), Seq(), None)(p)
-      PAnnotation(at = PReserved.implied(PSym.At), key = annotationKey, values = PGrouped.impliedParen(annotationValues))(p)
-  }.pos
+  def docString[$: P]: P[PRawString] = P(CharsWhile(_ != '\n', 0).! map PRawString.apply).pos
 
-  def annotation[$: P]: P[PAnnotation] = P(P((P(PSym.At) ~~ annotationIdentifier ~ argList(stringLiteral)) map (PAnnotation.apply _).tupled).pos | docAnnotation)
+  def docAnnotation[$: P]: P[PAnnotation] = P(P(PSym.TripleSlash) ~~ docString).map{ case (s, d) => p => PDocAnnotation(s, d)(p) }.pos
+
+  def annotation[$: P]: P[PAnnotation] = P(P((P(PSym.At) ~~ annotationIdentifier ~ argList(stringLiteral)) map (PAtAnnotation.apply _).tupled).pos | docAnnotation)
 
   def annotated[$: P, T](inner: => P[PAnnotationsPosition => T]): P[T] = P((annotation.rep(0) ~ inner).map {
     case (annotations, i) => pos: Pos => i(PAnnotationsPosition(annotations, pos))

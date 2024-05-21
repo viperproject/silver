@@ -325,12 +325,26 @@ case class Translator(program: PProgram) {
     pexp match {
       case PAnnotatedExp(ann, e) =>
         val (resPexp, innerMap) = extractAnnotation(e)
-        val combinedValue = if (innerMap.contains(ann.key.str)) {
-          ann.values.inner.toSeq.map(_.str) ++ innerMap(ann.key.str)
-        } else {
-          ann.values.inner.toSeq.map(_.str)
+        val key = ann match {
+          case ann: PAtAnnotation => ann.key.str
+          case ann: PDocAnnotation => "doc"
         }
-        (resPexp, innerMap.updated(ann.key.str, combinedValue))
+        val combinedValue =
+          ann match {
+            case ann: PAtAnnotation =>
+              if (innerMap.contains(key)) {
+                ann.values.inner.toSeq.map(_.str) ++ innerMap(key)
+              } else {
+                ann.values.inner.toSeq.map(_.str)
+              }
+            case ann: PDocAnnotation =>
+              if (innerMap.contains(key)) {
+                ann.docString.str +: innerMap(key)
+              } else {
+                Seq(ann.docString.str)
+              }
+          }
+        (resPexp, innerMap.updated(key, combinedValue))
       case _ => (pexp, Map())
     }
   }
@@ -339,12 +353,26 @@ case class Translator(program: PProgram) {
     pStmt match {
       case PAnnotatedStmt(ann, s) =>
         val (resPStmt, innerMap) = extractAnnotationFromStmt(s)
-        val combinedValue = if (innerMap.contains(ann.key.str)) {
-          ann.values.inner.toSeq.map(_.str) ++ innerMap(ann.key.str)
-        } else {
-          ann.values.inner.toSeq.map(_.str)
+        val key = ann match {
+          case ann: PAtAnnotation => ann.key.str
+          case ann: PDocAnnotation => "doc"
         }
-        (resPStmt, innerMap.updated(ann.key.str, combinedValue))
+        val combinedValue =
+          ann match {
+            case ann: PAtAnnotation =>
+              if (innerMap.contains(key)) {
+                ann.values.inner.toSeq.map(_.str) ++ innerMap(key)
+              } else {
+                ann.values.inner.toSeq.map(_.str)
+              }
+            case ann: PDocAnnotation =>
+              if (innerMap.contains(key)) {
+                ann.docString.str +: innerMap(key)
+              } else {
+                Seq(ann.docString.str)
+              }
+          }
+        (resPStmt, innerMap.updated(key, combinedValue))
       case _ => (pStmt, Map())
     }
   }
@@ -731,7 +759,9 @@ object Translator {
     if (annotations.isEmpty) {
       NoInfo
     } else {
-      AnnotationInfo(annotations.groupBy(_.key).map{ case (k, v) => k.str -> v.flatMap(_.values.inner.toSeq.map(_.str)) })
+      AnnotationInfo(annotations.groupBy(_.key).map{ case (k, v) => k.str -> v.flatMap{
+                         case a: PAtAnnotation => a.values.inner.toSeq.map(_.str)
+                         case a: PDocAnnotation => Seq(a.docString.str) }})
     }
   }
 }
