@@ -7,15 +7,31 @@
 package viper.silver.plugin.standard.reasoning.analysis
 
 import viper.silver.ast.utility.Expressions
-import viper.silver.ast.{AccessPredicate, Apply, Assert, Assume, BinExp, CurrentPerm, DomainFuncApp, Exhale, Exp, FieldAccess, FieldAssign, Fold, ForPerm, FuncApp, Goto, If, Inhale, Label, LocalVar, LocalVarAssign, LocalVarDecl, Method, MethodCall, Package, Position, Program, Quasihavoc, Quasihavocall, Ref, Scope, Seqn, Stmt, UnExp, Unfold, While}
-import viper.silver.plugin.standard.reasoning.analysis.AnalysisUtils.{getLocalVarDeclFromLocalVar, heapVertex}
-import viper.silver.plugin.standard.reasoning.{ExistentialElim, FlowAnnotation, FlowVar, Heap, OldCall, UniversalIntro, Var}
+import viper.silver.ast.{AccessPredicate, Apply, Assert, Assume, BinExp, CurrentPerm, Declaration, DomainFuncApp, Exhale, Exp, FieldAccess, FieldAssign, Fold, ForPerm, FuncApp, Goto, If, Inhale, Label, LocalVar, LocalVarAssign, LocalVarDecl, Method, MethodCall, Package, Position, Program, Quasihavoc, Quasihavocall, Ref, Scope, Seqn, Stmt, UnExp, Unfold, While}
+import viper.silver.plugin.standard.reasoning.analysis.AnalysisUtils.{AssumeNode, getLocalVarDeclFromLocalVar, heapVertex}
+import viper.silver.plugin.standard.reasoning.{Assumes, ExistentialElim, FlowAnnotation, FlowVar, Heap, NoAssumeAnnotation, OldCall, UniversalIntro, Var}
+import viper.silver.plugin.standard.termination.{DecreasesSpecification, DecreasesStar, DecreasesTuple, DecreasesWildcard}
 import viper.silver.verifier.{AbstractError, ConsistencyError}
 
 import scala.collection.mutable
 
 object AnalysisUtils {
+
+  // TODO Add NoAssume Specification (default for all cases except for non-terminating abstract methods (e.g AssumeFree).
+  //      Also check method Body for assumes (or inhales in case this specification is present
+  case class AssumeNode(pos: Position) extends Declaration {
+    override def name: String = ".assume"
+  }
+
   val heapVertex: LocalVarDecl = LocalVarDecl(".heap", Ref)()
+
+  def getDeclarationFromFlowVar(f: FlowVar, m: Method): Declaration = {
+    f match {
+      case v: Var => LocalVarDecl(v.decl.name, v.decl.typ)(v.decl.pos)
+      case _: Heap => heapVertex
+      case _: Assumes => AssumeNode(m.pos)
+    }
+  }
 
   def getLocalVarDeclFromFlowVar(f: FlowVar): LocalVarDecl = {
     f match {
@@ -24,45 +40,45 @@ object AnalysisUtils {
     }
   }
 
-  /**
-   * get the variables that were modified by the statement stmt
-   */
-  def getModifiedVars(stmt: Stmt): Set[LocalVarDecl] = {
-    stmt match {
-      case Seqn(ss, _) => ss.flatMap(s => getModifiedVars(s)).toSet
-      case LocalVarAssign(l, _) => Set(getLocalVarDeclFromLocalVar(l))
-      case If(_, thn, els) => getModifiedVars(thn) ++ getModifiedVars(els)
-      case While(_, _, body) => getModifiedVars(body)
-      case MethodCall(_, _, targets) => targets.map(getLocalVarDeclFromLocalVar).toSet
-      case Inhale(_) => Set()
-      case Assume(_) => Set()
-      case Label(_, _) => Set()
-      case Quasihavoc(_, _) => Set(heapVertex)
-      case Quasihavocall(_, _, _) => Set(heapVertex)
-      case ExistentialElim(vars, _, _) => vars.toSet
-      case _ => Set()
-    }
-  }
-
   def getLocalVarDeclFromLocalVar(l: LocalVar): LocalVarDecl = {
     LocalVarDecl(l.name, l.typ)()
   }
-}
 
+  def containsDecreasesAnnotations(m: Method): (Boolean, Boolean) = {
+    val presContain = m.pres.collect({ case DecreasesTuple(_, _) | DecreasesWildcard(_) | DecreasesStar() => true }).nonEmpty
+    val postsContain = m.posts.collect({ case DecreasesTuple(_, _) | DecreasesWildcard(_) | DecreasesStar() => true }).nonEmpty
+
+    val presContainStar = m.pres.collect({ case DecreasesStar() => true }).nonEmpty
+    val postsContainStar = m.posts.collect({ case DecreasesStar() => true }).nonEmpty
+
+
+    /** check info for decreases specification */
+    val infoContains = m.meta._2 match {
+      case _: DecreasesSpecification => true
+      case _ => false
+    }
+
+    val infoContainsStar = m.meta._2 match {
+      case spec: DecreasesSpecification => spec.star.isDefined
+      case _ => false
+    }
+
+    val containsTerminationMeasure = presContain | postsContain | presContainStar | postsContainStar | infoContains
+    val mightNotTerminate = !containsTerminationMeasure | presContainStar | postsContainStar | infoContainsStar
+
+    (containsTerminationMeasure, mightNotTerminate)
+  }
+}
 
 case class VarAnalysisGraphMap(prog: Program,
                                logger: ch.qos.logback.classic.Logger,
                                reportErrorWithMsg: AbstractError => Unit) {
 
   // Maps all influences for a given variable
-  private type GraphMap = Map[LocalVarDecl, Set[LocalVarDecl]]
-  // Maps all influences for a statement at a given position
-  private type AssumeAnalysis = mutable.Map[Position, Set[LocalVarDecl]]
-
+  private type GraphMap = Map[Declaration, Set[LocalVarDecl]]
 
   // Storage for method analysis
   private val methodAnalysisMap: mutable.Map[Method, GraphMap] = mutable.Map()
-  private val methodAssumeAnalysisMap: mutable.Map[Method, AssumeAnalysis] = mutable.Map()
   private val methodAnalysisStarted: mutable.ListBuffer[Method] = mutable.ListBuffer()
 
 
@@ -70,26 +86,18 @@ case class VarAnalysisGraphMap(prog: Program,
    * When executed on the universal introduction statement the tainted variables are simply the quantified variables */
   def executeTaintedGraphAnalysis(allVars: Set[LocalVarDecl], tainted: Set[LocalVarDecl], blk: Seqn, volatileVars: Set[LocalVarDecl], u: UniversalIntro): Unit = {
     // Build initial graph where every variable and the heap influences itself
-    val initialGraph = allVars.map(k => k -> Set(k)).toMap + (AnalysisUtils.heapVertex -> Set(AnalysisUtils.heapVertex))
-    val assumeAnalysis: AssumeAnalysis = mutable.Map()
-    val graph = computeInfluenceMap(blk, initialGraph, Set())(assumeAnalysis)
+    val initialGraph = allVars.map(k => k.asInstanceOf[Declaration] -> Set(k)).toMap + (AnalysisUtils.heapVertex -> Set(AnalysisUtils.heapVertex))
+    val graph = computeInfluenceMap(blk, initialGraph)
     val problems = volatileVars.filter(v => graph(v).intersect(tainted).nonEmpty)
 
     if(problems.nonEmpty) {
       reportErrorWithMsg(ConsistencyError("Universal introduction variable might have been assigned to variable " + problems + ", used in the quantified implication", u.pos))
     }
-    assumeAnalysis.foreach(v => {
-      val assumeVars = v._2.intersect(tainted)
-      if (assumeVars.nonEmpty) {
-        val vars = assumeVars.map(v => s"'${v.name}'").mkString(", ")
-        val err = if (assumeVars.size == 1) {
-          "variable " + vars
-        } else {
-          "variables " + vars
-        }
-        reportErrorWithMsg(ConsistencyError(s"Tainted $err (${u.pos}) might influence assume statement", v._1))
-      }
-    })
+
+    val assumeProblems = graph.keySet.filter(v => v.isInstanceOf[AssumeNode] && graph(v).intersect(tainted).nonEmpty)
+    assumeProblems.foreach(v =>
+      reportErrorWithMsg(ConsistencyError(s"Universal introduction variable might influence assume statement", v.pos))
+    )
   }
 
   /**
@@ -100,29 +108,40 @@ case class VarAnalysisGraphMap(prog: Program,
    * and an over approximation for the assume analysis
    */
   def executeTaintedGraphMethodAnalysis(method: Method): Unit = {
-    if(methodAnalysisStarted.contains(method) || method.body.isEmpty) {
-      if(methodAnalysisStarted.contains(method) && !methodReturnInfluencesFullySpecified(method)) {
+    if (method.body.isEmpty) {
+      // Case for abstract methods
+      val map = getDefaultMethodInfluences(method)
+      logger.warn(s"${method.name}: $map")
+      methodAnalysisMap.put(method, map)
+    } else if(methodAnalysisStarted.contains(method)) {
+      // Case for recursive methods
+      if(!methodReturnInfluencesFullySpecified(method)) {
         logger.warn(s"Taint analysis does not support recursive method calls. Falling back to specified influences. (${method.name} ${method.pos})")
       }
       methodAnalysisMap.put(method, getDefaultMethodInfluences(method))
-      methodAssumeAnalysisMap.put(method, overApproximateAssumeInfluences(method))
     } else {
+      // Default case
       methodAnalysisStarted.addOne(method)
-      val initialGraph: GraphMap = (method.formalArgs.map(k => k -> Set(k)) ++ method.formalReturns.map(k => k -> Set[LocalVarDecl]())).toMap + (AnalysisUtils.heapVertex -> Set(AnalysisUtils.heapVertex))
+      val initialGraph: GraphMap = (method.formalArgs.map(k => k.asInstanceOf[Declaration] -> Set(k)) ++ method.formalReturns.map(k => k -> Set[LocalVarDecl]())).toMap + (AnalysisUtils.heapVertex -> Set(AnalysisUtils.heapVertex))
 
       val stmt = Seqn(method.body.get.ss, method.body.get.scopedSeqnDeclarations.filter({
         case l: LocalVarDecl => !initialGraph.contains(l)
         case _ => true
       }))(method.body.get.pos, method.body.get.info, method.body.get.errT)
 
-      val assumeAnalysis: AssumeAnalysis = mutable.Map()
-      var map = computeInfluenceMap(stmt, initialGraph, Set())(assumeAnalysis)
+      var map = computeInfluenceMap(stmt, initialGraph)
+      val assumeVars = map.keySet.filter(v => v.isInstanceOf[AssumeNode])
+
+      // Remove all assume nodes and save them as a single assume node for the whole method
+      if(assumeVars.nonEmpty) {
+        map = map.removedAll(assumeVars) + (AssumeNode(method.pos) -> assumeVars.flatMap(v => map(v)))
+      }
 
       if(!methodAnalysisMap.contains(method)) {
         // Check calculated value against the provided specification if there are any
         method.posts.collect({ case f: FlowAnnotation => f }).foreach(f => {
-          val returnVar = AnalysisUtils.getLocalVarDeclFromFlowVar(f.v)
-          val specifiedInfluences = f.varList.map(AnalysisUtils.getLocalVarDeclFromFlowVar).toSet
+          val returnVar = AnalysisUtils.getDeclarationFromFlowVar(f.v, method)
+          val specifiedInfluences = f.varList.map(v => AnalysisUtils.getLocalVarDeclFromFlowVar(v)).toSet
           val calculatedInfluences = lookupVar(returnVar, map)
 
           if (!calculatedInfluences.subsetOf(specifiedInfluences)) {
@@ -136,7 +155,6 @@ case class VarAnalysisGraphMap(prog: Program,
         })
 
         methodAnalysisMap.put(method, map)
-        methodAssumeAnalysisMap.put(method, assumeAnalysis)
       }
     }
     methodAnalysisStarted -= method
@@ -145,7 +163,7 @@ case class VarAnalysisGraphMap(prog: Program,
   private def methodReturnInfluencesFullySpecified(method: Method): Boolean = {
     val allVars = method.posts.collect({ case f: FlowAnnotation => f.v })
     val vars = allVars.collect({ case Var(localVar) => getLocalVarDeclFromLocalVar(localVar)})
-    method.formalReturns.map(v => vars.contains(v)).forall(b => b) && allVars.collect({ case h: Heap => h}).nonEmpty
+    method.formalReturns.map(v => vars.contains(v)).forall(b => b) && allVars.exists(v => v.isInstanceOf[Heap]) && allVars.exists(v => v.isInstanceOf[Assumes])
   }
 
   /**
@@ -153,40 +171,29 @@ case class VarAnalysisGraphMap(prog: Program,
    * Otherwise we over approximate by assuming every method arg (including the heap) influences the return variable.
    */
   private def getDefaultMethodInfluences(method: Method): GraphMap = {
-    val retSet = method.formalReturns.toSet + AnalysisUtils.heapVertex
+    // We ignore the assume vertex on purpose here, as a missing assume vertex is treated as if no assume statement appears in the method
+    val retSet = method.formalReturns.toSet.asInstanceOf[Set[Declaration]] + AnalysisUtils.heapVertex
     val allMethodArgsSet = method.formalArgs.toSet + AnalysisUtils.heapVertex
 
     val annotationInfluences = method.posts.collect({ case FlowAnnotation(returned, arguments) => (returned, arguments) }).map(t => {
-      AnalysisUtils.getLocalVarDeclFromFlowVar(t._1) -> t._2.map(AnalysisUtils.getLocalVarDeclFromFlowVar).toSet
+      AnalysisUtils.getDeclarationFromFlowVar(t._1, method) -> t._2.map(f => AnalysisUtils.getLocalVarDeclFromFlowVar(f)).toSet
     }).toMap
     /** influence all return variables, not mentioned by annotation, by every method argument */
     val otherInfluences = (retSet -- annotationInfluences.keySet).map(retVar => {
       retVar -> allMethodArgsSet
     })
-    annotationInfluences ++ otherInfluences
-  }
+    val (containsDecreases, containsDecreasesStar) = AnalysisUtils.containsDecreasesAnnotations(method)
+    val terminates = containsDecreases && !containsDecreasesStar
+    val noAssumes = method.pres.concat(method.posts).collect({case _: NoAssumeAnnotation => true}).nonEmpty
 
-  /**
-   * Over approximates the assume analysis, by assuming that the method's arguments influence every inhale statement
-   * that occurs in this method or in any transitively called method.
-   */
-  private def overApproximateAssumeInfluences(method: Method): AssumeAnalysis = {
-    var allCalledMethods: Set[Method] = Set(method)
-    var nextSet: Set[Method] = allCalledMethods ++ getAllCalledMethods(method)
-
-    while (allCalledMethods != nextSet) {
-      allCalledMethods = nextSet
-      nextSet = allCalledMethods ++ allCalledMethods.flatMap(getAllCalledMethods)
+    if(annotationInfluences.contains(AssumeNode(method.pos)) || terminates || noAssumes) {
+      annotationInfluences ++ otherInfluences
+    } else {
+      annotationInfluences ++ otherInfluences + (AssumeNode(method.pos) -> allMethodArgsSet)
     }
-
-    val allInhales = allCalledMethods.flatMap(met => met.deepCollectInBody({ case a: Inhale => a }))
-    val assumeAnalysis: AssumeAnalysis = mutable.Map()
-    assumeAnalysis.addAll(allInhales.map(i => i.pos -> method.formalArgs.toSet))
   }
 
-  private def getAllCalledMethods(method: Method): Set[Method] = method.deepCollectInBody({ case a: MethodCall => a }).map(m => prog.findMethod(m.methodName)).toSet
-
-  private def computeInfluenceMap(stmt: Stmt, graphMap: GraphMap, pathInfluencingVariables: Set[LocalVarDecl])(implicit assumeAnalysis: AssumeAnalysis): GraphMap = {
+  private def computeInfluenceMap(stmt: Stmt, graphMap: GraphMap): GraphMap = {
     stmt match {
       case s: Scope =>
         // Temporarily add the scoped declarations to the graph and remove them afterwards
@@ -194,15 +201,15 @@ case class VarAnalysisGraphMap(prog: Program,
         val scopedGraph = graphMap ++ declarations.map(decl => decl -> Set(decl)).toMap
         val graph = s match {
           case Seqn(ss, _) =>
-            ss.foldLeft(scopedGraph) { (graph, subStmt) => computeInfluenceMap(subStmt, graph, pathInfluencingVariables) }
+            ss.foldLeft(scopedGraph) { (graph, subStmt) => computeInfluenceMap(subStmt, graph) }
           case o: OldCall =>
             val met = prog.findMethod(o.methodName)
-            computeMethodInfluenceMap(graphMap, met, o.args, o.rets, pathInfluencingVariables, o.pos)
+            computeMethodInfluenceMap(graphMap, met, o.args, o.rets, o.pos)
           // The quantified variables of the Quasihavocall statement are ignored because they are untainted by definition
           case Quasihavocall(_, lhs, _) =>
             val vars = lhs.map(e => getResolvedVarsFromExp(e, graphMap)).getOrElse(Set())
             graphMap + (AnalysisUtils.heapVertex -> (lookupVar(AnalysisUtils.heapVertex, graphMap) ++ vars))
-          case u: UniversalIntro => computeInfluenceMap(u.block, scopedGraph, pathInfluencingVariables)
+          case u: UniversalIntro => computeInfluenceMap(u.block, scopedGraph)
         }
         graph.removedAll(declarations)
       case LocalVarAssign(lhs, rhs) =>
@@ -211,20 +218,20 @@ case class VarAnalysisGraphMap(prog: Program,
       case If(cond, thn, els) =>
         val conditionVars = getResolvedVarsFromExp(cond, graphMap)
         // For the condition influences, we only care for variables that are declared outside of the if block
-        val writesInIfBlocks = (AnalysisUtils.getModifiedVars(thn) ++ AnalysisUtils.getModifiedVars(els)).filter(v => graphMap.contains(v))
+        val writesInIfBlocks = (getModifiedVars(thn) ++ getModifiedVars(els)).filter(v => v.isInstanceOf[AssumeNode] || graphMap.contains(v))
         val conditionInfluences = writesInIfBlocks.map(v => v -> (lookupVar(v, graphMap) ++ conditionVars.flatMap(c => lookupVar(c, graphMap)))).toMap
 
-        val thenGraph = computeInfluenceMap(thn, graphMap, pathInfluencingVariables ++ conditionVars)
-        val elseGraph = computeInfluenceMap(els, graphMap, pathInfluencingVariables ++ conditionVars)
+        val thenGraph = computeInfluenceMap(thn, graphMap)
+        val elseGraph = computeInfluenceMap(els, graphMap)
         (thenGraph.keySet ++ elseGraph.keySet).map(
           v => v -> (thenGraph.getOrElse(v, Set()) ++ elseGraph.getOrElse(v, Set()) ++ conditionInfluences.getOrElse(v, Set()))
         ).toMap
       case While(cond, _, body) =>
-        var iterationGraph = computeInfluenceMap(If(cond, body, Seqn(Seq(), Seq())(body.pos))(body.pos), graphMap, pathInfluencingVariables)
+        var iterationGraph = computeInfluenceMap(If(cond, body, Seqn(Seq(), Seq())(body.pos))(body.pos), graphMap)
         var edgesEqual: Boolean = false
         var mergeGraph = iterationGraph
         while (!edgesEqual) {
-          iterationGraph = computeInfluenceMap(If(cond, body, Seqn(Seq(), Seq())(body.pos))(body.pos), mergeGraph, pathInfluencingVariables)
+          iterationGraph = computeInfluenceMap(If(cond, body, Seqn(Seq(), Seq())(body.pos))(body.pos), mergeGraph)
           if(iterationGraph.equals(mergeGraph)) {
             edgesEqual = true
           } else {
@@ -234,7 +241,7 @@ case class VarAnalysisGraphMap(prog: Program,
         mergeGraph
       case m: MethodCall =>
         val met = prog.findMethod(m.methodName)
-        computeMethodInfluenceMap(graphMap, met, m.args, m.targets, pathInfluencingVariables, m.pos)
+        computeMethodInfluenceMap(graphMap, met, m.args, m.targets, m.pos)
       case FieldAssign(_, rhs) =>
         val vars = getResolvedVarsFromExp(rhs, graphMap)
         graphMap + (AnalysisUtils.heapVertex -> (lookupVar(AnalysisUtils.heapVertex, graphMap) ++ vars.filter(v => !v.equals(AnalysisUtils.heapVertex)).flatMap(v => graphMap(v))))
@@ -264,9 +271,8 @@ case class VarAnalysisGraphMap(prog: Program,
       case Label(_, _) => graphMap
       // Assume analysis
       case a: Inhale =>
-        val assumeVars = (pathInfluencingVariables ++ getResolvedVarsFromExp(a.exp, graphMap)).flatMap(v => lookupVar(v, graphMap) + v)
-        assumeAnalysis.addOne(a.pos -> assumeVars)
-        graphMap
+        val assumeVars = (lookupVar(AssumeNode(a.pos), graphMap) ++ getResolvedVarsFromExp(a.exp, graphMap)).flatMap(v => lookupVar(v, graphMap) + v)
+        graphMap + (AssumeNode(a.pos) -> assumeVars)
       case ExistentialElim(vars, _, exp) => graphMap ++ vars.map(v => v -> getResolvedVarsFromExp(exp, graphMap))
       // Non handled cases
       case a: Assume =>
@@ -283,33 +289,67 @@ case class VarAnalysisGraphMap(prog: Program,
 
   /** creates graph for method call and old call. maps expressions passed to methods to the method arguments, computes the graph based on the flow annotation,
    * and finally maps the return variables to the variables that the method is assigned to. */
-  private def computeMethodInfluenceMap(graphMap: GraphMap, method: Method, callArgs: Seq[Exp], callTargets: Seq[LocalVar], pathInfluencingVars: Set[LocalVarDecl], pos: Position)(implicit assumeAnalysis: AssumeAnalysis): GraphMap = {
+  private def computeMethodInfluenceMap(graphMap: GraphMap, method: Method, callArgs: Seq[Exp], callTargets: Seq[LocalVar], pos: Position): GraphMap = {
     /** set of all target variables that have not been included in the influenced by expression up until now */
     val methodArgExpMapping = (method.formalArgs zip callArgs).map(methodArg =>
-      methodArg._1 -> getResolvedVarsFromExp(methodArg._2, graphMap)
+      methodArg._1.asInstanceOf[Declaration] -> getResolvedVarsFromExp(methodArg._2, graphMap)
     ).toMap + (AnalysisUtils.heapVertex -> Set(AnalysisUtils.heapVertex))
+
     val retVarMapping = (callTargets.map(l => AnalysisUtils.getLocalVarDeclFromLocalVar(l)) zip method.formalReturns)
-      .map(vars => vars._2 -> vars._1).toMap + (AnalysisUtils.heapVertex -> AnalysisUtils.heapVertex)
+      .map(vars => vars._2.asInstanceOf[Declaration] -> vars._1.asInstanceOf[Declaration]).toMap + (AnalysisUtils.heapVertex -> AnalysisUtils.heapVertex) + (AssumeNode(method.pos) -> AssumeNode(pos))
 
-    if(!methodAnalysisMap.contains(method)) {
-      executeTaintedGraphMethodAnalysis(method)
-    }
-
-    val resolvedMethodMap = methodAnalysisMap(method)
+    val resolvedMethodMap = getMethodAnalysisMap(method)
       .filter(v => retVarMapping.contains(v._1))
       .map(v => retVarMapping(v._1) -> v._2.flatMap(methodArgExpMapping)) +
       (AnalysisUtils.heapVertex -> (graphMap(AnalysisUtils.heapVertex) ++ methodAnalysisMap(method)(AnalysisUtils.heapVertex).flatMap(methodArgExpMapping)))
 
-    val methodAssumeAnalysis = methodAssumeAnalysisMap(method)
-
+    logger.warn(s"${method.name} resolved: $resolvedMethodMap")
     // We set the position to the method call instead of the assume statement, so potential error are more readable.
-    assumeAnalysis.addAll(methodAssumeAnalysis.map(v => pos -> (v._2.flatMap(v => methodArgExpMapping(v)) ++ pathInfluencingVars)))
     graphMap ++ resolvedMethodMap
   }
 
-  private def lookupVar(variable: LocalVarDecl, graphMap: GraphMap): Set[LocalVarDecl] = {
-    assert(graphMap.contains(variable), "Variable " + variable + " not found in graph analysis")
-    graphMap(variable)
+  private def getMethodAnalysisMap(method: Method): GraphMap = {
+    if (!methodAnalysisMap.contains(method)) {
+      executeTaintedGraphMethodAnalysis(method)
+    }
+
+    methodAnalysisMap(method)
+  }
+
+  /**
+   * get the variables that were modified by the statement stmt
+   */
+  def getModifiedVars(stmt: Stmt): Set[Declaration] = {
+    stmt match {
+      case Seqn(ss, _) => ss.flatMap(s => getModifiedVars(s)).toSet
+      case LocalVarAssign(l, _) => Set(getLocalVarDeclFromLocalVar(l))
+      case If(_, thn, els) => getModifiedVars(thn) ++ getModifiedVars(els)
+      case While(_, _, body) => getModifiedVars(body)
+      case MethodCall(name, _, targets) =>
+        val methodInfluences = getMethodAnalysisMap(prog.methodsByName(name))
+        if(methodInfluences.exists(v => v._1.isInstanceOf[AssumeNode])) {
+          targets.map(getLocalVarDeclFromLocalVar).toSet + AssumeNode(stmt.pos)
+        } else {
+          targets.map(getLocalVarDeclFromLocalVar).toSet
+        }
+      case i: Inhale => Set(AssumeNode(i.pos))
+      case a: Assume => Set(AssumeNode(a.pos))
+      case Label(_, _) => Set()
+      case Quasihavoc(_, _) => Set(heapVertex)
+      case Quasihavocall(_, _, _) => Set(heapVertex)
+      case ExistentialElim(vars, _, _) => vars.toSet
+      case _ => Set()
+    }
+  }
+
+  private def lookupVar(variable: Declaration, graphMap: GraphMap): Set[LocalVarDecl] = {
+    // Assume Nodes are added when they are first encountered(can be a method call or a assume / inhale statement), so they might not exist when looked up
+    if(variable.isInstanceOf[AssumeNode]) {
+      graphMap.getOrElse(variable, Set())
+    } else {
+      assert(graphMap.contains(variable), "Variable " + variable + " not found in graph analysis")
+      graphMap(variable)
+    }
   }
 
   /**

@@ -12,7 +12,7 @@ import viper.silver.ast.utility.rewriter.{StrategyBuilder, Traverse}
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.parser.FastParserCompanion.whitespace
 import viper.silver.parser._
-import viper.silver.plugin.standard.reasoning.analysis.{AnalysisUtils, VarAnalysisGraphMap}
+import viper.silver.plugin.standard.reasoning.analysis.VarAnalysisGraphMap
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier._
 
@@ -45,10 +45,17 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
 
   def heap[$: P]: P[PHeap] = P(P(PHeapKeyword) map (PHeap(_) _)).pos // note that the parentheses are not redundant
 
+  def assumes[$: P]: P[PAssumes] = P(P(PAssumesKeyword) map (PAssumes(_) _)).pos // note that the parentheses are not redundant
+
+  def assumesNothingSpec[$: P]: P[PSpecification[PNothingKeyword.type]] =
+    P(P(PNothingKeyword) map {
+      case (b) => PSpecification(b, PAssumesNothing()(b.pos))(_)
+    }).pos
+
   def singleVar[$: P]: P[PVar] = P(fp.idnuse map (PVar(_) _)).pos // note that the parentheses are not redundant
   def varsAndHeap[$: P]: P[Seq[PFlowVar]] = (heap | singleVar).delimited(PSym.Comma).map(_.toSeq)
 
-  def influencedBy[$: P]: P[PFlowAnnotation] = P(((heap | singleVar) ~ P(PByKeyword) ~/ varsAndHeap.braces) map {
+  def influencedBy[$: P]: P[PFlowAnnotation] = P(((heap | assumes |  singleVar) ~ P(PByKeyword) ~/ varsAndHeap.braces) map {
     case (v, byKw, groupedVarList) => PFlowAnnotation(v, byKw, groupedVarList)(_)
   }).pos
 
@@ -97,6 +104,7 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
 
     /** add influenced by flow annotation to as a postcondition */
     ParserExtension.addNewPostCondition(flowSpec(_))
+    ParserExtension.addNewPostCondition(assumesNothingSpec(_))
 
     /** add lemma as an annotation either as a pre- or a postcondition */
     ParserExtension.addNewPreCondition(lemma(_))
@@ -256,12 +264,14 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
 
         /** Get all variables that are in scope in the current method */
         val tainted: Set[LocalVarDecl] = v.toSet
-        val varsOutside = (input.methods.flatMap(m => m.body.get.ss.filter(s => s.contains(u)).flatMap(_ => Set(m.transitiveScopedDecls: _*))).toSet -- Set(u.transitiveScopedDecls: _*)) ++ tainted
+        val varsOutside = (input.methods
+          .filter(m => m.body.isDefined)
+          .flatMap(m => m.body.get.ss.filter(s => s.contains(u)).flatMap(_ => Set(m.transitiveScopedDecls: _*))).toSet -- Set(u.transitiveScopedDecls: _*)) ++ tainted
         /**
           * get all variables that are assigned to inside the block and take intersection with universal introduction
           * variables. If they are contained throw error since quantified variables should be immutable
           */
-        val writtenVars: Set[LocalVarDecl] = AnalysisUtils.getModifiedVars(blk)
+        val writtenVars: Set[LocalVarDecl] = analysis.getModifiedVars(blk).collect({ case v: LocalVarDecl => v})
         checkReassigned(writtenVars, v, reportError, u)
         checkInfluencedBy(input, reportError)
 

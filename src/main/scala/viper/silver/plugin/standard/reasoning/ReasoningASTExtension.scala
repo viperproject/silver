@@ -61,6 +61,12 @@ sealed trait FlowVar extends ExtensionExp {
   }
 }
 
+case class Assumes()(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends FlowVar {
+  override val extensionSubnodes: Seq[Node] = Seq.empty
+  override def typ: Type = InternalType
+  override def prettyPrint: PrettyPrintPrimitives#Cont = PAssumesKeyword.keyword
+}
+
 case class Heap()(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends FlowVar {
   override val extensionSubnodes: Seq[Node] = Seq.empty
   override def typ: Type = InternalType
@@ -71,6 +77,25 @@ case class Var(decl: LocalVar)(val pos: Position = NoPosition, val info: Info = 
   override val extensionSubnodes: Seq[Node] = Seq(decl)
   override def typ: Type = decl.typ
   override def prettyPrint: PrettyPrintPrimitives#Cont = show(decl)
+}
+
+case class NoAssumeAnnotation()(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionExp with Node {
+  override def extensionIsPure: Boolean = true
+
+  override def extensionSubnodes: Seq[Node] = Seq()
+
+  override def typ: Type = Bool
+
+  override def verifyExtExp(): VerificationResult = {
+    assert(assertion = false, "FlowAnalysis: verifyExtExp has not been implemented.")
+    Failure(Seq(ConsistencyError("FlowAnalysis: verifyExtExp has not been implemented.", pos)))
+  }
+
+  /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
+   * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression. */
+  override def prettyPrint: PrettyPrintPrimitives#Cont = {
+    text("assumes nothing")
+  }
 }
 
 case class FlowAnnotation(v: FlowVar, varList: Seq[FlowVar])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionExp with Node with Scope {

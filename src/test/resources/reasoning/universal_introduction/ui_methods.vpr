@@ -265,3 +265,25 @@ method test9(x: Ref, y: Int)
         exhale acc(x.f)
     }
 }
+
+
+method testRec1(x: Int)
+    requires acc(x.f)
+    influenced heap by {heap}
+{
+    if (y == 0) {
+        exhale acc(x.f)
+    }
+}
+
+
+method testRec2(x: Int)
+    requires acc(x.f)
+    influenced heap by {heap}
+{
+    testAssumesAbstract1(x)
+    testRec1(x)
+}
+
+method testAssumesAbstract(x: Int)
+    assumesUsing {x}

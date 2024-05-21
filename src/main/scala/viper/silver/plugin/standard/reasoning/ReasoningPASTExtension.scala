@@ -7,7 +7,7 @@
 package viper.silver.plugin.standard.reasoning
 
 import viper.silver.FastMessaging
-import viper.silver.ast.{ExtensionExp, LocalVar, LocalVarDecl, Position, Seqn, Stmt, Trigger}
+import viper.silver.ast.{Exp, ExtensionExp, LocalVar, LocalVarDecl, Position, Seqn, Stmt, Trigger}
 import viper.silver.parser.TypeHelper.Bool
 import viper.silver.parser.{NameAnalyser, PAssignTarget, PCall, PCallable, PDelimited, PExp, PExtender, PGrouped, PIdnRef, PIdnUseExp, PKeywordLang, PKeywordStmt, PKw, PLabel, PLocalVarDecl, PReserved, PSeqn, PStmt, PSym, PSymOp, PTrigger, PType, PTypeSubstitution, Translator, TypeChecker}
 
@@ -19,6 +19,8 @@ case object PImpliesKeyword extends PKw("implies") with PKeywordLang
 case object PInfluencedKeyword extends PKw("influenced") with PKeywordLang with PKw.PostSpec
 case object PByKeyword extends PKw("by") with PKeywordLang
 case object PHeapKeyword extends PKw("heap") with PKeywordLang
+case object PAssumesKeyword extends PKw("assumes") with PKeywordLang
+case object PNothingKeyword extends PKw("assumesNothing") with PKeywordLang with PKw.PostSpec
 case object PIsLemmaKeyword extends PKw("isLemma") with PKeywordLang with PKw.PreSpec with PKw.PostSpec
 case object POldCallKeyword extends PKw("oldCall") with PKeywordLang with PKeywordStmt
 
@@ -109,6 +111,29 @@ case class PHeap(heap: PReserved[PHeapKeyword.type])(val pos: (Position,Position
   }
 
   override def pretty: String = PHeapKeyword.keyword
+}
+
+case class PAssumes(assumes: PReserved[PAssumesKeyword.type])(val pos: (Position,Position)) extends PFlowVar {
+  override def translate(t: Translator): Assumes = {
+    Assumes()(t.liftPos(this))
+  }
+
+  override def pretty: String = PAssumesKeyword.keyword
+}
+
+case class PAssumesNothing()(val pos: (Position,Position)) extends PExp with PExtender {
+  def translate(t: Translator): NoAssumeAnnotation = {
+    NoAssumeAnnotation()(t.liftPos(this))
+  }
+
+  override def pretty: String = PAssumesKeyword.keyword
+  override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = None
+
+  override def translateExp(t: Translator): Exp = NoAssumeAnnotation()(pos._1)
+
+  override def typeSubstitutions: collection.Seq[PTypeSubstitution] = Seq(PTypeSubstitution.id)
+
+  override def forceSubstitution(ts: PTypeSubstitution): Unit = {}
 }
 
 case class PVar(decl: PIdnUseExp)(val pos: (Position,Position)) extends PFlowVar {

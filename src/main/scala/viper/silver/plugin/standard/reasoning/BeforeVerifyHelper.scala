@@ -8,8 +8,7 @@ package viper.silver.plugin.standard.reasoning
 
 
 import viper.silver.ast.utility.Expressions
-import viper.silver.ast.{Apply, Exhale, Exp, FieldAssign, Fold, Inhale, LocalVarDecl, Method, MethodCall, Package, Program, Seqn, Stmt, Unfold}
-import viper.silver.plugin.standard.termination.{DecreasesSpecification, DecreasesStar, DecreasesTuple, DecreasesWildcard}
+import viper.silver.ast.{Apply, Declaration, Exhale, Exp, FieldAssign, Fold, Inhale, LocalVarDecl, Method, MethodCall, Package, Program, Seqn, Stmt, Unfold}
 import viper.silver.verifier.{AbstractError, ConsistencyError}
 import viper.silver.plugin.standard.reasoning.analysis.AnalysisUtils
 
@@ -70,56 +69,23 @@ trait BeforeVerifyHelper {
   def checkLemma(input: Program, reportError: AbstractError => Unit): Unit = {
     input.methods.foreach(method => {
       val containsLemma = specifiesLemma(method)
-      var containsDecreases = false
+      val (containsDecreases, containsDecreasesStar) = AnalysisUtils.containsDecreasesAnnotations(method)
+
       if (containsLemma) {
-        /** check preconditions for decreases clause */
-        method.pres.foreach {
-          case DecreasesTuple(_, _) =>
-            containsDecreases = true
-          case DecreasesWildcard(_) =>
-            containsDecreases = true
-          case DecreasesStar() =>
-            reportError(ConsistencyError("decreases statement might not prove termination", method.pos))
-          case _ =>
-            ()
-        }
-        /** check postconditions for decreases clause */
-        method.posts.foreach {
-          case DecreasesTuple(_, _) =>
-            containsDecreases = true
-          case DecreasesWildcard(_) =>
-            containsDecreases = true
-          case DecreasesStar() =>
-            reportError(ConsistencyError("decreases statement might not prove termination", method.pos))
-            containsDecreases = true
-          case _ => ()
+        /** report error if there is no decreases clause or specification */
+        if(!containsDecreases) {
+          reportError(ConsistencyError(s"method ${method.name} marked lemma might not contain decreases clause", method.pos))
         }
 
-        /** check info for decreases specification */
-        method.meta._2 match {
-          case spec: DecreasesSpecification =>
-            if (spec.star.isDefined) {
-              reportError(ConsistencyError("decreases statement might not prove termination", method.pos))
-              containsDecreases = true
-            } else {
-              containsDecreases = true
-            }
-          case _ =>
+        /** report error if the decreases statement might not prove termination */
+        if (containsDecreasesStar) {
+          reportError(ConsistencyError("decreases statement might not prove termination", method.pos))
         }
-      }
 
-      /** report error if there is no decreases clause or specification */
-      if (containsLemma && !containsDecreases) {
-        reportError(ConsistencyError(s"method ${method.name} marked lemma might not contain decreases clause", method.pos))
-      }
-
-      /** check method body for impure statements */
-      if (containsLemma) {
+        /** check method body for impure statements */
         checkBodyPure(method.body.getOrElse(Seqn(Seq(), Seq())()), method, input, reportError)
       }
-
     })
-
   }
 
   /** checks whether the body is pure, reports error if impure operation found */
@@ -155,14 +121,14 @@ trait BeforeVerifyHelper {
   /** checks that influences by annotations are used correctly. */
   def checkInfluencedBy(input: Program, reportError: AbstractError => Unit): Unit = {
     input.methods.foreach(method => {
-      val argVars = method.formalArgs ++ AnalysisUtils.heapVertex
-      val retVars = method.formalReturns ++ AnalysisUtils.heapVertex
+      val argVars = method.formalArgs.toSet + AnalysisUtils.heapVertex
+      val retVars = method.formalReturns.toSet.asInstanceOf[Set[Declaration]] + AnalysisUtils.heapVertex + AnalysisUtils.AssumeNode(method.pos)
 
-      val seenVars: mutable.Set[LocalVarDecl] = mutable.Set()
+      val seenVars: mutable.Set[Declaration] = mutable.Set()
       /** iterate through method postconditions to find flow annotations */
       method.posts.foreach {
         case v@FlowAnnotation(target, args) =>
-          val targetVarDecl = AnalysisUtils.getLocalVarDeclFromFlowVar(target)
+          val targetVarDecl = AnalysisUtils.getDeclarationFromFlowVar(target, method)
 
           if (!retVars.contains(targetVarDecl)) {
             reportError(ConsistencyError(s"Only return variables can be influenced. ${targetVarDecl.name} is not be a return variable.", v.pos))
