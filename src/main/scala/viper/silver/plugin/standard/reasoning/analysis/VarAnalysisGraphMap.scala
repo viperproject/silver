@@ -137,25 +137,28 @@ case class VarAnalysisGraphMap(prog: Program,
         map = map.removedAll(assumeVars) + (AssumeNode(method.pos) -> assumeVars.flatMap(v => map(v)))
       }
 
-      if(!methodAnalysisMap.contains(method)) {
-        // Check calculated value against the provided specification if there are any
-        method.posts.collect({ case f: FlowAnnotation => f }).foreach(f => {
-          val returnVar = AnalysisUtils.getDeclarationFromFlowVar(f.v, method)
-          val specifiedInfluences = f.varList.map(v => AnalysisUtils.getLocalVarDeclFromFlowVar(v)).toSet
-          val calculatedInfluences = lookupVar(returnVar, map)
+      // Check calculated value against the provided specification if there are any
+      method.posts.collect({ case f: FlowAnnotation => f }).foreach(f => {
+        val returnVar = AnalysisUtils.getDeclarationFromFlowVar(f.v, method)
+        val specifiedInfluences = f.varList.map(v => AnalysisUtils.getLocalVarDeclFromFlowVar(v)).toSet
+        val calculatedInfluences = lookupVar(returnVar, map)
 
-          if (!calculatedInfluences.subsetOf(specifiedInfluences)) {
-            reportErrorWithMsg(ConsistencyError(s"Specified influence on return variable $returnVar is missing some potential influences. Specified: $specifiedInfluences Calculated: $calculatedInfluences", f.pos))
-          }
+        if (!calculatedInfluences.subsetOf(specifiedInfluences)) {
+          reportErrorWithMsg(ConsistencyError(s"Specified influence on return variable $returnVar is missing some potential influences. Specified: $specifiedInfluences Calculated: $calculatedInfluences", f.pos))
+        }
 
-          if (calculatedInfluences.intersect(specifiedInfluences).size < calculatedInfluences.size) {
-            logger.warn(s"Specified influence on return variable $returnVar potentially assumes too many influences. Specified: $specifiedInfluences Calculated: $calculatedInfluences, (${f.pos})")
-          }
-          map = map + (returnVar -> specifiedInfluences)
-        })
+        if (calculatedInfluences.intersect(specifiedInfluences).size < calculatedInfluences.size) {
+          logger.warn(s"Specified influence on return variable $returnVar potentially assumes too many influences. Specified: $specifiedInfluences Calculated: $calculatedInfluences, (${f.pos})")
+        }
 
-        methodAnalysisMap.put(method, map)
-      }
+        val noAssumesSpecified = method.pres.concat(method.posts).collect({ case _: NoAssumeAnnotation => true }).nonEmpty
+        if (noAssumesSpecified && map.contains(AssumeNode(method.pos))) {
+          reportErrorWithMsg(ConsistencyError(s"Method with assumesNothing specification might perform an assume or inhale", f.pos))
+        }
+
+        map = map + (returnVar -> specifiedInfluences)
+      })
+      methodAnalysisMap.put(method, map)
     }
     methodAnalysisStarted -= method
   }
