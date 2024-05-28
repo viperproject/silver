@@ -1,6 +1,6 @@
 field f: Int
 
-method test5a(x: Ref, y: Ref)
+method test5(x: Ref, y: Ref)
     requires true --* acc(x.f)
     requires acc(x.f) --* acc(y.f)
     requires inhaling (acc(x.f)) in applying (acc(x.f) --* acc(y.f)) in y.f == 10
