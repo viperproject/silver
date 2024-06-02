@@ -751,7 +751,7 @@ class FastParser {
   }
 
   def stmt(allowDefine: Boolean = true)(implicit ctx : P[_]) : P[PStmt] = P(ParserExtension.newStmtAtStart(ctx) | annotatedStmt |
-    stmtReservedKw(allowDefine) | stmtBlock() |
+    stmtReservedKw(allowDefine) | stmtBlock(allowDefine) |
     assign | ParserExtension.newStmtAtEnd(ctx))
 
   def annotatedStmt(implicit ctx : P[_]): P[PStmt] = P((annotation ~ stmt()) map (PAnnotatedStmt.apply _).tupled).pos

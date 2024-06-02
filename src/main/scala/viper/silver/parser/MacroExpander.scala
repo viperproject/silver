@@ -481,6 +481,19 @@ object MacroExpander {
           freeVars += varUse.name
           (varUse, ctx)
         }
+      case (label@PLabel(lbl, lName, invs), ctx) if !ctx.c.boundVars.contains(lName.name) =>
+        if (ctx.c.paramToArgMap.contains(lName.name)) {
+          val replacement = ctx.c.paramToArgMap(lName.name).deepCopyAll
+          val replaced = replacement match {
+            case r: PIdnUseExp => PIdnDef(r.name)(r.pos)
+            case r =>
+              throw MacroException(s"macro expansion cannot substitute expression `${replacement.pretty}` at ${replacement.pos._1} in non-expression position at ${lName.pos._1}.", replacement.pos)
+          }
+          (PLabel(lbl, replaced, invs)(label.pos), ctx.updateContext(ctx.c.copy(paramToArgMap = ctx.c.paramToArgMap.empty)))
+        } else {
+          freeVars += lName.name
+          (label, ctx)
+        }
     }, ReplaceContext())
     (replacer, freeVars)
   }
