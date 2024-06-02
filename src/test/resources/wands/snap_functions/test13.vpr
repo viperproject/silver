@@ -1,0 +1,87 @@
+field f: Int
+
+method test13a(xs: Seq[Ref], y: Ref)
+    requires forall x: Ref :: x in xs ==> acc(x.f)
+    requires |xs| >= 1
+    requires acc(y.f)
+{
+    xs[0].f := 0
+    var some: Ref := xs[0]
+
+    package (forall x: Ref :: x in xs ==> acc(x.f)) --* acc(some.f)
+
+    some.f := 1
+    assert applying ((forall x: Ref :: x in xs ==> acc(x.f)) --* acc(some.f)) in true
+
+    some.f := 2
+    assert applying ((forall x: Ref :: x in xs ==> acc(x.f)) --* acc(some.f)) in true
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+method test13b(xs: Seq[Ref], y: Ref)
+    requires forall x: Ref :: x in xs ==> acc(x.f)
+    requires |xs| >= 1
+    requires acc(y.f)
+{
+    xs[0].f := 0
+    var some: Ref := xs[0]
+
+    package (forall x: Ref :: x in xs ==> acc(x.f)) --* acc(some.f)
+
+    some.f := 1
+    assert applying ((forall x: Ref :: x in xs ==> acc(x.f)) --* acc(some.f)) in true
+
+    some.f := 2
+    assert applying ((forall x: Ref :: x in xs ==> acc(x.f)) --* acc(some.f)) in true
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+
+    var completed: Seq[Ref] := Seq(some)
+    assert forall z: Ref :: z in completed ==> (forall x: Ref :: x in xs ==> acc(x.f)) --* acc(z.f)
+}
+
+method test13c(xs: Seq[Ref], y: Ref)
+    requires forall x: Ref :: x in xs ==> acc(x.f)
+    requires |xs| >= 1
+    requires acc(y.f)
+{
+    xs[0].f := 0
+    var some: Ref := xs[0]
+
+    package (forall x: Ref :: x in xs ==> acc(x.f)) && acc(y.f) --* acc(some.f) && acc(y.f)
+
+    some.f := 1
+    assert applying ((forall x: Ref :: x in xs ==> acc(x.f)) && acc(y.f) --* acc(some.f) && acc(y.f)) in true
+
+    some.f := 2
+    assert applying ((forall x: Ref :: x in xs ==> acc(x.f)) && acc(y.f) --* acc(some.f) && acc(y.f)) in true
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+method test13d(xs: Seq[Ref], y: Ref)
+    requires forall x: Ref :: x in xs ==> acc(x.f)
+    requires |xs| >= 1
+    requires acc(y.f)
+{
+    xs[0].f := 0
+    var some: Ref := xs[0]
+
+    package (forall x: Ref :: x in xs ==> acc(x.f)) && acc(y.f) --* acc(some.f) && acc(y.f)
+
+    some.f := 1
+    assert applying ((forall x: Ref :: x in xs ==> acc(x.f)) && acc(y.f) --* acc(some.f) && acc(y.f)) in true
+
+    some.f := 2
+    assert applying ((forall x: Ref :: x in xs ==> acc(x.f)) && acc(y.f) --* acc(some.f) && acc(y.f)) in true
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+
+    var completed: Seq[Ref] := Seq(some)
+    assert forall z: Ref :: z in completed ==> (forall x: Ref :: x in xs ==> acc(x.f)) && acc(y.f) --* acc(z.f) && acc(y.f)
+}
