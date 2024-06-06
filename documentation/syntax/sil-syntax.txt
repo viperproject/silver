@@ -1,15 +1,20 @@
 
 // Declarations
 sil-program ::=
-	(
+	annotated(
 		import    |
 		define    |
 		domain    |
 		field     |
 		function  |
 		predicate |
-		method
+		method	  |
+		adt
 	)*
+
+annotated(R) ::= annotation* R
+
+annotation ::= "@" ident "(" string^,* ")"
 
 import ::=
     "import" relative-path
@@ -27,17 +32,20 @@ expression-or-block ::=
     block
 
 domain ::=
-	"domain" domain-name "{"
-		domain-function*
-		axiom*
+	"domain" domain-name domain-interpretation? "{"
+		(domain-function | axiom)*
 	"}"
 
 domain-name ::=
 	ident |
 	ident "[" ident^,* "]"  //e.g. Seq[T]
 
+domain-interpretation ::= TODO
+
 domain-function ::=
-	["unique"] function-signature [";"]
+	["unique"] function-signature domain-function-interpretation [";"]
+
+domain-function-interpretation ::= TODO
 
 function-signature ::=
 	"function" ident formal-args ":" type
@@ -46,13 +54,14 @@ axiom ::=
 	"axiom" ident "{" exp "}" [";"]
 
 field ::=
-	"field" ident ":" type [";"]
+	"field" (ident ":" type)^,* [";"]
 
 function ::=
 	function-signature
 		precondition*
 		postcondition*
-	"{" exp "}" // Semicolon not permitted
+		decreases*
+	[ "{" exp "}" ] // Semicolon not permitted
 
 precondition ::=
 	"requires" exp
@@ -60,8 +69,7 @@ precondition ::=
 postcondition ::=
 	"ensures" exp
 
-invariant ::=
-	"invariant" exp
+decreases ::= TODO
 
 predicate ::=
 	"predicate" ident formal-args ["{" exp "}"] // Semicolon not permitted
@@ -70,6 +78,7 @@ method ::=
 	"method" ident formal-args [formal-returns]
 		precondition*  
 		postcondition*
+		decreases*
 	[ block ]
 
 formal-args ::=
@@ -81,6 +90,8 @@ formal-arg ::=
 formal-returns ::=
 	"returns" formal-args
 
+adt ::= TODO
+
 // Statements		
 block ::=
 	"{" statement-with-optional-semicolon* "}"
@@ -88,7 +99,9 @@ block ::=
 statement-with-optional-semicolon ::= 
 	stmt [";"]
 
-stmt ::=
+stmt ::= annotated(stmt_raw)
+
+stmt_raw ::=
 	// local variable declaration with an optional initial value
 	"var" ident  ":" type [":=" exp] |
 
@@ -122,7 +135,10 @@ stmt ::=
 	call-statement         |
 	fresh-statement        |
 	wand-statement         |
-	constraining-block     |
+
+	havov-statement |
+	quasihavoc-statement |
+	quasihavocall-statement |
 
 	// an arbitrary block of statements
 	block
@@ -142,6 +158,9 @@ while-statement ::=
 		invariant*
 		block
 
+invariant ::=
+	"invariant" exp
+
 call-statement ::= // method call [with return target]
 	[ident^,* :=] ident "(" exp^,* ")"
 	
@@ -153,9 +172,11 @@ wand-statement ::=
 	"package" magic-wand-exp |
 	"apply" magic-wand-exp
 	
-constraining-block ::=	
-	"constraining" "(" ident^,* ")"
-		block
+havoc-statement ::= TODO
+
+quasihavoc-statement ::= TODO
+
+quasihavocall-statement ::= TODO
 
 // Expressions
 binop ::=
@@ -180,8 +201,10 @@ binop ::=
 unop ::=
 	"!" |            // boolean negation
 	"+" | "-"        // integer and permission
-	
-exp ::=
+
+exp ::= annotated(atom)
+
+atom ::=
 	"true"  | "false" |          // boolean literal
 	integer |                    // integer literal	
 	"null"   |                   // null literal
@@ -228,6 +251,7 @@ exp ::=
 	
 	seq-constructor-exp      |
 	set-constructor-exp      |
+	map-constructor-exp      |
 	
 	seq-op-exp  |
 	"|" exp "|" |                // length of a sequence; or set/multiset cardinality
@@ -252,7 +276,8 @@ set-constructor-exp ::=
 	"Set" "[" type "]" "(" ")"             | // empty set
 	"Set" "(" exp^,* ")"                   | // explicit set
 	"Multiset" "[" type "]" "(" ")"        | // empty multiset
-	"Multiset" "(" exp^,* ")"              | // explicit multiset			
+	"Multiset" "(" exp^,* ")"              | // explicit multiset
+map-constructor-exp ::= TODO
 				
 seq-op-exp ::=
 	exp "[" exp "]"          |  // sequence lookup
@@ -282,6 +307,7 @@ type ::=
 	"Seq" "[" type "]" |                           // sequence type
 	"Set" "[" type "]" |                           // set type
 	"Multiset" "[" type "]" |                      // multiset type
+	"Map" "[" type "," type "]" |				   // map type
 	ident [ "[" type^,* "]" ]                      // [instance of a generic] domain type
 
 // Identifiers
