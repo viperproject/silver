@@ -1,0 +1,16 @@
+field f: Int
+
+method test14(x: Ref)
+    requires forall y: Ref :: true ==> acc(y.f)
+    // requires x.f == 0
+{
+    package (forall y: Ref :: true ==> acc(y.f)) --* (forall y: Ref :: true ==> acc(y.f))
+
+    x.f := 0
+    assert applying ((forall y: Ref :: true ==> acc(y.f)) --* (forall y: Ref :: true ==> acc(y.f))) in true
+    x.f := 1
+    assert applying ((forall y: Ref :: true ==> acc(y.f)) --* (forall y: Ref :: true ==> acc(y.f))) in true
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
