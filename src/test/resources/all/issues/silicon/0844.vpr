@@ -16,6 +16,7 @@ method main1(tid: Int, n: Int, x0: Array, x1: Array, i: Int)
 
   requires i >= 0 && i < n
 {
+  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/517/)
   assert (forall j: Int :: { hide0(x0,n,j) }
       0 <= j && j < n ==>
       (unfolding hide0(x0,n,j) in aloc(x0, j).int) == 0)
@@ -23,6 +24,7 @@ method main1(tid: Int, n: Int, x0: Array, x1: Array, i: Int)
   unfold acc(hide1(x1, n, i),1/2)
   fold acc(hide1(x1, n, i),1/2)
 
+  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/517/)
   assert (forall j: Int :: { hide0(x0,n,j) }
       0 <= j && j < n ==>
       (unfolding hide0(x0,n,j) in aloc(x0, j).int) == 0)
