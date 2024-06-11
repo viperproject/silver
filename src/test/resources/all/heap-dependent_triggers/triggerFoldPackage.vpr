@@ -12,7 +12,7 @@ method m1(xs: Set[Ref], y: Ref, zs: Seq[Ref]) {
     assume z in zs
     assume !(z in xs)
     package acc(z.f) --* acc(y.f)
-
+    //:: MissingOutput(assert.failed:assertion.false, /Silicon/issue/000/)
     //:: ExpectedOutput(assert.failed:assertion.false)
     assert z != y
 }
