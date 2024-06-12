@@ -7,7 +7,7 @@
 package viper.silver.parser
 
 import viper.silver.ast.{FilePosition, Position, SourcePosition}
-import viper.silver.ast.utility.rewriter.{ContextA, ParseTreeDuplicationError, PartialContextC, StrategyBuilder, Traverse}
+import viper.silver.ast.utility.rewriter.{ContextA, ParseTreeDuplicationError, PartialContextC, StrategyBuilder}
 import viper.silver.verifier.{ParseError, ParseReport, ParseWarning}
 
 import java.util
