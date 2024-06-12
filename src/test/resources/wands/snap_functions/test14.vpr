@@ -1,8 +1,18 @@
 field f: Int
 
-method test14(x: Ref)
+predicate Cell(x: Ref) {
+    acc(x.f)
+}
+
+function get(x: Ref): Int
+    requires acc(Cell(x), 1/2)
+{
+    unfolding acc(Cell(x), 1/2) in x.f
+}
+
+// based on test7 in QPFields.vpr
+method test14a(x: Ref)
     requires forall y: Ref :: true ==> acc(y.f)
-    // requires x.f == 0
 {
     package (forall y: Ref :: true ==> acc(y.f)) --* (forall y: Ref :: true ==> acc(y.f))
 
@@ -10,6 +20,101 @@ method test14(x: Ref)
     assert applying ((forall y: Ref :: true ==> acc(y.f)) --* (forall y: Ref :: true ==> acc(y.f))) in true
     x.f := 1
     assert applying ((forall y: Ref :: true ==> acc(y.f)) --* (forall y: Ref :: true ==> acc(y.f))) in true
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+// based on test9 in QPFields.vpr
+method test14b(x: Ref)
+    requires forall y: Ref :: true ==> acc(y.f)
+{
+    package (forall y: Ref :: true ==> acc(y.f)) --* acc(x.f)
+
+    x.f := 0
+    assert applying ((forall y: Ref :: true ==> acc(y.f)) --* acc(x.f)) in true
+    x.f := 1
+    assert applying ((forall y: Ref :: true ==> acc(y.f)) --* acc(x.f)) in true
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+// based on test11 in QPFields.vpr
+method test14c(x: Ref, z: Ref)
+    requires acc(x.f) && z != x
+{
+    package (forall y: Ref :: y != x ==> acc(y.f)) --* (forall y: Ref :: true ==> acc(y.f))
+    inhale forall y: Ref :: y != x ==> acc(y.f)
+
+    assert acc(z.f)
+
+    z.f := 0
+    assert applying ((forall y: Ref :: y != x ==> acc(y.f)) --* (forall y: Ref :: true ==> acc(y.f))) in true
+    z.f := 1
+    assert applying ((forall y: Ref :: y != x ==> acc(y.f)) --* (forall y: Ref :: true ==> acc(y.f))) in true
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+// based on test7 in QPPredicates.vpr
+method test14d(x: Ref)
+    requires forall y: Ref :: true ==> Cell(y)
+{
+    package (forall y: Ref :: true ==> Cell(y)) --* (forall y: Ref :: true ==> Cell(y))
+
+    unfold Cell(x)
+    x.f := 0
+    fold Cell(x)
+    assert applying ((forall y: Ref :: true ==> Cell(y)) --* (forall y: Ref :: true ==> Cell(y))) in true
+
+    unfold Cell(x)
+    x.f := 1
+    fold Cell(x)
+    assert applying ((forall y: Ref :: true ==> Cell(y)) --* (forall y: Ref :: true ==> Cell(y))) in true
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+// based on test9 in QPPredicates.vpr
+method test14e(x: Ref)
+    requires forall y: Ref :: true ==> Cell(y)
+{
+    package (forall y: Ref :: true ==> Cell(y)) --* Cell(x)
+
+    unfold Cell(x)
+    x.f := 0
+    fold Cell(x)
+    assert applying ((forall y: Ref :: true ==> Cell(y)) --* Cell(x)) in true
+
+    unfold Cell(x)
+    x.f := 1
+    fold Cell(x)
+    assert applying ((forall y: Ref :: true ==> Cell(y)) --* Cell(x)) in true
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+// based on test11 in QPPredicates.vpr
+method test14f(x: Ref, z: Ref)
+    requires Cell(x)
+    requires x != z
+{
+    package (forall y: Ref :: y != x ==> Cell(y)) --* (forall y: Ref :: true ==> Cell(y))
+    inhale forall y: Ref :: y != x ==> Cell(y)
+
+    unfold Cell(z)
+    z.f := 0
+    fold Cell(z)
+    assert applying ((forall y: Ref :: y != x ==> Cell(y)) --* (forall y: Ref :: true ==> Cell(y))) in true
+
+    unfold Cell(z)
+    z.f := 1
+    fold Cell(z)
+    assert applying ((forall y: Ref :: y != x ==> Cell(y)) --* (forall y: Ref :: true ==> Cell(y))) in true
 
     //:: ExpectedOutput(assert.failed:assertion.false)
     assert false
