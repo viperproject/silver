@@ -1,0 +1,77 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+method main1(tid: Int, n: Int, x0: Array, x1: Array, i: Int)
+  requires x0 != x1
+  requires alen(x0) == n && alen(x1) == n
+  requires (forall j: Int :: { hide0(x0,n,j) }
+          0 <= j && j < n ==> acc(hide0(x0,n,j), write)
+  )
+  requires (forall j: Int ::
+          { hide1(x1,n,j) }
+          0 <= j && j < n ==> acc(hide1(x1,n,j), 1/2)
+  )
+  requires (forall j: Int :: { hide0(x0,n,j) }
+          0 <= j && j < n ==> (unfolding hide0(x0,n,j) in aloc(x0, j).int) == 0)
+
+  requires i >= 0 && i < n
+{
+  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/517/)
+  assert (forall j: Int :: { hide0(x0,n,j) }
+      0 <= j && j < n ==>
+      (unfolding hide0(x0,n,j) in aloc(x0, j).int) == 0)
+
+  unfold acc(hide1(x1, n, i),1/2)
+  fold acc(hide1(x1, n, i),1/2)
+
+  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/517/)
+  assert (forall j: Int :: { hide0(x0,n,j) }
+      0 <= j && j < n ==>
+      (unfolding hide0(x0,n,j) in aloc(x0, j).int) == 0)
+}
+
+
+////////////////////////// Other functions
+domain Array  {
+
+  function array_loc(a: Array, i: Int): Ref
+
+  function alen(a: Array): Int
+
+  function loc_inv_1(loc: Ref): Array
+
+  function loc_inv_2(loc: Ref): Int
+
+  axiom {
+    (forall a: Array, i: Int ::
+      { array_loc(a, i) }
+      loc_inv_1(array_loc(a, i)) == a && loc_inv_2(array_loc(a, i)) == i)
+  }
+
+  axiom {
+    (forall a: Array :: { alen(a) } alen(a) >= 0)
+  }
+}
+
+field int: Int
+
+predicate hide0(x: Array, n: Int, i: Int) {
+  n > 0 && i >= 0 && i < n && alen(x) == n &&
+  acc(aloc(x, i).int, write)
+}
+
+predicate hide1(x: Array, n: Int, i: Int) {
+  n > 0 && i >= 0 && i < n && alen(x) == n &&
+  acc(aloc(x, i).int, write)
+}
+
+
+function aloc(a: Array, i: Int): Ref
+  requires 0 <= i
+  requires i < alen(a)
+  decreases
+  ensures loc_inv_1(result) == a
+  ensures loc_inv_2(result) == i
+{
+  array_loc(a, i)
+}

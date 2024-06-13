@@ -1,0 +1,78 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+method main1(tid: Int, n: Int, x0: Array, x1: Array)
+  requires 10 < n
+  requires alen(x0) == n
+  requires (forall i: Int ::
+    {hide0(x0, n, i)}
+    0 <= i && i < n ==> acc(hide0(x0, n, i), write) )
+  requires (forall j: Int ::
+          { get0(x0, n, j) }
+          0 <= j && j < n ==>
+          get0(x0, n, j) == 0)
+{
+  assert get0(x0, n, 0) == 0
+}
+
+///////////////////////////
+
+domain Array  {
+
+  function array_loc(a: Array, i: Int): Ref
+
+  function alen(a: Array): Int
+
+  function loc_inv_1(loc: Ref): Array
+
+  function loc_inv_2(loc: Ref): Int
+
+  axiom {
+    (forall a: Array, i: Int ::
+      { array_loc(a, i) }
+      loc_inv_1(array_loc(a, i)) == a && loc_inv_2(array_loc(a, i)) == i)
+  }
+
+  axiom {
+    (forall a: Array :: { alen(a) } alen(a) >= 0)
+  }
+}
+
+field int: Int
+
+predicate hide0(x: Array, n: Int, i: Int) {
+  n > 0 && i >= 0 && i < n && alen(x) == n &&
+  acc(aloc(x, i).int, write)
+}
+
+function get0(x: Array, n: Int, i: Int): Int
+  requires 0 <= i && i < n
+  requires acc(hide0(x, n, i), write)
+  ensures result == unfolding acc(hide0(x,n, i), write) in aloc(x, i).int
+{
+  unfolding acc(hide0(x, n, i), write) in aloc(x, i).int
+}
+
+predicate hide1(x: Array, n: Int, i: Int) {
+  n > 0 && i >= 0 && i < n && alen(x) == n &&
+  acc(aloc(x, i).int, write)
+}
+
+function get1(x: Array, n: Int, i: Int): Int
+  requires 0 <= i && i < n
+  requires acc(hide1(x, n, i), wildcard)
+  ensures result == unfolding acc(hide1(x,n, i), wildcard) in aloc(x, i).int
+{
+  unfolding acc(hide1(x, n, i), wildcard) in aloc(x, i).int
+}
+
+
+function aloc(a: Array, i: Int): Ref
+  requires 0 <= i
+  requires i < alen(a)
+  decreases
+  ensures loc_inv_1(result) == a
+  ensures loc_inv_2(result) == i
+{
+  array_loc(a, i)
+}
