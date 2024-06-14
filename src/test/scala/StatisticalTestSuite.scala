@@ -147,7 +147,7 @@ trait StatisticalTestSuite extends SilSuite {
           case Some((args, randArg, randFunc)) =>
             val seed = randFunc(rep)
             val name = JPaths.get(targetDirName).toAbsolutePath.relativize(input.file.toAbsolutePath).toString.replaceAll("/", "_") + ".bpl"
-            verifier.parseCommandLine(args ++ Seq(s"${randArg}=${seed}", s"--print=${name}", "dummy.vpr"))
+            verifier.parseCommandLine(args ++ Seq(s"${randArg}=${seed}", "dummy.vpr"))
           case _ =>
         }
         val fe = frontend(verifier, input.files)
