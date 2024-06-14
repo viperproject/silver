@@ -6,10 +6,10 @@
 
 package viper.silver.plugin.standard.refute
 
-import fastparse.P
+import fastparse._
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast._
-import viper.silver.parser.FastParserCompanion.whitespace
+import viper.silver.parser.FastParserCompanion
 import viper.silver.parser.FastParser
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.reporter.Entity
@@ -23,19 +23,16 @@ class RefutePlugin(@unused reporter: viper.silver.reporter.Reporter,
                    @unused config: viper.silver.frontend.SilFrontendConfig,
                    fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
 
-  import fp.{FP, keyword, exp, ParserExtension}
-
-  /** Keyword used to define refute statements. */
-  private val refuteKeyword: String = "refute"
+  import fp.{exp, ParserExtension, lineCol, _file}
+  import FastParserCompanion.{PositionParsing, reservedKw, whitespace}
 
   /** Parser for refute statements. */
-  def refute[$: P]: P[PRefute] =
-    FP(keyword(refuteKeyword) ~/ exp).map{ case (pos, e) => PRefute(e)(pos) }
+  def refute[$: P]: P[PRefute] = P((P(PRefuteKeyword) ~ exp) map (PRefute.apply _).tupled).pos
 
   /** Add refute to the parser. */
   override def beforeParse(input: String, isImported: Boolean): String = {
     // Add new keyword
-    ParserExtension.addNewKeywords(Set[String](refuteKeyword))
+    ParserExtension.addNewKeywords(Set(PRefuteKeyword))
     // Add new parser to the precondition
     ParserExtension.addNewStmtAtEnd(refute(_))
     input
@@ -43,7 +40,6 @@ class RefutePlugin(@unused reporter: viper.silver.reporter.Reporter,
 
   /**
    * Remove refute statements from the AST and add them as non-det asserts.
-   * The ⭐ is nice since such a variable name cannot be parsed, but will it cause issues?
    */
   override def beforeVerify(input: Program): Program = {
     val transformedMethods = input.methods.map(method => {
@@ -56,14 +52,14 @@ class RefutePlugin(@unused reporter: viper.silver.reporter.Reporter,
             If(nonDetLocalVarDecl.localVar,
               Seqn(Seq(
                 Assert(exp)(r.pos, RefuteInfo(r)),
-                Inhale(BoolLit(false)(r.pos))(r.pos)
+                Inhale(BoolLit(false)(r.pos))(r.pos, Synthesized)
               ), Seq())(r.pos),
               Seqn(Seq(), Seq())(r.pos))(r.pos)
           ),
             Seq(nonDetLocalVarDecl)
           )(r.pos)
       }).recurseFunc({
-        case Method(_, _, _, _, _, body) => Seq(body)
+        case method: Method => Seq(method.body)
       }).execute[Method](method)
     })
     Program(input.domains, input.fields, input.functions, input.predicates, transformedMethods, input.extensions)(input.pos, input.info, input.errT)

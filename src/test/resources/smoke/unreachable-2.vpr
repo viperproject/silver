@@ -1,0 +1,27 @@
+method test7(a: Bool)
+    requires !a
+{
+
+    if (a) {
+        unreachable
+        assume false
+    }
+
+    if (a) {
+        unreachable
+        while (a) {
+            assume false
+
+            if (a) {
+                assume false
+            }
+        }
+    }
+
+    while (a) {
+        unreachable
+        if (a) {
+            assume false
+        }
+    }
+}

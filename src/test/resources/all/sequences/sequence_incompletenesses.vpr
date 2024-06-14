@@ -44,7 +44,7 @@ method colourings0(a: Array)
   slot(a,1).val := Seq(Seq(0,1)) // no red, 1 black
   assert valid(Seq(),0,false) // needed for unrolling valid
   //assert Seq(0,1)[2..] == Seq() // sequence incompleteness
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/380/)
+  // // UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/380/)
   // // UnexpectedOutput(assert.failed:assertion.false, /silver/issue/80/) // fixed with diff 5 in Carbon
   assert forall j:Int :: 0 <= j && j < |slot(a,1).val| ==>
         slot(a,1).val[j] == Seq(0,1) && valid(slot(a,1).val[j],1,true)
@@ -94,8 +94,8 @@ method colourings1(a: Array)
       invariant 0 <= i && i <= |slot(a,n-1).val|
       invariant acc(slot(a,n).val)
       invariant |slot(a,n).val| == i
-      invariant forall j:Int :: 0 <= j && j < |slot(a,n-1).val| ==>
-        valid(slot(a,n-1).val[j],n-1,true)
+      invariant forall j:Int, n1: Int :: { slot(a,n1).val[j] } n1 == n - 1 && 0 <= j && j < |slot(a,n-1).val| ==>
+        valid(slot(a,n1).val[j],n - 1,true)
       invariant forall j : Int :: {slot(a,n).val[j]} 0 <= j && j < i ==> valid(slot(a,n).val[j],n,true)
     {
       var oldSoln : Seq[Int] := slot(a,n-1).val[i]
@@ -104,7 +104,7 @@ method colourings1(a: Array)
       if(oldSoln[0] == 0) {  // therefore seq is of length >= 2
         soln := oldSoln[1 := oldSoln[1]+1] // add one to initial blacks
        // assert soln[2..] == oldSoln[2..]
-        //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/380/)
+        // // UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/380/)
         assert valid(soln,n,true) 
       } else {
         soln := Seq(0,1) ++ oldSoln
@@ -165,8 +165,8 @@ method colourings2(a: Array)
       invariant 0 <= i && i <= |slot(a,n-1).val|
       invariant acc(slot(a,n).val)
       invariant |slot(a,n).val| == i
-      invariant forall j:Int :: 0 <= j && j < |slot(a,n-1).val| ==>
-        valid(slot(a,n-1).val[j],n-1,true)
+      invariant forall j:Int, n1: Int :: { slot(a,n1).val[j] } n1 == n - 1 && 0 <= j && j < |slot(a,n-1).val| ==>
+        valid(slot(a,n1).val[j],n-1,true)
       invariant forall j : Int :: {slot(a,n).val[j]} 0 <= j && j < i ==> valid(slot(a,n).val[j],n,true)
     {
       var oldSoln : Seq[Int] := slot(a,n-1).val[i]
@@ -180,7 +180,7 @@ method colourings2(a: Array)
         soln := Seq(0,1) ++ oldSoln
         //assert soln[2..] == oldSoln
         assert valid(oldSoln,n-1,false)
-        //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/380/)
+        // // UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/380/)
         assert valid(soln,n,true)
       }
       slot(a,n).val := slot(a,n).val ++ Seq(soln)
@@ -234,8 +234,8 @@ method colourings(a: Array)
       invariant 0 <= i && i <= |slot(a,n-1).val|
       invariant acc(slot(a,n).val)
       invariant |slot(a,n).val| == i
-      invariant forall j:Int :: 0 <= j && j < |slot(a,n-1).val| ==>
-        valid(slot(a,n-1).val[j],n-1,true)
+      invariant forall j:Int, n1: Int :: { slot(a,n1).val[j] } n1 == n - 1 && 0 <= j && j < |slot(a,n-1).val| ==>
+        valid(slot(a,n1).val[j],n-1,true)
       invariant forall j : Int :: {slot(a,n).val[j]} 0 <= j && j < i ==> valid(slot(a,n).val[j],n,true)
     {
       var oldSoln : Seq[Int] := slot(a,n-1).val[i]
@@ -271,7 +271,7 @@ method test_extend(s:Seq[Int])
 method test_extend_left(s:Seq[Int])
 {
   var ss : Seq[Int] := Seq(42) ++ s
-   //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/380/)
+   // // UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/380/)
    assert forall i:Int :: i in s ==> i in ss[1..]
 }
 
@@ -284,6 +284,6 @@ method test_append_left(s:Seq[Int], t:Seq[Int])
 method test_append_right(s:Seq[Int], t:Seq[Int])
 {
   var ss : Seq[Int] := s ++ t
-   //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/380/)
+   // // UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/380/)
   assert forall i:Int :: i in t ==> i in ss[|s|..]
 }

@@ -82,6 +82,13 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     hidden = true
   )
 
+  val enableSmokeDetection = opt[Boolean]("enableSmokeDetection",
+    descr = "Enable smoke detection (if enabled, refute false statements are inserted in the code in order to detect unsound specifications).",
+    default = Some(false),
+    noshort = true,
+    hidden = false
+  )
+
   val disableDefaultPlugins = opt[Boolean]("disableDefaultPlugins",
     descr = "Deactivate all default plugins.",
     default = Some(false),
@@ -130,6 +137,12 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     default = Some(false),
     noshort = true,
     hidden = false
+  )
+
+  val submitForEvaluation = opt[Boolean](name = "submitForEvaluation",
+    descr = "Whether to allow storing the current program for future evaluation.",
+    default = Some(false),
+    noshort = true
   )
 
   validateOpt(file, ignoreFile) {

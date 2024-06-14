@@ -2,8 +2,6 @@
 // http://creativecommons.org/publicdomain/zero/1.0/
 
 //:: IgnoreFile(/silver/issue/488/)
-//:: IgnoreFile(/carbon/issue/244/)
-//:: IgnoreFile(/carbon/issue/257/)
 
 field val: Int
 

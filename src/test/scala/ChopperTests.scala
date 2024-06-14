@@ -8,9 +8,8 @@ import org.scalatest.Inside
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 import viper.silver.ast
-import viper.silver.ast.utility.Chopper
-import viper.silver.ast.utility.Chopper.Penalty
-import viper.silver.ast.utility.Chopper.SCC.Component
+import viper.silver.ast.utility.chopper.SCC.Component
+import viper.silver.ast.utility.chopper.{Chopper, Penalty, SCC}
 
 class ChopperTests extends AnyFunSuite with Matchers with Inside {
 
@@ -232,15 +231,15 @@ class ChopperTests extends AnyFunSuite with Matchers with Inside {
     result.length shouldBe 2
     result shouldEqual Vector(
       ast.Program(Seq.empty, Seq.empty, Seq.empty, Seq(caller1, calleeStub), Seq.empty, Seq.empty)(),
-      ast.Program(Seq.empty, Seq.empty, Seq.empty, Seq(caller2, callee), Seq.empty, Seq.empty)(),
+      ast.Program(Seq.empty, Seq.empty, Seq.empty, Seq(callee, caller2), Seq.empty, Seq.empty)(),
     )
   }
 
   // SCC tests
 
   test("SCC with singleton graph") {
-    compareComponents (Chopper.SCC.components(Seq("A"), Seq.empty), Vector(
-      Chopper.SCC.Component(Vector("A"))
+    compareComponents (new SCC{}.components(Seq("A"), Seq.empty), Vector(
+      Component(Vector("A"))
     ))
   }
 
@@ -253,11 +252,11 @@ class ChopperTests extends AnyFunSuite with Matchers with Inside {
       ("D", "C"),
       ("D", "E")
     )
-    compareComponents (Chopper.SCC.components(vertices, edges), Vector(
-      Chopper.SCC.Component(Vector("A")),
-      Chopper.SCC.Component(Vector("B")),
-      Chopper.SCC.Component(Vector("C", "D")),
-      Chopper.SCC.Component(Vector("E"))
+    compareComponents (new SCC{}.components(vertices, edges), Vector(
+      Component(Vector("A")),
+      Component(Vector("B")),
+      Component(Vector("C", "D")),
+      Component(Vector("E"))
     ))
   }
 
@@ -271,10 +270,10 @@ class ChopperTests extends AnyFunSuite with Matchers with Inside {
       ("D", "C"),
       ("D", "E")
     )
-    compareComponents (Chopper.SCC.components(vertices, edges), Vector(
-      Chopper.SCC.Component(Vector("A")),
-      Chopper.SCC.Component(Vector("D", "C", "B")),
-      Chopper.SCC.Component(Vector("E"))
+    compareComponents (new SCC{}.components(vertices, edges), Vector(
+      Component(Vector("A")),
+      Component(Vector("D", "C", "B")),
+      Component(Vector("E"))
     ))
   }
 
@@ -286,12 +285,12 @@ class ChopperTests extends AnyFunSuite with Matchers with Inside {
       ("C", "D"),
       ("D", "E")
     )
-    compareComponents (Chopper.SCC.components(vertices, edges), Vector(
-      Chopper.SCC.Component(Vector("A")),
-      Chopper.SCC.Component(Vector("B")),
-      Chopper.SCC.Component(Vector("C")),
-      Chopper.SCC.Component(Vector("D")),
-      Chopper.SCC.Component(Vector("E"))
+    compareComponents (new SCC{}.components(vertices, edges), Vector(
+      Component(Vector("A")),
+      Component(Vector("B")),
+      Component(Vector("C")),
+      Component(Vector("D")),
+      Component(Vector("E"))
     ))
   }
 
@@ -305,12 +304,12 @@ class ChopperTests extends AnyFunSuite with Matchers with Inside {
       ("D", "E")
     )
     val choppedReference = Vector(
-      Chopper.SCC.Component(Vector("A")),
-      Chopper.SCC.Component(Vector("B")),
-      Chopper.SCC.Component(Vector("C", "D")),
-      Chopper.SCC.Component(Vector("E"))
+      Component(Vector("A")),
+      Component(Vector("B")),
+      Component(Vector("C", "D")),
+      Component(Vector("E"))
     )
-    val (components, inverse, dag) = Chopper.SCC.compute(vertices, edges)
+    val (components, inverse, dag) = new SCC{}.compute(vertices, edges)
     compareComponents(components, choppedReference)
     inverse.keySet shouldEqual Set("A", "B", "C", "D", "E")
     compareComponent(inverse("A"), Component(Vector("A")))
@@ -319,9 +318,9 @@ class ChopperTests extends AnyFunSuite with Matchers with Inside {
     compareComponent(inverse("D"), Component(Vector("D", "C")))
     compareComponent(inverse("E"), Component(Vector("E")))
     compareDAG(dag, Seq(
-      (Chopper.SCC.Component(Vector("A")), Chopper.SCC.Component(Vector("D", "C"))),
-      (Chopper.SCC.Component(Vector("B")), Chopper.SCC.Component(Vector("D", "C"))),
-      (Chopper.SCC.Component(Vector("D", "C")), Chopper.SCC.Component(Vector("E")))
+      (Component(Vector("A")), Component(Vector("D", "C"))),
+      (Component(Vector("B")), Component(Vector("D", "C"))),
+      (Component(Vector("D", "C")), Component(Vector("E")))
     ))
   }
 

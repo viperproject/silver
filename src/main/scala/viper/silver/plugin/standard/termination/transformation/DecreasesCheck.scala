@@ -173,10 +173,10 @@ trait DecreasesCheck extends ProgramManager with ErrorReporter {
   }
 
   def reportDecreasingNotDefined(pos: Position): Unit = {
-    reportError(ConsistencyError("Function \"decreasing\" is required but not declared.", pos))
+    reportError(ConsistencyError("function \"decreasing\" is required but not declared.", pos))
   }
 
   def reportBoundedNotDefined(pos: Position): Unit = {
-    reportError(ConsistencyError("Function \"bounded\" is required but not defined.", pos))
+    reportError(ConsistencyError("function \"bounded\" is required but not defined.", pos))
   }
 }

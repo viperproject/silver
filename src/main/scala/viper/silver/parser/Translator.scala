@@ -29,47 +29,47 @@ case class Translator(program: PProgram) {
   def translate: Option[Program] /*(Program, Seq[Messaging.Record])*/ = {
     // assert(TypeChecker.messagecount == 0, "Expected previous phases to succeed, but found error messages.") // AS: no longer sharing state with these phases
 
-    program match {
-      case PProgram(_, _, pdomains, pfields, pfunctions, ppredicates, pmethods, pextensions, _) =>
+    val (pdomains, pfields, pfunctions, ppredicates, pmethods, pextensions) =
+      (program.domains, program.fields, program.functions, program.predicates, program.methods, program.extensions)
 
-        /* [2022-03-14 Alessandro] Domain signatures need no be translated first, since signatures of other declarations
-         * like domain functions, and ordinary functions might depend on the domain signature. Especially this is the case
-         * when signatures contain user-defined domain types. The same applies for extensions since they might introduce
-         * new top-level declarations that behave similar as domains.
-         */
-        pdomains foreach translateMemberSignature
-        pextensions foreach translateMemberSignature
+    /* [2022-03-14 Alessandro] Domain signatures need no be translated first, since signatures of other declarations
+      * like domain functions, and ordinary functions might depend on the domain signature. Especially this is the case
+      * when signatures contain user-defined domain types. The same applies for extensions since they might introduce
+      * new top-level declarations that behave similar as domains.
+      */
+    pdomains foreach translateMemberSignature
+    pextensions foreach translateMemberSignature
 
-        /* [2022-03-14 Alessandro] Following signatures can be translated independently of each other but must be translated
-         * after signatures of domains and extensions because of the above mentioned reasons.
-         */
-        pdomains flatMap (_.funcs) foreach translateMemberSignature
-        (pfields ++ pfunctions ++ ppredicates ++ pmethods) foreach translateMemberSignature
+    /* [2022-03-14 Alessandro] Following signatures can be translated independently of each other but must be translated
+      * after signatures of domains and extensions because of the above mentioned reasons.
+      */
+    pdomains flatMap (_.members.inner.funcs.toSeq) foreach translateMemberSignature
+    (pfields ++ pfunctions ++ ppredicates ++ pmethods) foreach translateMemberSignature
 
-        /* [2022-03-14 Alessandro] After the signatures are translated, the actual full translations can be done
-         * independently of each other.
-         */
-        val extensions = pextensions map translate
-        val domain = (pdomains map translate) ++ extensions filter (t => t.isInstanceOf[Domain])
-        val fields = (pfields flatMap (_.fields map translate)) ++ extensions filter (t => t.isInstanceOf[Field])
-        val functions = (pfunctions map translate) ++ extensions filter (t => t.isInstanceOf[Function])
-        val predicates = (ppredicates map translate) ++ extensions filter (t => t.isInstanceOf[Predicate])
-        val methods = (pmethods map translate) ++ extensions filter (t => t.isInstanceOf[Method])
+    /* [2022-03-14 Alessandro] After the signatures are translated, the actual full translations can be done
+      * independently of each other.
+      */
+    val extensions = pextensions map translate
+    val domain = (pdomains map translate) ++ extensions filter (t => t.isInstanceOf[Domain])
+    val fields = (pfields flatMap (_.fields.toSeq map translate)) ++ extensions filter (t => t.isInstanceOf[Field])
+    val functions = (pfunctions map translate) ++ extensions filter (t => t.isInstanceOf[Function])
+    val predicates = (ppredicates map translate) ++ extensions filter (t => t.isInstanceOf[Predicate])
+    val methods = (pmethods map translate) ++ extensions filter (t => t.isInstanceOf[Method])
 
 
 
-        val finalProgram = ImpureAssumeRewriter.rewriteAssumes(Program(domain.asInstanceOf[Seq[Domain]], fields.asInstanceOf[Seq[Field]],
-                functions.asInstanceOf[Seq[Function]], predicates.asInstanceOf[Seq[Predicate]], methods.asInstanceOf[Seq[Method]],
-                    (extensions filter (t => t.isInstanceOf[ExtensionMember])).asInstanceOf[Seq[ExtensionMember]])(program))
+    val finalProgram = ImpureAssumeRewriter.rewriteAssumes(Program(domain.asInstanceOf[Seq[Domain]], fields.asInstanceOf[Seq[Field]],
+            functions.asInstanceOf[Seq[Function]], predicates.asInstanceOf[Seq[Predicate]], methods.asInstanceOf[Seq[Method]],
+                (extensions filter (t => t.isInstanceOf[ExtensionMember])).asInstanceOf[Seq[ExtensionMember]])(program))
 
-        finalProgram.deepCollect {
-          case fp: ForPerm => Consistency.checkForPermArguments(fp, finalProgram)
-          //case trig: Trigger => Consistency.checkTriggers(trig, finalProgram)
-        }
 
-        if (Consistency.messages.isEmpty) Some(finalProgram) // all error messages generated during translation should be Consistency messages
-        else None
+    finalProgram.deepCollect {
+      case fp: ForPerm => Consistency.checkForPermArguments(fp, finalProgram)
+      //case trig: Trigger => Consistency.checkTriggers(trig, finalProgram)
     }
+
+    if (Consistency.messages.isEmpty) Some(finalProgram) // all error messages generated during translation should be Consistency messages
+    else None
   }
 
   private def translate(t: PExtender): Member = {
@@ -77,17 +77,12 @@ case class Translator(program: PProgram) {
   }
 
   private def translate(m: PMethod): Method = m match {
-    case PMethod(name, _, _, pres, posts, body) =>
-      val m = findMethod(name)
+    case PMethod(_, _, idndef, _, _, pres, posts, body) =>
+      val m = findMethod(idndef)
 
-      val newBody = body.map(actualBody => {
-        val b = stmt(actualBody).asInstanceOf[Seqn]
-        val newScopedDecls = b.scopedSeqnDeclarations ++ b.deepCollect {case l: Label => l}
+      val newBody = body.map(actualBody => stmt(actualBody).asInstanceOf[Seqn])
 
-        b.copy(scopedSeqnDeclarations = newScopedDecls)(b.pos, b.info, b.errT)
-      })
-
-      val finalMethod = m.copy(pres = pres map exp, posts = posts map exp, body = newBody)(m.pos, m.info, m.errT)
+      val finalMethod = m.copy(pres = pres.toSeq map (p => exp(p.e)), posts = posts.toSeq map (p => exp(p.e)), body = newBody)(m.pos, m.info, m.errT)
 
       members(m.name) = finalMethod
 
@@ -95,33 +90,33 @@ case class Translator(program: PProgram) {
   }
 
   private def translate(d: PDomain): Domain = d match {
-    case PDomain(name, _, functions, axioms, interpretation) =>
+    case PDomain(_, _, name, _, interpretation, PGrouped(_, PDomainMembers(functions, axioms), _)) =>
       val d = findDomain(name)
-      val dd = d.copy(functions = functions map (f => findDomainFunction(f.idndef)),
-        axioms = axioms map translate, interpretations = interpretation)(d.pos, d.info, d.errT)
+      val dd = d.copy(functions = functions.toSeq map (f => findDomainFunction(f.idndef)),
+        axioms = axioms.toSeq map translate, interpretations = interpretation.map(_.interps))(d.pos, d.info, d.errT)
       members(d.name) = dd
       dd
   }
 
   private def translate(a: PAxiom): DomainAxiom = a match {
-    case pa@PAxiom(Some(name), e) =>
-      NamedDomainAxiom(name.name, exp(e))(a, toInfo(pa.annotations, pa), domainName = pa.domainName.name)
-    case pa@PAxiom(None, e) =>
-      AnonymousDomainAxiom(exp(e))(a, toInfo(pa.annotations, pa), domainName = pa.domainName.name)
+    case pa@PAxiom(anns, _, Some(name), e) =>
+      NamedDomainAxiom(name.name, exp(e.e.inner))(a, Translator.toInfo(anns, pa), domainName = pa.domain.idndef.name)
+    case pa@PAxiom(anns, _, None, e) =>
+      AnonymousDomainAxiom(exp(e.e.inner))(a, Translator.toInfo(anns, pa), domainName = pa.domain.idndef.name)
   }
 
   private def translate(f: PFunction): Function = f match {
-    case PFunction(name, _, _, pres, posts, body) =>
-      val f = findFunction(name)
-      val ff = f.copy( pres = pres map exp, posts = posts map exp, body = body map exp)(f.pos, f.info, f.errT)
+    case PFunction(_, _, idndef, _, _, _, pres, posts, body) =>
+      val f = findFunction(idndef)
+      val ff = f.copy( pres = pres.toSeq map (p => exp(p.e)), posts = posts.toSeq map (p => exp(p.e)), body = body map (_.e.inner) map exp)(f.pos, f.info, f.errT)
       members(f.name) = ff
       ff
   }
 
   private def translate(p: PPredicate): Predicate = p match {
-    case PPredicate(name, _, body) =>
-      val p = findPredicate(name)
-      val pp = p.copy(body = body map exp)(p.pos, p.info, p.errT)
+    case PPredicate(_, _, idndef, _, body) =>
+      val p = findPredicate(idndef)
+      val pp = p.copy(body = body map (_.e.inner) map exp)(p.pos, p.info, p.errT)
       members(p.name) = pp
       pp
   }
@@ -143,28 +138,20 @@ case class Translator(program: PProgram) {
     val pos = decl
     val name = decl.idndef.name
     val t = decl match {
-      case pf@PFieldDecl(_, typ) =>
-        Field(name, ttyp(typ))(pos, toInfo(p.annotations, pf))
-      case pf@PFunction(_, formalArgs, typ, _, _, _) =>
-        Function(name, formalArgs map liftArgDecl, ttyp(typ), null, null, null)(pos, toInfo(p.annotations, pf))
-      case pdf@ PDomainFunction(_, args, typ, unique, interp) =>
-        DomainFunc(name, args map liftAnyArgDecl, ttyp(typ), unique, interp)(pos,toInfo(p.annotations, pdf),pdf.domainName.name)
-      case pd@PDomain(_, typVars, _, _, interp) =>
-        Domain(name, null, null, typVars map (t => TypeVar(t.idndef.name)), interp)(pos, toInfo(p.annotations, pd))
-      case pp@PPredicate(_, formalArgs, _) =>
-        Predicate(name, formalArgs map liftArgDecl, null)(pos, toInfo(p.annotations, pp))
-      case pm@PMethod(_, formalArgs, formalReturns, _, _, _) =>
-        Method(name, formalArgs map liftArgDecl, formalReturns map liftReturnDecl, null, null, null)(pos, toInfo(p.annotations, pm))
+      case pf@PFieldDecl(_, _, typ) =>
+        Field(name, ttyp(typ))(pos, Translator.toInfo(p.annotations, pf))
+      case pf@PFunction(_, _, _, _, _, typ, _, _, _) =>
+        Function(name, pf.formalArgs map liftArgDecl, ttyp(typ), null, null, null)(pos, Translator.toInfo(p.annotations, pf))
+      case pdf@PDomainFunction(_, unique, _, _, _, _, typ, interp) =>
+        DomainFunc(name, pdf.formalArgs map liftAnyArgDecl, ttyp(typ), unique.isDefined, interp.map(_.i.str))(pos, Translator.toInfo(p.annotations, pdf), pdf.domain.idndef.name)
+      case pd@PDomain(_, _, _, typVars, interp, _) =>
+        Domain(name, null, null, typVars map (_.inner.toSeq map (t => TypeVar(t.idndef.name))) getOrElse Nil, interp.map(_.interps))(pos, Translator.toInfo(p.annotations, pd))
+      case pp: PPredicate =>
+        Predicate(name, pp.formalArgs map liftArgDecl, null)(pos, Translator.toInfo(p.annotations, pp))
+      case pm: PMethod =>
+        Method(name, pm.formalArgs map liftArgDecl, pm.formalReturns map liftReturnDecl, null, null, null)(pos, Translator.toInfo(p.annotations, pm))
     }
     members.put(decl.idndef.name, t)
-  }
-
-  def toInfo(annotations: Seq[(String, Seq[String])], node: PNode): Info = {
-    if (annotations.isEmpty) {
-      NoInfo
-    } else {
-      AnnotationInfo(annotations.groupBy(_._1).map{ case (k, v) => k -> v.unzip._2.flatten})
-    }
   }
 
   private def translateMemberSignature(p: PExtender): Unit ={
@@ -190,68 +177,68 @@ case class Translator(program: PProgram) {
     val info = if (annotations.isEmpty) NoInfo else AnnotationInfo(annotations)
     val subInfo = NoInfo
     s match {
-      case PAssign(targets, PCall(method, args, _)) if members(method.name).isInstanceOf[Method] =>
-        methodCallAssign(s, targets, ts => MethodCall(findMethod(method), args map exp, ts)(pos, info))
-      case PAssign(targets, _) if targets.length != 1 =>
+      case PAssign(targets, _, PCall(method, args, _)) if members(method.name).isInstanceOf[Method] =>
+        methodCallAssign(s, targets.toSeq, ts => MethodCall(findMethod(method), args.inner.toSeq map exp, ts)(pos, info))
+      case PAssign(targets, _, _) if targets.length != 1 =>
         sys.error(s"Found non-unary target of assignment")
-      case PAssign(Seq(target), PNewExp(fieldsOpt)) =>
-        val fields = fieldsOpt match {
+      case PAssign(targets, _, PNewExp(_, fieldsOpt)) =>
+        val fields = fieldsOpt.inner match {
           // Note that this will not use any fields that extensions declare
-          case None => program.fields flatMap (_.fields map translate)
-          case Some(pfields) => pfields map findField
+          case Left(_) => program.fields flatMap (_.fields.toSeq map translate)
+          case Right(pfields) => pfields.toSeq map findField
         }
-        methodCallAssign(s, Seq(target), lv => NewStmt(lv.head, fields)(pos, info))
-      case PAssign(Seq(idnuse: PIdnUse), rhs) =>
-        LocalVarAssign(LocalVar(idnuse.name, ttyp(idnuse.typ))(pos, subInfo), exp(rhs))(pos, info)
-      case PAssign(Seq(field: PFieldAccess), rhs) =>
-        FieldAssign(FieldAccess(exp(field.rcv), findField(field.idnuse))(field), exp(rhs))(pos, info)
-      case lv@PVars(vars, init) =>
+        methodCallAssign(s, Seq(targets.head), lv => NewStmt(lv.head, fields)(pos, info))
+      case PAssign(PDelimited(idnuse: PIdnUse), _, rhs) =>
+        LocalVarAssign(LocalVar(idnuse.name, ttyp(idnuse.decl.get.asInstanceOf[PAssignableVarDecl].typ))(pos, subInfo), exp(rhs))(pos, info)
+      case PAssign(PDelimited(field: PFieldAccess), _, rhs) =>
+        FieldAssign(FieldAccess(exp(field.rcv), findField(field.idnref))(field), exp(rhs))(pos, info)
+      case lv: PVars =>
         // there are no declarations in the Viper AST; rather they are part of the scope signature
-        init match {
-          case Some(assign) =>
-            val tgts = vars.map(_.toIdnUse)
-            stmt(PAssign(tgts, assign)(lv.pos))
-          case None => Statements.EmptyStmt
-        }
+        lv.assign map stmt getOrElse Statements.EmptyStmt
       case PSeqn(ss) =>
-        val plocals = ss.collect {
+        val seqn = ss.inner.toSeq
+        val plocals = seqn.collect {
           case l: PVars => Some(l)
           case _ => None
         }
         val locals = plocals.flatten.map {
-          case p@PVars(vars, _) => vars.map(v => LocalVarDecl(v.idndef.name, ttyp(v.typ))(p))
+          case p@PVars(_, vars, _) => vars.toSeq.map(v => LocalVarDecl(v.idndef.name, ttyp(v.typ))(p))
         }.flatten
-        Seqn(ss filterNot (_.isInstanceOf[PSkip]) map stmt, locals)(pos, info)
-      case PFold(e) =>
+        Seqn(seqn filterNot (_.isInstanceOf[PSkip]) map stmt, locals)(pos, info)
+      case PFold(_, e) =>
         Fold(exp(e).asInstanceOf[PredicateAccessPredicate])(pos, info)
-      case PUnfold(e) =>
+      case PUnfold(_, e) =>
         Unfold(exp(e).asInstanceOf[PredicateAccessPredicate])(pos, info)
-      case PPackageWand(e, proofScript) =>
+      case PPackageWand(_, e, proofScript) =>
         val wand = exp(e).asInstanceOf[MagicWand]
-        Package(wand, stmt(proofScript).asInstanceOf[Seqn])(pos, info)
-      case PApplyWand(e) =>
+        Package(wand, proofScript map (stmt(_).asInstanceOf[Seqn]) getOrElse Statements.EmptyStmt)(pos, info)
+      case PApplyWand(_, e) =>
         Apply(exp(e).asInstanceOf[MagicWand])(pos, info)
-      case PInhale(e) =>
+      case PInhale(_, e) =>
         Inhale(exp(e))(pos, info)
-      case PAssume(e) =>
+      case PAssume(_, e) =>
         Assume(exp(e))(pos, info)
-      case PExhale(e) =>
+      case PExhale(_, e) =>
         Exhale(exp(e))(pos, info)
-      case PAssert(e) =>
+      case PAssert(_, e) =>
         Assert(exp(e))(pos, info)
-      case PLabel(name, invs) =>
-        Label(name.name, invs map exp)(pos, info)
-      case PGoto(label) =>
+      case PLabel(_, name, invs) =>
+        Label(name.name, invs.toSeq map (_.e) map exp)(pos, info)
+      case PGoto(_, label) =>
         Goto(label.name)(pos, info)
-      case PIf(cond, thn, els) =>
-        If(exp(cond), stmt(thn).asInstanceOf[Seqn], stmt(els).asInstanceOf[Seqn])(pos, info)
-      case PWhile(cond, invs, body) =>
-        While(exp(cond), invs map exp, stmt(body).asInstanceOf[Seqn])(pos, info)
-      case PQuasihavoc(lhs, e) =>
+      case PIf(_, cond, thn, els) =>
+        If(exp(cond.inner), stmt(thn).asInstanceOf[Seqn], els map (stmt(_) match {
+          case s: Seqn => s
+          case s => Seqn(Seq(s), Nil)(s.pos, s.info)
+        }) getOrElse Statements.EmptyStmt)(pos, info)
+      case PElse(_, els) => stmt(els)
+      case PWhile(_, cond, invs, body) =>
+        While(exp(cond.inner), invs.toSeq map (inv => exp(inv.e)), stmt(body).asInstanceOf[Seqn])(pos, info)
+      case PQuasihavoc(_, lhs, e) =>
         val (newLhs, newE) = havocStmtHelper(lhs, e)
         Quasihavoc(newLhs, newE)(pos, info)
-      case PQuasihavocall(vars, lhs, e) =>
-        val newVars = vars map liftLogicalDecl
+      case PQuasihavocall(_, vars, _, lhs, e) =>
+        val newVars = vars.toSeq map liftLogicalDecl
         val (newLhs, newE) = havocStmtHelper(lhs, e)
         Quasihavocall(newVars, newLhs, newE)(pos, info)
       case t: PExtender =>   t.translateStmt(this)
@@ -273,7 +260,7 @@ case class Translator(program: PProgram) {
     * }
     * ```
     */
-  def methodCallAssign(errorNode: PNode, targets: Seq[PAssignTarget], assign: Seq[LocalVar] => Stmt): Stmt = {
+  def methodCallAssign(errorNode: PNode, targets: Seq[PExp with PAssignTarget], assign: Seq[LocalVar] => Stmt): Stmt = {
     val tTargets = targets map exp
     val ts = tTargets.zipWithIndex.map {
       case (lv: LocalVar, _) => (None, lv)
@@ -312,8 +299,8 @@ case class Translator(program: PProgram) {
   }
 
   /** Helper function that translates subexpressions common to a Havoc or Havocall statement */
-  def havocStmtHelper(lhs: Option[PExp], e: PExp): (Option[Exp], ResourceAccess) = {
-    val newLhs = lhs.map(exp)
+  def havocStmtHelper(lhs: Option[(PExp, _)], e: PExp): (Option[Exp], ResourceAccess) = {
+    val newLhs = lhs.map(lhs => exp(lhs._1))
     exp(e) match {
       case exp: FieldAccess => (newLhs, exp)
       case PredicateAccessPredicate(predAccess, perm) =>
@@ -329,28 +316,28 @@ case class Translator(program: PProgram) {
 
   def extractAnnotation(pexp: PExp): (PExp, Map[String, Seq[String]]) = {
     pexp match {
-      case PAnnotatedExp(e, (key, value)) =>
+      case PAnnotatedExp(ann, e) =>
         val (resPexp, innerMap) = extractAnnotation(e)
-        val combinedValue = if (innerMap.contains(key)) {
-          value ++ innerMap(key)
+        val combinedValue = if (innerMap.contains(ann.key.str)) {
+          ann.values.inner.toSeq.map(_.str) ++ innerMap(ann.key.str)
         } else {
-          value
+          ann.values.inner.toSeq.map(_.str)
         }
-        (resPexp, innerMap.updated(key, combinedValue))
+        (resPexp, innerMap.updated(ann.key.str, combinedValue))
       case _ => (pexp, Map())
     }
   }
 
   def extractAnnotationFromStmt(pStmt: PStmt): (PStmt, Map[String, Seq[String]]) = {
     pStmt match {
-      case PAnnotatedStmt(s, (key, value)) =>
+      case PAnnotatedStmt(ann, s) =>
         val (resPStmt, innerMap) = extractAnnotationFromStmt(s)
-        val combinedValue = if (innerMap.contains(key)) {
-          value ++ innerMap(key)
+        val combinedValue = if (innerMap.contains(ann.key.str)) {
+          ann.values.inner.toSeq.map(_.str) ++ innerMap(ann.key.str)
         } else {
-          value
+          ann.values.inner.toSeq.map(_.str)
         }
-        (resPStmt, innerMap.updated(key, combinedValue))
+        (resPStmt, innerMap.updated(ann.key.str, combinedValue))
       case _ => (pStmt, Map())
     }
   }
@@ -361,29 +348,29 @@ case class Translator(program: PProgram) {
     val (pexp, annotationMap) = extractAnnotation(parseExp)
     val info = if (annotationMap.isEmpty) NoInfo else AnnotationInfo(annotationMap)
     pexp match {
-      case piu @ PIdnUse(name) =>
+      case piu @ PIdnUseExp(name) =>
         piu.decl match {
-          case _: PAnyVarDecl => LocalVar(name, ttyp(pexp.typ))(pos, info)
+          case Some(_: PTypedVarDecl) => LocalVar(name, ttyp(pexp.typ))(pos, info)
           // A malformed AST where a field, function or other declaration is used as a variable.
           // Should have been caught by the type checker.
           case _ => sys.error("should not occur in type-checked program")
         }
       case pbe @ PBinExp(left, op, right) =>
         val (l, r) = (exp(left), exp(right))
-        op match {
-          case "+" =>
+        op.rs match {
+          case PSymOp.Plus =>
             r.typ match {
               case Int => Add(l, r)(pos, info)
               case Perm => PermAdd(l, r)(pos, info)
               case _ => sys.error("should not occur in type-checked program")
             }
-          case "-" =>
+          case PSymOp.Minus =>
             r.typ match {
               case Int => Sub(l, r)(pos, info)
               case Perm => PermSub(l, r)(pos, info)
               case _ => sys.error("should not occur in type-checked program")
             }
-          case "*" =>
+          case PSymOp.Mul =>
             r.typ match {
               case Int =>
                 l.typ match {
@@ -399,7 +386,7 @@ case class Translator(program: PProgram) {
                 }
               case _ => sys.error("should not occur in type-checked program")
             }
-          case "/" =>
+          case PSymOp.Div =>
             l.typ match {
               case Perm => r.typ match {
                 case Int => PermDiv(l, r)(pos, info)
@@ -413,89 +400,85 @@ case class Translator(program: PProgram) {
                   FractionalPerm(l, r)(pos, info)
               case _    => sys.error("should not occur in type-checked program")
             }
-          case "\\" => Div(l, r)(pos, info)
-          case "%" => Mod(l, r)(pos, info)
-          case "<" =>
+          case PSymOp.ArithDiv => Div(l, r)(pos, info)
+          case PSymOp.Mod => Mod(l, r)(pos, info)
+          case PSymOp.Lt =>
             l.typ match {
               case Int => LtCmp(l, r)(pos, info)
               case Perm => PermLtCmp(l, r)(pos, info)
               case _ => sys.error("unexpected type")
             }
-          case "<=" =>
+          case PSymOp.Le =>
             l.typ match {
               case Int => LeCmp(l, r)(pos, info)
               case Perm => PermLeCmp(l, r)(pos, info)
               case _ => sys.error("unexpected type")
             }
-          case ">" =>
+          case PSymOp.Gt =>
             l.typ match {
               case Int => GtCmp(l, r)(pos, info)
               case Perm => PermGtCmp(l, r)(pos, info)
               case _ => sys.error("unexpected type " + l.typ.toString())
             }
-          case ">=" =>
+          case PSymOp.Ge =>
             l.typ match {
               case Int => GeCmp(l, r)(pos, info)
               case Perm => PermGeCmp(l, r)(pos, info)
               case _ => sys.error("unexpected type")
             }
-          case "==" => EqCmp(l, r)(pos, info)
-          case "!=" => NeCmp(l, r)(pos, info)
-          case "==>" => Implies(l, r)(pos, info)
-          case "--*" => MagicWand(l, r)(pos, info)
-          case "<==>" => EqCmp(l, r)(pos, info)
-          case "&&" => And(l, r)(pos, info)
-          case "||" => Or(l, r)(pos, info)
+          case PSymOp.EqEq => EqCmp(l, r)(pos, info)
+          case PSymOp.Ne => NeCmp(l, r)(pos, info)
+          case PSymOp.Implies => Implies(l, r)(pos, info)
+          case PSymOp.Wand => MagicWand(l, r)(pos, info)
+          case PSymOp.Iff => EqCmp(l, r)(pos, info)
+          case PSymOp.AndAnd => And(l, r)(pos, info)
+          case PSymOp.OrOr => Or(l, r)(pos, info)
 
-          case "in" => right.typ match {
+          case PKwOp.In => right.typ match {
             case _: PSeqType => SeqContains(l, r)(pos, info)
             case _: PMapType => MapContains(l, r)(pos, info)
             case _: PSetType | _: PMultisetType => AnySetContains(l, r)(pos, info)
             case t => sys.error(s"unexpected type $t")
           }
 
-          case "++" => SeqAppend(l, r)(pos, info)
-          case "subset" => AnySetSubset(l, r)(pos, info)
-          case "intersection" => AnySetIntersection(l, r)(pos, info)
-          case "union" => AnySetUnion(l, r)(pos, info)
-          case "setminus" => AnySetMinus(l, r)(pos, info)
+          case PSymOp.Append => SeqAppend(l, r)(pos, info)
+          case PKwOp.Subset => AnySetSubset(l, r)(pos, info)
+          case PKwOp.Intersection => AnySetIntersection(l, r)(pos, info)
+          case PKwOp.Union => AnySetUnion(l, r)(pos, info)
+          case PKwOp.Setminus => AnySetMinus(l, r)(pos, info)
           case _ => sys.error(s"unexpected operator $op")
         }
       case PUnExp(op, pe) =>
         val e = exp(pe)
-        op match {
-          case "-" =>
+        op.rs match {
+          case PSymOp.Neg =>
             e.typ match {
               case Int => Minus(e)(pos, info)
               case Perm => PermMinus(e)(pos, info)
               case _ => sys.error("unexpected type")
             }
-          case "!" => Not(e)(pos, info)
+          case PSymOp.Not => Not(e)(pos, info)
         }
-      case PInhaleExhaleExp(in, ex) =>
+      case PInhaleExhaleExp(_, in, _, ex, _) =>
         InhaleExhaleExp(exp(in), exp(ex))(pos, info)
       case PIntLit(i) =>
         IntLit(i)(pos, info)
-      case p@PResultLit() =>
+      case p@PResultLit(_) =>
         // find function
-        var par: PNode = p.parent.get
-        while (!par.isInstanceOf[PFunction]) {
-          if (par == null) sys.error("cannot use 'result' outside of function")
-          par = par.parent.get
-        }
-        Result(ttyp(par.asInstanceOf[PFunction].typ.resultType))(pos, info)
-      case PBoolLit(b) =>
-        if (b) TrueLit()(pos, info) else FalseLit()(pos, info)
-      case PNullLit() =>
+        val func = p.getAncestor[PFunction].get
+        Result(ttyp(func.typ.resultType))(pos, info)
+      case bool: PBoolLit =>
+        if (bool.b) TrueLit()(pos, info) else FalseLit()(pos, info)
+      case PNullLit(_) =>
         NullLit()(pos, info)
-      case PFieldAccess(rcv, idn) =>
+      case PFieldAccess(rcv, _, idn) =>
         FieldAccess(exp(rcv), findField(idn))(pos, info)
-      case PMagicWandExp(left, right) => MagicWand(exp(left), exp(right))(pos, info)
+      case PMagicWandExp(left, _, right) => MagicWand(exp(left), exp(right))(pos, info)
       case pfa@PCall(func, args, _) =>
         members(func.name) match {
-          case f: Function => FuncApp(f, args map exp)(pos, info)
+          case f: Function => FuncApp(f, args.inner.toSeq map exp)(pos, info)
           case f @ DomainFunc(_, _, _, _, _) =>
-            val actualArgs = args map exp
+            val actualArgs = args.inner.toSeq map exp
             /* TODO: Not used - problem?*/
             type TypeSubstitution = Map[TypeVar, Type]
             val so : Option[TypeSubstitution] = pfa.domainSubstitution match{
@@ -515,32 +498,32 @@ case class Translator(program: PProgram) {
               case _ => sys.error("type unification error - should report and not crash")
             }
           case _: Predicate =>
-            val inner = PredicateAccess(args map exp, findPredicate(func).name) (pos, info)
+            val inner = PredicateAccess(args.inner.toSeq map exp, findPredicate(func).name) (pos, info)
             val fullPerm = FullPerm()(pos, info)
             PredicateAccessPredicate(inner, fullPerm) (pos, info)
           case _ => sys.error("unexpected reference to non-function")
         }
-      case PNewExp(_) => sys.error("unexpected `new` expression")
-      case PUnfolding(loc, e) =>
+      case PNewExp(_, _) => sys.error("unexpected `new` expression")
+      case PUnfolding(_, loc, _, e) =>
         Unfolding(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos, info)
-      case PApplying(wand, e) =>
+      case PApplying(_, wand, _, e) =>
         Applying(exp(wand).asInstanceOf[MagicWand], exp(e))(pos, info)
-      case PLet(exp1, PLetNestedScope(variable, body)) =>
-        Let(liftLogicalDecl(variable), exp(exp1), exp(body))(pos, info)
+      case pl@PLet(_, _, _, exp1, _, PLetNestedScope(body)) =>
+        Let(liftLogicalDecl(pl.decl), exp(exp1.inner), exp(body))(pos, info)
       case _: PLetNestedScope =>
         sys.error("unexpected node PLetNestedScope, should only occur as a direct child of PLet nodes")
-      case PExists(vars, triggers, e) =>
-        val ts = triggers map (t => Trigger((t.exp map exp) map (e => e match {
+      case PExists(_, vars, _, triggers, e) =>
+        val ts = triggers map (t => Trigger((t.exp.inner.toSeq map exp) map (e => e match {
           case PredicateAccessPredicate(inner, _) => inner
           case _ => e
         }))(t))
-        Exists(vars map liftLogicalDecl, ts, exp(e))(pos, info)
-      case PForall(vars, triggers, e) =>
-        val ts = triggers map (t => Trigger((t.exp map exp) map (e => e match {
+        Exists(vars.toSeq map liftLogicalDecl, ts, exp(e))(pos, info)
+      case PForall(_, vars, _, triggers, e) =>
+        val ts = triggers map (t => Trigger((t.exp.inner.toSeq map exp) map (e => e match {
           case PredicateAccessPredicate(inner, _) => inner
           case _ => e
         }))(t))
-        val fa = Forall(vars map liftLogicalDecl, ts, exp(e))(pos, info)
+        val fa = Forall(vars.toSeq map liftLogicalDecl, ts, exp(e))(pos, info)
         if (fa.isPure) {
           fa
         } else {
@@ -548,9 +531,9 @@ case class Translator(program: PProgram) {
           desugaredForalls.tail.foldLeft(desugaredForalls.head: Exp)((conjuncts, forall) =>
             And(conjuncts, forall)(fa.pos, fa.info, fa.errT))
         }
-      case PForPerm(vars, res, e) =>
-        val varList = vars map liftLogicalDecl
-        exp(res) match {
+      case PForPerm(_, vars, res, _, e) =>
+        val varList = vars.toSeq map liftLogicalDecl
+        exp(res.inner) match {
           case PredicateAccessPredicate(inner, _) => ForPerm(varList, inner, exp(e))(pos, info)
           case f : FieldAccess => ForPerm(varList, f, exp(e))(pos, info)
           case p : PredicateAccess => ForPerm(varList, p, exp(e))(pos, info)
@@ -558,31 +541,30 @@ case class Translator(program: PProgram) {
           case other =>
             sys.error(s"Internal Error: Unexpectedly found $other in forperm")
         }
-      case POld(e) =>
-        Old(exp(e))(pos, info)
-      case PLabelledOld(lbl,e) =>
-        LabelledOld(exp(e),lbl.name)(pos, info)
-      case PCondExp(cond, thn, els) =>
+      case POldExp(_, lbl, e) =>
+        val ee = exp(e.inner)
+        lbl.map(l => LabelledOld(ee, l.inner.fold(_.rs.keyword, _.name))(pos, info)).getOrElse(Old(ee)(pos, info))
+      case PCondExp(cond, _, thn, _, els) =>
         CondExp(exp(cond), exp(thn), exp(els))(pos, info)
-      case PCurPerm(res) =>
-        exp(res) match {
+      case PCurPerm(_, res) =>
+        exp(res.inner) match {
           case PredicateAccessPredicate(inner, _) => CurrentPerm(inner)(pos, info)
           case x: FieldAccess => CurrentPerm(x)(pos, info)
           case x: PredicateAccess => CurrentPerm(x)(pos, info)
           case x: MagicWand => CurrentPerm(x)(pos, info)
           case other => sys.error(s"Unexpectedly found $other")
         }
-      case PNoPerm() =>
+      case PNoPerm(_) =>
         NoPerm()(pos, info)
-      case PFullPerm() =>
+      case PFullPerm(_) =>
         FullPerm()(pos, info)
-      case PWildcard() =>
+      case PWildcard(_) =>
         WildcardPerm()(pos, info)
-      case PEpsilon() =>
+      case PEpsilon(_) =>
         EpsilonPerm()(pos, info)
-      case PAccPred(loc, perm) =>
-        val p = exp(perm)
-        exp(loc) match {
+      case acc: PAccPred =>
+        val p = exp(acc.perm)
+        exp(acc.loc) match {
           case loc@FieldAccess(_, _) =>
             FieldAccessPredicate(loc, p)(pos, info)
           case loc@PredicateAccess(_, _) =>
@@ -591,85 +573,71 @@ case class Translator(program: PProgram) {
           case _ =>
             sys.error("unexpected location")
         }
-      case PEmptySeq(_) =>
-        EmptySeq(ttyp(pexp.typ.asInstanceOf[PSeqType].elementType))(pos, info)
-      case PExplicitSeq(elems) =>
-        ExplicitSeq(elems map exp)(pos, info)
-      case PRangeSeq(low, high) =>
+      case _: PEmptySeq =>
+        EmptySeq(ttyp(pexp.typ.asInstanceOf[PSeqType].elementType.inner))(pos, info)
+      case PExplicitSeq(_, elems) =>
+        ExplicitSeq(elems.inner.toSeq map exp)(pos, info)
+      case PRangeSeq(_, low, _, high, _) =>
         RangeSeq(exp(low), exp(high))(pos, info)
 
-      case PLookup(base, index) => base.typ match {
+      case PLookup(base, _, index, _) => base.typ match {
         case _: PSeqType => SeqIndex(exp(base), exp(index))(pos, info)
         case _: PMapType => MapLookup(exp(base), exp(index))(pos, info)
         case t => sys.error(s"unexpected type $t")
       }
 
-      case PSeqTake(seq, n) =>
-        SeqTake(exp(seq), exp(n))(pos, info)
-      case PSeqDrop(seq, n) =>
-        SeqDrop(exp(seq), exp(n))(pos, info)
+      case PSeqSlice(seq, _, s, _, e, _) =>
+        val es = exp(seq)
+        val ss = e.map(exp).map(SeqTake(es, _)(pos, info)).getOrElse(es)
+        s.map(exp).map(SeqDrop(ss, _)(pos, info)).getOrElse(ss)
 
-      case PUpdate(base, key, value) => base.typ match {
+      case PUpdate(base, _, key, _, value, _) => base.typ match {
         case _: PSeqType => SeqUpdate(exp(base), exp(key), exp(value))(pos, info)
         case _: PMapType => MapUpdate(exp(base), exp(key), exp(value))(pos, info)
         case t => sys.error(s"unexpected type $t")
       }
 
-      case PSize(base) => base.typ match {
+      case PSize(_, base, _) => base.typ match {
         case _: PSeqType => SeqLength(exp(base))(pos, info)
         case _: PMapType => MapCardinality(exp(base))(pos, info)
         case _: PSetType | _: PMultisetType => AnySetCardinality(exp(base))(pos, info)
         case t => sys.error(s"unexpected type $t")
       }
 
-      case PEmptySet(_) =>
-        EmptySet(ttyp(pexp.typ.asInstanceOf[PSetType].elementType))(pos, info)
-      case PExplicitSet(elems) =>
-        ExplicitSet(elems map exp)(pos, info)
-      case PEmptyMultiset(_) =>
-        EmptyMultiset(ttyp(pexp.typ.asInstanceOf[PMultisetType].elementType))(pos, info)
-      case PExplicitMultiset(elems) =>
-        ExplicitMultiset(elems map exp)(pos, info)
+      case _: PEmptySet =>
+        EmptySet(ttyp(pexp.typ.asInstanceOf[PSetType].elementType.inner))(pos, info)
+      case PExplicitSet(_, elems) =>
+        ExplicitSet(elems.inner.toSeq map exp)(pos, info)
+      case _: PEmptyMultiset =>
+        EmptyMultiset(ttyp(pexp.typ.asInstanceOf[PMultisetType].elementType.inner))(pos, info)
+      case PExplicitMultiset(_, elems) =>
+        ExplicitMultiset(elems.inner.toSeq map exp)(pos, info)
 
-      case PEmptyMap(_, _) => EmptyMap(
+      case _: PEmptyMap => EmptyMap(
         ttyp(pexp.typ.asInstanceOf[PMapType].keyType),
         ttyp(pexp.typ.asInstanceOf[PMapType].valueType)
       )(pos, info)
-      case PExplicitMap(elems) =>
-        ExplicitMap(elems map exp)(pos, info)
-      case PMaplet(key, value) =>
+      case PExplicitMap(_, elems) =>
+        ExplicitMap(elems.inner.toSeq map exp)(pos, info)
+      case PMaplet(key, _, value) =>
         Maplet(exp(key), exp(value))(pos, info)
-      case PMapDomain(base) =>
-        MapDomain(exp(base))(pos, info)
-      case PMapRange(base) =>
-        MapRange(exp(base))(pos, info)
+      case PMapDomain(_, base) =>
+        MapDomain(exp(base.inner))(pos, info)
+      case PMapRange(_, base) =>
+        MapRange(exp(base.inner))(pos, info)
 
       case t: PExtender => t.translateExp(this)
     }
   }
 
-  /** Takes a [[viper.silver.parser.FastPositioned]] and turns it into a [[viper.silver.ast.SourcePosition]]. */
-  implicit def liftPos(node: Where): SourcePosition = {
-    if (node.pos._1.isInstanceOf[FilePosition]) {
-      assert(node.pos._2.isInstanceOf[FilePosition])
-
-      val begin = node.pos._1.asInstanceOf[FilePosition]
-      val end = node.pos._2.asInstanceOf[FilePosition]
-
-      SourcePosition(begin.file,
-        LineColumnPosition(begin.line, begin.column),
-        LineColumnPosition(end.line, end.column))
-    }
-    else {
-      SourcePosition(null, 0, 0)
-    }
-  }
+  implicit def liftPos(node: Where): SourcePosition = Translator.liftWhere(node)
 
   /** Takes a `PAnyFormalArgDecl` and turns it into a `AnyLocalVarDecl`. */
   def liftAnyArgDecl(formal: PAnyFormalArgDecl) =
     formal match {
       case f: PFormalArgDecl => liftArgDecl(f)
-      case u: PUnnamedFormalArgDecl => UnnamedLocalVarDecl(ttyp(u.typ))(u.typ)
+      case PDomainFunctionArg(Some(idndef), _, typ) => LocalVarDecl(idndef.name, ttyp(typ))(idndef)
+      case PDomainFunctionArg(None, _, typ) => UnnamedLocalVarDecl(ttyp(typ))(typ)
     }
 
   /** Takes a `PFormalArgDecl` and turns it into a `LocalVarDecl`. */
@@ -686,47 +654,77 @@ case class Translator(program: PProgram) {
 
   /** Takes a `PType` and turns it into a `Type`. */
   def ttyp(t: PType): Type = t match {
-    case PPrimitiv(name) => name match {
-      case "Int" => Int
-      case "Bool" => Bool
-      case "Ref" => Ref
-      case "Perm" => Perm
+    case PPrimitiv(name) => name.rs match {
+      case PKw.Int => Int
+      case PKw.Bool => Bool
+      case PKw.Ref => Ref
+      case PKw.Perm => Perm
+      case PKw.Rational => Perm
     }
-    case PSeqType(elemType) =>
-      SeqType(ttyp(elemType))
-    case PSetType(elemType) =>
-      SetType(ttyp(elemType))
-    case PMultisetType(elemType) =>
-      MultisetType(ttyp(elemType))
-    case PMapType(keyType, valueType) =>
-      MapType(ttyp(keyType), ttyp(valueType))
-    case PDomainType(name, args) =>
+    case PSeqType(_, elemType) =>
+      SeqType(ttyp(elemType.inner))
+    case PSetType(_, elemType) =>
+      SetType(ttyp(elemType.inner))
+    case PMultisetType(_, elemType) =>
+      MultisetType(ttyp(elemType.inner))
+    case typ: PMapType =>
+      MapType(ttyp(typ.keyType), ttyp(typ.valueType))
+    case typ@PDomainType(name, _) =>
       members.get(name.name) match {
         case Some(domain: Domain) =>
           if (domain.interpretations.isDefined) {
             BackendType(domain.name, domain.interpretations.get)
           } else {
-            val typVarMapping = domain.typVars zip (args map ttyp)
+            val typVarMapping = domain.typVars zip (typ.typeArgs map ttyp)
             DomainType(domain, typVarMapping /*.filter {
             case (tv, tt) => tv!=tt //!tt.isInstanceOf[TypeVar]
           }*/.toMap)
           }
         case Some(adt: Adt) =>
-          val typVarMapping = adt.typVars zip (args map ttyp)
+          val typVarMapping = adt.typVars zip (typ.typeArgs map ttyp)
           AdtType(adt, typVarMapping.toMap)
         case Some(other) =>
           sys.error(s"Did not expect member ${other}")
         case None =>
-          assert(args.isEmpty)
+          assert(typ.typeArgs.isEmpty)
           TypeVar(name.name) // not a domain, i.e. it must be a type variable
       }
-    case PWandType() => Wand
+    case TypeHelper.Wand => Wand
+    case TypeHelper.Predicate => Bool
+    case TypeHelper.Impure => Bool
     case t: PExtender => t.translateType(this)
     case PUnknown() =>
       sys.error("unknown type unexpected here")
     case _: PFunctionType =>
       sys.error("unexpected use of internal typ")
-    case PPredicateType() =>
-      sys.error("unexpected use of internal typ")
+  }
+}
+
+object Translator {
+  import scala.annotation.unused
+
+  /** Takes a [[viper.silver.parser.FastPositioned]] and turns it into a [[viper.silver.ast.SourcePosition]]. */
+  implicit def liftWhere(node: Where): SourcePosition = {
+    if (node.pos._1.isInstanceOf[FilePosition]) {
+      assert(node.pos._2.isInstanceOf[FilePosition])
+
+      val begin = node.pos._1.asInstanceOf[FilePosition]
+      val end = node.pos._2.asInstanceOf[FilePosition]
+
+      SourcePosition(begin.file,
+        LineColumnPosition(begin.line, begin.column),
+        LineColumnPosition(end.line, end.column))
+    }
+    else {
+      SourcePosition(null, 0, 0)
+    }
+  }
+
+  def toInfo(annotations: Seq[PAnnotation], @unused node: PNode): Info = {
+    if (annotations.isEmpty) {
+      NoInfo
+    } else {
+      AnnotationInfo(annotations.groupBy(_.key).map{ case (k, v) => k.str -> v.flatMap(_.values.inner.toSeq.map(_.str)) })
+    }
   }
 }
