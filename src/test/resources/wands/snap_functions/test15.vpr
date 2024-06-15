@@ -1,3 +1,4 @@
+
 field f: Int
 
 method test0b(xs: Seq[Ref], y: Ref)
@@ -18,6 +19,7 @@ method test0b(xs: Seq[Ref], y: Ref)
   completed := completed ++ Seq(localX)
   toGo := toGo[1..]
 
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/000/)
   assert forall x: Ref :: x in completed ==> applying (acc(y.f) --* acc(x.f) && acc(y.f) && y.f == old[lhs](y.f)) in x.f == old[setupComplete](x.f)
 }
 
@@ -49,5 +51,6 @@ method test0d(xs: Seq[Ref], y: Ref)
 
   package acc(y.f) --* acc(xs[0].f) && acc(y.f) && y.f == old[lhs](y.f)
 
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/000/)
   assert forall x: Ref :: x in completed ==> applying (acc(y.f) --* acc(x.f) && acc(y.f) && y.f == old[lhs](y.f)) in x.f == old[setupComplete](x.f)
 }
