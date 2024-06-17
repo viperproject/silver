@@ -1,0 +1,47 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Ref
+field g: Ref
+
+function one(): Int {1}
+function two(): Int {2}
+
+predicate Q(x: Ref)
+
+predicate P(x: Ref) {
+  forall i: Int :: one() == two() && x.f != null ==> acc(x.g.f)
+}
+
+predicate P2(x: Ref) {
+  forall i: Int :: one() == two() && x.f != null ==> Q(x.g)
+}
+
+method consumeField(x: Ref)
+{
+  exhale forall i: Int :: one() == two() && x.f != null ==> acc(x.g.f)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method produceField(x: Ref)
+{
+  inhale P(x)
+  unfold P(x)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method consumePred(x: Ref)
+{
+  fold P2(x)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method producePred(x: Ref)
+{
+  inhale forall i: Int :: one() == two() && x.f != null ==> Q(x.g)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
