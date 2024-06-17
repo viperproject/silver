@@ -175,6 +175,12 @@ object Expressions {
     case e: Exp => e
   }
 
+  def containsPermissionIntrospection(e: Exp): Boolean = e.exists {
+    case _: CurrentPerm => true
+    case _: ForPerm => true
+    case _ => false
+  }
+
   // note: dependency on program for looking up function preconditions
   def proofObligations(e: Exp): (Program => Seq[Exp]) = (prog: Program) => {
     e.reduceTree[Seq[Exp]] {
