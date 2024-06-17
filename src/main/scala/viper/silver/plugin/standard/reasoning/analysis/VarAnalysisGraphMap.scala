@@ -245,7 +245,7 @@ case class VarAnalysisGraphMap(prog: Program,
         if(loopTerminates) {
           mergeGraph
         } else {
-          mergeGraph + (AssumeNode(stmt.pos) -> getResolvedVarsFromExp(cond, mergeGraph))
+          mergeGraph + (AssumeNode(cond.pos) -> getResolvedVarsFromExp(cond, mergeGraph))
         }
       case m: MethodCall =>
         val met = prog.findMethod(m.methodName)
