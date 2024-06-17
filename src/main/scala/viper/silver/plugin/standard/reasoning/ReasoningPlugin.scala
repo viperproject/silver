@@ -48,10 +48,10 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
   def assumes[$: P]: P[PAssumes] = P(P(PAssumesKeyword) map (PAssumes(_) _)).pos // note that the parentheses are not redundant
 
   def assumesNothingSpec[$: P]: P[PSpecification[PNothingKeyword.type]] =
-    P(P(PNothingKeyword) map {
-      case (b) => PSpecification(b, PAssumesNothing()(b.pos))(_)
-    }).pos
+    P((P(PNothingKeyword) ~ assumesNothingClause) map (PSpecification.apply _).tupled).pos
 
+  // assumes nothing clause is completely artificial and is created out of nowhere at the parser's current position
+  def assumesNothingClause[$: P]: P[PAssumesNothing] = (Pass(()) map { _ => PAssumesNothing()(_) }).pos
   def singleVar[$: P]: P[PVar] = P(fp.idnuse map (PVar(_) _)).pos // note that the parentheses are not redundant
   def varsAndHeap[$: P]: P[Seq[PFlowVar]] = (heap | singleVar).delimited(PSym.Comma).map(_.toSeq)
 

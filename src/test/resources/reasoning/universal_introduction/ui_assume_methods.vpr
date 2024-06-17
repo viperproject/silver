@@ -17,7 +17,9 @@ method assumeMethodCall1()
             //:: ExpectedOutput(consistency.error)
             abstractNonTermImpl(10)
         }
-        while(x > 0) {
+        while(x > 0)
+        decreases x
+        {
             //:: ExpectedOutput(consistency.error)
             abstractNonTermImpl(10)
         }
@@ -34,7 +36,9 @@ method assumeMethodCall2()
             //:: ExpectedOutput(consistency.error)
             abstractNonTermImpl(x)
         }
-        while(x > 0) {
+        while(x > 0)
+        decreases x
+        {
             //:: ExpectedOutput(consistency.error)
             abstractNonTermImpl(x)
         }
@@ -50,7 +54,9 @@ method assumeMethodCall3()
             //:: ExpectedOutput(consistency.error)
             abstractNonTermExpl(x)
         }
-        while(x > 0) {
+        while(x > 0)
+        decreases x
+        {
             //:: ExpectedOutput(consistency.error)
             abstractNonTermExpl(x)
         }
@@ -65,7 +71,9 @@ method assumeMethodCall4()
             //:: ExpectedOutput(consistency.error)
             abstractNonTermImplSpec(x)
         }
-        while(x > 0) {
+        while(x > 0)
+        decreases x
+        {
             //:: ExpectedOutput(consistency.error)
             abstractNonTermImplSpec(x)
         }
@@ -80,6 +88,7 @@ method assumeMethodCall5()
             //:: ExpectedOutput(consistency.error)
             abstractNonTermExplSpec(x)
         }
+        //:: ExpectedOutput(consistency.error)
         while(x > 0) {
             //:: ExpectedOutput(consistency.error)
             abstractNonTermExplSpec(x)
@@ -94,7 +103,9 @@ method assumeMethodCall6()
         if(x > 0) {
             abstractNonTermImplNoAssumesSpec(x)
         }
-        while(x > 0) {
+        while(x > 0)
+        decreases x
+        {
             abstractNonTermImplNoAssumesSpec(x)
         }
     }
@@ -107,7 +118,9 @@ method assumeMethodCall7()
         if(x > 0) {
             abstractNonTermExplNoAssumesSpec(x)
         }
-        while(x > 0) {
+        while(x > 0)
+        decreases x
+        {
             abstractNonTermExplNoAssumesSpec(x)
         }
     }
@@ -120,7 +133,9 @@ method assumeMethodCall8()
         if(x > 0) {
             abstractTerm(x)
         }
-        while(x > 0) {
+        while(x > 0)
+        decreases x
+        {
             abstractTerm(x)
         }
     }

@@ -84,7 +84,7 @@ method quasiHavocNOk1(y:Ref)
 method quasiHavocNOk2(y:Ref)
 {
     //:: ExpectedOutput(consistency.error)
-    prove forall x:Int {P(x)} assuming P(x) implies Q(x) && (y.f > 0 || y.f <= 0) {
+    prove forall x:Idecreases xnt {P(x)} assuming P(x) implies Q(x) && (y.f > 0 || y.f <= 0) {
         if(x == 100) {
             quasihavoc y.f
         }

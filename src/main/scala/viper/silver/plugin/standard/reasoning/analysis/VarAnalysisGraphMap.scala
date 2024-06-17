@@ -111,7 +111,6 @@ case class VarAnalysisGraphMap(prog: Program,
     if (method.body.isEmpty) {
       // Case for abstract methods
       val map = getDefaultMethodInfluences(method)
-      logger.warn(s"${method.name}: $map")
       methodAnalysisMap.put(method, map)
     } else if(methodAnalysisStarted.contains(method)) {
       // Case for recursive methods
@@ -229,7 +228,7 @@ case class VarAnalysisGraphMap(prog: Program,
         (thenGraph.keySet ++ elseGraph.keySet).map(
           v => v -> (thenGraph.getOrElse(v, Set()) ++ elseGraph.getOrElse(v, Set()) ++ conditionInfluences.getOrElse(v, Set()))
         ).toMap
-      case While(cond, _, body) =>
+      case While(cond, invs, body) =>
         var iterationGraph = computeInfluenceMap(If(cond, body, Seqn(Seq(), Seq())(body.pos))(body.pos), graphMap)
         var edgesEqual: Boolean = false
         var mergeGraph = iterationGraph
@@ -241,7 +240,13 @@ case class VarAnalysisGraphMap(prog: Program,
             mergeGraph = iterationGraph
           }
         }
-        mergeGraph
+
+        val loopTerminates = invs.collect { case DecreasesTuple(_, _) | DecreasesWildcard(_) => true }.nonEmpty && invs.collect { case DecreasesStar() => true }.isEmpty
+        if(loopTerminates) {
+          mergeGraph
+        } else {
+          mergeGraph + (AssumeNode(stmt.pos) -> getResolvedVarsFromExp(cond, mergeGraph))
+        }
       case m: MethodCall =>
         val met = prog.findMethod(m.methodName)
         computeMethodInfluenceMap(graphMap, met, m.args, m.targets, m.pos)
@@ -306,7 +311,6 @@ case class VarAnalysisGraphMap(prog: Program,
       .map(v => retVarMapping(v._1) -> v._2.flatMap(methodArgExpMapping)) +
       (AnalysisUtils.heapVertex -> (graphMap(AnalysisUtils.heapVertex) ++ methodAnalysisMap(method)(AnalysisUtils.heapVertex).flatMap(methodArgExpMapping)))
 
-    logger.warn(s"${method.name} resolved: $resolvedMethodMap")
     // We set the position to the method call instead of the assume statement, so potential error are more readable.
     graphMap ++ resolvedMethodMap
   }
