@@ -1,0 +1,31 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// The errors marked in this file are expected only due to the proverArgs annotation, since the properties actually
+// hold, but Z3 should not be able to prove that due to the non-linear arithmetic setting.
+// We use UnexpectedOutput annotations to mark that they're not actual errors, and that Carbon (which currently does
+// not support the proverArgs annotation) should not report them.
+
+method m1(i: Int, i2: Int)
+    requires i >= 0
+    requires i2 >= 0
+{
+    assert i * i2 >= 0
+}
+
+@proverArgs("smt.arith.nl=false")
+method m2(i: Int, i2: Int)
+    requires i >= 0
+    requires i2 >= 0
+{
+    //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/000/)
+    assert i * i2 >= 0
+}
+
+@proverArgs("smt.arith.nl=true")
+method m3(i: Int, i2: Int)
+    requires i >= 0
+    requires i2 >= 0
+{
+    assert i * i2 >= 0
+}
