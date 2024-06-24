@@ -134,6 +134,117 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
   }
 
 
+  private def removeReasoningAnnotations(m: Method): Method = {
+    val flowAnnotationAndLemmaFilter: Exp => Boolean = {
+      case _: FlowAnnotation | _: Lemma | _: NoAssumeAnnotation => false
+      case _ => true
+    }
+    val postconds = m.posts.filter(flowAnnotationAndLemmaFilter)
+    val preconds = m.pres.filter(flowAnnotationAndLemmaFilter)
+    m.copy(pres = preconds, posts = postconds)(m.pos, m.info, m.errT)
+  }
+
+  private def translateOldCall(o: OldCall, method: Method, usedNames: mutable.Set[String]): Stmt = {
+    val new_v_map: Seq[(LocalVarDecl, Exp)] = ((method.formalArgs ++ method.formalReturns) zip (o.args ++ o.rets)).map(zipped => {
+      val formal_a: LocalVarDecl = zipped._1
+      val arg_exp: Exp = zipped._2
+      formal_a -> arg_exp
+    })
+
+    /** replace all input parameters in preconditions with the corresponding argument */
+    val new_pres = method.pres.flatMap {
+      case Lemma() => Seq.empty
+      case p => Seq(applySubstitutionWithExp(new_v_map, p))
+    }
+
+    /** replace all input & output parameters in postconditions with the corresponding argument / result */
+    val new_posts = method.posts.flatMap {
+      case Lemma() => Seq.empty
+      case p => Seq(applySubstitutionWithExp(new_v_map, p))
+    }
+
+    /** create new variable declarations to havoc the lhs of the oldCall */
+    val rToV = o.rets.map(r => {
+      val new_v = LocalVarDecl(uniqueName(".v", usedNames), r.typ)(r.pos)
+      r -> new_v
+    }).toMap
+
+    val errTransformer = ErrTrafo({
+      case AssertFailed(_, r, c) => PreconditionInLemmaCallFalse(o, r, c)
+      case d => d
+    })
+
+    Seqn(
+      // assert precondition(s)
+      new_pres.map(p =>
+        Assert(LabelledOld(p, o.oldLabel)(p.pos))(o.pos, errT = errTransformer)
+      ) ++
+        // havoc return args by assigning an unconstrained value
+        o.rets.map(r => {
+          LocalVarAssign(r, rToV(r).localVar)(o.pos)
+        }) ++
+        // inhale postcondition(s)
+        new_posts.map(p =>
+          Inhale(LabelledOld(p, o.oldLabel)(p.pos))(o.pos)
+        ),
+      rToV.values.toSeq
+    )(o.pos)
+  }
+
+  private def translateExistentialElim(e: ExistentialElim, usedNames: mutable.Set[String]): Stmt = {
+    val (new_v_map, new_exp) = substituteWithFreshVars(e.varList, e.exp, usedNames)
+    val new_trigs = e.trigs.map(t => Trigger(t.exps.map(e1 => applySubstitution(new_v_map, e1)))(t.pos))
+    val errTransformer = ErrTrafo({
+      case AssertFailed(_, r, c) => ExistentialElimFailed(e, r, c)
+      case d => d
+    })
+    Seqn(
+      Seq(
+        Assert(Exists(new_v_map.map(_._2), new_trigs, new_exp)(e.pos, errT = errTransformer))(e.pos)
+      )
+        ++
+        e.varList.map(variable => LocalVarDeclStmt(variable)(variable.pos)) //list of variables
+        ++
+        Seq(
+          Inhale(e.exp)(e.pos)
+        ),
+      Seq()
+    )(e.pos)
+  }
+
+  private def translateUniversalIntroduction(u: UniversalIntro, usedNames: mutable.Set[String]): Stmt = {
+    /** Translate the new syntax into Viper language */
+    val (newVarMap, newExp1) = substituteWithFreshVars(u.varList, u.assumingExp, usedNames)
+    val newExp2 = applySubstitution(newVarMap, u.implyingExp)
+    val quantifiedVars = newVarMap.map(vars => vars._2)
+    val newTrigs = u.triggers.map(t => Trigger(t.exps.map(e1 => applySubstitution(newVarMap, e1)))(t.pos))
+    val lbl = uniqueName("l", usedNames)
+    val errTransformer = ErrTrafo({
+      case AssertFailed(_, r, c) => UniversalIntroFailed(u, r, c)
+      case d => d
+    })
+
+    val boolvar = LocalVarDecl(uniqueName("b", usedNames), Bool)(u.assumingExp.pos)
+    Seqn(
+      Seq(
+        Label(lbl, Seq.empty)(u.pos),
+        // conditionally inhale assume expression
+        If(boolvar.localVar,
+          Seqn(
+            Seq(Inhale(u.assumingExp)(u.assumingExp.pos)),
+            Seq.empty)(u.assumingExp.pos),
+          Seqn(Seq.empty, Seq.empty)(u.assumingExp.pos)
+        )(u.assumingExp.pos),
+        // execute block
+        u.block,
+        // conditionally assert imply expression
+        Assert(Implies(boolvar.localVar, u.implyingExp)(u.implyingExp.pos))(u.implyingExp.pos, errT = errTransformer),
+        Inhale(Forall(quantifiedVars, newTrigs, Implies(LabelledOld(newExp1, lbl)(u.implyingExp.pos), newExp2)(u.implyingExp.pos))(u.implyingExp.pos))(u.implyingExp.pos)
+      ),
+      Seq(boolvar) ++ u.varList
+    )(u.assumingExp.pos)
+  }
+
   override def beforeVerify(input: Program): Program = {
     val usedNames: mutable.Set[String] = collection.mutable.Set(input.transitiveScopedDecls.map(_.name): _*)
 
@@ -146,104 +257,18 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
     analysis.checkUserProvidedInfluencesSpec()
 
     ViperStrategy.Slim({
-
       /** remove the influenced by postconditions.
         * remove isLemma */
-      case m: Method =>
-        val flowAnnotationAndLemmaFilter: Exp => Boolean = {
-          case _: FlowAnnotation | _: Lemma => false
-          case _ => true
-        }
-        val postconds = m.posts.filter(flowAnnotationAndLemmaFilter)
-        val preconds = m.pres.filter(flowAnnotationAndLemmaFilter)
-        if (postconds != m.posts || preconds != m.pres) {
-          m.copy(pres = preconds, posts = postconds)(m.pos, m.info, m.errT)
-        } else {
-          m
-        }
-
-      case o@OldCall(methodName, args, rets, lbl) =>
+      case m: Method => removeReasoningAnnotations(m)
+      case o: OldCall =>
         /** check whether called method is a lemma */
-        val currmethod = input.findMethod(methodName)
-        val isLemma = specifiesLemma(currmethod)
-
-        if (!isLemma) {
+        val currmethod = input.findMethod(o.methodName)
+        if (!specifiesLemma(currmethod)) {
           reportError(ConsistencyError(s"method ${currmethod.name} called in old context must be lemma", o.pos))
         }
-
-        val new_v_map: Seq[(LocalVarDecl, Exp)] = ((currmethod.formalArgs ++ currmethod.formalReturns) zip (args ++ rets)).map(zipped => {
-          val formal_a: LocalVarDecl = zipped._1
-          val arg_exp: Exp = zipped._2
-          formal_a -> arg_exp
-        })
-        
-        /** replace all input parameters in preconditions with the corresponding argument */
-        val new_pres = currmethod.pres.flatMap {
-          case Lemma() => Seq.empty
-          case p => Seq(applySubstitutionWithExp(new_v_map, p))
-        }
-
-        /** replace all input & output parameters in postconditions with the corresponding argument / result */
-        val new_posts = currmethod.posts.flatMap {
-          case Lemma() => Seq.empty
-          case p => Seq(applySubstitutionWithExp(new_v_map, p))
-        }
-
-        /** create new variable declarations to havoc the lhs of the oldCall */
-        val rToV = rets.map(r => {
-          val new_v = LocalVarDecl(uniqueName(".v", usedNames),r.typ)(r.pos)
-          r -> new_v
-        }).toMap
-        
-        val errTransformer = ErrTrafo({
-          case AssertFailed(_, r, c) => PreconditionInLemmaCallFalse(o, r, c)
-          case d => d
-        })
-
-        Seqn(
-          // assert precondition(s)
-          new_pres.map(p =>
-            Assert(LabelledOld(p, lbl)(p.pos))(o.pos, errT = errTransformer)
-          ) ++
-          // havoc return args by assigning an unconstrained value
-          rets.map(r => {
-            LocalVarAssign(r, rToV(r).localVar)(o.pos)
-          }) ++
-          // inhale postcondition(s)
-          new_posts.map(p =>
-            Inhale(LabelledOld(p, lbl)(p.pos))(o.pos)
-          ),
-          rToV.values.toSeq
-        )(o.pos)
-
-      case e@ExistentialElim(v, trigs, exp) =>
-        val (new_v_map, new_exp) = substituteWithFreshVars(v, exp, usedNames)
-        val new_trigs = trigs.map(t => Trigger(t.exps.map(e1 => applySubstitution(new_v_map, e1)))(t.pos))
-        val errTransformer = ErrTrafo({
-          case AssertFailed(_, r, c) => ExistentialElimFailed(e, r, c)
-          case d => d
-        })
-        Seqn(
-          Seq(
-            Assert(Exists(new_v_map.map(_._2), new_trigs, new_exp)(e.pos, errT = errTransformer))(e.pos)
-          )
-            ++
-            v.map(variable => LocalVarDeclStmt(variable)(variable.pos)) //list of variables
-            ++
-            Seq(
-              Inhale(exp)(e.pos)
-            ),
-          Seq()
-        )(e.pos)
-
-      case u@UniversalIntro(v, trigs, exp1, exp2, blk) =>
-        val boolvar = LocalVarDecl(uniqueName("b", usedNames), Bool)(exp1.pos)
-
-        /** Get all variables that are in scope in the current method */
-        val tainted: Set[LocalVarDecl] = v.toSet
-        val varsOutside = (input.methods
-          .filter(m => m.body.isDefined)
-          .flatMap(m => m.body.get.ss.filter(s => s.contains(u)).flatMap(_ => Set(m.transitiveScopedDecls: _*))).toSet -- Set(u.transitiveScopedDecls: _*)) ++ tainted
+        translateOldCall(o, currmethod, usedNames)
+      case e: ExistentialElim => translateExistentialElim(e, usedNames)
+      case u@UniversalIntro(v, _, exp1, exp2, blk) =>
         /**
           * get all variables that are assigned to inside the block and take intersection with universal introduction
           * variables. If they are contained throw error since quantified variables should be immutable
@@ -252,40 +277,17 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
         checkReassigned(writtenVars, v, reportError, u)
         checkInfluencedBy(input, reportError)
 
+        /** Get all variables that are in scope in the current method */
+        val tainted: Set[LocalVarDecl] = v.toSet
+        val varsOutside = (input.methods
+          .filter(m => m.body.isDefined)
+          .flatMap(m => m.body.get.ss.filter(s => s.contains(u)).flatMap(_ => Set(m.transitiveScopedDecls: _*))).toSet -- Set(u.transitiveScopedDecls: _*)) ++ tainted
+
         /** Contains all variables that must not be tainted */
         val volatileVars: Set[LocalVarDecl] = analysis.getLocalVarDeclsFromExpr(exp1) ++ analysis.getLocalVarDeclsFromExpr(exp2) -- v
         /** execute modular flow analysis using graph maps for the universal introduction statement */
         analysis.executeTaintedGraphAnalysis(varsOutside.collect({ case v:LocalVarDecl => v }), tainted, blk, volatileVars, u)
-
-        /** Translate the new syntax into Viper language */
-        val (newVarMap, newExp1) = substituteWithFreshVars(v, exp1, usedNames)
-        val newExp2 = applySubstitution(newVarMap, exp2)
-        val quantifiedVars = newVarMap.map(vars => vars._2)
-        val newTrigs = trigs.map(t => Trigger(t.exps.map(e1 => applySubstitution(newVarMap, e1)))(t.pos))
-        val lbl = uniqueName("l", usedNames)
-        val errTransformer = ErrTrafo({
-          case AssertFailed(_, r, c) => UniversalIntroFailed(u, r, c)
-          case d => d
-        })
-
-        Seqn(
-          Seq(
-            Label(lbl, Seq.empty)(u.pos),
-            // conditionally inhale assume expression
-            If(boolvar.localVar,
-              Seqn(
-                Seq(Inhale(exp1)(exp1.pos)),
-                Seq.empty)(exp1.pos),
-              Seqn(Seq.empty, Seq.empty)(exp1.pos)
-            )(exp1.pos),
-            // execute block
-            blk,
-            // conditionally assert imply expression
-            Assert(Implies(boolvar.localVar, exp2)(exp2.pos))(exp2.pos, errT = errTransformer),
-            Inhale(Forall(quantifiedVars, newTrigs, Implies(LabelledOld(newExp1, lbl)(exp2.pos), newExp2)(exp2.pos))(exp2.pos))(exp2.pos)
-          ),
-          Seq(boolvar) ++ v
-        )(exp1.pos)
+        translateUniversalIntroduction(u, usedNames);
     }, Traverse.TopDown).execute[Program](input)
   }
 }
