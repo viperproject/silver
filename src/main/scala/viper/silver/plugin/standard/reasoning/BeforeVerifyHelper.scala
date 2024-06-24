@@ -61,6 +61,7 @@ trait BeforeVerifyHelper {
       }
   }
 
+  /** returns true if method `m` is annotated to be a lemma */
   private def specifiesLemma(m: Method): Boolean = (m.pres ++ m.posts).exists {
     case _: Lemma => true
     case _ => false
