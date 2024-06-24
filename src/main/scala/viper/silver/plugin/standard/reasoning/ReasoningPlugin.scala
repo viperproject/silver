@@ -15,6 +15,7 @@ import viper.silver.parser._
 import viper.silver.plugin.standard.reasoning.analysis.VarAnalysisGraphMap
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier._
+import viper.silver.verifier.errors.AssertFailed
 
 import scala.annotation.unused
 import scala.collection.mutable
@@ -53,7 +54,7 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
   // assumes nothing clause is completely artificial and is created out of nowhere at the parser's current position
   def assumesNothingClause[$: P]: P[PAssumesNothing] = (Pass(()) map { _ => PAssumesNothing()(_) }).pos
   def singleVar[$: P]: P[PVar] = P(fp.idnuse map (PVar(_) _)).pos // note that the parentheses are not redundant
-  def varsAndHeap[$: P]: P[Seq[PFlowVar]] = (heap | singleVar).delimited(PSym.Comma).map(_.toSeq)
+  def varsAndHeap[$: P]: P[Seq[PFlowVarOrHeap]] = (heap | singleVar).delimited(PSym.Comma).map(_.toSeq)
 
   def influencedBy[$: P]: P[PFlowAnnotation] = P(((heap | assumes |  singleVar) ~ P(PByKeyword) ~/ varsAndHeap.braces) map {
     case (v, byKw, groupedVarList) => PFlowAnnotation(v, byKw, groupedVarList)(_)
@@ -92,7 +93,7 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
     ParserExtension.addNewKeywords(Set(PObtainKeyword, PWhereKeyword, PProveKeyword, PAssumingKeyword, PImpliesKeyword))
 
     /** keywords for flow annotation and therefore modular flow analysis */
-    ParserExtension.addNewKeywords(Set(PInfluencedKeyword, PByKeyword, PHeapKeyword))
+    ParserExtension.addNewKeywords(Set(PInfluencedKeyword, PByKeyword, PHeapKeyword, PNothingKeyword, PAssumesKeyword))
 
     /** keyword to declare a lemma and to call the lemma in an old context*/
     ParserExtension.addNewKeywords(Set(PIsLemmaKeyword))
@@ -142,11 +143,9 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
     val analysis: VarAnalysisGraphMap = VarAnalysisGraphMap(input, logger, reportError)
 
     /** Run taint analysis for all methods annotated with influences */
-    input.methods.filter(m => m.posts.collect({ case i: FlowAnnotation => i }).nonEmpty).foreach(
-      method => analysis.executeTaintedGraphMethodAnalysis(method)
-    )
+    analysis.checkUserProvidedInfluencesSpec()
 
-    val newAst: Program = ViperStrategy.Slim({
+    ViperStrategy.Slim({
 
       /** remove the influenced by postconditions.
         * remove isLemma */
@@ -288,7 +287,5 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
           Seq(boolvar) ++ v
         )(exp1.pos)
     }, Traverse.TopDown).execute[Program](input)
-
-    newAst
   }
 }

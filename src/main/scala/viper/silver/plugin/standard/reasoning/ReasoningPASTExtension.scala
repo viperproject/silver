@@ -64,8 +64,8 @@ case class PUniversalIntro(proveKw: PReserved[PProveKeyword.type], forallKw: PKw
   }
 }
 
-case class PFlowAnnotation(v: PFlowVar, byKw: PReserved[PByKeyword.type], groupedVarList: PGrouped[PSym.Brace, Seq[PFlowVar]])(val pos: (Position,Position)) extends PExtender with PExp {
-  lazy val varList: Seq[PFlowVar] = groupedVarList.inner
+case class PFlowAnnotation(v: PFlowVar, byKw: PReserved[PByKeyword.type], groupedVarList: PGrouped[PSym.Brace, Seq[PFlowVarOrHeap]])(val pos: (Position,Position)) extends PExtender with PExp {
+  lazy val varList: Seq[PFlowVarOrHeap] = groupedVarList.inner
 
   override def typeSubstitutions: Seq[PTypeSubstitution] = Seq(PTypeSubstitution.id)
 
@@ -104,7 +104,12 @@ sealed trait PFlowVar extends PExtender with PExp {
   override def forceSubstitution(ts: PTypeSubstitution): Unit = {}
 }
 
-case class PHeap(heap: PReserved[PHeapKeyword.type])(val pos: (Position,Position)) extends PFlowVar {
+trait PFlowVarOrHeap extends PFlowVar {
+
+  override def translate(t: Translator): FlowVarOrHeap
+}
+
+case class PHeap(heap: PReserved[PHeapKeyword.type])(val pos: (Position,Position)) extends PFlowVarOrHeap {
   override def translate(t: Translator): Heap = {
     Heap()(t.liftPos(this))
   }
@@ -135,7 +140,7 @@ case class PAssumesNothing()(val pos: (Position,Position)) extends PExp with PEx
   override def forceSubstitution(ts: PTypeSubstitution): Unit = {}
 }
 
-case class PVar(decl: PIdnUseExp)(val pos: (Position,Position)) extends PFlowVar {
+case class PVar(decl: PIdnUseExp)(val pos: (Position,Position)) extends PFlowVarOrHeap {
   override def translate(t: Translator): Var = {
     // due to the implementation of `t.exp`, a LocalVar should be returned
     Var(t.exp(decl).asInstanceOf[LocalVar])(t.liftPos(this))

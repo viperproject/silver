@@ -62,19 +62,21 @@ sealed trait FlowVar extends ExtensionExp {
   }
 }
 
+trait FlowVarOrHeap extends FlowVar
+
 case class Assumes()(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends FlowVar {
   override val extensionSubnodes: Seq[Node] = Seq.empty
   override def typ: Type = InternalType
   override def prettyPrint: PrettyPrintPrimitives#Cont = PAssumesKeyword.keyword
 }
 
-case class Heap()(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends FlowVar {
+case class Heap()(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends FlowVarOrHeap {
   override val extensionSubnodes: Seq[Node] = Seq.empty
   override def typ: Type = InternalType
   override def prettyPrint: PrettyPrintPrimitives#Cont = PHeapKeyword.keyword
 }
 
-case class Var(decl: LocalVar)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends FlowVar {
+case class Var(decl: LocalVar)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends FlowVarOrHeap {
   override val extensionSubnodes: Seq[Node] = Seq(decl)
   override def typ: Type = decl.typ
   override def prettyPrint: PrettyPrintPrimitives#Cont = show(decl)
@@ -99,7 +101,7 @@ case class NoAssumeAnnotation()(val pos: Position = NoPosition, val info: Info =
   }
 }
 
-case class FlowAnnotation(v: FlowVar, varList: Seq[FlowVar])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionExp with Node with Scope {
+case class FlowAnnotation(v: FlowVar, varList: Seq[FlowVarOrHeap])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionExp with Node with Scope {
   override def extensionIsPure: Boolean = true
 
   override val scopedDecls: Seq[Declaration] = Seq()
@@ -117,7 +119,7 @@ case class FlowAnnotation(v: FlowVar, varList: Seq[FlowVar])(val pos: Position =
     * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression. */
   override def prettyPrint: PrettyPrintPrimitives#Cont = {
     text("influenced") <+> (v match {
-      case value: Var => (show(value.decl))
+      case value: Var => show(value.decl)
       case _ => text("heap")
     })  <+>
       text("by") <+>
@@ -153,8 +155,8 @@ case class OldCall(methodName: String, args: Seq[Exp], rets: Seq[LocalVar], oldL
   override val scopedDecls: Seq[Declaration] = Seq()
 
   override lazy val check: Seq[ConsistencyError] = {
-    (if (Consistency.noResult(this)) Seq.empty else ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) ++
-    (if (Consistency.noDuplicates(rets)) Seq.empty else ConsistencyError("Targets are not allowed to have duplicates", rets.head.pos)) ++
+    (if (Consistency.noResult(this)) Seq.empty else Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos))) ++
+    (if (Consistency.noDuplicates(rets)) Seq.empty else Seq(ConsistencyError("Targets are not allowed to have duplicates", rets.head.pos))) ++
     args.flatMap(Consistency.checkPure)
   }
 

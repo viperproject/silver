@@ -9,16 +9,15 @@ package viper.silver.plugin.standard.reasoning.analysis
 import viper.silver.ast.utility.Expressions
 import viper.silver.ast.{AccessPredicate, Apply, Assert, Assume, BinExp, CurrentPerm, Declaration, DomainFuncApp, Exhale, Exp, FieldAccess, FieldAssign, Fold, ForPerm, FuncApp, Goto, If, Inhale, Label, LocalVar, LocalVarAssign, LocalVarDecl, Method, MethodCall, Package, Position, Program, Quasihavoc, Quasihavocall, Ref, Scope, Seqn, Stmt, UnExp, Unfold, While}
 import viper.silver.plugin.standard.reasoning.analysis.AnalysisUtils.{AssumeNode, getLocalVarDeclFromLocalVar, heapVertex}
-import viper.silver.plugin.standard.reasoning.{Assumes, ExistentialElim, FlowAnnotation, FlowVar, Heap, NoAssumeAnnotation, OldCall, UniversalIntro, Var}
+import viper.silver.plugin.standard.reasoning.{Assumes, ExistentialElim, FlowAnnotation, FlowVar, FlowVarOrHeap, Heap, NoAssumeAnnotation, OldCall, UniversalIntro, Var}
 import viper.silver.plugin.standard.termination.{DecreasesSpecification, DecreasesStar, DecreasesTuple, DecreasesWildcard}
 import viper.silver.verifier.{AbstractError, ConsistencyError}
 
 import scala.collection.mutable
 
 object AnalysisUtils {
-
-  // TODO Add NoAssume Specification (default for all cases except for non-terminating abstract methods (e.g AssumeFree).
-  //      Also check method Body for assumes (or inhales in case this specification is present
+  // TODO add traits for kind of assume sources(e.g assume/inhale stmt, method call, while loop)
+  // Position is used for identifying a source for an assume(assume stmt, method call, while loop etc.) and for printing error messages
   case class AssumeNode(pos: Position) extends Declaration {
     override def name: String = ".assume"
   }
@@ -33,7 +32,7 @@ object AnalysisUtils {
     }
   }
 
-  def getLocalVarDeclFromFlowVar(f: FlowVar): LocalVarDecl = {
+  def getLocalVarDeclFromFlowVar(f: FlowVarOrHeap): LocalVarDecl = {
     f match {
       case v: Var => LocalVarDecl(v.decl.name, v.decl.typ)(v.decl.pos)
       case _: Heap => heapVertex
@@ -81,6 +80,12 @@ case class VarAnalysisGraphMap(prog: Program,
   private val methodAnalysisMap: mutable.Map[Method, GraphMap] = mutable.Map()
   private val methodAnalysisStarted: mutable.ListBuffer[Method] = mutable.ListBuffer()
 
+
+  def checkUserProvidedInfluencesSpec(): Unit = {
+    prog.methods.filter(m => m.posts.collect({ case i: FlowAnnotation => i }).nonEmpty).foreach(
+      method => executeTaintedGraphMethodAnalysis(method)
+    )
+  }
 
   /** execute the information flow analysis with graphs.
    * When executed on the universal introduction statement the tainted variables are simply the quantified variables */
@@ -184,7 +189,7 @@ case class VarAnalysisGraphMap(prog: Program,
     val otherInfluences = (retSet -- annotationInfluences.keySet).map(retVar => {
       retVar -> allMethodArgsSet
     })
-    val (containsDecreases, containsDecreasesStar) = AnalysisUtils.containsDecreasesAnnotations(method)
+    val (containsDecreases, containsDecreasesStar) = AnalysisUtils.specifiesTermination(method)
     val terminates = containsDecreases && !containsDecreasesStar
     val noAssumes = method.pres.concat(method.posts).collect({case _: NoAssumeAnnotation => true}).nonEmpty
 

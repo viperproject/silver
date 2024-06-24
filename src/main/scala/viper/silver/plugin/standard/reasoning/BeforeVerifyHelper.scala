@@ -71,7 +71,7 @@ trait BeforeVerifyHelper {
   def checkLemmas(input: Program, reportError: AbstractError => Unit): Unit = {
     input.methods.foreach(method => {
       val containsLemma = specifiesLemma(method)
-      val (containsDecreases, containsDecreasesStar) = AnalysisUtils.containsDecreasesAnnotations(method)
+      val (containsDecreases, containsDecreasesStar) = AnalysisUtils.specifiesTermination(method)
 
       if (containsLemma) {
         /** report error if there is no decreases clause or specification */
@@ -85,7 +85,7 @@ trait BeforeVerifyHelper {
         }
 
         /** check method body for impure statements */
-        checkBodyPure(method.body.getOrElse(Seqn(Seq(), Seq())()), method, input, reportError)
+        checkStmtPure(method.body.getOrElse(Seqn(Seq(), Seq())()), method, input, reportError)
       }
     })
   }
@@ -94,11 +94,11 @@ trait BeforeVerifyHelper {
   def checkStmtPure(stmt: Stmt, method: Method, prog: Program, reportError: AbstractError => Unit): Boolean = {
     stmt match {
       case Seqn(ss, _) =>
-        ss.forall(s => checkBodyPure(s, method, prog, reportError))
+        ss.forall(s => checkStmtPure(s, method, prog, reportError))
 
         /** case for statements considered impure */
       case ie@(Inhale(_) | Exhale(_) | FieldAssign(_, _) | Fold(_) | Unfold(_) | Apply(_) | Package(_, _)) =>
-        reportError(ConsistencyError(s"method ${method.name} marked lemma might contain impure statement ${ie}", ie.pos))
+        reportError(ConsistencyError(s"method ${method.name} marked lemma might contain impure statement $ie", ie.pos))
         false
       case m@MethodCall(methodName, _, _) =>
         val mc = prog.findMethod(methodName)
@@ -106,7 +106,7 @@ trait BeforeVerifyHelper {
 
         /** if called method is not a lemma report error */
         if (!isLemmaCall) {
-          reportError(ConsistencyError(s"method ${method.name} marked lemma might contain call to method ${m}", m.pos))
+          reportError(ConsistencyError(s"method ${method.name} marked lemma might contain call to method $m", m.pos))
         }
         isLemmaCall
       case _ => true
