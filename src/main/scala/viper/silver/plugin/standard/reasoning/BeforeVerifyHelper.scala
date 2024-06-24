@@ -117,7 +117,7 @@ trait BeforeVerifyHelper {
   def checkInfluencedBy(input: Program, reportError: AbstractError => Unit): Unit = {
     input.methods.foreach(method => {
       val argVars = method.formalArgs.toSet + AnalysisUtils.heapVertex
-      val retVars = method.formalReturns.toSet.asInstanceOf[Set[Declaration]] + AnalysisUtils.heapVertex + AnalysisUtils.AssumeNode(method.pos)
+      val retVars = method.formalReturns.toSet.asInstanceOf[Set[Declaration]] + AnalysisUtils.heapVertex + AnalysisUtils.AssumeMethodNode(method.pos)
 
       val seenVars: mutable.Set[Declaration] = mutable.Set()
       /** iterate through method postconditions to find flow annotations */
