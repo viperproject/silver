@@ -120,7 +120,8 @@ case class FlowAnnotation(v: FlowVar, varList: Seq[FlowVarOrHeap])(val pos: Posi
   override def prettyPrint: PrettyPrintPrimitives#Cont = {
     text("influenced") <+> (v match {
       case value: Var => show(value.decl)
-      case _ => text("heap")
+      case _: Assumes => text("assumes")
+      case _: Heap => text("heap")
     })  <+>
       text("by") <+>
       ssep(varList.map {
