@@ -71,7 +71,6 @@ case class PFlowAnnotation(v: PFlowVar, byKw: PReserved[PByKeyword.type], groupe
 
   override def forceSubstitution(ts: PTypeSubstitution): Unit = {}
 
-  //from here new
   override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = {
 
     varList.foreach {

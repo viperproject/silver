@@ -137,7 +137,7 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
     val usedNames: mutable.Set[String] = collection.mutable.Set(input.transitiveScopedDecls.map(_.name): _*)
 
     /** check that lemma terminates (has a decreases clause) and that it is pure */
-    checkLemma(input, reportError)
+    checkLemmas(input, reportError)
     /** create graph with vars that are in scope only outside of the universal introduction code block including the quantified variables */
     val analysis: VarAnalysisGraphMap = VarAnalysisGraphMap(input, logger, reportError)
 
@@ -151,104 +151,82 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
       /** remove the influenced by postconditions.
         * remove isLemma */
       case m: Method =>
-        var postconds: Seq[Exp] = Seq()
-        m.posts.foreach {
-          case _: FlowAnnotation =>
-            postconds = postconds
-          case _: Lemma =>
-            postconds = postconds
-          case s@_ =>
-            postconds = postconds ++ Seq(s)
+        val flowAnnotationAndLemmaFilter: Exp => Boolean = {
+          case _: FlowAnnotation | _: Lemma => false
+          case _ => true
         }
-        var preconds: Seq[Exp] = Seq()
-        m.pres.foreach {
-          case _: Lemma =>
-            preconds = preconds
-          case s@_ =>
-            preconds = preconds ++ Seq(s)
+        val postconds = m.posts.filter(flowAnnotationAndLemmaFilter)
+        val preconds = m.pres.filter(flowAnnotationAndLemmaFilter)
+        if (postconds != m.posts || preconds != m.pres) {
+          m.copy(pres = preconds, posts = postconds)(m.pos, m.info, m.errT)
+        } else {
+          m
         }
-        val newMethod =
-          if (postconds != m.posts || preconds != m.pres) {
-            m.copy(pres = preconds, posts = postconds)(m.pos, m.info, m.errT)
-          } else {
-            m
-          }
-
-        newMethod
 
       case o@OldCall(methodName, args, rets, lbl) =>
         /** check whether called method is a lemma */
         val currmethod = input.findMethod(methodName)
-        val isLemma = (currmethod.pres ++ currmethod.posts).exists {
-          case _: Lemma => true
-          case _ => false
-        }
+        val isLemma = specifiesLemma(currmethod)
 
         if (!isLemma) {
           reportError(ConsistencyError(s"method ${currmethod.name} called in old context must be lemma", o.pos))
         }
 
-        var new_pres: Seq[Exp] = Seq()
-        var new_posts: Seq[Exp] = Seq()
-        var new_v_map: Seq[(LocalVarDecl, Exp)] =
-          (args zip currmethod.formalArgs).map(zipped => {
-          val formal_a: LocalVarDecl = zipped._2
-          val arg_exp: Exp = zipped._1
+        val new_v_map: Seq[(LocalVarDecl, Exp)] = ((currmethod.formalArgs ++ currmethod.formalReturns) zip (args ++ rets)).map(zipped => {
+          val formal_a: LocalVarDecl = zipped._1
+          val arg_exp: Exp = zipped._2
           formal_a -> arg_exp
         })
-        new_v_map ++=
-          (rets zip currmethod.formalReturns).map(zipped => {
-            val formal_r: LocalVarDecl = zipped._2
-            val r: LocalVar = zipped._1
-            formal_r -> r
-          })
-        /** replace all variables in precondition with fresh variables */
-        currmethod.pres.foreach {
-          case Lemma() => ()
-          case p =>
-            new_pres ++= Seq(applySubstitutionWithExp(new_v_map, p))
+        
+        /** replace all input parameters in preconditions with the corresponding argument */
+        val new_pres = currmethod.pres.flatMap {
+          case Lemma() => Seq.empty
+          case p => Seq(applySubstitutionWithExp(new_v_map, p))
         }
 
-        /** replace all variables in postcondition with fresh variables */
-        currmethod.posts.foreach {
-          case Lemma() => ()
-          case p =>
-            new_posts ++= Seq(applySubstitutionWithExp(new_v_map, p))
+        /** replace all input & output parameters in postconditions with the corresponding argument / result */
+        val new_posts = currmethod.posts.flatMap {
+          case Lemma() => Seq.empty
+          case p => Seq(applySubstitutionWithExp(new_v_map, p))
         }
 
         /** create new variable declarations to havoc the lhs of the oldCall */
-        var new_v_decls: Seq[LocalVarDecl] = Seq()
-        var rTov: Map[LocalVar,LocalVarDecl] = Map()
-        for (r <- rets) {
+        val rToV = rets.map(r => {
           val new_v = LocalVarDecl(uniqueName(".v", usedNames),r.typ)(r.pos)
-          new_v_decls = new_v_decls ++ Seq(new_v)
-          rTov += (r -> new_v)
-        }
+          r -> new_v
+        }).toMap
+        
+        val errTransformer = ErrTrafo({
+          case AssertFailed(_, r, c) => PreconditionInLemmaCallFalse(o, r, c)
+          case d => d
+        })
 
         Seqn(
+          // assert precondition(s)
           new_pres.map(p =>
-            Assert(LabelledOld(p, lbl)(p.pos))(o.pos)
-          )
-            ++
-
-            rets.map(r => {
-              LocalVarAssign(r,rTov(r).localVar)(o.pos)
-            })
-            ++
-
-
-            new_posts.map(p =>
+            Assert(LabelledOld(p, lbl)(p.pos))(o.pos, errT = errTransformer)
+          ) ++
+          // havoc return args by assigning an unconstrained value
+          rets.map(r => {
+            LocalVarAssign(r, rToV(r).localVar)(o.pos)
+          }) ++
+          // inhale postcondition(s)
+          new_posts.map(p =>
             Inhale(LabelledOld(p, lbl)(p.pos))(o.pos)
           ),
-          new_v_decls
+          rToV.values.toSeq
         )(o.pos)
 
       case e@ExistentialElim(v, trigs, exp) =>
         val (new_v_map, new_exp) = substituteWithFreshVars(v, exp, usedNames)
         val new_trigs = trigs.map(t => Trigger(t.exps.map(e1 => applySubstitution(new_v_map, e1)))(t.pos))
+        val errTransformer = ErrTrafo({
+          case AssertFailed(_, r, c) => ExistentialElimFailed(e, r, c)
+          case d => d
+        })
         Seqn(
           Seq(
-            Assert(Exists(new_v_map.map(_._2), new_trigs, new_exp)(e.pos, ReasoningInfo))(e.pos)
+            Assert(Exists(new_v_map.map(_._2), new_trigs, new_exp)(e.pos, errT = errTransformer))(e.pos)
           )
             ++
             v.map(variable => LocalVarDeclStmt(variable)(variable.pos)) //list of variables
@@ -286,26 +264,29 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
         val quantifiedVars = newVarMap.map(vars => vars._2)
         val newTrigs = trigs.map(t => Trigger(t.exps.map(e1 => applySubstitution(newVarMap, e1)))(t.pos))
         val lbl = uniqueName("l", usedNames)
+        val errTransformer = ErrTrafo({
+          case AssertFailed(_, r, c) => UniversalIntroFailed(u, r, c)
+          case d => d
+        })
 
         Seqn(
           Seq(
-            Label(lbl, Seq())(u.pos),
+            Label(lbl, Seq.empty)(u.pos),
+            // conditionally inhale assume expression
             If(boolvar.localVar,
               Seqn(
-                Seq(
-                  Inhale(exp1)(exp1.pos)
-                ),
-                Seq())(exp1.pos),
-              Seqn(Seq(), Seq())(exp1.pos)
-
+                Seq(Inhale(exp1)(exp1.pos)),
+                Seq.empty)(exp1.pos),
+              Seqn(Seq.empty, Seq.empty)(exp1.pos)
             )(exp1.pos),
+            // execute block
             blk,
-            Assert(Implies(boolvar.localVar, exp2)(exp2.pos))(exp2.pos),
+            // conditionally assert imply expression
+            Assert(Implies(boolvar.localVar, exp2)(exp2.pos))(exp2.pos, errT = errTransformer),
             Inhale(Forall(quantifiedVars, newTrigs, Implies(LabelledOld(newExp1, lbl)(exp2.pos), newExp2)(exp2.pos))(exp2.pos))(exp2.pos)
           ),
           Seq(boolvar) ++ v
         )(exp1.pos)
-
     }, Traverse.TopDown).execute[Program](input)
 
     newAst

@@ -62,13 +62,13 @@ trait BeforeVerifyHelper {
   }
 
   /** returns true if method `m` is annotated to be a lemma */
-  private def specifiesLemma(m: Method): Boolean = (m.pres ++ m.posts).exists {
+ def specifiesLemma(m: Method): Boolean = (m.pres ++ m.posts).exists {
     case _: Lemma => true
     case _ => false
   }
   
-  /** check if isLemma precondition is correct */
-  def checkLemma(input: Program, reportError: AbstractError => Unit): Unit = {
+  /** Checks that all lemmas in `input` satisfy the syntactical restrictions and, otherwise, reports errors by invoking `reportError`.  */
+  def checkLemmas(input: Program, reportError: AbstractError => Unit): Unit = {
     input.methods.foreach(method => {
       val containsLemma = specifiesLemma(method)
       val (containsDecreases, containsDecreasesStar) = AnalysisUtils.containsDecreasesAnnotations(method)
@@ -76,12 +76,12 @@ trait BeforeVerifyHelper {
       if (containsLemma) {
         /** report error if there is no decreases clause or specification */
         if(!containsDecreases) {
-          reportError(ConsistencyError(s"method ${method.name} marked lemma might not contain decreases clause", method.pos))
+          reportError(ConsistencyError(s"Lemmas must terminate but method ${method.name} marked lemma does not specify any termination measures", method.pos))
         }
 
         /** report error if the decreases statement might not prove termination */
         if (containsDecreasesStar) {
-          reportError(ConsistencyError("decreases statement might not prove termination", method.pos))
+          reportError(ConsistencyError("Lemmas must terminate but method ${method.name} marked lemma specifies only incomplete termination measures", method.pos))
         }
 
         /** check method body for impure statements */
@@ -90,15 +90,11 @@ trait BeforeVerifyHelper {
     })
   }
 
-  /** checks whether the body is pure, reports error if impure operation found */
-  def checkBodyPure(stmt: Stmt, method: Method, prog: Program, reportError: AbstractError => Unit): Boolean = {
-    var pure: Boolean = true
+  /** checks whether a statement `stmt` is pure, reports error if impure operation found */
+  def checkStmtPure(stmt: Stmt, method: Method, prog: Program, reportError: AbstractError => Unit): Boolean = {
     stmt match {
       case Seqn(ss, _) =>
-        ss.foreach(s => {
-          pure = pure && checkBodyPure(s, method, prog, reportError)
-        })
-        pure
+        ss.forall(s => checkBodyPure(s, method, prog, reportError))
 
         /** case for statements considered impure */
       case ie@(Inhale(_) | Exhale(_) | FieldAssign(_, _) | Fold(_) | Unfold(_) | Apply(_) | Package(_, _)) =>
@@ -106,21 +102,18 @@ trait BeforeVerifyHelper {
         false
       case m@MethodCall(methodName, _, _) =>
         val mc = prog.findMethod(methodName)
-        val containsLemma = specifiesLemma(mc)
+        val isLemmaCall = specifiesLemma(mc)
 
         /** if called method is not a lemma report error */
-        if (!containsLemma) {
+        if (!isLemmaCall) {
           reportError(ConsistencyError(s"method ${method.name} marked lemma might contain call to method ${m}", m.pos))
-          false
-        } else {
-          pure
         }
-      case _ =>
-        pure
+        isLemmaCall
+      case _ => true
     }
   }
 
-  /** checks that influences by annotations are used correctly. */
+  /** checks that all influences by annotations in `input` are used correctly. */
   def checkInfluencedBy(input: Program, reportError: AbstractError => Unit): Unit = {
     input.methods.foreach(method => {
       val argVars = method.formalArgs.toSet + AnalysisUtils.heapVertex
@@ -133,20 +126,20 @@ trait BeforeVerifyHelper {
           val targetVarDecl = AnalysisUtils.getDeclarationFromFlowVar(target, method)
 
           if (!retVars.contains(targetVarDecl)) {
-            reportError(ConsistencyError(s"Only return variables can be influenced. ${targetVarDecl.name} is not be a return variable.", v.pos))
+            reportError(ConsistencyError(s"Only return parameters, the heap or assumes can be influenced. ${targetVarDecl.name} is not be a return parameter.", v.pos))
           }
           if (seenVars.contains(targetVarDecl)) {
-            reportError(ConsistencyError(s"Only one influenced by expression per return variable can exist. ${targetVarDecl.name} is used several times.", v.pos))
+            reportError(ConsistencyError(s"Only one influenced by expression per return parameter can exist. ${targetVarDecl.name} is used several times.", v.pos))
           }
           seenVars.add(targetVarDecl)
 
           args.foreach(arg => {
             val argVarDecl = AnalysisUtils.getLocalVarDeclFromFlowVar(arg)
             if (!argVars.contains(argVarDecl)) {
-              reportError(ConsistencyError(s"Only method arguments can influence a return variable. ${argVarDecl.name} is not be a method argument.", v.pos))
+              reportError(ConsistencyError(s"Only method input parameters or the heap can influence a return parameter. ${argVarDecl.name} is not be a method input parameter.", v.pos))
             }
           })
-        case _ => ()
+        case _ =>
       }
     })
   }

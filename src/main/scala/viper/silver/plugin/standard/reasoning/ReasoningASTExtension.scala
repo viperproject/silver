@@ -17,12 +17,12 @@ case object ReasoningInfo extends FailureExpectedInfo
 
 case class ExistentialElim(varList: Seq[LocalVarDecl], trigs: Seq[Trigger], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionStmt {
   override lazy val check: Seq[ConsistencyError] = Consistency.checkPure(exp) ++
-    (if (!(exp isSubtype Bool)) Seq(ConsistencyError(s"Body of existential quantifier must be of Bool type, but found ${exp.typ}", exp.pos)) else Seq()) ++
-    (if (varList.isEmpty) Seq(ConsistencyError("Quantifier must have at least one quantified variable.", pos)) else Seq())
+    (if (!(exp isSubtype Bool)) Seq(ConsistencyError(s"Body of existential elimination must be of Bool type, but found ${exp.typ}", exp.pos)) else Seq()) ++
+    (if (varList.isEmpty) Seq(ConsistencyError("Existential elimination must have at least one quantified variable.", pos)) else Seq())
 
   override lazy val prettyPrint: PrettyPrintPrimitives#Cont = {
     text("obtain") <+> showVars(varList) <+>
-      text("where") <+> (if (trigs.isEmpty) nil else space <> ssep(trigs map show, space)) <+>
+      text("where") <+> (if (trigs.isEmpty) nil else ssep(trigs map show, space)) <+>
       toParenDoc(exp)
   }
 
@@ -32,10 +32,11 @@ case class ExistentialElim(varList: Seq[LocalVarDecl], trigs: Seq[Trigger], exp:
   override def declarationsInParentScope: Seq[Declaration] = varList
 }
 
-case class UniversalIntro(varList: Seq[LocalVarDecl], triggers: Seq[Trigger], exp1: Exp, exp2: Exp, block: Seqn)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionStmt with Scope {
+case class UniversalIntro(varList: Seq[LocalVarDecl], triggers: Seq[Trigger], assumingExp: Exp, implyingExp: Exp, block: Seqn)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionStmt with Scope {
   // See also Expression Line 566
   override lazy val check: Seq[ConsistencyError] =
-    (if (!(exp1 isSubtype Bool)) Seq(ConsistencyError(s"Body of universal quantifier must be of Bool type, but found ${exp1.typ}", exp1.pos)) else Seq()) ++
+    (if (!(assumingExp isSubtype Bool)) Seq(ConsistencyError(s"Assume expression of universal introduction must be of Bool type, but found ${assumingExp.typ}", assumingExp.pos)) else Seq()) ++
+    (if (!(implyingExp isSubtype Bool)) Seq(ConsistencyError(s"Implies expression of universal introduction must be of Bool type, but found ${implyingExp.typ}", implyingExp.pos)) else Seq()) ++
     (if (varList.isEmpty) Seq(ConsistencyError("Quantifier must have at least one quantified variable.", pos)) else Seq()) ++
     Consistency.checkAllVarsMentionedInTriggers(varList, triggers)
 
@@ -44,12 +45,12 @@ case class UniversalIntro(varList: Seq[LocalVarDecl], triggers: Seq[Trigger], ex
   override lazy val prettyPrint: PrettyPrintPrimitives#Cont = {
     text("prove forall") <+> showVars(varList) <+>
       text("assuming") <+>
-      toParenDoc(exp1) <+>
-      text("implies") <+> toParenDoc(exp2) <+>
+      toParenDoc(assumingExp) <+>
+      text("implies") <+> toParenDoc(implyingExp) <+>
       showBlock(block)
   }
 
-  override val extensionSubnodes: Seq[Node] = varList ++ triggers ++ Seq(exp1, exp2, block)
+  override val extensionSubnodes: Seq[Node] = varList ++ triggers ++ Seq(assumingExp, implyingExp, block)
 }
 
 sealed trait FlowVar extends ExtensionExp {
@@ -152,13 +153,9 @@ case class OldCall(methodName: String, args: Seq[Exp], rets: Seq[LocalVar], oldL
   override val scopedDecls: Seq[Declaration] = Seq()
 
   override lazy val check: Seq[ConsistencyError] = {
-    var s = Seq.empty[ConsistencyError]
-    if (!Consistency.noResult(this))
-      s :+= ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)
-    if (!Consistency.noDuplicates(rets))
-      s :+= ConsistencyError("Targets are not allowed to have duplicates", rets.head.pos)
-    s ++= args.flatMap(Consistency.checkPure)
-    s
+    (if (Consistency.noResult(this)) Seq.empty else ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) ++
+    (if (Consistency.noDuplicates(rets)) Seq.empty else ConsistencyError("Targets are not allowed to have duplicates", rets.head.pos)) ++
+    args.flatMap(Consistency.checkPure)
   }
 
   override lazy val prettyPrint: PrettyPrintPrimitives#Cont = {

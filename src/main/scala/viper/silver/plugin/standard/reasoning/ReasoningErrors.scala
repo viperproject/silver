@@ -10,8 +10,8 @@ import viper.silver.verifier._
 import viper.silver.verifier.reasons.ErrorNode
 
 case class ExistentialElimFailed(override val offendingNode: ErrorNode, override val reason: ErrorReason, override val cached: Boolean = false) extends ExtensionAbstractVerificationError {
-  override val id = "existential elimination.failed"
-  override val text = " no witness could be found."
+  override val id = "existential.elimination.failed"
+  override val text = "Existentially quantified formula might not hold."
 
   override def withNode(offendingNode: errors.ErrorNode = this.offendingNode): ExistentialElimFailed =
     ExistentialElimFailed(this.offendingNode, this.reason, this.cached)
@@ -20,8 +20,8 @@ case class ExistentialElimFailed(override val offendingNode: ErrorNode, override
 }
 
 case class UniversalIntroFailed(override val offendingNode: ErrorNode, override val reason: ErrorReason, override val cached: Boolean = false) extends ExtensionAbstractVerificationError {
-  override val id = "universal introduction.failed"
-  override val text = " not true for all vars."
+  override val id = "universal.introduction.failed"
+  override val text = "Specified property might not hold."
 
   override def withNode(offendingNode: errors.ErrorNode = this.offendingNode): UniversalIntroFailed =
     UniversalIntroFailed(this.offendingNode, this.reason, this.cached)
@@ -29,12 +29,11 @@ case class UniversalIntroFailed(override val offendingNode: ErrorNode, override 
   override def withReason(r: ErrorReason): UniversalIntroFailed = UniversalIntroFailed(offendingNode, r, cached)
 }
 
-case class FlowAnalysisFailed(override val offendingNode: ErrorNode, override val reason: ErrorReason, override val cached: Boolean = false) extends ExtensionAbstractVerificationError {
-  override val id = "flow analysis.failed"
-  override val text = " ."
+case class PreconditionInLemmaCallFalse(offendingNode: OldCall, reason: ErrorReason, override val cached: Boolean = false) extends ExtensionAbstractVerificationError {
+  val id = "lemma.call.precondition"
+  val text = s"The precondition of lemma ${offendingNode.methodName} might not hold."
 
-  override def withNode(offendingNode: errors.ErrorNode = this.offendingNode): FlowAnalysisFailed =
-    FlowAnalysisFailed(this.offendingNode, this.reason, this.cached)
+  def withNode(offendingNode: errors.ErrorNode = this.offendingNode): PreconditionInLemmaCallFalse = PreconditionInLemmaCallFalse(offendingNode.asInstanceOf[OldCall], this.reason, this.cached)
 
-  override def withReason(r: ErrorReason): FlowAnalysisFailed = FlowAnalysisFailed(offendingNode, r, cached)
+  def withReason(r: ErrorReason): PreconditionInLemmaCallFalse = PreconditionInLemmaCallFalse(offendingNode, r, cached)
 }
