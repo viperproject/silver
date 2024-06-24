@@ -138,7 +138,7 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
 
     /** check that lemma terminates (has a decreases clause) and that it is pure */
     checkLemma(input, reportError)
-    /** create graph with vars that are in scope only outside of the universal introduction code block including the qunatified variables */
+    /** create graph with vars that are in scope only outside of the universal introduction code block including the quantified variables */
     val analysis: VarAnalysisGraphMap = VarAnalysisGraphMap(input, logger, reportError)
 
     /** Run taint analysis for all methods annotated with influences */
