@@ -43,8 +43,9 @@ trait BeforeVerifyHelper {
   }
   
   /**
-    * get all variables that are assigned to inside the block and take intersection with universal introduction
-    * variables. If they are contained throw error since these variables should be immutable
+    * check that all variables (`modified_vars`) that are assigned to inside a universal introduction `u`'s block are
+    * distinct from the universal introduction `u`'s quantified variables `quantified_vars`. Otherwise, an error is
+    * reported via `reportError` since these quantified variables should be immutable.
     *
     * @param modified_vars: set of variables that were modified in a given statement
     * @param quantified_vars: set of quantified variables in the universal introduction statement.
