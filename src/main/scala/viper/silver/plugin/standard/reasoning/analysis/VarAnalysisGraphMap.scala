@@ -44,9 +44,9 @@ object AnalysisUtils {
     LocalVarDecl(l.name, l.typ)()
   }
 
-  def containsDecreasesAnnotations(m: Method): (Boolean, Boolean) = {
-    val presContain = m.pres.collect({ case DecreasesTuple(_, _) | DecreasesWildcard(_) | DecreasesStar() => true }).nonEmpty
-    val postsContain = m.posts.collect({ case DecreasesTuple(_, _) | DecreasesWildcard(_) | DecreasesStar() => true }).nonEmpty
+  def specifiesTermination(m: Method): (Boolean, Boolean) = {
+    val presContain = m.pres.collect({ case DecreasesTuple(_, _) | DecreasesWildcard(_) => true }).nonEmpty
+    val postsContain = m.posts.collect({ case DecreasesTuple(_, _) | DecreasesWildcard(_) => true }).nonEmpty
 
     val presContainStar = m.pres.collect({ case DecreasesStar() => true }).nonEmpty
     val postsContainStar = m.posts.collect({ case DecreasesStar() => true }).nonEmpty
@@ -63,7 +63,7 @@ object AnalysisUtils {
       case _ => false
     }
 
-    val containsTerminationMeasure = presContain | postsContain | presContainStar | postsContainStar | infoContains
+    val containsTerminationMeasure = presContain | postsContain | presContainStar | postsContainStar | infoContains | infoContainsStar
     val mightNotTerminate = !containsTerminationMeasure | presContainStar | postsContainStar | infoContainsStar
 
     (containsTerminationMeasure, mightNotTerminate)
