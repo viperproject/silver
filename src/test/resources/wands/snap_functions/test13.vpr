@@ -1,9 +1,8 @@
 field f: Int
 
-method test13a(xs: Seq[Ref], y: Ref)
+method test13a(xs: Seq[Ref])
     requires forall x: Ref :: x in xs ==> acc(x.f)
     requires |xs| >= 1
-    requires acc(y.f)
 {
     xs[0].f := 0
     var some: Ref := xs[0]
@@ -20,10 +19,9 @@ method test13a(xs: Seq[Ref], y: Ref)
     assert false
 }
 
-method test13b(xs: Seq[Ref], y: Ref)
+method test13b(xs: Seq[Ref])
     requires forall x: Ref :: x in xs ==> acc(x.f)
     requires |xs| >= 1
-    requires acc(y.f)
 {
     xs[0].f := 0
     var some: Ref := xs[0]
