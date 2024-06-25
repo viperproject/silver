@@ -1,0 +1,68 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+function f1(i: Int): Int
+    decreases i
+    requires i > -2
+{
+    i > 0 ? 1 + f1(i - 1) : 0
+}
+
+function f2(i: Int): Int
+    decreases i
+{
+    i > 0 ? 1 + f2(i - 1) : 0
+}
+
+function f3(i: Int): Int
+    decreases i
+    ensures result >= 0
+{
+    i > 0 ? 1 + f3(i - 1) : 0
+}
+
+function f4(i: Int): Int
+    ensures result >= 0
+    decreases _
+{
+    i > 0 ? 1 + f4(i - 1) : 0
+}
+
+function f5(i: Int): Int
+    requires i > -2
+    decreases i
+    ensures result >= 0
+{
+    i > 0 ? 1 + f5(i - 1) : 0
+}
+
+domain t {
+    function fAlias1(Int): Int
+    function fAlias2(Int): Int
+    function fAlias3(Int): Int
+    function fAlias4(Int): Int
+    function fAlias5(Int): Int
+
+    axiom {
+        //:: ExpectedOutput(typechecker.error)
+        forall i: Int :: f1(i) == fAlias1(i)
+    }
+
+    axiom {
+        forall i: Int :: f2(i) == fAlias2(i)
+    }
+
+    axiom {
+        forall i: Int :: f3(i) == fAlias3(i)
+    }
+
+    axiom {
+        forall i: Int :: f4(i) == fAlias4(i)
+    }
+
+    axiom {
+        //:: ExpectedOutput(typechecker.error)
+        forall i: Int :: f5(i) == fAlias5(i)
+    }
+}
