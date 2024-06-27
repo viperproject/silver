@@ -21,10 +21,13 @@ This folder contains Viper test files that I used when working on MagicWandSnapF
 | [test13.vpr](./test13.vpr) | Applying a magic wand multiple times with a quantified expression on the LHS.                   | ✓                |
 | [test14.vpr](./test14.vpr) | Test from QPFields.vpr and QPPredicates.vpr adapted to show some unsound behavior.              | ✓                |
 | [test15.vpr](./test15.vpr) | Test from QPWands.vpr but in a simplified form.                                                 | ✓                |
+| [test16.vpr](./test16.vpr) | Extension of some tests in QPFields.vpr and QPWands.vpr.                                        | ✓                |
 
 Other interesting test cases in the [Silver repository](https://github.com/viperproject/silver/tree/master/src/test/resources) during the development of `MagicWandSnapFunctions` were:
 * [wands/examples_paper/conditionals.vpr](https://github.com/viperproject/silver/tree/master/src/test/resources/wands/examples_paper/conditionals.vpr)
 * [wands/new_syntax/QPFields.vpr](https://github.com/viperproject/silver/tree/master/src/test/resources/wands/new_syntax/QPFields.vpr)
+* [wands/new_syntax/QPPredicates.vpr](https://github.com/viperproject/silver/tree/master/src/test/resources/wands/new_syntax/QPPredicates.vpr)
+* [wands/new_syntax/QPWands.vpr](https://github.com/viperproject/silver/tree/master/src/test/resources/wands/new_syntax/QPWands.vpr)
 * [wands/new_syntax/SnapshotsNestedMagicWands.vpr](https://github.com/viperproject/silver/tree/master/src/test/resources/wands/new_syntax/SnapshotsNestedMagicWands.vpr)
 * [wands/regression/conditionals2.vpr](https://github.com/viperproject/silver/tree/master/src/test/resources/wands/regression/conditionals2.vpr)
 * [wands/regression/issue024.vpr](https://github.com/viperproject/silver/tree/master/src/test/resources/wands/regression/issue024.vpr)
