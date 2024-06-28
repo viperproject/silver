@@ -713,6 +713,8 @@ case class TypeChecker(names: NameAnalyser) {
               case PApplying(_, wand, _, _) =>
                 checkMagicWand(wand)
 
+              case PInhaling(_, _, _, _) =>
+
               // We checked that the `rcv` is valid above with `poa.args.foreach(checkInternal)`
               case PFieldAccess(_, _, idnref) =>
                 if (idnref.decls.isEmpty)

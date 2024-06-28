@@ -1,0 +1,15 @@
+field f: Int
+
+method test8a(x: Ref)
+    requires acc(x.f)
+{
+    assert inhaling (x.f == 1) in x.f == 1
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert inhaling (x.f == 1) in x.f == 0
+}
+
+method test8b(x: Ref) {
+    assert inhaling (acc(x.f) && x.f == 1) in x.f == 1
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert inhaling (acc(x.f) && x.f == 1) in x.f == 0
+}

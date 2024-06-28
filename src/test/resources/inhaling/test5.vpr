@@ -1,0 +1,12 @@
+field f: Int
+
+method test5(x: Ref, y: Ref)
+    requires true --* acc(x.f)
+    requires acc(x.f) --* acc(y.f)
+    requires inhaling (acc(x.f)) in applying (acc(x.f) --* acc(y.f)) in y.f == 10
+{
+    apply true --* acc(x.f)
+    apply acc(x.f) --* acc(y.f)
+
+    assert y.f == 10
+}

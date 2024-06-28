@@ -1,0 +1,14 @@
+field f: Int
+
+method test2(x: Ref, y: Ref)
+    requires acc(x.f) && acc(y.f)
+{
+    x.f := 10
+    y.f := 42
+
+    exhale acc(x.f)
+
+    assert inhaling (acc(x.f)) in y.f == 42
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert inhaling (acc(x.f)) in x.f == 10
+}
