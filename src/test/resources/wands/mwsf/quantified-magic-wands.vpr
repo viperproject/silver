@@ -1,6 +1,6 @@
-
 field f: Int
 
+// Test adapted from QPWands.vpr test0
 method test0b(xs: Seq[Ref], y: Ref)
   requires forall x: Ref :: x in xs ==> acc(x.f)
   requires forall i: Int, j: Int :: 0 <= i && 0 <= j && i < |xs| && j < |xs| && i != j ==> xs[i] != xs[j]
@@ -51,4 +51,20 @@ method test0d(xs: Seq[Ref], y: Ref)
   package acc(y.f) --* acc(xs[0].f) && acc(y.f) && y.f == old[lhs](y.f)
 
   assert forall x: Ref :: x in completed ==> applying (acc(y.f) --* acc(x.f) && acc(y.f) && y.f == old[lhs](y.f)) in x.f == old[setupComplete](x.f)
+}
+
+method test16a(xs: Seq[Ref], some: Ref, y: Ref)
+    requires forall x: Ref :: x in xs ==> acc(x.f)
+    requires some in xs && some.f == 0
+    requires acc(y.f)
+{
+    package acc(y.f) --* acc(some.f)
+
+    var completed: Seq[Ref] := Seq(some)
+    assert forall z: Ref :: z in completed ==> acc(y.f) --* acc(z.f)
+
+    apply acc(y.f) --* acc(some.f)
+    assert some.f == 0
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
 }
