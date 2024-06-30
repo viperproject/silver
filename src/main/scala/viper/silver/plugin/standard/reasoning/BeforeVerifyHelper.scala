@@ -8,9 +8,10 @@ package viper.silver.plugin.standard.reasoning
 
 
 import viper.silver.ast.utility.Expressions
-import viper.silver.ast.{Apply, Declaration, Exhale, Exp, FieldAssign, Fold, Inhale, LocalVarDecl, Method, MethodCall, Package, Program, Seqn, Stmt, Unfold}
+import viper.silver.ast.{Apply, Exhale, Exp, FieldAssign, Fold, Inhale, LocalVarDecl, Method, MethodCall, Package, Program, Seqn, Stmt, Unfold}
 import viper.silver.verifier.{AbstractError, ConsistencyError}
 import viper.silver.plugin.standard.reasoning.analysis.AnalysisUtils
+import viper.silver.plugin.standard.reasoning.analysis.AnalysisUtils.{AssumeInfluenceSink, InfluenceSink}
 
 import scala.collection.mutable
 
@@ -71,21 +72,20 @@ trait BeforeVerifyHelper {
   def checkLemmas(input: Program, reportError: AbstractError => Unit): Unit = {
     input.methods.foreach(method => {
       val containsLemma = specifiesLemma(method)
-      val (containsDecreases, containsDecreasesStar) = AnalysisUtils.specifiesTermination(method)
+      val terminationSpecState = AnalysisUtils.specifiesTermination(method)
 
       if (containsLemma) {
-        /** report error if there is no decreases clause or specification */
-        if(!containsDecreases) {
-          reportError(ConsistencyError(s"Lemmas must terminate but method ${method.name} marked lemma does not specify any termination measures", method.pos))
-        }
-
-        /** report error if the decreases statement might not prove termination */
-        if (containsDecreasesStar) {
-          reportError(ConsistencyError("Lemmas must terminate but method ${method.name} marked lemma specifies only incomplete termination measures", method.pos))
+        // lemmas must terminate. We report slightly different errors depending on the cause:
+        if (!terminationSpecState.guaranteesTermination) {
+          if (terminationSpecState.noTerminationSpec) {
+            reportError(ConsistencyError(s"Lemmas must terminate but method ${method.name} marked lemma does not specify any termination measures", method.pos))
+          } else {
+            reportError(ConsistencyError(s"Lemmas must terminate but the specification of method ${method.name} might not guarantee termination", method.pos))
+          }
         }
 
         /** check method body for impure statements */
-        checkStmtPure(method.body.getOrElse(Seqn(Seq(), Seq())()), method, input, reportError)
+        checkStmtPure(method.body.getOrElse(Seqn(Seq.empty, Seq.empty)()), method, input, reportError)
       }
     })
   }
@@ -116,30 +116,47 @@ trait BeforeVerifyHelper {
   /** checks that all influences by annotations in `input` are used correctly. */
   def checkInfluencedBy(input: Program, reportError: AbstractError => Unit): Unit = {
     input.methods.foreach(method => {
-      val argVars = method.formalArgs.toSet + AnalysisUtils.heapVertex
-      val retVars = method.formalReturns.toSet.asInstanceOf[Set[Declaration]] + AnalysisUtils.heapVertex + AnalysisUtils.AssumeMethodNode(method.pos)
+      val argSources = method.formalArgs.map(AnalysisUtils.getSourceFromVarDecl).toSet + AnalysisUtils.HeapSource
+      val retSinks = method.formalReturns.map(AnalysisUtils.getSinkFromVarDecl).toSet + AnalysisUtils.HeapSink + AnalysisUtils.AssumeMethodInfluenceSink(method)
 
-      val seenVars: mutable.Set[Declaration] = mutable.Set()
+      val seenSinks: mutable.Set[InfluenceSink] = mutable.Set.empty
       /** iterate through method postconditions to find flow annotations */
       method.posts.foreach {
-        case v@FlowAnnotation(target, args) =>
-          val targetVarDecl = AnalysisUtils.getDeclarationFromFlowVar(target, method)
+        case v@InfluencedBy(target, args) =>
+          val declaredSink = AnalysisUtils.getSinkFromFlowVar(target, method)
 
-          if (!retVars.contains(targetVarDecl)) {
-            reportError(ConsistencyError(s"Only return parameters, the heap or assumes can be influenced. ${targetVarDecl.name} is not be a return parameter.", v.pos))
+          if (!retSinks.contains(declaredSink)) {
+            reportError(ConsistencyError(s"Only return parameters, the heap or assumes can be influenced but not ${declaredSink.name}.", v.pos))
           }
-          if (seenVars.contains(targetVarDecl)) {
-            reportError(ConsistencyError(s"Only one influenced by expression per return parameter can exist. ${targetVarDecl.name} is used several times.", v.pos))
+          if (seenSinks.contains(declaredSink)) {
+            reportError(ConsistencyError(s"Only one influenced-by specification per return parameter, heap or assume is allowed. ${declaredSink.name} is used several times.", v.pos))
           }
-          seenVars.add(targetVarDecl)
+          seenSinks.add(declaredSink)
 
           args.foreach(arg => {
-            val argVarDecl = AnalysisUtils.getLocalVarDeclFromFlowVar(arg)
-            if (!argVars.contains(argVarDecl)) {
-              reportError(ConsistencyError(s"Only method input parameters or the heap can influence a return parameter. ${argVarDecl.name} is not be a method input parameter.", v.pos))
+            val declaredSource = AnalysisUtils.getSourceFromFlowVar(arg)
+            if (!argSources.contains(declaredSource)) {
+              reportError(ConsistencyError(s"Only method input parameters or the heap can be sources of influenced-by specifications but not ${declaredSource.name}.", v.pos))
             }
           })
         case _ =>
+      }
+
+      // checks that "assume influeced by" and "assumesNothing" are mutually exclusive:
+      val assumeNothings = method.posts.collect {
+        // case InfluencedBy(_: Assumes, _) =>
+        case a: AssumesNothing => a
+      }
+      val hasAssumeInfluenceSink = seenSinks.exists {
+        case _: AssumeInfluenceSink => true
+        case _ => false
+      }
+      if (assumeNothings.length > 1) {
+        assumeNothings.foreach(a =>
+          reportError(ConsistencyError(s"At most one '${PNothingKeyword.keyword}' permitted per method specification.", a.pos)))
+      } else if (assumeNothings.nonEmpty && hasAssumeInfluenceSink) {
+        assumeNothings.foreach(a =>
+          reportError(ConsistencyError(s"'${PNothingKeyword.keyword}' and '${PInfluencedKeyword.keyword} ${PAssumesKeyword.keyword} ${PByKeyword.keyword} ...' are mutually exclusive.", a.pos)))
       }
     })
   }

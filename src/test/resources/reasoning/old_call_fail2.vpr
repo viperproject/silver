@@ -2,14 +2,11 @@
 // http://creativecommons.org/publicdomain/zero/1.0/
 
 method foo()
-//:: ExpectedOutput(typechecker.error)
-requires oldCall[l](lemma())
 {
     var x: Int
-    x := oldCall[l](lemma())
+    label l
     //:: ExpectedOutput(typechecker.error)
-    x := 42 + oldCall[l](lemma())
+    x := oldCall[l](nonlemma()) // only lemmas can be called
 }
 
-method lemma() returns (x: Int)
-isLemma
+method nonlemma() returns (x: Int)

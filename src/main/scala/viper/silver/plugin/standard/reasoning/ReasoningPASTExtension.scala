@@ -64,7 +64,11 @@ case class PUniversalIntro(proveKw: PReserved[PProveKeyword.type], forallKw: PKw
   }
 }
 
-case class PFlowAnnotation(v: PFlowVar, byKw: PReserved[PByKeyword.type], groupedVarList: PGrouped[PSym.Brace, Seq[PFlowVarOrHeap]])(val pos: (Position,Position)) extends PExtender with PExp {
+trait PFlowAnnotation extends PExp with PExtender {
+  val pos: (Position,Position)
+}
+
+case class PInfluencedBy(v: PFlowVar, byKw: PReserved[PByKeyword.type], groupedVarList: PGrouped[PSym.Brace, Seq[PFlowVarOrHeap]])(val pos: (Position,Position)) extends PFlowAnnotation {
   lazy val varList: Seq[PFlowVarOrHeap] = groupedVarList.inner
 
   override def typeSubstitutions: Seq[PTypeSubstitution] = Seq(PTypeSubstitution.id)
@@ -88,7 +92,7 @@ case class PFlowAnnotation(v: PFlowVar, byKw: PReserved[PByKeyword.type], groupe
   }
 
   override def translateExp(t: Translator): ExtensionExp = {
-    FlowAnnotation(v.translate(t), varList.map { variable => variable.translate(t) })(t.liftPos(this))
+    InfluencedBy(v.translate(t), varList.map { variable => variable.translate(t) })(t.liftPos(this))
   }
 }
 
@@ -125,15 +129,15 @@ case class PAssumes(assumes: PReserved[PAssumesKeyword.type])(val pos: (Position
   override def pretty: String = PAssumesKeyword.keyword
 }
 
-case class PAssumesNothing()(val pos: (Position,Position)) extends PExp with PExtender {
-  def translate(t: Translator): NoAssumeAnnotation = {
-    NoAssumeAnnotation()(t.liftPos(this))
+case class PAssumesNothing()(val pos: (Position,Position)) extends PFlowAnnotation {
+  def translate(t: Translator): AssumesNothing = {
+    AssumesNothing()(t.liftPos(this))
   }
 
-  override def pretty: String = PAssumesKeyword.keyword
+  override def pretty: String = PNothingKeyword.keyword
   override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = None
 
-  override def translateExp(t: Translator): Exp = NoAssumeAnnotation()(pos._1)
+  override def translateExp(t: Translator): Exp = AssumesNothing()(t.liftPos(this))
 
   override def typeSubstitutions: collection.Seq[PTypeSubstitution] = Seq(PTypeSubstitution.id)
 
@@ -221,6 +225,7 @@ case class POldCallExp(oldCallKw: PReserved[POldCallKeyword.type], lbl: PGrouped
     // this node should get translated to `POldCall` but `beforeResolve` in `ReasoningPlugin` performs this translation
     // only if its parent node is a PAssign. Thus, an invocation of this function indicates that this expression occurs
     // at an unsupported location within the AST.
+    // TODO check that label is valid
     Some(Seq(s"oldCalls are only supported as statements or as the right-hand side of an assignment"))
   }
 
