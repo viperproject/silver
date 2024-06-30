@@ -8,9 +8,9 @@ This folder contains Viper test files that I used when working on MagicWandSnapF
 |----------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------|-----------------|
 | [basic-bool.vpr](./basic-bool.vpr)                                         | Boolean Magic Wand with trivial LHS                                                             | ✓               |
 | [basic-int.vpr](./basic-int.vpr)                                           | Integer Magic Wand with trivial LHS                                                             | ✓               |
-| [basic-lhs-eq-rhs.vpr](./basic-lhs-eq-rhs.vpr)                             | Integer Magic Wand with LHS = RHS                                                               | ✓               |
-| [basic-lhs-lt-rhs.vpr](./basic-lhs-lt-rhs.vpr)                             | Integer Magic Wand with LHS < RHS                                                               | ✓               |
-| [basic-lhs-gt-rhs.vpr](./basic-lhs-gt-rhs.vpr)                             | Integer Magic Wand with LHS > RHS                                                               | ✓               |
+| [basic-lhs-eq-rhs.vpr](./basic-lhs-equal-to-rhs.vpr)                             | Integer Magic Wand with LHS = RHS                                                               | ✓               |
+| [basic-lhs-lt-rhs.vpr](./basic-lhs-smaller-than-rhs.vpr)                             | Integer Magic Wand with LHS < RHS                                                               | ✓               |
+| [basic-lhs-gt-rhs.vpr](./basic-lhs-larger-than-rhs.vpr)                             | Integer Magic Wand with LHS > RHS                                                               | ✓               |
 | [applying-twice-bool.vpr](./applying-twice-bool.vpr)                       | Applying the magic wand multiple times. Original version leaks information into the outer state | ×               |
 | [assign-applying-bool.vpr](./assign-applying-bool.vpr)                     | Assigning result of applying expression to the same field using booleans                        | ×               |
 | [assign-applying-int.vpr](./assign-applying-int.vpr)                       | Assigning result of applying expression to the same field using integers                        | ×               |

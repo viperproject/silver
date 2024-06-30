@@ -3,6 +3,16 @@
 
 field f: Int
 
+predicate Cell(x: Ref) {
+    acc(x.f)
+}
+
+function get(x: Ref): Int
+    requires acc(Cell(x), 1/2)
+{
+    unfolding acc(Cell(x), 1/2) in x.f
+}
+
 method test12a(xs: Seq[Ref], y: Ref)
     requires forall x: Ref :: x in xs ==> acc(x.f)
     requires |xs| >= 1
@@ -61,6 +71,32 @@ method test12c(xs: Seq[Ref], y: Ref)
 
     some.f := applying (acc(some.f) --* acc(some.f)) in some.f + 1
     some.f := applying (acc(some.f) --* acc(some.f)) in some.f + 1
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+method test13a(xs: Seq[Ref], y: Ref)
+    requires forall x: Ref :: x in xs ==> Cell(x)
+    requires |xs| >= 1
+    requires Cell(y)
+{
+    var some: Ref := xs[0]
+
+    package Cell(some) --* true
+
+    var completed: Seq[Ref] := Seq(some)
+    assert forall x: Ref :: x in completed ==> Cell(x) --* true
+
+    unfold Cell(some)
+    some.f := 1
+    fold Cell(some)
+    assert applying (Cell(some) --* true) in true
+
+    unfold Cell(some)
+    some.f := 2
+    fold Cell(some)
+    assert applying (Cell(some) --* true) in true
 
     //:: ExpectedOutput(assert.failed:assertion.false)
     assert false
