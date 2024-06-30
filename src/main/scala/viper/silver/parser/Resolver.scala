@@ -7,6 +7,7 @@
 package viper.silver.parser
 
 import viper.silver.FastMessaging
+import viper.silver.parser.PKw.Requires
 
 import scala.collection.mutable
 
@@ -685,8 +686,13 @@ case class TypeChecker(names: NameAnalyser) {
                           check(fd.typ)
                           fd.formalArgs foreach (a => check(a.typ))
                         }
-                        if (pfa.isDescendant[PAxiom] && pfn.pres.length != 0)
+                        if (pfa.isDescendant[PAxiom] && pfn.pres.toSeq.exists(pre => pre.k.rs == Requires)) {
+                          // A domain axiom, which must always be well-defined, is calling a function that has at least
+                          // one real precondition (i.e., not just a requires clause or something similar that's
+                          // temporarily represented as a precondition), which means that the call may not always be
+                          // well-defined. This is not allowed.
                           issueError(func, s"Cannot use function ${func.name}, which has preconditions, inside axiom")
+                        }
 
                       case pdf: PDomainFunction =>
                         val domain = pdf.domain

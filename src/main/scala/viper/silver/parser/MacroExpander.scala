@@ -10,6 +10,7 @@ import viper.silver.ast.{FilePosition, Position, SourcePosition}
 import viper.silver.ast.utility.rewriter.{ContextA, ParseTreeDuplicationError, PartialContextC, StrategyBuilder}
 import viper.silver.verifier.{ParseError, ParseReport, ParseWarning}
 
+import java.util
 import scala.collection.mutable
 
 case class MacroException(msg: String, pos: (Position, Position)) extends Exception
@@ -178,9 +179,16 @@ object MacroExpander {
     // Store the replacements from normal variable to freshly generated variable
     val renamesMap = mutable.Map.empty[String, String]
     var scopeAtMacroCall = Set.empty[String]
-    val scopeOfExpandedMacros = mutable.Set.empty[String]
+    val scopeOfExpandedMacros = new util.IdentityHashMap[PScope, mutable.Set[String]]()
+    var currentMacroScope: PScope = null
 
-    def scope: Set[String] = scopeAtMacroCall ++ scopeOfExpandedMacros
+    def scope: Set[String] = {
+      if (scopeOfExpandedMacros.containsKey(currentMacroScope)) {
+        scopeAtMacroCall ++ scopeOfExpandedMacros.get(currentMacroScope)
+      } else {
+        scopeAtMacroCall
+      }
+    }
 
     // Handy method to get a macro from its name string
     def getMacroByName(name: PIdnUse): PDefine = getMacro(name) match {
@@ -279,7 +287,7 @@ object MacroExpander {
           val freshVarName = getFreshVarName(varDecl.name)
 
           // Update scope
-          scopeOfExpandedMacros += freshVarName
+          scopeOfExpandedMacros.get(currentMacroScope) += freshVarName
           renamesMap += varDecl.name -> freshVarName
 
           // Create a variable with new name to substitute the previous one
@@ -289,7 +297,7 @@ object MacroExpander {
         } else {
 
           // Update scope
-          scopeOfExpandedMacros += varDecl.name
+          scopeOfExpandedMacros.get(currentMacroScope) += varDecl.name
 
           // Return the same variable
           varDecl
@@ -380,6 +388,49 @@ object MacroExpander {
 
           val newNode = try {
             scopeAtMacroCall = NameAnalyser().namesInScope(program, Some(macroCall))
+            ctx.parent match {
+              case s: PScope => currentMacroScope = s
+              case n => currentMacroScope = customGetEnclosingScope(n).get
+            }
+            if (!scopeOfExpandedMacros.containsKey(currentMacroScope)) {
+              scopeOfExpandedMacros.put(currentMacroScope, mutable.Set.empty)
+            }
+
+            // Since we're working on a parse AST that is in the process of being rewritten, some nodes don't have
+            // their parent node set (or they have it set incorrectly). As a result, n.getEnclosingScope may not
+            // work properly. Since we need this functionality, we re-implement it here using information from the
+            // context, in particular, the ancestors of the current node.
+            def customGetEnclosingScope(target: PNode): Option[PScope] = {
+              var foundTarget = false
+              for (current <- ctx.ancestorList.reverseIterator) {
+                if (foundTarget) {
+                  current match {
+                    case s: PScope => return Some(s)
+                    case _ =>
+                  }
+                } else {
+                  if (current eq target) {
+                    foundTarget = true
+                  }
+                }
+              }
+              return None
+            }
+
+            def allExpandedNamesOfAllSuperScopes(s: PScope): Unit = {
+              if (scopeOfExpandedMacros.containsKey(s)) {
+                scopeOfExpandedMacros.get(currentMacroScope) ++= scopeOfExpandedMacros.get(s)
+              }
+              customGetEnclosingScope(s) match {
+                case Some(s) => allExpandedNamesOfAllSuperScopes(s)
+                case _ =>
+              }
+            }
+
+            // If scopeOfExpandedMacros contains superscopes of s, these names are also visible in the current scope,
+            // and we have to add them to scopeOfExpandedMacros for the current scope.
+            allExpandedNamesOfAllSuperScopes(currentMacroScope)
+
             arguments.foreach(_.foreach(
               StrategyBuilder.SlimVisitor[PNode] {
                 case id: PIdnDef => scopeAtMacroCall += id.name
