@@ -3,7 +3,8 @@
 
 // The errors marked in this file are expected only due to the proverArgs annotation, since the properties actually
 // hold, but Z3 should not be able to prove that due to the non-linear arithmetic setting.
-// We use UnexpectedOutput annotations to mark that they're not actual errors, and that Carbon should not report them.
+// We use UnexpectedOutput annotations to mark that they're not actual errors, and that Carbon (which currently does
+// not support the proverArgs annotation) should not report them.
 
 method m1(i: Int, i2: Int)
     requires i >= 0
