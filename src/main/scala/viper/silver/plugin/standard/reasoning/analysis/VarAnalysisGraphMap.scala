@@ -167,6 +167,8 @@ case class VarAnalysisGraphMap(prog: Program,
 
         map = map + (returnVar -> specifiedInfluences)
       })
+      // Remove actual local variables, so we only see method argument and heap influences
+      map = map.map(entry => entry._1 -> entry._2.filter(v => method.formalArgs.contains(v) || v == heapVertex))
       methodAnalysisMap.put(method, map)
     }
     methodAnalysisStarted -= method
