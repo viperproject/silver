@@ -1,0 +1,47 @@
+field f: Int
+
+method test05a(x: Ref, y: Ref)
+{
+    inhale acc(x.f) && x.f == 42 && acc(y.f) && y.f == 37
+
+    package acc(x.f) && acc(y.f) --* acc(x.f)
+
+    assert (applying (acc(x.f) && acc(y.f) --* acc(x.f)) in x.f == 42) && y.f == 37
+}
+
+method test05b(x: Ref, y: Ref)
+{
+    inhale acc(x.f) && x.f == 42 && acc(y.f) && y.f == 37
+
+    package acc(x.f) && acc(y.f) --* acc(x.f)
+
+    apply acc(x.f) && acc(y.f) --* acc(x.f)
+
+    assert x.f == 42 && acc(y.f, none)
+}
+
+method test05c(x: Ref, y: Ref)
+{
+    inhale acc(x.f) && x.f == 42 && acc(y.f) && y.f == 37
+
+    package acc(x.f) && acc(y.f) --* acc(x.f)
+
+    assert (applying (acc(x.f) && acc(y.f) --* acc(x.f)) in x.f == 42) && y.f == 37
+
+    apply acc(x.f) && acc(y.f) --* acc(x.f)
+
+    assert x.f == 42 && acc(y.f, none)
+}
+
+method test05d(x: Ref, y: Ref, a: Int, b: Int)
+{
+    inhale acc(x.f) && x.f == a && acc(y.f) && y.f == b
+
+    package acc(x.f) && acc(y.f) --* acc(x.f)
+
+    assert (applying (acc(x.f) && acc(y.f) --* acc(x.f)) in x.f == a) && y.f == b
+
+    apply acc(x.f) && acc(y.f) --* acc(x.f)
+
+    assert x.f == a && acc(y.f, none)
+}
