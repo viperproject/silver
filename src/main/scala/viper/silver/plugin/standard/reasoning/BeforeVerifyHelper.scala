@@ -126,7 +126,7 @@ trait BeforeVerifyHelper {
           val targetVarDecl = AnalysisUtils.getDeclarationFromFlowVar(target, method)
 
           if (!retVars.contains(targetVarDecl)) {
-            reportError(ConsistencyError(s"Only return parameters, the heap or assumes can be influenced. ${targetVarDecl.name} is not be a return parameter.", v.pos))
+            reportError(ConsistencyError(s"Only return parameters, the heap or assumes can be influenced. ${targetVarDecl.name} is none of these.", v.pos))
           }
           if (seenVars.contains(targetVarDecl)) {
             reportError(ConsistencyError(s"Only one influenced by expression per return parameter can exist. ${targetVarDecl.name} is used several times.", v.pos))
@@ -136,7 +136,7 @@ trait BeforeVerifyHelper {
           args.foreach(arg => {
             val argVarDecl = AnalysisUtils.getLocalVarDeclFromFlowVar(arg)
             if (!argVars.contains(argVarDecl)) {
-              reportError(ConsistencyError(s"Only method input parameters or the heap can influence a return parameter. ${argVarDecl.name} is not be a method input parameter.", v.pos))
+              reportError(ConsistencyError(s"Only method input parameters or the heap can influence a return parameter. ${argVarDecl.name} is none of these.", v.pos))
             }
           })
         case _ =>

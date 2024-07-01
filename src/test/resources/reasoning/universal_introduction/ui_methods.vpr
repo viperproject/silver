@@ -290,7 +290,9 @@ method testAssumesAbstract(x: Ref)
 
 function f1(i1: Int, i2: Int): Int
 
-method test_local_var_resolve(i2: Int) returns (ret: Int){
+method test_local_var_resolve(i2: Int) returns (ret: Int)
+influenced ret by {i2}
+{
   var i1: Int
   ret := f1(i1, i2)
 }

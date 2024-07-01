@@ -146,6 +146,8 @@ case class VarAnalysisGraphMap(prog: Program,
         map = map.removedAll(assumeVars) + (AssumeMethodNode(method.pos) -> assumeVars.flatMap(v => map(v)))
       }
 
+      // Remove actual local variables, so we only see method argument and heap influences
+      map = map.map(entry => entry._1 -> entry._2.filter(v => method.formalArgs.contains(v) || v == heapVertex))
       // Check calculated value against the provided specification if there are any
       method.posts.collect({ case f: FlowAnnotation => f }).foreach(f => {
         val returnVar = AnalysisUtils.getDeclarationFromFlowVar(f.v, method)
@@ -167,8 +169,6 @@ case class VarAnalysisGraphMap(prog: Program,
 
         map = map + (returnVar -> specifiedInfluences)
       })
-      // Remove actual local variables, so we only see method argument and heap influences
-      map = map.map(entry => entry._1 -> entry._2.filter(v => method.formalArgs.contains(v) || v == heapVertex))
       methodAnalysisMap.put(method, map)
     }
     methodAnalysisStarted -= method
