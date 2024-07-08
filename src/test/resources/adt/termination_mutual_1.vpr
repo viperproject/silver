@@ -1,0 +1,108 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Mutually recursive ADTs
+adt List1 {
+  RList1(x: Int, l: List2)
+}
+adt List2 {
+  Empty()
+  NonEmpty(x: Int, l: List1)
+}
+
+
+function len2(l: List2): Int
+    decreases l
+{
+    l == Empty()? 0 : 1 + len2(l.l.l)
+}
+
+
+function len2Bad(l: List2): Int
+    decreases l
+{
+    //:: ExpectedOutput(termination.failed:tuple.false)
+    l == Empty()? 0 : 1 + len2Bad(l)
+}
+
+function len1(l: List1): Int
+    decreases l
+{
+    l.l == Empty()? 0 : 1 + len1(l.l.l)
+}
+
+function len1Bad(l: List1): Int
+    decreases l
+{
+    //:: ExpectedOutput(termination.failed:tuple.false)
+    l.l == Empty()? 0 : 1 + len1Bad(l)
+}
+
+// Name clash between y: MList2 and y: Int
+adt MList1 {
+  MRList1(x: Int, y: MList2)
+}
+adt MList2 {
+  MEmpty()
+  MNonEmpty(y: Int, l: MList1)
+}
+
+
+function mlen2(l: MList2): Int
+    decreases l
+{
+    l == MEmpty()? 0 : 1 + mlen2(l.l.y)
+}
+
+// Three mutually recursive types
+adt Triple1 {
+  triple1(x: Triple2)
+}
+
+adt Triple2 {
+  triple2(x: Triple3)
+}
+
+adt Triple3 {
+  triple3(x: Triple1)
+  nil(i: Int)
+}
+
+function tripleLen1(t: Triple1): Int
+    decreases t
+{
+    2 + (t.x.x.isnil ? 0 : tripleLen1(t.x.x.x))
+}
+
+function tripleLen2(t: Triple2): Int
+    decreases t
+{
+    1 + (t.x.isnil ? 0 : (1 + tripleLen2(t.x.x.x)))
+}
+
+function tripleLen3(t: Triple3): Int
+    decreases t
+{
+    t.isnil ? 0 : (3 + tripleLen3(t.x.x.x))
+}
+
+function tripleLen1Bad(t: Triple1): Int
+    decreases t
+{
+    //:: ExpectedOutput(termination.failed:tuple.false)
+    2 + (t.x.x.isnil ? 0 : tripleLen1Bad(t))
+}
+
+function tripleLen2Bad(t: Triple2): Int
+    decreases t
+{
+    //:: ExpectedOutput(termination.failed:tuple.false)
+    1 + (t.x.isnil ? 0 : (1 + tripleLen2Bad(t)))
+}
+
+function tripleLen3Bad(t: Triple3): Int
+    decreases t
+{
+    //:: ExpectedOutput(termination.failed:tuple.false)
+    t.isnil ? 0 : (3 + tripleLen3Bad(t))
+}

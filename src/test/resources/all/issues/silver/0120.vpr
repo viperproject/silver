@@ -7,13 +7,13 @@ predicate p(r: Ref) {true}
 
 method m(c: Ref, b: Bool)
 {
-    //:: ExpectedOutput(consistency.error)
+    //:: ExpectedOutput(typechecker.error)
 	assert forperm r: Ref [r.f] :: acc(r.f, 1/2)
 }
 
 method m2(c: Ref, b: Bool)
 {
-    //:: ExpectedOutput(consistency.error)
+    //:: ExpectedOutput(typechecker.error)
 	assert forperm r: Ref [r.f] :: acc(p(r), 1/2)
 }
 

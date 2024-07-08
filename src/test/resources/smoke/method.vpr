@@ -1,0 +1,5 @@
+//:: ExpectedOutput(refute.failed:refutation.true)
+method test()
+    requires false
+{
+}

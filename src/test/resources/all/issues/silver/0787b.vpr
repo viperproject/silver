@@ -1,0 +1,14 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+method main()
+{
+    //:: ExpectedOutput(parser.error)
+    m(3)
+}
+
+define m(label_name)
+{
+    label label_name
+}

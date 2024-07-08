@@ -1,0 +1,7 @@
+//:: ExpectedOutput(refute.failed:refutation.true)
+method test()
+{
+    while (true)
+    {
+    }
+}

@@ -7,6 +7,6 @@ method ff ()
 {
     var r : Ref;
     var b : Bool;
-    //:: ExpectedOutput(consistency.error)
+    //:: ExpectedOutput(typechecker.error)
     b := (4 == 4 ? acc(r.f, write) : 4 == 4)
 }

@@ -10,7 +10,7 @@ import viper.silver.ast.utility.{Functions, ViperStrategy}
 import viper.silver.ast.utility.rewriter.{SimpleContext, Strategy, StrategyBuilder}
 import viper.silver.ast.{Applying, Assert, CondExp, CurrentPerm, Exp, FuncApp, Function, InhaleExhaleExp, MagicWand, Method, Node, Program, Unfolding, While}
 import viper.silver.parser._
-import viper.silver.plugin.standard.predicateinstance.PPredicateInstance
+import viper.silver.plugin.standard.predicateinstance.{PMarkerSymbol, PPredicateInstance}
 import viper.silver.plugin.standard.termination.transformation.Trafo
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier.errors.AssertFailed
@@ -27,16 +27,13 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
                         @unused logger: ch.qos.logback.classic.Logger,
                         config: viper.silver.frontend.SilFrontendConfig,
                         fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
-  import fp.{FP, keyword, exp, ParserExtension}
 
-  private def deactivated: Boolean = config != null && config.terminationPlugin.toOption.getOrElse(false)
+  import fp.{exp, ParserExtension, lineCol, _file}
+  import FastParserCompanion.{ExtendedParsing, LeadingWhitespace, PositionParsing, reservedKw, reservedSym}
+
+  private def deactivated: Boolean = config != null && config.disableTerminationPlugin.toOption.getOrElse(false)
 
   private var decreasesClauses: Seq[PDecreasesClause] = Seq.empty
-
-  /**
-   * Keyword used to define decreases clauses
-   */
-  private val decreasesKeyword: String = "decreases"
 
   /**
    * Parser for decreases clauses with following possibilities.
@@ -47,13 +44,13 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
    * or
    * decreases *
    */
-  def decreases[$: P]: P[PDecreasesClause] =
-    P(keyword(decreasesKeyword) ~/ (decreasesWildcard | decreasesStar | decreasesTuple) ~ ";".?)
+  def decreases[$: P]: P[PSpecification[PDecreasesKeyword.type]] =
+    P((P(PDecreasesKeyword) ~ (decreasesWildcard | decreasesStar | decreasesTuple)) map (PSpecification.apply _).tupled).pos
   def decreasesTuple[$: P]: P[PDecreasesTuple] =
-    FP(exp.rep(sep = ",") ~/ condition.?).map { case (pos, (a, c)) => PDecreasesTuple(a, c)(pos) }
-  def decreasesWildcard[$: P]: P[PDecreasesWildcard] = FP("_" ~/ condition.?).map{ case (pos, c) => PDecreasesWildcard(c)(pos) }
-  def decreasesStar[$: P]: P[PDecreasesStar] = FP("*").map{ case (pos, _) => PDecreasesStar()(pos)}
-  def condition[$: P]: P[PExp] = P("if" ~/ exp)
+    P((exp.delimited(PSym.Comma) ~~~ condition.lw.?) map (PDecreasesTuple.apply _).tupled).pos
+  def decreasesWildcard[$: P]: P[PDecreasesWildcard] = P((P(PWildcardSym) ~~~ condition.lw.?) map (PDecreasesWildcard.apply _).tupled).pos
+  def decreasesStar[$: P]: P[PDecreasesStar] = P(P(PSym.Star) map (PDecreasesStar(_) _)).pos
+  def condition[$: P]: P[(PReserved[PIfKeyword.type], PExp)] = P(P(PIfKeyword) ~ exp)
 
 
   /**
@@ -61,7 +58,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
    */
   override def beforeParse(input: String, isImported: Boolean): String = {
     // Add new keyword
-    ParserExtension.addNewKeywords(Set[String](decreasesKeyword))
+    ParserExtension.addNewKeywords(Set(PDecreasesKeyword))
     // Add new parser to the precondition
     ParserExtension.addNewPreCondition(decreases(_))
     // Add new parser to the postcondition
@@ -81,16 +78,16 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
     val transformPredicateInstances = StrategyBuilder.Slim[PNode]({
       case pc@PCall(idnUse, args, None) if input.predicates.exists(_.idndef.name == idnUse.name) =>
         // PCall represents the predicate access before the translation into the AST
-        PPredicateInstance(args, idnUse)(pc.pos)
-      case PAccPred(pc@PCall(idnUse, args, None), _) if input.predicates.exists(_.idndef.name == idnUse.name) =>
-        PPredicateInstance(args, idnUse)(pc.pos)
+        PPredicateInstance(PReserved.implied(PMarkerSymbol), idnUse.retype(), args)(pc.pos)
+      case PAccPred(_, PGrouped(_, PMaybePairArgument(pc@PCall(idnUse, args, None), _), _)) if input.predicates.exists(_.idndef.name == idnUse.name) =>
+        PPredicateInstance(PReserved.implied(PMarkerSymbol), idnUse.retype(), args)(pc.pos)
       case d => d
     }).recurseFunc({
-      case PUnfolding(_, exp) => // ignore predicate access when it is used for unfolding
+      case PUnfolding(_, _, _, exp) => // ignore predicate access when it is used for unfolding
         Seq(exp)
-      case PApplying(_, exp) => // ignore predicate access when it is in a magic wand
+      case PApplying(_, _, _, exp) => // ignore predicate access when it is in a magic wand
         Seq(exp)
-      case PCurPerm(_) => // ignore predicate access when it is in perm
+      case _: PCurPerm => // ignore predicate access when it is in perm
         // (However, anyways not supported in decreases clauses)
         Nil
     })
@@ -98,18 +95,18 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
     // Apply the predicate access to instance transformation only to decreases clauses.
     val newProgram: PProgram = StrategyBuilder.Slim[PNode]({
       case dt: PDecreasesTuple =>
-        decreasesClauses = decreasesClauses :+ dt
-        transformPredicateInstances.execute(dt): PDecreasesTuple
+        val transformedDt = transformPredicateInstances.execute(dt): PDecreasesTuple
+        decreasesClauses = decreasesClauses :+ transformedDt
+        transformedDt
       case dc : PDecreasesClause =>
         decreasesClauses = decreasesClauses :+ dc
         dc
       case d => d
     }).recurseFunc({ // decreases clauses can only appear in functions/methods pres, posts and methods bodies
-      case PProgram(_, _, _, _, functions, _, methods, _, _) => Seq(functions, methods)
-      case PFunction(_, _, _, pres, posts, _) => Seq(pres, posts)
-      case PMethod(_, _, _, pres, posts, body) => Seq(pres, posts, body)
+      case PFunction(_, _, _, _, _, _, pres, posts, _) => Seq(pres, posts)
+      case PMethod(_, _, _, _, _, pres, posts, body) => Seq(pres, posts, body)
+      case _: PMember => Nil
     }).execute(input)
-
     newProgram
   }
 
@@ -118,10 +115,10 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
     def isWellFoundedFunctionCall(c: PCall): Boolean = {
       if (!c.isDomainFunction)
         return false
-      if (!(c.idnuse.name == "decreases" || c.idnuse.name == "bounded"))
+      if (!(c.idnref.name == "decreases" || c.idnref.name == "bounded"))
         return false
-      c.function match {
-        case df: PDomainFunction => df.domainName.name == "WellFoundedOrder"
+      c.funcDecl match {
+        case Some(df: PDomainFunction) => df.domain.idndef.name == "WellFoundedOrder"
         case _ => false
       }
     }
@@ -132,12 +129,12 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
       if (wfTypeName.isEmpty)
         return true
       val typeNames = t match {
-        case PPrimitiv("Perm") => Seq("Rational", "Perm")
-        case PPrimitiv(n) => Seq(n)
-        case PSeqType(_) => Seq("Seq")
-        case PSetType(_) => Seq("Set")
-        case PMultisetType(_) => Seq("MultiSet")
-        case PMapType(_, _) => Seq("Map")
+        case PPrimitiv(PReserved(PKw.Perm)) => Seq("Rational", "Perm")
+        case PPrimitiv(k) => Seq(k.rs.keyword)
+        case PSeqType(k, _) => Seq(k.rs.keyword)
+        case PSetType(k, _) => Seq(k.rs.keyword)
+        case PMultisetType(k, _) => Seq(k.rs.keyword)
+        case PMapType(k, _) => Seq(k.rs.keyword)
         case PDomainType(d, _) if d.name == "PredicateInstance" => Seq("PredicateInstances")
         case PDomainType(d, _) => Seq(d.name)
         case gt: PGenericType => Seq(gt.genericName)
@@ -157,12 +154,14 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
     if (deactivated)
       return input
 
-    val allClauseTypes: Set[Any] = decreasesClauses.flatMap{
-      case PDecreasesTuple(Seq(), _) => Seq(())
-      case PDecreasesTuple(exps, _) => exps.map(e => e.typ match {
-        case PUnknown() if e.isInstanceOf[PCall] => e.asInstanceOf[PCall].idnuse.typ
-        case _ => e.typ
-      })
+    var usesPredicate = false
+    val allClauseTypes: Set[PType] = decreasesClauses.flatMap {
+      case PDecreasesTuple(exps, _) => exps.toSeq.flatMap(_ match {
+          case _: PPredicateInstance =>
+            usesPredicate = true
+            None
+          case e => Some(e.typ)
+        })
       case _ => Seq()
     }.toSet
     val presentDomains = input.domains.map(_.idndef.name).toSet
@@ -174,30 +173,28 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
         Some(name.substring(0, name.length - 16))
       else
         None
-      val wronglyConstrainedTypes = d.axioms.flatMap(a => constrainsWellfoundednessUnexpectedly(a, typeName))
+      val wronglyConstrainedTypes = d.members.inner.axioms.toSeq.flatMap(a => constrainsWellfoundednessUnexpectedly(a, typeName))
       reporter.report(WarningsDuringTypechecking(wronglyConstrainedTypes.map(t =>
         TypecheckerWarning(s"Domain ${d.idndef.name} constrains well-foundedness functions for type ${t} and should be named <Type>WellFoundedOrder instead.", d.pos._1))))
     }
 
-    val importStmts = allClauseTypes flatMap {
+    val predImport = if (usesPredicate && !presentDomains.contains("PredicateInstancesWellFoundedOrder")) Some("import <decreases/predicate_instance.vpr>") else None
+    val importStmts = (allClauseTypes flatMap {
       case TypeHelper.Int if !presentDomains.contains("IntWellFoundedOrder") => Some("import <decreases/int.vpr>")
       case TypeHelper.Ref if !presentDomains.contains("RefWellFoundedOrder") => Some("import <decreases/ref.vpr>")
       case TypeHelper.Bool if !presentDomains.contains("BoolWellFoundedOrder") => Some("import <decreases/bool.vpr>")
       case TypeHelper.Perm if !presentDomains.contains("RationalWellFoundedOrder") && !presentDomains.contains("PermWellFoundedOrder") => Some("import <decreases/perm.vpr>")
-      case PMultisetType(_) if !presentDomains.contains("MultiSetWellFoundedOrder") => Some("import <decreases/multiset.vpr>")
-      case PSeqType(_) if !presentDomains.contains("SeqWellFoundedOrder") => Some("import <decreases/seq.vpr>")
-      case PSetType(_) if !presentDomains.contains("SetWellFoundedOrder") => Some("import <decreases/set.vpr>")
-      case PPredicateType() if !presentDomains.contains("PredicateInstancesWellFoundedOrder") =>
-        Some("import <decreases/predicate_instance.vpr>")
+      case _: PMultisetType if !presentDomains.contains("MultiSetWellFoundedOrder") => Some("import <decreases/multiset.vpr>")
+      case _: PSeqType if !presentDomains.contains("SeqWellFoundedOrder") => Some("import <decreases/seq.vpr>")
+      case _: PSetType if !presentDomains.contains("SetWellFoundedOrder") => Some("import <decreases/set.vpr>")
       case _ if !presentDomains.contains("WellFoundedOrder") => Some("import <decreases/declaration.vpr>")
       case _ => None
-    }
+    }) ++ predImport.toSet
     if (importStmts.nonEmpty) {
       val importOnlyProgram = importStmts.mkString("\n")
-      val importPProgram = PAstProvider.generateViperPAst(importOnlyProgram)
-      val mergedDomains = input.domains.filter(_.idndef.name != "WellFoundedOrder") ++ importPProgram.get.domains
-
-      val mergedProgram = input.copy(domains = mergedDomains)(input.pos)
+      val importPProgram = PAstProvider.generateViperPAst(importOnlyProgram).get.filterMembers(_.isInstanceOf[PDomain])
+      val inputFiltered = input.filterMembers(m => !(m.isInstanceOf[PDomain] && m.asInstanceOf[PDomain].idndef.name == "WellFoundedOrder"))
+      val mergedProgram = PProgram(inputFiltered.imported :+ importPProgram, inputFiltered.members)(input.pos, input.localErrors)
       super.beforeTranslate(mergedProgram)
     } else {
       super.beforeTranslate(input)
@@ -208,7 +205,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
     def generateViperPAst(code: String): Option[PProgram] = {
       val code_id = code.hashCode.asInstanceOf[Short].toString
       _input = Some(code)
-      execute(Array("--ignoreFile", code_id))
+      execute(Seq("--ignoreFile", code_id))
 
       if (errors.isEmpty) {
         Some(semanticAnalysisResult)
@@ -360,7 +357,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
       }
   }).recurseFunc({
     case Program(_, _, functions, _, methods, _) => Seq(functions, methods)
-    case Method(_, _, _, _, _, body) => Seq(body)
+    case method: Method => Seq(method.body)
   })
 
   /**
