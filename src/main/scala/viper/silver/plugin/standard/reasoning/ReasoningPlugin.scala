@@ -10,8 +10,9 @@ import fastparse._
 import viper.silver.ast._
 import viper.silver.ast.utility.rewriter.{StrategyBuilder, Traverse}
 import viper.silver.ast.utility.ViperStrategy
-import viper.silver.parser.FastParserCompanion.whitespace
+import viper.silver.parser.FastParserCompanion.{Pos, whitespace}
 import viper.silver.parser._
+import viper.silver.plugin.standard.reasoning.analysis.AnalysisUtils.{LocalVarSink, NonAssumeInfluenceSink}
 import viper.silver.plugin.standard.reasoning.analysis.VarAnalysisGraphMap
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier._
@@ -49,23 +50,25 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
   def assumes[$: P]: P[PAssumes] = P(P(PAssumesKeyword) map (PAssumes(_) _)).pos // note that the parentheses are not redundant
 
   def assumesNothingSpec[$: P]: P[PSpecification[PNothingKeyword.type]] =
-    P((P(PNothingKeyword) ~ assumesNothingClause) map (PSpecification.apply _).tupled).pos
+    P((P(PNothingKeyword) ~ assumesNothingClause) map { case (kw, clauseFn) => pos: Pos => PSpecification(kw, clauseFn(pos))(pos) }).pos
 
-  // assumes nothing clause is completely artificial and is created out of nowhere at the parser's current position
-  def assumesNothingClause[$: P]: P[PAssumesNothing] = (Pass(()) map { _ => PAssumesNothing()(_) }).pos
+  // assumes nothing clause is completely artificial and is created out of nowhere. Instead of taking the parser's current position,
+  // we parameterize this parser by `Pos` such that the caller can pass in the position of, e.g., the corresponding keyword.
+  def assumesNothingClause[$: P]: P[Pos => PAssumesNothing] = Pass(()) map { _ => PAssumesNothing()(_) }
   def singleVar[$: P]: P[PVar] = P(fp.idnuse map (PVar(_) _)).pos // note that the parentheses are not redundant
   def varsAndHeap[$: P]: P[Seq[PFlowVarOrHeap]] = (heap | singleVar).delimited(PSym.Comma).map(_.toSeq)
 
-  def influencedBy[$: P]: P[PFlowAnnotation] = P(((heap | assumes |  singleVar) ~ P(PByKeyword) ~/ varsAndHeap.braces) map {
-    case (v, byKw, groupedVarList) => PFlowAnnotation(v, byKw, groupedVarList)(_)
+  def influencedBy[$: P]: P[PInfluencedBy] = P(((heap | assumes |  singleVar) ~ P(PByKeyword) ~/ varsAndHeap.braces) map {
+    case (v, byKw, groupedVarList) => PInfluencedBy(v, byKw, groupedVarList)(_)
   }).pos
 
   /** parser for lemma annotation */
   def lemma[$: P]: P[PSpecification[PIsLemmaKeyword.type]] =
-    P((P(PIsLemmaKeyword) ~ lemmaClause) map (PSpecification.apply _).tupled).pos
+    P((P(PIsLemmaKeyword) ~ lemmaClause) map { case (kw, clauseFn) => pos: Pos => PSpecification(kw, clauseFn(pos))(pos) }).pos
 
-  // lemma clause is completely artificial and is created out of nowhere at the parser's current position
-  def lemmaClause[$: P]: P[PLemmaClause] = (Pass(()) map { _ => PLemmaClause()(_) }).pos
+  // lemma clause is completely artificial and is created out of nowhere. Instead of taking the parser's current position,
+  // we parameterize this parser by `Pos` such that the caller can pass in the position of, e.g., the corresponding keyword.
+  def lemmaClause[$: P]: P[Pos => PLemmaClause] = Pass(()) map { _ => PLemmaClause()(_) }
 
   /** parsers for oldCall statement */
   /*
@@ -136,7 +139,7 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
 
   private def removeReasoningAnnotations(m: Method): Method = {
     val flowAnnotationAndLemmaFilter: Exp => Boolean = {
-      case _: FlowAnnotation | _: Lemma | _: NoAssumeAnnotation => false
+      case _: InfluencedBy | _: Lemma | _: AssumesNothing => false
       case _ => true
     }
     val postconds = m.posts.filter(flowAnnotationAndLemmaFilter)
@@ -284,7 +287,7 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
           .flatMap(m => m.body.get.ss.filter(s => s.contains(u)).flatMap(_ => Set(m.transitiveScopedDecls: _*))).toSet -- Set(u.transitiveScopedDecls: _*)) ++ tainted
 
         /** Contains all variables that must not be tainted */
-        val volatileVars: Set[LocalVarDecl] = analysis.getLocalVarDeclsFromExpr(exp1) ++ analysis.getLocalVarDeclsFromExpr(exp2) -- v
+        val volatileVars: Set[NonAssumeInfluenceSink] = analysis.getSinksFromExpr(exp1) ++ analysis.getSinksFromExpr(exp2) -- v.map(decl => LocalVarSink(decl.localVar)).toSet
         /** execute modular flow analysis using graph maps for the universal introduction statement */
         analysis.executeTaintedGraphAnalysis(varsOutside.collect({ case v:LocalVarDecl => v }), tainted, blk, volatileVars, u)
         translateUniversalIntroduction(u, usedNames);

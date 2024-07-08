@@ -82,7 +82,9 @@ case class Var(decl: LocalVar)(val pos: Position = NoPosition, val info: Info = 
   override def prettyPrint: PrettyPrintPrimitives#Cont = show(decl)
 }
 
-case class NoAssumeAnnotation()(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionExp with Node {
+trait FlowAnnotation extends ExtensionExp with Node
+
+case class AssumesNothing()(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends FlowAnnotation {
   override def extensionIsPure: Boolean = true
 
   override def extensionSubnodes: Seq[Node] = Seq()
@@ -97,11 +99,11 @@ case class NoAssumeAnnotation()(val pos: Position = NoPosition, val info: Info =
   /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
    * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression. */
   override def prettyPrint: PrettyPrintPrimitives#Cont = {
-    text("assumes nothing")
+    text(PNothingKeyword.keyword)
   }
 }
 
-case class FlowAnnotation(v: FlowVar, varList: Seq[FlowVarOrHeap])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionExp with Node with Scope {
+case class InfluencedBy(v: FlowVar, varList: Seq[FlowVarOrHeap])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends FlowAnnotation with Scope {
   override def extensionIsPure: Boolean = true
 
   override val scopedDecls: Seq[Declaration] = Seq()
