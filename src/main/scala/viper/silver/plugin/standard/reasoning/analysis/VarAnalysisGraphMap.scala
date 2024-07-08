@@ -503,7 +503,6 @@ case class VarAnalysisGraphMap(prog: Program,
       case UnExp(exp) => getSinksFromExpr(exp)
       case f: FuncApp =>
         val isHeapDependent = Expressions.couldBeHeapDependent(f.func(prog), prog)
-        // TODO: do we need to filter out Refs?
         f.args.flatMap(e => getSinksFromExpr(e)).toSet ++ (if (isHeapDependent) Set(HeapSink) else Set.empty)
       case DomainFuncApp(_, exps, _) => exps.flatMap(e => getSinksFromExpr(e)).toSet
       case _: ForPerm | _: CurrentPerm => Set(HeapSink)
