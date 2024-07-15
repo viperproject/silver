@@ -9,7 +9,7 @@ package viper.silver.plugin.standard.reasoning
 import viper.silver.FastMessaging
 import viper.silver.ast.{Exp, ExtensionExp, LocalVar, LocalVarDecl, Position, Seqn, Stmt, Trigger}
 import viper.silver.parser.TypeHelper.Bool
-import viper.silver.parser.{NameAnalyser, PAssignTarget, PCall, PCallable, PDelimited, PExp, PExtender, PGrouped, PIdnRef, PIdnUseExp, PKeywordLang, PKeywordStmt, PKw, PLabel, PLocalVarDecl, PReserved, PSeqn, PStmt, PSym, PSymOp, PTrigger, PType, PTypeSubstitution, Translator, TypeChecker}
+import viper.silver.parser.{NameAnalyser, PAssignTarget, PCall, PCallable, PDelimited, PExp, PExtender, PGrouped, PIdnRef, PIdnUseExp, PKeywordLang, PKeywordStmt, PKw, PLabel, PLocalVarDecl, PReserved, PScope, PSeqn, PStmt, PSym, PSymOp, PTrigger, PType, PTypeSubstitution, Translator, TypeChecker}
 
 case object PObtainKeyword extends PKw("obtain") with PKeywordLang with PKeywordStmt
 case object PWhereKeyword extends PKw("where") with PKeywordLang
@@ -42,7 +42,7 @@ case class PExistentialElim(obtainKw: PReserved[PObtainKeyword.type], delimitedV
   }
 }
 
-case class PUniversalIntro(proveKw: PReserved[PProveKeyword.type], forallKw: PKw.Forall, delimitedVarDecls: PDelimited[PLocalVarDecl, PSym.Comma], triggers: Seq[PTrigger], assumingKw: PReserved[PAssumingKeyword.type], e1: PExp, impliesKw: PReserved[PImpliesKeyword.type], e2: PExp, block: PSeqn)(val pos: (Position, Position)) extends PExtender with PStmt {
+case class PUniversalIntro(proveKw: PReserved[PProveKeyword.type], forallKw: PKw.Forall, delimitedVarDecls: PDelimited[PLocalVarDecl, PSym.Comma], triggers: Seq[PTrigger], assumingKw: PReserved[PAssumingKeyword.type], e1: PExp, impliesKw: PReserved[PImpliesKeyword.type], e2: PExp, block: PSeqn)(val pos: (Position, Position)) extends PExtender with PStmt with PScope {
   lazy val varDecls: Seq[PLocalVarDecl] = delimitedVarDecls.toSeq
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
@@ -60,7 +60,7 @@ case class PUniversalIntro(proveKw: PReserved[PProveKeyword.type], forallKw: PKw
       triggers.map { t1 => Trigger(t1.exp.inner.toSeq.map { t2 => t.exp(t2) })(t.liftPos(t1)) },
       t.exp(e1),
       t.exp(e2),
-      t.stmt(block).asInstanceOf[Seqn])(t.liftPos(e1))
+      t.stmt(block).asInstanceOf[Seqn])(t.liftPos(block))
   }
 }
 

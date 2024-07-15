@@ -32,3 +32,14 @@ method mFunctionNOK()
         y := func1(x)
     }
 }
+
+function func2(e: Ref): Ref {
+    e
+}
+
+method mFunction2NOK() {
+    var x: Ref
+    prove forall i:Ref assuming true implies i == x {
+        x := test(i)
+    }
+}

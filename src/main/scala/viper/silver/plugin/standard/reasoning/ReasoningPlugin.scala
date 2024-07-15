@@ -237,7 +237,7 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
             Seq(Inhale(u.assumingExp)(u.assumingExp.pos)),
             Seq.empty)(u.assumingExp.pos),
           Seqn(Seq.empty, Seq.empty)(u.assumingExp.pos)
-        )(u.assumingExp.pos),
+        )(u.pos),
         // execute block
         u.block,
         // conditionally assert imply expression
@@ -245,7 +245,7 @@ class ReasoningPlugin(@unused reporter: viper.silver.reporter.Reporter,
         Inhale(Forall(quantifiedVars, newTrigs, Implies(LabelledOld(newExp1, lbl)(u.implyingExp.pos), newExp2)(u.implyingExp.pos))(u.implyingExp.pos))(u.implyingExp.pos)
       ),
       Seq(boolvar) ++ u.varList
-    )(u.assumingExp.pos)
+    )(u.pos)
   }
 
   override def beforeVerify(input: Program): Program = {
