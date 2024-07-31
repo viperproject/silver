@@ -7,10 +7,8 @@
 package viper.silver.frontend
 
 import java.nio.file.Path
-
 import org.slf4j.LoggerFactory
 import ch.qos.logback.classic.Logger
-
 import viper.silver.ast._
 import viper.silver.ast.utility.{DiskLoader, FileLoader}
 import viper.silver.reporter.StdIOReporter
@@ -59,7 +57,10 @@ trait Frontend {
   def runAllPhases(): Unit = {
     phases.foreach(ph => {
       logger.trace(s"Frontend: running phase ${ph.name}")
-      ph.f()
+      println(s"Before ${ph.name} ${System.currentTimeMillis()}")
+      val res = ph.f()
+      println(s"After ${ph.name} ${System.currentTimeMillis()}")
+      res
     })
   }
 
