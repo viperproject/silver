@@ -973,8 +973,8 @@ case class NameAnalyser() {
 
   private val namesInScope = mutable.Set.empty[String]
 
-  private def check(g: PNode, target: Option[PNode]): Unit = {
-    var curScope: PScope = null
+  def check(g: PNode, target: Option[PNode], initialCurScope: PScope = null): Unit = {
+    var curScope: PScope = initialCurScope
     def getMap(): DeclarationMap = Option(curScope).map(_.scopeId).map(localDeclarationMaps.get(_).get).getOrElse(globalDeclarationMap)
 
     val scopeStack = mutable.Stack[PScope]()
