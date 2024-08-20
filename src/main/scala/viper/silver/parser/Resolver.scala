@@ -1055,6 +1055,21 @@ case class NameAnalyser() {
 
     // find all declarations
     g.visit(nodeDownNameCollectorVisitor, nodeUpNameCollectorVisitor)
+
+    if (initialCurScope != null) {
+      assert(initialCurScope == curScope)
+
+      while (curScope != null) {
+        val popMap = localDeclarationMaps.get(curScope.scopeId).get
+        curScope.getAncestor[PScope] match {
+          case Some(newScope) =>
+            curScope = newScope
+          case None =>
+            curScope = null
+        }
+        getMap().merge(popMap)
+      }
+    }
   }
 
   def run(p: PProgram): Boolean = {

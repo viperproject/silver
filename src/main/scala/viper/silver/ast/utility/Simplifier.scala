@@ -21,13 +21,19 @@ object Simplifier {
    * 0 are not treated. Note that an expression with non-terminating evaluation due to endless recursion
    * might be transformed to terminating expression.
    */
-  def simplify[N <: Node](n: N): N = {
+  def simplify[N <: Node](n: N, assumeWelldefinedness: Boolean = false): N = {
     /* Always simplify children first, then treat parent. */
     StrategyBuilder.Slim[Node]({
       // expression simplifications
       case root @ Not(BoolLit(literal)) =>
         BoolLit(!literal)(root.pos, root.info)
       case Not(Not(single)) => single
+      case root @ Not(EqCmp(a, b)) => NeCmp(a, b)(root.pos, root.info)
+      case root @ Not(NeCmp(a, b)) => EqCmp(a, b)(root.pos, root.info)
+      case root @ Not(GtCmp(a, b)) => LeCmp(a, b)(root.pos, root.info)
+      case root @ Not(GeCmp(a, b)) => LtCmp(a, b)(root.pos, root.info)
+      case root @ Not(LtCmp(a, b)) => GeCmp(a, b)(root.pos, root.info)
+      case root @ Not(LeCmp(a, b)) => GtCmp(a, b)(root.pos, root.info)
 
       case And(TrueLit(), right) => right
       case And(left, TrueLit()) => left
@@ -40,14 +46,13 @@ object Simplifier {
       case root @ Or(_, TrueLit()) => TrueLit()(root.pos, root.info)
 
       case root @ Implies(FalseLit(), _) => TrueLit()(root.pos, root.info)
-      case root @ Implies(_, TrueLit()) => TrueLit()(root.pos, root.info)
-      case root @ Implies(TrueLit(), FalseLit()) =>
-        FalseLit()(root.pos, root.info)
+      case Implies(_, tl @ TrueLit()) if assumeWelldefinedness => tl
       case Implies(TrueLit(), consequent) => consequent
+      case root @ Implies(FalseLit(), _) => TrueLit()(root.pos, root.info)
+      case root @ Implies(l1, Implies(l2, r)) => Implies(And(l1, l2)(), r)(root.pos, root.info)
 
-      // ME: Disabled since it is not equivalent in case the expression is not well-defined.
       // TODO: Consider checking if Expressions.proofObligations(left) is empty (requires adding the program as parameter).
-      // case root @ EqCmp(left, right) if left == right => TrueLit()(root.pos, root.info)
+      case root @ EqCmp(left, right) if assumeWelldefinedness && left == right => TrueLit()(root.pos, root.info)
       case root @ EqCmp(BoolLit(left), BoolLit(right)) =>
         BoolLit(left == right)(root.pos, root.info)
       case root @ EqCmp(FalseLit(), right) => Not(right)(root.pos, root.info)
@@ -68,20 +73,19 @@ object Simplifier {
         BoolLit(left != right)(root.pos, root.info)
       case root @ NeCmp(NullLit(), NullLit()) =>
         FalseLit()(root.pos, root.info)
+      case root @ NeCmp(left, right) if assumeWelldefinedness && left == right => FalseLit()(root.pos, root.info)
 
       case CondExp(TrueLit(), ifTrue, _) => ifTrue
       case CondExp(FalseLit(), _, ifFalse) => ifFalse
-      case root @ CondExp(_, FalseLit(), FalseLit()) =>
-        FalseLit()(root.pos, root.info)
-      case root @ CondExp(_, TrueLit(), TrueLit()) =>
-        TrueLit()(root.pos, root.info)
+      case CondExp(_, ifTrue, ifFalse) if assumeWelldefinedness && ifTrue == ifFalse =>
+        ifTrue
       case root @ CondExp(condition, FalseLit(), TrueLit()) =>
         Not(condition)(root.pos, root.info)
       case CondExp(condition, TrueLit(), FalseLit()) => condition
       case root @ CondExp(condition, FalseLit(), ifFalse) =>
         And(Not(condition)(), ifFalse)(root.pos, root.info)
       case root @ CondExp(condition, TrueLit(), ifFalse) =>
-        if(ifFalse.isPure) {
+        if (ifFalse.isPure) {
           Or(condition, ifFalse)(root.pos, root.info)
         } else {
           Implies(Not(condition)(), ifFalse)(root.pos, root.info)
@@ -100,6 +104,24 @@ object Simplifier {
       case Minus(Minus(single)) => single
 
       case PermMinus(PermMinus(single)) => single
+      case PermMul(fst, FullPerm()) => fst
+      case PermMul(FullPerm(), snd) => snd
+      case PermMul(_, np @ NoPerm()) if assumeWelldefinedness => np
+      case PermMul(np @ NoPerm(), _) if assumeWelldefinedness => np
+
+      case root @ PermGeCmp(a, b) if assumeWelldefinedness && a == b => TrueLit()(root.pos, root.info)
+      case root @ PermLeCmp(a, b) if assumeWelldefinedness && a == b => TrueLit()(root.pos, root.info)
+      case root @ PermGtCmp(a, b) if assumeWelldefinedness && a == b => FalseLit()(root.pos, root.info)
+      case root @ PermLtCmp(a, b) if assumeWelldefinedness && a == b => FalseLit()(root.pos, root.info)
+
+      case root @ PermGtCmp(AnyPermLiteral(a, b), AnyPermLiteral(c, d)) =>
+        BoolLit(Rational(a, b) > Rational(c, d))(root.pos, root.info)
+      case root @ PermGeCmp(AnyPermLiteral(a, b), AnyPermLiteral(c, d)) =>
+        BoolLit(Rational(a, b) >= Rational(c, d))(root.pos, root.info)
+      case root @ PermLtCmp(AnyPermLiteral(a, b), AnyPermLiteral(c, d)) =>
+        BoolLit(Rational(a, b) < Rational(c, d))(root.pos, root.info)
+      case root @ PermLeCmp(AnyPermLiteral(a, b), AnyPermLiteral(c, d)) =>
+        BoolLit(Rational(a, b) <= Rational(c, d))(root.pos, root.info)
 
       case root @ GeCmp(IntLit(left), IntLit(right)) =>
         BoolLit(left >= right)(root.pos, root.info)
@@ -138,4 +160,62 @@ object Simplifier {
   }
 
   private val bigIntZero = BigInt(0)
+  private val bigIntOne = BigInt(1)
+
+  object AnyPermLiteral {
+    def unapply(p: Exp): Option[(BigInt, BigInt)] = p match {
+      case FullPerm() => Some((bigIntOne, bigIntOne))
+      case NoPerm() => Some((bigIntZero, bigIntOne))
+      case FractionalPerm(IntLit(n), IntLit(d)) => Some((n, d))
+      case _ => None
+    }
+  }
+
+  final class Rational(n: BigInt, d: BigInt) extends Ordered[Rational] {
+    require(d != 0, "Denominator of Rational must not be 0.")
+
+    private val g = n.gcd(d)
+    val numerator: BigInt = n / g * d.signum
+    val denominator: BigInt = d.abs / g
+
+    def +(that: Rational): Rational = {
+      val newNum = this.numerator * that.denominator + that.numerator * this.denominator
+      val newDen = this.denominator * that.denominator
+      Rational(newNum, newDen)
+    }
+
+    def -(that: Rational): Rational = this + (-that)
+
+    def unary_- = Rational(-numerator, denominator)
+
+    def abs = Rational(numerator.abs, denominator)
+
+    def signum = Rational(numerator.signum, 1)
+
+    def *(that: Rational): Rational = Rational(this.numerator * that.numerator, this.denominator * that.denominator)
+
+    def /(that: Rational): Rational = this * that.inverse
+
+    def inverse = Rational(denominator, numerator)
+
+    def compare(that: Rational) = (this.numerator * that.denominator - that.numerator * this.denominator).signum
+
+    override def equals(obj: Any) = obj match {
+      case that: Rational => this.numerator == that.numerator && this.denominator == that.denominator
+      case _ => false
+    }
+
+    override def hashCode(): Int = viper.silver.utility.Common.generateHashCode(n, d)
+
+    override lazy val toString = s"$numerator/$denominator"
+  }
+
+  object Rational extends ((BigInt, BigInt) => Rational) {
+    val zero = Rational(0, 1)
+    val one = Rational(1, 1)
+
+    def apply(numer: BigInt, denom: BigInt) = new Rational(numer, denom)
+
+    def unapply(r: Rational) = Some(r.numerator, r.denominator)
+  }
 }
