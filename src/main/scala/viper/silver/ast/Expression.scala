@@ -360,6 +360,7 @@ case class PermAdd(left: Exp, right: Exp)(val pos: Position = NoPosition, val in
 case class PermSub(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(PermSubOp) with PermExp with ForbiddenInTrigger
 case class PermMul(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(PermMulOp) with PermExp with ForbiddenInTrigger
 case class IntPermMul(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(IntPermMulOp) with PermExp with ForbiddenInTrigger
+case class DebugPermMin(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(DebugPermMinOp) with PermExp with ForbiddenInTrigger
 
 // Comparison expressions
 case class PermLtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(PermLtOp) with ForbiddenInTrigger

@@ -893,6 +893,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
 
       case null => uninitialized
       case u: PrettyUnaryExpression => showPrettyUnaryExp(u)
+      case DebugPermMin(e0, e1) => text("min") <> parens(show(e0) <> "," <+> show(e1))
       case b: PrettyBinaryExpression => showPrettyBinaryExp(b)
       case e: ExtensionExp => e.prettyPrint
       case _ => sys.error(s"unknown expression: ${e.getClass}")

@@ -1208,10 +1208,12 @@ case class POldExp(op: PKwOp.Old, label: Option[PGrouped[PSym.Bracket, Either[PK
   override val signatures: List[PTypeSubstitution] = List(Map(POpApp.pResS -> POpApp.pArg(0)))
 }
 
-case class PDebugLabelledOldExp(op: PKwOp.Old, label: PVersionedIdnUseExp, e: PExp)(val pos: (Position, Position)) extends PExp {
-  override def typeSubstitutions = e.typeSubstitutions
+case class PDebugLabelledOldExp(op: PKwOp.Old, label: PVersionedIdnUseExp, e: PExp)(val pos: (Position, Position)) extends PCallKeyword with PHeapOpApp {
+  override val args = Seq(e)
 
-  override def forceSubstitution(ts: PTypeSubstitution): Unit = e.forceSubstitution(ts)
+  override def requirePure = args
+
+  override val signatures: List[PTypeSubstitution] = List(Map(POpApp.pResS -> POpApp.pArg(0)))
 }
 
 sealed trait PCollectionLiteral extends PCallKeyword {

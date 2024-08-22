@@ -729,6 +729,7 @@ case object ModOp extends ProdOp("%") with IntBinOp with IntDomainFunc
 case object PermAddOp extends SumOp("+") with PermBinOp with PermDomainFunc
 case object PermSubOp extends SumOp("-") with PermBinOp with PermDomainFunc
 case object PermMulOp extends ProdOp("*") with PermBinOp with PermDomainFunc
+case object DebugPermMinOp extends SumOp("min") with PermBinOp with PermDomainFunc
 case object IntPermMulOp extends ProdOp("*") with BinOp with PermDomainFunc {
   lazy val leftTyp = Int
   lazy val rightTyp = Perm

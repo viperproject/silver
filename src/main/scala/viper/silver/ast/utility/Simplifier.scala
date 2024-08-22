@@ -122,6 +122,18 @@ object Simplifier {
         BoolLit(Rational(a, b) < Rational(c, d))(root.pos, root.info)
       case root @ PermLeCmp(AnyPermLiteral(a, b), AnyPermLiteral(c, d)) =>
         BoolLit(Rational(a, b) <= Rational(c, d))(root.pos, root.info)
+      case DebugPermMin(e0@AnyPermLiteral(a, b), e1@AnyPermLiteral(c, d)) =>
+        if (Rational(a, b) < Rational(c, d)) {
+          e0
+        } else {
+          e1
+        }
+      case root @ PermSub(AnyPermLiteral(a, b), AnyPermLiteral(c, d)) =>
+        val diff = Rational(a, b) - Rational(c, d)
+        FractionalPerm(IntLit(diff.numerator)(root.pos, root.info), IntLit(diff.denominator)(root.pos, root.info))(root.pos, root.info)
+      case root @ PermAdd(AnyPermLiteral(a, b), AnyPermLiteral(c, d)) =>
+        val sum = Rational(a, b) + Rational(c, d)
+        FractionalPerm(IntLit(sum.numerator)(root.pos, root.info), IntLit(sum.denominator)(root.pos, root.info))(root.pos, root.info)
 
       case root @ GeCmp(IntLit(left), IntLit(right)) =>
         BoolLit(left >= right)(root.pos, root.info)
