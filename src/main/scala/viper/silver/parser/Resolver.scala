@@ -1056,6 +1056,8 @@ case class NameAnalyser() {
     // find all declarations
     g.visit(nodeDownNameCollectorVisitor, nodeUpNameCollectorVisitor)
 
+    // If we started from some inner scope, walk all the way back out to the whole program
+    // with a variation of nodeUpNameCollectorVisitor
     if (initialCurScope != null) {
       assert(initialCurScope == curScope)
 

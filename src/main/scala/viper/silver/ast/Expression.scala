@@ -11,7 +11,6 @@ import viper.silver.ast.pretty._
 import viper.silver.ast.utility._
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.ast.utility.rewriter.{StrategyBuilder, Traverse}
-import viper.silver.parser.PExp
 import viper.silver.verifier.{ConsistencyError, VerificationResult}
 
 /** Expressions. */
@@ -360,6 +359,8 @@ case class PermAdd(left: Exp, right: Exp)(val pos: Position = NoPosition, val in
 case class PermSub(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(PermSubOp) with PermExp with ForbiddenInTrigger
 case class PermMul(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(PermMulOp) with PermExp with ForbiddenInTrigger
 case class IntPermMul(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(IntPermMulOp) with PermExp with ForbiddenInTrigger
+
+/** min expression used in the Silicon debugger */
 case class DebugPermMin(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(DebugPermMinOp) with PermExp with ForbiddenInTrigger
 
 // Comparison expressions
@@ -514,7 +515,7 @@ case class LabelledOld(exp: Exp, oldLabel: String)(val pos: Position = NoPositio
       Consistency.checkPure(exp)
 }
 
-/** Old expression that are used in the debugger. */
+/** Old expression that are used in the Silicon debugger. */
 case class DebugLabelledOld(exp: Exp, oldLabel: String)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends OldExp {
   override lazy val check : Seq[ConsistencyError] =
     Consistency.checkPure(exp)
@@ -721,7 +722,7 @@ case class Result(typ: Type)(val pos: Position = NoPosition, val info: Info = No
   lazy val name = "result"
 }
 
-/** A special local variable with a version for debugging */
+/** A special local variable with a version for Silicon debugging */
 case class LocalVarWithVersion(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractLocalVar with Lhs {
   def nameWithoutVersion = name.substring(0, name.lastIndexOf("@"))
   override lazy val check: Seq[ConsistencyError] =
