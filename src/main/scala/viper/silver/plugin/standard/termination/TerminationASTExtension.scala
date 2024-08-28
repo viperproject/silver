@@ -117,7 +117,7 @@ case class DecreasesSpecification(tuple: Option[DecreasesTuple],
                                   star: Option[DecreasesStar]) extends Info {
 
   // The comment of this metadata are the provided decreases clauses
-  override lazy val comment: Seq[String] = (tuple ++ wildcard ++ star).map(_.toString()).toSeq
+  override lazy val comment: Seq[String] = (tuple ++ wildcard ++ star).map(_.toString).toSeq
   override val isCached: Boolean = false
 
   /**

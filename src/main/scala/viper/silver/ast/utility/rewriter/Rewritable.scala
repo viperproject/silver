@@ -24,7 +24,7 @@ trait HasExtraVars {
   */
 trait Rewritable extends Product {
 
-  def children: Seq[Any] = productIterator.toList
+  lazy val children: Seq[Any] = productIterator.toSeq
 
   def withChildren(children: Seq[Any], pos: Option[(Position, Position)] = None, forceRewrite: Boolean = false): this.type = {
     if (!forceRewrite && this.children == children && !pos.isDefined)

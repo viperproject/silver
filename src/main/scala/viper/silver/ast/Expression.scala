@@ -15,6 +15,7 @@ import viper.silver.verifier.{ConsistencyError, VerificationResult}
 
 /** Expressions. */
 sealed trait Exp extends Hashable with Typed with Positioned with Infoed with TransformableErrors with PrettyExpression {
+  var simplified: Option[Exp] = None
   lazy val isPure = Expressions.isPure(this)
   def isHeapDependent(p: Program) = Expressions.isHeapDependent(this, p)
   def isTopLevelHeapDependent(p: Program) = Expressions.isTopLevelHeapDependent(this, p)
@@ -47,7 +48,7 @@ sealed trait Exp extends Hashable with Typed with Positioned with Infoed with Tr
    */
  // lazy val proofObligations = Expressions.proofObligations(this)
 
-  override def toString() = {
+  override lazy val toString = {
    // Carbon relies on expression pretty-printing resulting in a string without line breaks,
    // so for the special case of directly converting an expression to a string, we remove all line breaks
    // the pretty printer might have inserted.
