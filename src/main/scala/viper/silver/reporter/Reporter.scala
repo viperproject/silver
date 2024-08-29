@@ -190,7 +190,8 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
       case _: QuantifierInstantiationsMessage => // too verbose, do not print
       case _: QuantifierChosenTriggersMessage => // too verbose, do not print
       case _: VerificationTerminationMessage =>
-      case _: BlockReachedMessage =>  // println(msg)
+      case _: BlockReachedMessage => // println(msg)
+      case _: BlockFailureMessage =>  // println(msg)
       case _: PathProcessedMessage =>  // println(msg)
       case _ =>
         println( s"Cannot properly print message of unsupported type: $msg" )

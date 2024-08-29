@@ -333,9 +333,16 @@ case class BlockReachedMessage(methodName: String, label: String, pathId: Int) e
   override val toString: String = s"block_reached_message(methodName=$methodName, label=$label, pathId=$pathId)"
   override val name: String = "block_reached_message"
 }
+
+/** Reported when a block of a method CFG failed 
+*/
+case class BlockFailureMessage(methodName: String, label: String, pathId: Int) extends  Message {
+  override val toString: String = s"block_failure_message(methodName=$methodName, label=$label, pathId=$pathId)"
+  override val name: String = "block_failure_message"
+}
 /** Reported when an execution path through a method has completed.
-  */
-case class PathProcessedMessage(methodName: String, label: String, pathId: Int, verificationResultKind: String) extends  Message {
-  override val toString: String = s"Path_processed_message(methodName=$methodName, label=$label, pathId=$pathId, result=$verificationResultKind)"
-  override val name: String = "Path_processed_message"
+*/
+case class PathProcessedMessage(methodName: String, pathId: Int, result: String) extends  Message {
+  override val toString: String = s"path_processed_message(methodName=$methodName, pathId=$pathId, result=$result)"
+  override val name: String = "path_processed_message"
 }
