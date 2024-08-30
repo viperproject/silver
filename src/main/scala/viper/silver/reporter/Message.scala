@@ -340,6 +340,7 @@ case class BlockFailureMessage(methodName: String, label: String, pathId: Int) e
   override val toString: String = s"block_failure_message(methodName=$methodName, label=$label, pathId=$pathId)"
   override val name: String = "block_failure_message"
 }
+
 /** Reported when an execution path through a method has completed.
 */
 case class PathProcessedMessage(methodName: String, pathId: Int, result: String) extends  Message {
