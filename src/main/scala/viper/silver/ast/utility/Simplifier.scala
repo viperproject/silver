@@ -109,8 +109,14 @@ object Simplifier {
       case PermMinus(PermMinus(single)) => single
       case PermMul(fst, FullPerm()) => fst
       case PermMul(FullPerm(), snd) => snd
+      case root@PermMul(AnyPermLiteral(a, b), AnyPermLiteral(c, d)) =>
+        val product = Rational(a, b) * Rational(c, d)
+        FractionalPerm(IntLit(product.numerator)(root.pos, root.info), IntLit(product.denominator)(root.pos, root.info))(root.pos, root.info)
       case PermMul(_, np@NoPerm()) if assumeWelldefinedness => np
       case PermMul(np@NoPerm(), _) if assumeWelldefinedness => np
+
+      case PermMul(wc@WildcardPerm(), _) if assumeWelldefinedness => wc
+      case PermMul(_, wc@WildcardPerm()) if assumeWelldefinedness => wc
 
       case root@PermGeCmp(a, b) if assumeWelldefinedness && a == b => TrueLit()(root.pos, root.info)
       case root@PermLeCmp(a, b) if assumeWelldefinedness && a == b => TrueLit()(root.pos, root.info)
@@ -125,6 +131,16 @@ object Simplifier {
         BoolLit(Rational(a, b) < Rational(c, d))(root.pos, root.info)
       case root@PermLeCmp(AnyPermLiteral(a, b), AnyPermLiteral(c, d)) =>
         BoolLit(Rational(a, b) <= Rational(c, d))(root.pos, root.info)
+      case root@EqCmp(AnyPermLiteral(a, b), AnyPermLiteral(c, d)) =>
+        BoolLit(Rational(a, b) == Rational(c, d))(root.pos, root.info)
+      case root@NeCmp(AnyPermLiteral(a, b), AnyPermLiteral(c, d)) =>
+        BoolLit(Rational(a, b) != Rational(c, d))(root.pos, root.info)
+
+      case root@PermLeCmp(NoPerm(), WildcardPerm()) =>
+        TrueLit()(root.pos, root.info)
+      case root@NeCmp(WildcardPerm(), NoPerm()) =>
+        TrueLit()(root.pos, root.info)
+
       case DebugPermMin(e0@AnyPermLiteral(a, b), e1@AnyPermLiteral(c, d)) =>
         if (Rational(a, b) < Rational(c, d)) {
           e0
@@ -137,6 +153,9 @@ object Simplifier {
       case root@PermAdd(AnyPermLiteral(a, b), AnyPermLiteral(c, d)) =>
         val sum = Rational(a, b) + Rational(c, d)
         FractionalPerm(IntLit(sum.numerator)(root.pos, root.info), IntLit(sum.denominator)(root.pos, root.info))(root.pos, root.info)
+      case PermAdd(NoPerm(), rhs) => rhs
+      case PermAdd(lhs, NoPerm()) => lhs
+      case PermSub(lhs, NoPerm()) => lhs
 
       case root@GeCmp(IntLit(left), IntLit(right)) =>
         BoolLit(left >= right)(root.pos, root.info)
