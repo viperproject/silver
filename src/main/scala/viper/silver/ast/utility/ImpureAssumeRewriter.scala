@@ -127,7 +127,7 @@ object ImpureAssumeRewriter {
     val conds: Seq[Exp] =
       contextWithoutRcv
         .map(c => c._1._1.replace((c._1._2 zip rcv).toMap[Exp, Exp]))
-        .map(viper.silver.ast.utility.Simplifier.simplify)
+        .map(e => viper.silver.ast.utility.Simplifier.simplify(e))
 
     if (context.isEmpty) {
       assert(conds.isEmpty)

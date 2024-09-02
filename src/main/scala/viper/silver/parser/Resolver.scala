@@ -788,6 +788,14 @@ case class TypeChecker(names: NameAnalyser) {
         else
           piu.typ = piu.decl.get.typ
 
+      case piu: PVersionedIdnUseExp =>
+        if (piu.decls.isEmpty)
+          issueError(piu, s"undeclared identifier `${piu.name}`")
+        else if (piu.decl.isEmpty)
+          issueError(piu, s"ambiguous identifier `${piu.name}`")
+        else
+          piu.typ = piu.decl.get.typ
+
       case pl@PLet(_, _, _, e, _, ns) =>
         val oldCurMember = curMember
         curMember = pl
@@ -965,8 +973,8 @@ case class NameAnalyser() {
 
   private val namesInScope = mutable.Set.empty[String]
 
-  private def check(g: PNode, target: Option[PNode]): Unit = {
-    var curScope: PScope = null
+  def check(g: PNode, target: Option[PNode], initialCurScope: PScope = null): Unit = {
+    var curScope: PScope = initialCurScope
     def getMap(): DeclarationMap = Option(curScope).map(_.scopeId).map(localDeclarationMaps.get(_).get).getOrElse(globalDeclarationMap)
 
     val scopeStack = mutable.Stack[PScope]()
@@ -1047,6 +1055,23 @@ case class NameAnalyser() {
 
     // find all declarations
     g.visit(nodeDownNameCollectorVisitor, nodeUpNameCollectorVisitor)
+
+    // If we started from some inner scope, walk all the way back out to the whole program
+    // with a variation of nodeUpNameCollectorVisitor
+    if (initialCurScope != null) {
+      assert(initialCurScope == curScope)
+
+      while (curScope != null) {
+        val popMap = localDeclarationMaps.get(curScope.scopeId).get
+        curScope.getAncestor[PScope] match {
+          case Some(newScope) =>
+            curScope = newScope
+          case None =>
+            curScope = null
+        }
+        getMap().merge(popMap)
+      }
+    }
   }
 
   def run(p: PProgram): Boolean = {

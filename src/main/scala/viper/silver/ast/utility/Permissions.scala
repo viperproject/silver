@@ -28,8 +28,8 @@ object Permissions {
 
   def multiplyExpByPerm(e: Exp, permFactor: Exp) : Exp = {
     assert(permFactor.typ == Perm,
-           "Internal error: attempted to permission-scale expression " + e.toString() +
-               " by non-permission-typed expression " + permFactor.toString())
+           "Internal error: attempted to permission-scale expression " + e.toString +
+               " by non-permission-typed expression " + permFactor.toString)
 
     if(permFactor.isInstanceOf[FullPerm])
       e
