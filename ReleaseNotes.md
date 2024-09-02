@@ -1,3 +1,64 @@
+## Release 2024.8
+
+**Date 31/08/24**
+
+### Changes in Viper Language
+
+- Domain axioms can now refer to functions that have decreases clauses (but no preconditions) https://github.com/viperproject/silver/pull/802
+
+### API Changes and Internal Improvements
+- Improved ``Simplifier`` simplifies many additional expressions; new option determines whether simplification must preserve well-definedness https://github.com/viperproject/silver/pull/810
+- Chopper is now aware of opaque functions https://github.com/viperproject/silver/pull/779
+- Chopper has improved dependency analysis for axioms https://github.com/viperproject/silver/pull/776
+- Removed filtering of duplicate errors inside Viper (this is now left to frontends) https://github.com/viperproject/silver/pull/778
+
+### Bug Fixes
+
+- Fixed various issues with macro expansion:
+  - Fixed incorrect variable renaming during macro expansion https://github.com/viperproject/silver/pull/804
+  - Disallowing nested macro declarations https://github.com/viperproject/silver/pull/795
+  - Fixed incorrect renaming of label statements during macro expansion https://github.com/viperproject/silver/pull/793
+- Fixed incorrect ``Simplifier`` handling of division and modulo expressions https://github.com/viperproject/silver/pull/794
+- Fixed crash in proof obligation computation for expressions https://github.com/viperproject/silver/pull/783
+- Termination plugin: Improved encoding of checks for ``unfolding``-expressions https://github.com/viperproject/silver/pull/773
+- ADT plugin: Fixed crash when plugin is used with other AST extensions https://github.com/viperproject/silver/pull/800
+
+### Backend-specific Upgrades/Changes
+
+#### Symbolic Execution Backend (Silicon)
+
+- Added experimental support for (command line) verification debugging. With the new option ``--enableDebugging``, users can see the state (store, heap, branch conditions and assumptions) in a format that that can be understood on the Viper level (avoiding internal Silicon concepts) at the point where a verification error occurs, locally assert or assume expressions to debug the error, and change SMT solver options. https://github.com/viperproject/silicon/pull/863
+- Soundness fixes:
+  - Fixed unsound rewrite for ``--conditionalizePermissions`` option https://github.com/viperproject/silicon/pull/853
+  - Fixed unsound handling of quantified permissions with unsatisfiable condition https://github.com/viperproject/silicon/pull/843
+  - Fixed unsound handling of quantified permissions with trivial condition https://github.com/viperproject/silicon/pull/834
+  - Improved encoding of magic wand snapshots that prevents unsoundness for ``applying``-expressions https://github.com/viperproject/silicon/pull/836
+  - Fixed incorrect order of function precondition assumptions https://github.com/viperproject/silicon/pull/811
+- Completeness improvements:
+  - Recording missing constraints during function verification https://github.com/viperproject/silicon/pull/852 and https://github.com/viperproject/silicon/pull/825
+  - Fixed treatment of snapshot maps defined while evaluating quantifiers https://github.com/viperproject/silicon/pull/840
+  - Avoiding using a quantifier for wildcard constraints for quantified resources when possible https://github.com/viperproject/silicon/pull/817
+- Performance improvements:
+  - Improved snapshot map caching for quantified permissions (also improves completeness) https://github.com/viperproject/silicon/pull/846
+  - Avoiding creating new snapshot maps for quantified resources when unnecessary https://github.com/viperproject/silicon/pull/839
+  - Eagerly assuming non-aliasing for quantified field chunks https://github.com/viperproject/silicon/pull/835
+  - More efficient function axiomatization for functions with many branches https://github.com/viperproject/silicon/pull/808
+  - Flexible path joining options:
+    - With command line argument ``--moreJoins=1``, Silicon joins only branches stemming from impure implications (immediately after branching). With ``--moreJoins=2`` it joins all branches, including branches stemming from program control flow, at the earliest possible point. https://github.com/viperproject/silicon/pull/823
+    - The new annotation ``@moreJoins(n)``, with ``n`` bein ``1`` or ``2`` as just described, can be used to enable path joining on a per-method level https://github.com/viperproject/silicon/pull/823
+  - More flexible state consolidation:
+    - Added several new options for state consolidation behavior https://github.com/viperproject/silicon/pull/827
+    - The new annotation ``@stateConsolidationMode(n)`` allows configuring state consolidation on a per-method level https://github.com/viperproject/silicon/pull/827
+- Other improvements:
+  - Fixed crash resulting from double-declarations of macros with ``--parallelizeBranches`` https://github.com/viperproject/silicon/pull/813
+  - Fixed error reporting for method call arguments https://github.com/viperproject/silicon/pull/841
+  - Silicon now tries to find the Z3 executable in PATH if no path is explicitly provided https://github.com/viperproject/silicon/pull/818
+ 
+#### Verification Condition Generation Backend (Carbon)
+
+- Bug fixes:
+  - Preventing Boogie crash when using annotations https://github.com/viperproject/carbon/pull/505
+
 ## Release 2024.1
 
 **Date 16/02/24**
