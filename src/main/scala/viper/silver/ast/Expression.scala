@@ -15,6 +15,7 @@ import viper.silver.verifier.{ConsistencyError, VerificationResult}
 
 /** Expressions. */
 sealed trait Exp extends Hashable with Typed with Positioned with Infoed with TransformableErrors with PrettyExpression {
+  var simplified: Option[Exp] = None
   lazy val isPure = Expressions.isPure(this)
   def isHeapDependent(p: Program) = Expressions.isHeapDependent(this, p)
   def isTopLevelHeapDependent(p: Program) = Expressions.isTopLevelHeapDependent(this, p)
@@ -47,7 +48,7 @@ sealed trait Exp extends Hashable with Typed with Positioned with Infoed with Tr
    */
  // lazy val proofObligations = Expressions.proofObligations(this)
 
-  override def toString() = {
+  override lazy val toString = {
    // Carbon relies on expression pretty-printing resulting in a string without line breaks,
    // so for the special case of directly converting an expression to a string, we remove all line breaks
    // the pretty printer might have inserted.
@@ -360,6 +361,9 @@ case class PermSub(left: Exp, right: Exp)(val pos: Position = NoPosition, val in
 case class PermMul(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(PermMulOp) with PermExp with ForbiddenInTrigger
 case class IntPermMul(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(IntPermMulOp) with PermExp with ForbiddenInTrigger
 
+/** min expression used in the Silicon debugger */
+case class DebugPermMin(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(DebugPermMinOp) with PermExp with ForbiddenInTrigger
+
 // Comparison expressions
 case class PermLtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(PermLtOp) with ForbiddenInTrigger
 case class PermLeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(PermLeOp) with ForbiddenInTrigger
@@ -510,6 +514,12 @@ case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo
 case class LabelledOld(exp: Exp, oldLabel: String)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends OldExp {
   override lazy val check : Seq[ConsistencyError] =
       Consistency.checkPure(exp)
+}
+
+/** Old expression that are used in the Silicon debugger. */
+case class DebugLabelledOld(exp: Exp, oldLabel: String)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends OldExp {
+  override lazy val check : Seq[ConsistencyError] =
+    Consistency.checkPure(exp)
 }
 
 case object LabelledOld {
@@ -711,6 +721,13 @@ case class LocalVar(name: String, typ: Type)(val pos: Position = NoPosition, val
 /** A special local variable for the result of a function. */
 case class Result(typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractLocalVar {
   lazy val name = "result"
+}
+
+/** A special local variable with a version for Silicon debugging */
+case class LocalVarWithVersion(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractLocalVar with Lhs {
+  def nameWithoutVersion = name.substring(0, name.lastIndexOf("@"))
+  override lazy val check: Seq[ConsistencyError] =
+    if (!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Local var name must be valid identifier.", pos)) else Seq()
 }
 
 // --- Mathematical sequences

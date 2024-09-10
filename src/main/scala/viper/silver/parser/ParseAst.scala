@@ -296,6 +296,22 @@ case class PIdnRef[T <: PDeclarationInner](name: String)(val pos: (Position, Pos
   override def getExtraVals: Seq[Any] = Seq(pos, ctag)
 }
 
+case class PVersionedIdnUseExp(name: String, version: String, separator: String = "@")(val pos: (Position, Position)) extends PIdnUseName[PTypedVarDecl] with PExp   {
+
+  override def ctag = scala.reflect.classTag[PTypedVarDecl]
+
+  override def rename(newName: String) = PVersionedIdnUseExp(newName, version, separator)(pos)
+
+  val versionedName: String = name + separator + version
+
+  override val typeSubstitutions = List(PTypeSubstitution.id)
+
+  def forceSubstitution(ts: PTypeSubstitution) = {
+    typ = typ.substitute(ts)
+    assert(typ.isGround)
+  }
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // Variable declarations
 
@@ -1189,6 +1205,14 @@ case class PAccPred(op: PKwOp.Acc, amount: PGrouped.Paren[PMaybePairArgument[PLo
 case class POldExp(op: PKwOp.Old, label: Option[PGrouped[PSym.Bracket, Either[PKw.Lhs, PIdnRef[PLabel]]]], e: PGrouped.Paren[PExp])(val pos: (Position, Position)) extends PCallKeyword with PHeapOpApp {
   override val args = Seq(e.inner)
   override def requirePure = args
+  override val signatures: List[PTypeSubstitution] = List(Map(POpApp.pResS -> POpApp.pArg(0)))
+}
+
+case class PDebugLabelledOldExp(op: PKwOp.Old, label: PVersionedIdnUseExp, e: PExp)(val pos: (Position, Position)) extends PCallKeyword with PHeapOpApp {
+  override val args = Seq(e)
+
+  override def requirePure = args
+
   override val signatures: List[PTypeSubstitution] = List(Map(POpApp.pResS -> POpApp.pArg(0)))
 }
 

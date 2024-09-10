@@ -7,6 +7,7 @@
 package viper.silver.parser
 
 import viper.silver.FastMessaging
+import viper.silver.parser.PKw.Requires
 
 import scala.collection.mutable
 
@@ -685,8 +686,13 @@ case class TypeChecker(names: NameAnalyser) {
                           check(fd.typ)
                           fd.formalArgs foreach (a => check(a.typ))
                         }
-                        if (pfa.isDescendant[PAxiom] && pfn.pres.length != 0)
+                        if (pfa.isDescendant[PAxiom] && pfn.pres.toSeq.exists(pre => pre.k.rs == Requires)) {
+                          // A domain axiom, which must always be well-defined, is calling a function that has at least
+                          // one real precondition (i.e., not just a requires clause or something similar that's
+                          // temporarily represented as a precondition), which means that the call may not always be
+                          // well-defined. This is not allowed.
                           issueError(func, s"Cannot use function ${func.name}, which has preconditions, inside axiom")
+                        }
 
                       case pdf: PDomainFunction =>
                         val domain = pdf.domain
@@ -775,6 +781,14 @@ case class TypeChecker(names: NameAnalyser) {
         }
 
       case piu: PIdnUseExp =>
+        if (piu.decls.isEmpty)
+          issueError(piu, s"undeclared identifier `${piu.name}`")
+        else if (piu.decl.isEmpty)
+          issueError(piu, s"ambiguous identifier `${piu.name}`")
+        else
+          piu.typ = piu.decl.get.typ
+
+      case piu: PVersionedIdnUseExp =>
         if (piu.decls.isEmpty)
           issueError(piu, s"undeclared identifier `${piu.name}`")
         else if (piu.decl.isEmpty)
@@ -959,8 +973,8 @@ case class NameAnalyser() {
 
   private val namesInScope = mutable.Set.empty[String]
 
-  private def check(g: PNode, target: Option[PNode]): Unit = {
-    var curScope: PScope = null
+  def check(g: PNode, target: Option[PNode], initialCurScope: PScope = null): Unit = {
+    var curScope: PScope = initialCurScope
     def getMap(): DeclarationMap = Option(curScope).map(_.scopeId).map(localDeclarationMaps.get(_).get).getOrElse(globalDeclarationMap)
 
     val scopeStack = mutable.Stack[PScope]()
@@ -1041,6 +1055,23 @@ case class NameAnalyser() {
 
     // find all declarations
     g.visit(nodeDownNameCollectorVisitor, nodeUpNameCollectorVisitor)
+
+    // If we started from some inner scope, walk all the way back out to the whole program
+    // with a variation of nodeUpNameCollectorVisitor
+    if (initialCurScope != null) {
+      assert(initialCurScope == curScope)
+
+      while (curScope != null) {
+        val popMap = localDeclarationMaps.get(curScope.scopeId).get
+        curScope.getAncestor[PScope] match {
+          case Some(newScope) =>
+            curScope = newScope
+          case None =>
+            curScope = null
+        }
+        getMap().merge(popMap)
+      }
+    }
   }
 
   def run(p: PProgram): Boolean = {
