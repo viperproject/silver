@@ -364,7 +364,7 @@ object errors {
 
   def ErrorWrapperWithTransformers(pve: PartialVerificationError,
                                    ceTransformer: CounterexampleTransformer,
-                                   aqTransformer: AbductionQuestionTransformer) : PartialVerificationError =
+                                   aqTransformer: AbductionQuestionTransformer = AbductionQuestionTransformer({a => a})) : PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => ErrorWrapperWithTransformers(pve.f(reason).asInstanceOf[AbstractVerificationError], ceTransformer, aqTransformer))
 
   case class ExhaleFailed(offendingNode: Exhale, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
