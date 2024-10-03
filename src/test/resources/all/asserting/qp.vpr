@@ -1,0 +1,44 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+method m1(s: Set[Ref])
+  requires |s| > 0
+{
+  inhale forall x: Ref :: x in (asserting(|s| > 0) in s) ==> acc(x.f)
+}
+
+method m1Fail(s: Set[Ref])
+{
+  //:: ExpectedOutput(inhale.failed:assertion.false)
+  inhale forall x: Ref :: x in (asserting(|s| > 0) in s) ==> acc(x.f)
+}
+
+method m2(s: Set[Ref])
+  requires |s| > 0
+  requires !(null in s)
+{
+  inhale forall x: Ref :: x in s ==> acc((asserting (x != null) in x).f)
+}
+
+method m2Fail(s: Set[Ref])
+  requires |s| > 0
+{
+  //:: ExpectedOutput(inhale.failed:assertion.false)
+  inhale forall x: Ref :: x in s ==> acc((asserting (x != null) in x).f)
+}
+
+method m3(s: Set[Ref])
+  requires |s| > 0
+  requires !(null in s)
+{
+  inhale forall x: Ref :: x in s ==> acc(x.f, asserting (x != null) in write)
+}
+
+method m3Fail(s: Set[Ref])
+  requires |s| > 0
+{
+  //:: ExpectedOutput(inhale.failed:assertion.false)
+  inhale forall x: Ref :: x in s ==> acc(x.f, asserting (x != null) in write)
+}

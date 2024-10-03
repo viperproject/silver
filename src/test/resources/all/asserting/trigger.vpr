@@ -1,0 +1,22 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+function trigger(i: Int): Bool
+{
+  true
+}
+
+method triggerUse(s: Seq[Int])
+  requires |s| > 0
+  requires forall i: Int :: {trigger(i)} 0 <= i < |s| ==> s[i] > 0
+{
+  assert asserting (trigger(0)) in s[0] > 0
+}
+
+method triggerUse2(s: Seq[Int])
+  requires |s| > 0
+  requires forall i: Int :: {trigger(i)} 0 <= i < |s| ==> s[i] > 0
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert s[0] > 0
+}

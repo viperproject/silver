@@ -513,6 +513,8 @@ case class Translator(program: PProgram) {
         Unfolding(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos, info)
       case PApplying(_, wand, _, e) =>
         Applying(exp(wand).asInstanceOf[MagicWand], exp(e))(pos, info)
+      case PAsserting(_, a, _, e) =>
+        Asserting(exp(a), exp(e))(pos, info)
       case pl@PLet(_, _, _, exp1, _, PLetNestedScope(body)) =>
         Let(liftLogicalDecl(pl.decl), exp(exp1.inner), exp(body))(pos, info)
       case _: PLetNestedScope =>
