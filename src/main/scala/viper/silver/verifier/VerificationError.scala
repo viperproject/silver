@@ -399,6 +399,24 @@ object errors {
     val id = "assert.failed"
     val text = "Assert might fail."
 
+    val customMessageAnnotation = "msg"
+
+    def customErrorMessage = offendingNode.info.getUniqueInfo[AnnotationInfo] match {
+      case Some(ai) if ai.values.contains(customMessageAnnotation) && ai.values(customMessageAnnotation).nonEmpty =>
+        Some(ai.values("msg").head)
+      case _ => None
+    }
+
+    override def readableMessage: String = customErrorMessage match {
+      case Some(msg) => msg
+      case None => super.readableMessage
+    }
+
+    override def readableMessage(withId: Boolean, withPosition: Boolean): String = customErrorMessage match {
+      case Some(msg) => msg
+      case None => super.readableMessage(withId, withPosition)
+    }
+
     override def pos = offendingNode.exp.pos
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = AssertFailed(offendingNode.asInstanceOf[Assert], this.reason, this.cached)
     def withReason(r: ErrorReason) = AssertFailed(offendingNode, r, cached)
