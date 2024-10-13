@@ -281,7 +281,7 @@ method test7(x: Ref)
 method test7p(x: Ref)
 {
    var tmp: Int
-   //:: ExpectedOutput(application.precondition:assertion.false)
+   //:: ExpectedOutput(application.precondition:insufficient.permission)
    tmp := foo5(x)
 }
 
@@ -295,6 +295,6 @@ method test8(x: Ref)
 method test8p(x: Ref)
 {
    var tmp: Int
-   //:: ExpectedOutput(application.precondition:assertion.false)
+   //:: ExpectedOutput(application.precondition:insufficient.permission)
    tmp := foo5w(x)
 }
