@@ -24,6 +24,9 @@ function foo4(x: Ref): Int
 function foo5(x: Ref): Int
   requires forall z: Ref :: z == x ==> acc(z.f)
 
+function foo5w(x: Ref): Int
+  requires forall z: Ref :: z == x ==> acc(z.f, wildcard)
+
 //:: ExpectedOutput(function.not.wellformed:assertion.false)
 function foo4p(x: Ref, y: Ref): Int
   requires acc(x.f) && acc(y.f)
@@ -51,6 +54,14 @@ function bar3(x: Ref): Int
   unfolding acc(P(x), 1/2) in x.g
 }
 
+function bar4(x: Ref): Int
+  requires acc(P(x), 1/2) && unfolding P(x) in x.f > 0
+
+
+function bar5(x: Ref): Int
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  requires unfolding P(x) in x.f > 0
+
 function foo6(x: Ref): Int
   requires forall z: Ref :: false ==> acc(z.f)
   requires acc(x.f)
@@ -74,7 +85,6 @@ method test0qp(x: Ref)
 {
    inhale forall y: Ref :: y == x ==> acc(y.f, 1/2)
    var tmp: Int
-   //:: ExpectedOutput(application.precondition:insufficient.permission)
    tmp := foo(x)
 }
 
@@ -99,6 +109,7 @@ method test1qp(x: Ref)
 {
    inhale forall y: Ref :: y == x ==> acc(y.f, none)
    var tmp: Int
+   //:: ExpectedOutput(application.precondition:insufficient.permission)
    tmp := foo(x)
 }
 
@@ -240,3 +251,50 @@ method test5qpf(x: Ref)
    tmp := foo4(x)
 }
 
+method test6(x: Ref)
+{
+   inhale acc(x.f, 1/4)
+   assume x.f == 4
+   fold acc(P(x), 1/4)
+   var tmp: Int
+   tmp := bar4(x)
+}
+
+method test6f(x: Ref)
+{
+   inhale acc(x.f, 1/4)
+   assume x.f == -2
+   fold acc(P(x), 1/4)
+   var tmp: Int
+   //:: ExpectedOutput(application.precondition:assertion.false)
+   tmp := bar4(x)
+}
+
+
+method test7(x: Ref)
+{
+   inhale acc(x.f, 1/2)
+   var tmp: Int
+   tmp := foo5(x)
+}
+
+method test7p(x: Ref)
+{
+   var tmp: Int
+   //:: ExpectedOutput(application.precondition:assertion.false)
+   tmp := foo5(x)
+}
+
+method test8(x: Ref)
+{
+   inhale acc(x.f, 1/2)
+   var tmp: Int
+   tmp := foo5w(x)
+}
+
+method test8p(x: Ref)
+{
+   var tmp: Int
+   //:: ExpectedOutput(application.precondition:assertion.false)
+   tmp := foo5w(x)
+}
