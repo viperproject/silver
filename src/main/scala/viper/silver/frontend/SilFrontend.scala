@@ -377,9 +377,12 @@ trait SilFrontend extends DefaultFrontend {
     var errors = input.checkTransitively
     if (backendTypeFormat.isDefined)
       errors = errors ++ Consistency.checkBackendTypes(input, backendTypeFormat.get)
-    if (errors.isEmpty) {
+    val (actualErrors, warnings) = errors partition (_.isError)
+    if (warnings.nonEmpty)
+      reporter.report(ConsistencyWarnings(warnings))
+    if (actualErrors.isEmpty) {
       Succ(input)
     } else
-      Fail(errors)
+      Fail(actualErrors)
   }
 }

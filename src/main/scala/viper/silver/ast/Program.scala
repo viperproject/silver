@@ -471,7 +471,8 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres
         }).execute[Node](pre)
       })
       errors
-    }
+    } ++
+    Consistency.warnAboutFunctionPermissionAmounts(this)
 
   val scopedDecls: Seq[Declaration] = formalArgs
   /**
