@@ -11,7 +11,7 @@ predicate bar(x:Ref) {
 function get(x: Ref) : Int
   requires forall w:Ref :: {w in Set(x)} w in Set(x) ==> acc(bar(w))
   {
-    unfolding bar(x) in x.val
+    asserting (x in Set(x)) in unfolding bar(x) in x.val
   }
 
 method set(x:Ref, i:Int) 

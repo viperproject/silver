@@ -494,6 +494,8 @@ object PKwOp {
   type Unfolding = PReserved[Unfolding.type]
   case object Applying    extends PKwOp("applying")                 with PKeywordAtom with RightSpace
   type Applying = PReserved[Applying.type]
+  case object Asserting   extends PKwOp("asserting")                with PKeywordAtom with RightSpace
+  type Asserting = PReserved[Asserting.type]
   case object Let         extends PKwOp("let")                      with PKeywordAtom with RightSpace
   type Let = PReserved[Let.type]
 

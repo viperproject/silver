@@ -106,9 +106,9 @@ case class VerifierWarning(message: String, override val pos: Position)
 }
 
 /** An error during consistency-checking an AST node */
-case class ConsistencyError(message: String, pos:Position) extends AbstractError {
+case class ConsistencyError(message: String, pos:Position, isError: Boolean = true) extends AbstractError {
   def fullId = "consistency.error"
-  def readableMessage: String = s"Consistency error: $message ($pos)"
+  def readableMessage: String = s"Consistency ${if (isError) "error" else "warning"}: $message ($pos)"
 }
 
 /** A typechecker error. */
