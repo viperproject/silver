@@ -1,0 +1,79 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+field disc : Int
+field head : Ref
+field tail : Ref
+
+
+field deep_list_borrows : Multiset[Ref]
+field deep_i32_borrows : Multiset[Ref]
+
+define list_borrows(set) (forall b: Ref :: {b in set} acc(List_Owns(b), (b in set) / 1))
+
+field box_List_val : Ref
+
+predicate box_List_Owns(x:Ref) {
+  acc(x.box_List_val)
+  && acc(x.deep_i32_borrows)
+  && List_Owns(x.box_List_val)
+  && x.deep_i32_borrows == unfolding List_Owns(x.box_List_val) in x.box_List_val.deep_i32_borrows
+}
+
+predicate List_Owns(x:Ref) {
+  acc(x.disc) && acc(x.deep_i32_borrows) &&
+  (
+    x.disc == 0 ==>
+       acc(x.head) &&
+       acc(x.tail) &&
+       Ref_i32_Owns(x.head) &&
+       box_List_Owns(x.tail) &&
+       x.deep_i32_borrows ==
+        (unfolding Ref_i32_Owns(x.head) in x.head.deep_i32_borrows union
+        unfolding box_List_Owns(x.tail) in x.tail.deep_i32_borrows)
+  )
+}
+
+// The whole representation of instances of the type
+define Ref_List_type(x)
+  Ref_List_Owns(x) &&
+  list_borrows(unfolding Ref_List_Owns(x) in x.deep_list_borrows) &&
+  unfolding Ref_List_Owns(x) in x.deep_i32_borrows ==
+    unfolding List_Owns(x.Ref_List_val) in x.Ref_List_val.deep_i32_borrows
+
+field Ref_List_val : Ref
+
+predicate Ref_List_Owns(
+  x:Ref
+) {
+    acc(x.Ref_List_val) &&
+    acc(x.deep_list_borrows) &&
+    acc(x.deep_i32_borrows) &&
+    x.deep_list_borrows == Multiset(x.Ref_List_val)
+}
+
+field Ref_i32_val : Ref
+
+predicate Ref_i32_Owns(x:Ref) {
+  acc(x.Ref_i32_val)
+  && acc(x.deep_i32_borrows)
+  && x.deep_i32_borrows == Multiset(x.Ref_i32_val)
+}
+
+method incr_all(ll : Ref)
+  requires Ref_List_type(ll)
+{
+    var old_deep_list_borrows: Multiset[Ref] := Multiset()
+
+    unfold Ref_List_Owns(ll)
+    unfold List_Owns(ll.Ref_List_val)
+    var orig_tail: Ref := ll.Ref_List_val.tail
+
+        unfold box_List_Owns(ll.Ref_List_val.tail)
+      package list_borrows(old_deep_list_borrows) --* list_borrows(old_deep_list_borrows) {
+        fold box_List_Owns(orig_tail)
+        //:: ExpectedOutput(apply.failed:wand.not.found)
+        apply list_borrows(old_deep_list_borrows) --* list_borrows(old_deep_list_borrows)
+        }
+}
