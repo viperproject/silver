@@ -1,0 +1,14 @@
+field f: Int
+
+method test9a(x: Ref) {
+    assert inhaling (acc(x.f) && x.f == 0) in x.f == 0
+    assert acc(x.f, none)
+}
+
+method test9b(x: Ref, p: Perm)
+    requires none <= p
+    requires acc(x.f, p)
+{
+    assert inhaling (acc(x.f, write - p) && x.f == 0) in x.f == 0
+    assert acc(x.f, p)
+}

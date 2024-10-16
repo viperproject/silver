@@ -1,0 +1,13 @@
+field f: Int
+
+method test1(x: Ref, y: Ref)
+    requires acc(x.f) && acc(y.f)
+{
+    y.f := 42
+
+    package acc(x.f) --* acc(y.f)
+    exhale acc(x.f)
+
+    assert inhaling (acc(x.f)) in applying (acc(x.f) --* acc(y.f)) in y.f == 42
+    assert acc(x.f, none)
+}

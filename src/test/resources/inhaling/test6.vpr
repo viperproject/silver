@@ -1,0 +1,27 @@
+field f: Int
+
+predicate P(x: Ref) {
+    acc(x.f) && x.f == 1
+}
+
+method test6a(x: Ref)
+    requires acc(x.f)
+{
+    assert inhaling (acc(x.f)) in true
+    assert false
+}
+
+method test6b(x: Ref)
+    requires acc(x.f)
+{
+    assert inhaling (acc(x.f)) in false
+}
+
+method test6c(x: Ref)
+    requires acc(x.f) && x.f == 0
+{
+    assert inhaling (P(x)) in x.f == 0
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert inhaling (P(x)) in false
+    assert inhaling (P(x)) in unfolding P(x) in false
+}

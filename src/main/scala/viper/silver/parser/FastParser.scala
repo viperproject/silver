@@ -365,7 +365,7 @@ class FastParser {
   def atomReservedKw[$: P]: P[PExp] = {
     reservedKwMany(
       StringIn("true", "false", "null", "old", "result", "acc", "none", "wildcard", "write", "epsilon", "perm", "let", "forall", "exists", "forperm",
-        "unfolding", "applying", "Set", "Seq", "Multiset", "Map", "range", "domain", "new"),
+        "unfolding", "applying", "inhaling", "Set", "Seq", "Multiset", "Map", "range", "domain", "new"),
       str => pos => str match {
         case "true" => Pass.map(_ => PBoolLit(PReserved(PKw.True)(pos))(_))
         case "false" => Pass.map(_ => PBoolLit(PReserved(PKw.False)(pos))(_))
@@ -384,6 +384,7 @@ class FastParser {
         case "forperm" => forperm.map(_(PReserved(PKw.Forperm)(pos)))
         case "unfolding" => unfolding.map(_(PReserved(PKwOp.Unfolding)(pos)))
         case "applying" => applying.map(_(PReserved(PKwOp.Applying)(pos)))
+        case "inhaling" => inhaling.map(_(PReserved(PKwOp.Inhaling)(pos)))
         case "Set" => setConstructor.map(_(PReserved(PKwOp.Set)(pos)))
         case "Seq" => seqConstructor.map(_(PReserved(PKwOp.Seq)(pos)))
         case "Multiset" => multisetConstructor.map(_(PReserved(PKwOp.Multiset)(pos)))
@@ -650,6 +651,10 @@ class FastParser {
     case (wand, op, b) =>
       wand.inner.brackets = Some(wand)
       PApplying(_, wand.inner, op, b)
+  }
+
+  def inhaling[$: P]: P[PKwOp.Inhaling => Pos => PExp] = P(exp.parens ~ PKwOp.In ~ exp).map {
+    case (exp, in, body) => PInhaling(_, exp.inner, in, body)
   }
 
   def predicateAccessAssertion[$: P]: P[PAccAssertion] = P(accessPred | predAcc)
