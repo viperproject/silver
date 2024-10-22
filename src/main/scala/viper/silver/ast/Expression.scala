@@ -288,7 +288,7 @@ object AccessPredicate {
 case class FieldAccessPredicate(loc: FieldAccess, permExp: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AccessPredicate {
   val perm = permExp.getOrElse(FullPerm()(pos, NoInfo, NoTrafos))
   override lazy val check : Seq[ConsistencyError] =
-    (if(!(perm isSubtype Perm)) Seq(ConsistencyError(s"Permission amount parameter of access predicate must be of Perm type, but found ${perm.typ}", perm.pos)) else Seq()) ++ Consistency.checkWildcardUsage(perm)
+    (if(!(perm isSubtype Perm)) Seq(ConsistencyError(s"Permission amount parameter of access predicate must be of Perm type, but found ${perm.typ}", perm.pos)) else Seq())
   val typ: Bool.type = Bool
 }
 
@@ -296,7 +296,7 @@ case class FieldAccessPredicate(loc: FieldAccess, permExp: Option[Exp])(val pos:
 case class PredicateAccessPredicate(loc: PredicateAccess, permExp: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AccessPredicate {
   val perm = permExp.getOrElse(FullPerm()(pos, NoInfo, NoTrafos))
   override lazy val check : Seq[ConsistencyError] =
-    (if(!(perm isSubtype Perm)) Seq(ConsistencyError(s"Permission amount parameter of access predicate must be of Perm type, but found ${perm.typ}", perm.pos)) else Seq()) ++ Consistency.checkWildcardUsage(perm)
+    (if(!(perm isSubtype Perm)) Seq(ConsistencyError(s"Permission amount parameter of access predicate must be of Perm type, but found ${perm.typ}", perm.pos)) else Seq())
   val typ: Bool.type = Bool
 }
 

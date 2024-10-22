@@ -15,12 +15,24 @@ import viper.silver.{FastMessage, FastMessaging}
 /** An utility object for consistency checking. */
 object Consistency {
   var messages: FastMessaging.Messages = Nil
+
+  // Set to enable legacy mode where permission amounts in function preconditions have their usual meaning instead
+  // of just just being treated as a kind of wildcard.
+  private var respectFunctionPrePermAmounts: Boolean = false
   def recordIfNot(suspect: Positioned, property: Boolean, message: String): Unit = {
     if (!property) {
       val pos = suspect.pos
 
       this.messages ++= FastMessaging.aMessage(FastMessage(message,pos))  // this is the way to construct a message directly with a position (only).
     }
+  }
+
+  /** Use this method to enable consistency checks suitable for the legacy mode where permission amounts in function
+    * preconditions have their standard meaning, instead of always meaning a kind of wildcard.
+    * In other words, this should be set iff the command line flag "--respectFunctionPrePermAmounts" is set.
+    * */
+  def setFunctionPreconditionLegacyMode(enableLegacyMode: Boolean) = {
+    respectFunctionPrePermAmounts = enableLegacyMode
   }
 
   def resetMessages(): Unit = { this.messages = Nil }
@@ -185,19 +197,24 @@ object Consistency {
   }
 
   def warnAboutFunctionPermissionAmounts(f: Function): Seq[ConsistencyError] = {
+    if (respectFunctionPrePermAmounts)
+      return Seq()
     def hasSpecificPermAmounts(e: Exp): Boolean = e match {
       case CondExp(_, thn, els) => hasSpecificPermAmounts(thn) || hasSpecificPermAmounts(els)
       case _: FractionalPerm => true
+      case _: FullPerm => true
+      case _: PermAdd | _: PermSub | _: PermMinus | _: PermMul | _: IntPermMul | _: PermDiv | _: PermPermDiv => true
       case _ => false
     }
-    val preWarnings = f.pres.collect(pre => pre.collect{
-      case ap: AccessPredicate if hasSpecificPermAmounts(ap.perm) =>
-        ConsistencyError("Function precondition contains specific permission amount that will be treated like write/wildcard.", ap.pos, false)
-    }).flatten
-    val bodyWarnings = f.body.toSeq.map(body => body.collect{
-      case ap: AccessPredicate if hasSpecificPermAmounts(ap.perm) =>
-        ConsistencyError("Function body contains specific permission amount that will be treated like write/wildcard.", ap.pos, false)
-    }).flatten
+    def collectWarnings(e: Exp): Seq[ConsistencyError] = e.collect{
+      case FieldAccessPredicate(_, Some(perm)) if hasSpecificPermAmounts(perm) =>
+        ConsistencyError("Function contains specific permission amount that will be treated like wildcard.", perm.pos, false)
+      case PredicateAccessPredicate(_, Some(perm)) if hasSpecificPermAmounts(perm) =>
+        ConsistencyError("Function contains specific permission amount that will be treated like wildcard.", perm.pos, false)
+    }.toSeq
+
+    val preWarnings = f.pres.flatMap(collectWarnings)
+    val bodyWarnings = f.body.toSeq.flatMap(collectWarnings)
     preWarnings ++ bodyWarnings
   }
 
@@ -213,18 +230,28 @@ object Consistency {
     (if(!noLabelledOld(e)) Seq(ConsistencyError("Labelled-old expressions are not allowed in postconditions.", e.pos)) else Seq())
   }
 
-  def checkWildcardUsage(e: Exp): Seq[ConsistencyError] = {
-    val containedWildcards = e.shallowCollect{
-      case w: WildcardPerm => w
-    }
-    if (containedWildcards.nonEmpty) {
-      e match {
-        case _: WildcardPerm => Seq()
-        case _ => Seq(ConsistencyError("Wildcard occurs inside compound expression (should only occur directly in an accessibility predicate).", e.pos))
+  def checkWildcardUsage(n: Node, inFunction: Boolean): Seq[ConsistencyError] = {
+    if (!respectFunctionPrePermAmounts && inFunction)
+      return Seq()
+
+    def checkValidUse(e: Exp): Seq[ConsistencyError] = {
+      val containedWildcards = e.shallowCollect {
+        case w: WildcardPerm => w
       }
-    } else {
-      Seq()
+      if (containedWildcards.nonEmpty) {
+        e match {
+          case _: WildcardPerm => Seq()
+          case _ => Seq(ConsistencyError("Wildcard occurs inside compound expression (should only occur directly in an accessibility predicate).", e.pos))
+        }
+      } else {
+        Seq()
+      }
     }
+
+    n.collect{
+      case FieldAccessPredicate(_, Some(prm)) => checkValidUse(prm)
+      case PredicateAccessPredicate(_, Some(prm)) => checkValidUse(prm)
+    }.flatten.toSeq
   }
 
   /** checks that all quantified variables appear in all triggers */
