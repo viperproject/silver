@@ -1198,7 +1198,8 @@ case class PAccPred(op: PKwOp.Acc, amount: PGrouped.Paren[PMaybePairArgument[PLo
     Map(POpApp.pArgS(1) -> Perm, POpApp.pResS -> Impure),
   )
   def loc = amount.inner.first
-  def perm = amount.inner.second.map(_._2).getOrElse(PFullPerm.implied())
+  def perm = permExp.getOrElse(PFullPerm.implied())
+  def permExp: Option[PExp] = amount.inner.second.map(_._2)
   override val args = Seq(loc, perm)
 }
 

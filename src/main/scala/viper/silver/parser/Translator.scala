@@ -504,8 +504,7 @@ case class Translator(program: PProgram) {
             }
           case _: Predicate =>
             val inner = PredicateAccess(args.inner.toSeq map exp, findPredicate(func).name) (pos, info)
-            val fullPerm = FullPerm()(pos, info)
-            PredicateAccessPredicate(inner, fullPerm) (pos, info)
+            PredicateAccessPredicate(inner, None) (pos, info)
           case _ => sys.error("unexpected reference to non-function")
         }
       case PNewExp(_, _) => sys.error("unexpected `new` expression")
@@ -568,7 +567,7 @@ case class Translator(program: PProgram) {
       case PEpsilon(_) =>
         EpsilonPerm()(pos, info)
       case acc: PAccPred =>
-        val p = exp(acc.perm)
+        val p = acc.permExp.map(exp)
         exp(acc.loc) match {
           case loc@FieldAccess(_, _) =>
             FieldAccessPredicate(loc, p)(pos, info)
