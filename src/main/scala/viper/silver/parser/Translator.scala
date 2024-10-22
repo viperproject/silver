@@ -307,7 +307,7 @@ case class Translator(program: PProgram) {
         // A PrediateAccessPredicate is a PredicateResourceAccess combined with
         // a Permission. Havoc expects a ResourceAccess. To make types match,
         // we must extract the PredicateResourceAccess.
-        assert(perm.isInstanceOf[FullPerm])
+        assert(perm.isEmpty || perm.get.isInstanceOf[FullPerm])
         (newLhs, predAccess)
       case exp: MagicWand => (newLhs, exp)
       case _ => sys.error("Can't havoc this kind of expression")
