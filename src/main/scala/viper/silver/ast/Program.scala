@@ -427,7 +427,7 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
     (if (!((formalArgs ++ formalReturns) forall (_.typ.isConcrete))) Seq(ConsistencyError("Formal args and returns must have concrete types.", pos)) else Seq()) ++
     (pres ++ posts).flatMap(Consistency.checkNoPermForpermExceptInhaleExhale) ++
     checkReturnsNotUsedInPreconditions ++
-    (pres ++ posts ++ body.toSeq).flatMap(Consistency.checkWildcardUsage(_, false)) ++
+    (pres ++ posts ++ body.toSeq).flatMap(Consistency.checkWildcardUsage(_, false))
 
   lazy val checkReturnsNotUsedInPreconditions: Seq[ConsistencyError] = {
     val varsInPreconditions: Seq[LocalVar] = pres flatMap {_.deepCollect {case l: LocalVar => l}}

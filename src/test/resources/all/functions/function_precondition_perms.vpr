@@ -18,6 +18,9 @@ function foop(x: Ref): Int
 function foo2(x: Ref, b: Bool): Int
   requires acc(x.f, b ? write : none)
 
+function foo2w(x: Ref, b: Bool): Int
+  requires acc(x.f, b ? wildcard : none)
+
 function foo3(x: Ref): Int
   requires acc(x.f, wildcard)
 
@@ -224,6 +227,54 @@ method test3qp(x: Ref, b: Bool)
    var tmp: Int
    //:: ExpectedOutput(application.precondition:insufficient.permission)
    tmp := foo2(x, !b)
+}
+
+method test2w(x: Ref, b: Bool)
+{
+   inhale acc(x.f, b ? 1/2 : none)
+   var tmp: Int
+   tmp := foo2w(x, b)
+}
+
+@exhaleMode("mce")
+method test2mcew(x: Ref, b: Bool)
+{
+   inhale acc(x.f, b ? 1/2 : none)
+   var tmp: Int
+   tmp := foo2w(x, b)
+}
+
+method test2qpw(x: Ref, b: Bool)
+{
+   inhale forall y: Ref :: y == x ==> acc(y.f, b ? 1/2 : none)
+   var tmp: Int
+   tmp := foo2w(x, b)
+}
+
+
+method test3w(x: Ref, b: Bool)
+{
+   inhale acc(x.f, b ? 1/2 : none)
+   var tmp: Int
+   //:: ExpectedOutput(application.precondition:insufficient.permission)
+   tmp := foo2w(x, !b)
+}
+
+@exhaleMode("mce")
+method test3mcew(x: Ref, b: Bool)
+{
+   inhale acc(x.f, b ? 1/2 : none)
+   var tmp: Int
+   //:: ExpectedOutput(application.precondition:insufficient.permission)
+   tmp := foo2w(x, !b)
+}
+
+method test3qpw(x: Ref, b: Bool)
+{
+   inhale forall y: Ref :: y == x ==> acc(y.f, b ? 1/2 : none)
+   var tmp: Int
+   //:: ExpectedOutput(application.precondition:insufficient.permission)
+   tmp := foo2w(x, !b)
 }
 
 method test4(x: Ref)
