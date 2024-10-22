@@ -68,7 +68,7 @@ class PredicateInstancePlugin(@unused reporter: viper.silver.reporter.Reporter,
             Function(piFunctionName,
               pred.formalArgs,
               DomainType(PredicateInstanceDomain.get, Map()),
-              Seq(PredicateAccessPredicate(PredicateAccess(pred.formalArgs.map(_.localVar), pred.name)(), WildcardPerm()())(predicateInstance.pos, predicateInstance.info, predicateInstance.errT)),
+              Seq(PredicateAccessPredicate(PredicateAccess(pred.formalArgs.map(_.localVar), pred.name)(), Some(WildcardPerm()()))(predicateInstance.pos, predicateInstance.info, predicateInstance.errT)),
               Seq(),
               None
             )(PredicateInstanceDomain.get.pos, PredicateInstanceDomain.get.info)
