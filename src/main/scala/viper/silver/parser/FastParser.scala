@@ -152,7 +152,7 @@ object FastParserCompanion {
     // maps
     PKw.Map, PKwOp.Range, PKwOp.Domain,
     // prover hint expressions
-    PKwOp.Unfolding, PKwOp.In, PKwOp.Applying,
+    PKwOp.Unfolding, PKwOp.In, PKwOp.Applying, PKwOp.Asserting,
     // old expression
     PKwOp.Old, PKw.Lhs,
     // other expressions
@@ -365,7 +365,7 @@ class FastParser {
   def atomReservedKw[$: P]: P[PExp] = {
     reservedKwMany(
       StringIn("true", "false", "null", "old", "result", "acc", "none", "wildcard", "write", "epsilon", "perm", "let", "forall", "exists", "forperm",
-        "unfolding", "applying", "Set", "Seq", "Multiset", "Map", "range", "domain", "new"),
+        "unfolding", "applying", "asserting", "Set", "Seq", "Multiset", "Map", "range", "domain", "new"),
       str => pos => str match {
         case "true" => Pass.map(_ => PBoolLit(PReserved(PKw.True)(pos))(_))
         case "false" => Pass.map(_ => PBoolLit(PReserved(PKw.False)(pos))(_))
@@ -384,6 +384,7 @@ class FastParser {
         case "forperm" => forperm.map(_(PReserved(PKw.Forperm)(pos)))
         case "unfolding" => unfolding.map(_(PReserved(PKwOp.Unfolding)(pos)))
         case "applying" => applying.map(_(PReserved(PKwOp.Applying)(pos)))
+        case "asserting" => asserting.map(_(PReserved(PKwOp.Asserting)(pos)))
         case "Set" => setConstructor.map(_(PReserved(PKwOp.Set)(pos)))
         case "Seq" => seqConstructor.map(_(PReserved(PKwOp.Seq)(pos)))
         case "Multiset" => multisetConstructor.map(_(PReserved(PKwOp.Multiset)(pos)))
@@ -650,6 +651,10 @@ class FastParser {
     case (wand, op, b) =>
       wand.inner.brackets = Some(wand)
       PApplying(_, wand.inner, op, b)
+  }
+
+  def asserting[$: P]: P[PKwOp.Asserting => Pos => PExp] = P(exp.parens ~ PKwOp.In ~ exp).map {
+    case (a, in, b) => PAsserting(_, a.inner, in, b)
   }
 
   def predicateAccessAssertion[$: P]: P[PAccAssertion] = P(accessPred | predAcc)

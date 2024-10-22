@@ -1,0 +1,444 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+field f: Int
+field g: Int
+
+predicate P(x: Ref) {
+    acc(x.f)
+}
+
+function foo(x: Ref): Int
+  requires acc(x.f)
+
+function foop(x: Ref): Int
+  requires P(x)
+
+function foo2(x: Ref, b: Bool): Int
+  requires acc(x.f, b ? write : none)
+
+function foo2w(x: Ref, b: Bool): Int
+  requires acc(x.f, b ? wildcard : none)
+
+function foo3(x: Ref): Int
+  requires acc(x.f, wildcard)
+
+function foo4(x: Ref): Int
+  requires acc(x.f) && acc(x.f)
+
+function foo5(x: Ref): Int
+  requires forall z: Ref :: z == x ==> acc(z.f)
+
+function foo5w(x: Ref): Int
+  requires forall z: Ref :: z == x ==> acc(z.f, wildcard)
+
+function foo5p(x: Ref): Int
+  requires forall z: Ref :: z == x ==> P(z)
+
+function foo5pw(x: Ref): Int
+  requires forall z: Ref :: z == x ==> acc(P(z), wildcard)
+
+//:: ExpectedOutput(function.not.wellformed:assertion.false)
+function nonAliasF(x: Ref, y: Ref): Int
+  requires acc(x.f) && acc(y.f)
+{
+    asserting (x != y) in x.f
+}
+
+predicate nonAliasPred(x: Ref, y: Ref) {
+    acc(x.f) && acc(y.f) && asserting (x != y) in true
+}
+
+method nonAliasM(x: Ref, y: Ref) {
+    inhale acc(x.f) && acc(y.f)
+    assert x != y
+}
+
+function bar(x: Ref): Int
+  requires acc(P(x), 1/4)
+{
+  unfolding acc(P(x), 1/2) in foo(x)
+}
+
+//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
+function bar2(x: Ref): Int
+  requires acc(P(x), none)
+{
+  unfolding acc(P(x), 1/2) in foo(x)
+}
+
+//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
+function bar3(x: Ref): Int
+  requires acc(P(x), write)
+{
+  unfolding acc(P(x), 1/2) in x.g
+}
+
+function bar4(x: Ref): Int
+  requires acc(P(x), 1/2) && unfolding P(x) in x.f > 0
+
+
+function bar5(x: Ref): Int
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  requires unfolding P(x) in x.f > 0
+
+function foo6(x: Ref): Int
+  requires forall z: Ref :: false ==> acc(z.f)
+  requires acc(x.f)
+
+method test0(x: Ref)
+{
+   inhale acc(x.f, 1/2)
+   var tmp: Int
+   tmp := foo(x)
+}
+
+@exhaleMode("mce")
+method test0mce(x: Ref)
+{
+   inhale acc(x.f, 1/2)
+   var tmp: Int
+   tmp := foo(x)
+}
+
+method test0qp(x: Ref)
+{
+   inhale forall y: Ref :: y == x ==> acc(y.f, 1/2)
+   var tmp: Int
+   tmp := foo(x)
+}
+
+method test0p(x: Ref)
+{
+   inhale acc(P(x), 1/2)
+   var tmp: Int
+   tmp := foop(x)
+}
+
+@exhaleMode("mce")
+method test0pmce(x: Ref)
+{
+   inhale acc(P(x), 1/2)
+   var tmp: Int
+   tmp := foop(x)
+}
+
+method test0pqp(x: Ref)
+{
+   inhale forall y: Ref :: y == x ==> acc(P(y), 1/2)
+   var tmp: Int
+   tmp := foop(x)
+}
+
+method test1(x: Ref)
+{
+   inhale acc(x.f, none)
+   var tmp: Int
+   //:: ExpectedOutput(application.precondition:insufficient.permission)
+   tmp := foo(x)
+}
+
+@exhaleMode("mce")
+method test1mce(x: Ref)
+{
+   inhale acc(x.f, none)
+   var tmp: Int
+   //:: ExpectedOutput(application.precondition:insufficient.permission)
+   tmp := foo(x)
+}
+
+method test1qp(x: Ref)
+{
+   inhale forall y: Ref :: y == x ==> acc(y.f, none)
+   var tmp: Int
+   //:: ExpectedOutput(application.precondition:insufficient.permission)
+   tmp := foo(x)
+}
+
+method test1p(x: Ref)
+{
+   inhale acc(P(x), none)
+   var tmp: Int
+   //:: ExpectedOutput(application.precondition:insufficient.permission)
+   tmp := foop(x)
+}
+
+@exhaleMode("mce")
+method test1pmce(x: Ref)
+{
+   inhale acc(P(x), none)
+   var tmp: Int
+   //:: ExpectedOutput(application.precondition:insufficient.permission)
+   tmp := foop(x)
+}
+
+method test1pqp(x: Ref)
+{
+   inhale forall y: Ref :: y == x ==> acc(P(y), none)
+   var tmp: Int
+   //:: ExpectedOutput(application.precondition:insufficient.permission)
+   tmp := foop(x)
+}
+
+method test2(x: Ref, b: Bool)
+{
+   inhale acc(x.f, b ? 1/2 : none)
+   var tmp: Int
+   tmp := foo2(x, b)
+}
+
+@exhaleMode("mce")
+method test2mce(x: Ref, b: Bool)
+{
+   inhale acc(x.f, b ? 1/2 : none)
+   var tmp: Int
+   tmp := foo2(x, b)
+}
+
+method test2qp(x: Ref, b: Bool)
+{
+   inhale forall y: Ref :: y == x ==> acc(y.f, b ? 1/2 : none)
+   var tmp: Int
+   tmp := foo2(x, b)
+}
+
+
+method test3(x: Ref, b: Bool)
+{
+   inhale acc(x.f, b ? 1/2 : none)
+   var tmp: Int
+   //:: ExpectedOutput(application.precondition:insufficient.permission)
+   tmp := foo2(x, !b)
+}
+
+@exhaleMode("mce")
+method test3mce(x: Ref, b: Bool)
+{
+   inhale acc(x.f, b ? 1/2 : none)
+   var tmp: Int
+   //:: ExpectedOutput(application.precondition:insufficient.permission)
+   tmp := foo2(x, !b)
+}
+
+method test3qp(x: Ref, b: Bool)
+{
+   inhale forall y: Ref :: y == x ==> acc(y.f, b ? 1/2 : none)
+   var tmp: Int
+   //:: ExpectedOutput(application.precondition:insufficient.permission)
+   tmp := foo2(x, !b)
+}
+
+method test2w(x: Ref, b: Bool)
+{
+   inhale acc(x.f, b ? 1/2 : none)
+   var tmp: Int
+   tmp := foo2w(x, b)
+}
+
+@exhaleMode("mce")
+method test2mcew(x: Ref, b: Bool)
+{
+   inhale acc(x.f, b ? 1/2 : none)
+   var tmp: Int
+   tmp := foo2w(x, b)
+}
+
+method test2qpw(x: Ref, b: Bool)
+{
+   inhale forall y: Ref :: y == x ==> acc(y.f, b ? 1/2 : none)
+   var tmp: Int
+   tmp := foo2w(x, b)
+}
+
+
+method test3w(x: Ref, b: Bool)
+{
+   inhale acc(x.f, b ? 1/2 : none)
+   var tmp: Int
+   //:: ExpectedOutput(application.precondition:insufficient.permission)
+   tmp := foo2w(x, !b)
+}
+
+@exhaleMode("mce")
+method test3mcew(x: Ref, b: Bool)
+{
+   inhale acc(x.f, b ? 1/2 : none)
+   var tmp: Int
+   //:: ExpectedOutput(application.precondition:insufficient.permission)
+   tmp := foo2w(x, !b)
+}
+
+method test3qpw(x: Ref, b: Bool)
+{
+   inhale forall y: Ref :: y == x ==> acc(y.f, b ? 1/2 : none)
+   var tmp: Int
+   //:: ExpectedOutput(application.precondition:insufficient.permission)
+   tmp := foo2w(x, !b)
+}
+
+method test4(x: Ref)
+{
+   inhale acc(x.f, 1/2)
+   var tmp: Int
+   tmp := foo3(x)
+}
+
+@exhaleMode("mce")
+method test4mce(x: Ref)
+{
+   inhale acc(x.f, 1/2)
+   var tmp: Int
+   tmp := foo3(x)
+}
+
+method test4qp(x: Ref)
+{
+   inhale forall y: Ref :: y == x ==> acc(y.f, 1/2)
+   var tmp: Int
+   tmp := foo3(x)
+}
+
+method test4f(x: Ref)
+{
+   var tmp: Int
+   //:: ExpectedOutput(application.precondition:insufficient.permission)
+   tmp := foo3(x)
+}
+
+@exhaleMode("mce")
+method test4mcef(x: Ref)
+{
+   var tmp: Int
+   //:: ExpectedOutput(application.precondition:insufficient.permission)
+   tmp := foo3(x)
+}
+
+method test4qpf(x: Ref)
+{
+   inhale forall y: Ref :: false ==> acc(y.f, 1/2)
+   var tmp: Int
+   //:: ExpectedOutput(application.precondition:insufficient.permission)
+   tmp := foo3(x)
+}
+
+method test5(x: Ref)
+{
+   inhale acc(x.f, 1/2)
+   var tmp: Int
+   tmp := foo4(x)
+}
+
+@exhaleMode("mce")
+method test5mce(x: Ref)
+{
+   inhale acc(x.f, 1/2)
+   var tmp: Int
+   tmp := foo4(x)
+}
+
+method test5qp(x: Ref)
+{
+   inhale forall y: Ref :: y == x ==> acc(y.f, 1/2)
+   var tmp: Int
+   tmp := foo4(x)
+}
+
+method test5f(x: Ref)
+{
+   var tmp: Int
+   //:: ExpectedOutput(application.precondition:insufficient.permission)
+   tmp := foo4(x)
+}
+
+@exhaleMode("mce")
+method test5mcef(x: Ref)
+{
+   var tmp: Int
+   //:: ExpectedOutput(application.precondition:insufficient.permission)
+   tmp := foo4(x)
+}
+
+method test5qpf(x: Ref)
+{
+   inhale forall y: Ref :: false ==> acc(y.f, 1/2)
+   var tmp: Int
+   //:: ExpectedOutput(application.precondition:insufficient.permission)
+   tmp := foo4(x)
+}
+
+method test6(x: Ref)
+{
+   inhale acc(x.f, 1/4)
+   assume x.f == 4
+   fold acc(P(x), 1/4)
+   var tmp: Int
+   tmp := bar4(x)
+}
+
+method test6f(x: Ref)
+{
+   inhale acc(x.f, 1/4)
+   assume x.f == -2
+   fold acc(P(x), 1/4)
+   var tmp: Int
+   //:: ExpectedOutput(application.precondition:assertion.false)
+   tmp := bar4(x)
+}
+
+
+method test7(x: Ref)
+{
+   inhale acc(x.f, 1/2)
+   var tmp: Int
+   tmp := foo5(x)
+}
+
+method test7f(x: Ref)
+{
+   var tmp: Int
+   //:: ExpectedOutput(application.precondition:insufficient.permission)
+   tmp := foo5(x)
+}
+
+method test7p(x: Ref)
+{
+   inhale acc(P(x), 1/2)
+   var tmp: Int
+   tmp := foo5p(x)
+}
+
+method test7pf(x: Ref)
+{
+   var tmp: Int
+   //:: ExpectedOutput(application.precondition:insufficient.permission)
+   tmp := foo5p(x)
+}
+
+method test8(x: Ref)
+{
+   inhale acc(x.f, 1/2)
+   var tmp: Int
+   tmp := foo5w(x)
+}
+
+method test8f(x: Ref)
+{
+   var tmp: Int
+   //:: ExpectedOutput(application.precondition:insufficient.permission)
+   tmp := foo5w(x)
+}
+
+method test8p(x: Ref)
+{
+   inhale acc(P(x), 1/2)
+   var tmp: Int
+   tmp := foo5pw(x)
+}
+
+method test8pf(x: Ref)
+{
+   var tmp: Int
+   //:: ExpectedOutput(application.precondition:insufficient.permission)
+   tmp := foo5pw(x)
+}

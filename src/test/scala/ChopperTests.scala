@@ -223,7 +223,7 @@ class ChopperTests extends AnyFunSuite with Matchers with Inside {
     val callee = calleeStub.copy(body = Some(ast.TrueLit()()))(ast.NoPosition, ast.NoInfo, ast.NoTrafos)
     val call = ast.PredicateAccess(Seq.empty, predicateName = callee.name)()
     val caller1 = callerStub1.copy(body = Some(call))(ast.NoPosition, ast.NoInfo, ast.NoTrafos)
-    val unfolding = ast.Unfolding(ast.PredicateAccessPredicate(call, ast.FullPerm()())(), ast.TrueLit()())()
+    val unfolding = ast.Unfolding(ast.PredicateAccessPredicate(call, None)(), ast.TrueLit()())()
     val caller2 = callerStub2.copy(body = Some(unfolding))(ast.NoPosition, ast.NoInfo, ast.NoTrafos)
 
     val program = ast.Program(Seq.empty, Seq.empty, Seq.empty, Seq(callee, caller1, caller2), Seq.empty, Seq.empty)()

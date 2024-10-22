@@ -139,6 +139,13 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     hidden = false
   )
 
+  val respectFunctionPrePermAmounts = opt[Boolean]("respectFunctionPrePermAmounts",
+    descr = "Respects precise permission amounts in function preconditions instead of only checking read access.",
+    default = Some(false),
+    noshort = true,
+    hidden = false
+  )
+
   val submitForEvaluation = opt[Boolean](name = "submitForEvaluation",
     descr = "Whether to allow storing the current program for future evaluation.",
     default = Some(false),

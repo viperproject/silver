@@ -31,12 +31,21 @@ object Permissions {
            "Internal error: attempted to permission-scale expression " + e.toString +
                " by non-permission-typed expression " + permFactor.toString)
 
-    if(permFactor.isInstanceOf[FullPerm])
+    def multiplyPermOpt(op: Option[Exp]): Option[Exp] = op match {
+      case Some(p) => Some(PermMul(p, permFactor)(p.pos, p.info))
+      case None => Some(permFactor)
+    }
+
+    if (permFactor.isInstanceOf[FullPerm]) {
       e
-    else
-      e.transform({
-        case fa@FieldAccessPredicate(loc,p) => FieldAccessPredicate(loc,PermMul(p,permFactor)(p.pos,p.info))(fa.pos,fa.info)
-        case pa@PredicateAccessPredicate(loc,p) => PredicateAccessPredicate(loc,PermMul(p,permFactor)(p.pos,p.info))(pa.pos,pa.info)
+    } else {
+      e.transform{
+        case fa@FieldAccessPredicate(loc, p) =>
+          FieldAccessPredicate(loc, multiplyPermOpt(p))(fa.pos, fa.info)
+        case pa@PredicateAccessPredicate(loc, p) =>
+          PredicateAccessPredicate(loc, multiplyPermOpt(p))(pa.pos, pa.info)
         case _: MagicWand => sys.error("Cannot yet permission-scale magic wands")
-      })}
+      }
+    }
+  }
 }
