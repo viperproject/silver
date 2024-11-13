@@ -722,7 +722,7 @@ sealed abstract class RelOp(val op: String) extends BoolDomainFunc {
 case object AddOp extends SumOp("+") with IntBinOp with IntDomainFunc
 case object SubOp extends SumOp("-") with IntBinOp with IntDomainFunc
 case object MulOp extends ProdOp("*") with IntBinOp with IntDomainFunc
-case object DivOp extends ProdOp("/") with IntBinOp with IntDomainFunc
+case object DivOp extends ProdOp("\\") with IntBinOp with IntDomainFunc
 case object ModOp extends ProdOp("%") with IntBinOp with IntDomainFunc
 
 // Arithmetic permission operators

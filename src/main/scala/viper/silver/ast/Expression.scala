@@ -499,6 +499,11 @@ case class Applying(wand: MagicWand, body: Exp)(val pos: Position = NoPosition, 
   lazy val typ = body.typ
 }
 
+case class Asserting(a: Exp, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp {
+  override lazy val check: Seq[ConsistencyError] = Consistency.checkPure(body)
+  lazy val typ = body.typ
+}
+
 // --- Old expressions
 
 sealed trait OldExp extends UnExp {

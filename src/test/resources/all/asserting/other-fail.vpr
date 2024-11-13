@@ -1,0 +1,19 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field x: Int
+
+method test1() {
+  //:: ExpectedOutput(assert.failed:division.by.zero)
+  assert asserting (1 / 0 == 0) in true
+}
+
+method test2() {
+  //:: ExpectedOutput(assert.failed:division.by.zero)
+  assert asserting (true) in (1 / 0 == 0)
+}
+
+method test3(r: Ref) {
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
+  assert asserting (true && acc(r.x)) in true
+}
