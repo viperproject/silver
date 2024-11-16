@@ -7,6 +7,7 @@
 package viper.silver.plugin.standard.predicateinstance
 
 import viper.silver.ast._
+import viper.silver.parser.ReformatPrettyPrinter.show
 import viper.silver.parser._
 
 import scala.collection.mutable
@@ -43,4 +44,7 @@ case class PPredicateInstance(m: PReserved[PMarkerSymbol.type], idnuse: PIdnRef[
   override def translateExp(t: Translator): ExtensionExp = {
     PredicateInstance(idnuse.name, args.inner.toSeq map t.exp)(t.liftPos(this))
   }
+
+  override def reformatExp(ctx: ReformatterContext): Cont = show(m, ctx) <>
+    show(idnuse, ctx) <> show(args, ctx)
 }

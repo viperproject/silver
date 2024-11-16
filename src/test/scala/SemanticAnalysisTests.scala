@@ -31,7 +31,7 @@ class SemanticAnalysisTests extends AnyFunSuite {
     val binExp2 = PBinExp(PIntLit(1)(p), PReserved.implied(PSymOp.EqEq), PIntLit(1)(p))(p)
     val body = PSeqn(PDelimited.impliedBlock(Seq(PAssert(PReserved.implied(PKw.Assert), binExp1)(p), PSeqn(PDelimited.impliedBlock(Seq(PAssert(PReserved.implied(PKw.Assert), binExp2)(p))))(p))))(p)
     val method = PMethod(Seq(), PReserved.implied(PKw.Method), PIdnDef("m")(p), PGrouped.impliedParen(PDelimited.empty), None, PDelimited.empty, PDelimited.empty, Some(body))(p)
-    val program = PProgram(Nil, Seq(method))(p, Seq())
+    val program = PProgram(Nil, Seq(method))(p, Seq(), Seq(),"")
     assert(frontend.doSemanticAnalysis(program) === frontend.Succ(program))
   }
 
@@ -40,7 +40,7 @@ class SemanticAnalysisTests extends AnyFunSuite {
     val binExp = PBinExp(PIntLit(1)(p), PReserved.implied(PSymOp.EqEq), PIntLit(1)(p))(p)
     val body = PSeqn(PDelimited.impliedBlock(Seq(PAssert(PReserved.implied(PKw.Assert), binExp)(p), PSeqn(PDelimited.impliedBlock(Seq(PAssert(PReserved.implied(PKw.Assert), binExp)(p))))(p))))(p)
     val method = PMethod(Seq(), PReserved.implied(PKw.Method), PIdnDef("m")(p), PGrouped.impliedParen(PDelimited.empty), None, PDelimited.empty, PDelimited.empty, Some(body))(p)
-    val program = PProgram(Nil, Seq(method))(p, Seq())
+    val program = PProgram(Nil, Seq(method))(p, Seq(), Seq(),"")
     assert(frontend.doSemanticAnalysis(program) === frontend.Succ(program))
   }
 }

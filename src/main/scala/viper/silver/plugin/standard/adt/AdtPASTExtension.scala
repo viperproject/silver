@@ -13,6 +13,7 @@ import viper.silver.plugin.standard.adt.PAdtConstructor.findAdtConstructor
 
 import scala.annotation.unused
 import viper.silver.ast.utility.rewriter.HasExtraVars
+import viper.silver.parser.ReformatPrettyPrinter.{show, showAnnotations, showOption}
 
 /**
   * Keywords used to define ADT's
@@ -76,6 +77,9 @@ case class PAdt(annotations: Seq[PAnnotation], adt: PReserved[PAdtKeyword.type],
     adtType.kind = PAdtTypeKinds.Adt
     adtType
   }
+
+  override def reformat(ctx: ReformatterContext): Cont = showAnnotations(annotations, ctx) <@@> show(adt, ctx) <+>
+    show(idndef, ctx) <> showOption(typVars, ctx) <+> show(c, ctx)
 }
 
 object PAdt {
@@ -97,12 +101,19 @@ trait PAdtChild extends PNode {
 case class PAdtSeq[T <: PNode](seq: PGrouped[PSym.Brace, Seq[T]])(val pos: (Position, Position)) extends PExtender {
   def inner: Seq[T] = seq.inner
   override def pretty = s"${seq.l.pretty}\n  ${seq.inner.map(_.pretty).mkString("\n  ")}\n${seq.r.pretty}"
+
+  override def reformat(ctx: ReformatterContext): Cont = {
+    show(seq, ctx)
+  }
 }
 
 /** Any argument to a method, function or predicate. */
 case class PAdtFieldDecl(idndef: PIdnDef, c: PSym.Colon, typ: PType)(val pos: (Position, Position)) extends PAnyFormalArgDecl with PTypedDeclaration with PGlobalDeclaration with PMemberUniqueDeclaration with PAdtChild {
   def constructor: PAdtConstructor = getAncestor[PAdtConstructor].get
   def annotations: Seq[PAnnotation] = Nil
+
+  override def reformat(ctx: ReformatterContext): Cont = show(idndef, ctx) <>
+    show(c, ctx) <+> show(typ, ctx)
 }
 object PAdtFieldDecl {
   def apply(d: PIdnTypeBinding): PAdtFieldDecl = PAdtFieldDecl(d.idndef, d.c, d.typ)(d.pos)
@@ -137,6 +148,9 @@ case class PAdtConstructor(annotations: Seq[PAnnotation], idndef: PIdnDef, args:
   override def keyword = adt.adt
   override def c = PReserved.implied(PSym.Colon)
   override def body = None
+
+  override def reformat(ctx: ReformatterContext): Cont = showAnnotations(annotations, ctx) <@@>
+    show(idndef, ctx) <> show(args, ctx)
 }
 
 object PAdtConstructor {
@@ -165,6 +179,8 @@ case class PAdtDeriving(k: PReserved[PDerivesKeyword.type], derivingInfos: PAdtS
 
     None
   }
+
+  override def reformat(ctx: ReformatterContext): Cont = show(k, ctx) <+> show(derivingInfos, ctx)
 }
 
 case class PAdtWithout(k: PReserved[PWithoutKeyword.type], blockList: PDelimited[PIdnRef[PAdtFieldDecl], PSym.Comma])(val pos: (Position, Position)) extends PExtender with PPrettySubnodes with PAdtChild {
@@ -177,6 +193,8 @@ case class PAdtWithout(k: PReserved[PWithoutKeyword.type], blockList: PDelimited
     })
     None
   }
+
+  override def reformat(ctx: ReformatterContext): Cont = show(k, ctx) <+> show(blockList, ctx)
 }
 
 case class PAdtDerivingInfo(idndef: PIdnDef, param: Option[PGrouped[PSym.Bracket, PType]], without: Option[PAdtWithout])(val pos: (Position, Position)) extends PExtender with PPrettySubnodes {
@@ -186,6 +204,8 @@ case class PAdtDerivingInfo(idndef: PIdnDef, param: Option[PGrouped[PSym.Bracket
     without map (_.typecheck(t, n))
     None
   }
+
+  override def reformat(ctx: ReformatterContext): Cont = show(idndef, ctx) <+> showOption(param, ctx)
 }
 
 case class PAdtType(adt: PIdnRef[PAdt], args: Option[PDelimited.Comma[PSym.Bracket, PType]])
@@ -456,6 +476,9 @@ case class PConstructorCall(idnref: PIdnRef[PAdtConstructor], callArgs: PDelimit
       case _ => sys.error("type unification error - should report and not crash")
     }
   }
+
+  override def reformatExp(ctx: ReformatterContext): Cont = show(idnref, ctx) <>
+    show(callArgs, ctx) <> showOption(typeAnnotated, ctx)
 }
 
 case class PDestructorCall(rcv: PExp, dot: PReserved[PDiscDot.type], idnref: PIdnRef[PAdtFieldDecl])
@@ -488,6 +511,8 @@ case class PDestructorCall(rcv: PExp, dot: PReserved[PDiscDot.type], idnref: PId
       case _ => sys.error("type unification error - should report and not crash")
     }
   }
+
+  override def reformatExp(ctx: ReformatterContext): Cont = show(rcv, ctx) <> show(dot, ctx) <> show(idnref, ctx)
 }
 
 case object PIsKeyword extends PKwOp("is") {
@@ -524,4 +549,6 @@ case class PDiscriminatorCall(rcv: PExp, dot: PReserved[PDiscDot.type], is: PRes
       case _ => sys.error("type unification error - should report and not crash")
     }
   }
+
+  override def reformatExp(ctx: ReformatterContext): Cont = show(rcv, ctx) <> show(dot, ctx) <> show(is, ctx) <> show(idnref, ctx)
 }

@@ -6,7 +6,7 @@
 
 package viper.silver.ast.utility.rewriter
 
-import viper.silver.parser.PNode
+import viper.silver.parser.{PDomainMembers, PNode}
 import viper.silver.ast.{AtomicType, BackendFuncApp, DomainFuncApp, ErrorTrafo, FuncApp, Info, Node, Position}
 
 import scala.reflect.runtime.{universe => reflection}

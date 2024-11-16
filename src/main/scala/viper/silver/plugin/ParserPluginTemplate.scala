@@ -6,13 +6,12 @@
 
 package viper.silver.plugin
 
-import viper.silver.parser.{NameAnalyser, PAnnotationsPosition, PExp, PExtender, PKeyword, PSpecification, PKw, PMember, PReserved, PStmt, PTypeSubstitution, Translator, TypeChecker}
+import viper.silver.parser.{NameAnalyser, PAnnotationsPosition, PExp, PExtender, PKeyword, PKw, PMember, PReserved, PSpecification, PStmt, PTypeSubstitution, ReformatterContext, Translator, TypeChecker}
 import viper.silver.ast.pretty.PrettyPrintPrimitives
-import viper.silver.ast.{Declaration, ErrorTrafo, Exp, ExtensionExp, ExtensionMember, ExtensionStmt, Info, Member, Node, NoPosition, Position, Stmt, Type}
+import viper.silver.ast.{Declaration, ErrorTrafo, Exp, ExtensionExp, ExtensionMember, ExtensionStmt, Info, Member, NoPosition, Node, Position, Stmt, Type}
 import viper.silver.verifier.VerificationResult
 
 import scala.collection.Set
-
 import fastparse._
 
 trait ParserPluginTemplate {
@@ -95,6 +94,7 @@ trait ParserPluginTemplate {
     override def translateMember(t: Translator): Member = ???
     override def translateMemberSignature(t: Translator): Member = super.translateMemberSignature(t)
     override def pretty = ""
+    override def reformat(ctx: ReformatterContext): Cont = ""
   }
 
   case class PExampleStmt()(val pos: (Position, Position)) extends PExtender with PStmt{
@@ -103,6 +103,7 @@ trait ParserPluginTemplate {
     
     // The overridden function to translate this node to a corresponding Ast node
     override def translateStmt(t: Translator): Stmt = super.translateStmt(t)
+    override def reformat(ctx: ReformatterContext): Cont = ""
   }
 
   case class PExampleExp()(val pos: (Position, Position)) extends PExtender with PExp{
@@ -114,6 +115,7 @@ trait ParserPluginTemplate {
     override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = super.typecheck(t, n)
     // The translator function to translate the PAst node corresponding to the Ast node
     override def translateExp(t: Translator): Exp = super.translateExp(t)
+    override def reformatExp(ctx: ReformatterContext): Cont = ""
   }
 
   /**

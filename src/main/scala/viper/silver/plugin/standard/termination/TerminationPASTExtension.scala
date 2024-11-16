@@ -7,10 +7,11 @@
 package viper.silver.plugin.standard.termination
 
 import viper.silver.ast._
+import viper.silver.parser.ReformatPrettyPrinter.{show, showOption}
 import viper.silver.parser.TypeHelper.Bool
 import viper.silver.parser._
 
-case object PDecreasesKeyword extends PKw("decreases") with PKeywordLang with PKw.AnySpec
+case object PDecreasesKeyword extends PKw("decreases") with PKeywordLang with PKw.AnySpec with LeftNewlineIndent
 case object PIfKeyword extends PKw("if") with PKeywordLang
 
 case object PWildcardSym extends PSym("_") with PSymbolLang
@@ -42,6 +43,9 @@ case class PDecreasesTuple(tuple: PDelimited[PExp, PSym.Comma], condition: Optio
   override def translateExp(t: Translator): ExtensionExp = {
     DecreasesTuple(tuple.toSeq map t.exp, condition map (_._2) map t.exp)(t.liftPos(this))
   }
+
+  override def reformatExp(ctx: ReformatterContext): Cont =
+    show(tuple, ctx) <> condition.map((e) => space <> show(e._1, ctx) <+> show(e._2, ctx)).getOrElse(nil)
 }
 
 case class PDecreasesWildcard(wildcard: PReserved[PWildcardSym.type], condition: Option[(PReserved[PIfKeyword.type], PExp)] = None)(val pos: (Position, Position)) extends PDecreasesClause {
@@ -55,6 +59,9 @@ case class PDecreasesWildcard(wildcard: PReserved[PWildcardSym.type], condition:
   override def translateExp(t: Translator): ExtensionExp = {
     DecreasesWildcard(condition map (_._2) map t.exp)(t.liftPos(this))
   }
+
+  override def reformatExp(ctx: ReformatterContext): Cont = show(wildcard, ctx) <+>
+    condition.map((e) => show(e._1, ctx) <+> show(e._2, ctx)).getOrElse(nil)
 }
 
 case class PDecreasesStar(star: PSym.Star)(val pos: (Position, Position)) extends PDecreasesClause {
@@ -66,5 +73,7 @@ case class PDecreasesStar(star: PSym.Star)(val pos: (Position, Position)) extend
   override def translateExp(t: Translator): ExtensionExp = {
     DecreasesStar()(t.liftPos(this))
   }
+
+  override def reformatExp(ctx: ReformatterContext): Cont = show(star, ctx)
 }
 

@@ -104,6 +104,25 @@ object FastParserCompanion {
       ).pos
   }
 
+  def space[$: P]: P[PSpace] = P(("\t" | " ") map {_ => PSpace() })
+
+  def newline[$: P]: P[PNewLine] = P((StringIn("\n\r") | "\n" | "\r") map {_ => PNewLine() })
+
+  def lineComment[$: P]: P[PComment] = {
+    P(("//" ~~ CharsWhile(_ != '\n').?.! ~~ ("\n" | End)).map { content =>
+      PComment(content, false)
+    })
+  }
+
+  def blockComment[$: P]: P[PComment] = P(("/*" ~~ (!StringIn("*/") ~~ AnyChar).repX.! ~~ "*/").map { content =>
+    PComment(content, true)
+  })
+
+  def comment[$: P]: P[PComment] = lineComment | blockComment
+
+  def programTrivia[$: P]: P[Seq[Trivia]] = {
+    P((space | newline | comment | (AnyChar.map(_ => POther()))).repX)
+  }
   /**
     * A parser which matches leading whitespaces. See `LeadingWhitespace.lw` for more info. Can only be operated on in
     * restricted ways (e.g. `?`, `rep`, `|` or `map`), requiring that it is eventually appended to a normal parser (of type `P[V]`).
@@ -859,7 +878,7 @@ class FastParser {
     P(programMember.rep map (members => {
       val warnings = _warnings
       _warnings = Seq()
-      PProgram(Nil, members)(_, warnings)
+      PProgram(Nil, members)(_, warnings, Nil, "")
     })).pos
 
   def preambleImport[$: P]: P[PKw.Import => PAnnotationsPosition => PImport] = P(
@@ -886,7 +905,7 @@ class FastParser {
       val axioms1 = members collect { case m: PAxiom1 => m }
       val funcs = funcs1 map (f => (PDomainFunction(f.annotations, f.unique, f.function, f.idndef, f.args, f.c, f.typ, f.interpretation)(f.pos), f.s))
       val axioms = axioms1 map (a => (PAxiom(a.annotations, a.axiom, a.idndef, a.exp)(a.pos), a.s))
-      val allMembers = block.update(PDomainMembers(PDelimited(funcs)(NoPosition, NoPosition), PDelimited(axioms)(NoPosition, NoPosition))(block.pos))
+      val allMembers = block.update(PDomainMembers(PDelimited(funcs)(NoPosition, NoPosition), PDelimited(axioms)(NoPosition, NoPosition))(block.pos, block.inner))
       k => ap: PAnnotationsPosition => PDomain(
         ap.annotations,
         k,
@@ -970,7 +989,11 @@ class FastParser {
 
     // Assume entire file is correct and try parsing it quickly
     fastparse.parse(s, entireProgram(_)) match {
-      case Parsed.Success(value, _) => return value
+      case Parsed.Success(value, _) => {
+        value.offsets = _line_offset;
+        value.rawProgram = s;
+        return value;
+      }
       case _: Parsed.Failure =>
     }
     // There was a parsing error, parse member by member to get all errors
@@ -1018,7 +1041,7 @@ class FastParser {
     val warnings = _warnings
     _warnings = Nil
     val pos = (FilePosition(lineCol.getPos(0)), FilePosition(lineCol.getPos(res.get.index)))
-    PProgram(Nil, members)(pos, errors ++ warnings)
+    PProgram(Nil, members)(pos, errors ++ warnings, Nil, "");
   }
 
   object ParserExtension extends ParserPluginTemplate {

@@ -7,6 +7,8 @@
 package viper.silver.parser
 
 import viper.silver.ast.{NoPosition, Position}
+import viper.silver.parser.PSym.Brace
+import viper.silver.parser.ReformatPrettyPrinter.{show, showAny}
 import viper.silver.parser.TypeHelper._
 
 trait PReservedString {
@@ -17,8 +19,12 @@ trait PReservedString {
 }
 trait LeftSpace extends PReservedString { override def leftPad = " " }
 trait RightSpace extends PReservedString { override def rightPad = " " }
+trait LeftNewlineIndent extends PReservedString { override def leftPad = "\n  " }
 case class PReserved[+T <: PReservedString](rs: T)(val pos: (Position, Position)) extends PNode with PLeaf {
   override def display = rs.display
+  def token = rs.token
+
+  override def reformat(ctx: ReformatterContext): Cont = text(token)
 }
 object PReserved {
   def implied[T <: PReservedString](rs: T): PReserved[T] = PReserved(rs)(NoPosition, NoPosition)
@@ -30,6 +36,21 @@ case class PGrouped[G <: PSym.Group, +T](l: PReserved[G#L], inner: T, r: PReserv
   def prettyLines(implicit ev: T <:< PDelimited[_, _]): String = {
     val iPretty = if (inner.length == 0) "" else s"\n  ${inner.prettyLines.replace("\n", "\n  ")}\n"
     s"${l.pretty}${iPretty}${r.pretty}"
+  }
+
+  override def reformat(ctx: ReformatterContext): Cont = {
+    if (l.rs.isInstanceOf[Brace]) {
+      val left = show(l, ctx);
+      val inner_ = showAny(inner, ctx);
+      val right = show(r, ctx);
+      if (inner_ == nil) {
+        left <> right
+      } else {
+        left <> nest(defaultIndent, line <> inner_) <> line <> right
+      }
+    } else  {
+      show(l, ctx) <> nest(defaultIndent, showAny(inner, ctx)) <> show(r, ctx)
+    }
   }
 }
 object PGrouped {
@@ -83,6 +104,24 @@ class PDelimited[+T, +D](
   }
   override def hashCode(): Int = viper.silver.utility.Common.generateHashCode(first, inner, end)
   override def toString(): String = s"PDelimited($first,$inner,$end)"
+
+  override def reformat(ctx: ReformatterContext): Cont = {
+//    println(s"PDelimited");
+//    println(s"---------------------------");
+//    println(s"first: ${first}");
+//    println(s"inner: ${inner}");
+//    println(s"end: ${end}");
+
+    val separator = delimiters.headOption match {
+      case Some(p: PSym.Comma) => space
+      case None => nil
+      case _ => line
+    };
+
+    showAny(first, ctx) <@@@>
+      inner.foldLeft(nil)((acc, b) => acc <@@@> showAny(b._1, ctx) <@@@> separator <@@@> showAny(b._2, ctx)) <@@@>
+      showAny(end, ctx)
+  }
 }
 
 object PDelimited {
@@ -129,7 +168,10 @@ sealed trait PKeywordAtom
 sealed trait PKeywordIf extends PKeywordStmt
 
 
-abstract class PKw(val keyword: String) extends PKeyword
+abstract class PKw(val keyword: String) extends PKeyword with Reformattable {
+  override def reformat(ctx: ReformatterContext): Cont = text(keyword)
+}
+
 object PKw {
   case object Import extends PKw("import") with PKeywordLang
   type Import = PReserved[Import.type]
@@ -159,11 +201,11 @@ object PKw {
 
   sealed trait Spec extends PReservedString; trait AnySpec extends PreSpec with PostSpec with InvSpec
   trait PreSpec extends Spec; trait PostSpec extends Spec; trait InvSpec extends Spec
-  case object Requires extends PKw("requires") with PKeywordLang with PreSpec
+  case object Requires extends PKw("requires") with PKeywordLang with PreSpec with LeftNewlineIndent
   type Requires = PReserved[Requires.type]
-  case object Ensures extends PKw("ensures") with PKeywordLang with PostSpec
+  case object Ensures extends PKw("ensures") with PKeywordLang with PostSpec with LeftNewlineIndent
   type Ensures = PReserved[Ensures.type]
-  case object Invariant extends PKw("invariant") with PKeywordLang with InvSpec
+  case object Invariant extends PKw("invariant") with PKeywordLang with InvSpec with LeftNewlineIndent
   type Invariant = PReserved[Invariant.type]
 
   case object Result extends PKw("result") with PKeywordLang with PKeywordAtom {
@@ -262,9 +304,11 @@ object PKw {
 }
 
 /** Anything that is composed of /![a-zA-Z]/ characters. */
-trait PSymbol extends PReservedString {
+trait PSymbol extends PReservedString with Reformattable {
   def symbol: String
   override def token = symbol
+
+  override def reformat(ctx: ReformatterContext): Cont = text(symbol)
 }
 
 trait PSymbolLang extends PSymbol

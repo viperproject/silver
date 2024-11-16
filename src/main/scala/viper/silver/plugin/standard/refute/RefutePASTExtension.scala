@@ -7,6 +7,7 @@
 package viper.silver.plugin.standard.refute
 
 import viper.silver.ast.{Position, Stmt}
+import viper.silver.parser.ReformatPrettyPrinter.show
 import viper.silver.parser.TypeHelper.Bool
 import viper.silver.parser._
 
@@ -21,4 +22,6 @@ case class PRefute(refute: PReserved[PRefuteKeyword.type], e: PExp)(val pos: (Po
   }
 
   override def translateStmt(t: Translator): Stmt = Refute(t.exp(e))(t.liftPos(this))
+
+  override def reformat(ctx: ReformatterContext): Cont = show(refute, ctx) <+> show(e, ctx)
 }

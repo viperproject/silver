@@ -7,6 +7,7 @@
 package viper.silver.plugin.standard.smoke
 
 import viper.silver.ast.{Position, Stmt}
+import viper.silver.parser.ReformatPrettyPrinter.show
 import viper.silver.parser._
 
 /** Keyword used to define `unreachable` statement. */
@@ -18,4 +19,6 @@ case class PUnreachable(kw: PReserved[PUnreachableKeyword.type])(val pos: (Posit
   }
 
   override def translateStmt(t: Translator): Stmt = Unreachable()(t.liftPos(this))
+
+  override def reformat(ctx: ReformatterContext): Cont = show(kw, ctx)
 }
