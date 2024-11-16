@@ -310,11 +310,11 @@ trait SilFrontend extends DefaultFrontend {
     _config = configureVerifier(args)
   }
 
-  override def doParsing(input: String): Result[PProgram] = {
+  def parsingInner(input: String, expandMacros: Boolean): Result[PProgram] = {
     val file = _inputFile.get
     plugins.beforeParse(input, isImported = false) match {
       case Some(inputPlugin) =>
-        val result = fp.parse(inputPlugin, file, Some(plugins), _loader)
+        val result = fp.parse(inputPlugin, file, expandMacros, Some(plugins), _loader)
         if (result.errors.forall(p => p.isInstanceOf[ParseWarning])) {
           reporter report WarningsDuringParsing(result.errors)
           Succ({
@@ -326,6 +326,8 @@ trait SilFrontend extends DefaultFrontend {
       case None => Fail(plugins.errors)
     }
   }
+
+  override def doParsing(input: String): Result[PProgram] = parsingInner(input, true)
 
   override def doSemanticAnalysis(input: PProgram): Result[PProgram] = {
     plugins.beforeResolve(input) match {

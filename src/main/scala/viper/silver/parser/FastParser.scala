@@ -186,7 +186,7 @@ object FastParserCompanion {
 }
 
 class FastParser {
-  def parse(s: String, f: Path, plugins: Option[SilverPluginManager] = None, loader: FileLoader = DiskLoader) = {
+  def parse(s: String, f: Path, expandMacros: Boolean, plugins: Option[SilverPluginManager] = None, loader: FileLoader = DiskLoader) = {
     // Strategy to handle imports
     // Idea: Import every import reference and merge imported methods, functions, imports, .. into current program
     //       iterate until no new imports are present.
@@ -198,7 +198,11 @@ class FastParser {
     val file = f.toAbsolutePath().normalize()
     val data = ParserData(plugins, loader, mutable.HashSet(file))
     val program = RecParser(file, data, false).parses(s)
-    MacroExpander.expandDefines(program)
+    if (expandMacros) {
+      MacroExpander.expandDefines(program)
+    } else  {
+      program
+    }
   }
 
   case class ParserData(plugins: Option[SilverPluginManager], loader: FileLoader, local: mutable.HashSet[Path], std: mutable.HashSet[Path] = mutable.HashSet.empty)

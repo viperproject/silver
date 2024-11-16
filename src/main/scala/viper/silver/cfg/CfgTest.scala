@@ -35,7 +35,7 @@ object CfgTest {
   }
 
   private def parse(input: String, file: Path): Option[PProgram] = {
-    val program = new FastParser().parse(input, file)
+    val program = new FastParser().parse(input, file, false)
     if (program.errors.forall(_.isInstanceOf[ParseWarning])) Some(program)
     else None
   }
