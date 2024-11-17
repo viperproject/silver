@@ -1065,7 +1065,7 @@ class PBinExp(val left: PExp, val op: PReserved[PBinaryOp], val right: PExp)(val
 
   override def reformatExp(ctx: ReformatterContext): Cont = {
     op.rs match {
-      // Those two operators look a bit better if they stick on the previous line
+      // Those operators look a bit better if they stick on the previous line
       case Iff | Implies | EqEq =>
         group(show(left, ctx) <+> show(op, ctx) <> nest(defaultIndent, line <> show(right, ctx)))
       case _ => group(show(left, ctx) <@> show(op, ctx) <+> show(right, ctx))
@@ -1256,7 +1256,7 @@ case class PLet(l: PKwOp.Let, variable: PIdnDef, eq: PSymOp.EqEq, exp: PGrouped.
   }
 
   override def reformatExp(ctx: ReformatterContext): Cont = show(l, ctx) <+> show(variable, ctx) <+>
-    show(eq, ctx) <+> nest(defaultIndent, show(exp, ctx) <+> show(in, ctx) <@> show(nestedScope, ctx))
+    show(eq, ctx) <> nest(defaultIndent, group(line <> show(exp, ctx) <+> show(in, ctx) <+> show(nestedScope, ctx)))
 }
 
 case class PLetNestedScope(body: PExp)(val pos: (Position, Position)) extends PTypedVarDecl with PLocalDeclaration with PScopeUniqueDeclaration {
@@ -1341,7 +1341,7 @@ case class PAccPred(op: PKwOp.Acc, amount: PGrouped.Paren[PMaybePairArgument[PLo
   def perm = amount.inner.second.map(_._2).getOrElse(PFullPerm.implied())
   override val args = Seq(loc, perm)
 
-  override def reformatExp(ctx: ReformatterContext): Cont = show(op, ctx) <> show(amount, ctx)
+  override def reformatExp(ctx: ReformatterContext): Cont = show(op, ctx) <+> show(amount, ctx)
 }
 
 case class POldExp(op: PKwOp.Old, label: Option[PGrouped[PSym.Bracket, Either[PKw.Lhs, PIdnRef[PLabel]]]], e: PGrouped.Paren[PExp])(val pos: (Position, Position)) extends PCallKeyword with PHeapOpApp {
@@ -1349,7 +1349,7 @@ case class POldExp(op: PKwOp.Old, label: Option[PGrouped[PSym.Bracket, Either[PK
   override def requirePure = args
   override val signatures: List[PTypeSubstitution] = List(Map(POpApp.pResS -> POpApp.pArg(0)))
 
-  override def reformatExp(ctx: ReformatterContext): Cont = show(op, ctx) <> showOption(label, ctx) <> show(e, ctx)
+  override def reformatExp(ctx: ReformatterContext): Cont = show(op, ctx) <+> showOption(label, ctx) <+@> show(e, ctx)
 }
 
 case class PDebugLabelledOldExp(op: PKwOp.Old, label: PVersionedIdnUseExp, e: PExp)(val pos: (Position, Position)) extends PCallKeyword with PHeapOpApp {
@@ -1359,7 +1359,7 @@ case class PDebugLabelledOldExp(op: PKwOp.Old, label: PVersionedIdnUseExp, e: PE
 
   override val signatures: List[PTypeSubstitution] = List(Map(POpApp.pResS -> POpApp.pArg(0)))
 
-  override def reformatExp(ctx: ReformatterContext): Cont = show(op, ctx) <> show(label, ctx) <> show(e, ctx)
+  override def reformatExp(ctx: ReformatterContext): Cont = show(op, ctx) <+> show(label, ctx) <+> show(e, ctx)
 }
 
 sealed trait PCollectionLiteral extends PCallKeyword {
@@ -1407,11 +1407,11 @@ sealed trait PSeqLiteral extends PCollectionLiteral {
 }
 
 case class PEmptySeq(op: PKwOp.Seq, pAnnotatedType: Option[PGrouped[PSym.Bracket, PType]], callArgs: PDelimited.Comma[PSym.Paren, Nothing])(val pos: (Position, Position)) extends PSeqLiteral with PEmptyCollectionLiteral {
-  override def reformatExp(ctx: ReformatterContext): Cont = show(op, ctx) <+> showOption(pAnnotatedType, ctx) <> show(callArgs, ctx)
+  override def reformatExp(ctx: ReformatterContext): Cont = show(op, ctx) <> showOption(pAnnotatedType, ctx) <> show(callArgs, ctx)
 }
 
 case class PExplicitSeq(op: PKwOp.Seq, callArgs: PDelimited.Comma[PSym.Paren, PExp])(val pos: (Position, Position)) extends PSeqLiteral with PExplicitCollectionLiteral {
-  override def reformatExp(ctx: ReformatterContext): Cont = show(op, ctx) <+> show(callArgs, ctx)
+  override def reformatExp(ctx: ReformatterContext): Cont = show(op, ctx) <> show(callArgs, ctx)
 }
 
 // [low..high)
