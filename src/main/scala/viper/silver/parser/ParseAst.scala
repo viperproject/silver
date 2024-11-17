@@ -1341,7 +1341,7 @@ case class PAccPred(op: PKwOp.Acc, amount: PGrouped.Paren[PMaybePairArgument[PLo
   def perm = amount.inner.second.map(_._2).getOrElse(PFullPerm.implied())
   override val args = Seq(loc, perm)
 
-  override def reformatExp(ctx: ReformatterContext): Cont = show(op, ctx) <+> show(amount, ctx)
+  override def reformatExp(ctx: ReformatterContext): Cont = show(op, ctx) <> show(amount, ctx)
 }
 
 case class POldExp(op: PKwOp.Old, label: Option[PGrouped[PSym.Bracket, Either[PKw.Lhs, PIdnRef[PLabel]]]], e: PGrouped.Paren[PExp])(val pos: (Position, Position)) extends PCallKeyword with PHeapOpApp {
@@ -1349,7 +1349,7 @@ case class POldExp(op: PKwOp.Old, label: Option[PGrouped[PSym.Bracket, Either[PK
   override def requirePure = args
   override val signatures: List[PTypeSubstitution] = List(Map(POpApp.pResS -> POpApp.pArg(0)))
 
-  override def reformatExp(ctx: ReformatterContext): Cont = show(op, ctx) <+> showOption(label, ctx) <+@> show(e, ctx)
+  override def reformatExp(ctx: ReformatterContext): Cont = show(op, ctx) <> showOption(label, ctx) <> show(e, ctx)
 }
 
 case class PDebugLabelledOldExp(op: PKwOp.Old, label: PVersionedIdnUseExp, e: PExp)(val pos: (Position, Position)) extends PCallKeyword with PHeapOpApp {
@@ -1359,7 +1359,7 @@ case class PDebugLabelledOldExp(op: PKwOp.Old, label: PVersionedIdnUseExp, e: PE
 
   override val signatures: List[PTypeSubstitution] = List(Map(POpApp.pResS -> POpApp.pArg(0)))
 
-  override def reformatExp(ctx: ReformatterContext): Cont = show(op, ctx) <+> show(label, ctx) <+> show(e, ctx)
+  override def reformatExp(ctx: ReformatterContext): Cont = show(op, ctx) <> show(label, ctx) <> show(e, ctx)
 }
 
 sealed trait PCollectionLiteral extends PCallKeyword {
