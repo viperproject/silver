@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
 import viper.silver.ast.utility.Visitor
 import viper.silver.ast.utility.rewriter.{HasExtraValList, HasExtraVars, Rewritable, StrategyBuilder}
 import viper.silver.ast.{Exp, Member, NoPosition, SourcePosition, Stmt, Type}
-import viper.silver.parser.PSymOp.{Iff, Implies}
+import viper.silver.parser.PSymOp.{EqEq, Iff, Implies}
 import viper.silver.parser.TypeHelper._
 import viper.silver.verifier.ParseReport
 
@@ -1065,7 +1065,8 @@ class PBinExp(val left: PExp, val op: PReserved[PBinaryOp], val right: PExp)(val
 
   override def reformatExp(ctx: ReformatterContext): Cont = {
     op.rs match {
-      case Iff | Implies =>
+      // Those two operators look a bit better if they stick on the previous line
+      case Iff | Implies | EqEq =>
         group(show(left, ctx) <+> show(op, ctx) <> nest(defaultIndent, line <> show(right, ctx)))
       case _ => group(show(left, ctx) <@> show(op, ctx) <+> show(right, ctx))
     }
@@ -1216,8 +1217,8 @@ sealed trait PQuantifier extends PBinder {
 }
 
 case class PExists(keyword: PKw.Exists, vars: PDelimited[PLogicalVarDecl, PSym.Comma], c: PSym.ColonColon, triggers: Seq[PTrigger], body: PExp)(val pos: (Position, Position)) extends PQuantifier {
-  override def reformatExp(ctx: ReformatterContext): Cont = show(keyword, ctx) <+>
-    show(vars, ctx) <+> show(c, ctx) <+> showSeq(triggers, ctx) <+> show(body, ctx)
+  override def reformatExp(ctx: ReformatterContext): Cont = show(keyword, ctx) <+> show(vars, ctx) <+>
+    show(c, ctx) <> nest(defaultIndent, group(line <> (showSeq(triggers, ctx) <+@> show(body, ctx))))
 }
 
 case class PForall(keyword: PKw.Forall, vars: PDelimited[PLogicalVarDecl, PSym.Comma], c: PSym.ColonColon, triggers: Seq[PTrigger], body: PExp)(val pos: (Position, Position)) extends PQuantifier {
@@ -1228,7 +1229,9 @@ case class PForall(keyword: PKw.Forall, vars: PDelimited[PLogicalVarDecl, PSym.C
 case class PForPerm(keyword: PKw.Forperm, vars: PDelimited[PLogicalVarDecl, PSym.Comma], accessRes: PGrouped[PSym.Bracket, PResourceAccess], c: PSym.ColonColon, body: PExp)(val pos: (Position, Position)) extends PQuantifier {
   val triggers: Seq[PTrigger] = Seq()
 
-  override def reformatExp(ctx: ReformatterContext): Cont = show(keyword, ctx) <+> show(vars, ctx) <+> show(accessRes, ctx) <+> show(c, ctx) <+> show(body, ctx)
+  override def reformatExp(ctx: ReformatterContext): Cont = show(keyword, ctx) <+>
+    show(vars, ctx) <+> show(accessRes, ctx) <+> show(c, ctx) <>
+    nest(defaultIndent, group(line <> show(body, ctx)))
 }
 
 /* Let-expressions `let x == e1 in e2` are represented by the nested structure
