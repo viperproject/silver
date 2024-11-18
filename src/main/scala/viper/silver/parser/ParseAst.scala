@@ -2107,8 +2107,8 @@ case class PNewLine() extends Trivia {
 
 case class PComment(content: String, block: Boolean) extends Trivia {
   override def reformat(ctx: ReformatterContext): Cont = if (block) {
-    text("/*") <> content <> text("*/")
+    text("/*") <> content <> text("*/") <> linebreak
   } else  {
-    text("//") <> text(content)
+    text("//") <> text(content) <> linebreak
   }
 }
