@@ -12,7 +12,7 @@ import scala.collection.mutable.ArrayBuffer
 
 class DeepSimplifierTest extends AnyFunSuite with Matchers{
 
-  test("test1") {
+  /*test("test1") {
 
     val a = LocalVar("a", Bool)()
     val b = LocalVar("b", Bool)()
@@ -115,7 +115,7 @@ class DeepSimplifierTest extends AnyFunSuite with Matchers{
 
 
     println(d)
-    println(recursiveSimplify(d))
+    println(d.size)
 
     true should be(true)
   }
@@ -160,8 +160,9 @@ class DeepSimplifierTest extends AnyFunSuite with Matchers{
   test("test12") {
     val a = LocalVar("a", Bool)()
     val tru = TrueLit()()
+    val othertru = TrueLit()()
     val b = Not(Not(a)())()
-    val c = Or(a, tru)()
+    val c = Or(othertru, tru)()
 
     println(c)
     println(treeSize(a))
@@ -180,6 +181,22 @@ class DeepSimplifierTest extends AnyFunSuite with Matchers{
     val buf = ArrayBuffer[Node](a, b, c)
 
     println(getShortest(buf))
+
+    true should be(true)
+  }
+
+   */
+
+  test("test14") {
+    val a = LocalVar("a", Bool)()
+    val z = LocalVar("z", Bool)()
+    val b = Or(Not(Not(a)())(), a)()
+    val c = Or(Not(a)(), a)()
+    val d = Or(Not(Not(a)())(), Not(Not(Not(Not(z)())())())())()
+
+    println(d.children)
+
+    pfRecSimplify(d)
 
     true should be(true)
   }
