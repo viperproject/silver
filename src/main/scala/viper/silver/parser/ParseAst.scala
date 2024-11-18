@@ -1223,7 +1223,7 @@ case class PExists(keyword: PKw.Exists, vars: PDelimited[PLogicalVarDecl, PSym.C
 
 case class PForall(keyword: PKw.Forall, vars: PDelimited[PLogicalVarDecl, PSym.Comma], c: PSym.ColonColon, triggers: Seq[PTrigger], body: PExp)(val pos: (Position, Position)) extends PQuantifier {
   override def reformatExp(ctx: ReformatterContext): Cont = show(keyword, ctx) <+> show(vars, ctx) <+>
-    show(c, ctx) <> nest(defaultIndent, group(line <> (showSeq(triggers, ctx) <+@> show(body, ctx))))
+    show(c, ctx) <> nest(defaultIndent, group(line <> group(showSeq(triggers, ctx) <+@> show(body, ctx))))
 }
 
 case class PForPerm(keyword: PKw.Forperm, vars: PDelimited[PLogicalVarDecl, PSym.Comma], accessRes: PGrouped[PSym.Bracket, PResourceAccess], c: PSym.ColonColon, body: PExp)(val pos: (Position, Position)) extends PQuantifier {
@@ -2107,8 +2107,8 @@ case class PNewLine() extends Trivia {
 
 case class PComment(content: String, block: Boolean) extends Trivia {
   override def reformat(ctx: ReformatterContext): Cont = if (block) {
-    text("/*") <> content <> text("*/") <> linebreak
+    text("/*") <> content <> text("*/")
   } else  {
-    text("//") <> text(content) <> linebreak
+    text("//") <> text(content)
   }
 }
