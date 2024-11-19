@@ -479,6 +479,8 @@ case class PDomainType(domain: PIdnRef[PTypeDeclaration], args: Option[PDelimite
     if (s.length == 0 && args.isEmpty) this else copy(args = Some(args.get.update(s)))(pos)
 
   override def copyExtraVars(from: Any): Unit = this.kind = from.asInstanceOf[PDomainType].kind
+
+  override def reformat(ctx: ReformatterContext): Cont = show(domain, ctx) <> showOption(args, ctx)
 }
 
 object PDomainTypeKinds {
@@ -553,8 +555,6 @@ trait PGenericType extends PType {
     val argsPretty = if (typeArguments.isEmpty) "" else typeArguments.map(_.pretty).mkString("[", ", ", "]")
     s"$genericName$argsPretty"
   }
-
-  override def reformat(ctx: ReformatterContext): Cont = text(pretty)
 }
 
 sealed trait PGenericCollectionType extends PGenericType {
@@ -573,16 +573,22 @@ sealed trait PGenericCollectionType extends PGenericType {
 case class PSeqType(seq: PKw.Seq, elementType: PGrouped[PSym.Bracket, PType])(val pos: (Position, Position)) extends PType with PGenericCollectionType {
   override val genericName = "Seq"
   override def update(newType: PType) = copy(elementType = elementType.update(newType))(pos)
+
+  override def reformat(ctx: ReformatterContext): Cont = show(seq, ctx) <> show(elementType, ctx)
 }
 
 case class PSetType(set: PKw.Set, elementType: PGrouped[PSym.Bracket, PType])(val pos: (Position, Position)) extends PType with PGenericCollectionType {
   override val genericName = "Set"
   override def update(newType: PType) = copy(elementType = elementType.update(newType))(pos)
+
+  override def reformat(ctx: ReformatterContext): Cont = show(set, ctx) <> show(elementType, ctx)
 }
 
 case class PMultisetType(multiset: PKw.Multiset, elementType: PGrouped[PSym.Bracket, PType])(val pos: (Position, Position)) extends PType with PGenericCollectionType {
   override val genericName = "Multiset"
   override def update(newType: PType) = copy(elementType = elementType.update(newType))(pos)
+
+  override def reformat(ctx: ReformatterContext): Cont = show(multiset, ctx) <> show(elementType, ctx)
 }
 
 case class PMapType(map: PKw.Map, typ: PGrouped[PSym.Bracket, PPairArgument[PType, PType]])(val pos: (Position, Position)) extends PType with PGenericType {
@@ -599,6 +605,8 @@ case class PMapType(map: PKw.Map, typ: PGrouped[PSym.Bracket, PPairArgument[PTyp
 
   override def withTypeArguments(s: Seq[PType]): PMapType =
     copy(typ = typ.update(PPairArgument(s(0), typ.inner.c, s(1))(typ.inner.pos)))(pos)
+
+  override def reformat(ctx: ReformatterContext): Cont = show(map, ctx) <> show(typ, ctx)
 }
 
 /** Exists temporarily after parsing and is replaced with
@@ -1875,9 +1883,9 @@ case class PProgram(imported: Seq[PProgram], members: Seq[PMember])(val pos: (Po
 
   override def reformat(ctx: ReformatterContext): Cont = {
       println(s"whole program ${this.members}");
-     members.map(show(_, ctx)).foldLeft(nil)((acc, n) => acc <@@> n) <>
+     members.map(show(_, ctx)).foldLeft(nil)((acc, n) => acc <@@> n)
      // Don't forget comments that appear after any nodes!
-       formatTrivia(ctx.getTriviaByByteOffset(rawProgram.length), ctx)
+//       formatTrivia(ctx.getTriviaByByteOffset(rawProgram.length), ctx)
   }
 
   // Pretty print members in a specific order

@@ -273,6 +273,8 @@ case class PAdtType(adt: PIdnRef[PAdt], args: Option[PDelimited.Comma[PSym.Brack
   override def withTypeArguments(s: Seq[PType]): PAdtType =
     if (s.length == 0 && args.isEmpty) this else copy(args = Some(args.get.update(s)))(pos)
   override def copyExtraVars(from: Any): Unit = this.kind = from.asInstanceOf[PAdtType].kind
+
+  override def reformat(ctx: ReformatterContext): Cont = show(adt, ctx) <> showOption(args, ctx)
 }
 
 object PAdtTypeKinds {

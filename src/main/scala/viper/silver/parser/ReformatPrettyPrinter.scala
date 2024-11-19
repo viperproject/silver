@@ -7,6 +7,7 @@ import viper.silver.ast.{HasLineColumn, LineColumnPosition, Position}
 import viper.silver.parser.FastParserCompanion.programTrivia
 import viper.silver.plugin.standard.adt.PAdtConstructor
 
+import scala.::
 import scala.util.control.Breaks.{break, breakable}
 
 trait Reformattable extends FastPrettyPrinterBase {
@@ -17,32 +18,29 @@ trait ReformattableExpression extends FastPrettyPrinterBase {
   def reformatExp(ctx: ReformatterContext): Cont
 }
 
-class ReformatterContext(val program: String, val offsets: Seq[Int]) {
-  var currentOffset: Int = 0
-
+class ReformatterContext(val program: String, val offsets: Seq[Int], val posMap: Map[Position, Position]) {
   def getByteOffset(p: HasLineColumn): Int = {
     val row = offsets(p.line - 1);
     row + p.column - 1
   }
 
-  def getTrivia(pos: (ast.Position, ast.Position)): Seq[Trivia] = {
-    pos._1 match {
-      case p: HasLineColumn => {
+  def getTrivia(start: ast.Position, end: ast.Position): Seq[Trivia] = {
+    (start, end) match {
+      case (p: HasLineColumn, q: HasLineColumn) => {
         val p_offset = getByteOffset(p);
-        getTriviaByByteOffset(p_offset)
+        val q_offset = getByteOffset(q);
+        getTriviaByByteOffset(p_offset, q_offset)
       }
       case _ => Seq()
     }
   }
 
-  def getTriviaByByteOffset(offset: Int): Seq[Trivia] = {
-    if (currentOffset <= offset) {
-      val str = program.substring(currentOffset, offset);
-      this.currentOffset = offset;
+  def getTriviaByByteOffset(startOffset: Int, endOffset: Int): Seq[Trivia] = {
+    if (startOffset < endOffset) {
+      val str = program.substring(startOffset, endOffset);
 
       fastparse.parse(str, programTrivia(_)) match {
         case Parsed.Success(value, _) => {
-          println(s"Length: ${value.length}")
           value
         }
         case _: Parsed.Failure => Seq()
@@ -57,7 +55,22 @@ object ReformatPrettyPrinter extends FastPrettyPrinterBase {
   override val defaultIndent = 4
 
   def reformatProgram(p: PProgram): String = {
-    val ctx = new ReformatterContext(p.rawProgram, p.offsets);
+    def collectLeavePositions(p: PNode): Seq[(ast.Position, ast.Position)] = {
+      p match {
+        case p: PLeaf => Seq(p.pos)
+        case _ => p.subnodes.flatMap(collectLeavePositions)
+      }
+    }
+    val leavePositions = collectLeavePositions(p)
+    var positions: Map[ast.Position, ast.Position] = Map(LineColumnPosition(1, 1) -> leavePositions.headOption.map(p => p._1).getOrElse(LineColumnPosition(1, 1)))
+
+    if (leavePositions.length > 1) {
+      leavePositions.sliding(2).foreach {
+        case Seq(a, b) =>  positions += (a._2 -> b._1)
+      }
+    }
+
+    val ctx = new ReformatterContext(p.rawProgram, p.offsets, positions)
     super.pretty(defaultWidth, show(p, ctx))
   }
 
@@ -110,9 +123,19 @@ object ReformatPrettyPrinter extends FastPrettyPrinterBase {
   }
 
   def show(r: Reformattable, ctx: ReformatterContext): Cont = {
+    println(s"${r.getClass}");
+    println(s"${r}");
     val trivia = r match {
       case p: PLeaf => {
-        val trivia = ctx.getTrivia(p.pos);
+        val trivia = ctx.posMap.get(p.pos._2).map(end => {
+          println(s"${p}");
+          println(s"${p.pos._2}, ${end}");
+          ctx.getTrivia(p.pos._2, end)
+        }).getOrElse({
+
+          Seq()
+        });
+        println(trivia)
         val findNewlines = (trivia: Seq[Trivia]) => {
           var count = 0;
           breakable {
@@ -145,7 +168,7 @@ object ReformatPrettyPrinter extends FastPrettyPrinterBase {
       case _ => nil
     }
 
-    trivia <@@@> r.reformat(ctx)
+    r.reformat(ctx) <> trivia
   }
 
   def showAny(n: Any, ctx: ReformatterContext): Cont = {
