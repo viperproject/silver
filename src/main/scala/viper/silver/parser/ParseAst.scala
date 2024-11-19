@@ -9,7 +9,7 @@ package viper.silver.parser
 
 import viper.silver.ast
 import viper.silver.ast.{FilePosition, HasLineColumn, Position}
-import viper.silver.parser.ReformatPrettyPrinter.{formatTrivia, show, showAnnotations, showAny, showBody, showInvs, showOption, showPresPosts, showReturns, showSeq}
+import viper.silver.parser.ReformatPrettyPrinter.{show, showAnnotations, showAny, showBody, showInvs, showOption, showPresPosts, showReturns, showSeq}
 
 import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
 import viper.silver.ast.utility.Visitor
@@ -2115,8 +2115,8 @@ case class PNewLine() extends Trivia {
 
 case class PComment(content: String, block: Boolean) extends Trivia {
   override def reformat(ctx: ReformatterContext): Cont = if (block) {
-    text("/*") <> content <> text("*/") <> linebreak
+    text("/*") <> content <> text("*/")
   } else  {
-    text("//") <> text(content) <> linebreak
+    text("//") <> text(content)
   }
 }

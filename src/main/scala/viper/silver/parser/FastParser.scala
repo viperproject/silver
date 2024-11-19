@@ -109,7 +109,7 @@ object FastParserCompanion {
   def newline[$: P]: P[PNewLine] = P((StringIn("\n\r") | "\n" | "\r") map {_ => PNewLine() })
 
   def lineComment[$: P]: P[PComment] = {
-    P(("//" ~~ CharsWhile(_ != '\n').?.! ~~ ("\n" | End)).map { content =>
+    P(("//" ~~ CharsWhile(_ != '\n').?.!).map { content =>
       PComment(content, false)
     })
   }

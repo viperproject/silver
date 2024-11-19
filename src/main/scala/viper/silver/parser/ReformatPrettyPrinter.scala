@@ -114,56 +114,55 @@ object ReformatPrettyPrinter extends FastPrettyPrinterBase {
     }
   }
 
-  def formatTrivia(trivia: Seq[Trivia], ctx: ReformatterContext): Cont = {
-    trivia.filter({
-        case _: PComment => true
-        case _ => false
-      })
-      .foldLeft(nil)(_ <@@@> show(_, ctx))
-  }
-
   def show(r: Reformattable, ctx: ReformatterContext): Cont = {
-    println(s"${r.getClass}");
-    println(s"${r}");
     val trivia = r match {
       case p: PLeaf => {
         val trivia = ctx.posMap.get(p.pos._2).map(end => {
-          println(s"${p}");
           println(s"${p.pos._2}, ${end}");
           ctx.getTrivia(p.pos._2, end)
         }).getOrElse({
 
           Seq()
         });
-        println(trivia)
-        val findNewlines = (trivia: Seq[Trivia]) => {
-          var count = 0;
-          breakable {
-            for (el <- trivia) {
-              el match {
-                case _: PComment => break
-                case _: PNewLine => count += 1
-                case _ =>
-              }
-            }
-          }
 
-          if (count > 1) linebreak else nil
+        println(s"Trivia: ${trivia}");
+
+        var reformatted = nil
+        var newlines = 0;
+        var spaces = 0;
+
+        for (t <- trivia) {
+          t match {
+            case p: PComment => {
+              val lw = if (newlines > 0) linebreak else if(spaces > 0) space else nil
+              reformatted = reformatted <> lw <> group(p.reformat(ctx))
+              newlines = 0
+              spaces = 0
+            }
+            case _: PNewLine => newlines += 1
+            case _: PSpace => spaces += 1
+            case _ =>
+          }
         }
 
-        val lw = findNewlines(trivia);
-        val tw = findNewlines(trivia.reverse);
+        if (newlines > 0) {
+          reformatted = reformatted <> linebreak
+        }
+
         val hasComment = trivia exists {
           case _: PComment => true
           case _ => false
         }
 
         if (hasComment) {
-          lw <> formatTrivia(trivia, ctx) <> tw
-        } else  {
-          lw
+          reformatted
+        } else {
+          if (newlines > 1) {
+            linebreak
+          } else {
+            nil
+          }
         }
-
       };
       case _ => nil
     }
