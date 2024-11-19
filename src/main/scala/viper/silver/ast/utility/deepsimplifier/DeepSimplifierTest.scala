@@ -190,13 +190,32 @@ class DeepSimplifierTest extends AnyFunSuite with Matchers{
   test("test14") {
     val a = LocalVar("a", Bool)()
     val z = LocalVar("z", Bool)()
+    val y = Not(a)()
     val b = Or(Not(Not(a)())(), a)()
     val c = Or(Not(a)(), a)()
     val d = Or(Not(Not(a)())(), Not(Not(Not(Not(z)())())())())()
+    val e = Or(d, Not(Not(Not(Not(z)())())())())()
 
-    println(d.children)
+    //println(e)
+    /*
+    println(a.isInstanceOf[Node])
 
-    pfRecSimplify(d)
+    println(a.subnodes)
+    println(a.children)
+    println(a.getClass)
+    println(a.children.map(child => child.getClass))
+    println(a.subnodes.map(child => child.isInstanceOf[AtomicType]))
+
+    println(c.subnodes)
+    println(c.children)
+    println(c.getClass)
+    println(c.children.map(child => child.getClass))
+    println(c.subnodes.map(child => child.isInstanceOf[AtomicType]))
+    */
+    //println(e.subnodes)
+    //println(e.children)
+
+    println(simplify(d))
 
     true should be(true)
   }

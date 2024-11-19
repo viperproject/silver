@@ -14,15 +14,17 @@ object DeepSimplifier {
 
     while (queue.nonEmpty) {
       val currnode: N = queue.dequeue()
+      println("currnode: " + currnode)
       //val generated: ArrayBuffer[N] = recursiveSimplify(currnode)
-      val generated: ArrayBuffer[N] = pfSimplify(currnode)
+      val generated: ArrayBuffer[N] = pfRecSimplify(currnode)
+      println("generated: " + generated)
 
       for (g <- generated if !visited.contains(g)) {
         //println("new g: " + g)
+
         visited.append(g)
         queue.enqueue(g)
       }
-      queue.enqueueAll(generated)
     }
 
     println("result simplify: " + visited)
@@ -61,17 +63,44 @@ object DeepSimplifier {
   def pfRecSimplify[N <: Node](n: N): ArrayBuffer[N] = {
     val result: ArrayBuffer[N] = ArrayBuffer()
 
-    lazy val newChildrenList = n.children.zipWithIndex.flatMap { case (child: N, index) =>
-      pfSimplify(child).map { pfSimpChild =>
-        n.children.toList.updated(index, pfSimpChild)
+
+    val newChildrenList = n.children.zipWithIndex.map {
+      case (child: AtomicType, index) => {
+        //println(child)
+        //println("case1: " + ArrayBuffer(n.children.toList))
+        Nil
+        ArrayBuffer(n.children.toList)
+      }
+      case (child: N, index) => {
+        //println("case2")
+        val temp = new ArrayBuffer[List[Any]]()
+          temp ++=pfSimplify(child).map { pfSimpChild =>
+          n.children.toList.updated(index, pfSimpChild)
+        }
+        //println("case2: " + temp)
+        temp ++= pfRecSimplify(child).toList.map { recSimpChild =>
+          n.children.toList.updated(index, recSimpChild)
+        }
+        //println("case2after: " + temp)
+        temp
+      }
+      case _ => {
+        //println("case3: " + ArrayBuffer(n.children.toList))
+        ArrayBuffer(n.children.toList)
       }
     }
-    result ++= newChildrenList.map {
-      newChildren => n.withChildren(newChildren)
+    //println(n.children)
+    //println(newChildrenList)
+    var newlist = newChildrenList.map {
+      newChildren => newChildren.map{
+        oneChildren => {
+          //println(n.children)
+          //println(oneChildren)
+          n.withChildren(oneChildren) }//big performance impact! using withChildren
+      }
     }
+    newlist.map (listelem => result ++= listelem)
+    //println("result: " + result)
     result
   }
-
-
-
 }
