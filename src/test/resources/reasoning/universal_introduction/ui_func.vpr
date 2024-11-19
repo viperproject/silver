@@ -1,0 +1,45 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+function P(x: Int) : Bool {
+    x == 0
+}
+
+function Q(x: Int) : Bool {
+    x == 0
+}
+
+function func1(x:Int) : Int
+{
+    x
+}
+
+method mFunctionOK()
+{
+    var z: Int := 3
+    var y: Int
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) && y == z {
+        y := func1(z)
+    }
+}
+
+method mFunctionNOK()
+{
+    var z: Int := 3
+    var y: Int
+    //:: ExpectedOutput(consistency.error)
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) && y >= 0 || y < 0 {
+        y := func1(x)
+    }
+}
+
+function func2(e: Ref): Ref {
+    e
+}
+
+method mFunction2NOK() {
+    var x: Ref
+    prove forall i:Ref assuming true implies i == x {
+        x := test(i)
+    }
+}
