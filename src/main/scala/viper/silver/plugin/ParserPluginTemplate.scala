@@ -94,7 +94,7 @@ trait ParserPluginTemplate {
     override def translateMember(t: Translator): Member = ???
     override def translateMemberSignature(t: Translator): Member = super.translateMemberSignature(t)
     override def pretty = ""
-    override def reformat(ctx: ReformatterContext): Cont = ""
+    override def reformat(implicit ctx: ReformatterContext): Cont = ""
   }
 
   case class PExampleStmt()(val pos: (Position, Position)) extends PExtender with PStmt{
@@ -103,7 +103,7 @@ trait ParserPluginTemplate {
     
     // The overridden function to translate this node to a corresponding Ast node
     override def translateStmt(t: Translator): Stmt = super.translateStmt(t)
-    override def reformat(ctx: ReformatterContext): Cont = ""
+    override def reformat(implicit ctx: ReformatterContext): Cont = ""
   }
 
   case class PExampleExp()(val pos: (Position, Position)) extends PExtender with PExp{
@@ -115,7 +115,7 @@ trait ParserPluginTemplate {
     override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = super.typecheck(t, n)
     // The translator function to translate the PAst node corresponding to the Ast node
     override def translateExp(t: Translator): Exp = super.translateExp(t)
-    override def reformatExp(ctx: ReformatterContext): Cont = ""
+    override def reformatExp(implicit ctx: ReformatterContext): Cont = ""
   }
 
   /**

@@ -7,15 +7,12 @@ import viper.silver.ast.{HasLineColumn, LineColumnPosition, Position}
 import viper.silver.parser.FastParserCompanion.programTrivia
 import viper.silver.plugin.standard.adt.PAdtConstructor
 
-import scala.::
-import scala.util.control.Breaks.{break, breakable}
-
 trait Reformattable extends FastPrettyPrinterBase {
-  def reformat(ctx: ReformatterContext): Cont
+  def reformat(implicit ctx: ReformatterContext): Cont
 }
 
 trait ReformattableExpression extends FastPrettyPrinterBase {
-  def reformatExp(ctx: ReformatterContext): Cont
+  def reformatExp(implicit ctx: ReformatterContext): Cont
 }
 
 class ReformatterContext(val program: String, val offsets: Seq[Int], val posMap: Map[Position, Position]) {
@@ -70,40 +67,40 @@ object ReformatPrettyPrinter extends FastPrettyPrinterBase {
       }
     }
 
-    val ctx = new ReformatterContext(p.rawProgram, p.offsets, positions)
-    super.pretty(defaultWidth, show(p, ctx))
+    implicit val ctx = new ReformatterContext(p.rawProgram, p.offsets, positions)
+    super.pretty(defaultWidth, show(p))
   }
 
-  def showOption[T <: Any](n: Option[T], ctx: ReformatterContext): Cont = {
+  def showOption[T <: Any](n: Option[T])(implicit ctx: ReformatterContext): Cont = {
     n match {
-      case Some(r) => showAny(r, ctx)
+      case Some(r) => showAny(r)
       case None => nil
     }
   }
 
-  def showAnnotations(annotations: Seq[PAnnotation], ctx: ReformatterContext): Cont = {
+  def showAnnotations(annotations: Seq[PAnnotation])(implicit ctx: ReformatterContext): Cont = {
     if (annotations.isEmpty) {
       nil
     } else {
-      annotations.map(show(_, ctx)).foldLeft(nil)((acc, n) => acc <@@> n)
+      annotations.map(show).foldLeft(nil)((acc, n) => acc <@@> n)
     }
   }
 
-  def showReturns(returns: Option[PMethodReturns], ctx: ReformatterContext): Cont = {
-    returns.map(a => nil <+> show(a, ctx)).getOrElse(nil)
+  def showReturns(returns: Option[PMethodReturns])(implicit ctx: ReformatterContext): Cont = {
+    returns.map(a => nil <+> show(a)).getOrElse(nil)
   }
 
-  def showPresPosts(pres: PDelimited[_, _], posts: PDelimited[_, _], ctx: ReformatterContext): Cont = {
+  def showPresPosts(pres: PDelimited[_, _], posts: PDelimited[_, _])(implicit ctx: ReformatterContext): Cont = {
     nest(defaultIndent, (if (pres.isEmpty) nil
-    else line <> show(pres, ctx)) <>
+    else line <> show(pres)) <>
       (if (posts.isEmpty) nil
-      else line <> show(posts, ctx)
+      else line <> show(posts)
         )
     )
   }
 
-  def showInvs(invs: PDelimited[_, _], ctx: ReformatterContext): Cont = {
-    nest(defaultIndent, (if (invs.isEmpty) nil else line <> show(invs, ctx)))
+  def showInvs(invs: PDelimited[_, _])(implicit ctx: ReformatterContext): Cont = {
+    nest(defaultIndent, (if (invs.isEmpty) nil else line <> show(invs)))
   }
 
   def showBody(body: Cont, newline: Boolean): Cont = {
@@ -114,7 +111,7 @@ object ReformatPrettyPrinter extends FastPrettyPrinterBase {
     }
   }
 
-  def show(r: Reformattable, ctx: ReformatterContext): Cont = {
+  def show(r: Reformattable)(implicit ctx: ReformatterContext): Cont = {
     val trivia = r match {
       case p: PLeaf => {
         val trivia = ctx.posMap.get(p.pos._2).map(end => {
@@ -170,17 +167,17 @@ object ReformatPrettyPrinter extends FastPrettyPrinterBase {
     r.reformat(ctx) <> trivia
   }
 
-  def showAny(n: Any, ctx: ReformatterContext): Cont = {
+  def showAny(n: Any)(implicit ctx: ReformatterContext): Cont = {
     n match {
-      case p: Reformattable => show(p, ctx)
-      case p: Option[Any] => showOption(p, ctx)
-      case p: Seq[Any] => showSeq(p, ctx)
-      case p: Right[Any, Any] => showAny(p.value, ctx)
-      case p: Left[Any, Any] => showAny(p.value, ctx)
+      case p: Reformattable => show(p)
+      case p: Option[Any] => showOption(p)
+      case p: Seq[Any] => showSeq(p)
+      case p: Right[Any, Any] => showAny(p.value)
+      case p: Left[Any, Any] => showAny(p.value)
     }
   }
 
-  def showSeq(l: Seq[Any], ctx: ReformatterContext): Cont = {
+  def showSeq(l: Seq[Any])(implicit ctx: ReformatterContext): Cont = {
     if (l.isEmpty) {
       nil
     } else {
@@ -188,7 +185,7 @@ object ReformatPrettyPrinter extends FastPrettyPrinterBase {
         case _: PAdtConstructor => linebreak
         case _ => linebreak
       }
-      l.map(showAny(_, ctx)).reduce(_ <> sep <> _)
+      l.map(showAny(_)).reduce(_ <> sep <> _)
     }
   }
 }

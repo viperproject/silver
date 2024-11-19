@@ -23,5 +23,5 @@ case class PRefute(refute: PReserved[PRefuteKeyword.type], e: PExp)(val pos: (Po
 
   override def translateStmt(t: Translator): Stmt = Refute(t.exp(e))(t.liftPos(this))
 
-  override def reformat(ctx: ReformatterContext): Cont = show(refute, ctx) <+> show(e, ctx)
+  override def reformat(implicit ctx: ReformatterContext): Cont = show(refute) <+> show(e)
 }

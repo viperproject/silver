@@ -24,7 +24,7 @@ case class PReserved[+T <: PReservedString](rs: T)(val pos: (Position, Position)
   override def display = rs.display
   def token = rs.token
 
-  override def reformat(ctx: ReformatterContext): Cont = text(token)
+  override def reformat(implicit ctx: ReformatterContext): Cont = text(token)
 }
 object PReserved {
   def implied[T <: PReservedString](rs: T): PReserved[T] = PReserved(rs)(NoPosition, NoPosition)
@@ -38,18 +38,18 @@ case class PGrouped[G <: PSym.Group, +T](l: PReserved[G#L], inner: T, r: PReserv
     s"${l.pretty}${iPretty}${r.pretty}"
   }
 
-  override def reformat(ctx: ReformatterContext): Cont = {
+  override def reformat(implicit ctx: ReformatterContext): Cont = {
     if (l.rs.isInstanceOf[Brace]) {
-      val left = show(l, ctx);
-      val inner_ = showAny(inner, ctx);
-      val right = show(r, ctx);
+      val left = show(l);
+      val inner_ = showAny(inner);
+      val right = show(r);
       if (inner_ == nil) {
         left <> right
       } else {
         left <> nest(defaultIndent, line <> inner_) <> line <> right
       }
     } else  {
-      show(l, ctx) <> nest(defaultIndent, showAny(inner, ctx)) <> show(r, ctx)
+      show(l) <> nest(defaultIndent, showAny(inner)) <> show(r)
     }
   }
 }
@@ -105,7 +105,7 @@ class PDelimited[+T, +D](
   override def hashCode(): Int = viper.silver.utility.Common.generateHashCode(first, inner, end)
   override def toString(): String = s"PDelimited($first,$inner,$end)"
 
-  override def reformat(ctx: ReformatterContext): Cont = {
+  override def reformat(implicit ctx: ReformatterContext): Cont = {
 //    println(s"PDelimited");
 //    println(s"---------------------------");
 //    println(s"first: ${first}");
@@ -118,9 +118,9 @@ class PDelimited[+T, +D](
       case _ => line
     };
 
-    showAny(first, ctx) <@@@>
-      inner.foldLeft(nil)((acc, b) => acc <@@@> showAny(b._1, ctx) <@@@> separator <@@@> showAny(b._2, ctx)) <@@@>
-      showAny(end, ctx)
+    showAny(first) <@@@>
+      inner.foldLeft(nil)((acc, b) => acc <@@@> showAny(b._1) <@@@> separator <@@@> showAny(b._2)) <@@@>
+      showAny(end)
   }
 }
 
@@ -169,7 +169,7 @@ sealed trait PKeywordIf extends PKeywordStmt
 
 
 abstract class PKw(val keyword: String) extends PKeyword with Reformattable {
-  override def reformat(ctx: ReformatterContext): Cont = text(keyword)
+  override def reformat(implicit ctx: ReformatterContext): Cont = text(keyword)
 }
 
 object PKw {
@@ -308,7 +308,7 @@ trait PSymbol extends PReservedString with Reformattable {
   def symbol: String
   override def token = symbol
 
-  override def reformat(ctx: ReformatterContext): Cont = text(symbol)
+  override def reformat(implicit ctx: ReformatterContext): Cont = text(symbol)
 }
 
 trait PSymbolLang extends PSymbol
