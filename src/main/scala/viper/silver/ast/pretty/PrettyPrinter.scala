@@ -359,9 +359,6 @@ trait FastPrettyPrinterBase extends PrettyPrintPrimitives {
   def linebreak : Cont =
     line ("\n")
 
-  def dlinebreak : Cont =
-    line ("\n\n")
-
 
   implicit class ContOps(dl: Cont) {
     def <>(dr: Cont) : Cont =
