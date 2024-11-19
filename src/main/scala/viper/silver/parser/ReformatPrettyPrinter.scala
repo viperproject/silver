@@ -59,11 +59,11 @@ object ReformatPrettyPrinter extends FastPrettyPrinterBase {
       }
     }
     val leavePositions = collectLeavePositions(p)
-    var positions: Map[ast.Position, ast.Position] = Map(LineColumnPosition(1, 1) -> leavePositions.headOption.map(p => p._1).getOrElse(LineColumnPosition(1, 1)))
+    var positions: Map[ast.Position, ast.Position] = Map(leavePositions.headOption.map(p => p._1).getOrElse(LineColumnPosition(1, 1)) -> LineColumnPosition(1, 1))
 
     if (leavePositions.length > 1) {
       leavePositions.sliding(2).foreach {
-        case Seq(a, b) =>  positions += (a._2 -> b._1)
+        case Seq(a, b) =>  positions += (b._1 -> a._2)
       }
     }
 
@@ -114,11 +114,9 @@ object ReformatPrettyPrinter extends FastPrettyPrinterBase {
   def show(r: Reformattable)(implicit ctx: ReformatterContext): Cont = {
     val trivia = r match {
       case p: PLeaf => {
-        val trivia = ctx.posMap.get(p.pos._2).map(end => {
-          println(s"${p.pos._2}, ${end}");
-          ctx.getTrivia(p.pos._2, end)
+        val trivia = ctx.posMap.get(p.pos._1).map(end => {
+          ctx.getTrivia(end, p.pos._2)
         }).getOrElse({
-
           Seq()
         });
 
@@ -164,7 +162,7 @@ object ReformatPrettyPrinter extends FastPrettyPrinterBase {
       case _ => nil
     }
 
-    r.reformat(ctx) <> trivia
+    trivia <> r.reformat(ctx)
   }
 
   def showAny(n: Any)(implicit ctx: ReformatterContext): Cont = {
