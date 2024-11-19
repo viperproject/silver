@@ -1098,7 +1098,7 @@ case class PCondExp(cond: PExp, q: PSymOp.Question, thn: PExp, c: PSymOp.Colon, 
 
   override def reformatExp(ctx: ReformatterContext): Cont = show(cond, ctx) <+> show(q, ctx) <>
     nest(defaultIndent, group(line <> show(thn, ctx) <+>
-      show(c, ctx) <> nest(defaultIndent, group(line <> show(els, ctx)))))
+      show(c, ctx) <> group(line <> show(els, ctx))))
 }
 
 // Simple literals
@@ -1256,7 +1256,7 @@ case class PLet(l: PKwOp.Let, variable: PIdnDef, eq: PSymOp.EqEq, exp: PGrouped.
   }
 
   override def reformatExp(ctx: ReformatterContext): Cont = show(l, ctx) <+> show(variable, ctx) <+>
-    show(eq, ctx) <> nest(defaultIndent, group(line <> show(exp, ctx) <+> show(in, ctx) <+> show(nestedScope, ctx)))
+    show(eq, ctx) <+> show(exp, ctx) <+> show(in, ctx) <> group(line <> show(nestedScope, ctx))
 }
 
 case class PLetNestedScope(body: PExp)(val pos: (Position, Position)) extends PTypedVarDecl with PLocalDeclaration with PScopeUniqueDeclaration {
@@ -1675,7 +1675,7 @@ case class PAssign(targets: PDelimited[PExp with PAssignTarget, PSym.Comma], op:
 sealed trait PIfContinuation extends PStmt
 case class PIf(keyword: PReserved[PKeywordIf], cond: PGrouped.Paren[PExp], thn: PSeqn, els: Option[PIfContinuation])(val pos: (Position, Position)) extends PStmt with PIfContinuation {
   override def reformat(ctx: ReformatterContext): Cont = show(keyword, ctx) <+> show(cond, ctx) <>
-    showBody(show(thn, ctx), true) <+@> showBody(showOption(els, ctx), false)
+    showBody(show(thn, ctx), false) <+@> showBody(showOption(els, ctx), false)
 
 }
 case class PElse(k: PKw.Else, els: PSeqn)(val pos: (Position, Position)) extends PStmt with PIfContinuation {
@@ -2011,7 +2011,7 @@ case class PFunction(annotations: Seq[PAnnotation], keyword: PKw.Function, idnde
     println(s"---------------------------");
     println(s"body ${body}");
     showAnnotations(annotations, ctx) <@@> show(keyword, ctx) <+> show(idndef, ctx) <>
-      show(args, ctx) <+> show(c, ctx) <+> show(resultType, ctx) <>
+      show(args, ctx) <> show(c, ctx) <+> show(resultType, ctx) <>
       showPresPosts(pres, posts, ctx) <> showBody(showOption(body, ctx), !(pres.isEmpty && posts.isEmpty))
   }
 }
