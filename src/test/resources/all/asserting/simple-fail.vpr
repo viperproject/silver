@@ -1,0 +1,73 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+method assign() {
+  //:: ExpectedOutput(assignment.failed:assertion.false)
+  var x: Int := asserting (false) in 0
+}
+
+method assign2(i: Int) {
+  //:: ExpectedOutput(assignment.failed:assertion.false)
+  var x: Int := asserting (i > 0) in 0
+}
+
+method assign3(i: Int)
+  requires i > 5
+{
+  var x: Int := asserting (i > 0) in 0
+}
+
+method pres()
+  //:: ExpectedOutput(not.wellformed:assertion.false)
+  requires asserting (false) in false
+{
+  assert false
+}
+
+method pres2(x: Ref)
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  requires asserting (acc(x.f)) in false
+{
+  assert false
+}
+
+method pres3(x: Ref)
+  requires acc(x.f)
+  requires asserting (acc(x.f)) in false
+{
+  assert false
+}
+
+//:: ExpectedOutput(function.not.wellformed:assertion.false)
+function fun(): Int
+{
+  asserting (false) in 0
+}
+
+//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
+function fun2(x: Ref): Int
+{
+  asserting (acc(x.f) && x.f > 0) in 0
+}
+
+//:: ExpectedOutput(function.not.wellformed:assertion.false)
+function fun3(x: Ref): Int
+  requires acc(x.f)
+{
+  asserting (acc(x.f) && x.f > 0) in 0
+}
+
+function fun4(x: Ref): Int
+  requires acc(x.f) && x.f > 8
+{
+  asserting (acc(x.f) && x.f > 0) in 0
+}
+
+method stateUnchanged(x: Ref)
+  requires acc(x.f)
+{
+  var y: Int := asserting (acc(x.f)) in x.f
+  assert acc(x.f)
+}
