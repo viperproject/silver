@@ -40,7 +40,6 @@ class ReformatterContext(val program: String, val offsets: Seq[Int]) {
 
       fastparse.parse(str, programTrivia(_)) match {
         case Parsed.Success(value, _) => {
-          println(s"Length: ${value.length}")
           value
         }
         case _: Parsed.Failure => Seq()
@@ -140,7 +139,7 @@ object ReformatPrettyPrinter extends FastPrettyPrinterBase {
       case _ => nil
     }
 
-    trivia <> r.reformat(ctx)
+    trivia <@@@> r.reformat(ctx)
   }
 
   def showAny(n: Any)(implicit ctx: ReformatterContext): Cont = {
