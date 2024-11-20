@@ -1883,7 +1883,7 @@ case class PProgram(imported: Seq[PProgram], members: Seq[PMember])(val pos: (Po
 
   override def reformat(implicit ctx: ReformatterContext): Cont = {
       println(s"whole program ${this.members}");
-     members.map(show(_)).foldLeft(nil)((acc, n) => acc <@@> n)
+     members.map(show(_, linebreak)).foldLeft(nil)((acc, n) => acc <@@> n)
      // Don't forget comments that appear after any nodes!
 //       formatTrivia(ctx.getTriviaByByteOffset(rawProgram.length))
   }
@@ -2115,8 +2115,8 @@ case class PNewLine() extends Trivia {
 
 case class PComment(content: String, block: Boolean) extends Trivia {
   override def reformat(implicit ctx: ReformatterContext): Cont = if (block) {
-    text("/*") <> content <> text("*/") <> linebreak
+    text("/*") <> content <> text("*/")
   } else  {
-    text("//") <> text(content) <> linebreak
+    text("//") <> text(content)
   }
 }

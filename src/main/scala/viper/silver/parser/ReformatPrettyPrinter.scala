@@ -69,7 +69,7 @@ object ReformatPrettyPrinter extends FastPrettyPrinterBase {
     if (annotations.isEmpty) {
       nil
     } else {
-      annotations.map(show).foldLeft(nil)((acc, n) => acc <@@> n)
+      annotations.map(show(_)).foldLeft(nil)((acc, n) => acc <@@> n)
     }
   }
 
@@ -98,19 +98,38 @@ object ReformatPrettyPrinter extends FastPrettyPrinterBase {
     }
   }
 
-  def show(r: Reformattable)(implicit ctx: ReformatterContext): Cont = {
+  def show(r: Reformattable, sep: Cont = nil)(implicit ctx: ReformatterContext): Cont = {
     val trivia = r match {
       case p: PLeaf => {
         val trivia = ctx.getTrivia(p.pos);
 
         var reformatted = nil
+        var leadingNewlines = 0;
+        var leadingSpaces = 0;
         var newlines = 0;
         var spaces = 0;
+        var hasComment = false
+
+        def getSep(newlines: Int, spaces: Int): Cont = {
+          if (newlines > 1) dlinebreak
+          else if (newlines > 0) linebreak
+          else if (spaces > 0) space
+          else nil
+        }
+
+        println(trivia);
 
         for (t <- trivia) {
           t match {
             case p: PComment => {
-              val lw = if (newlines > 1) linebreak else nil
+              val lw = if (!hasComment) {
+                leadingNewlines = newlines;
+                leadingSpaces = spaces;
+                hasComment = true;
+                nil
+              } else  {
+                getSep(newlines, spaces)
+              }
               reformatted = reformatted <> lw <> p.reformat(ctx)
               newlines = 0
               spaces = 0
@@ -121,18 +140,34 @@ object ReformatPrettyPrinter extends FastPrettyPrinterBase {
           }
         }
 
-        val hasComment = trivia exists {
-          case _: PComment => true
-          case _ => false
-        }
+        val trailingNewlines = newlines;
+        val trailingSpaces = spaces;
 
         if (hasComment) {
+          val leadingSep = getSep(leadingNewlines, leadingSpaces)
+          val trailingSep = getSep(trailingNewlines, trailingSpaces)
+          val Space: Cont = space;
+          val Linebreak: Cont = linebreak;
+          val Line: Cont = line;
+
+          sep match {
+            case Space => (if (leadingSep == nil) space else leadingSep) <> reformatted <>
+              (if (trailingSep == nil) space else trailingSep)
+            case Linebreak => leadingSep <> reformatted <> (if (trailingSep == dlinebreak) dlinebreak else linebreak)
+            case Line => leadingSep <> reformatted <> (if (trailingSep == dlinebreak) dlinebreak else line)
+            // `nil` and others
+            case _ => leadingSep <> reformatted <> trailingSep
+          }
+
           reformatted
         } else {
-          if (newlines > 1) {
-            linebreak
+          println(s"${newlines}");
+          println(s"${sep == linebreak}");
+          if (newlines > 1 && sep == linebreak) {
+            println("double break!");
+            dlinebreak
           } else {
-            nil
+            sep
           }
         }
       };
