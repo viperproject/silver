@@ -168,8 +168,8 @@ sealed trait PKeywordAtom
 sealed trait PKeywordIf extends PKeywordStmt
 
 
-abstract class PKw(val keyword: String) extends PKeyword with Reformattable {
-  override def reformat(implicit ctx: ReformatterContext): Cont = text(keyword)
+abstract class PKw(val keyword: String) extends PKeyword {
+//  override def reformat(implicit ctx: ReformatterContext): Cont = text(keyword)
 }
 
 object PKw {
@@ -304,11 +304,9 @@ object PKw {
 }
 
 /** Anything that is composed of /![a-zA-Z]/ characters. */
-trait PSymbol extends PReservedString with Reformattable {
+trait PSymbol extends PReservedString {
   def symbol: String
   override def token = symbol
-
-  override def reformat(implicit ctx: ReformatterContext): Cont = text(symbol)
 }
 
 trait PSymbolLang extends PSymbol

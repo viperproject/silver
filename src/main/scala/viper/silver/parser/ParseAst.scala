@@ -8,6 +8,7 @@ package viper.silver.parser
 
 
 import viper.silver.ast
+import viper.silver.ast.pretty.FastPrettyPrinterBase
 import viper.silver.ast.{FilePosition, HasLineColumn, Position}
 import viper.silver.parser.ReformatPrettyPrinter.{show, showAnnotations, showAny, showBody, showInvs, showOption, showPresPosts, showReturns, showSeq}
 
@@ -1882,10 +1883,10 @@ case class PProgram(imported: Seq[PProgram], members: Seq[PMember])(val pos: (Po
   }
 
   override def reformat(implicit ctx: ReformatterContext): Cont = {
-      println(s"whole program ${this.members}");
-     members.map(show(_, linebreak)).foldLeft(nil)((acc, n) => acc <@@> n)
-     // Don't forget comments that appear after any nodes!
-//       formatTrivia(ctx.getTriviaByByteOffset(rawProgram.length))
+    if (members.isEmpty)
+      nil
+    else
+     members.zipWithIndex.map(e => show(e._1, if (e._2 == 0) SNil() else SLinebreak())).reduce((acc, n) => acc <> n)
   }
 
   // Pretty print members in a specific order
@@ -2099,22 +2100,24 @@ trait PExtender extends PNode {
 }
 
 // Trivia (comments, whitespaces)
-trait Trivia extends Reformattable
+trait Trivia extends FastPrettyPrinterBase {
+  def display: Cont
+}
 
 case class POther() extends Trivia {
-  override def reformat(implicit ctx: ReformatterContext): Cont = ""
+  override def display: Cont = text("")
 }
 
 case class PSpace() extends Trivia {
-  override def reformat(implicit ctx: ReformatterContext): Cont = space
+  override def display: Cont = space
 }
 
 case class PNewLine() extends Trivia {
-  override def reformat(implicit ctx: ReformatterContext): Cont = linebreak
+  override def display: Cont = linebreak
 }
 
 case class PComment(content: String, block: Boolean) extends Trivia {
-  override def reformat(implicit ctx: ReformatterContext): Cont = if (block) {
+  def display: Cont = if (block) {
     text("/*") <> content <> text("*/")
   } else  {
     text("//") <> text(content)

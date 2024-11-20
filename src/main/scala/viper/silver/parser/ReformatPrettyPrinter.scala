@@ -3,11 +3,31 @@ package viper.silver.parser
 import fastparse.Parsed
 import viper.silver.ast
 import viper.silver.ast.pretty.FastPrettyPrinterBase
-import viper.silver.ast.{HasLineColumn, LineColumnPosition, Position}
+import viper.silver.ast.{HasLineColumn}
 import viper.silver.parser.FastParserCompanion.programTrivia
-import viper.silver.plugin.standard.adt.PAdtConstructor
 
-trait Reformattable extends FastPrettyPrinterBase {
+sealed trait Separator extends FastPrettyPrinterBase {
+  def doc: Cont
+}
+
+case class SNil() extends Separator {
+  override def doc: Cont = nil
+}
+case class SSpace() extends Separator {
+  override def doc: Cont = space
+}
+case class SLine() extends Separator {
+  override def doc: Cont = line
+}
+case class SLinebreak() extends Separator {
+  override def doc: Cont = linebreak
+}
+case class SDLinebreak() extends Separator {
+  override def doc: Cont = dlinebreak
+}
+
+
+trait Reformattable extends FastPrettyPrinterBase with Where {
   def reformat(implicit ctx: ReformatterContext): Cont
 }
 
@@ -23,20 +43,26 @@ class ReformatterContext(val program: String, val offsets: Seq[Int]) {
     row + p.column - 1
   }
 
-  def getTrivia(pos: (ast.Position, ast.Position)): Seq[Trivia] = {
-    pos._1 match {
-      case p: HasLineColumn => {
+  def getTrivia(pos: (ast.Position, ast.Position), updateOffset: Boolean): Seq[Trivia] = {
+    (pos._1, pos._2) match {
+      case (p: HasLineColumn, q: HasLineColumn) => {
         val p_offset = getByteOffset(p);
-        getTriviaByByteOffset(p_offset)
+        val q_offset = getByteOffset(q);
+        getTriviaByByteOffset(p_offset, if (updateOffset) Some(q_offset) else None)
       }
       case _ => Seq()
     }
   }
 
-  def getTriviaByByteOffset(offset: Int): Seq[Trivia] = {
+  def getTriviaByByteOffset(offset: Int, updateOffset: Option[Int]): Seq[Trivia] = {
     if (currentOffset <= offset) {
       val str = program.substring(currentOffset, offset);
-      this.currentOffset = offset;
+      currentOffset = currentOffset.max(offset);
+
+      updateOffset match {
+        case Some(o) => currentOffset = o
+        case _ =>
+      }
 
       fastparse.parse(str, programTrivia(_)) match {
         case Parsed.Success(value, _) => {
@@ -98,83 +124,80 @@ object ReformatPrettyPrinter extends FastPrettyPrinterBase {
     }
   }
 
-  def show(r: Reformattable, sep: Cont = nil)(implicit ctx: ReformatterContext): Cont = {
-    val trivia = r match {
-      case p: PLeaf => {
-        val trivia = ctx.getTrivia(p.pos);
-
-        var reformatted = nil
-        var leadingNewlines = 0;
-        var leadingSpaces = 0;
-        var newlines = 0;
-        var spaces = 0;
-        var hasComment = false
-
-        def getSep(newlines: Int, spaces: Int): Cont = {
-          if (newlines > 1) dlinebreak
-          else if (newlines > 0) linebreak
-          else if (spaces > 0) space
-          else nil
-        }
-
-        println(trivia);
-
-        for (t <- trivia) {
-          t match {
-            case p: PComment => {
-              val lw = if (!hasComment) {
-                leadingNewlines = newlines;
-                leadingSpaces = spaces;
-                hasComment = true;
-                nil
-              } else  {
-                getSep(newlines, spaces)
-              }
-              reformatted = reformatted <> lw <> p.reformat(ctx)
-              newlines = 0
-              spaces = 0
-            }
-            case _: PNewLine => newlines += 1
-            case _: PSpace => spaces += 1
-            case _ =>
-          }
-        }
-
-        val trailingNewlines = newlines;
-        val trailingSpaces = spaces;
-
-        if (hasComment) {
-          val leadingSep = getSep(leadingNewlines, leadingSpaces)
-          val trailingSep = getSep(trailingNewlines, trailingSpaces)
-          val Space: Cont = space;
-          val Linebreak: Cont = linebreak;
-          val Line: Cont = line;
-
-          sep match {
-            case Space => (if (leadingSep == nil) space else leadingSep) <> reformatted <>
-              (if (trailingSep == nil) space else trailingSep)
-            case Linebreak => leadingSep <> reformatted <> (if (trailingSep == dlinebreak) dlinebreak else linebreak)
-            case Line => leadingSep <> reformatted <> (if (trailingSep == dlinebreak) dlinebreak else line)
-            // `nil` and others
-            case _ => leadingSep <> reformatted <> trailingSep
-          }
-
-          reformatted
-        } else {
-          println(s"${newlines}");
-          println(s"${sep == linebreak}");
-          if (newlines > 1 && sep == linebreak) {
-            println("double break!");
-            dlinebreak
-          } else {
-            sep
-          }
-        }
-      };
-      case _ => nil
+  def show(r: Reformattable, sep: Separator = SNil())(implicit ctx: ReformatterContext): Cont = {
+    val updatePos = r match {
+      case _: PLeaf => true
+      case _ => false
     }
 
-    trivia <@@@> r.reformat(ctx)
+    println(s"before: ${sep}");
+
+    val trivia = ctx.getTrivia(r.pos, updatePos);
+
+    var reformatted = nil
+    var leadingNewlines = 0;
+    var leadingSpaces = 0;
+    var newlines = 0;
+    var spaces = 0;
+    var hasComment = false
+
+    def getSep(newlines: Int, spaces: Int): Separator = {
+      if (newlines > 1) SDLinebreak()
+      else if (newlines > 0) SLinebreak()
+      else if (spaces > 0) SSpace()
+      else SNil()
+    }
+
+    println(trivia);
+
+    for (t <- trivia) {
+      t match {
+        case p: PComment => {
+          val lw = if (!hasComment) {
+            leadingNewlines = newlines;
+            leadingSpaces = spaces;
+            hasComment = true;
+            nil
+          } else  {
+            getSep(newlines, spaces).doc
+          }
+          reformatted = reformatted <> lw <> p.display
+          newlines = 0
+          spaces = 0
+        }
+        case _: PNewLine => newlines += 1
+        case _: PSpace => spaces += 1
+        case _ =>
+      }
+    }
+
+    val trailingNewlines = newlines;
+    val trailingSpaces = spaces;
+
+    val formattedTrivia = if (hasComment) {
+      val leadingSep = getSep(leadingNewlines, leadingSpaces)
+      val trailingSep = getSep(trailingNewlines, trailingSpaces)
+
+      sep match {
+        case _: SSpace => (if (leadingSep == SNil()) space else leadingSep.doc) <> reformatted <>
+          (if (trailingSep == SNil()) space else trailingSep.doc)
+        case _: SLinebreak => leadingSep.doc <> reformatted <> (if (trailingSep == SDLinebreak()) dlinebreak else linebreak)
+        case _: SLine => leadingSep.doc <> reformatted <> (if (trailingSep == SDLinebreak()) dlinebreak else line)
+        // `nil` and others
+        case _ => leadingSep.doc <> reformatted <> trailingSep.doc
+      }
+    } else {
+      println(s"${newlines}");
+      println(s"after: ${sep == linebreak}");
+      if (newlines > 1 && sep == SLinebreak()) {
+        println("double break!");
+        dlinebreak
+      } else {
+        sep.doc
+      }
+    }
+
+    formattedTrivia <@@@> r.reformat(ctx)
   }
 
   def showAny(n: Any)(implicit ctx: ReformatterContext): Cont = {
