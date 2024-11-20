@@ -15,29 +15,32 @@ trait ReformattableExpression extends FastPrettyPrinterBase {
   def reformatExp(implicit ctx: ReformatterContext): Cont
 }
 
-class ReformatterContext(val program: String, val offsets: Seq[Int], val posMap: Map[Position, Position]) {
+class ReformatterContext(val program: String, val offsets: Seq[Int]) {
+  var currentOffset: Int = 0
+
   def getByteOffset(p: HasLineColumn): Int = {
     val row = offsets(p.line - 1);
     row + p.column - 1
   }
 
-  def getTrivia(start: ast.Position, end: ast.Position): Seq[Trivia] = {
-    (start, end) match {
-      case (p: HasLineColumn, q: HasLineColumn) => {
+  def getTrivia(pos: (ast.Position, ast.Position)): Seq[Trivia] = {
+    pos._1 match {
+      case p: HasLineColumn => {
         val p_offset = getByteOffset(p);
-        val q_offset = getByteOffset(q);
-        getTriviaByByteOffset(p_offset, q_offset)
+        getTriviaByByteOffset(p_offset)
       }
       case _ => Seq()
     }
   }
 
-  def getTriviaByByteOffset(startOffset: Int, endOffset: Int): Seq[Trivia] = {
-    if (startOffset < endOffset) {
-      val str = program.substring(startOffset, endOffset);
+  def getTriviaByByteOffset(offset: Int): Seq[Trivia] = {
+    if (currentOffset <= offset) {
+      val str = program.substring(currentOffset, offset);
+      this.currentOffset = offset;
 
       fastparse.parse(str, programTrivia(_)) match {
         case Parsed.Success(value, _) => {
+          println(s"Length: ${value.length}")
           value
         }
         case _: Parsed.Failure => Seq()
@@ -52,22 +55,7 @@ object ReformatPrettyPrinter extends FastPrettyPrinterBase {
   override val defaultIndent = 4
 
   def reformatProgram(p: PProgram): String = {
-    def collectLeavePositions(p: PNode): Seq[(ast.Position, ast.Position)] = {
-      p match {
-        case p: PLeaf => Seq(p.pos)
-        case _ => p.subnodes.flatMap(collectLeavePositions)
-      }
-    }
-    val leavePositions = collectLeavePositions(p)
-    var positions: Map[ast.Position, ast.Position] = Map(leavePositions.headOption.map(p => p._1).getOrElse(LineColumnPosition(1, 1)) -> LineColumnPosition(1, 1))
-
-    if (leavePositions.length > 1) {
-      leavePositions.sliding(2).foreach {
-        case Seq(a, b) =>  positions += (b._1 -> a._2)
-      }
-    }
-
-    implicit val ctx = new ReformatterContext(p.rawProgram, p.offsets, positions)
+    implicit val ctx = new ReformatterContext(p.rawProgram, p.offsets)
     super.pretty(defaultWidth, show(p))
   }
 
@@ -92,9 +80,9 @@ object ReformatPrettyPrinter extends FastPrettyPrinterBase {
 
   def showPresPosts(pres: PDelimited[_, _], posts: PDelimited[_, _])(implicit ctx: ReformatterContext): Cont = {
     nest(defaultIndent, (if (pres.isEmpty) nil
-    else line <> show(pres)) <>
+    else linebreak <> show(pres)) <>
       (if (posts.isEmpty) nil
-      else line <> show(posts)
+      else linebreak <> show(posts)
         )
     )
   }
@@ -114,13 +102,7 @@ object ReformatPrettyPrinter extends FastPrettyPrinterBase {
   def show(r: Reformattable)(implicit ctx: ReformatterContext): Cont = {
     val trivia = r match {
       case p: PLeaf => {
-        val trivia = ctx.posMap.get(p.pos._1).map(end => {
-          ctx.getTrivia(end, p.pos._2)
-        }).getOrElse({
-          Seq()
-        });
-
-        println(s"Trivia: ${trivia}");
+        val trivia = ctx.getTrivia(p.pos);
 
         var reformatted = nil
         var newlines = 0;
@@ -129,8 +111,8 @@ object ReformatPrettyPrinter extends FastPrettyPrinterBase {
         for (t <- trivia) {
           t match {
             case p: PComment => {
-              val lw = if (newlines > 0) linebreak else if(spaces > 0) space else nil
-              reformatted = reformatted <> lw <> group(p.reformat(ctx))
+              val lw = if (newlines > 1) linebreak else nil
+              reformatted = reformatted <> lw <> p.reformat(ctx)
               newlines = 0
               spaces = 0
             }
@@ -138,10 +120,6 @@ object ReformatPrettyPrinter extends FastPrettyPrinterBase {
             case _: PSpace => spaces += 1
             case _ =>
           }
-        }
-
-        if (newlines > 0) {
-          reformatted = reformatted <> linebreak
         }
 
         val hasComment = trivia exists {
