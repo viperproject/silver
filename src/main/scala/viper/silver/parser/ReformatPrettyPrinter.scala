@@ -156,11 +156,7 @@ object ReformatPrettyPrinter extends FastPrettyPrinterBase {
     if (l.isEmpty) {
       nil
     } else {
-      val sep = l.head match {
-        case _: PAdtConstructor => linebreak
-        case _ => linebreak
-      }
-      l.map(showAny(_)).reduce(_ <> sep <> _)
+      l.map(showAny(_)).reduce(_ <> linebreak <> _)
     }
   }
 }
