@@ -113,13 +113,13 @@ class PDelimited[+T, +D](
 //    println(s"end: ${end}");
 
     val separator = delimiters.headOption match {
-      case Some(p: PSym.Comma) => space
-      case None => nil
-      case _ => line
+      case Some(p: PSym.Comma) => SSpace()
+      case None => SNil()
+      case _ => SLinebreak()
     };
 
     showAny(first) <@@@>
-      inner.foldLeft(nil)((acc, b) => acc <@@@> showAny(b._1) <@@@> separator <@@@> showAny(b._2)) <@@@>
+      inner.foldLeft(nil)((acc, b) => acc <@@@> showAny(b._1) <@@@> showAny(b._2, separator)) <@@@>
       showAny(end)
   }
 }

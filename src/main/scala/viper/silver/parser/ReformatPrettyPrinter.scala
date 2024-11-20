@@ -84,9 +84,9 @@ object ReformatPrettyPrinter extends FastPrettyPrinterBase {
     super.pretty(defaultWidth, show(p))
   }
 
-  def showOption[T <: Any](n: Option[T])(implicit ctx: ReformatterContext): Cont = {
+  def showOption[T <: Any](n: Option[T], sep: Separator = SNil())(implicit ctx: ReformatterContext): Cont = {
     n match {
-      case Some(r) => showAny(r)
+      case Some(r) => showAny(r, sep)
       case None => nil
     }
   }
@@ -105,15 +105,15 @@ object ReformatPrettyPrinter extends FastPrettyPrinterBase {
 
   def showPresPosts(pres: PDelimited[_, _], posts: PDelimited[_, _])(implicit ctx: ReformatterContext): Cont = {
     nest(defaultIndent, (if (pres.isEmpty) nil
-    else linebreak <> show(pres)) <>
+    else show(pres, SLinebreak())) <>
       (if (posts.isEmpty) nil
-      else linebreak <> show(posts)
+      else show(posts, SLinebreak())
         )
     )
   }
 
   def showInvs(invs: PDelimited[_, _])(implicit ctx: ReformatterContext): Cont = {
-    nest(defaultIndent, (if (invs.isEmpty) nil else line <> show(invs)))
+    nest(defaultIndent, (if (invs.isEmpty) nil else show(invs, SLinebreak())))
   }
 
   def showBody(body: Cont, newline: Boolean): Cont = {
@@ -130,7 +130,9 @@ object ReformatPrettyPrinter extends FastPrettyPrinterBase {
       case _ => false
     }
 
-    println(s"before: ${sep}");
+    println(s"separator: ${sep}");
+    println(s"pos: ${r.pos}");
+    println(s"node: ${r.getClass}");
 
     val trivia = ctx.getTrivia(r.pos, updatePos);
 
@@ -188,9 +190,7 @@ object ReformatPrettyPrinter extends FastPrettyPrinterBase {
       }
     } else {
       println(s"${newlines}");
-      println(s"after: ${sep == linebreak}");
       if (newlines > 1 && sep == SLinebreak()) {
-        println("double break!");
         dlinebreak
       } else {
         sep.doc
@@ -200,13 +200,13 @@ object ReformatPrettyPrinter extends FastPrettyPrinterBase {
     formattedTrivia <@@@> r.reformat(ctx)
   }
 
-  def showAny(n: Any)(implicit ctx: ReformatterContext): Cont = {
+  def showAny(n: Any, sep: Separator = SNil())(implicit ctx: ReformatterContext): Cont = {
     n match {
-      case p: Reformattable => show(p)
-      case p: Option[Any] => showOption(p)
+      case p: Reformattable => show(p, sep)
+      case p: Option[Any] => showOption(p, sep)
       case p: Seq[Any] => showSeq(p)
-      case p: Right[Any, Any] => showAny(p.value)
-      case p: Left[Any, Any] => showAny(p.value)
+      case p: Right[Any, Any] => showAny(p.value, sep)
+      case p: Left[Any, Any] => showAny(p.value, sep)
     }
   }
 
