@@ -37,11 +37,27 @@ trait ReformattableExpression extends FastPrettyPrinterBase {
 
 class ReformatterContext(val program: String, val offsets: Seq[Int]) {
   var currentOffset: Int = 0
+  var currentSeparator: Separator = SNil()
 
   def getByteOffset(p: HasLineColumn): Int = {
     val row = offsets(p.line - 1);
     row + p.column - 1
   }
+
+//  def registerSeparator(sep: Separator) = {
+//    currentSeparator match {
+//      case SNil() => currentSeparator = sep
+//      case SSpace() => sep match {
+//        case SNil() => {}
+//        case _ => currentSeparator = sep
+//      }
+//      case SLine() | SLinebreak() => sep match {
+//        case SLine() | SLinebreak() | SDLinebreak() => currentSeparator = sep
+//        case _ => {}
+//      }
+//      case _ => {}
+//    }
+//  }
 
   def getTrivia(pos: (ast.Position, ast.Position), updateOffset: Boolean): Seq[Trivia] = {
     (pos._1, pos._2) match {
@@ -204,17 +220,17 @@ object ReformatPrettyPrinter extends FastPrettyPrinterBase {
     n match {
       case p: Reformattable => show(p, sep)
       case p: Option[Any] => showOption(p, sep)
-      case p: Seq[Any] => showSeq(p)
+      case p: Seq[Any] => showSeq(p, sep)
       case p: Right[Any, Any] => showAny(p.value, sep)
       case p: Left[Any, Any] => showAny(p.value, sep)
     }
   }
 
-  def showSeq(l: Seq[Any])(implicit ctx: ReformatterContext): Cont = {
+  def showSeq(l: Seq[Any], sep: Separator = SNil())(implicit ctx: ReformatterContext): Cont = {
     if (l.isEmpty) {
       nil
     } else {
-      l.map(showAny(_)).reduce(_ <> linebreak <> _)
+      l.zipWithIndex.map(e => if (e._2 == 0) showAny(e._1, sep) else showAny(e._1, SLinebreak())).reduce(_ <> _)
     }
   }
 }

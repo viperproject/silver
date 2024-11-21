@@ -1076,7 +1076,7 @@ class PBinExp(val left: PExp, val op: PReserved[PBinaryOp], val right: PExp)(val
     op.rs match {
       // Those operators look a bit better if they stick on the previous line
       case Iff | Implies | EqEq =>
-        group(show(left) <+> show(op) <> nest(defaultIndent, line <> show(right)))
+        group(show(left) <+> show(op) <> nest(defaultIndent, show(right, SLine())))
       case _ => group(show(left) <@> show(op) <+> show(right))
     }
 
@@ -1106,8 +1106,8 @@ case class PCondExp(cond: PExp, q: PSymOp.Question, thn: PExp, c: PSymOp.Colon, 
   )
 
   override def reformatExp(implicit ctx: ReformatterContext): Cont = show(cond) <+> show(q) <>
-    nest(defaultIndent, group(line <> show(thn) <+>
-      show(c) <> group(line <> show(els))))
+    nest(defaultIndent, group(show(thn, SLine()) <+>
+      show(c) <> group(show(els, SLine()))))
 }
 
 // Simple literals
@@ -1174,7 +1174,7 @@ case class PUnfolding(unfolding: PKwOp.Unfolding, acc: PAccAssertion, in: PKwOp.
   override val signatures: List[PTypeSubstitution] =
     List(Map(POpApp.pArgS(0) -> Predicate, POpApp.pResS -> POpApp.pArg(1)))
 
-  override def reformatExp(implicit ctx: ReformatterContext): Cont = show(unfolding) <+> show(acc) <+> show(in) <> nest(defaultIndent, group(line <> show(exp)))
+  override def reformatExp(implicit ctx: ReformatterContext): Cont = show(unfolding) <+> show(acc) <+> show(in) <> nest(defaultIndent, group(show(exp, SLine())))
 }
 
 case class PApplying(applying: PKwOp.Applying, wand: PExp, in: PKwOp.In, exp: PExp)(val pos: (Position, Position)) extends PHeapOpApp {
@@ -1182,7 +1182,7 @@ case class PApplying(applying: PKwOp.Applying, wand: PExp, in: PKwOp.In, exp: PE
   override val signatures: List[PTypeSubstitution] =
     List(Map(POpApp.pArgS(0) -> Wand, POpApp.pResS -> POpApp.pArg(1)))
 
-  override def reformatExp(implicit ctx: ReformatterContext): Cont = show(applying) <+> show(wand) <+> show(in) <> nest(defaultIndent, group(line <> show(exp)))
+  override def reformatExp(implicit ctx: ReformatterContext): Cont = show(applying) <+> show(wand) <+> show(in) <> nest(defaultIndent, group(show(exp, SLine())))
 }
 
 case class PAsserting(asserting: PKwOp.Asserting, a: PExp, in: PKwOp.In, exp: PExp)(val pos: (Position, Position)) extends PHeapOpApp {
@@ -1191,8 +1191,8 @@ case class PAsserting(asserting: PKwOp.Asserting, a: PExp, in: PKwOp.In, exp: PE
     List(Map(POpApp.pArgS(0) -> Impure, POpApp.pResS -> POpApp.pArg(1)))
 
   override def reformatExp(implicit ctx: ReformatterContext): Cont = show(asserting) <+>
-    nest(defaultIndent, group(line <> show(a))) <+>
-    show(in) <> nest(defaultIndent, group(line <> show(exp)))
+    nest(defaultIndent, group(show(a, SLine()))) <+>
+    show(in) <> nest(defaultIndent, group(show(exp, SLine())))
 }
 
 sealed trait PBinder extends PExp with PScope {
@@ -1240,7 +1240,7 @@ case class PForPerm(keyword: PKw.Forperm, vars: PDelimited[PLogicalVarDecl, PSym
 
   override def reformatExp(implicit ctx: ReformatterContext): Cont = show(keyword) <+>
     show(vars) <+> show(accessRes) <+> show(c) <>
-    nest(defaultIndent, group(line <> show(body)))
+    nest(defaultIndent, group(show(body, SLine())))
 }
 
 /* Let-expressions `let x == e1 in e2` are represented by the nested structure
@@ -1265,7 +1265,7 @@ case class PLet(l: PKwOp.Let, variable: PIdnDef, eq: PSymOp.EqEq, exp: PGrouped.
   }
 
   override def reformatExp(implicit ctx: ReformatterContext): Cont = show(l) <+> show(variable) <+>
-    show(eq) <+> show(exp) <+> show(in) <> group(line <> show(nestedScope))
+    show(eq) <+> show(exp) <+> show(in) <> group(show(nestedScope, SLine()))
 }
 
 case class PLetNestedScope(body: PExp)(val pos: (Position, Position)) extends PTypedVarDecl with PLocalDeclaration with PScopeUniqueDeclaration {
@@ -1930,7 +1930,7 @@ case class PDomain(annotations: Seq[PAnnotation], domain: PKw.Domain, idndef: PI
   override def reformat(implicit ctx: ReformatterContext): Cont = {
     showAnnotations(annotations) <@@> show(domain) <+>
       show(idndef) <> showOption(typVars) <>
-      (if (interpretations.isEmpty) nil else nest(defaultIndent, linebreak <> showOption(interpretations))) <>
+      (if (interpretations.isEmpty) nil else nest(defaultIndent, showOption(interpretations, SLinebreak()))) <>
       showBody(members, !interpretations.isEmpty)
   }
 }
@@ -1987,8 +1987,9 @@ case class PAxiom1(annotations: Seq[PAnnotation], axiom: PKw.Axiom, idndef: Opti
     showOption(idndef) <+@> show(exp) <> showOption(s)
 }
 case class PDomainMembers1(members: Seq[PDomainMember1])(val pos: (Position, Position)) extends PNode with PPrettySubnodes {
-  override def reformat(implicit ctx: ReformatterContext): Cont = if (members.isEmpty) nil else members.map(m => show(m))
-    .reduce(_ <> linebreak <> _)
+  override def reformat(implicit ctx: ReformatterContext): Cont = if (members.isEmpty) nil else members.zipWithIndex
+    .map(m => if (m._2 == 0) show(m._1) else show(m._1, SLinebreak()))
+    .reduce(_ <> _)
 }
 
 
