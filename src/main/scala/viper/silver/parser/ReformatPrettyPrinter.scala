@@ -116,11 +116,11 @@ object ReformatPrettyPrinter extends FastPrettyPrinterBase {
     nest(defaultIndent, (if (invs.isEmpty) nil else show(invs, SLinebreak())))
   }
 
-  def showBody(body: Cont, newline: Boolean): Cont = {
+  def showBody(body: Reformattable, newline: Boolean)(implicit ctx: ReformatterContext): Cont = {
     if (newline) {
-      linebreak <> body
+      show(body, SLinebreak())
     } else {
-      nil <+> body
+      show(body, SSpace())
     }
   }
 

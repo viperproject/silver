@@ -1684,19 +1684,19 @@ case class PAssign(targets: PDelimited[PExp with PAssignTarget, PSym.Comma], op:
 sealed trait PIfContinuation extends PStmt
 case class PIf(keyword: PReserved[PKeywordIf], cond: PGrouped.Paren[PExp], thn: PSeqn, els: Option[PIfContinuation])(val pos: (Position, Position)) extends PStmt with PIfContinuation {
   override def reformat(implicit ctx: ReformatterContext): Cont = show(keyword) <+> show(cond) <>
-    showBody(show(thn), false) <+@> showBody(showOption(els), false)
+    showBody(thn, false) <> els.map(showBody(_, false)).getOrElse(nil)
 
 }
 case class PElse(k: PKw.Else, els: PSeqn)(val pos: (Position, Position)) extends PStmt with PIfContinuation {
   override def reformat(implicit ctx: ReformatterContext): Cont = {
-    show(k) <+> showBody(show(els), false)
+    show(k) <> showBody(els, false)
   }
 }
 
 case class PWhile(keyword: PKw.While, cond: PGrouped.Paren[PExp], invs: PDelimited[PSpecification[PKw.InvSpec], Option[PSym.Semi]], body: PSeqn)(val pos: (Position, Position)) extends PStmt {
   override def reformat(implicit ctx: ReformatterContext): Cont = {
     show(keyword) <> show(cond) <+>
-      showInvs(invs) <> showBody(show(body), !invs.isEmpty)
+      showInvs(invs) <> showBody(body, !invs.isEmpty)
   }
 }
 
@@ -1931,7 +1931,7 @@ case class PDomain(annotations: Seq[PAnnotation], domain: PKw.Domain, idndef: PI
     showAnnotations(annotations) <@@> show(domain) <+>
       show(idndef) <> showOption(typVars) <>
       (if (interpretations.isEmpty) nil else nest(defaultIndent, linebreak <> showOption(interpretations))) <>
-      showBody(show(members), !interpretations.isEmpty)
+      showBody(members, !interpretations.isEmpty)
   }
 }
 
@@ -2021,7 +2021,7 @@ case class PFunction(annotations: Seq[PAnnotation], keyword: PKw.Function, idnde
     println(s"body ${body}");
     showAnnotations(annotations) <@@> show(keyword) <+> show(idndef) <>
       show(args) <> show(c) <+> show(resultType) <>
-      showPresPosts(pres, posts) <> showBody(showOption(body), !(pres.isEmpty && posts.isEmpty))
+      showPresPosts(pres, posts) <> body.map(showBody(_, !(pres.isEmpty && posts.isEmpty))).getOrElse(nil)
   }
 }
 
@@ -2031,7 +2031,7 @@ case class PPredicate(annotations: Seq[PAnnotation], keyword: PKw.Predicate, idn
   override def resultType = Predicate
 
   override def reformat(implicit ctx: ReformatterContext): Cont =  showAnnotations(annotations) <@@> show(keyword) <+> show(idndef) <>
-    show(args) <> showBody(showOption(body), false)
+    show(args) <> body.map(showBody(_, false)).getOrElse(nil)
 }
 
 case class PMethod(annotations: Seq[PAnnotation], keyword: PKw.Method, idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PFormalArgDecl], returns: Option[PMethodReturns], pres: PDelimited[PSpecification[PKw.PreSpec], Option[PSym.Semi]], posts: PDelimited[PSpecification[PKw.PostSpec], Option[PSym.Semi]], body: Option[PSeqn])
@@ -2050,7 +2050,7 @@ case class PMethod(annotations: Seq[PAnnotation], keyword: PKw.Method, idndef: P
 //    println(s"body ${body}");
 //    println(s"keyword pos: ${keyword.pos}");
     showAnnotations(annotations) <@@> show(keyword) <+> show(idndef) <> show(args) <> showReturns(returns) <>
-      showPresPosts(pres, posts) <> showBody(showOption(body), !(returns.isEmpty && pres.isEmpty && posts.isEmpty))
+      showPresPosts(pres, posts) <> body.map(showBody(_, !(returns.isEmpty && pres.isEmpty && posts.isEmpty))).getOrElse(nil)
   }
 }
 
