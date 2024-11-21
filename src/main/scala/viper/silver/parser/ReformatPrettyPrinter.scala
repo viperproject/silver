@@ -2,11 +2,63 @@ package viper.silver.parser
 
 import fastparse.Parsed
 import viper.silver.ast
-import viper.silver.ast.pretty.FastPrettyPrinterBase
-import viper.silver.ast.{HasLineColumn}
+import viper.silver.ast.pretty.{Call, FastPrettyPrinterBase, PrettyPrintPrimitives}
+import viper.silver.ast.HasLineColumn
 import viper.silver.parser.FastParserCompanion.programTrivia
 
-sealed trait Separator extends FastPrettyPrinterBase {
+sealed trait ReformatPrettyPrinterBase extends PrettyPrintPrimitives {
+  val defaultIndent = 4
+  val defaultWidth = 75
+
+  implicit def char (c : Char) : Cont =
+    if (c == '\n')
+      line
+    else
+      text (c.toString)
+
+  def space : Cont =
+    char (' ')
+
+  def dlinebreak : Cont =
+    linebreak <> linebreak
+
+  def line: Cont = line(" ")
+
+  def linebreak : Cont =
+    line ("\n")
+
+  implicit class ContOps(dl: Cont) {
+    def <>(dr: Cont) : Cont =
+      (iw: IW) =>
+        (c: TreeCont) => {
+          Call(() =>
+            for {
+              t <- dr(iw)(c)
+              t2 <- dl(iw)(t)
+            } yield t2)
+        }
+
+    def <+> (dr : Cont) : Cont =
+      dl <> space <> dr
+
+    def <@> (dr: Cont) : Cont =
+      if (dl == nil) dr else if (dr == nil) dl else dl <> line <> dr
+
+    def <@@> (dr: Cont) : Cont =
+      if (dl == nil) dr else if (dr == nil) dl else dl <> linebreak <> dr
+
+    def <@@@> (dr: Cont) : Cont =
+      if (dl == nil) dr else if (dr == nil) dl else dl <> dr
+
+    def <@+> (dr: Cont) : Cont =
+      if (dl == nil) dr else if (dr == nil) dl else dl <> dr
+
+    def <+@> (dr: Cont) : Cont =
+      if (dl == nil) dr else if (dr == nil) dl else dl <> space <> dr
+  }
+}
+
+sealed trait Separator extends ReformatPrettyPrinterBase {
   def doc: Cont
 }
 
@@ -27,11 +79,11 @@ case class SDLinebreak() extends Separator {
 }
 
 
-trait Reformattable extends FastPrettyPrinterBase with Where {
+trait Reformattable extends ReformatPrettyPrinterBase with Where {
   def reformat(implicit ctx: ReformatterContext): Cont
 }
 
-trait ReformattableExpression extends FastPrettyPrinterBase {
+trait ReformattableExpression extends ReformatPrettyPrinterBase {
   def reformatExp(implicit ctx: ReformatterContext): Cont
 }
 
@@ -92,7 +144,7 @@ class ReformatterContext(val program: String, val offsets: Seq[Int]) {
   }
 }
 
-object ReformatPrettyPrinter extends FastPrettyPrinterBase {
+object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
   override val defaultIndent = 4
 
   def reformatProgram(p: PProgram): String = {
