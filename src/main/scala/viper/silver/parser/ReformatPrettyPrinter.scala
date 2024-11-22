@@ -5,44 +5,76 @@ import viper.silver.ast
 import viper.silver.ast.pretty.{Call, FastPrettyPrinterBase, PrettyPrintPrimitives}
 import viper.silver.ast.HasLineColumn
 import viper.silver.parser.FastParserCompanion.programTrivia
+import viper.silver.parser.RLine.rl
 import viper.silver.parser.RLineBreak.rlb
 import viper.silver.parser.RNest.rne
 import viper.silver.parser.RNil.rn
 import viper.silver.parser.RSpace.rs
 
-trait RNode {}
+trait RNode {
+  def isNil: Boolean
+}
 
-case class RNil() extends RNode
+trait RWhitespace extends RNode
+
+case class RNil() extends RNode {
+  override def isNil: Boolean = true
+}
 object RNil {
   def rn(): List[RNode] = List(RNil())
 }
-case class RText(text: String) extends RNode
+
+case class RText(text: String) extends RNode {
+  override def isNil: Boolean = text.isEmpty
+}
 object RText {
   def rt(text: String): List[RNode] = List(RText(text))
 }
-case class RSpace() extends RNode
-object RSpace {
-  def rs(): List[RNode] = List(RSpace())
+
+case class RNest(l: List[RNode]) extends RNode {
+  override def isNil: Boolean = l.forall(_.isNil)
 }
-case class RNest(l: List[RNode]) extends RNode
 object RNest {
   def rne(l: List[RNode]): List[RNode] = List(RNest(l))
 }
-case class RGroup(l: List[RNode]) extends RNode
+
+case class RGroup(l: List[RNode]) extends RNode {
+  override def isNil: Boolean = l.forall(_.isNil)
+}
 object RGroup {
   def rg(l: List[RNode]): List[RNode] = List(RGroup(l))
 }
-case class RLine() extends RNode
+
+case class RHard(w: RWhitespace) extends RNode {
+  override def isNil: Boolean = false
+}
+
+case class RSpace() extends RWhitespace {
+  override def isNil: Boolean = false
+}
+object RSpace {
+  def rs(): List[RNode] = List(RHard(RSpace()))
+}
+
+case class RLine() extends RWhitespace {
+  override def isNil: Boolean = false
+}
 object RLine {
-  def rl(): List[RNode] = List(RLine())
+  def rl(): List[RNode] = List(RHard(RLine()))
 }
-case class RLineBreak() extends RNode
+
+case class RLineBreak() extends RWhitespace {
+  override def isNil: Boolean = false
+}
 object RLineBreak {
-  def rlb(): List[RNode] = List(RLineBreak())
+  def rlb(): List[RNode] =List(RHard(RLineBreak()))
 }
-case class RDLineBreak() extends RNode
+
+case class RDLineBreak() extends RWhitespace {
+  override def isNil: Boolean = false
+}
 object RDLineBreak {
-  def rdlb(): List[RNode] = List(RDLineBreak())
+  def rdlb(): List[RNode] = List(RHard(RDLineBreak()))
 }
 
 sealed trait ReformatPrettyPrinterBase extends PrettyPrintPrimitives {
@@ -65,6 +97,20 @@ sealed trait ReformatPrettyPrinterBase extends PrettyPrintPrimitives {
 
   def linebreak : Cont =
     line ("\n")
+
+  implicit class ContOps2(dl: List[RNode]) {
+    def <>(dr: List[RNode]): List[RNode] =
+      dl ::: dr
+
+    def <+>(dr: List[RNode]): List[RNode] =
+      if (dr.forall(_.isNil)) dl else if (dl.forall(_.isNil)) dr else dl ::: rs ::: dr
+
+    def <@>(dr: List[RNode]): List[RNode] =
+      if (dr.forall(_.isNil)) dl else if (dl.forall(_.isNil)) dr else dl ::: rl ::: dr
+
+    def <->(dr: List[RNode]): List[RNode] =
+      if (dr.forall(_.isNil)) dl else if (dl.forall(_.isNil)) dr else dl ::: rlb ::: dr
+  }
 
   implicit class ContOps(dl: Cont) {
     def <>(dr: Cont) : Cont =
@@ -125,6 +171,7 @@ trait Reformattable extends ReformatPrettyPrinterBase with Where {
 
 trait ReformattableExpression extends ReformatPrettyPrinterBase {
   def reformatExp(implicit ctx: ReformatterContext): Cont
+  def reformatExp2(implicit ctx: ReformatterContext2): List[RNode] = throw new IllegalAccessException(s"reformatExt2 not implemented ${getClass}")
 }
 
 class ReformatterContext(val program: String, val offsets: Seq[Int]) {
@@ -172,6 +219,7 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
   override val defaultIndent = 4
 
   def reformatProgram(p: PProgram): String = {
+    println(s"${p}");
     implicit val ctx = new ReformatterContext(p.rawProgram, p.offsets)
     super.pretty(defaultWidth, show(p))
   }
@@ -222,9 +270,9 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
       case _ => false
     }
 
-    println(s"separator: ${sep}");
-    println(s"pos: ${r.pos}");
-    println(s"node: ${r.getClass}");
+//    println(s"separator: ${sep}");
+//    println(s"pos: ${r.pos}");
+//    println(s"node: ${r.getClass}");
 
     val trivia = ctx.getTrivia(r.pos, updatePos);
 
@@ -242,7 +290,7 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
       else SNil()
     }
 
-    println(trivia);
+//    println(trivia);
 
     for (t <- trivia) {
       t match {
@@ -353,63 +401,70 @@ class ReformatterContext2(val program: String, val offsets: Seq[Int]) {
 }
 
 object ReformatPrettyPrinter2 extends ReformatPrettyPrinterBase {
-  def reformatProgram(p: PProgram): String = {
+  def reformatProgram2(p: PProgram): String = {
     implicit val ctx = new ReformatterContext2(p.rawProgram, p.offsets)
 
     def showList(p: List[RNode]): Cont = if (p.isEmpty) nil else p.map(n => n match {
       case RNil() => nil
-      case RText(t: String) => text(t)
+      case RText(t: String) => {
+        println(s"Found text: ${}, ${}", t, t.length)
+        text(t)
+      }
       case RSpace() => space
+      case RHard(w) => showList(List(w))
       case RGroup(l: List[RNode]) => group(showList(l))
+      case RNest(l: List[RNode]) => nest(defaultIndent, showList(l))
       case RLine() => line
       case RLineBreak() => linebreak
       case RDLineBreak() => linebreak <> linebreak
     }).reduce(_ <> _)
 
-    super.pretty(defaultWidth, showList(show(p)))
+    val list = show2(p).filter(!_.isNil)
+    println(s"List: ${list}")
+    super.pretty(defaultWidth, showList(list))
   }
 
-  def showOption[T <: Any](n: Option[T])(implicit ctx: ReformatterContext2): List[RNode] = {
+  def showOption2[T <: Any](n: Option[T])(implicit ctx: ReformatterContext2): List[RNode] = {
     n match {
-      case Some(r) => showAny(r)
+      case Some(r) => showAny2(r)
       case None => rn
     }
   }
 
-  def showAnnotations(annotations: Seq[PAnnotation])(implicit ctx: ReformatterContext2): List[RNode] = {
+  def showAnnotations2(annotations: Seq[PAnnotation])(implicit ctx: ReformatterContext2): List[RNode] = {
     if (annotations.isEmpty) {
       List(RNil())
     } else {
-      annotations.map(show(_)).reduce((acc, n) => acc ::: n)
+      annotations.map(show2(_)).reduce((acc, n) => acc ::: n)
     }
   }
 
-  def showReturns(returns: Option[PMethodReturns])(implicit ctx: ReformatterContext2): List[RNode] = {
-    returns.map(a => rs ::: show(a)).getOrElse(rn)
+  def showReturns2(returns: Option[PMethodReturns])(implicit ctx: ReformatterContext2): List[RNode] = {
+    returns.map(a => rs ::: show2(a)).getOrElse(rn)
   }
 
-  def showPresPosts(pres: PDelimited[_, _], posts: PDelimited[_, _])(implicit ctx: ReformatterContext2): List[RNode] = {
+  def showPresPosts2(pres: PDelimited[_, _], posts: PDelimited[_, _])(implicit ctx: ReformatterContext2): List[RNode] = {
     rne((if (pres.isEmpty) rn
-    else rlb ::: show(pres)) :::
+    else rlb ::: show2(pres)) :::
       (if (posts.isEmpty) rn
-      else rlb ::: show(posts)
+      else rlb ::: show2(posts)
         )
     )
   }
 
-  def showInvs(invs: PDelimited[_, _])(implicit ctx: ReformatterContext2): List[RNode] = {
-    rne(if (invs.isEmpty) rn else rlb ::: show(invs))
+  def showInvs2(invs: PDelimited[_, _])(implicit ctx: ReformatterContext2): List[RNode] = {
+    rne(if (invs.isEmpty) rn else rlb ::: show2(invs))
   }
 
-  def showBody(body: Reformattable, newline: Boolean)(implicit ctx: ReformatterContext2): List[RNode] = {
+  def showBody2(body: Reformattable, newline: Boolean)(implicit ctx: ReformatterContext2): List[RNode] = {
     if (newline) {
-      rlb ::: show(body)
+      rlb ::: show2(body)
     } else {
-      rs ::: show(body)
+      rs ::: show2(body)
     }
   }
 
-  def show(r: Reformattable)(implicit ctx: ReformatterContext2): List[RNode] = {
+  def show2(r: Reformattable)(implicit ctx: ReformatterContext2): List[RNode] = {
     val updatePos = r match {
       case _: PLeaf => true
       case _ => false
@@ -420,21 +475,21 @@ object ReformatPrettyPrinter2 extends ReformatPrettyPrinterBase {
     trivia ::: r.reformat2(ctx)
   }
 
-  def showAny(n: Any)(implicit ctx: ReformatterContext2): List[RNode] = {
+  def showAny2(n: Any)(implicit ctx: ReformatterContext2): List[RNode] = {
     n match {
-      case p: Reformattable => show(p)
-      case p: Option[Any] => showOption(p)
-      case p: Seq[Any] => showSeq(p)
-      case p: Right[Any, Any] => showAny(p.value)
-      case p: Left[Any, Any] => showAny(p.value)
+      case p: Reformattable => show2(p)
+      case p: Option[Any] => showOption2(p)
+      case p: Seq[Any] => showSeq2(p)
+      case p: Right[Any, Any] => showAny2(p.value)
+      case p: Left[Any, Any] => showAny2(p.value)
     }
   }
 
-  def showSeq(l: Seq[Any])(implicit ctx: ReformatterContext2): List[RNode] = {
+  def showSeq2(l: Seq[Any])(implicit ctx: ReformatterContext2): List[RNode] = {
     if (l.isEmpty) {
       rn
     } else {
-      l.zipWithIndex.map(e => if (e._2 == 0) showAny(e._1) else rlb ::: showAny(e._1)).reduce(_ ::: _)
+      l.zipWithIndex.map(e => if (e._2 == 0) showAny2(e._1) else rlb ::: showAny2(e._1)).reduce(_ ::: _)
     }
   }
 }

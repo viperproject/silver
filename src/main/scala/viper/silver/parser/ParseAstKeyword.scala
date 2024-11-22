@@ -8,7 +8,14 @@ package viper.silver.parser
 
 import viper.silver.ast.{NoPosition, Position}
 import viper.silver.parser.PSym.Brace
+import viper.silver.parser.RLine.rl
+import viper.silver.parser.RLineBreak.rlb
+import viper.silver.parser.RNest.rne
+import viper.silver.parser.RNil.rn
+import viper.silver.parser.RSpace.rs
+import viper.silver.parser.RText.rt
 import viper.silver.parser.ReformatPrettyPrinter.{show, showAny}
+import viper.silver.parser.ReformatPrettyPrinter2.{show2, showAny2}
 import viper.silver.parser.TypeHelper._
 
 trait PReservedString {
@@ -25,6 +32,8 @@ case class PReserved[+T <: PReservedString](rs: T)(val pos: (Position, Position)
   def token = rs.token
 
   override def reformat(implicit ctx: ReformatterContext): Cont = text(token)
+
+  override def reformat2(implicit ctx: ReformatterContext2): List[RNode] = rt(token)
 }
 object PReserved {
   def implied[T <: PReservedString](rs: T): PReserved[T] = PReserved(rs)(NoPosition, NoPosition)
@@ -50,6 +59,21 @@ case class PGrouped[G <: PSym.Group, +T](l: PReserved[G#L], inner: T, r: PReserv
       }
     } else  {
       show(l) <> nest(defaultIndent, showAny(inner)) <> show(r)
+    }
+  }
+
+  override def reformat2(implicit ctx: ReformatterContext2): List[RNode] = {
+    if (l.rs.isInstanceOf[Brace]) {
+      val left = show2(l);
+      val inner_ = showAny2(inner);
+      val right = show2(r);
+      if (inner_.forall(_.isNil)) {
+        left <> right
+      } else {
+        left <> rne(rl <> inner_) <> rl <> right
+      }
+    } else  {
+      show2(l) <> rne(showAny2(inner)) <> show2(r)
     }
   }
 }
@@ -106,12 +130,6 @@ class PDelimited[+T, +D](
   override def toString(): String = s"PDelimited($first,$inner,$end)"
 
   override def reformat(implicit ctx: ReformatterContext): Cont = {
-//    println(s"PDelimited");
-//    println(s"---------------------------");
-//    println(s"first: ${first}");
-//    println(s"inner: ${inner}");
-//    println(s"end: ${end}");
-
     val separator = delimiters.headOption match {
       case Some(p: PSym.Comma) => SSpace()
       case None => SNil()
@@ -121,6 +139,18 @@ class PDelimited[+T, +D](
     showAny(first) <@@@>
       inner.foldLeft(nil)((acc, b) => acc <@@@> showAny(b._1) <@@@> showAny(b._2, separator)) <@@@>
       showAny(end)
+  }
+
+  override def reformat2(implicit ctx: ReformatterContext2): List[RNode] = {
+    val separator = delimiters.headOption match {
+      case Some(p: PSym.Comma) => rs
+      case None => rn
+      case _ => rlb
+    };
+
+    showAny2(first) <>
+      inner.foldLeft(rn)((acc, b) => acc <> showAny2(b._1) <> separator <> showAny2(b._2)) <>
+      showAny2(end)
   }
 }
 

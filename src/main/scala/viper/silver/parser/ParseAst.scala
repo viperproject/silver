@@ -17,6 +17,10 @@ import viper.silver.ast.utility.Visitor
 import viper.silver.ast.utility.rewriter.{HasExtraValList, HasExtraVars, Rewritable, StrategyBuilder}
 import viper.silver.ast.{Exp, Member, NoPosition, SourcePosition, Stmt, Type}
 import viper.silver.parser.PSymOp.{EqEq, Iff, Implies}
+import viper.silver.parser.RLineBreak.rlb
+import viper.silver.parser.RNil.rn
+import viper.silver.parser.RText.rt
+import viper.silver.parser.ReformatPrettyPrinter2.{show2, showAnnotations2, showBody2, showPresPosts2, showReturns2}
 import viper.silver.parser.TypeHelper._
 import viper.silver.verifier.ParseReport
 
@@ -240,6 +244,8 @@ trait PIdentifier extends PLeaf {
 
 case class PIdnDef(name: String)(val pos: (Position, Position)) extends PNode with PIdentifier {
   override def reformat(implicit ctx: ReformatterContext): Cont = text(name)
+
+  override def reformat2(implicit ctx: ReformatterContext2): List[RNode] = rt(name)
 }
 
 trait PIdnUse extends PNode with PIdentifier {
@@ -1631,6 +1637,8 @@ case class PSeqn(ss: PDelimited.Block[PStmt])(val pos: (Position, Position)) ext
   override def pretty = ss.prettyLines
 
   override def reformat(implicit ctx: ReformatterContext): Cont = show(ss)
+
+  override def reformat2(implicit ctx: ReformatterContext2): List[RNode] = show2(ss)
 }
 
 /**
@@ -1889,6 +1897,13 @@ case class PProgram(imported: Seq[PProgram], members: Seq[PMember])(val pos: (Po
      members.zipWithIndex.map(e => show(e._1, if (e._2 == 0) SNil() else SLinebreak())).reduce((acc, n) => acc <> n)
   }
 
+  override def reformat2(implicit ctx: ReformatterContext2): List[RNode] = {
+    if (members.isEmpty)
+      rn
+    else
+      members.zipWithIndex.map(e => (if (e._2 == 0) rn else rlb) <> show2(e._1)).reduce((acc, n) => acc <> n)
+  }
+
   // Pretty print members in a specific order
   def prettyOrdered: String = {
     val all = Seq(imports, macros, domains, fields, functions, predicates, methods, extensions).filter(_.length > 0)
@@ -2041,17 +2056,13 @@ case class PMethod(annotations: Seq[PAnnotation], keyword: PKw.Method, idndef: P
   override def returnNodes = returns.toSeq
 
   override def reformat(implicit ctx: ReformatterContext): Cont = {
-    // TODO: Test annotations
-//    println(s"PMethod");
-//    println(s"---------------------------");
-//    println(s"args ${args}");
-//    println(s"returns ${returns}");
-//    println(s"pres ${pres}");
-//    println(s"posts ${posts}");
-//    println(s"body ${body}");
-//    println(s"keyword pos: ${keyword.pos}");
     showAnnotations(annotations) <@@> show(keyword) <+> show(idndef) <> show(args) <> showReturns(returns) <>
       showPresPosts(pres, posts) <> body.map(showBody(_, !(returns.isEmpty && pres.isEmpty && posts.isEmpty))).getOrElse(nil)
+  }
+
+  override def reformat2(implicit ctx: ReformatterContext2): List[RNode] = {
+    showAnnotations2(annotations) <-> show2(keyword) <+> show2(idndef) <> show2(args) <> showReturns2(returns) <>
+      showPresPosts2(pres, posts) <> body.map(showBody2(_, !(returns.isEmpty && pres.isEmpty && posts.isEmpty))).getOrElse(rn)
   }
 }
 
