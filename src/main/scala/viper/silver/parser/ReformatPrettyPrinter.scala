@@ -2,8 +2,8 @@ package viper.silver.parser
 
 import fastparse.Parsed
 import viper.silver.ast
-import viper.silver.ast.pretty.{Call, FastPrettyPrinterBase, PrettyPrintPrimitives}
 import viper.silver.ast.HasLineColumn
+import viper.silver.ast.pretty.{Call, PrettyPrintPrimitives}
 import viper.silver.parser.FastParserCompanion.programTrivia
 import viper.silver.parser.RLine.rl
 import viper.silver.parser.RLineBreak.rlb
@@ -11,15 +11,20 @@ import viper.silver.parser.RNest.rne
 import viper.silver.parser.RNil.rn
 import viper.silver.parser.RSpace.rs
 
+import scala.collection.mutable.ArrayBuffer
+
 trait RNode {
   def isNil: Boolean
 }
 
 trait RWhitespace extends RNode
 
+trait RCommentFragment
+
 case class RNil() extends RNode {
   override def isNil: Boolean = true
 }
+
 object RNil {
   def rn(): List[RNode] = List(RNil())
 }
@@ -27,13 +32,36 @@ object RNil {
 case class RText(text: String) extends RNode {
   override def isNil: Boolean = text.isEmpty
 }
+
 object RText {
   def rt(text: String): List[RNode] = List(RText(text))
 }
 
+case class RTrivia(l: List[RCommentFragment]) extends RNode {
+  override def isNil: Boolean = l.isEmpty
+
+  def hasComment(): Boolean = l.exists(_ match {
+    case RComment(_) => true
+    case _ => false
+  })
+
+  def lw(): Option[RWhitespace] = l.headOption.flatMap(_ match {
+    case w: RWhitespace => Some(w)
+    case _ => None
+  })
+
+  def trimmedTw(): RTrivia = l.lastOption match {
+    case Some(_: RWhitespace) => RTrivia(l.init)
+    case _ => this
+  }
+}
+
+case class RComment(comment: PComment) extends RCommentFragment
+
 case class RNest(l: List[RNode]) extends RNode {
   override def isNil: Boolean = l.forall(_.isNil)
 }
+
 object RNest {
   def rne(l: List[RNode]): List[RNode] = List(RNest(l))
 }
@@ -41,62 +69,65 @@ object RNest {
 case class RGroup(l: List[RNode]) extends RNode {
   override def isNil: Boolean = l.forall(_.isNil)
 }
+
 object RGroup {
   def rg(l: List[RNode]): List[RNode] = List(RGroup(l))
 }
 
-case class RHard(w: RWhitespace) extends RNode {
+case class RSpace() extends RWhitespace with RCommentFragment {
   override def isNil: Boolean = false
 }
 
-case class RSpace() extends RWhitespace {
-  override def isNil: Boolean = false
-}
 object RSpace {
-  def rs(): List[RNode] = List(RHard(RSpace()))
+  def rs(): List[RNode] = List(RSpace())
 }
 
 case class RLine() extends RWhitespace {
   override def isNil: Boolean = false
 }
+
 object RLine {
-  def rl(): List[RNode] = List(RHard(RLine()))
+  def rl(): List[RNode] = List(RLine())
 }
 
-case class RLineBreak() extends RWhitespace {
+case class RLineBreak() extends RWhitespace with RCommentFragment {
   override def isNil: Boolean = false
 }
+
 object RLineBreak {
-  def rlb(): List[RNode] =List(RHard(RLineBreak()))
+  def rlb(): List[RNode] = List(RLineBreak())
 }
 
-case class RDLineBreak() extends RWhitespace {
+case class RDLineBreak() extends RWhitespace with RCommentFragment {
   override def isNil: Boolean = false
 }
-object RDLineBreak {
-  def rdlb(): List[RNode] = List(RHard(RDLineBreak()))
+
+object RDLineBreak extends RWhitespace {
+  def rdlb(): List[RNode] = List(RDLineBreak())
+
+  override def isNil: Boolean = false
 }
 
 sealed trait ReformatPrettyPrinterBase extends PrettyPrintPrimitives {
   val defaultIndent = 4
   val defaultWidth = 75
 
-  implicit def char (c : Char) : Cont =
+  implicit def char(c: Char): Cont =
     if (c == '\n')
       line
     else
-      text (c.toString)
+      text(c.toString)
 
-  def space : Cont =
-    char (' ')
+  def space: Cont =
+    char(' ')
 
-  def dlinebreak : Cont =
+  def dlinebreak: Cont =
     linebreak <> linebreak
 
   def line: Cont = line(" ")
 
-  def linebreak : Cont =
-    line ("\n")
+  def linebreak: Cont =
+    line("\n")
 
   implicit class ContOps2(dl: List[RNode]) {
     def <>(dr: List[RNode]): List[RNode] =
@@ -113,7 +144,7 @@ sealed trait ReformatPrettyPrinterBase extends PrettyPrintPrimitives {
   }
 
   implicit class ContOps(dl: Cont) {
-    def <>(dr: Cont) : Cont =
+    def <>(dr: Cont): Cont =
       (iw: IW) =>
         (c: TreeCont) => {
           Call(() =>
@@ -123,22 +154,22 @@ sealed trait ReformatPrettyPrinterBase extends PrettyPrintPrimitives {
             } yield t2)
         }
 
-    def <+> (dr : Cont) : Cont =
+    def <+>(dr: Cont): Cont =
       dl <> space <> dr
 
-    def <@> (dr: Cont) : Cont =
+    def <@>(dr: Cont): Cont =
       if (dl == nil) dr else if (dr == nil) dl else dl <> line <> dr
 
-    def <@@> (dr: Cont) : Cont =
+    def <@@>(dr: Cont): Cont =
       if (dl == nil) dr else if (dr == nil) dl else dl <> linebreak <> dr
 
-    def <@@@> (dr: Cont) : Cont =
+    def <@@@>(dr: Cont): Cont =
       if (dl == nil) dr else if (dr == nil) dl else dl <> dr
 
-    def <@+> (dr: Cont) : Cont =
+    def <@+>(dr: Cont): Cont =
       if (dl == nil) dr else if (dr == nil) dl else dl <> dr
 
-    def <+@> (dr: Cont) : Cont =
+    def <+@>(dr: Cont): Cont =
       if (dl == nil) dr else if (dr == nil) dl else dl <> space <> dr
   }
 }
@@ -150,15 +181,19 @@ sealed trait Separator extends ReformatPrettyPrinterBase {
 case class SNil() extends Separator {
   override def doc: Cont = nil
 }
+
 case class SSpace() extends Separator {
   override def doc: Cont = space
 }
+
 case class SLine() extends Separator {
   override def doc: Cont = line
 }
+
 case class SLinebreak() extends Separator {
   override def doc: Cont = linebreak
 }
+
 case class SDLinebreak() extends Separator {
   override def doc: Cont = dlinebreak
 }
@@ -166,11 +201,13 @@ case class SDLinebreak() extends Separator {
 
 trait Reformattable extends ReformatPrettyPrinterBase with Where {
   def reformat(implicit ctx: ReformatterContext): Cont
+
   def reformat2(implicit ctx: ReformatterContext2): List[RNode] = throw new IllegalAccessException(s"reformat2 not implemented ${getClass}")
 }
 
 trait ReformattableExpression extends ReformatPrettyPrinterBase {
   def reformatExp(implicit ctx: ReformatterContext): Cont
+
   def reformatExp2(implicit ctx: ReformatterContext2): List[RNode] = throw new IllegalAccessException(s"reformatExt2 not implemented ${getClass}")
 }
 
@@ -270,9 +307,9 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
       case _ => false
     }
 
-//    println(s"separator: ${sep}");
-//    println(s"pos: ${r.pos}");
-//    println(s"node: ${r.getClass}");
+    //    println(s"separator: ${sep}");
+    //    println(s"pos: ${r.pos}");
+    //    println(s"node: ${r.getClass}");
 
     val trivia = ctx.getTrivia(r.pos, updatePos);
 
@@ -290,7 +327,7 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
       else SNil()
     }
 
-//    println(trivia);
+    //    println(trivia);
 
     for (t <- trivia) {
       t match {
@@ -300,7 +337,7 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
             leadingSpaces = spaces;
             hasComment = true;
             nil
-          } else  {
+          } else {
             getSep(newlines, spaces).doc
           }
           reformatted = reformatted <> lw <> p.display
@@ -367,18 +404,18 @@ class ReformatterContext2(val program: String, val offsets: Seq[Int]) {
     row + p.column - 1
   }
 
-  def getTrivia(pos: (ast.Position, ast.Position), updateOffset: Boolean): List[RNode] = {
+  def getTrivia(pos: (ast.Position, ast.Position), updateOffset: Boolean): RTrivia = {
     (pos._1, pos._2) match {
       case (p: HasLineColumn, q: HasLineColumn) => {
         val p_offset = getByteOffset(p);
         val q_offset = getByteOffset(q);
         getTriviaByByteOffset(p_offset, if (updateOffset) Some(q_offset) else None)
       }
-      case _ => List()
+      case _ => RTrivia(List())
     }
   }
 
-  def getTriviaByByteOffset(offset: Int, updateOffset: Option[Int]): List[RNode] = {
+  def getTriviaByByteOffset(offset: Int, updateOffset: Option[Int]): RTrivia = {
     if (currentOffset <= offset) {
       val str = program.substring(currentOffset, offset);
       currentOffset = currentOffset.max(offset);
@@ -390,13 +427,54 @@ class ReformatterContext2(val program: String, val offsets: Seq[Int]) {
 
       fastparse.parse(str, programTrivia(_)) match {
         case Parsed.Success(value, _) => {
-          value.map(_.content).toList
+          val trivia = ArrayBuffer[RCommentFragment]()
+          var newlines = 0
+          var spaces = 0
+
+          for (t <- value) {
+            t match {
+              case p: PComment => {
+                if (newlines > 1) {
+                  trivia += RDLineBreak()
+                } else if (newlines > 0) {
+                  trivia += RLineBreak()
+                } else if (spaces > 0) {
+                  trivia += RSpace()
+                }
+
+                trivia += RComment(p)
+
+                newlines = 0
+                spaces = 0
+              }
+              case w: PNewLine => newlines += 1
+              case w: PSpace => spaces += 1
+              case _ => {}
+            }
+          }
+
+          RTrivia(trivia.toList)
         }
-        case _: Parsed.Failure => List()
+        case _: Parsed.Failure => RTrivia(List())
       }
     } else {
-      List()
+      RTrivia(List())
     };
+  }
+}
+
+class PrintContext() {
+  var whitespace: Option[RWhitespace] = None
+
+  def register(w: RWhitespace): Unit = {
+    whitespace match {
+      case None => whitespace = Some(w)
+      case Some(p: RLineBreak) => w match {
+        case p: RLineBreak => whitespace = Some(RDLineBreak)
+        case p: RDLineBreak => whitespace = Some(RDLineBreak)
+      }
+      case Some(p) => whitespace = Some(p)
+    }
   }
 }
 
@@ -404,24 +482,66 @@ object ReformatPrettyPrinter2 extends ReformatPrettyPrinterBase {
   def reformatProgram2(p: PProgram): String = {
     implicit val ctx = new ReformatterContext2(p.rawProgram, p.offsets)
 
-    def showList(p: List[RNode]): Cont = if (p.isEmpty) nil else p.map(n => n match {
-      case RNil() => nil
-      case RText(t: String) => {
-        println(s"Found text: ${}, ${}", t, t.length)
-        text(t)
+    def showWhitespace(w: Option[RWhitespace]): Cont = {
+      w match {
+        case None => nil
+        case Some(RSpace()) => space
+        case Some(RLine()) => line
+        case Some(RLineBreak()) => linebreak
+        case Some(RDLineBreak()) => linebreak <> linebreak
       }
-      case RSpace() => space
-      case RHard(w) => showList(List(w))
-      case RGroup(l: List[RNode]) => group(showList(l))
-      case RNest(l: List[RNode]) => nest(defaultIndent, showList(l))
-      case RLine() => line
-      case RLineBreak() => linebreak
-      case RDLineBreak() => linebreak <> linebreak
-    }).reduce(_ <> _)
+    }
 
+    def showTrivia(p: RTrivia, pc: PrintContext): Cont = {
+      if (p.l.isEmpty) {
+        nil
+      } else {
+        p.l.map(t => t match {
+          case w: RWhitespace => showWhitespace(Some(w))
+          case p: RComment => text(p.comment.str)
+        }).reduce((acc, n) => acc <> n)
+      }
+    }
+
+    def showNode(p: RNode, pc: PrintContext): Cont = {
+      p match {
+        case RNil() => nil
+        case w: RWhitespace => {
+          pc.register(w)
+          nil
+        }
+        case RText(t: String) => {
+          val lw = pc.whitespace
+          pc.whitespace = None
+          showWhitespace(lw) <> text(t)
+        }
+        case t: RTrivia => {
+          if (t.hasComment()) {
+            pc.whitespace match {
+              case None => showTrivia(t, pc)
+              case Some(_) => showTrivia(t.trimmedTw(), pc)
+            }
+          } else {
+            nil
+          }
+        }
+        case RGroup(l: List[RNode]) => group(showList(l, pc))
+        case RNest(l: List[RNode]) => nest(defaultIndent, showList(l, pc))
+      }
+    }
+
+    def showList(p: List[RNode], pc: PrintContext): Cont = {
+      println(s"${p}")
+      var reformatted = nil
+      for (n <- p) {
+        reformatted = reformatted <> showNode(n, pc)
+      }
+      reformatted
+    }
+
+    val pc = new PrintContext()
     val list = show2(p).filter(!_.isNil)
-    println(s"List: ${list}")
-    super.pretty(defaultWidth, showList(list))
+    super.pretty(defaultWidth, showList(list, pc))
   }
 
   def showOption2[T <: Any](n: Option[T])(implicit ctx: ReformatterContext2): List[RNode] = {
@@ -472,7 +592,7 @@ object ReformatPrettyPrinter2 extends ReformatPrettyPrinterBase {
 
     val trivia = ctx.getTrivia(r.pos, updatePos);
 
-    trivia ::: r.reformat2(ctx)
+    List(trivia) ::: r.reformat2(ctx)
   }
 
   def showAny2(n: Any)(implicit ctx: ReformatterContext2): List[RNode] = {

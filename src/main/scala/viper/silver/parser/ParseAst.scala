@@ -2114,25 +2114,18 @@ trait PExtender extends PNode {
 // Trivia (comments, whitespaces)
 trait Trivia extends FastPrettyPrinterBase {
   def display: Cont
-  def content: RNode
 }
 
 case class POther() extends Trivia {
   override def display: Cont = text("")
-
-  override def content: RNode = RNil()
 }
 
 case class PSpace() extends Trivia {
   override def display: Cont = space
-
-  override def content: RNode = RSpace()
 }
 
 case class PNewLine() extends Trivia {
   override def display: Cont = linebreak
-
-  override def content: RNode = RLineBreak()
 }
 
 case class PComment(inner: String, block: Boolean) extends Trivia {
@@ -2142,9 +2135,9 @@ case class PComment(inner: String, block: Boolean) extends Trivia {
     text("//") <> text(inner)
   }
 
-  override def content: RNode = if (block) {
-    RText("/*" + inner + "*/")
+  def str: String = if (block) {
+    "/*" + inner + "*/"
   } else  {
-    RText("//" + inner)
+    "//" + inner
   }
 }
