@@ -112,6 +112,10 @@ class PDelimited[+T, +D](
   override def toString(): String = s"PDelimited($first,$inner,$end)"
 
   override def reformat(implicit ctx: ReformatterContext): List[RNode] = {
+    if (isEmpty) {
+      return rn
+    }
+
     val separator = delimiters.headOption match {
       case Some(p: PSym.Comma) => rs
       case None => rn
