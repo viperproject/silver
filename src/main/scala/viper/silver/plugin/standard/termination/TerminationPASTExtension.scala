@@ -7,6 +7,8 @@
 package viper.silver.plugin.standard.termination
 
 import viper.silver.ast._
+import viper.silver.parser.RNil.rn
+import viper.silver.parser.RSpace.rs
 import viper.silver.parser.ReformatPrettyPrinter.{show, showOption}
 import viper.silver.parser.TypeHelper.Bool
 import viper.silver.parser._
@@ -44,8 +46,8 @@ case class PDecreasesTuple(tuple: PDelimited[PExp, PSym.Comma], condition: Optio
     DecreasesTuple(tuple.toSeq map t.exp, condition map (_._2) map t.exp)(t.liftPos(this))
   }
 
-  override def reformatExp(implicit ctx: ReformatterContext): Cont =
-    show(tuple) <> condition.map((e) => space <> show(e._1) <+> show(e._2)).getOrElse(nil)
+  override def reformatExp(implicit ctx: ReformatterContext): List[RNode] =
+    show(tuple) <> condition.map((e) => rs <> show(e._1) <+> show(e._2)).getOrElse(rn)
 }
 
 case class PDecreasesWildcard(wildcard: PReserved[PWildcardSym.type], condition: Option[(PReserved[PIfKeyword.type], PExp)] = None)(val pos: (Position, Position)) extends PDecreasesClause {
@@ -60,8 +62,8 @@ case class PDecreasesWildcard(wildcard: PReserved[PWildcardSym.type], condition:
     DecreasesWildcard(condition map (_._2) map t.exp)(t.liftPos(this))
   }
 
-  override def reformatExp(implicit ctx: ReformatterContext): Cont = show(wildcard) <+>
-    condition.map((e) => show(e._1) <+> show(e._2)).getOrElse(nil)
+  override def reformatExp(implicit ctx: ReformatterContext): List[RNode] = show(wildcard) <+>
+    condition.map((e) => show(e._1) <+> show(e._2)).getOrElse(rn)
 }
 
 case class PDecreasesStar(star: PSym.Star)(val pos: (Position, Position)) extends PDecreasesClause {
@@ -74,6 +76,6 @@ case class PDecreasesStar(star: PSym.Star)(val pos: (Position, Position)) extend
     DecreasesStar()(t.liftPos(this))
   }
 
-  override def reformatExp(implicit ctx: ReformatterContext): Cont = show(star)
+  override def reformatExp(implicit ctx: ReformatterContext): List[RNode] = show(star)
 }
 

@@ -78,7 +78,7 @@ case class PAdt(annotations: Seq[PAnnotation], adt: PReserved[PAdtKeyword.type],
     adtType
   }
 
-  override def reformat(implicit ctx: ReformatterContext): Cont = showAnnotations(annotations) <@@> show(adt) <+>
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = showAnnotations(annotations) <-> show(adt) <+>
     show(idndef) <> showOption(typVars) <+> show(c)
 }
 
@@ -102,7 +102,7 @@ case class PAdtSeq[T <: PNode](seq: PGrouped[PSym.Brace, Seq[T]])(val pos: (Posi
   def inner: Seq[T] = seq.inner
   override def pretty = s"${seq.l.pretty}\n  ${seq.inner.map(_.pretty).mkString("\n  ")}\n${seq.r.pretty}"
 
-  override def reformat(implicit ctx: ReformatterContext): Cont = {
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = {
     show(seq)
   }
 }
@@ -112,7 +112,7 @@ case class PAdtFieldDecl(idndef: PIdnDef, c: PSym.Colon, typ: PType)(val pos: (P
   def constructor: PAdtConstructor = getAncestor[PAdtConstructor].get
   def annotations: Seq[PAnnotation] = Nil
 
-  override def reformat(implicit ctx: ReformatterContext): Cont = show(idndef) <>
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = show(idndef) <>
     show(c) <+> show(typ)
 }
 object PAdtFieldDecl {
@@ -149,7 +149,7 @@ case class PAdtConstructor(annotations: Seq[PAnnotation], idndef: PIdnDef, args:
   override def c = PReserved.implied(PSym.Colon)
   override def body = None
 
-  override def reformat(implicit ctx: ReformatterContext): Cont = showAnnotations(annotations) <@@>
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = showAnnotations(annotations) <->
     show(idndef) <> show(args)
 }
 
@@ -180,7 +180,7 @@ case class PAdtDeriving(k: PReserved[PDerivesKeyword.type], derivingInfos: PAdtS
     None
   }
 
-  override def reformat(implicit ctx: ReformatterContext): Cont = show(k) <+> show(derivingInfos)
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = show(k) <+> show(derivingInfos)
 }
 
 case class PAdtWithout(k: PReserved[PWithoutKeyword.type], blockList: PDelimited[PIdnRef[PAdtFieldDecl], PSym.Comma])(val pos: (Position, Position)) extends PExtender with PPrettySubnodes with PAdtChild {
@@ -194,7 +194,7 @@ case class PAdtWithout(k: PReserved[PWithoutKeyword.type], blockList: PDelimited
     None
   }
 
-  override def reformat(implicit ctx: ReformatterContext): Cont = show(k) <+> show(blockList)
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = show(k) <+> show(blockList)
 }
 
 case class PAdtDerivingInfo(idndef: PIdnDef, param: Option[PGrouped[PSym.Bracket, PType]], without: Option[PAdtWithout])(val pos: (Position, Position)) extends PExtender with PPrettySubnodes {
@@ -205,7 +205,7 @@ case class PAdtDerivingInfo(idndef: PIdnDef, param: Option[PGrouped[PSym.Bracket
     None
   }
 
-  override def reformat(implicit ctx: ReformatterContext): Cont = show(idndef) <+> showOption(param)
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = show(idndef) <+> showOption(param)
 }
 
 case class PAdtType(adt: PIdnRef[PAdt], args: Option[PDelimited.Comma[PSym.Bracket, PType]])
@@ -274,7 +274,7 @@ case class PAdtType(adt: PIdnRef[PAdt], args: Option[PDelimited.Comma[PSym.Brack
     if (s.length == 0 && args.isEmpty) this else copy(args = Some(args.get.update(s)))(pos)
   override def copyExtraVars(from: Any): Unit = this.kind = from.asInstanceOf[PAdtType].kind
 
-  override def reformat(implicit ctx: ReformatterContext): Cont = show(adt) <> showOption(args)
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = show(adt) <> showOption(args)
 }
 
 object PAdtTypeKinds {
@@ -479,7 +479,7 @@ case class PConstructorCall(idnref: PIdnRef[PAdtConstructor], callArgs: PDelimit
     }
   }
 
-  override def reformatExp(implicit ctx: ReformatterContext): Cont = show(idnref) <>
+  override def reformatExp(implicit ctx: ReformatterContext): List[RNode] = show(idnref) <>
     show(callArgs) <> showOption(typeAnnotated)
 }
 
@@ -514,7 +514,7 @@ case class PDestructorCall(rcv: PExp, dot: PReserved[PDiscDot.type], idnref: PId
     }
   }
 
-  override def reformatExp(implicit ctx: ReformatterContext): Cont = show(rcv) <> show(dot) <> show(idnref)
+  override def reformatExp(implicit ctx: ReformatterContext): List[RNode] = show(rcv) <> show(dot) <> show(idnref)
 }
 
 case object PIsKeyword extends PKwOp("is") {
@@ -552,5 +552,5 @@ case class PDiscriminatorCall(rcv: PExp, dot: PReserved[PDiscDot.type], is: PRes
     }
   }
 
-  override def reformatExp(implicit ctx: ReformatterContext): Cont = show(rcv) <> show(dot) <> show(is) <> show(idnref)
+  override def reformatExp(implicit ctx: ReformatterContext): List[RNode] = show(rcv) <> show(dot) <> show(is) <> show(idnref)
 }

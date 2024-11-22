@@ -15,7 +15,6 @@ import viper.silver.parser.RNil.rn
 import viper.silver.parser.RSpace.rs
 import viper.silver.parser.RText.rt
 import viper.silver.parser.ReformatPrettyPrinter.{show, showAny}
-import viper.silver.parser.ReformatPrettyPrinter2.{show2, showAny2}
 import viper.silver.parser.TypeHelper._
 
 trait PReservedString {
@@ -31,9 +30,7 @@ case class PReserved[+T <: PReservedString](rs: T)(val pos: (Position, Position)
   override def display = rs.display
   def token = rs.token
 
-  override def reformat(implicit ctx: ReformatterContext): Cont = text(token)
-
-  override def reformat2(implicit ctx: ReformatterContext2): List[RNode] = rt(token)
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = rt(token)
 }
 object PReserved {
   def implied[T <: PReservedString](rs: T): PReserved[T] = PReserved(rs)(NoPosition, NoPosition)
@@ -47,33 +44,18 @@ case class PGrouped[G <: PSym.Group, +T](l: PReserved[G#L], inner: T, r: PReserv
     s"${l.pretty}${iPretty}${r.pretty}"
   }
 
-  override def reformat(implicit ctx: ReformatterContext): Cont = {
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = {
     if (l.rs.isInstanceOf[Brace]) {
       val left = show(l);
       val inner_ = showAny(inner);
       val right = show(r);
-      if (inner_ == nil) {
-        left <> right
-      } else {
-        left <> nest(defaultIndent, line <> inner_) <> line <> right
-      }
-    } else  {
-      show(l) <> nest(defaultIndent, showAny(inner)) <> show(r)
-    }
-  }
-
-  override def reformat2(implicit ctx: ReformatterContext2): List[RNode] = {
-    if (l.rs.isInstanceOf[Brace]) {
-      val left = show2(l);
-      val inner_ = showAny2(inner);
-      val right = show2(r);
       if (inner_.forall(_.isNil)) {
         left <> right
       } else {
         left <> rne(rl <> inner_) <> rl <> right
       }
     } else  {
-      show2(l) <> rne(showAny2(inner)) <> show2(r)
+      show(l) <> rne(showAny(inner)) <> show(r)
     }
   }
 }
@@ -129,28 +111,16 @@ class PDelimited[+T, +D](
   override def hashCode(): Int = viper.silver.utility.Common.generateHashCode(first, inner, end)
   override def toString(): String = s"PDelimited($first,$inner,$end)"
 
-  override def reformat(implicit ctx: ReformatterContext): Cont = {
-    val separator = delimiters.headOption match {
-      case Some(p: PSym.Comma) => SSpace()
-      case None => SNil()
-      case _ => SLinebreak()
-    };
-
-    showAny(first) <@@@>
-      inner.foldLeft(nil)((acc, b) => acc <@@@> showAny(b._1) <@@@> showAny(b._2, separator)) <@@@>
-      showAny(end)
-  }
-
-  override def reformat2(implicit ctx: ReformatterContext2): List[RNode] = {
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = {
     val separator = delimiters.headOption match {
       case Some(p: PSym.Comma) => rs
       case None => rn
       case _ => rlb
     };
 
-    showAny2(first) <>
-      inner.foldLeft(rn)((acc, b) => acc <> showAny2(b._1) <> separator <> showAny2(b._2)) <>
-      showAny2(end)
+    showAny(first) <>
+      inner.foldLeft(rn)((acc, b) => acc <> showAny(b._1) <> separator <> showAny(b._2)) <>
+      showAny(end)
   }
 }
 

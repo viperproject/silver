@@ -20,5 +20,5 @@ case class PUnreachable(kw: PReserved[PUnreachableKeyword.type])(val pos: (Posit
 
   override def translateStmt(t: Translator): Stmt = Unreachable()(t.liftPos(this))
 
-  override def reformat(implicit ctx: ReformatterContext): Cont = show(kw)
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = show(kw)
 }
