@@ -268,14 +268,12 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
           if (t.hasComment()) {
             pc.whitespace match {
               case None => showTrivia(t)
-              case Some(w) => w match {
-                case _: RLineBreak => if (t.l.headOption == Some(RDLineBreak())) {
+              case Some(w: RLineBreak) => if (t.l.headOption == Some(RDLineBreak())) {
                   showTrivia(t.replacedLw(RLineBreak()))
                 } else {
-                  showTrivia(t.trimmedLw())
-                }
-                case _ => showTrivia(t.trimmedLw())
+                 showTrivia(t.trimmedLw())
               }
+              case Some(_) => showTrivia(t.trimmedLw())
             }
           } else {
             val newlines = t.l.map(_ match {
@@ -286,6 +284,8 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
 
             pc.whitespace match {
               case Some(_: RLineBreak) => if (newlines > 1) linebreak else nil
+              // Temporary hack so that decreases keyword works
+              case Some(_: RSpace) => if (newlines > 1) linebreak else nil
               case _ => nil
             }
           }
