@@ -47,7 +47,7 @@ case class PDecreasesTuple(tuple: PDelimited[PExp, PSym.Comma], condition: Optio
   }
 
   override def reformatExp(implicit ctx: ReformatterContext): List[RNode] =
-    show(tuple) <> condition.map((e) => rs <> show(e._1) <+> show(e._2)).getOrElse(rn)
+    (if (tuple.isEmpty) rn else show(tuple)) <> condition.map((e) => rs <> show(e._1) <+> show(e._2)).getOrElse(rn)
 }
 
 case class PDecreasesWildcard(wildcard: PReserved[PWildcardSym.type], condition: Option[(PReserved[PIfKeyword.type], PExp)] = None)(val pos: (Position, Position)) extends PDecreasesClause {

@@ -151,26 +151,23 @@ class ReformatterContext(val program: String, val offsets: Seq[Int]) {
     row + p.column - 1
   }
 
-  def getTrivia(pos: (ast.Position, ast.Position), updateOffset: Boolean): RTrivia = {
+  def getTrivia(pos: (ast.Position, ast.Position)): RTrivia = {
     (pos._1, pos._2) match {
       case (p: HasLineColumn, q: HasLineColumn) => {
         val p_offset = getByteOffset(p);
         val q_offset = getByteOffset(q);
-        getTriviaByByteOffset(p_offset, if (updateOffset) Some(q_offset) else None)
+        getTriviaByByteOffset(p_offset, q_offset)
       }
       case _ => RTrivia(List())
     }
   }
 
-  def getTriviaByByteOffset(offset: Int, updateOffset: Option[Int]): RTrivia = {
+  def getTriviaByByteOffset(offset: Int, updateOffset: Int): RTrivia = {
     if (currentOffset <= offset) {
       val str = program.substring(currentOffset, offset);
       currentOffset = currentOffset.max(offset);
 
-      updateOffset match {
-        case Some(o) => currentOffset = o
-        case _ =>
-      }
+      currentOffset = updateOffset
 
       fastparse.parse(str, programTrivia(_)) match {
         case Parsed.Success(value, _) => {
@@ -273,6 +270,11 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
                 } else {
                  showTrivia(t.trimmedLw())
               }
+              case Some(w: RSpace) => if (t.l.headOption == Some(RSpace())) {
+                showTrivia(t.trimmedLw())
+              } else {
+                showTrivia(t)
+              }
               case Some(_) => showTrivia(t.trimmedLw())
             }
           } else {
@@ -351,14 +353,11 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
   }
 
   def show(r: Reformattable)(implicit ctx: ReformatterContext): List[RNode] = {
-    val updatePos = r match {
-      case _: PLeaf => true
-      case _ => false
+    println(s"pos: ${r.pos}, node: ${r.getClass}")
+    r match {
+      case _: PLeaf => List(ctx.getTrivia(r.pos)) ::: r.reformat(ctx)
+      case _ => r.reformat(ctx)
     }
-
-    val trivia = ctx.getTrivia(r.pos, updatePos);
-
-    List(trivia) ::: r.reformat(ctx)
   }
 
   def showAny(n: Any)(implicit ctx: ReformatterContext): List[RNode] = {
