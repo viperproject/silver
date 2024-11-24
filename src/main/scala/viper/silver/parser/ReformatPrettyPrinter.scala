@@ -165,8 +165,6 @@ class ReformatterContext(val program: String, val offsets: Seq[Int]) {
   def getTriviaByByteOffset(offset: Int, updateOffset: Int): RTrivia = {
     if (currentOffset <= offset) {
       val str = program.substring(currentOffset, offset);
-      currentOffset = currentOffset.max(offset);
-
       currentOffset = updateOffset
 
       fastparse.parse(str, programTrivia(_)) match {
@@ -306,10 +304,11 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
     }
 
     val pc = new PrintContext()
-    println(s"Program: ${p}")
-    val list = show(p).filter(!_.isNil)
-    println(s"IR: ${list}")
-    super.pretty(defaultWidth, showList(list, pc))
+    val mainProgram = show(p)
+    val trailing = List(ctx.getTriviaByByteOffset(ctx.program.length, ctx.program.length))
+    val finalProgram = (mainProgram ::: trailing).filter(!_.isNil)
+    println(s"IR: ${finalProgram}")
+    super.pretty(defaultWidth, showList(finalProgram, pc))
   }
 
   def showOption[T <: Any](n: Option[T])(implicit ctx: ReformatterContext): List[RNode] = {
