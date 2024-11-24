@@ -218,7 +218,7 @@ class PrintContext {
         case _: RLineBreak => whitespace = Some(RDLineBreak)
         case _: RDLineBreak => whitespace = Some(RDLineBreak)
       }
-      case Some(p) => whitespace = Some(p)
+      case Some(_) => whitespace = Some(w)
     }
   }
 }
@@ -261,6 +261,7 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
         }
         case t: RTrivia => {
           if (t.hasComment()) {
+            println(t);
             pc.whitespace match {
               case None => showTrivia(t)
               case Some(w: RLineBreak) => if (t.l.headOption == Some(RDLineBreak())) {
@@ -284,14 +285,15 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
 
             pc.whitespace match {
               case Some(_: RLineBreak) => if (newlines > 1) linebreak else nil
-              // Temporary hack so that decreases keyword works
-              case Some(_: RSpace) => if (newlines > 1) linebreak else nil
               case _ => nil
             }
           }
         }
         case RGroup(l: List[RNode]) => group(showList(l, pc))
-        case RNest(l: List[RNode]) => nest(defaultIndent, showList(l, pc))
+        case RNest(l: List[RNode]) => {
+          println(s"nested ${p}")
+          nest(defaultIndent, showList(l, pc))
+        }
       }
     }
 
