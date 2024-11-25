@@ -261,7 +261,7 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
         }
         case t: RTrivia => {
           if (t.hasComment()) {
-            println(t);
+//            println(t);
             pc.whitespace match {
               case None => showTrivia(t)
               case Some(w: RLineBreak) => if (t.l.headOption == Some(RDLineBreak())) {
@@ -291,7 +291,7 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
         }
         case RGroup(l: List[RNode]) => group(showList(l, pc))
         case RNest(l: List[RNode]) => {
-          println(s"nested ${p}")
+//          println(s"nested ${p}")
           nest(defaultIndent, showList(l, pc))
         }
       }
@@ -309,7 +309,7 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
     val mainProgram = show(p)
     val trailing = List(ctx.getTriviaByByteOffset(ctx.program.length, ctx.program.length))
     val finalProgram = (mainProgram ::: trailing).filter(!_.isNil)
-    println(s"IR: ${finalProgram}")
+//    println(s"IR: ${finalProgram}")
     super.pretty(defaultWidth, showList(finalProgram, pc))
   }
 
@@ -354,7 +354,7 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
   }
 
   def show(r: Reformattable)(implicit ctx: ReformatterContext): List[RNode] = {
-    println(s"pos: ${r.pos}, node: ${r.getClass}")
+//    println(s"pos: ${r.pos}, node: ${r.getClass}")
     r match {
       case _: PLeaf => List(ctx.getTrivia(r.pos)) ::: r.reformat(ctx)
       case _ => r.reformat(ctx)
