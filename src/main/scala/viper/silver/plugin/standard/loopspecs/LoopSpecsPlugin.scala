@@ -19,8 +19,8 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
                               config: viper.silver.frontend.SilFrontendConfig,
                               fp: FastParser)  extends SilverPlugin with ParserPluginTemplate {
 
-  import fp.{predAcc, ParserExtension, lineCol, _file, parenthesizedExp, semiSeparated, precondition, postcondition, stmtBlock}
-  import FastParserCompanion.{PositionParsing, reservedSym, whitespace}
+  import fp.{predAcc, ParserExtension, lineCol, _file, parenthesizedExp, semiSeparated, precondition, postcondition, stmtBlock, exp, stmt}
+  import FastParserCompanion.{PositionParsing, reservedSym, whitespace, ExtendedParsing}
 
 
   private def deactivated: Boolean = config != null && config.disableTerminationPlugin.toOption.getOrElse(false)
@@ -53,6 +53,11 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
   // 1. not using the right position for ghost and base case.
   // 2. using _ multiple times refers to subsequent args
 
+  def ghostBlock[$: P](allowDefine: Boolean = true): P[PSeqn] =
+    P(semiSeparated(stmt(allowDefine)).braces map PSeqn.apply).pos
+
+  def baseCaseBlock[$: P](allowDefine: Boolean = true): P[PSeqn] =
+    P(semiSeparated(stmt(allowDefine)).braces map PSeqn.apply).pos
   //TODO: Extract ghost and base case rules
   def loopspecs[$ : P]: P[PLoopSpecs] =
 
@@ -63,17 +68,10 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
       semiSeparated(precondition) ~~
       semiSeparated(postcondition) ~
       stmtBlock() ~
-      (reservedKw(PGhostKeyword) ~ stmtBlock()).? ~
-      (reservedKw(PBaseCaseKeyword) ~ stmtBlock()).?
+      (reservedKw(PGhostKeyword) ~ ghostBlock()).? ~
+      (reservedKw(PBaseCaseKeyword) ~ baseCaseBlock()).?
     ).map {
-      case (whileKw, condExp, preSpec, postSpec, bodySeqn, maybeGhost, maybeBasecase) =>
-        
-        val ghostBlock = maybeGhost.map { case (ghostKw, ghostSeqn) =>
-          PGhostBlock(ghostKw, ghostSeqn)(_)
-        }
-        val basecaseBlock = maybeBasecase.map { case (basecaseKw, basecaseSeqn) =>
-          PBaseCaseBlock(basecaseKw, basecaseSeqn)(_)
-        }
+      case (whileKw, condExp, preSpec, postSpec, bodySeqn, maybeGhost, maybeBaseCase) =>
 
         PLoopSpecs(
           whileKw,
@@ -83,8 +81,8 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
           preSpec,
           postSpec,
           bodySeqn,
-          ghostBlock,
-          basecaseBlock
+          maybeGhost,
+          maybeBaseCase
         )(_)
     }).pos
 

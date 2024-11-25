@@ -3,6 +3,7 @@ package viper.silver.plugin.standard.loopspecs
 import viper.silver.ast._
 import viper.silver.parser._
 
+
 import scala.collection.mutable
 
 case object PGhostKeyword extends PKw("ghost") with PKeywordLang // PSym.Brace
@@ -26,8 +27,8 @@ case class PBaseCaseBlock(
 case class PLoopSpecs(
   keyword: PReserved[PKw.While.type],
   cond: PGrouped.Paren[PExp],
-  pres: PDelimited[PSpecification[PKw.Requires], Option[PSym.Semi]], //TODO: look at diff w prespec
-  posts: PDelimited[PSpecification[PKw.Ensures], Option[PSym.Semi]],
+  pres: PDelimited[PSpecification[PKw.PreSpec], Option[PSym.Semi]],
+  posts: PDelimited[PSpecification[PKw.PostSpec], Option[PSym.Semi]],
   body: PSeqn,
   ghost: Option[PGhostBlock],
   basecase: Option[PBaseCaseBlock]
@@ -51,16 +52,14 @@ case class PLoopSpecs(
         While(exp(cond.inner), invs.toSeq map (inv => exp(inv.e)), stmt(body).asInstanceOf[Seqn])(pos, info) */
 
   //Use exp() and stmt() from tslte
-  //take cond out cond.inner
   override def translateStmt(t: Translator): Stmt = //TODO: make into AST nodes
     LoopSpecs(
-      t.translate(keyword), 
-      t.translate(cond),
-      t.translate(pres),
-      t.translate(post),
-      t.translate(body),
-      t.translate(ghost),
-      t.translate(basecase)
+      t.exp(cond.inner),
+      pres.toSeq map (pre => t.exp(pre.e)),
+      posts.toSeq map (post => t.exp(post.e)),
+      t.stmt(body).asInstanceOf[Seqn],
+      ghost.map(g => t.stmt(g.body).asInstanceOf[Seqn]),
+      basecase.map(bc => t.stmt(bc.body).asInstanceOf[Seqn])
       )(t.liftPos(this))
 
 
