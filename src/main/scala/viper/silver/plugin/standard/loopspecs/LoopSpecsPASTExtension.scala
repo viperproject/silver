@@ -51,8 +51,7 @@ case class PLoopSpecs(
   /* case PWhile(_, cond, invs, body) =>
         While(exp(cond.inner), invs.toSeq map (inv => exp(inv.e)), stmt(body).asInstanceOf[Seqn])(pos, info) */
 
-  //Use exp() and stmt() from tslte
-  override def translateStmt(t: Translator): Stmt = //TODO: make into AST nodes
+  override def translateStmt(t: Translator): Stmt =
     LoopSpecs(
       t.exp(cond.inner),
       pres.toSeq map (pre => t.exp(pre.e)),

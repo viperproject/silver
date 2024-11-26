@@ -12,15 +12,15 @@ import viper.silver.reporter.Entity
 
 import scala.annotation.unused
 import scala.collection.immutable.ListMap
-import viper.silver.parser.FastParserCompanion.reservedKw
+import viper.silver.parser.FastParserCompanion.{Pos, reservedKw}
 
 class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
                               @unused logger: ch.qos.logback.classic.Logger,
                               config: viper.silver.frontend.SilFrontendConfig,
                               fp: FastParser)  extends SilverPlugin with ParserPluginTemplate {
 
-  import fp.{predAcc, ParserExtension, lineCol, _file, parenthesizedExp, semiSeparated, precondition, postcondition, stmtBlock, exp, stmt}
-  import FastParserCompanion.{PositionParsing, reservedSym, whitespace, ExtendedParsing}
+  import fp.{predAcc, ParserExtension, lineCol, _file, parenthesizedExp, semiSeparated, precondition, postcondition, stmtBlock, exp, stmt, parenthesizedExp}
+  import FastParserCompanion.{PositionParsing, reservedSym, whitespace, ExtendedParsing, Pos}
 
 
   private def deactivated: Boolean = config != null && config.disableTerminationPlugin.toOption.getOrElse(false)
@@ -39,7 +39,7 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
    * or
    * decreases *
    */
-  def decreases[$: P]: P[PSpecification[PDecreasesKeyword.type]] =
+  /*def decreases[$: P]: P[PSpecification[PDecreasesKeyword.type]] =
     P((P(PDecreasesKeyword) ~ (decreasesWildcard | decreasesStar | decreasesTuple)) map (PSpecification.apply _).tupled).pos
   
   def decreasesTuple[$: P]: P[PDecreasesTuple] =
@@ -48,17 +48,26 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
   def decreasesStar[$: P]: P[PDecreasesStar] = P(P(PSym.Star) map (PDecreasesStar(_) _)).pos
   def condition[$: P]: P[(PReserved[PIfKeyword.type], PExp)] = 
     P(P(PIfKeyword) ~ exp)
-
+*/
   //TODO: fix the pos problem.
   // 1. not using the right position for ghost and base case.
   // 2. using _ multiple times refers to subsequent args
 
-  def ghostBlock[$: P](allowDefine: Boolean = true): P[PSeqn] =
+  def ghostBlock[$: P]: P[PGhostBlock] =
+    P((reservedKw(PGhostKeyword) ~ ghostBody()) map {case (kw, body) => PGhostBlock(kw, body) _ }).pos
+    //P((parenthesizedExp ~~ semiSeparated(invariant) ~ stmtBlock())
+     // map { case (cond, invs, body) => PWhile(_, cond, invs, body) })
+
+  def ghostBody[$: P](allowDefine: Boolean = true): P[PSeqn] =
     P(semiSeparated(stmt(allowDefine)).braces map PSeqn.apply).pos
 
-  def baseCaseBlock[$: P](allowDefine: Boolean = true): P[PSeqn] =
+
+  def baseCaseBlock[$: P]: P[PBaseCaseBlock] =
+    P((reservedKw(PBaseCaseKeyword) ~ baseCaseBody()) map { case (kw, body) => PBaseCaseBlock(kw, body) _ }).pos
+
+  def baseCaseBody[$: P](allowDefine: Boolean = true): P[PSeqn] =
     P(semiSeparated(stmt(allowDefine)).braces map PSeqn.apply).pos
-  //TODO: Extract ghost and base case rules
+
   def loopspecs[$ : P]: P[PLoopSpecs] =
 
     // Parse the custom while loop
@@ -68,16 +77,15 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
       semiSeparated(precondition) ~~
       semiSeparated(postcondition) ~
       stmtBlock() ~
-      (reservedKw(PGhostKeyword) ~ ghostBlock()).? ~
-      (reservedKw(PBaseCaseKeyword) ~ baseCaseBlock()).?
+      ghostBlock.? ~
+      baseCaseBlock.?
     ).map {
-      case (whileKw, condExp, preSpec, postSpec, bodySeqn, maybeGhost, maybeBaseCase) =>
+      case (whileKw, condExp, preSpec, postSpec, bodySeqn, maybeGhost,  maybeBaseCase) =>
 
+        // PGrouped.Paren[PExp]
         PLoopSpecs(
           whileKw,
-          PGrouped(PReserved(PSym.LParen), 
-                  condExp, 
-                  PReserved(PSym.RParen)),
+          condExp,
           preSpec,
           postSpec,
           bodySeqn,
@@ -87,10 +95,10 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
     }).pos
 
   
-  def whileStmt[$: P]: P[PKw.While => Pos => PWhile] =
+  /*def whileStmt[$: P]: P[PKw.While => Pos => PWhile] =
     P((parenthesizedExp ~~ semiSeparated(invariant) ~ stmtBlock()) 
     map { case (cond, invs, body) => PWhile(_, cond, invs, body) })
-                              
+    */
 
   /**
    * Add extensions to the parser
