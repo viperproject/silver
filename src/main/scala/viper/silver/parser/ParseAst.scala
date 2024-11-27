@@ -6,16 +6,11 @@
 
 package viper.silver.parser
 
-
-import viper.silver.ast
-import viper.silver.ast.pretty.FastPrettyPrinterBase
-import viper.silver.ast.{FilePosition, HasLineColumn, Position}
-import viper.silver.parser.ReformatPrettyPrinter.{show, showAnnotations, showAny, showBody, showInvs, showOption, showPresPosts, showReturns, showSeq}
-
 import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
 import viper.silver.ast.utility.Visitor
 import viper.silver.ast.utility.rewriter.{HasExtraValList, HasExtraVars, Rewritable, StrategyBuilder}
-import viper.silver.ast.{Exp, Member, NoPosition, SourcePosition, Stmt, Type}
+import viper.silver.ast.{Exp, Member, NoPosition, SourcePosition, Stmt, Type, FilePosition, HasLineColumn, Position}
+import viper.silver.parser.ReformatPrettyPrinter.{show, showAnnotations, showAny, showBody, showInvs, showOption, showPresPosts, showReturns, showSeq}
 import viper.silver.parser.PSymOp.{EqEq, Iff, Implies}
 import viper.silver.parser.RGroup.rg
 import viper.silver.parser.RLine.rl
@@ -24,7 +19,6 @@ import viper.silver.parser.RNest.rne
 import viper.silver.parser.RNil.rn
 import viper.silver.parser.RSpace.rs
 import viper.silver.parser.RText.rt
-import viper.silver.parser.ReformatPrettyPrinter.{show, showAnnotations, showBody, showPresPosts, showReturns}
 import viper.silver.parser.TypeHelper._
 import viper.silver.verifier.ParseReport
 
@@ -622,7 +616,7 @@ case class PMapType(map: PKw.Map, typ: PGrouped[PSym.Bracket, PPairArgument[PTyp
  * a real type by macro expansion.
  */
 case class PMacroType(use: PCall) extends PType {
-  override val pos: (ast.Position, ast.Position) = use.pos
+  override val pos: (Position, Position) = use.pos
   override def pretty = use.pretty
   override def isValidOrUndeclared: Boolean = ???
   override def substitute(ts: PTypeSubstitution): PType = ???
@@ -635,7 +629,7 @@ case class PMacroType(use: PCall) extends PType {
   * the type of any expression whose value is meaningful in the translation.
   */
 sealed trait PInternalType extends PType {
-  override val pos: (ast.Position, ast.Position) = (NoPosition, NoPosition)
+  override val pos: (Position, Position) = (NoPosition, NoPosition)
   override val subNodes: Seq[PType] = Seq()
   override def substitute(ts: PTypeSubstitution) = this
 }
@@ -1872,7 +1866,12 @@ trait PNoSpecsFunction extends PAnyFunction {
 ///////////////////////////////////////////////////////////////////////////
 // Program Members
 
-case class PProgram(imported: Seq[PProgram], members: Seq[PMember])(val pos: (Position, Position), val localErrors: Seq[ParseReport], var offsets: Seq[Int], var rawProgram: String) extends PNode {
+case class PProgram(imported: Seq[PProgram], members: Seq[PMember])(
+  val pos: (Position, Position),
+  val localErrors: Seq[ParseReport],
+  var offsets: Seq[Int],
+  var rawProgram: String
+) extends PNode {
   val imports: Seq[PImport] = members.collect { case i: PImport => i } ++ imported.flatMap(_.imports)
   val macros: Seq[PDefine] = members.collect { case m: PDefine => m } ++ imported.flatMap(_.macros)
   val domains: Seq[PDomain] = members.collect { case d: PDomain => d } ++ imported.flatMap(_.domains)
