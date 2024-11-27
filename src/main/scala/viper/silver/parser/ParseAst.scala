@@ -2003,15 +2003,7 @@ case class PDomainMembers1(members: Seq[PDomainMember1])(val pos: (Position, Pos
 case class PFields(annotations: Seq[PAnnotation], field: PKw.Field, fields: PDelimited[PFieldDecl, PSym.Comma], s: Option[PSym.Semi])(val pos: (Position, Position)) extends PMember with PPrettySubnodes {
   override def declares: Seq[PGlobalDeclaration] = fields.toSeq
 
-  override def reformat(implicit ctx: ReformatterContext): List[RNode] = {
-    //        println(s"PFields");
-    //        println(s"---------------------------");
-    //        println(s"annotation: ${annotation}");
-    //        println(s"field: ${field}");
-    //        println(s"fields: ${fields}");
-    //        println(s"s: ${s}");
-    show(field) <+> show(fields) <> showOption(s)
-  }
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = show(field) <+> show(fields) <> showOption(s)
 }
 
 case class PSpecification[+T <: PKw.Spec](k: PReserved[PKw.Spec], e: PExp)(val pos: (Position, Position)) extends PNode with PPrettySubnodes {
@@ -2023,10 +2015,6 @@ case class PSpecification[+T <: PKw.Spec](k: PReserved[PKw.Spec], e: PExp)(val p
 case class PFunction(annotations: Seq[PAnnotation], keyword: PKw.Function, idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PFormalArgDecl], c: PSym.Colon, resultType: PType, pres: PDelimited[PSpecification[PKw.PreSpec], Option[PSym.Semi]], posts: PDelimited[PSpecification[PKw.PostSpec], Option[PSym.Semi]], body: Option[PBracedExp])
                     (val pos: (Position, Position)) extends PSingleMember with PAnyFunction with PGlobalCallableNamedArgs with PPrettySubnodes {
   override def reformat(implicit ctx: ReformatterContext): List[RNode] = {
-    // TODO: Add PFunctioNType
-    println(s"PFunction");
-    println(s"---------------------------");
-    println(s"body ${body}");
     showAnnotations(annotations) <-> show(keyword) <+> show(idndef) <>
       show(args) <> show(c) <+> show(resultType) <>
       showPresPosts(pres, posts) <> body.map(showBody(_, !(pres.isEmpty && posts.isEmpty))).getOrElse(rn)
@@ -2099,11 +2087,11 @@ trait PExtender extends PNode {
 }
 
 // Trivia (comments, whitespaces)
-trait Trivia
-case class PSpace() extends Trivia
-case class PNewLine() extends Trivia
+trait PTrivia
+case class PSpace() extends PTrivia
+case class PNewLine() extends PTrivia
 
-case class PComment(inner: String, block: Boolean) extends Trivia {
+case class PComment(inner: String, block: Boolean) extends PTrivia {
   def str: String = if (block) {
     "/*" + inner + "*/"
   } else  {

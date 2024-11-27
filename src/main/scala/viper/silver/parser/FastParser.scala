@@ -120,7 +120,7 @@ object FastParserCompanion {
 
   def comment[$: P]: P[PComment] = lineComment | blockComment
 
-  def trivia[$: P]: P[Seq[Trivia]] = {
+  def trivia[$: P]: P[Seq[PTrivia]] = {
     P((space | newline | comment).repX)
   }
 
