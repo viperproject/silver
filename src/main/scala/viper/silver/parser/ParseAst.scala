@@ -2101,7 +2101,6 @@ trait PExtender extends PNode {
 
 // Trivia (comments, whitespaces)
 trait Trivia
-case class POther() extends Trivia
 case class PSpace() extends Trivia
 case class PNewLine() extends Trivia
 

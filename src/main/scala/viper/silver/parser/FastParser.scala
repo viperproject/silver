@@ -121,7 +121,7 @@ object FastParserCompanion {
   def comment[$: P]: P[PComment] = lineComment | blockComment
 
   def programTrivia[$: P]: P[Seq[Trivia]] = {
-    P((space | newline | comment | (AnyChar.map(_ => POther()))).repX)
+    P((space | newline | comment).repX)
   }
   /**
     * A parser which matches leading whitespaces. See `LeadingWhitespace.lw` for more info. Can only be operated on in
