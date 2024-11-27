@@ -354,7 +354,7 @@ trait FastPrettyPrinterBase extends PrettyPrintPrimitives {
   def space : Cont =
     char (' ')
 
-  
+
   def linebreak : Cont =
     line ("\n")
 
