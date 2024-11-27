@@ -106,8 +106,6 @@ case class RDLineBreak() extends RWhitespace with RCommentFragment {
 }
 
 object RDLineBreak extends RWhitespace {
-  def rdlb(): List[RNode] = List(RDLineBreak())
-
   override def isNil: Boolean = false
 }
 
@@ -261,11 +259,10 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
         }
         case t: RTrivia => {
           if (t.hasComment()) {
-//            println(t);
             pc.whitespace match {
               case None => showTrivia(t)
               case Some(w: RLineBreak) => if (t.l.headOption == Some(RDLineBreak())) {
-                  showTrivia(t.replacedLw(RLineBreak()))
+                 showTrivia(t.replacedLw(RLineBreak()))
                 } else {
                  showTrivia(t.trimmedLw())
               }
@@ -291,7 +288,6 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
         }
         case RGroup(l: List[RNode]) => group(showList(l, pc))
         case RNest(l: List[RNode]) => {
-//          println(s"nested ${p}")
           nest(defaultIndent, showList(l, pc))
         }
       }
@@ -308,8 +304,7 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
     val pc = new PrintContext()
     val mainProgram = show(p)
     val trailing = List(ctx.getTriviaByByteOffset(ctx.program.length, ctx.program.length))
-    val finalProgram = (mainProgram ::: trailing).filter(!_.isNil)
-//    println(s"IR: ${finalProgram}")
+    val finalProgram = (mainProgram ::: trailing).filter(!_.isNil)      
     super.pretty(defaultWidth, showList(finalProgram, pc))
   }
 
