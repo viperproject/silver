@@ -104,9 +104,9 @@ object FastParserCompanion {
       ).pos
   }
 
-  def space[$: P]: P[PSpace] = P(("\t" | " ") map {_ => PSpace() })
+  def space[$: P]: P[PSpace] = P(("\t" | " ") map (_ => PSpace()))
 
-  def newline[$: P]: P[PNewLine] = P((StringIn("\n\r") | "\n" | "\r") map {_ => PNewLine() })
+  def newline[$: P]: P[PNewLine] = P((StringIn("\n\r") | "\n" | "\r") map (_ => PNewLine()))
 
   def lineComment[$: P]: P[PComment] = {
     P(("//" ~~ CharsWhile(_ != '\n').?.!).map { content =>
@@ -120,9 +120,10 @@ object FastParserCompanion {
 
   def comment[$: P]: P[PComment] = lineComment | blockComment
 
-  def programTrivia[$: P]: P[Seq[Trivia]] = {
+  def trivia[$: P]: P[Seq[Trivia]] = {
     P((space | newline | comment).repX)
   }
+
   /**
     * A parser which matches leading whitespaces. See `LeadingWhitespace.lw` for more info. Can only be operated on in
     * restricted ways (e.g. `?`, `rep`, `|` or `map`), requiring that it is eventually appended to a normal parser (of type `P[V]`).

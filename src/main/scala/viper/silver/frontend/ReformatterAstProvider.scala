@@ -15,7 +15,6 @@ class ReformatterAstProvider(override val reporter: Reporter) extends ViperAstPr
   override def doParsing(input: String): Result[PProgram] = parsingInner(input, false)
 
   override def result: VerificationResult = {
-
     if (_errors.isEmpty) {
       require(state >= DefaultStates.Parsing)
       Success
