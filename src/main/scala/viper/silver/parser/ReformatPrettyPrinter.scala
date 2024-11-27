@@ -4,6 +4,29 @@
 //
 // Copyright (c) 2011-2024 ETH Zurich.
 
+/**
+ * The idea behind how the reformatter works is as follows:
+ *
+ * Firstly, it's based on the parse AST (PProgram) and not the Viper AST (Program), which actually already has
+ * a pretty printing functionality. But it's not suitable for actual reformatting for a couple of reasons:
+ * At the point where we generate the AST, it's already processed in a way that makes it unsuitable for formatting.
+ * For examples, macros will be expanded, imports will be inlined, and most importantly, information about whitespaces
+ * and comments is completely discarded, and so on. Because of this, using the parse AST as a basis for the formatter
+ * is just more sensible.
+ *
+ * The steps are as follows:
+ * - We first build the parse AST for a specific Viper file.
+ * - Then, we iterate over each node in the tree and turn it into a list of RNodes. A RNode is very similar
+ *   to the primitives provided by `PrettyPrintPrimitives`, the reason we don't convert directly into a pretty
+ *   print tree is that we need to perform some preprocessing on whitespaces, which is just much easier to do
+ *   if we store everything in an intermediate representation.
+ * - Whenever we hit a leaf node, we get all comments and whitespaces that appear from the last position
+ *   we stored up to that leaf node, and store them. This is necessary to preserve comments and certain kinds of
+ *   newlines, which is important when reformatting a file.
+ * - Once we have our finalized list of RNodes, we convert them into a pretty print tree and print that tree,
+ *   similarly to how it's done for the pretty printer for the Viper AST.
+ */
+
 package viper.silver.parser
 
 import fastparse.Parsed
@@ -19,6 +42,7 @@ import viper.silver.parser.RSpace.rs
 
 import scala.collection.mutable.ArrayBuffer
 
+// A reformattable node.
 trait RNode {
   def isNil: Boolean
 }
@@ -47,11 +71,6 @@ case class RTrivia(l: List[RCommentFragment]) extends RNode {
   def hasComment(): Boolean = l.exists(_ match {
     case RComment(_) => true
     case _ => false
-  })
-
-  def lw(): Option[RWhitespace] = l.headOption.flatMap(_ match {
-    case w: RWhitespace => Some(w)
-    case _ => None
   })
 
   def trimmedLw(): RTrivia = l.headOption match {
@@ -120,7 +139,7 @@ sealed trait ReformatPrettyPrinterBase extends FastPrettyPrinterBase {
   override val defaultWidth = 75
 }
 
-trait ReformattableBase {
+trait ReformatBase {
   implicit class ContOps(dl: List[RNode]) {
     def com(dr: List[RNode]): List[RNode] =
       dl ::: dr
@@ -139,15 +158,17 @@ trait ReformattableBase {
   }
 }
 
-trait Reformattable extends ReformattableBase with Where {
+trait Reformattable extends ReformatBase with Where {
   def reformat(implicit ctx: ReformatterContext): List[RNode]
 }
 
-trait ReformattableExpression extends ReformattableBase {
+trait ReformattableExpression extends ReformatBase {
   def reformatExp(implicit ctx: ReformatterContext): List[RNode]
 }
 
 class ReformatterContext(val program: String, val offsets: Seq[Int]) {
+  // Store the last position we have processed, so we don't include certain trivia
+  // twice.
   var currentOffset: Int = 0
 
   def getByteOffset(p: HasLineColumn): Int = {
@@ -155,6 +176,10 @@ class ReformatterContext(val program: String, val offsets: Seq[Int]) {
     row + p.column - 1
   }
 
+  // Get all trivia for a node position. The first position
+  // is the start position of the node (i.e. the end position when getting
+  // the trivia) and the second position is the end position of the node (i.e.
+  // the value `currentOffset` should be updated to).
   def getTrivia(pos: (ast.Position, ast.Position)): RTrivia = {
     (pos._1, pos._2) match {
       case (p: HasLineColumn, q: HasLineColumn) => {
@@ -166,13 +191,14 @@ class ReformatterContext(val program: String, val offsets: Seq[Int]) {
     }
   }
 
-  def getTriviaByByteOffset(offset: Int, updateOffset: Int): RTrivia = {
-    if (currentOffset <= offset) {
-      val str = program.substring(currentOffset, offset);
+  def getTriviaByByteOffset(end: Int, updateOffset: Int): RTrivia = {
+    if (currentOffset <= end) {
+      val str = program.substring(currentOffset, end);
       currentOffset = updateOffset
 
       fastparse.parse(str, trivia(_)) match {
         case Parsed.Success(value, _) => {
+          // Create a list of deduplicated whitespaces, and comments.
           val trivia = ArrayBuffer[RCommentFragment]()
           var newlines = 0
           var spaces = 0
@@ -196,7 +222,7 @@ class ReformatterContext(val program: String, val offsets: Seq[Int]) {
               }
               case _: PNewLine => newlines += 1
               case _: PSpace => spaces += 1
-              case _ => {}
+              case _ =>
             }
           }
 
@@ -212,12 +238,14 @@ class ReformatterContext(val program: String, val offsets: Seq[Int]) {
   }
 }
 
-class PrintContext {
+class PrettyPrintContext {
   var whitespace: Option[RWhitespace] = None
 
   def register(w: RWhitespace): Unit = {
     whitespace match {
       case None => whitespace = Some(w)
+      // If we already have a linebreak, it should not be overwritten e.g. by a space,
+      // and special handling applies in case we want a double line break.
       case Some(_: RLineBreak) => w match {
         case _: RLineBreak => whitespace = Some(RDLineBreak)
         case _: RDLineBreak => whitespace = Some(RDLineBreak)
@@ -227,17 +255,16 @@ class PrintContext {
   }
 }
 
-object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
+object ReformatPrettyPrinter extends ReformatPrettyPrinterBase with ReformatBase {
   def reformatProgram(p: PProgram): String = {
     implicit val ctx = new ReformatterContext(p.rawProgram, p.offsets)
 
-    def showWhitespace(w: Option[RWhitespace]): Cont = {
+    def showWhitespace(w:RWhitespace): Cont = {
       w match {
-        case None => nil
-        case Some(RSpace()) => space
-        case Some(RLine()) => line
-        case Some(RLineBreak()) => linebreak
-        case Some(RDLineBreak()) => linebreak <> linebreak
+        case RSpace() => space
+        case RLine() => line
+        case RLineBreak() => linebreak
+        case RDLineBreak() => linebreak <> linebreak
       }
     }
 
@@ -246,18 +273,18 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
         nil
       } else {
         p.l.map(t => t match {
-          case w: RWhitespace => showWhitespace(Some(w))
+          case w: RWhitespace => showWhitespace(w)
           case p: RComment => text(p.comment.str)
         }).reduce((acc, n) => acc <> n)
       }
     }
 
-    def showNode(p: RNode, pc: PrintContext): Cont = {
+    def showNode(p: RNode, pc: PrettyPrintContext): Cont = {
       p match {
         case RNil() => nil
         case w: RWhitespace => {
           pc.register(w)
-          showWhitespace(Some(w))
+          showWhitespace(w)
         }
         case RText(t: String) => {
           pc.whitespace = None
@@ -265,13 +292,17 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
         }
         case t: RTrivia => {
           if (t.hasComment()) {
+            // If we already had a whitespace as part of formatting the program, we might have to
+            // trim the leading whitespace from the trivia.
             pc.whitespace match {
               case None => showTrivia(t)
+              // If we want a double linebreak and we already had a linebreak, replace it with a simple linebreak.
               case Some(w: RLineBreak) => if (t.l.headOption == Some(RDLineBreak())) {
                  showTrivia(t.replacedLw(RLineBreak()))
                 } else {
                  showTrivia(t.trimmedLw())
               }
+              // If we want a space and already had a space, do not write double space, trim it instead.
               case Some(w: RSpace) => if (t.l.headOption == Some(RSpace())) {
                 showTrivia(t.trimmedLw())
               } else {
@@ -293,13 +324,11 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
           }
         }
         case RGroup(l: List[RNode]) => group(showList(l, pc))
-        case RNest(l: List[RNode]) => {
-          nest(defaultIndent, showList(l, pc))
-        }
+        case RNest(l: List[RNode]) => nest(defaultIndent, showList(l, pc))
       }
     }
 
-    def showList(p: List[RNode], pc: PrintContext): Cont = {
+    def showList(p: List[RNode], pc: PrettyPrintContext): Cont = {
       var reformatted = nil
       for (n <- p) {
         reformatted = reformatted <> showNode(n, pc)
@@ -307,8 +336,9 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
       reformatted
     }
 
-    val pc = new PrintContext()
+    val pc = new PrettyPrintContext()
     val mainProgram = show(p)
+    // Don't forget the trivia after the last program node, i.e. trailing comments!
     val trailing = List(ctx.getTriviaByByteOffset(ctx.program.length, ctx.program.length))
     val finalProgram = (mainProgram ::: trailing).filter(!_.isNil)      
     super.pretty(defaultWidth, showList(finalProgram, pc))
@@ -355,13 +385,13 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
   }
 
   def show(r: Reformattable)(implicit ctx: ReformatterContext): List[RNode] = {
-//    println(s"pos: ${r.pos}, node: ${r.getClass}")
     r match {
-      case _: PLeaf => List(ctx.getTrivia(r.pos)) ::: r.reformat(ctx)
+      case _: PLeaf => List(ctx.getTrivia(r.pos)) <> r.reformat(ctx)
       case _ => r.reformat(ctx)
     }
   }
 
+  // We need this method because unfortunately PGrouped and PDelimited can have arbitrary generic parameters.
   def showAny(n: Any)(implicit ctx: ReformatterContext): List[RNode] = {
     n match {
       case p: Reformattable => show(p)
@@ -376,7 +406,7 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
     if (l.isEmpty) {
       rn()
     } else {
-      l.zipWithIndex.map(e => if (e._2 == 0) showAny(e._1) else rlb() ::: showAny(e._1)).reduce(_ ::: _)
+      l.zipWithIndex.map(e => if (e._2 == 0) showAny(e._1) else rlb() <> showAny(e._1)).reduce(_ <> _)
     }
   }
 }
