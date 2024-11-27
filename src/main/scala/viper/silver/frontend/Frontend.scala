@@ -190,9 +190,6 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
       throw new NoSuchElementException(msg)
   }
 
-  // TODO: How to do this properly?
-  def parseResult: PProgram = pProgram.get.asInstanceOf[PProgram]
-
   def state = _state
   def errors = _errors
   def pProgram = _parsingResult
