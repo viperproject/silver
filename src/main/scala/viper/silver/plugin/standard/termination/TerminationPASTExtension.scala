@@ -13,7 +13,7 @@ import viper.silver.parser.ReformatPrettyPrinter.{show, showOption}
 import viper.silver.parser.TypeHelper.Bool
 import viper.silver.parser._
 
-case object PDecreasesKeyword extends PKw("decreases") with PKeywordLang with PKw.AnySpec with LeftNewlineIndent
+case object PDecreasesKeyword extends PKw("decreases") with PKeywordLang with PKw.AnySpec
 case object PIfKeyword extends PKw("if") with PKeywordLang
 
 case object PWildcardSym extends PSym("_") with PSymbolLang
@@ -78,4 +78,3 @@ case class PDecreasesStar(star: PSym.Star)(val pos: (Position, Position)) extend
 
   override def reformatExp(implicit ctx: ReformatterContext): List[RNode] = show(star)
 }
-

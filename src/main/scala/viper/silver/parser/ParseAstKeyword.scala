@@ -25,12 +25,10 @@ trait PReservedString {
 }
 trait LeftSpace extends PReservedString { override def leftPad = " " }
 trait RightSpace extends PReservedString { override def rightPad = " " }
-trait LeftNewlineIndent extends PReservedString { override def leftPad = "\n  " }
 case class PReserved[+T <: PReservedString](rs: T)(val pos: (Position, Position)) extends PNode with PLeaf {
   override def display = rs.display
-  def token = rs.token
 
-  override def reformat(implicit ctx: ReformatterContext): List[RNode] = rt(token)
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = rt(rs.token)
 }
 object PReserved {
   def implied[T <: PReservedString](rs: T): PReserved[T] = PReserved(rs)(NoPosition, NoPosition)
@@ -172,9 +170,7 @@ sealed trait PKeywordAtom
 sealed trait PKeywordIf extends PKeywordStmt
 
 
-abstract class PKw(val keyword: String) extends PKeyword {
-//  override def reformat(implicit ctx: ReformatterContext): Cont = text(keyword)
-}
+abstract class PKw(val keyword: String) extends PKeyword
 
 object PKw {
   case object Import extends PKw("import") with PKeywordLang
@@ -205,11 +201,11 @@ object PKw {
 
   sealed trait Spec extends PReservedString; trait AnySpec extends PreSpec with PostSpec with InvSpec
   trait PreSpec extends Spec; trait PostSpec extends Spec; trait InvSpec extends Spec
-  case object Requires extends PKw("requires") with PKeywordLang with PreSpec with LeftNewlineIndent
+  case object Requires extends PKw("requires") with PKeywordLang with PreSpec
   type Requires = PReserved[Requires.type]
-  case object Ensures extends PKw("ensures") with PKeywordLang with PostSpec with LeftNewlineIndent
+  case object Ensures extends PKw("ensures") with PKeywordLang with PostSpec
   type Ensures = PReserved[Ensures.type]
-  case object Invariant extends PKw("invariant") with PKeywordLang with InvSpec with LeftNewlineIndent
+  case object Invariant extends PKw("invariant") with PKeywordLang with InvSpec
   type Invariant = PReserved[Invariant.type]
 
   case object Result extends PKw("result") with PKeywordLang with PKeywordAtom {
