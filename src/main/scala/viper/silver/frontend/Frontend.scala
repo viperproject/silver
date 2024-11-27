@@ -7,8 +7,10 @@
 package viper.silver.frontend
 
 import java.nio.file.Path
+
 import org.slf4j.LoggerFactory
 import ch.qos.logback.classic.Logger
+
 import viper.silver.ast._
 import viper.silver.ast.utility.{DiskLoader, FileLoader}
 import viper.silver.parser.PProgram

@@ -346,6 +346,7 @@ trait FastPrettyPrinterBase extends PrettyPrintPrimitives {
   def parens (d : Cont) : Cont =
     char ('(') <> d <> char (')')
 
+  
   def brackets (d : Cont) : Cont =
     char ('[') <> d <> char (']')
 
@@ -353,9 +354,7 @@ trait FastPrettyPrinterBase extends PrettyPrintPrimitives {
   def space : Cont =
     char (' ')
 
-  def dlinebreak : Cont =
-    linebreak <> linebreak
-
+  
   def linebreak : Cont =
     line ("\n")
 
@@ -376,18 +375,6 @@ trait FastPrettyPrinterBase extends PrettyPrintPrimitives {
 
     def <@> (dr: Cont) : Cont =
       if (dl == nil) dr else if (dr == nil) dl else dl <> line <> dr
-
-    def <@@> (dr: Cont) : Cont =
-      if (dl == nil) dr else if (dr == nil) dl else dl <> linebreak <> dr
-
-    def <@@@> (dr: Cont) : Cont =
-      if (dl == nil) dr else if (dr == nil) dl else dl <> dr
-
-    def <@+> (dr: Cont) : Cont =
-      if (dl == nil) dr else if (dr == nil) dl else dl <> dr
-
-    def <+@> (dr: Cont) : Cont =
-      if (dl == nil) dr else if (dr == nil) dl else dl <> space <> dr
   }
 
   def line: Cont = line(" ")
