@@ -49,14 +49,9 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
   def condition[$: P]: P[(PReserved[PIfKeyword.type], PExp)] = 
     P(P(PIfKeyword) ~ exp)
 */
-  //TODO: fix the pos problem.
-  // 1. not using the right position for ghost and base case.
-  // 2. using _ multiple times refers to subsequent args
 
   def ghostBlock[$: P]: P[PGhostBlock] =
     P((reservedKw(PGhostKeyword) ~ ghostBody()) map {case (kw, body) => PGhostBlock(kw, body) _ }).pos
-    //P((parenthesizedExp ~~ semiSeparated(invariant) ~ stmtBlock())
-     // map { case (cond, invs, body) => PWhile(_, cond, invs, body) })
 
   def ghostBody[$: P](allowDefine: Boolean = true): P[PSeqn] =
     P(semiSeparated(stmt(allowDefine)).braces map PSeqn.apply).pos
@@ -98,6 +93,11 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
         )(_)
     }).pos
 
+  def preExpr[$: P]: P[PPreExp] =
+    P((reservedKw(PPreKeyword) ~ parenthesizedExp).map{
+      case(preKw, exp) =>
+        PPreExp(preKw, exp)(_)
+    }).pos
   
   /*def whileStmt[$: P]: P[PKw.While => Pos => PWhile] =
     P((parenthesizedExp ~~ semiSeparated(invariant) ~ stmtBlock()) 
@@ -111,6 +111,7 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
   override def beforeParse(input: String, isImported: Boolean): String = {
     // Add 3 new keywords: ghost, basecase, pre
     ParserExtension.addNewKeywords(Set(PGhostKeyword, PBaseCaseKeyword, PPreKeyword))
+    ParserExtension.addNewExpAtStart(preExpr(_))
 
     // Add new parser to the precondition
     //ParserExtension.addNewPreCondition(decreases(_))

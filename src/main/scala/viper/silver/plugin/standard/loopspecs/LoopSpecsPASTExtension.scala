@@ -9,17 +9,21 @@ import scala.collection.mutable
 
 case object PGhostKeyword extends PKw("ghost") with PKeywordLang // PSym.Brace
 case object PBaseCaseKeyword extends PKw("basecase") with PKeywordLang // PSym.Brace
-case object PPreKeyword extends PKwOp("pre") //with PKeywordAtom // PSym.Paren
+case object PPreKeyword extends PKwOp("pre") with PKeywordLang //with PKeywordAtom // PSym.Paren
 
 case class PPreExp(op : PReserved[PPreKeyword.type],
                    e : PGrouped.Paren[PExp])
-                    (val pos : (Position, Position)) extends PExtender with PPrettySubnodes{ // with PExp()?? //extends PCallKeyword with PHeapOpApp
+                    (val pos : (Position, Position)) extends PExtender with PPrettySubnodes with PExp{ // with PExp()?? //extends PCallKeyword with PHeapOpApp
   override def pretty: String = s"${op.pretty}${e.pretty}"
 
 
-  override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = ???
+  override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
+    t.check(e.inner, Bool)
+    None
+  }
 
   override def translateExp(t: Translator): Exp =
+    PreExp(t.exp(e.inner))(t.liftPos(this))
 
   //override val args = Seq(e.inner)
   //override def requirePure = args
@@ -28,6 +32,10 @@ case class PPreExp(op : PReserved[PPreKeyword.type],
   //override def typeSubstitutions: collection.Seq[PTypeSubstitution] = ???
 
   //override def forceSubstitution(ts: PTypeSubstitution): Unit = ???
+
+  override def typeSubstitutions: collection.Seq[PTypeSubstitution] = ???
+
+  override def forceSubstitution(ts: PTypeSubstitution): Unit = ???
 }
 
 

@@ -4,17 +4,30 @@ package viper.silver.plugin.standard.loopspecs
 import org.scalactic.PrettyMethods.Prettyizer
 import viper.silver.ast._
 import viper.silver.ast.pretty.PrettyPrintPrimitives
-import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, text, toParenDoc}
+import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, parens, show, text, toParenDoc}
 import viper.silver.ast.utility.Consistency
-import viper.silver.verifier.ConsistencyError
+import viper.silver.verifier.{ConsistencyError, Success, VerificationResult}
 
 
-case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends OldExp {
-    override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(exp)
+case class PreExp(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionExp {
+
+    // Like an old() expression it has a pure exp (no acc predicates...)
+    override def extensionIsPure: Boolean = true
+
+    override def extensionSubnodes: Seq[Node] = Seq(exp)
+
+    override def typ: Type = ???
+
+    override def verifyExtExp(): VerificationResult = Success
+    //TODO: change this !!
+
+    /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
+     * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression. */
+    override def prettyPrint: PrettyPrintPrimitives#Cont = text("pre") <> parens(show(exp))
+
+    override lazy val check: Seq[ConsistencyError] = Consistency.checkPure(exp)
 }
-case class PreExp{
 
-}
 
 case class LoopSpecs(
   cond: Exp,
