@@ -399,6 +399,7 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase with ReformatBase
       case p: Seq[Any] => showSeq(p)
       case p: Right[Any, Any] => showAny(p.value)
       case p: Left[Any, Any] => showAny(p.value)
+      case p: Iterable[Any] => if (p.isEmpty) List() else p.map(showAny).reduce((a, b) => a <> b)
     }
   }
 
