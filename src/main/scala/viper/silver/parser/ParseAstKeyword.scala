@@ -118,7 +118,7 @@ class PDelimited[+T, +D](
       case Some(p: PSym.Comma) => rs()
       case None => rn()
       case _ => rlb()
-    };
+    }
 
     showAny(first) <>
       inner.foldLeft(rn())((acc, b) => acc <> showAny(b._1) <> separator <> showAny(b._2)) <>
