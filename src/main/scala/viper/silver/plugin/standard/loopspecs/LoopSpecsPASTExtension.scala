@@ -1,14 +1,41 @@
 package viper.silver.plugin.standard.loopspecs
 
-import viper.silver.ast._
-import viper.silver.parser._
 
+import viper.silver.ast._
+import viper.silver.parser.TypeHelper.{Bool, Impure}
+import viper.silver.parser._
 
 import scala.collection.mutable
 
 case object PGhostKeyword extends PKw("ghost") with PKeywordLang // PSym.Brace
 case object PBaseCaseKeyword extends PKw("basecase") with PKeywordLang // PSym.Brace
-case object PPreKeyword extends PKw("pre") with PKeywordLang // PSym.Paren
+case object PPreKeyword extends PKwOp("pre") //with PKeywordAtom // PSym.Paren
+
+case class PPreExp(op : PReserved[PPreKeyword.type],
+                   e : PGrouped.Paren[PExp])
+                    (val pos : (Position, Position)) extends PExtender with PPrettySubnodes{ // with PExp()?? //extends PCallKeyword with PHeapOpApp
+  override def pretty: String = s"${op.pretty}${e.pretty}"
+
+
+  override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = ???
+
+  override def translateExp(t: Translator): Exp =
+
+  //override val args = Seq(e.inner)
+  //override def requirePure = args
+  //override val signatures: List[PTypeSubstitution] = List(Map(POpApp.pResS -> POpApp.pArg(0)))
+
+  //override def typeSubstitutions: collection.Seq[PTypeSubstitution] = ???
+
+  //override def forceSubstitution(ts: PTypeSubstitution): Unit = ???
+}
+
+
+/*case class POldExp(op: PKwOp.Old, label: Option[PGrouped[PSym.Bracket, Either[PKw.Lhs, PIdnRef[PLabel]]]], e: PGrouped.Paren[PExp])(val pos: (Position, Position)) extends PCallKeyword with PHeapOpApp {
+  override val args = Seq(e.inner)
+  override def requirePure = args
+  override val signatures: List[PTypeSubstitution] = List(Map(POpApp.pResS -> POpApp.pArg(0)))
+}*/
 
 case class PGhostBlock(
   keyword: PReserved[PGhostKeyword.type],
@@ -23,6 +50,8 @@ case class PBaseCaseBlock(
 )(val pos: (Position, Position)) extends PNode with PPrettySubnodes {
   override def pretty: String = s"${keyword.pretty}${body.pretty}"
 }
+//TODO: add new type of expr add PAST and AST (look at old)
+//currently cant add consistency chekc for pre() when used in post ==> do this in beforeVerfiy in plugin itself consistency error on AST lvl
 
 case class PLoopSpecs(
   keyword: PReserved[PKw.While.type],
@@ -41,7 +70,27 @@ case class PLoopSpecs(
     s"${keyword.pretty}${cond.pretty}\n$preStr\n$postStr\n${body.pretty}\n$ghostStr\n$basecaseStr"
   }
 
-  override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = ???
+  override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
+    t.check(cond.inner, Bool)
+
+    pres.toSeq foreach (pre => {
+      t.check(pre.e, Impure)
+      t.checkNoPermForpermExceptInhaleExhale(pre.e)
+    })
+
+    posts.toSeq foreach (post => {
+      t.check(post.e, Impure)
+      t.checkNoPermForpermExceptInhaleExhale(post.e)
+    })
+
+    t.check(body)
+
+    ghost.foreach(gb => t.check(gb.body))
+    basecase.foreach(bc => t.check(bc.body))
+    None
+  }
+
+
   override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = ???
   
   // Translator will turn all PNodes into their equivalent nodes.

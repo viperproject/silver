@@ -19,7 +19,7 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
                               config: viper.silver.frontend.SilFrontendConfig,
                               fp: FastParser)  extends SilverPlugin with ParserPluginTemplate {
 
-  import fp.{predAcc, ParserExtension, lineCol, _file, parenthesizedExp, semiSeparated, precondition, postcondition, stmtBlock, exp, stmt, parenthesizedExp}
+  import fp.{predAcc, ParserExtension, lineCol, _file, parenthesizedExp, semiSeparated, precondition, postcondition, stmtBlock, stmt}
   import FastParserCompanion.{PositionParsing, reservedSym, whitespace, ExtendedParsing, Pos}
 
 
@@ -67,6 +67,10 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
 
   def baseCaseBody[$: P](allowDefine: Boolean = true): P[PSeqn] =
     P(semiSeparated(stmt(allowDefine)).braces map PSeqn.apply).pos
+
+  // def old[$: P]: P[PKwOp.Old => Pos => POldExp] = P(oldLabel.brackets.? ~ exp.parens).map {
+  //    case (lbl, g) => POldExp(_, lbl, g)
+  //  }
 
   def loopspecs[$ : P]: P[PLoopSpecs] =
 
