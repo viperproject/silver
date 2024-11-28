@@ -50,7 +50,7 @@ case class PGrouped[G <: PSym.Group, +T](l: PReserved[G#L], inner: T, r: PReserv
       if (inner_.forall(_.isNil)) {
         left <> right
       } else {
-        left <> rne(rl <> inner_) <> rl <> right
+        left <> rne(rl() <> inner_) <> rl() <> right
       }
     } else  {
       show(l) <> rne(showAny(inner)) <> show(r)
@@ -111,17 +111,17 @@ class PDelimited[+T, +D](
 
   override def reformat(implicit ctx: ReformatterContext): List[RNode] = {
     if (isEmpty) {
-      return rn
+      return rn()
     }
 
     val separator = delimiters.headOption match {
-      case Some(p: PSym.Comma) => rs
-      case None => rn
-      case _ => rlb
+      case Some(p: PSym.Comma) => rs()
+      case None => rn()
+      case _ => rlb()
     };
 
     showAny(first) <>
-      inner.foldLeft(rn)((acc, b) => acc <> showAny(b._1) <> separator <> showAny(b._2)) <>
+      inner.foldLeft(rn())((acc, b) => acc <> showAny(b._1) <> separator <> showAny(b._2)) <>
       showAny(end)
   }
 }

@@ -13,7 +13,6 @@ import ch.qos.logback.classic.Logger
 
 import viper.silver.ast._
 import viper.silver.ast.utility.{DiskLoader, FileLoader}
-import viper.silver.parser.PProgram
 import viper.silver.reporter.StdIOReporter
 import viper.silver.verifier._
 import viper.silver.reporter.Reporter

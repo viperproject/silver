@@ -297,13 +297,13 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase with ReformatBase
             pc.whitespace match {
               case None => showTrivia(t)
               // If we want a double linebreak and we already had a linebreak, replace it with a simple linebreak.
-              case Some(w: RLineBreak) => if (t.l.headOption == Some(RDLineBreak())) {
+              case Some(_: RLineBreak) => if (t.l.headOption == Some(RDLineBreak())) {
                  showTrivia(t.replacedLw(RLineBreak()))
                 } else {
                  showTrivia(t.trimmedLw())
               }
               // If we want a space and already had a space, do not write double space, trim it instead.
-              case Some(w: RSpace) => if (t.l.headOption == Some(RSpace())) {
+              case Some(_: RSpace) => if (t.l.headOption == Some(RSpace())) {
                 showTrivia(t.trimmedLw())
               } else {
                 showTrivia(t)
