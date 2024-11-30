@@ -8,7 +8,7 @@ package viper.silver.plugin.standard.termination
 
 import viper.silver.ast.utility.{Functions, ViperStrategy}
 import viper.silver.ast.utility.rewriter.{SimpleContext, Strategy, StrategyBuilder}
-import viper.silver.ast.{Applying, Assert, CondExp, CurrentPerm, Exp, FuncApp, Function, InhaleExhaleExp, MagicWand, Method, Node, Program, Unfolding, While}
+import viper.silver.ast.{Applying, Assert, CondExp, CurrentPerm, Exp, FilePosition, FuncApp, Function, InhaleExhaleExp, MagicWand, Method, Node, Program, Unfolding, While}
 import viper.silver.parser._
 import viper.silver.plugin.standard.predicateinstance.{PMarkerSymbol, PPredicateInstance}
 import viper.silver.plugin.standard.termination.transformation.Trafo
@@ -45,7 +45,8 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
    * decreases *
    */
   def decreases[$: P]: P[PSpecification[PDecreasesKeyword.type]] =
-    P((P(PDecreasesKeyword) ~ (decreasesWildcard | decreasesStar | decreasesTuple)) map (PSpecification.apply _).tupled).pos
+    P((P(PDecreasesKeyword) ~ (decreasesWildcard | decreasesStar | decreasesTuple)) map {
+        case (k, e) => p: (FilePosition, FilePosition) => PSpecification(k, e)(p) }).pos
   def decreasesTuple[$: P]: P[PDecreasesTuple] =
     P((exp.delimited(PSym.Comma) ~~~ condition.lw.?) map (PDecreasesTuple.apply _).tupled).pos
   def decreasesWildcard[$: P]: P[PDecreasesWildcard] = P((P(PWildcardSym) ~~~ condition.lw.?) map (PDecreasesWildcard.apply _).tupled).pos
@@ -239,7 +240,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
    * Remove decreases clauses from the AST and add them as information to the AST nodes
    */
   override def beforeVerify(input: Program): Program = {
-    // Prevent potentially unsafe (mutually) recursive function calls in function postcondtions
+    // Prevent potentially unsafe (mutually) recursive function calls in function postconditions
     // for all functions that don't have a decreases clause
     if (!deactivated) {
       lazy val cycles = Functions.findFunctionCyclesViaOptimized(input, func => func.body.toSeq)
