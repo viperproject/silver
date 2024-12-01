@@ -18,13 +18,13 @@ case class Resolver(p: PProgram) {
   val names = NameAnalyser()
   val typechecker = TypeChecker(names)
 
-  def run: Option[PProgram] = {
+  def run(warnAboutFunctionPermAmounts: Boolean): Option[PProgram] = {
     val nameSuccess = names.run(p)
     // Run typechecker even if name resolution failed, to add more information to the
     // program, and report any other errors. A name resolution error should not cause
     // a typechecker error however!
     val typeckSuccess = try {
-      typechecker.run(p)
+      typechecker.run(p, warnAboutFunctionPermAmounts)
     } catch {
       case e: Throwable =>
         // TODO: remove this try/catch once all assumptions that
@@ -55,12 +55,14 @@ case class TypeChecker(names: NameAnalyser) {
   var curFunction: PFunction = null
   var resultAllowed: Boolean = false
   var permBan: Option[String] = None
+  var warnAboutFunctionPermAmounts: Boolean = false
 
   /** to record error messages */
   var messages: FastMessaging.Messages = Nil
   def success: Boolean = messages.isEmpty || messages.forall(m => !m.error)
 
-  def run(p: PProgram): Boolean = {
+  def run(p: PProgram, warnAboutFunctionPermAmounts: Boolean): Boolean = {
+    this.warnAboutFunctionPermAmounts = warnAboutFunctionPermAmounts
     check(p)
     success
   }
@@ -606,6 +608,13 @@ case class TypeChecker(names: NameAnalyser) {
       setType(PUnknown())
     }
 
+    def hasSpecificPermAmounts(e: PExp): Boolean = e match {
+      case PCondExp(_, _, thn, _, els) => hasSpecificPermAmounts(thn) || hasSpecificPermAmounts(els)
+      case PFullPerm(_) => true
+      case _: PBinExp => true
+      case _ => false
+    }
+
     def getFreshTypeSubstitution(tvs: Seq[PDomainType]): PTypeRenaming =
       PTypeVar.freshTypeSubstitutionPTVs(tvs)
 
@@ -726,6 +735,11 @@ case class TypeChecker(names: NameAnalyser) {
                   case pc: PCall if pc.isPredicate =>
                   case loc =>
                     issueError(loc, "specified location is not a field nor a predicate")
+                }
+                acc.permExp match {
+                  case Some(pe) if curMember.isInstanceOf[PFunction] && warnAboutFunctionPermAmounts && hasSpecificPermAmounts(pe) =>
+                    messages ++= FastMessaging.message(pe, "Function contains specific permission amount that will be treated like wildcard.", error = false)
+                  case _ =>
                 }
 
               case pecl: PEmptyCollectionLiteral if !pecl.pElementType.isValidOrUndeclared =>

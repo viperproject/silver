@@ -56,10 +56,6 @@ case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv
         warnings.foreach(report => {
           csv_file.write(s"WarningsDuringVerification,${report}\n")
         })
-      case ConsistencyWarnings(warnings) =>
-        warnings.foreach(report => {
-          csv_file.write(s"ConsistencyWarnings,${report}\n")
-        })
       case InvalidArgumentsReport(_, errors) =>
         errors.foreach(error => {
           csv_file.write(s"WarningsDuringParsing,${error}\n")
@@ -152,9 +148,6 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
         warnings.foreach(println)
 
       case WarningsDuringVerification(warnings) =>
-        warnings.foreach(println)
-
-      case ConsistencyWarnings(warnings) =>
         warnings.foreach(println)
 
       case AnnotationWarning(text) =>

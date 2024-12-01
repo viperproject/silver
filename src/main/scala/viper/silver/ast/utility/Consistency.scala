@@ -196,28 +196,6 @@ object Consistency {
     (if(!noResult(e)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", e.pos)) else Seq())
   }
 
-  def warnAboutFunctionPermissionAmounts(f: Function): Seq[ConsistencyError] = {
-    if (respectFunctionPrePermAmounts)
-      return Seq()
-    def hasSpecificPermAmounts(e: Exp): Boolean = e match {
-      case CondExp(_, thn, els) => hasSpecificPermAmounts(thn) || hasSpecificPermAmounts(els)
-      case _: FractionalPerm => true
-      case _: FullPerm => true
-      case _: PermAdd | _: PermSub | _: PermMinus | _: PermMul | _: IntPermMul | _: PermDiv | _: PermPermDiv => true
-      case _ => false
-    }
-    def collectWarnings(e: Exp): Seq[ConsistencyError] = e.collect{
-      case FieldAccessPredicate(_, Some(perm)) if hasSpecificPermAmounts(perm) =>
-        ConsistencyError("Function contains specific permission amount that will be treated like wildcard.", perm.pos, false)
-      case PredicateAccessPredicate(_, Some(perm)) if hasSpecificPermAmounts(perm) =>
-        ConsistencyError("Function contains specific permission amount that will be treated like wildcard.", perm.pos, false)
-    }.toSeq
-
-    val preWarnings = f.pres.flatMap(collectWarnings)
-    val bodyWarnings = f.body.toSeq.flatMap(collectWarnings)
-    preWarnings ++ bodyWarnings
-  }
-
   /** Check all properties required for a contract expression that is not a postcondition (precondition, invariant, predicate) */
   def checkNonPostContract(e: Exp) : Seq[ConsistencyError]  = {
     (if(!(e isSubtype Bool)) Seq(ConsistencyError(s"Contract $e: ${e.typ} must be boolean.", e.pos)) else Seq()) ++

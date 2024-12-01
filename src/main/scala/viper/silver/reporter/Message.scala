@@ -269,11 +269,6 @@ case class WarningsDuringTypechecking(warnings: Seq[TypecheckerWarning]) extends
   override val name: String = "warnings_during_typechecking"
 }
 
-case class ConsistencyWarnings(warnings: Seq[ConsistencyError]) extends Message {
-  override lazy val toString: String = s"consistency_warnings(warnings=${warnings.toString})"
-  override val name: String = "consistency_warnings"
-}
-
 case class WarningsDuringVerification(warnings: Seq[VerifierWarning]) extends Message {
   override lazy val toString: String = s"warnings_during_verification(warnings=${warnings.toString})"
   override val name: String = "warnings_during_verification"

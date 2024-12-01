@@ -333,7 +333,7 @@ trait SilFrontend extends DefaultFrontend {
         val r = Resolver(inputPlugin)
         FrontendStateCache.resolver = r
         FrontendStateCache.pprogram = inputPlugin
-        val analysisResult = r.run
+        val analysisResult = r.run(if (config == null) true else !config.respectFunctionPrePermAmounts())
         val warnings = for (m <- FastMessaging.sortmessages(r.messages) if !m.error) yield {
           TypecheckerWarning(m.label, m.pos)
         }
@@ -380,12 +380,10 @@ trait SilFrontend extends DefaultFrontend {
     var errors = input.checkTransitively
     if (backendTypeFormat.isDefined)
       errors = errors ++ Consistency.checkBackendTypes(input, backendTypeFormat.get)
-    val (actualErrors, warnings) = errors partition (_.isError)
-    if (warnings.nonEmpty)
-      reporter.report(ConsistencyWarnings(warnings))
-    if (actualErrors.isEmpty) {
+    if (errors.isEmpty) {
       Succ(input)
-    } else
-      Fail(actualErrors)
+    } else {
+      Fail(errors)
+    }
   }
 }
