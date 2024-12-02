@@ -16,7 +16,7 @@ case class PreExp(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoI
 
     override def extensionSubnodes: Seq[Node] = Seq(exp)
 
-    override def typ: Type = ???
+    override def typ: Type = exp.typ
 
     override def verifyExtExp(): VerificationResult = Success
     //TODO: change this !!

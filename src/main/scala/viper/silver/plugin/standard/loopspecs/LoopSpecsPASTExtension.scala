@@ -2,7 +2,7 @@ package viper.silver.plugin.standard.loopspecs
 
 
 import viper.silver.ast._
-import viper.silver.parser.TypeHelper.{Bool, Impure}
+import viper.silver.parser.TypeHelper.{Bool, Impure, Ref}
 import viper.silver.parser._
 
 import scala.collection.mutable
@@ -18,7 +18,7 @@ case class PPreExp(op : PReserved[PPreKeyword.type],
 
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
-    t.check(e.inner, Bool)
+    t.check(e.inner, Ref) //TODO: What about if there's a var here?? Of type int... how to generalize??
     None
   }
 
@@ -29,11 +29,8 @@ case class PPreExp(op : PReserved[PPreKeyword.type],
   //override def requirePure = args
   //override val signatures: List[PTypeSubstitution] = List(Map(POpApp.pResS -> POpApp.pArg(0)))
 
-  //override def typeSubstitutions: collection.Seq[PTypeSubstitution] = ???
 
-  //override def forceSubstitution(ts: PTypeSubstitution): Unit = ???
-
-  override def typeSubstitutions: collection.Seq[PTypeSubstitution] = ???
+  override def typeSubstitutions: collection.Seq[PTypeSubstitution] = Seq(PTypeSubstitution.id)
 
   override def forceSubstitution(ts: PTypeSubstitution): Unit = ???
 }
