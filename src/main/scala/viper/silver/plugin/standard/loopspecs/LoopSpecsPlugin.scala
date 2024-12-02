@@ -1,6 +1,6 @@
 package viper.silver.plugin.standard.loopspecs
 
-import viper.silver.ast.{Domain, DomainType, ErrTrafo, FuncApp, Function, Position, PredicateAccess, PredicateAccessPredicate, Program, WildcardPerm}
+import viper.silver.ast._
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.parser._
@@ -13,6 +13,8 @@ import viper.silver.reporter.Entity
 import scala.annotation.unused
 import scala.collection.immutable.ListMap
 import viper.silver.parser.FastParserCompanion.{Pos, reservedKw}
+
+
 
 class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
                               @unused logger: ch.qos.logback.classic.Logger,
@@ -120,5 +122,106 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
     // Add new parser to the invariants
     ParserExtension.addNewStmtAtStart(loopspecs(_))
     input
+  }
+
+
+  override def beforeVerify(input: Program): Program ={
+    // For each loopspecs
+    // Identify components of loop
+    // Map entire loop to new code 1. inhalexhale 2. rec
+    // Return input before ++ new code ++ input after
+
+
+
+    //cond: Exp,
+    //      pres: Seq[Exp],
+    //      posts: Seq[Exp],
+    //      body: Seqn,
+    //      ghost: Option[Seqn],
+    //      basecase
+
+
+    //val nonDetLocalVarDecl = LocalVarDecl(s"__plugin_refute_nondet$refutesInMethod", Bool)(r.pos)
+    //          Seqn(Seq(
+    //            If(nonDetLocalVarDecl.localVar,
+    //              Seqn(Seq(
+    //                Assert(exp)(r.pos, RefuteInfo(r)),
+    //                Inhale(BoolLit(false)(r.pos))(r.pos, Synthesized)
+    //              ), Seq())(r.pos),
+    //              Seqn(Seq(), Seq())(r.pos))(r.pos)
+    //          ),
+    //            Seq(nonDetLocalVarDecl)
+    //          )(r.pos)
+    def mapLoopSpecs(ls : LoopSpecs): Node = {
+      // Exhale all loop preconditions
+      val check_pre: Seq[Stmt] =
+        ls.pres.map(pre => Exhale(pre)())
+
+      // Declare a non-deterministic Boolean variable
+      val non_det =
+        LocalVarDecl(s"__plugin_loopspecs_nondet", Bool)()
+
+      // Common inhalations of preconditions
+      val common_to_both_steps: Seq[Stmt] =
+        ls.pres.map(pre => Inhale(pre)())
+
+      // Inductive step statements
+      val inductive_step: Seq[Stmt] =
+        Seq(ls.body) ++
+          ls.pres.map(pre => Exhale(pre)()) ++
+          ls.posts.map(post => Inhale(post)()) ++
+          ls.ghost.toSeq ++
+          ls.posts.map(post => Exhale(post)())
+
+      // Base step statements
+      val base_step: Seq[Stmt] =
+        Seq(ls.basecase) ++
+          ls.posts.map(post => Exhale(post)())
+
+      // Caller's postconditions
+      val callers_post: Seq[Stmt] =
+        ls.posts.map(post => Inhale(post)())
+
+      // Construct the transformed sequence
+      Seqn(
+        check_pre ++ Seq(
+          If(non_det.localVar,
+            Seqn(Seq(
+              While(TrueLit()(),
+                Seq(),
+                Seqn(
+                  common_to_both_steps ++ Seq(
+                    If(ls.cond,
+                      Seqn(inductive_step,
+                        Seq())(),
+                      Seqn(base_step,
+                        Seq())()
+                    )()
+                  ), Seq()
+                )()
+              )()
+            ),
+              Seq())(),
+            Seqn(callers_post,
+              Seq())()
+          )()
+        ),
+        Seq(non_det)
+      )()
+    }
+
+
+
+    val newProgram: Program = ViperStrategy.Slim({
+      case ls : LoopSpecs =>
+        mapLoopSpecs(ls)
+
+      case p: Program =>
+        p
+    }, Traverse.TopDown).execute(input) // TD or BU ??
+    newProgram
+
+
+    // Program(input.domains, input.fields, input.functions, input.predicates, transformedMethods, input.extensions)(input.pos, input.info, input.errT)
   }
 }
