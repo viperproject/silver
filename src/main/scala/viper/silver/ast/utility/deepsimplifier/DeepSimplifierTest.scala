@@ -12,6 +12,114 @@ import scala.collection.mutable.ArrayBuffer
 
 class DeepSimplifierTest extends AnyFunSuite with Matchers{
 
+  test("not1"){
+    val a = LocalVar("a", Bool)()
+    val b = LocalVar("b", Bool)()
+    val c = LocalVar("c", Bool)()
+    val d = And(a, And(b,c)())()
+    val e = And(And(a,b)(), c)()
+
+    println(simplify(d))
+    println(simplify(e))
+
+    true should be(true)
+  }
+
+  test("not2"){
+    val a = LocalVar("a", Bool)()
+    val b = LocalVar("b", Bool)()
+    val d = And(Implies(a, b)(), Implies(Not(a)(), b)())()
+
+    println(d)
+    println(simplify(d))
+
+    true should be(true)
+  }
+  test("not3"){
+    val a = LocalVar("a", Bool)()
+    val b = LocalVar("b", Bool)()
+    val d = And(Implies(a, b)(), Implies(Not(a)(), b)())()
+
+    println(d)
+    println(simplify(d))
+
+    true should be(true)
+  }
+  test("not4"){
+    val a = LocalVar("a", Bool)()
+    val b = LocalVar("b", Bool)()
+    val d = Implies(a, b)()
+
+    println(d)
+    println(simplify(d))
+
+    true should be(true)
+  }
+  test("not5"){
+    //how do i define null in the tree?
+    val a = LocalVar("a", Bool)()
+    val b = LocalVar("b", Bool)()
+    val z = NullLit()()
+    val y = NullLit()()
+    val c = LocalVar("c", Bool)()
+    val aa = EqCmp(a, z)()
+    val bb = EqCmp(b, y)()
+    val d = And(Implies(aa, c)(), Implies(Not(aa)(), c)())()
+
+    println(d)
+    println(simplify(d))
+
+    true should be(true)
+  }
+
+  test("test1") {
+    val a = Not(LocalVar("a", Bool)())()
+    val b = Not(LocalVar("b", Bool)())()
+    val c = Or(Or(a, b)(), FalseLit()())()
+    println(simplify(c))
+    true should be(true)
+
+  }
+
+  test("test14") {
+    val a = LocalVar("a", Bool)()
+    val z = LocalVar("z", Bool)()
+    val y = Not(a)()
+    val b = Or(Not(Not(a)())(), a)()
+    val c = Or(Not(a)(), a)()
+    val d = Or(Not(Not(a)())(), Not(Not(Not(Not(z)())())())())()
+    val e = Or(d, Not(Not(Not(Not(z)())())())())()
+    val f = Or(d, Not(Not(Not(Not(FalseLit()())())())())())()
+
+    println(f)
+    /*
+    println(a.isInstanceOf[Node])
+
+    println(a.subnodes)
+    println(a.children)
+    println(a.getClass)
+    println(a.children.map(child => child.getClass))
+    println(a.subnodes.map(child => child.isInstanceOf[AtomicType]))
+
+    println(c.subnodes)
+    println(c.children)
+    println(c.getClass)
+    println(c.children.map(child => child.getClass))
+    println(c.subnodes.map(child => child.isInstanceOf[AtomicType]))
+    */
+    //println(e.subnodes)
+    //println(e.children)
+
+    println(simplify(f))
+
+    true should be(true)
+  }
+
+
+
+
+
+
   /*test("test1") {
 
     val a = LocalVar("a", Bool)()
@@ -187,38 +295,7 @@ class DeepSimplifierTest extends AnyFunSuite with Matchers{
 
    */
 
-  test("test14") {
-    val a = LocalVar("a", Bool)()
-    val z = LocalVar("z", Bool)()
-    val y = Not(a)()
-    val b = Or(Not(Not(a)())(), a)()
-    val c = Or(Not(a)(), a)()
-    val d = Or(Not(Not(a)())(), Not(Not(Not(Not(z)())())())())()
-    val e = Or(d, Not(Not(Not(Not(z)())())())())()
 
-    //println(e)
-    /*
-    println(a.isInstanceOf[Node])
-
-    println(a.subnodes)
-    println(a.children)
-    println(a.getClass)
-    println(a.children.map(child => child.getClass))
-    println(a.subnodes.map(child => child.isInstanceOf[AtomicType]))
-
-    println(c.subnodes)
-    println(c.children)
-    println(c.getClass)
-    println(c.children.map(child => child.getClass))
-    println(c.subnodes.map(child => child.isInstanceOf[AtomicType]))
-    */
-    //println(e.subnodes)
-    //println(e.children)
-
-    println(simplify(d))
-
-    true should be(true)
-  }
 
 
 }
