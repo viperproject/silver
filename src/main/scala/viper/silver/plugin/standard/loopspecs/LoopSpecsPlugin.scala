@@ -1,6 +1,6 @@
 package viper.silver.plugin.standard.loopspecs
 
-import viper.silver.ast._
+import viper.silver.ast.{LocalVarAssign, _}
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.parser._
@@ -27,7 +27,7 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
 
   private def deactivated: Boolean = config != null && config.disableTerminationPlugin.toOption.getOrElse(false)
 
-  //TODO: Add some variable in config to choose which version of desugaring: inhaleexhale, rec
+  //TODO: Add some variable in config to choose which version of desugaring: inex, rec
 
 
   //private var decreasesClauses: Seq[PDecreasesClause] = Seq.empty
@@ -152,7 +152,77 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
     //          ),
     //            Seq(nonDetLocalVarDecl)
     //          )(r.pos)
+
+    //1. no assign in ghost ==> error
+    //2. or we allow but then treat them
+
+    //copy
+    //while()
+    //{ ghost{var d:= 0}}
+    //
+    //only copy vardecl outside and assigned inside but not decl inside
+
+    // some code checks for assignments
     def mapLoopSpecs(ls : LoopSpecs): Node = {
+      val targets =
+        ls.body.collect({case v : LocalVarAssign => v.lhs}) ++
+          ls.basecase.get.collect({case v : LocalVarAssign => v.lhs})
+      // how to deal with if this is an option
+      // plus also get ghost???
+
+      //Resolution via name (not ref)
+      //Todo: Extract localvarmaking into func
+      def copy_targets_with_name(name : String): Iterable[Node] =
+        targets.map(t => {
+          val localvar = LocalVar(s"__plugin_loopspecs_${name}_${t.name}", t.typ)() //.localVar
+          LocalVarAssign(localvar, t)()
+
+        })
+
+      def checkpoint(name : String): Seq[Node] =
+        Label(s"__plugin_loopspecs_${name}", Seq())() ++
+          copy_targets_with_name(name)
+
+
+      def make_havoc_type(typ : Type) =
+        Method(s"havoc_${typ}",
+          Seq(),
+          typ,
+          Seq(),
+          Seq(),
+          None)()
+
+      //TODo change to methdo
+      def call_havoc_type(typ : Type) =
+        FuncApp(make_havoc_type(typ),
+          Seq()
+        )()
+
+      def havoc_targets() =
+        targets.map(t  => {
+          LocalVarAssign(t, call_havoc_type(t.typ))()
+        })
+
+      // s"__plugin_loopspecs_{$name}_{$t.name}" = copy at label name
+      // TODO: implement recursive desugaring
+      // TODO: How to differentiate between 2 cases??
+      // Always put a labelled old -> doesn't hurt
+      // pre(list(pre(curr))) == pre(list(curr))
+      //
+      def pre_transform_vars = ???
+      def pre_desugar(e : Exp, label : String) = // Post or ghost or basecase
+        e.subExps.map(
+          {case p : PreExp =>
+              // First case it's heap
+              LabelledOld(p.exp, label)() //call var tsfrom here
+            // Second case it's var
+              //LocalVar(s"__plugin_loopspecs_${label}_${p.exp}", p.exp.typ)()
+
+          }
+        )
+
+      //tOdo try all compilation wout labels/copying  bef full thing
+
       // Exhale all loop preconditions
       val check_pre: Seq[Stmt] =
         ls.pres.map(pre => Exhale(pre)())
@@ -163,12 +233,15 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
 
       // Common inhalations of preconditions
       val common_to_both_steps: Seq[Stmt] =
-        ls.pres.map(pre => Inhale(pre)())
+        ls.pres.map(pre => Inhale(pre)()) ++
+          checkpoint("pre_iteration")
 
       // Inductive step statements
       val inductive_step: Seq[Stmt] =
         Seq(ls.body) ++
+          checkpoint("after_iteration") ++
           ls.pres.map(pre => Exhale(pre)()) ++
+          havoc_targets() ++
           ls.posts.map(post => Inhale(post)()) ++
           ls.ghost.toSeq ++
           ls.posts.map(post => Exhale(post)())
@@ -184,13 +257,17 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
 
       // Construct the transformed sequence
       Seqn(
-        check_pre ++ Seq(
+        checkpoint("pre_loop") ++
+          check_pre ++
+          havoc_targets() ++
+          Seq(
           If(non_det.localVar,
             Seqn(Seq(
               While(TrueLit()(),
                 Seq(),
                 Seqn(
-                  common_to_both_steps ++ Seq(
+                  common_to_both_steps ++
+                    Seq(
                     If(ls.cond,
                       Seqn(inductive_step,
                         Seq())(),
@@ -209,6 +286,7 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
         Seq(non_det)
       )()
     }
+    //Todo: inside the seqs of the seqn you have the var decl
 
 
 
@@ -217,11 +295,13 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
         mapLoopSpecs(ls)
 
       case p: Program =>
-        p
-    }, Traverse.TopDown).execute(input) // TD or BU ??
+        val transformedMethods = p.methods ++
+        Program(p.domains, p.fields, p.functions, p.predicates, transformedMethods, p.extensions)(p.pos, p.info, p.errT)
+        //ext is for toplevel decl
+    }, Traverse.TopDown).execute(input) //TODO: TD or BU ??
     newProgram
 
 
-    // Program(input.domains, input.fields, input.functions, input.predicates, transformedMethods, input.extensions)(input.pos, input.info, input.errT)
+
   }
 }

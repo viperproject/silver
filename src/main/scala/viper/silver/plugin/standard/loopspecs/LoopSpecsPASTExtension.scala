@@ -18,7 +18,9 @@ case class PPreExp(op : PReserved[PPreKeyword.type],
 
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
-    t.check(e.inner, Ref) //TODO: What about if there's a var here?? Of type int... how to generalize??
+    //t.check(e.inner, Ref) //TODO: What about if there's a var here?? Of type int... how to generalize??
+    t.check(e.inner) //TODO: Make sure the exp typechecks (no expected type)
+
     None
   }
 

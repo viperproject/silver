@@ -18,8 +18,9 @@ case class PreExp(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoI
 
     override def typ: Type = exp.typ
 
+
     override def verifyExtExp(): VerificationResult = Success
-    //TODO: change this !!
+    //TODO: probably not called because all desugaring happens before verification
 
     /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
      * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression. */
