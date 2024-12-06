@@ -111,6 +111,13 @@ trait Node extends Iterable[Node] with Rewritable {
   /** @see [[Visitor.hasSubnode()]] */
   def hasSubnode(toFind: Node): Boolean = Visitor.hasSubnode(this, toFind, Nodes.subnodes)
 
+  def showSimple = s"${this.getClass.getSimpleName()}"
+
+  def printAll(indent: Int = 0): String = {
+    val class_name = " ".repeat(indent) + "<" + showSimple + ">";
+    this.subnodes.map(n => n.printAll(indent + 4)).foldLeft(class_name)((f, s) => f + "\n" + s)
+  }
+
   override def toString() = FastPrettyPrinter.pretty(this)
 
   def toOneLinerStr() = s"<${getClass.getSimpleName()}> ``" + (
