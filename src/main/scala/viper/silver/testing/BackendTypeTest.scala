@@ -33,7 +33,7 @@ trait BackendTypeTest extends AnyFunSuite with Matchers with BeforeAndAfterAllCo
     val p2_decl = LocalVarDecl("lol", SetType(t))()
     val p2_ref= p2_decl.localVar
     val fieldAcc = FieldAccess(p1_ref, field)()
-    val perm = FieldAccessPredicate(fieldAcc, FullPerm()())()
+    val perm = FieldAccessPredicate(fieldAcc, Some(FullPerm()()))()
     val element_in_param = AnySetContains(fieldAcc, p2_ref)()
 
     val getPerm = Inhale(perm)()
@@ -51,7 +51,7 @@ trait BackendTypeTest extends AnyFunSuite with Matchers with BeforeAndAfterAllCo
     val setParam = LocalVarDecl("refs", SetType(Ref))()
     val floatParam = LocalVarDecl("val", fp.typ)()
     val x = LocalVarDecl("x", Ref)()
-    val qpBody = Implies(AnySetContains(x.localVar, setParam.localVar)(), FieldAccessPredicate(FieldAccess(x.localVar, fld)(), FullPerm()())())()
+    val qpBody = Implies(AnySetContains(x.localVar, setParam.localVar)(), FieldAccessPredicate(FieldAccess(x.localVar, fld)(), None)())()
     val qp = Forall(Seq(x), Seq(), qpBody)()
     val inhaleQp = Inhale(qp)()
     val fieldInfoBody = Implies(AnySetContains(x.localVar, setParam.localVar)(), NeCmp(FieldAccess(x.localVar, fld)(), floatParam.localVar)())()
@@ -151,14 +151,14 @@ trait BackendTypeTest extends AnyFunSuite with Matchers with BeforeAndAfterAllCo
     val field = Field("val_float", fp.typ)()
     val selfVar = LocalVarDecl("self", Ref)()
     val fieldAcc = FieldAccess(selfVar.localVar, field)()
-    val fieldAccPred = FieldAccessPredicate(fieldAcc, FullPerm()())()
+    val fieldAccPred = FieldAccessPredicate(fieldAcc, Some(FullPerm()()))()
     val pred = Predicate("f64", Seq(selfVar), Some(fieldAccPred))()
 
     val inhale = Inhale(fieldAccPred)()
     val fpVal = BackendFuncApp(to_fp, Seq(BackendFuncApp(from_int, Seq(IntLit(value)()))()))()
     val assign = FieldAssign(fieldAcc, fpVal)()
     val predAcc = PredicateAccess(Seq(selfVar.localVar), pred.name)()
-    val predAccPred = PredicateAccessPredicate(predAcc, FullPerm()())()
+    val predAccPred = PredicateAccessPredicate(predAcc, None)()
     val fold = Fold(predAccPred)()
     val exhale = Exhale(predAccPred)()
 

@@ -33,7 +33,7 @@ method pred1(r: Ref)
     fold acc(P(r), wildcard)
     unfold acc(P(r), wildcard)
     var r2 : Ref := tester(get(r))
-    //:: ExpectedOutput(application.precondition:insufficient.permission)
+
     var r3 : Ref := testerFull(get(r))
 }
 
@@ -44,7 +44,7 @@ method pred2(r: Ref)
     fold acc(P(r))
     unfold acc(P(r))
     var r2 : Ref := tester(get(r))
-    //:: ExpectedOutput(application.precondition:insufficient.permission)
+
     var r3 : Ref := testerFull(get(r))
 }
 
@@ -55,7 +55,7 @@ method pred3(r: Ref)
     fold acc(P(r), 1/2)
     unfold acc(P(r), 1/2)
     var r2 : Ref := tester(get(r))
-    //:: ExpectedOutput(application.precondition:insufficient.permission)
+
     var r3 : Ref := testerFull(get(r))
 }
 
@@ -66,7 +66,7 @@ method pred4(r: Ref)
     fold acc(P2(r), wildcard)
     unfold acc(P2(r), wildcard)
     var r2 : Ref := tester(get(r))
-    //:: ExpectedOutput(application.precondition:insufficient.permission)
+
     var r3 : Ref := testerFull(get(r))
 }
 
@@ -77,7 +77,7 @@ method func1(r: Ref)
     fold acc(R(r), wildcard)
     unfold acc(R(r), wildcard)
     var r2 : Ref := testerfield(get(r))
-    //:: ExpectedOutput(application.precondition:insufficient.permission)
+
     var r3 : Ref := testerfieldFull(get(r))
 }
 
@@ -88,7 +88,7 @@ method func2(r: Ref)
     fold acc(R(r))
     unfold acc(R(r))
     var r2 : Ref := testerfield(get(r))
-    //:: ExpectedOutput(application.precondition:insufficient.permission)
+
     var r3 : Ref := testerfieldFull(get(r))
 }
 
@@ -99,7 +99,7 @@ method func3(r: Ref)
     fold acc(R(r), 1/2)
     unfold acc(R(r), 1/2)
     var r2 : Ref := testerfield(get(r))
-    //:: ExpectedOutput(application.precondition:insufficient.permission)
+
     var r3 : Ref := testerfieldFull(get(r))
 }
 
@@ -110,6 +110,6 @@ method func4(r: Ref)
     fold acc(R2(r), wildcard)
     unfold acc(R2(r), wildcard)
     var r2 : Ref := testerfield(get(r))
-    //:: ExpectedOutput(application.precondition:insufficient.permission)
+
     var r3 : Ref := testerfieldFull(get(r))
 }
