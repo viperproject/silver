@@ -179,7 +179,7 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
 
         })
 
-      def checkpoint(name : String): Seq[Node] =
+      def checkpoint(name : String) =
         Label(s"__plugin_loopspecs_${name}", Seq())() ++
           copy_targets_with_name(name)
 
@@ -187,20 +187,23 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
       def make_havoc_type(typ : Type) =
         Method(s"havoc_${typ}",
           Seq(),
-          typ,
+          Seq(LocalVarDecl("x", typ)()),
           Seq(),
           Seq(),
           None)()
 
-      //TODo change to methdo
-      def call_havoc_type(typ : Type) =
-        FuncApp(make_havoc_type(typ),
-          Seq()
-        )()
+      def call_havoc_type(typ : Type, targets : Seq[LocalVar]) = {
+        MethodCall(
+          make_havoc_type(typ).name,
+          Seq(),
+          targets
+        )_
+        None
+      }
 
       def havoc_targets() =
         targets.map(t  => {
-          LocalVarAssign(t, call_havoc_type(t.typ))()
+          //LocalVarAssign(t, call_havoc_type(t.typ, Seq()))()
         })
 
       // s"__plugin_loopspecs_{$name}_{$t.name}" = copy at label name
@@ -233,22 +236,22 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
 
       // Common inhalations of preconditions
       val common_to_both_steps: Seq[Stmt] =
-        ls.pres.map(pre => Inhale(pre)()) ++
-          checkpoint("pre_iteration")
+        ls.pres.map(pre => Inhale(pre)()) //++
+          //checkpoint("pre_iteration")
 
       // Inductive step statements
       val inductive_step: Seq[Stmt] =
         Seq(ls.body) ++
-          checkpoint("after_iteration") ++
+          //checkpoint("after_iteration") ++
           ls.pres.map(pre => Exhale(pre)()) ++
-          havoc_targets() ++
+          //havoc_targets() ++
           ls.posts.map(post => Inhale(post)()) ++
           ls.ghost.toSeq ++
           ls.posts.map(post => Exhale(post)())
 
       // Base step statements
       val base_step: Seq[Stmt] =
-        Seq(ls.basecase) ++
+        ls.basecase.map(_.ss).getOrElse(Seq()) ++
           ls.posts.map(post => Exhale(post)())
 
       // Caller's postconditions
@@ -257,9 +260,10 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
 
       // Construct the transformed sequence
       Seqn(
-        checkpoint("pre_loop") ++
+        //checkpoint("pre_loop") ++
           check_pre ++
-          havoc_targets() ++
+          //havoc_targets() ++
+            //non_det ++
           Seq(
           If(non_det.localVar,
             Seqn(Seq(
@@ -295,7 +299,7 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
         mapLoopSpecs(ls)
 
       case p: Program =>
-        val transformedMethods = p.methods ++
+        val transformedMethods = p.methods //++
         Program(p.domains, p.fields, p.functions, p.predicates, transformedMethods, p.extensions)(p.pos, p.info, p.errT)
         //ext is for toplevel decl
     }, Traverse.TopDown).execute(input) //TODO: TD or BU ??
