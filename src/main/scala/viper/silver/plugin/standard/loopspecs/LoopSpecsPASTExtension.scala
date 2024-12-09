@@ -107,6 +107,7 @@ case class PLoopSpecs(
         While(exp(cond.inner), invs.toSeq map (inv => exp(inv.e)), stmt(body).asInstanceOf[Seqn])(pos, info) */
 
   override def translateStmt(t: Translator): Stmt =
+    //sys.error(s"Unhandledwdiudype: ${posts}")
     LoopSpecs(
       t.exp(cond.inner),
       pres.toSeq map (pre => t.exp(pre.e)),
