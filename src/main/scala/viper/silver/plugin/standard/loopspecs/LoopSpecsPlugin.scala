@@ -31,27 +31,7 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
   //TODO: Add some variable in config to choose which version of desugaring: inex, rec
 
 
-  //private var decreasesClauses: Seq[PDecreasesClause] = Seq.empty
 
-  /**
-   * Parser for decreases clauses with following possibilities.
-   *
-   * decreases (exp (, exp)*)? (if exp)?
-   * or
-   * decreases _ (if exp)?
-   * or
-   * decreases *
-   */
-  /*def decreases[$: P]: P[PSpecification[PDecreasesKeyword.type]] =
-    P((P(PDecreasesKeyword) ~ (decreasesWildcard | decreasesStar | decreasesTuple)) map (PSpecification.apply _).tupled).pos
-  
-  def decreasesTuple[$: P]: P[PDecreasesTuple] =
-    P((exp.delimited(PSym.Comma) ~~~ condition.lw.?) map (PDecreasesTuple.apply _).tupled).pos
-  def decreasesWildcard[$: P]: P[PDecreasesWildcard] = P((P(PWildcardSym) ~~~ condition.lw.?) map (PDecreasesWildcard.apply _).tupled).pos
-  def decreasesStar[$: P]: P[PDecreasesStar] = P(P(PSym.Star) map (PDecreasesStar(_) _)).pos
-  def condition[$: P]: P[(PReserved[PIfKeyword.type], PExp)] = 
-    P(P(PIfKeyword) ~ exp)
-*/
 
   def ghostBlock[$: P]: P[PGhostBlock] =
     P((reservedKw(PGhostKeyword) ~ ghostBody()) map {case (kw, body) => PGhostBlock(kw, body) _ }).pos
@@ -66,9 +46,7 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
   def baseCaseBody[$: P](allowDefine: Boolean = true): P[PSeqn] =
     P(semiSeparated(stmt(allowDefine)).braces map PSeqn.apply).pos
 
-  // def old[$: P]: P[PKwOp.Old => Pos => POldExp] = P(oldLabel.brackets.? ~ exp.parens).map {
-  //    case (lbl, g) => POldExp(_, lbl, g)
-  //  }
+
 
   def loopspecs[$ : P]: P[PLoopSpecs] =
 
@@ -77,8 +55,8 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
       (
       reservedKw(PKw.While) ~ parenthesizedExp ~~
       semiSeparated(precondition) ~~
-      semiSeparated(postcondition) ~
-      stmtBlock() ~
+      semiSeparated(postcondition) ~~~
+      stmtBlock().lw ~
       ghostBlock.? ~
       baseCaseBlock.?
     ).map {
@@ -125,7 +103,13 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
     input
   }
 
+  //Well-definedness
+  //TODO: Reject pre(.) if not in post/ghost/bc (manual checking in befVerify()) ==> add test case
+  // ExpectedOUtput(consistency.error) as there's no reason
+  //TODO: transform final englobing exhale error into post error (override def)
 
+
+  //TODO: add more examples when this works ==> might lead to more errors.
   override def beforeVerify(input: Program): Program ={
     // For each loopspecs
     // Identify components of loop
@@ -165,7 +149,7 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
 
     // some code checks for assignments
     //Todo: Fix this getting types as it currently fails
-    var types : Set[Type] = Set(Ref)
+    var types : Set[Type] = Set()
 
     def make_havoc_methods(): Set[Method] = {
       types.map(t => make_havoc_type(t))
@@ -183,6 +167,9 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
       def targets_from_stmts(stmts : Seq[Stmt]): Seq[LocalVar] =
         stmts.collect({case v : LocalVarAssign => v.lhs})//.toSeq
 
+      //TODO: add test case: variable scoping, see if finds targets correcctly, declare + assign, don't declare, don't assign...
+
+      //TODO: -- of set of variables declared inside the body/bc/ghost
       val targets : Seq[LocalVar] =
         targets_from_stmts(ls.body.ss) ++
           targets_from_stmts(ls.basecase.getOrElse(Seqn(Seq(), Seq())()).ss) ++
@@ -230,16 +217,21 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
       // pre(list(pre(curr))) == pre(list(curr))
       // pre(accu)
       // post, ghost, basecase
+
+      //todo: add tests for failures along the way.
+      //todo: or if it verifies but shouldn't
       def pre_desugar_exp(e : Exp, label : String): Exp = {
+        //e.transform() TODO : implement this
         e match {
           // Special case: Handle the `PreExp` node
           case pre: PreExp =>
             // Transform its inner exp recursively and wrap in a LabelledOld
 
-            val transformedInner = pre_desugar_exp(pre.exp, label)
+            val transformedInner = pre_desugar_exp(pre.exp, label) // todo: .transform here and only change vars here
             LabelledOld(transformedInner, label)(e.pos, e.info, e.errT)
 
           // Handle variables
+          //TODO: only rename targets inside pre. check if it's target.
           case l: LocalVar =>
             // Suppose you want to rename variables as "__plugin_loopspecs_<label>_<originalName>"
             LocalVar(s"$prefix${label}_${l.name}", l.typ)(l.pos, l.info, l.errT)
@@ -510,7 +502,9 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
         }
       }
 
-      def pre_desugar_stmt(s: Stmt, label: String): Stmt = s match {
+      def pre_desugar_stmt(s: Stmt, label: String): Stmt = {
+        //TODO: change to s.transform(pre_Desugar_exp(_))
+        s match {
         // Simple statements that contain expressions
         case NewStmt(lhs, fields) =>
           // NewStmt has no Exp to transform, lhs is a LocalVar (Exp) but likely doesn't need "pre" treatment.
@@ -635,7 +629,7 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
         case other =>
           sys.error(s"Unhandled stmt type: ${other.getClass}")
       }
-
+      }
 
 
       // Exhale all loop preconditions
@@ -706,20 +700,23 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
     //inside the seqs of the seqn you have the var decl
 
 
-
+  //same as call transform
     val newProgram: Program = ViperStrategy.Slim({
       case ls : LoopSpecs =>
         mapLoopSpecs(ls)
 
-      case p: Program =>
+      //case p: Program =>
         // for each type from targets add the havoc methods
 
-        val transformedMethods = p.methods ++ make_havoc_methods()
 
-        Program(p.domains, p.fields, p.functions, p.predicates, transformedMethods, p.extensions)(p.pos, p.info, p.errT)
+
+        //Program(p.domains, p.fields, p.functions, p.predicates, transformedMethods, p.extensions)(p.pos, p.info, p.errT)
         //ext is for toplevel decl
-    }, Traverse.TopDown).execute(input) //TODO: TD or BU ??
-    newProgram
+    }).execute(input) // This is just traversal not verif
+    //TODO: test with nested loops (TD /BU)
+
+    val transformedMethods = newProgram.methods ++ make_havoc_methods()
+    newProgram.copy(methods = transformedMethods)(NoPosition, NoInfo, NoTrafos)
 
 
 
