@@ -19,6 +19,20 @@ trait DependencyAware {
 
   val dependencyHashMap: Map[Method, String]
 
+  private def handleFunction(p: Program, marker: mutable.Set[Hashable], func: Function): Seq[Hashable] = {
+    if (!marker.contains(func)) {
+      markSubAST(func, marker)
+      Seq(func) ++ getDependenciesRec(p, func.pres ++ func.posts ++ extractOptionalNode(func.body), marker)
+    } else Nil
+  }
+
+  private def handlePredicate(p: Program, marker: mutable.Set[Hashable], pred: Predicate): Seq[Hashable] = {
+    if (!marker.contains(pred)) {
+      markSubAST(pred, marker)
+      Seq(pred) ++ getDependenciesRec(p, extractOptionalNode(pred.body), marker)
+    } else Nil
+  }
+
   /**
     * Get the (irreflexive) transitive closure of dependencies of nodes from a list.
     *
@@ -37,18 +51,33 @@ trait DependencyAware {
         n.deepCollect {
           case func_app: FuncApp =>
             val func = p.findFunction(func_app.funcname)
-            if (!marker.contains(func)) {
-              markSubAST(func, marker)
-              Seq(func) ++ getDependenciesRec(p, func.pres ++ func.posts ++ extractOptionalNode(func.body), marker)
-            } else Nil
+            handleFunction(p, marker, func)
           case pred_access: PredicateAccess =>
             val pred = p.findPredicate(pred_access.predicateName)
-            if (!marker.contains(pred)) {
-              markSubAST(pred, marker)
-              Seq(pred) ++ getDependenciesRec(p, extractOptionalNode(pred.body), marker)
-            } else Nil
+            handlePredicate(p, marker, pred)
         } flatten
     } toList
+  }
+
+  private def getDependenciesInner(p: Program, m: Method, includeMethods: Boolean): List[Hashable] = {
+    val marker: mutable.Set[Hashable] = mutable.Set.empty
+    markSubAST(m, marker)
+    Seq(m) ++ p.domains ++ p.fields ++
+      (m.pres ++ m.posts ++ m.body.toSeq).flatMap {
+        n => n.deepCollect {
+          case method_call: MethodCall =>
+            val method = p.findMethod(method_call.methodName)
+            if (!marker.contains(method)) {
+              (if(includeMethods) {getDependenciesInner(p, method, includeMethods)} else {Seq()}) ++ method.formalArgs ++ method.formalReturns ++
+                method.pres ++ method.posts ++
+                getDependenciesRec(p, method.formalArgs ++ method.formalReturns ++ method.pres ++ method.posts, marker)
+            } else Nil
+          case func_app: FuncApp =>
+            getDependenciesRec(p, Seq(func_app), marker)
+          case pred_access: PredicateAccess =>
+            getDependenciesRec(p, Seq(pred_access), marker)
+        } flatten
+      } toList
   }
 
   /**
@@ -70,24 +99,22 @@ trait DependencyAware {
     *          List of dependency [[Hashable]]s.
     */
   def getDependencies(p: Program, m: Method): List[Hashable] = {
+    getDependenciesInner(p, m, false)
+  }
+
+  /**
+   * Same as `getDependencies`, but instead also collects all methods that are used transitively.
+   * `getDependencies` is used for caching, which for some reason does not include transitively called
+   * methods (only their pres, posts, etc.). `getDependenciesWithMethods` is instead used for the functionality that allows to verify
+   * one specific methods, where we need to determine the
+   */
+  def getMethodDependenciesWithMethods(p: Program, m: Method): List[Hashable] = {
+    getDependenciesInner(p, m, true)
+  }
+
+  def getFunctionDependencies(p: Program, f: Function): List[Hashable] = {
     val marker: mutable.Set[Hashable] = mutable.Set.empty
-    markSubAST(m, marker)
-    Seq(m) ++ p.domains ++ p.fields ++
-      (m.pres ++ m.posts ++ m.body.toSeq).flatMap {
-        n => n.deepCollect {
-          case method_call: MethodCall =>
-            val method = p.findMethod(method_call.methodName)
-            if (!marker.contains(method)) {
-              method.formalArgs ++ method.formalReturns ++
-                method.pres ++ method.posts ++
-                getDependenciesRec(p, method.formalArgs ++ method.formalReturns ++ method.pres ++ method.posts, marker)
-            } else Nil
-          case func_app: FuncApp =>
-            getDependenciesRec(p, Seq(func_app), marker)
-          case pred_access: PredicateAccess =>
-            getDependenciesRec(p, Seq(pred_access), marker)
-        } flatten
-      } toList
+    handleFunction(p, marker, f) toList
   }
 
   private def markSubAST(node: Node, marker: mutable.Set[Hashable]): Unit = node.deepCollect {
