@@ -1,11 +1,11 @@
-package viper.silver.ast.utility.deepsimplifier
+package viper.silver.ast.utility
 
 import viper.silver.ast._
 
 import scala.collection.mutable
 import scala.collection.mutable._
 
-object DeepSimplifier {
+object IterativeSimplifier {
 
   def simplify[N <: Node](n: N, assumeWelldefinedness: Boolean = false, iterationLimit: Integer = 5000, printToConsole: Boolean = false): N = {
 
@@ -94,21 +94,21 @@ object DeepSimplifier {
 
       //associativity
       //WARNING: position and info attribute not correctly maintained for lchild, left and right
-      { case root@And(lchild@And(left, right), rchild) => And(left, And(right, rchild)())(root.pos, root.info)},
-      { case root@And(lchild, rchild@And(left, right)) => And(And(lchild, left)(), right)(root.pos, root.info)},
+      { case root@And(And(left, right), rchild) => And(left, And(right, rchild)(root.pos, root.info))(root.pos, root.info)},
+      { case root@And(lchild, And(left, right)) => And(And(lchild, left)(root.pos, root.info), right)(root.pos, root.info)},
 
-      { case root@Or(lchild@Or(left, right), uright) => Or(left, Or(right, uright)())(root.pos, root.info)},
-      { case root@Or(uleft, rchild@Or(left, right)) => Or(Or(uleft, left)(), right)(root.pos, root.info)},
+      { case root@Or(Or(left, right), uright) => Or(left, Or(right, uright)(root.pos, root.info))(root.pos, root.info)},
+      { case root@Or(uleft, Or(left, right)) => Or(Or(uleft, left)(root.pos, root.info), right)(root.pos, root.info)},
 
       //implication rules
       //WARNING: position and info attributes not correctly maintained
       { case root@Implies(FalseLit(), _) => TrueLit()(root.pos, root.info) },
       { case Implies(TrueLit(), consequent) => consequent },
-      { case root@Implies(l1, Implies(l2, r)) => Implies(And(l1, l2)(), r)(root.pos, root.info) },
+      { case root@Implies(l1, Implies(l2, r)) => Implies(And(l1, l2)(root.pos, root.info), r)(root.pos, root.info) },
 
       { case And(Implies(l1, r1), Implies(Not(l2), r2)) if assumeWelldefinedness && (l1 == l2 && r1 == r2) => r1 },
 
-      { case root@And(Implies(a, b), Implies(a2, c)) if a == a2 => Implies(a, And(b, c)())(root.pos, root.info) },
+      { case root@And(Implies(a, b), Implies(a2, c)) if a == a2 => Implies(a, And(b, c)(root.pos, root.info))(root.pos, root.info) },
       { case And(Implies(a, b), Implies(Not(a2), b2)) if assumeWelldefinedness && a == a2 && b == b2 => b },
       { case root@And(a, Implies(a2, b)) if a == a2 => And(a, b)(root.pos, root.info) },
 
