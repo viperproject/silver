@@ -1080,6 +1080,12 @@ case class PApplying(applying: PKwOp.Applying, wand: PExp, in: PKwOp.In, exp: PE
     List(Map(POpApp.pArgS(0) -> Wand, POpApp.pResS -> POpApp.pArg(1)))
 }
 
+case class PAsserting(asserting: PKwOp.Asserting, a: PExp, in: PKwOp.In, exp: PExp)(val pos: (Position, Position)) extends PHeapOpApp {
+  override val args = Seq(a, exp)
+  override val signatures: List[PTypeSubstitution] =
+    List(Map(POpApp.pArgS(0) -> Impure, POpApp.pResS -> POpApp.pArg(1)))
+}
+
 sealed trait PBinder extends PExp with PScope {
   def boundVars: Seq[PLogicalVarDecl]
 
