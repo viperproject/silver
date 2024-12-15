@@ -7,6 +7,12 @@ import scala.collection.mutable._
 
 object IterativeSimplifier {
 
+  /**
+   * Simplify 'n' by matching nodes in the AST with a list of transformations
+   * while storing every version of n generated and applying simplify to the stored
+   * versions until no new versions are generated or the number of versions is greater than
+   * iterationLimit
+   */
   def simplify[N <: Node](n: N, assumeWelldefinedness: Boolean = false, iterationLimit: Integer = 5000, printToConsole: Boolean = false): N = {
 
     val visited: ArrayBuffer[N] = ArrayBuffer(n)
@@ -61,17 +67,6 @@ object IterativeSimplifier {
       { case root@Not(LtCmp(a, b)) => GeCmp(a, b)(root.pos, root.info) },
       { case root@Not(LeCmp(a, b)) => GtCmp(a, b)(root.pos, root.info) },
 
-
-      //TODO: try to find case where these could be used, then figure out a better way to implement them
-      /*
-      { case root@NeCmp(left, right) => Not(EqCmp(left, right)(root.pos, root.info))(root.pos, root.info) },
-      { case root@EqCmp(left, right) => Not(NeCmp(left, right)(root.pos, root.info))(root.pos, root.info) },
-      { case root@GtCmp(left, right) => Not(LeCmp(left, right)(root.pos, root.info))(root.pos, root.info) },
-      { case root@GeCmp(left, right) => Not(LtCmp(left, right)(root.pos, root.info))(root.pos, root.info) },
-      { case root@LtCmp(left, right) => Not(GeCmp(left, right)(root.pos, root.info))(root.pos, root.info) },
-      { case root@LeCmp(left, right) => Not(GtCmp(left, right)(root.pos, root.info))(root.pos, root.info) },
-      */
-
       { case Not(Not(single)) => single },
 
       { case Or(FalseLit(), right) => right },
@@ -113,14 +108,7 @@ object IterativeSimplifier {
       { case root@And(a, Implies(a2, b)) if a == a2 => And(a, b)(root.pos, root.info) },
 
       //contrapositive
-      //{ case root@Implies(left, right) if !(isDoubleNeg(left) || isDoubleNeg(right)) => Implies(Not(right)(), Not(left)())(root.pos, root.info) },
       { case root@Implies(Not(left), Not(right)) => Implies(right, left)(root.pos, root.info) },
-
-      //modus ponens & modus tollens
-
-      //implies to or
-      //{ case root@Implies(left, right) if !(isDoubleNeg(left) || isDoubleNeg(left)) => Or(Not(left)(), right)(root.pos, root.info)},
-      //{ case root@Or(Not(left), right) if !(isDoubleNeg(left) || isDoubleNeg(left)) => Implies(left, right)(root.pos, root.info)},
 
       //extended rules and/or
 
