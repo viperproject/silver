@@ -17,11 +17,19 @@ case class PPreExp(op : PReserved[PPreKeyword.type],
   override def pretty: String = s"${op.pretty}${e.pretty}"
 
 
+  override def typecheck(t: TypeChecker, n: NameAnalyser, expected: PType): Option[Seq[String]] = {
+    t.check(e.inner, expected)
+    typ = e.inner.typ
+    None
+  }
+
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
     t.checkInternal(e.inner)
     typ = e.inner.typ
     None
   }
+
+
 
   override def translateExp(t: Translator): Exp =
     PreExp(t.exp(e.inner))(t.liftPos(this))

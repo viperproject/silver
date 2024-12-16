@@ -1,0 +1,53 @@
+field val : Int
+field next : Ref
+
+predicate List(l : Ref) {
+   (l != null) ==> acc(l.val) && acc(l.next) && List(l.next)
+}
+
+
+function values(l: Ref): Seq[Int]
+    requires List(l)
+{
+    unfolding List(l) in 
+    l == null
+        ? Seq()
+        : Seq(l.val) ++ values(l.next)
+}
+
+function length(l : Ref): Int
+    requires List(l)
+    {
+        unfolding List(l)
+        in l == null ? 0 : 1 + length(l.next)
+    }
+
+
+method len_iterative_spec(l : Ref) returns (len : Int)
+   requires List(l)
+   ensures List(l)
+   ensures old(length(l)) == len
+   //ensures len == length(l)
+   {
+       var curr : Ref := l
+       var accu : Int := 0
+       //len := 0
+
+       while(curr != null)
+            requires List(curr)
+            ensures List(pre(curr))
+                   && pre(accu) + pre(length(pre(curr))) == len
+       {
+            unfold List(curr)
+
+            accu := accu + 1
+            curr := curr.next
+       }
+       ghost{
+            fold List(pre(curr))
+       }
+       basecase{
+            len := accu
+            fold List(pre(curr))
+       }
+  }

@@ -5,7 +5,7 @@ import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.parser._
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
-import viper.silver.verifier.{ConsistencyError, Failure, Success, VerificationResult}
+import viper.silver.verifier.{AbstractError, ConsistencyError, Failure, Success, VerificationResult}
 import viper.silver.verifier.errors.PreconditionInAppFalse
 import fastparse._
 import viper.silver.ast.pretty.PrettyPrintPrimitives
@@ -101,7 +101,9 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
 
   //Well-definedness
   //TODO: Reject pre(.) if not in post/ghost/bc (manual checking in befVerify()) ==> add test case
-  // ExpectedOUtput(consistency.error) as there's no reason
+  // ALso this is taken care of indircetly by Viper as it will complain about what to do with the pre: don't know how readable
+  // the error will be though.
+  // ExpectedOutput(consistency.error) as there's no reason
   //TODO: transform final englobing exhale error into post error (override def)
 
 
@@ -124,7 +126,7 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
 
 
     //1. no assign in ghost ==> error
-    //2. or we allow but then treat them
+    //2. or we allow but then treat them <== THIS OPTION
 
     //copy
     //while()
@@ -153,6 +155,8 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
           val decl_inside = stmts.collect({case v : LocalVarDecl => v.name})
           stmts.collect({case v : LocalVarAssign => v.lhs}).filter(lv => !decl_inside.contains(lv.name))
         }
+
+      //TODO: it also cp vars (eg. len) that are targets but don't need a copy as there's never pre(.) anywhere later
 
       //TODO: add test case: variable scoping, see if finds targets correcctly, declare + assign, don't declare, don't assign...
 
@@ -201,7 +205,7 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
         })
 
       // s"__plugin_loopspecs_{$name}_{$t.name}" = copy at label name
-      // Always put a labelled old -> doesn't hurt
+      // Only put a labelled old outside but could also nest them (doesn't change anything)
       // pre(list(pre(curr))) == pre(list(curr))
       // pre(accu)
       // post, ghost, basecase
@@ -210,31 +214,21 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
       //todo: or if it verifies but shouldn't
       def pre_desugar_preexp(e : Exp, label : String): Exp = {
         e.transform({
-          case l: LocalVar if targets.contains(l) => //TODO: never enters here!!
+          // only rename targets inside pre
+          case l: LocalVar if targets.contains(l) =>
             LocalVar(s"$prefix${label}_${l.name}", l.typ)(l.pos, l.info, l.errT)
 
-
-          case pre : PreExp => // We only desugared the first pre, nested pres are handled implicitly
+          case pre : PreExp => // We only desugared the first pre, further nested pres are simply removed
             pre_desugar_preexp(pre.exp, label)
         })
-          // only rename targets inside pre. check if it's target.
       }
 
-      def pre_desugar_exp(e : Exp, label : String): Exp = {
-        e.transform({
+      def pre_desugar[T <: Node](node : T, label : String): T = {
+        node.transform({
+          // Even if this was simply a pre around a local var, having a labelled old won't hurt the soundness.
           case pre : PreExp => LabelledOld(pre_desugar_preexp(pre.exp, label), label)(pre.pos, pre.info, pre.errT)
         })
-        // only rename targets inside pre. check if it's target.
       }
-      //TODO: merge these somehow??
-
-      def pre_desugar_stmt(s: Stmt, label: String): Stmt = {
-        s.transform({
-          case e : PreExp => LabelledOld(pre_desugar_preexp(e.exp, label), label)(e.pos, e.info, e.errT)
-        })
-      }
-
-
 
       // Exhale all loop preconditions
       val check_pre: Seq[Stmt] =
@@ -255,20 +249,18 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
           checkpoint("after_iteration") ++
           ls.pres.map(pre => Exhale(pre)()) ++
           havoc_targets() ++
-          ls.posts.map(post => Inhale(pre_desugar_exp(post, "after_iteration"))()) ++
-          ls.ghost.map(_.ss).getOrElse(Seq()).map(s => pre_desugar_stmt(s, "pre_iteration")) ++
-          ls.posts.map(post => Exhale(pre_desugar_exp(post, "pre_iteration"))())
+          ls.posts.map(post => Inhale(pre_desugar(post, "after_iteration"))()) ++
+          ls.ghost.map(_.ss).getOrElse(Seq()).map(s => pre_desugar(s, "pre_iteration")) ++
+          ls.posts.map(post => Exhale(pre_desugar(post, "pre_iteration"))())
 
       // Base step statements
       val base_step: Seq[Stmt] =
-        ls.basecase.map(_.ss).getOrElse(Seq()).map(s => pre_desugar_stmt(s, "pre_iteration")) ++
-          ls.posts.map(post => Exhale(pre_desugar_exp(post, "pre_iteration"))())
+        ls.basecase.map(_.ss).getOrElse(Seq()).map(s => pre_desugar(s, "pre_iteration")) ++
+          ls.posts.map(post => Exhale(pre_desugar(post, "pre_iteration"))())
 
       // Caller's postconditions
       val callers_post: Seq[Stmt] =
-        ls.posts.map(post => Inhale(pre_desugar_exp(post, "pre_loop"))())
-
-
+        ls.posts.map(post => Inhale(pre_desugar(post, "pre_loop"))())
 
       // Construct the transformed sequence
       Seqn(
@@ -309,19 +301,17 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
       case ls : LoopSpecs =>
         mapLoopSpecs(ls)
 
-        // for each type from targets add the havoc methods
-
-
-
-        //Program(p.domains, p.fields, p.functions, p.predicates, transformedMethods, p.extensions)(p.pos, p.info, p.errT)
-        //ext is for toplevel decl
-    }).execute(input) // This is just traversal not verif
+    }).execute(input)
+    // This is just traversal not verif
     //TODO: test with nested loops (TD /BU)
 
+    // for each type from targets add the havoc methods
     val transformedMethods = newProgram.methods ++ make_havoc_methods()
     newProgram.copy(methods = transformedMethods)(NoPosition, NoInfo, NoTrafos)
 
+  }
 
-
+  override def reportError(error: AbstractError): Unit = {
+    super.reportError(error)
   }
 }
