@@ -80,10 +80,6 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
         PPreExp(preKw, exp)(_)
     }).pos
   
-  /*def whileStmt[$: P]: P[PKw.While => Pos => PWhile] =
-    P((parenthesizedExp ~~ semiSeparated(invariant) ~ stmtBlock()) 
-    map { case (cond, invs, body) => PWhile(_, cond, invs, body) })
-    */
 
   /**
    * Add extensions to the parser
@@ -126,17 +122,6 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
     //      basecase
 
 
-    //val nonDetLocalVarDecl = LocalVarDecl(s"__plugin_refute_nondet$refutesInMethod", Bool)(r.pos)
-    //          Seqn(Seq(
-    //            If(nonDetLocalVarDecl.localVar,
-    //              Seqn(Seq(
-    //                Assert(exp)(r.pos, RefuteInfo(r)),
-    //                Inhale(BoolLit(false)(r.pos))(r.pos, Synthesized)
-    //              ), Seq())(r.pos),
-    //              Seqn(Seq(), Seq())(r.pos))(r.pos)
-    //          ),
-    //            Seq(nonDetLocalVarDecl)
-    //          )(r.pos)
 
     //1. no assign in ghost ==> error
     //2. or we allow but then treat them
@@ -145,10 +130,8 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
     //while()
     //{ ghost{var d:= 0}}
     //
-    //only copy vardecl outside and assigned inside but not decl inside
 
-    // some code checks for assignments
-    //Todo: Fix this getting types as it currently fails
+
     var types : Set[Type] = Set()
 
     def make_havoc_methods(): Set[Method] = {
@@ -164,12 +147,16 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
 
     def mapLoopSpecs(ls : LoopSpecs): Node = {
 
+      //only copy vardecl outside and assigned inside but not decl inside
       def targets_from_stmts(stmts : Seq[Stmt]): Seq[LocalVar] =
-        stmts.collect({case v : LocalVarAssign => v.lhs})//.toSeq
+        {
+          val decl_inside = stmts.collect({case v : LocalVarDecl => v.name})
+          stmts.collect({case v : LocalVarAssign => v.lhs}).filter(lv => !decl_inside.contains(lv.name))
+        }
 
       //TODO: add test case: variable scoping, see if finds targets correcctly, declare + assign, don't declare, don't assign...
 
-      //TODO: -- of set of variables declared inside the body/bc/ghost
+      //TODO: what about vars decl in basecase and used in body??
       val targets : Seq[LocalVar] =
         targets_from_stmts(ls.body.ss) ++
           targets_from_stmts(ls.basecase.getOrElse(Seqn(Seq(), Seq())()).ss) ++
@@ -198,13 +185,14 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
           copy_targets_with_label(label)
 
 
-
-      def call_havoc_type(typ : Type, targets : Seq[LocalVar]): Stmt =
+      def call_havoc_type(typ : Type, targets : Seq[LocalVar]): Stmt = {
         MethodCall(
           make_havoc_type(typ).name,
           Seq(),
           targets
         )(NoPosition, NoInfo, NoTrafos)
+        //TODO: change this nopos, noinfo??
+      }
 
 
       def havoc_targets(): Seq[Stmt] =
@@ -220,416 +208,32 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
 
       //todo: add tests for failures along the way.
       //todo: or if it verifies but shouldn't
-      def pre_desugar_exp(e : Exp, label : String): Exp = {
-        //e.transform() TODO : implement this
-        e match {
-          // Special case: Handle the `PreExp` node
-          case pre: PreExp =>
-            // Transform its inner exp recursively and wrap in a LabelledOld
-
-            val transformedInner = pre_desugar_exp(pre.exp, label) // todo: .transform here and only change vars here
-            LabelledOld(transformedInner, label)(e.pos, e.info, e.errT)
-
-          // Handle variables
-          //TODO: only rename targets inside pre. check if it's target.
-          case l: LocalVar =>
-            // Suppose you want to rename variables as "__plugin_loopspecs_<label>_<originalName>"
+      def pre_desugar_preexp(e : Exp, label : String): Exp = {
+        e.transform({
+          case l: LocalVar if targets.contains(l) => //TODO: never enters here!!
             LocalVar(s"$prefix${label}_${l.name}", l.typ)(l.pos, l.info, l.errT)
 
-          // Handle binary operations (e.g. Add, Sub, EqCmp, etc.)
-          //Todo how to refactor into binop and unop??
-          //          case b : BinExp =>
-          //            b(pre_transform_vars(b.left), pre_transform_vars(b.right))
 
-          // Handle arithmetic ops
-          case Add(l, r) => Add(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-          case Sub(l, r) => Sub(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-          case Mul(l, r) => Mul(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-          case Div(l, r) => Div(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-          case Mod(l, r) => Mod(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-
-          // Handle integer comparisons
-          case LtCmp(l, r) => LtCmp(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-          case LeCmp(l, r) => LeCmp(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-          case GtCmp(l, r) => GtCmp(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-          case GeCmp(l, r) => GeCmp(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-
-          // Handle equality
-          case EqCmp(l, r) => EqCmp(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-          case NeCmp(l, r) => NeCmp(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-
-          // Handle boolean ops
-          case And(l, r) => And(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-          case Or(l, r) => Or(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-          case Implies(l, r) => Implies(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-          case Not(exp) => Not(pre_desugar_exp(exp, label))(e.pos, e.info, e.errT)
-
-          // Handle MagicWand
-          case MagicWand(l, r) =>
-            MagicWand(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-
-          // Handle Old, LabelledOld
-          case Old(exp) => Old(pre_desugar_exp(exp, label))(e.pos, e.info, e.errT)
-          case LabelledOld(exp, oldLabel) =>
-            LabelledOld(pre_desugar_exp(exp, label), oldLabel)(e.pos, e.info, e.errT)
-
-          // Handle Literals
-          case i: IntLit => i
-          case TrueLit() => TrueLit()(e.pos, e.info, e.errT)
-          case FalseLit() => FalseLit()(e.pos, e.info, e.errT)
-          case NullLit() => NullLit()(e.pos, e.info, e.errT)
-
-          // Handle Minus (unary negation)
-          case Minus(exp) => Minus(pre_desugar_exp(exp, label))(e.pos, e.info, e.errT)
-
-          // Handle Permissions
-          case FullPerm() => FullPerm()(e.pos, e.info, e.errT)
-          case NoPerm() => NoPerm()(e.pos, e.info, e.errT)
-          case EpsilonPerm() => EpsilonPerm()(e.pos, e.info, e.errT)
-          case FractionalPerm(l, r) =>
-            FractionalPerm(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-          case PermDiv(l, r) =>
-            PermDiv(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-          case PermPermDiv(l, r) =>
-            PermPermDiv(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-          case CurrentPerm(res) =>
-            CurrentPerm(res match {
-              case FieldAccess(rcv, fld) =>
-                FieldAccess(pre_desugar_exp(rcv, label), fld)(res.pos, res.info, res.errT)
-              case PredicateAccess(args, pname) =>
-                PredicateAccess(args.map(a => pre_desugar_exp(a, label)), pname)(res.pos, res.info, res.errT)
-              // If more ResourceAccess types exist, handle them here
-            })(e.pos, e.info, e.errT)
-
-          // Handle Permission arithmetic
-          case PermMinus(exp) =>
-            PermMinus(pre_desugar_exp(exp, label))(e.pos, e.info, e.errT)
-          case PermAdd(l, r) =>
-            PermAdd(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-          case PermSub(l, r) =>
-            PermSub(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-          case PermMul(l, r) =>
-            PermMul(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-          case IntPermMul(l, r) =>
-            IntPermMul(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-          case PermLtCmp(l, r) =>
-            PermLtCmp(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-          case PermLeCmp(l, r) =>
-            PermLeCmp(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-          case PermGtCmp(l, r) =>
-            PermGtCmp(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-          case PermGeCmp(l, r) =>
-            PermGeCmp(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-          case DebugPermMin(l, r) =>
-            DebugPermMin(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-
-          // Handle FuncApp and DomainFuncApp
-          case FuncApp(fname, args) =>
-            FuncApp(fname, args.map(a => pre_desugar_exp(a, label)))(e.pos, e.info, e.typ, e.errT)
-          case d@DomainFuncApp(fname, args, tvm) =>
-            DomainFuncApp(fname, args.map(a => pre_desugar_exp(a, label)), tvm)(d.pos, d.info, d.typ, d.domainName, d.errT)
-          case BackendFuncApp(bfname, args) =>
-            BackendFuncApp(bfname, args.map(a => pre_desugar_exp(a, label)))(e.pos, e.info, e.typ, e.asInstanceOf[BackendFuncApp].interpretation, e.errT)
-
-          // Handle Access predicates
-          case FieldAccess(rcv, fld) =>
-            FieldAccess(pre_desugar_exp(rcv, label), fld)(e.pos, e.info, e.errT)
-          case PredicateAccess(args, pname) =>
-            PredicateAccess(args.map(a => pre_desugar_exp(a, label)), pname)(e.pos, e.info, e.errT)
-
-          case PredicateAccessPredicate(loc, perm) =>
-            PredicateAccessPredicate(
-              PredicateAccess(loc.args.map(a => pre_desugar_exp(a, label)), loc.predicateName)(),
-              perm
-            )(e.pos, e.info, e.errT)
-
-          case FieldAccessPredicate(loc, perm) =>
-            FieldAccessPredicate(
-              FieldAccess(pre_desugar_exp(loc.rcv, label), loc.field)(),
-              perm
-            )(e.pos, e.info, e.errT)
-
-          // Handle CondExp
-          case CondExp(c, t, f) =>
-            CondExp(pre_desugar_exp(c, label), pre_desugar_exp(t, label), pre_desugar_exp(f, label))(e.pos, e.info, e.errT)
-
-          // Handle Unfolding, Applying, Asserting
-          case Unfolding(acc, body) =>
-            val newAcc = PredicateAccessPredicate(
-              PredicateAccess(acc.loc.args.map(a => pre_desugar_exp(a, label)), acc.loc.predicateName)(acc.loc.pos, acc.loc.info, acc.loc.errT),
-              pre_desugar_exp(acc.perm, label)
-            )(acc.pos, acc.info, acc.errT)
-            Unfolding(newAcc, pre_desugar_exp(body, label))(e.pos, e.info, e.errT)
-          case Applying(wand, body) =>
-            Applying(
-              MagicWand(pre_desugar_exp(wand.left, label), pre_desugar_exp(wand.right, label))(wand.pos, wand.info, wand.errT),
-              pre_desugar_exp(body, label)
-            )(e.pos, e.info, e.errT)
-          case Asserting(a, body) =>
-            Asserting(pre_desugar_exp(a, label), pre_desugar_exp(body, label))(e.pos, e.info, e.errT)
-
-          // Handle Let
-          case Let(vd, exp, body) =>
-            Let(
-              LocalVarDecl(vd.name, vd.typ)(vd.pos, vd.info, vd.errT), // If you need to rename let-bound vars, do so here
-              pre_desugar_exp(exp, label),
-              pre_desugar_exp(body, label)
-            )(e.pos, e.info, e.errT)
-
-          // Handle Quantified expressions
-          case Forall(vars, triggers, exp) =>
-            // Typically you do NOT rename quantified variables here, as that changes semantics.
-            // Just transform the body if needed.
-            Forall(vars, triggers, pre_desugar_exp(exp, label))(e.pos, e.info, e.errT)
-          case Exists(vars, triggers, exp) =>
-            Exists(vars, triggers, pre_desugar_exp(exp, label))(e.pos, e.info, e.errT)
-          case ForPerm(vars, resource, body) =>
-            // Similar approach, transform resource and body
-            val newRes = resource match {
-              case FieldAccess(rcv, fld) =>
-                FieldAccess(pre_desugar_exp(rcv, label), fld)(resource.pos, resource.info, resource.errT)
-              case PredicateAccess(args, pname) =>
-                PredicateAccess(args.map(a => pre_desugar_exp(a, label)), pname)(resource.pos, resource.info, resource.errT)
-              case _ => resource // in case of unexpected resource type
-            }
-            ForPerm(vars, newRes, pre_desugar_exp(body, label))(e.pos, e.info, e.errT)
-
-          // Handle sequence expressions
-          case EmptySeq(et) => EmptySeq(et)(e.pos, e.info, e.errT)
-          case ExplicitSeq(elems) =>
-            ExplicitSeq(elems.map(a => pre_desugar_exp(a, label)))(e.pos, e.info, e.errT)
-          case RangeSeq(low, high) =>
-            RangeSeq(pre_desugar_exp(low, label), pre_desugar_exp(high, label))(e.pos, e.info, e.errT)
-          case SeqAppend(l, r) =>
-            SeqAppend(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-          case SeqIndex(s, idx) =>
-            SeqIndex(pre_desugar_exp(s, label), pre_desugar_exp(idx, label))(e.pos, e.info, e.errT)
-          case SeqTake(s, n) =>
-            SeqTake(pre_desugar_exp(s, label), pre_desugar_exp(n, label))(e.pos, e.info, e.errT)
-          case SeqDrop(s, n) =>
-            SeqDrop(pre_desugar_exp(s, label), pre_desugar_exp(n, label))(e.pos, e.info, e.errT)
-          case SeqContains(elem, s) =>
-            SeqContains(pre_desugar_exp(elem, label), pre_desugar_exp(s, label))(e.pos, e.info, e.errT)
-          case SeqUpdate(s, idx, elem) =>
-            SeqUpdate(pre_desugar_exp(s, label), pre_desugar_exp(idx, label), pre_desugar_exp(elem, label))(e.pos, e.info, e.errT)
-          case SeqLength(s) =>
-            SeqLength(pre_desugar_exp(s, label))(e.pos, e.info, e.errT)
-
-          // Handle sets and multisets
-          case EmptySet(et) => EmptySet(et)(e.pos, e.info, e.errT)
-          case ExplicitSet(elems) =>
-            ExplicitSet(elems.map(a => pre_desugar_exp(a, label)))(e.pos, e.info, e.errT)
-          case EmptyMultiset(et) => EmptyMultiset(et)(e.pos, e.info, e.errT)
-          case ExplicitMultiset(elems) =>
-            ExplicitMultiset(elems.map(a => pre_desugar_exp(a, label)))(e.pos, e.info, e.errT)
-
-          case AnySetUnion(l, r) =>
-            AnySetUnion(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-          case AnySetIntersection(l, r) =>
-            AnySetIntersection(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-          case AnySetSubset(l, r) =>
-            AnySetSubset(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-          case AnySetMinus(l, r) =>
-            AnySetMinus(pre_desugar_exp(l, label), pre_desugar_exp(r, label))(e.pos, e.info, e.errT)
-          case AnySetContains(elem, s) =>
-            AnySetContains(pre_desugar_exp(elem, label), pre_desugar_exp(s, label))(e.pos, e.info, e.errT)
-          case AnySetCardinality(s) =>
-            AnySetCardinality(pre_desugar_exp(s, label))(e.pos, e.info, e.errT)
-
-          // Handle maps
-          case EmptyMap(k, v) => EmptyMap(k, v)(e.pos, e.info, e.errT)
-          case ExplicitMap(elems) =>
-            ExplicitMap(elems.map(a => pre_desugar_exp(a, label)))(e.pos, e.info, e.errT)
-          case Maplet(key, value) =>
-            Maplet(pre_desugar_exp(key, label), pre_desugar_exp(value, label))(e.pos, e.info, e.errT)
-          case MapUpdate(base, key, value) =>
-            MapUpdate(
-              pre_desugar_exp(base, label),
-              pre_desugar_exp(key, label),
-              pre_desugar_exp(value, label)
-            )(e.pos, e.info, e.errT)
-          case MapLookup(base, key) =>
-            MapLookup(
-              pre_desugar_exp(base, label),
-              pre_desugar_exp(key, label)
-            )(e.pos, e.info, e.errT)
-          case MapContains(key, base) =>
-            MapContains(pre_desugar_exp(key, label), pre_desugar_exp(base, label))(e.pos, e.info, e.errT)
-          case MapCardinality(base) =>
-            MapCardinality(pre_desugar_exp(base, label))(e.pos, e.info, e.errT)
-          case MapDomain(base) =>
-            MapDomain(pre_desugar_exp(base, label))(e.pos, e.info, e.errT)
-          case MapRange(base) =>
-            MapRange(pre_desugar_exp(base, label))(e.pos, e.info, e.errT)
-
-          // If you have any ExtensionExp
-          case ext: ExtensionExp =>
-            // If needed, transform extensionSubnodes:
-            val newSubnodes = ext.extensionSubnodes.map {
-              case ee: Exp => pre_desugar_exp(ee, label)
-              case n => n
-            }
-            new ExtensionExp() {
-              override def extensionIsPure: Boolean = ext.extensionIsPure
-
-              override def extensionSubnodes: Seq[Node] = newSubnodes
-
-              override def typ: Type = ext.typ
-
-              override def verifyExtExp(): VerificationResult = ext.verifyExtExp()
-
-              /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
-               * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression. */
-              override def prettyPrint: PrettyPrintPrimitives#Cont = ext.prettyPrint
-
-              override def canEqual(that: Any): Boolean = ext.canEqual(that)
-
-              override def info: Info = ext.info
-
-              override def pos: Position = ext.pos
-
-              override def errT: ErrorTrafo = ext.errT
-
-              override def productArity : Int = ext.productArity
-              override def productElement(n: Int): Any = ext.productElement(n)
-
-            }
-
-
-          // Catch-all: If a new expression type is added and not handled:
-          case other =>
-            sys.error(s"Unhandled expression type: ${other.getClass}")
-        }
+          case pre : PreExp => // We only desugared the first pre, nested pres are handled implicitly
+            pre_desugar_preexp(pre.exp, label)
+        })
+          // only rename targets inside pre. check if it's target.
       }
+
+      def pre_desugar_exp(e : Exp, label : String): Exp = {
+        e.transform({
+          case pre : PreExp => LabelledOld(pre_desugar_preexp(pre.exp, label), label)(pre.pos, pre.info, pre.errT)
+        })
+        // only rename targets inside pre. check if it's target.
+      }
+      //TODO: merge these somehow??
 
       def pre_desugar_stmt(s: Stmt, label: String): Stmt = {
-        //TODO: change to s.transform(pre_Desugar_exp(_))
-        s match {
-        // Simple statements that contain expressions
-        case NewStmt(lhs, fields) =>
-          // NewStmt has no Exp to transform, lhs is a LocalVar (Exp) but likely doesn't need "pre" treatment.
-          // If necessary, transform lhs using pre_desugar_exp(lhs,label) if you treat LocalVars as Exps
-          // Fields are just Fields, no Exp inside.
-          s
-
-        case LocalVarAssign(lhs, rhs) =>
-          LocalVarAssign(lhs, pre_desugar_exp(rhs, label))(s.pos, s.info, s.errT)
-
-        case FieldAssign(lhs, rhs) =>
-          FieldAssign(lhs, pre_desugar_exp(rhs, label))(s.pos, s.info, s.errT)
-
-        case MethodCall(m, args, targets) =>
-          MethodCall(m, args.map(a => pre_desugar_exp(a, label)), targets)(s.pos, s.info, s.errT)
-
-        case Exhale(exp) =>
-          Exhale(pre_desugar_exp(exp, label))(s.pos, s.info, s.errT)
-
-        case Inhale(exp) =>
-          Inhale(pre_desugar_exp(exp, label))(s.pos, s.info, s.errT)
-
-        case Assert(exp) =>
-          Assert(pre_desugar_exp(exp, label))(s.pos, s.info, s.errT)
-
-        case Assume(exp) =>
-          Assume(pre_desugar_exp(exp, label))(s.pos, s.info, s.errT)
-
-        case Fold(acc) =>
-          // acc is a PredicateAccessPredicate, which contains `perm` and `loc` fields that can contain Exps.
-          val transformedAcc = PredicateAccessPredicate(
-            PredicateAccess(acc.loc.args.map(a => pre_desugar_exp(a, label)), acc.loc.predicateName)(),
-            acc.perm
-          )(acc.pos, acc.loc.info, acc.loc.errT)
-          Fold(transformedAcc)(
-            acc.pos, acc.info, acc.errT)
-
-        case Unfold(acc) =>
-          // Similar to Fold
-          val transformedAcc = PredicateAccessPredicate(
-            PredicateAccess(acc.loc.args.map(a => pre_desugar_exp(a, label)), acc.loc.predicateName)(),
-            acc.perm
-          )(acc.pos, acc.loc.info, acc.loc.errT)
-          Unfold(transformedAcc)(
-            acc.pos, acc.info, acc.errT)
-
-        case Package(wand, proofScript) =>
-          val transformedWand = MagicWand(
-            pre_desugar_exp(wand.left, label),
-            pre_desugar_exp(wand.right, label)
-          )(wand.pos, wand.info, wand.errT)
-          Package(transformedWand, pre_desugar_stmt(proofScript, label).asInstanceOf[Seqn])(s.pos, s.info, s.errT)
-
-        case Apply(exp) =>
-          val transformedWand = MagicWand(
-            pre_desugar_exp(exp.left, label),
-            pre_desugar_exp(exp.right, label)
-          )(exp.pos, exp.info, exp.errT)
-          Apply(transformedWand)(s.pos, s.info, s.errT)
-
-        case Seqn(ss, decls) =>
-          Seqn(ss.map(stmt => pre_desugar_stmt(stmt, label)), decls)(s.pos, s.info, s.errT)
-
-        case If(cond, thn, els) =>
-          If(
-            pre_desugar_exp(cond, label),
-            pre_desugar_stmt(thn, label).asInstanceOf[Seqn],
-            pre_desugar_stmt(els, label).asInstanceOf[Seqn]
-          )(s.pos, s.info, s.errT)
-
-        case While(cond, invs, body) =>
-          While(
-            pre_desugar_exp(cond, label),
-            invs.map(i => pre_desugar_exp(i, label)),
-            pre_desugar_stmt(body, label).asInstanceOf[Seqn]
-          )(s.pos, s.info, s.errT)
-
-        case Label(name, invs) =>
-          Label(
-            name,
-            invs.map(i => pre_desugar_exp(i, label))
-          )(s.pos, s.info, s.errT)
-
-        case Goto(target) =>
-          s // no expressions here
-
-        case LocalVarDeclStmt(decl) =>
-          s // no expressions to transform
-
-        case Quasihavoc(lhs, exp) =>
-          Quasihavoc(
-            lhs.map(e => pre_desugar_exp(e, label)),
-            exp match {
-              case fa: FieldAccess =>
-                FieldAccess(pre_desugar_exp(fa.rcv, label), fa.field)(fa.pos, fa.info, fa.errT)
-              case pa: PredicateAccess =>
-                PredicateAccess(pa.args.map(a => pre_desugar_exp(a, label)), pa.predicateName)(pa.pos, pa.info, pa.errT)
-            }
-          )(s.pos, s.info, s.errT)
-
-        case Quasihavocall(vars, lhs, exp) =>
-          Quasihavocall(
-            vars,
-            lhs.map(e => pre_desugar_exp(e, label)),
-            exp match {
-              case fa: FieldAccess =>
-                FieldAccess(pre_desugar_exp(fa.rcv, label), fa.field)(fa.pos, fa.info, fa.errT)
-              case pa: PredicateAccess =>
-                PredicateAccess(pa.args.map(a => pre_desugar_exp(a, label)), pa.predicateName)(pa.pos, pa.info, pa.errT)
-            }
-          )(s.pos, s.info, s.errT)
-
-          //todo: should i implement support for this??
-        case ext: ExtensionStmt =>
-          // Transform expressions inside extensionSubnodes if needed:
-          // This depends on what extension nodes contain.
-          // Example pseudo-code:
-          // val transformedNodes = ext.extensionSubnodes.map(transformNodeIfExp)
-          // ext.copyWithNewSubnodes(transformedNodes)
-          ext
-
-        case other =>
-          sys.error(s"Unhandled stmt type: ${other.getClass}")
+        s.transform({
+          case e : PreExp => LabelledOld(pre_desugar_preexp(e.exp, label), label)(e.pos, e.info, e.errT)
+        })
       }
-      }
+
 
 
       // Exhale all loop preconditions
@@ -705,7 +309,6 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
       case ls : LoopSpecs =>
         mapLoopSpecs(ls)
 
-      //case p: Program =>
         // for each type from targets add the havoc methods
 
 
