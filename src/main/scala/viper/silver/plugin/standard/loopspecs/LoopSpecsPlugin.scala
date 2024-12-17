@@ -149,6 +149,8 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
 
     def mapLoopSpecs(ls : LoopSpecs): Node = {
 
+
+
       //only copy vardecl outside and assigned inside but not decl inside
       def targets_from_stmts(stmts : Seq[Stmt]): Seq[LocalVar] =
         {
@@ -156,11 +158,14 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
           stmts.collect({case v : LocalVarAssign => v.lhs}).filter(lv => !decl_inside.contains(lv.name))
         }
 
-      //TODO: it also cp vars (eg. len) that are targets but don't need a copy as there's never pre(.) anywhere later
+      // TODO: tsf error as such "  [0] Exhale might fail. There might be insufficient permission to access List(curr) (filter.vpr@47.14--47.24)"
+      // into " Precondition might fail." or the specific part of where it happened.
+      // also: complains on precondition ==> point to actual part of loop (entry start, inductive case, basecase) and same for post(ind, base)
+
 
       //TODO: add test case: variable scoping, see if finds targets correcctly, declare + assign, don't declare, don't assign...
 
-      //TODO: what about vars decl in basecase and used in body??
+      //TODO: what about vars decl in basecase and used in body?? test case (probably typechecker.error)
       val targets : Seq[LocalVar] =
         targets_from_stmts(ls.body.ss) ++
           targets_from_stmts(ls.basecase.getOrElse(Seqn(Seq(), Seq())()).ss) ++
@@ -182,7 +187,7 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
       def copy_targets_with_label(label : String): Seq[Stmt] =
         targets.map(t => {
           LocalVarAssign(get_var(label, t.name, t.typ), t)()
-        })
+        }) // This can never fail, simple assignment
 
       def checkpoint(label : String): Seq[Stmt] =
         Seq(Label(s"$prefix${label}", Seq())()) ++
@@ -195,7 +200,6 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
           Seq(),
           targets
         )(NoPosition, NoInfo, NoTrafos)
-        //TODO: change this nopos, noinfo??
       }
 
 
@@ -216,7 +220,7 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
         e.transform({
           // only rename targets inside pre
           case l: LocalVar if targets.contains(l) =>
-            LocalVar(s"$prefix${label}_${l.name}", l.typ)(l.pos, l.info, l.errT)
+            LocalVar(s"$prefix${label}_${l.name}", l.typ)(l.pos, l.info, NodeTrafo(l)) // gets the original vars not the copies
 
           case pre : PreExp => // We only desugared the first pre, further nested pres are simply removed
             pre_desugar_preexp(pre.exp, label)
@@ -226,7 +230,7 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
       def pre_desugar[T <: Node](node : T, label : String): T = {
         node.transform({
           // Even if this was simply a pre around a local var, having a labelled old won't hurt the soundness.
-          case pre : PreExp => LabelledOld(pre_desugar_preexp(pre.exp, label), label)(pre.pos, pre.info, pre.errT)
+          case pre : PreExp => LabelledOld(pre_desugar_preexp(pre.exp, label), label)(pre.pos, pre.info, NodeTrafo(pre))
         })
       }
 
@@ -243,11 +247,25 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
         ls.pres.map(pre => Inhale(pre)()) ++
           checkpoint("pre_iteration")
 
+      //TODO: rem the loopspecs from def plugins
+
+
+      // Errors:
+      // -targets
+      // -pre() in right positions
+      // -check better error messages (make new errors ids to be able to check them)
+      // -post works for base not ind, same for precondition,
+      // -try ghost code failure (wrong fold)
+      // -same for basecase
+
       // Inductive step statements
       val inductive_step: Seq[Stmt] =
         Seq(ls.body) ++
           checkpoint("after_iteration") ++
-          ls.pres.map(pre => Exhale(pre)()) ++
+      // TODO: from exhale failed to precondition failed on entry
+      // maybe make pair with pre.errT and trafo makeTrafoPair(), but normally errT is just empty. but good for comp with plugins.
+      // Mix ADT (by default activated) and LS plugins.
+          ls.pres.map(pre => Exhale(pre)(pre.pos, pre.info, ErrTrafo(v => v))) ++
           havoc_targets() ++
           ls.posts.map(post => Inhale(pre_desugar(post, "after_iteration"))()) ++
           ls.ghost.map(_.ss).getOrElse(Seq()).map(s => pre_desugar(s, "pre_iteration")) ++
@@ -303,13 +321,18 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
 
     }).execute(input)
     // This is just traversal not verif
-    //TODO: test with nested loops (TD /BU)
+    //TODO: test with nested loops (TD /BU) test
+
+
+    // TODO: check entire program for pre() that are left
+    //reportError(ConsistencyError("Multiple decreases tuple. better msg", tuples.head.pos))
 
     // for each type from targets add the havoc methods
     val transformedMethods = newProgram.methods ++ make_havoc_methods()
     newProgram.copy(methods = transformedMethods)(NoPosition, NoInfo, NoTrafos)
 
   }
+
 
   override def reportError(error: AbstractError): Unit = {
     super.reportError(error)

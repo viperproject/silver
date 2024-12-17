@@ -1,0 +1,92 @@
+field val : Int
+field next : Ref
+//field prev : Ref
+
+
+predicate List(l : Ref) {
+   (l != null) ==> acc(l.val) && acc(l.next) && List(l.next)
+}
+
+predicate lseg(l : Ref, last : Ref) { // from l to end (excl.)
+   l != last ==> acc(l.next) && acc(l.val) && lseg(l.next, last)
+}
+
+function values(l: Ref): Seq[Int]
+    requires List(l)
+{
+    unfolding List(l) in
+    l == null
+        ? Seq()
+        : Seq(l.val) ++ values(l.next)
+}
+
+// Pre: List(curr)
+// Post: List(curr)
+//
+
+method filter_iterative(l : Ref, target : Int) returns (res: Ref)
+  requires List(l)
+  ensures List(res)
+  ensures forall i: Int :: 0 <= i && i < |values(res)| ==> values(res)[i] != target
+{
+  var curr : Ref := l
+  var prev : Ref := null
+  var start : Ref := l
+
+  // Loop invariant reasoning:
+  //
+  // At each iteration:
+  // - start points to the head of the partially filtered list.
+  // - All elements up to `prev` (inclusive) in `start`'s list do not contain `target`.
+  // - curr is the next node to process.
+  // - Both start and curr must still represent Lists, allowing us to continue.
+  //
+  // The key invariant: values(start) do not contain target.
+
+  while (curr != null)
+    requires List(curr)
+    // transform to values(start, prev) == data
+    //&& (curr != start) ==> lseg(start, prev) && prev.next == curr
+
+    ensures
+    List(start) &&
+    forall i: Int :: 0 <= i && i < |values(start)| ==> values(start)[i] != target
+
+
+    /* invariant List(start)
+    invariant List(curr)
+    invariant (prev == null ==> start == l) // If we never removed the head, start remains l.
+    invariant forall i: Int :: 0 <= i && i < |values(start)| ==> values(start)[i] != target
+    // prev points to a node in start's list (or is null if no nodes processed yet):
+    invariant prev == null || (exists j: Int :: 0 <= j && j < |values(start)| && values(start)[j] == prev.val) */
+  {
+    unfold List(curr)
+    if (curr.val == target) {
+      // We found a node to remove
+      if (curr == start) {
+        // Removing the head of the list
+        start := curr.next
+        // curr is to move to next
+        fold List(curr) // restore to maintain memory invariants
+        curr := start
+      } else {
+        // Removing a non-head node
+        prev.next := curr.next
+        fold List(curr) // restore to maintain memory invariants
+        curr := prev.next
+      }
+    } else {
+      // Keep curr, just move forward
+      fold List(curr) // re-fold since we've done unfold at loop start
+      prev := curr
+      curr := curr.next
+    }
+  }
+
+  // After the loop, `start` points to the head of the filtered list.
+  // Re-establish the List predicate if needed.
+  assert List(start)
+  assert forall i: Int :: 0 <= i && i < |values(start)| ==> values(start)[i] != target
+  res := start
+}
+

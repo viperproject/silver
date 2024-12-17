@@ -42,6 +42,7 @@ method len_iterative_spec(l : Ref) returns (len : Int)
 
             accu := accu + 1
             curr := curr.next
+
        }
        ghost{
             fold List(pre(curr))

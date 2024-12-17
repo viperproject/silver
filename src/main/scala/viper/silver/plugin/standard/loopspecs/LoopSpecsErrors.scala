@@ -5,6 +5,9 @@ package viper.silver.plugin.standard.loopspecs
 import viper.silver.verifier.reasons.ErrorNode
 import viper.silver.verifier._
 
+
+//no need to subclass reasons, only make new errors (overwrite id and text for user)
+
 /*
   All Errors and Reasons concerning termination checks
   and factories for such reasons.

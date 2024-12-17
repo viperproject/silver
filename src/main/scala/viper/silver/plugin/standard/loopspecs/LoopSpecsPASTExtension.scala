@@ -67,8 +67,6 @@ case class PBaseCaseBlock(
 )(val pos: (Position, Position)) extends PNode with PPrettySubnodes {
   override def pretty: String = s"${keyword.pretty}${body.pretty}"
 }
-//TODO: add new type of expr add PAST and AST (look at old)
-//currently cant add consistency chekc for pre() when used in post ==> do this in beforeVerfiy in plugin itself consistency error on AST lvl
 
 case class PLoopSpecs(
   keyword: PReserved[PKw.While.type],
@@ -114,11 +112,7 @@ case class PLoopSpecs(
   // This is useful for types and things that already exist.
   // Here we want to turn PAST node into an AST node
 
-  /* case PWhile(_, cond, invs, body) =>
-        While(exp(cond.inner), invs.toSeq map (inv => exp(inv.e)), stmt(body).asInstanceOf[Seqn])(pos, info) */
-
   override def translateStmt(t: Translator): Stmt =
-    //sys.error(s"Unhandledwdiudype: ${posts}")
     LoopSpecs(
       t.exp(cond.inner),
       pres.toSeq map (pre => t.exp(pre.e)),
@@ -130,20 +124,3 @@ case class PLoopSpecs(
 
 
 }
-
-//type Ghost = PReserved[PGhost.type]
-
-  //type Basecase = PReserved[Basecase.type]
-
-
-
-
-/* 
-case class PWhile(
-keyword: PKw.While, 
-cond: PGrouped.Paren[PExp], 
-invs: PDelimited[PSpecification[PKw.InvSpec], 
-Option[PSym.Semi]], 
-body: PSeqn)
-(val pos: (Position, Position)) extends PStmt
- */

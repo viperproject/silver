@@ -1,0 +1,15 @@
+// decl inside, not assigned inside
+method f(l : Ref)
+    requires l != null
+   {
+   var curr : Ref
+   curr := l
+
+   while(curr != null)
+        ensures i == 1
+   {
+        curr := null
+        var i : Int
+   }
+   assert (i == 1)
+}

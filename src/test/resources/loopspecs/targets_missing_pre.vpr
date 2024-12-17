@@ -1,0 +1,17 @@
+// decl out, assigned inside -> i
+//missing pre as while loop doesn't have this info
+method f(l : Ref)
+    requires l != null
+   {
+   var curr : Ref := l
+
+   var i : Int
+
+   while(curr != null)
+        ensures i == 1
+   {
+        i := 1
+        curr := null
+   }
+}
+
