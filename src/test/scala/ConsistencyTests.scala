@@ -157,11 +157,11 @@ class ConsistencyTests extends AnyFunSuite with Matchers {
     val callerPosts =
       Seq(
         // Wrong: zero arguments
-        PredicateAccessPredicate(PredicateAccess(Seq(), "P")(), FullPerm()())(),
+        PredicateAccessPredicate(PredicateAccess(Seq(), "P")(), Some(FullPerm()()))(),
         // Wrong: wrong argument type
-        PredicateAccessPredicate(PredicateAccess(Seq(callerBoolVar), "P")(), FullPerm()())(),
+        PredicateAccessPredicate(PredicateAccess(Seq(callerBoolVar), "P")(), None)(),
         // Correct
-        PredicateAccessPredicate(PredicateAccess(Seq(callerIntVar), "P")(), FullPerm()())()
+        PredicateAccessPredicate(PredicateAccess(Seq(callerIntVar), "P")(), None)()
       )
 
     val caller =
@@ -250,7 +250,7 @@ class ConsistencyTests extends AnyFunSuite with Matchers {
   test("Testing if Forall AST nodes have implication as expression") {
 
     val f = Field("f", Int)()
-    val forall = Forall(Seq(LocalVarDecl("i", Int)()), Seq(), CondExp(FalseLit()(), TrueLit()(), FieldAccessPredicate(FieldAccess(LocalVar("r", Ref)(), f)(), FullPerm()())())())()
+    val forall = Forall(Seq(LocalVarDecl("i", Int)()), Seq(), CondExp(FalseLit()(), TrueLit()(), FieldAccessPredicate(FieldAccess(LocalVar("r", Ref)(), f)(), Some(FullPerm()()))())())()
 
     forall.checkTransitively shouldBe Seq(
       ConsistencyError("Quantified permissions must have an implication as expression, with the access predicate in its right-hand side.", NoPosition)
