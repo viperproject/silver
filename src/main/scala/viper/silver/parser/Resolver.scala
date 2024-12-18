@@ -608,10 +608,15 @@ case class TypeChecker(names: NameAnalyser) {
       setType(PUnknown())
     }
 
+    /**
+      * Checks if a given expression contains a permission amount that is more specific than stating whether an amount
+      * is zero or positive.
+      */
     def hasSpecificPermAmounts(e: PExp): Boolean = e match {
       case PCondExp(_, _, thn, _, els) => hasSpecificPermAmounts(thn) || hasSpecificPermAmounts(els)
       case PFullPerm(_) => true
       case _: PBinExp => true
+      case _: PIdnUseExp => true
       case _ => false
     }
 
@@ -738,7 +743,8 @@ case class TypeChecker(names: NameAnalyser) {
                 }
                 acc.permExp match {
                   case Some(pe) if curMember.isInstanceOf[PFunction] && warnAboutFunctionPermAmounts && hasSpecificPermAmounts(pe) =>
-                    messages ++= FastMessaging.message(pe, "Function contains specific permission amount that will be treated like wildcard.", error = false)
+                    val msg = "Function contains specific permission amount that will be treated like wildcard if it is positive and none otherwise."
+                    messages ++= FastMessaging.message(pe, msg, error = false)
                   case _ =>
                 }
 
