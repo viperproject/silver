@@ -614,10 +614,9 @@ case class TypeChecker(names: NameAnalyser) {
       */
     def hasSpecificPermAmounts(e: PExp): Boolean = e match {
       case PCondExp(_, _, thn, _, els) => hasSpecificPermAmounts(thn) || hasSpecificPermAmounts(els)
-      case PFullPerm(_) => true
-      case _: PBinExp => true
-      case _: PIdnUseExp => true
-      case _ => false
+      case _: PWildcard => false
+      case _: PNoPerm => false
+      case _ => true
     }
 
     def getFreshTypeSubstitution(tvs: Seq[PDomainType]): PTypeRenaming =
