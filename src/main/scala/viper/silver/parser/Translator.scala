@@ -307,7 +307,7 @@ case class Translator(program: PProgram) {
         // A PrediateAccessPredicate is a PredicateResourceAccess combined with
         // a Permission. Havoc expects a ResourceAccess. To make types match,
         // we must extract the PredicateResourceAccess.
-        assert(perm.isInstanceOf[FullPerm])
+        assert(perm.isEmpty || perm.get.isInstanceOf[FullPerm])
         (newLhs, predAccess)
       case exp: MagicWand => (newLhs, exp)
       case _ => sys.error("Can't havoc this kind of expression")
@@ -504,8 +504,7 @@ case class Translator(program: PProgram) {
             }
           case _: Predicate =>
             val inner = PredicateAccess(args.inner.toSeq map exp, findPredicate(func).name) (pos, info)
-            val fullPerm = FullPerm()(pos, info)
-            PredicateAccessPredicate(inner, fullPerm) (pos, info)
+            PredicateAccessPredicate(inner, None) (pos, info)
           case _ => sys.error("unexpected reference to non-function")
         }
       case PNewExp(_, _) => sys.error("unexpected `new` expression")
@@ -570,7 +569,7 @@ case class Translator(program: PProgram) {
       case PEpsilon(_) =>
         EpsilonPerm()(pos, info)
       case acc: PAccPred =>
-        val p = exp(acc.perm)
+        val p = acc.permExp.map(exp)
         exp(acc.loc) match {
           case loc@FieldAccess(_, _) =>
             FieldAccessPredicate(loc, p)(pos, info)
