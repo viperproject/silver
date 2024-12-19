@@ -13,6 +13,7 @@ import viper.silver.plugin.standard.adt.PAdtConstructor.findAdtConstructor
 
 import scala.annotation.unused
 import viper.silver.ast.utility.rewriter.HasExtraVars
+import viper.silver.parser.ReformatPrettyPrinter.{show, showAnnotations, showOption}
 
 /**
   * Keywords used to define ADT's
@@ -76,6 +77,9 @@ case class PAdt(annotations: Seq[PAnnotation], adt: PReserved[PAdtKeyword.type],
     adtType.kind = PAdtTypeKinds.Adt
     adtType
   }
+
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = showAnnotations(annotations) <-> show(adt) <+>
+    show(idndef) <> showOption(typVars) <+> show(c)
 }
 
 object PAdt {
@@ -97,12 +101,19 @@ trait PAdtChild extends PNode {
 case class PAdtSeq[T <: PNode](seq: PGrouped[PSym.Brace, Seq[T]])(val pos: (Position, Position)) extends PExtender {
   def inner: Seq[T] = seq.inner
   override def pretty = s"${seq.l.pretty}\n  ${seq.inner.map(_.pretty).mkString("\n  ")}\n${seq.r.pretty}"
+
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = {
+    show(seq)
+  }
 }
 
 /** Any argument to a method, function or predicate. */
 case class PAdtFieldDecl(idndef: PIdnDef, c: PSym.Colon, typ: PType)(val pos: (Position, Position)) extends PAnyFormalArgDecl with PTypedDeclaration with PGlobalDeclaration with PMemberUniqueDeclaration with PAdtChild {
   def constructor: PAdtConstructor = getAncestor[PAdtConstructor].get
   def annotations: Seq[PAnnotation] = Nil
+
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = show(idndef) <>
+    show(c) <+> show(typ)
 }
 object PAdtFieldDecl {
   def apply(d: PIdnTypeBinding): PAdtFieldDecl = PAdtFieldDecl(d.idndef, d.c, d.typ)(d.pos)
@@ -137,6 +148,9 @@ case class PAdtConstructor(annotations: Seq[PAnnotation], idndef: PIdnDef, args:
   override def keyword = adt.adt
   override def c = PReserved.implied(PSym.Colon)
   override def body = None
+
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = showAnnotations(annotations) <->
+    show(idndef) <> show(args)
 }
 
 object PAdtConstructor {
@@ -165,6 +179,8 @@ case class PAdtDeriving(k: PReserved[PDerivesKeyword.type], derivingInfos: PAdtS
 
     None
   }
+
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = show(k) <+> show(derivingInfos)
 }
 
 case class PAdtWithout(k: PReserved[PWithoutKeyword.type], blockList: PDelimited[PIdnRef[PAdtFieldDecl], PSym.Comma])(val pos: (Position, Position)) extends PExtender with PPrettySubnodes with PAdtChild {
@@ -177,6 +193,8 @@ case class PAdtWithout(k: PReserved[PWithoutKeyword.type], blockList: PDelimited
     })
     None
   }
+
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = show(k) <+> show(blockList)
 }
 
 case class PAdtDerivingInfo(idndef: PIdnDef, param: Option[PGrouped[PSym.Bracket, PType]], without: Option[PAdtWithout])(val pos: (Position, Position)) extends PExtender with PPrettySubnodes {
@@ -186,6 +204,8 @@ case class PAdtDerivingInfo(idndef: PIdnDef, param: Option[PGrouped[PSym.Bracket
     without map (_.typecheck(t, n))
     None
   }
+
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = show(idndef) <+> showOption(param)
 }
 
 case class PAdtType(adt: PIdnRef[PAdt], args: Option[PDelimited.Comma[PSym.Bracket, PType]])
@@ -253,6 +273,8 @@ case class PAdtType(adt: PIdnRef[PAdt], args: Option[PDelimited.Comma[PSym.Brack
   override def withTypeArguments(s: Seq[PType]): PAdtType =
     if (s.length == 0 && args.isEmpty) this else copy(args = Some(args.get.update(s)))(pos)
   override def copyExtraVars(from: Any): Unit = this.kind = from.asInstanceOf[PAdtType].kind
+
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = show(adt) <> showOption(args)
 }
 
 object PAdtTypeKinds {
@@ -456,6 +478,9 @@ case class PConstructorCall(idnref: PIdnRef[PAdtConstructor], callArgs: PDelimit
       case _ => sys.error("type unification error - should report and not crash")
     }
   }
+
+  override def reformatExp(implicit ctx: ReformatterContext): List[RNode] = show(idnref) <>
+    show(callArgs) <> showOption(typeAnnotated)
 }
 
 case class PDestructorCall(rcv: PExp, dot: PReserved[PDiscDot.type], idnref: PIdnRef[PAdtFieldDecl])
@@ -488,6 +513,8 @@ case class PDestructorCall(rcv: PExp, dot: PReserved[PDiscDot.type], idnref: PId
       case _ => sys.error("type unification error - should report and not crash")
     }
   }
+
+  override def reformatExp(implicit ctx: ReformatterContext): List[RNode] = show(rcv) <> show(dot) <> show(idnref)
 }
 
 case object PIsKeyword extends PKwOp("is") {
@@ -524,4 +551,6 @@ case class PDiscriminatorCall(rcv: PExp, dot: PReserved[PDiscDot.type], is: PRes
       case _ => sys.error("type unification error - should report and not crash")
     }
   }
+
+  override def reformatExp(implicit ctx: ReformatterContext): List[RNode] = show(rcv) <> show(dot) <> show(is) <> show(idnref)
 }
