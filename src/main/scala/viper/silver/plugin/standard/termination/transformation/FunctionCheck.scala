@@ -10,7 +10,7 @@ import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 import viper.silver.ast.utility.Statements.EmptyStmt
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast.utility.{Simplifier, ViperStrategy}
-import viper.silver.ast.{And, Bool, ErrTrafo, Exp, FalseLit, FuncApp, Function, LocalVarDecl, Method, Node, NodeTrafo, Old, Result, Seqn, Stmt}
+import viper.silver.ast.{And, Bool, ErrTrafo, Exp, FalseLit, FieldAccessPredicate, FullPerm, FuncApp, Function, Implies, LocalVarDecl, Method, NoPerm, Node, NodeTrafo, Old, PermLtCmp, PredicateAccessPredicate, Result, Seqn, Stmt, TrueLit, Unfold, Unfolding, WildcardPerm}
 import viper.silver.plugin.standard.termination.{DecreasesSpecification, FunctionTerminationError}
 import viper.silver.verifier.errors.AssertFailed
 
@@ -125,7 +125,42 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
         }
       } else Nil
     }
-    proofMethods
+    proofMethods.map(removeConcretePermissionAmounts)
+  }
+
+  /**
+    * Given a method, removed all concrete permission amounts and replaces them with wildcard if they are positive,
+    * otherwise with none.
+    */
+  def removeConcretePermissionAmounts(m: Method): Method = m.transform{
+    case u@Unfold(pap@PredicateAccessPredicate(loc, _)) =>
+      Unfold(PredicateAccessPredicate(loc, Some(WildcardPerm()()))(pap.pos, pap.info, pap.errT))(u.pos, u.info, u.errT)
+    case u@Unfolding(pap@PredicateAccessPredicate(loc, _), b) =>
+      Unfolding(PredicateAccessPredicate(loc, Some(WildcardPerm()()))(pap.pos, pap.info, pap.errT), b)(u.pos, u.info, u.errT)
+    case pap@PredicateAccessPredicate(loc, op) if !op.exists(_.isInstanceOf[WildcardPerm]) =>
+      val papWc = PredicateAccessPredicate(loc, Some(WildcardPerm()()))(pap.pos, pap.info, pap.errT)
+      op match {
+        case None => papWc
+        case Some(p) =>
+          val condition: Exp = Simplifier.simplify(PermLtCmp(NoPerm()(), p.transform{case WildcardPerm() => FullPerm()()})())
+          condition match {
+            case TrueLit() => papWc
+            case FalseLit() => TrueLit()()
+            case _ => Implies(condition, papWc)(pap.pos, pap.info, pap.errT)
+          }
+      }
+    case fap@FieldAccessPredicate(loc, op) if !op.exists(_.isInstanceOf[WildcardPerm]) =>
+      val fapWc = FieldAccessPredicate(loc, Some(WildcardPerm()()))(fap.pos, fap.info, fap.errT)
+      op match {
+        case None => fapWc
+        case Some(p) =>
+          val condition: Exp = Simplifier.simplify(PermLtCmp(NoPerm()(), p.transform{case WildcardPerm() => FullPerm()()})())
+          condition match {
+            case TrueLit() => fapWc
+            case FalseLit() => TrueLit()()
+            case _ => Implies(condition, fapWc)(fap.pos, fap.info, fap.errT)
+          }
+      }
   }
 
 
