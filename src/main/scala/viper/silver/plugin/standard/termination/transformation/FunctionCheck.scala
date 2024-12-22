@@ -34,7 +34,7 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
    *
    * @param f function
    */
-  protected def generateProofMethods(f: Function): Seq[Method] = {
+  protected def generateProofMethods(f: Function, respectFuncPermAmounts: Boolean): Seq[Method] = {
 
     getFunctionDecreasesSpecification(f.name) match {
       case DecreasesSpecification(None, _, _) => // no decreases tuple was defined, hence no proof methods required
@@ -125,7 +125,10 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
         }
       } else Nil
     }
-    proofMethods.map(removeConcretePermissionAmounts)
+    if (respectFuncPermAmounts)
+      proofMethods
+    else
+      proofMethods.map(removeConcretePermissionAmounts)
   }
 
   /**
