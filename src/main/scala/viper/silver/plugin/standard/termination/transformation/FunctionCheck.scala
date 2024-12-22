@@ -7,6 +7,7 @@
 package viper.silver.plugin.standard.termination.transformation
 
 import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
+import viper.silver.ast.utility.QuantifiedPermissions.SourceQuantifiedPermissionAssertion
 import viper.silver.ast.utility.Statements.EmptyStmt
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast.utility.{Simplifier, ViperStrategy}
@@ -135,8 +136,9 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
     * Given a method, removed all concrete permission amounts and replaces them with wildcard if they are positive,
     * otherwise with none.
     */
-  def removeConcretePermissionAmounts(m: Method): Method = m.transform{
+  def removeConcretePermissionAmounts[N <: Node](n: N): N = n.transform{
     case u@Unfold(pap@PredicateAccessPredicate(loc, _)) =>
+      // Assume the permission amount is strictly positive; if not, there will be a verification error anyway.
       Unfold(PredicateAccessPredicate(loc, Some(WildcardPerm()()))(pap.pos, pap.info, pap.errT))(u.pos, u.info, u.errT)
     case u@Unfolding(pap@PredicateAccessPredicate(loc, _), b) =>
       Unfolding(PredicateAccessPredicate(loc, Some(WildcardPerm()()))(pap.pos, pap.info, pap.errT), b)(u.pos, u.info, u.errT)
@@ -145,6 +147,9 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
       op match {
         case None => papWc
         case Some(p) =>
+          // Condition under which the amount is strictly positive; transform wildcard to write because wildcard
+          // must not be used outside acc(...) and since arithmetic involving wildcards is forbidden, any positive amount
+          // should behave exactly like wildcard.
           val condition: Exp = Simplifier.simplify(PermLtCmp(NoPerm()(), p.transform{case WildcardPerm() => FullPerm()()})())
           condition match {
             case TrueLit() => papWc
@@ -163,6 +168,22 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
             case FalseLit() => TrueLit()()
             case _ => Implies(condition, fapWc)(fap.pos, fap.info, fap.errT)
           }
+      }
+    case qp@SourceQuantifiedPermissionAssertion(_, Implies(lhs, rhs)) =>
+      // Handle this case explicitly to preserve QP format expected in the AST.
+      // If we do not do this, we could get QP assertions like
+      // forall vars :: lhs ==> (none < p == acc(loc, p))
+      // which the backends cannot handle. So we merge the implications into
+      // forall vars :: lhs && none < p ==> acc(loc, p)
+      val rhsTransformed = removeConcretePermissionAmounts(rhs)
+      rhsTransformed match {
+        case i@Implies(newLhs, newRhs) =>
+          val completeLhs = And(lhs, newLhs)(lhs.pos, lhs.info, lhs.errT)
+          val completeImplies = Implies(completeLhs, newRhs)(i.pos, i.info, i.errT)
+          qp.copy(exp = completeImplies)(qp.pos, qp.info, qp.errT)
+        case r =>
+          val completeImplies = Implies(lhs, rhsTransformed)(r.pos, r.info, r.errT)
+          qp.copy(exp = completeImplies)(qp.pos, qp.info, qp.errT)
       }
   }
 
