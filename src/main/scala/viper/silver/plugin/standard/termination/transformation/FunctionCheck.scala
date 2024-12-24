@@ -133,8 +133,12 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
   }
 
   /**
-    * Given a method, removed all concrete permission amounts and replaces them with wildcard if they are positive,
+    * Given a method, removes all concrete permission amounts and replaces them with wildcard if they are positive,
     * otherwise with none.
+    * The transformation is only defined for language constructs that are expected to occur in methods generated
+    * to check function termination, i.e., it assumes there are no fold statements, no method calls, no permission
+    * introspection etc. It would be unsound in the presence of permission introspection, and possibly incomplete
+    * in the presence of method calls etc.
     */
   def removeConcretePermissionAmounts[N <: Node](n: N): N = n.transform{
     case u@Unfold(pap@PredicateAccessPredicate(loc, _)) =>
