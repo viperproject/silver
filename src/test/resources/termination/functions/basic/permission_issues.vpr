@@ -1,0 +1,89 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Tests making sure that the termination checks correctly use the different permission semantics for functions
+
+field f: Int
+
+predicate P(x: Ref) {
+    acc(x.f)
+}
+
+function get(x: Ref, term: Bool): Int
+    requires acc(x.f)
+    decreases 0 if term
+{
+    x.f
+}
+
+function fn(r: Ref): Int
+  requires acc(r.f)
+  requires acc(r.f)
+  decreases 0
+{
+  //:: ExpectedOutput(termination.failed:tuple.false)
+  fn(r)
+}
+
+function fnpost(r: Ref): Int
+  requires acc(r.f) && acc(r.f)
+  //:: ExpectedOutput(termination.failed:tuple.false)
+  ensures result > fnpost(r)
+  decreases 0
+{
+  1
+}
+
+function g(x: Ref, i: Int): Int
+    requires acc(P(x), 1/4)
+    decreases i
+{
+    i <= 0 ? 0 : unfolding P(x) in x.f + g(x, i - 1)
+}
+
+function gnt(x: Ref, i: Int): Int
+    requires acc(P(x), 1/4)
+    decreases i
+{
+    //:: ExpectedOutput(termination.failed:tuple.false)
+    i <= 0 ? 0 : unfolding P(x) in x.f + gnt(x, i)
+}
+
+
+function g2(x: Ref, b: Bool): Int
+    requires acc(P(x), b ? 1/4 : none)
+    decreases 0
+{
+    b ? unfolding P(x) in x.f : 1
+}
+
+function g3(x: Ref, b: Bool): Int
+    requires acc(P(x), b ? wildcard : none)
+    decreases 0
+{
+    b ? unfolding P(x) in get(x, true) : 1
+}
+
+function g3f(x: Ref, b: Bool): Int
+    requires acc(P(x), b ? wildcard : none)
+    decreases 0
+{
+    //:: ExpectedOutput(termination.failed:termination.condition.false)
+    b ? unfolding P(x) in get(x, false) : 1
+}
+
+function g4(x: Ref, b: Bool): Int
+    requires acc(P(x), wildcard)
+    decreases 0
+{
+    unfolding P(x) in get(x, true)
+}
+
+
+function g4f(x: Ref, b: Bool): Int
+    requires acc(P(x), wildcard)
+    decreases 0
+{
+    //:: ExpectedOutput(termination.failed:termination.condition.false)
+    unfolding P(x) in get(x, false)
+}
