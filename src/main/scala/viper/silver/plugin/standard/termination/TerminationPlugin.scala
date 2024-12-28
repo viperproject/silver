@@ -276,7 +276,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
       // if decreases checks are deactivated, only remove the decreases clauses from the program
       newProgram
     } else {
-      val trafo = new Trafo(newProgram, reportError)
+      val trafo = new Trafo(newProgram, reportError, config != null && config.respectFunctionPrePermAmounts())
 
       val finalProgram = trafo.getTransformedProgram
       finalProgram
