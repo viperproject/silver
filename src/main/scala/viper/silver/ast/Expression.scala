@@ -73,12 +73,12 @@ case class GtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info
 case class GeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(GeOp) with ForbiddenInTrigger
 
 // Equality and non-equality (defined for all types)
-case class EqCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends EqualityCmp("==") {
+case class EqCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends EqualityCmp("==") with ForbiddenInTrigger {
   override lazy val check : Seq[ConsistencyError] =
     Seq(left, right).flatMap(Consistency.checkPure) ++
     (if(left.typ != right.typ) Seq(ConsistencyError(s"expected the same type, but got ${left.typ} and ${right.typ}", left.pos)) else Seq())
 }
-case class NeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends EqualityCmp("!=") {
+case class NeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends EqualityCmp("!=") with ForbiddenInTrigger {
   override lazy val check : Seq[ConsistencyError] =
     Seq(left, right).flatMap(Consistency.checkPure) ++
     (if(left.typ != right.typ) Seq(ConsistencyError(s"expected the same type, but got ${left.typ} and ${right.typ}", left.pos)) else Seq())
