@@ -16,8 +16,6 @@ method test(x: Ref, y: Ref)
     {
         i := i + 1;
     }
-    //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/259/)
     assert (unfolding P(x) in x.f) == old(unfolding P(x) in x.f)
-    //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/259/)
     assert (unfolding P(y) in y.f) == old(unfolding P(y) in y.f)
 } 
