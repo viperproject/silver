@@ -83,7 +83,7 @@ object Triggers {
     }
 
     override def additionalRelevantVariables(relevantVars: Seq[LocalVar], varsToAvoid: Seq[LocalVar]): PartialFunction[Node, Seq[LocalVar]] = {
-      case ast.Let(v, e, body) if body.contains(v) && relevantVars.exists(v => e.contains(v)) && varsToAvoid.forall(v => !e.contains(v)) =>
+      case ast.Let(v, e, body) if body.contains(v.localVar) && relevantVars.exists(v => e.contains(v)) && varsToAvoid.forall(v => !e.contains(v)) =>
         Seq(v.localVar)
     }
   }
