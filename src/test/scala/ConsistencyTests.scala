@@ -263,6 +263,7 @@ class ConsistencyTests extends AnyFunSuite with Matchers {
     val f = Function("f", Seq(LocalVarDecl("i", Int)()), Int, Seq(), Seq(), None)()
     val forallNoVar = Forall(Seq(), Seq(), TrueLit()())()
     val forallUnusedVar = Forall(Seq(LocalVarDecl("i", Int)(), LocalVarDecl("j", Int)()), Seq(Trigger(Seq(FuncApp(f, Seq(LocalVar("j", Int)()))()))()), TrueLit()())()
+    val forallUnusedVarLet = Forall(Seq(LocalVarDecl("i", Int)()), Seq(Trigger(Seq(FuncApp(f, Seq(Let(LocalVarDecl("j", Int)(), LocalVar("i", Int)(), TrueLit()())()))()))()), TrueLit()())()
     val forallNoVarTrigger = Forall(Seq(LocalVarDecl("i", Int)()), Seq(Trigger(Seq(FuncApp(f, Seq(LocalVar("i", Int)()))(), FuncApp(f, Seq(IntLit(0)()))()))()), TrueLit()())()
 
     forallNoVar.checkTransitively shouldBe Seq(
@@ -270,6 +271,10 @@ class ConsistencyTests extends AnyFunSuite with Matchers {
     )
 
     forallUnusedVar.checkTransitively shouldBe Seq(
+      ConsistencyError("Variable i is not mentioned in one or more triggers.", NoPosition)
+    )
+
+    forallUnusedVarLet.checkTransitively shouldBe Seq(
       ConsistencyError("Variable i is not mentioned in one or more triggers.", NoPosition)
     )
 
