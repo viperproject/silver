@@ -161,6 +161,14 @@ object Consistency {
     })
   }
 
+  /** Checks that no inhale/exhale assertions occur in the given node. */
+  def checkNoInhaleExhale(e: Exp, locationDescription: String) : Seq[ConsistencyError] = {
+    e.deepCollect({
+      case ie: InhaleExhaleExp =>
+        ConsistencyError(s"Inhale-exhale expressions are not allowed in ${locationDescription}.", ie.pos)
+    })
+  }
+
   /** Check all properties required for a function body. */
   def checkFunctionBody(e: Exp) : Seq[ConsistencyError] = {
     var s = Seq.empty[ConsistencyError]
