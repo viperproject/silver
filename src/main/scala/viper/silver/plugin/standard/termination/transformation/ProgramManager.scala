@@ -21,7 +21,7 @@ trait ProgramManager {
   val program: Program
 
   // all names used in the program
-  private val usedNames: mutable.Set[String] = collection.mutable.Set(program.transitiveScopedDecls.map(_.name): _*)
+  private val usedNames: mutable.Set[String] = collection.mutable.Set.from(program.transitiveScopedDeclNames)
 
 
   /**

@@ -474,4 +474,7 @@ trait Scope {
     this.asInstanceOf[Node].shallowCollect {
       case s: Scope if (s != this) => s.transitiveScopedDecls
     }.flatten
+
+  lazy val transitiveScopedDeclNames: Set[String] =
+    transitiveScopedDecls.map(_.name).toSet
 }

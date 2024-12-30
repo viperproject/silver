@@ -7,5 +7,6 @@ method foo(s: Set[Ref], t: Set[Ref])
     requires forall x: Ref :: x in t ==> acc(x.f)
 {
     quasihavocall x: Ref :: x in t ==> x.f
+    quasihavocall x: Ref :: x in t ==> x.f
     assert forall q: Ref :: q in s ==> q.f == 3
 }
