@@ -1,9 +1,10 @@
-//:: IgnoreFile(/carbon/issue/438/)
 
 field f: Int
 
 method foo(s: Seq[Ref])
 {
+    assume |s| > 4
+    inhale acc(s[1].f)
     //:: ExpectedOutput(quasihavocall.failed:quasihavocall.not.injective)
     quasihavocall i: Int :: 0 <= i && i < |s| ==> s[i].f
 }
