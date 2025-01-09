@@ -1,0 +1,11 @@
+method f(){
+    var b : Bool := true
+    while(b)
+
+
+    {
+        //:: ExpectedOutput(consistency.error)
+        assert (pre(b))
+        b := false
+    }
+}

@@ -1,16 +1,15 @@
-// decl out, not assigned
+// decl inside, assigned inside
 method f(l : Ref)
     requires l != null
    {
    var curr : Ref
    curr := l
 
-   var i : Int
-
    while(curr != null)
+      //:: ExpectedOutput(typechecker.error)
       ensures i == 1
    {
         curr := null
+        var i : Int := 1
    }
-   assert ( i == 1 )
 }

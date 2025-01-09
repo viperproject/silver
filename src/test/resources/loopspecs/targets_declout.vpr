@@ -1,14 +1,17 @@
-// decl inside, assigned inside
+// decl out, not assigned
 method f(l : Ref)
     requires l != null
    {
    var curr : Ref
    curr := l
 
+   var i : Int
+
    while(curr != null)
+        //:: ExpectedOutput(postcondition.not.preserved.base.case:assertion.false)
       ensures i == 1
    {
         curr := null
-        var i : Int := 1
    }
+   assert ( i == 1 )
 }

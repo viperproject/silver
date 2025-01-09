@@ -6,7 +6,7 @@ import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.parser._
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier.{AbstractError, ConsistencyError, Failure, Success, VerificationResult}
-import viper.silver.verifier.errors.PreconditionInAppFalse
+import viper.silver.verifier.errors.{ExhaleFailed, InhaleFailed, PreconditionInAppFalse}
 import fastparse._
 import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.reporter.Entity
@@ -235,8 +235,14 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
       }
 
       // Exhale all loop preconditions
+
+      // From exhale failed to precondition failed on entry
+      //TODO: test this
       val check_pre: Seq[Stmt] =
-        ls.pres.map(pre => Exhale(pre)())
+        ls.pres.map(pre => Exhale(pre)(pre.pos, pre.info, ErrTrafo({
+          case ExhaleFailed(offNode, reason, cached) =>
+            PreconditionNotEstablished(offNode, reason, cached)
+        })))
 
       // Declare a non-deterministic Boolean variable
       val non_det =
@@ -244,10 +250,8 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
 
       // Common inhalations of preconditions
       val common_to_both_steps: Seq[Stmt] =
-        ls.pres.map(pre => Inhale(pre)()) ++
-          checkpoint("pre_iteration")
-
-      //TODO: rem the loopspecs from def plugins
+        ls.pres.map(pre => Inhale(pre)()) ++ //TODO: can this fail?
+          checkpoint("pre_iteration") // works
 
 
       // Errors:
@@ -262,19 +266,27 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
       val inductive_step: Seq[Stmt] =
         Seq(ls.body) ++
           checkpoint("after_iteration") ++
-      // TODO: from exhale failed to precondition failed on entry
-      // maybe make pair with pre.errT and trafo makeTrafoPair(), but normally errT is just empty. but good for comp with plugins.
-      // Mix ADT (by default activated) and LS plugins.
-          ls.pres.map(pre => Exhale(pre)(pre.pos, pre.info, ErrTrafo(v => v))) ++
-          havoc_targets() ++
+      // TODO: maybe make pair with pre.errT and trafo makeTrafoPair(), but normally errT is just empty. but good for comp with plugins.
+      // TODO: try Mix ADT (by default activated) and LS plugins.
+          ls.pres.map(pre => Exhale(pre)(pre.pos, pre.info, ErrTrafo({
+            case ExhaleFailed(offNode, reason, cached) =>
+              PreconditionNotPreserved(offNode, reason, cached)
+          }))) ++
+          havoc_targets() ++ // always works
           ls.posts.map(post => Inhale(pre_desugar(post, "after_iteration"))()) ++
           ls.ghost.map(_.ss).getOrElse(Seq()).map(s => pre_desugar(s, "pre_iteration")) ++
-          ls.posts.map(post => Exhale(pre_desugar(post, "pre_iteration"))())
+          ls.posts.map(post => Exhale(pre_desugar(post, "pre_iteration"))(post.pos, post.info, ErrTrafo({
+            case ExhaleFailed(offNode, reason, cached) =>
+              PostconditionNotPreservedInductiveStep(offNode, reason, cached)
+          })))
 
       // Base step statements
       val base_step: Seq[Stmt] =
         ls.basecase.map(_.ss).getOrElse(Seq()).map(s => pre_desugar(s, "pre_iteration")) ++
-          ls.posts.map(post => Exhale(pre_desugar(post, "pre_iteration"))())
+          ls.posts.map(post => Exhale(pre_desugar(post, "pre_iteration"))(post.pos, post.info, ErrTrafo({
+            case ExhaleFailed(offNode, reason, cached) =>
+              PostconditionNotPreservedBaseCase(offNode, reason, cached)
+          })))
 
       // Caller's postconditions
       val callers_post: Seq[Stmt] =
@@ -282,14 +294,14 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
 
       // Construct the transformed sequence
       Seqn(
-        checkpoint("pre_loop") ++
-          check_pre ++
-          havoc_targets() ++
+        checkpoint("pre_loop") ++ // always works
+          check_pre ++ // exhale failed -> precond not established
+          havoc_targets() ++ // always works
           Seq(
           If(non_det.localVar,
             Seqn(Seq(
               While(TrueLit()(),
-                Seq(),
+                Seq(), // No invariants
                 Seqn(
                   common_to_both_steps ++
                     Seq(
@@ -324,8 +336,14 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
     //TODO: test with nested loops (TD /BU) test
 
 
-    // TODO: check entire program for pre() that are left
-    //reportError(ConsistencyError("Multiple decreases tuple. better msg", tuples.head.pos))
+    // Check entire program for pre() that are left
+    // There should be no pres. Must be user mistake.
+
+    newProgram.transform({
+      case p@PreExp(exp) =>
+        reportError(ConsistencyError("Found pre expression in wrong part of program. Please only use it in a while loop's postcondition, ghostcode or base case code.", p.pos));
+        exp})
+
 
     // for each type from targets add the havoc methods
     val transformedMethods = newProgram.methods ++ make_havoc_methods()

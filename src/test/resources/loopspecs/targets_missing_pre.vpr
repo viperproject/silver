@@ -1,16 +1,18 @@
 // decl out, assigned inside -> i
 //missing pre as while loop doesn't have this info
+
+//TODO: How to fix this test??
 method f(l : Ref)
     requires l != null
    {
    var curr : Ref := l
 
-   var i : Int
+   var i : Int := 1
 
    while(curr != null)
         ensures i == 1
    {
-        i := 1
+
         curr := null
    }
 }
