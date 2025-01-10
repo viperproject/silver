@@ -169,7 +169,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
     // Check if the program contains any domains that define decreasing and bounded functions that do *not* have the expected names.
     for (d <- input.domains) {
       val name = d.idndef.name
-      val typeName = if (name.endsWith("WellFoundedOrder"))
+      val typeName = if (name.endsWith(TerminationPlugin.wellFoundedOrderDomainSuffix))
         Some(name.substring(0, name.length - 16))
       else
         None
@@ -411,4 +411,8 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
     case Unfolding(_, exp) => Seq(exp)
     case CurrentPerm(_) => Nil
   })
+}
+
+object TerminationPlugin {
+  val wellFoundedOrderDomainSuffix = "WellFoundedOrder"
 }
