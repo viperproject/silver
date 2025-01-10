@@ -194,7 +194,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
       val importOnlyProgram = importStmts.mkString("\n")
       val importPProgram = PAstProvider.generateViperPAst(importOnlyProgram).get.filterMembers(_.isInstanceOf[PDomain])
       val inputFiltered = input.filterMembers(m => !(m.isInstanceOf[PDomain] && m.asInstanceOf[PDomain].idndef.name == "WellFoundedOrder"))
-      val mergedProgram = PProgram(inputFiltered.imported :+ importPProgram, inputFiltered.members)(input.pos, input.localErrors)
+      val mergedProgram = PProgram(inputFiltered.imported :+ importPProgram, inputFiltered.members)(input.pos, input.localErrors, input.offsets, input.rawProgram)
       super.beforeTranslate(mergedProgram)
     } else {
       super.beforeTranslate(input)
