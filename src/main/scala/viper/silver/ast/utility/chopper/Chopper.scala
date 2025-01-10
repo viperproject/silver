@@ -73,7 +73,7 @@ trait ChopperLike { this: ViperGraphs with Cut =>
             penalty: Penalty[Vertices.Vertex] = Penalty.Default,
             beforeTerminationPlugin: Boolean = false,
           ): Vector[ast.Program] = {
-    chopWithMetrics(choppee)(selection, bound, penalty)._1
+    chopWithMetrics(choppee)(selection, bound, penalty, beforeTerminationPlugin)._1
   }
 
   /**

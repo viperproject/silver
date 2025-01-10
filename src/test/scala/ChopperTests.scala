@@ -235,6 +235,23 @@ class ChopperTests extends AnyFunSuite with Matchers with Inside {
     )
   }
 
+  test("WellFoundedOrders are kept for programs that still have termination measures") {
+    val intVarDecl = ast.LocalVarDecl("i", ast.Int)()
+    val function = ast.Function("functionA", Seq(intVarDecl), ast.Bool, Seq.empty, Seq.empty, None)()
+    val domainName = "IntWellFoundedOrder"
+    val decreasingFn = ast.DomainFunc(
+      "decreasing",
+      Seq(ast.LocalVarDecl("l1", ast.Int)(), ast.LocalVarDecl("l2", ast.Int)()),
+      ast.Bool,
+    )(domainName = domainName)
+    val boundedFn = ast.DomainFunc("bounded", Seq(ast.LocalVarDecl("l", ast.Int)()), ast.Bool)(domainName = domainName)
+    val wfoDomain = ast.Domain(domainName, Seq(decreasingFn, boundedFn), Seq())()
+    val program = ast.Program(Seq(wfoDomain), Seq.empty, Seq(function), Seq.empty, Seq.empty, Seq.empty)()
+    val result = Chopper.chop(program)(bound = Some(5), penalty = Penalty.DefaultWithoutForcedMerge, beforeTerminationPlugin = true)
+    result.length shouldBe 1
+    result.head shouldEqual program
+  }
+
   // SCC tests
 
   test("SCC with singleton graph") {
