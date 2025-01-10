@@ -100,7 +100,7 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
   }
 
   //Well-definedness
-  //TODO: Reject pre(.) if not in post/ghost/bc (manual checking in befVerify()) ==> add test case
+  // Reject pre(.) if not in post/ghost/bc (manual checking in befVerify()) ==> add test case DONE
   // ALso this is taken care of indircetly by Viper as it will complain about what to do with the pre: don't know how readable
   // the error will be though.
   // ExpectedOutput(consistency.error) as there's no reason
@@ -151,7 +151,7 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
 
 
 
-      //only copy vardecl outside and assigned inside but not decl inside
+      //only copy vardecl outside while loop and assigned inside but not decl inside
       def targets_from_stmts(stmts : Seq[Stmt]): Seq[LocalVar] =
         {
           val decl_inside = stmts.collect({case v : LocalVarDecl => v.name})
@@ -159,11 +159,11 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
         }
 
       // TODO: tsf error as such "  [0] Exhale might fail. There might be insufficient permission to access List(curr) (filter.vpr@47.14--47.24)"
-      // into " Precondition might fail." or the specific part of where it happened.
-      // also: complains on precondition ==> point to actual part of loop (entry start, inductive case, basecase) and same for post(ind, base)
+      //  into " Precondition might fail." or the specific part of where it happened.
+      //  also: complains on precondition ==> point to actual part of loop (entry start, inductive case, basecase) and same for post(ind, base)
 
 
-      //TODO: add test case: variable scoping, see if finds targets correcctly, declare + assign, don't declare, don't assign...
+      // added test case: variable scoping, see if finds targets correcctly, declare + assign, don't declare, don't assign...
 
       //TODO: what about vars decl in basecase and used in body?? test case (probably typechecker.error)
       val targets : Seq[LocalVar] =
@@ -255,10 +255,10 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
 
 
       // Errors:
-      // -targets
-      // -pre() in right positions
-      // -check better error messages (make new errors ids to be able to check them)
-      // -post works for base not ind, same for precondition,
+      // -targets done
+      // -pre() in right positions done
+      // -check better error messages (make new errors ids to be able to check them) done
+      // -post works for base not ind, same for precondition, done
       // -try ghost code failure (wrong fold)
       // -same for basecase
 

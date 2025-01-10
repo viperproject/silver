@@ -11,9 +11,9 @@ method f(l : Ref)
    {
         curr := null
         var i : Int := 1
-   }ghost{
-
    }
    basecase{
+   }
+   ghost{
    }
 }

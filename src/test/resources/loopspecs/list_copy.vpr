@@ -1,0 +1,60 @@
+field val : Int
+field next : Ref
+//field prev : Ref
+
+
+predicate List(l : Ref) {
+   (l != null) ==> acc(l.val) && acc(l.next) && List(l.next)
+}
+
+
+function values(l: Ref): Seq[Int]
+    requires List(l)
+{
+    unfolding List(l) in
+    l == null
+        ? Seq()
+        : Seq(l.val) ++ values(l.next)
+}
+
+// Pre: List(curr)
+// Post: List(curr)
+//
+
+// swap c and l
+method list_copy(to_copy : Ref) returns (res : Ref)
+    requires List(to_copy)
+    ensures List(to_copy)
+    ensures List(res) && values(to_copy) == values(res) {
+
+    var x : Int, y : Ref, w : Ref, d : Ref
+    if(to_copy == null){
+        res := null
+    }else{
+        res := new()
+        res.val := 0
+        res.next := null
+
+        res.val := to_copy.val
+        w := res
+        y := to_copy.next
+
+        while(y != null)
+            requires exists cdate : Seq[Int] :: values(w) == cdate
+            requires List(y) && exists data2 : Seq[Int] :: values(y) == data2
+            ensures List(pre(w)) && values(pre(w)) == cdate ++ data2
+            ensures List(pre(y)) && values(pre(y)) == data2
+        {
+            d := new()
+            d.val := 0
+            d.next := null
+
+            d.val := y.val
+            w.next := d
+            w := d
+            y := y.next
+        }
+
+    }
+}
+

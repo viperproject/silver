@@ -38,7 +38,8 @@ case class PreconditionNotPreserved(override val offendingNode: ErrorNode,
   override def withReason(r: ErrorReason) = PreconditionNotPreserved(offendingNode, r, cached)
 }
 
-//TODO: Postcondition exhale i == 1 ==> Postcondition  i == 1
+//TODO: Postcondition exhale i == 1 ==> Postcondition  i == 1.
+// Check if it worked?
 case class PostconditionNotPreservedBaseCase(override val offendingNode: ErrorNode,
                                     override val reason: ErrorReason,
                                     override val cached: Boolean = false) extends ExtensionAbstractVerificationError {

@@ -1,0 +1,9 @@
+method f(){
+    var b : Bool := false
+    while(true)
+        //:: ExpectedOutput(precondition.not.preserved:assertion.false)
+        requires b
+    {
+        b := false
+    }
+}
