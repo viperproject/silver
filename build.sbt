@@ -19,7 +19,7 @@ ThisBuild / scalacOptions ++= Seq(
 )
 
 // Enforce UTF-8, instead of relying on properly set locales
-ThisBuild / javacOptions ++= Seq("-encoding", "UTF-8", "-charset", "UTF-8", "-docencoding", "UTF-8")
+ThisBuild / javacOptions ++= Seq("-encoding", "UTF-8", "UTF-8", "-docencoding", "UTF-8") //-charset RM
 ThisBuild / javaOptions  ++= Seq("-Dfile.encoding=UTF-8")
 
 // Publishing settings

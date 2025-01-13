@@ -1,7 +1,11 @@
 // decl out, assigned inside -> i
 //missing pre as while loop doesn't have this info
 
-//TODO: How to fix this test??
+// 1. Positive Case V2
+//TODO: hwo to fix this??
+
+// pos and neg cases for this and ensures pre(i) < i
+// experiment with bc and without
 method f(l : Ref)
     requires l != null
    {
@@ -10,10 +14,11 @@ method f(l : Ref)
    var i : Int := 1
 
    while(curr != null)
-        ensures i == 1
+       ensures curr != null ==> pre(i) + 1 == i
    {
 
         curr := null
+        i := i + 1
    }
 }
 

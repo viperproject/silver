@@ -1,0 +1,25 @@
+// decl out, assigned inside -> i
+//missing pre as while loop doesn't have this info
+
+// 1. Positive Case
+
+// pos and neg cases for this and ensures pre(i) < i
+// experiment with bc and without
+method f(l : Ref)
+    requires l != null
+   {
+   var curr : Ref := l
+
+   var i : Int := 1
+
+   while(curr != null)
+        ensures curr == null ==> pre(i)  <  i
+   {
+
+        curr := null
+        i := i + 1
+   }basecase{ // curr == null && i = pre(i) + 1
+        i := i + 1
+   }
+}
+

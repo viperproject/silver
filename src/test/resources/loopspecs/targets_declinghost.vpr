@@ -10,6 +10,7 @@ method f(l : Ref)
         ensures i == 1
    {
         curr := null
+
    }ghost{
         var i : Int
    }

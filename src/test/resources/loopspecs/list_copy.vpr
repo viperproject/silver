@@ -31,7 +31,7 @@ method list_copy(to_copy : Ref) returns (res : Ref)
     if(to_copy == null){
         res := null
     }else{
-        res := new()
+        res := new(*)
         res.val := 0
         res.next := null
 
@@ -40,12 +40,12 @@ method list_copy(to_copy : Ref) returns (res : Ref)
         y := to_copy.next
 
         while(y != null)
-            requires exists cdate : Seq[Int] :: values(w) == cdate
-            requires List(y) && exists data2 : Seq[Int] :: values(y) == data2
-            ensures List(pre(w)) && values(pre(w)) == cdate ++ data2
-            ensures List(pre(y)) && values(pre(y)) == data2
+            //requires exists cdate : Seq[Int] :: values(w) == cdate
+            requires List(y) // && exists data2 : Seq[Int] :: values(y) == data2
+            ensures List(pre(w)) && values(pre(w)) == Seq(pre(w.val)) ++ pre(values(y))
+            ensures List(pre(y)) && values(pre(y)) == pre(values(y))
         {
-            d := new()
+            d := new(*)
             d.val := 0
             d.next := null
 

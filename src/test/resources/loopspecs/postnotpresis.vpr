@@ -9,7 +9,6 @@ method f(l : Ref)
 
    while(curr != null)
         //:: ExpectedOutput(postcondition.not.preserved.inductive.step:assertion.false)
-
       ensures i == 1
    {
         curr := null

@@ -1,116 +1,13 @@
 package viper.silver.plugin.standard.loopspecs
 
-import viper.silver.ast.{LocalVarAssign, _}
+import viper.silver.ast.{Bool, ErrTrafo, Exhale, Exp, If, Inhale, Label, LabelledOld, LocalVar, LocalVarAssign, LocalVarDecl, MakeTrafoPair, Method, MethodCall, NoInfo, NoPosition, NoTrafos, Node, NodeTrafo, Program, Seqn, Stmt, TrueLit, Type, While}
 import viper.silver.ast.utility.ViperStrategy
-import viper.silver.ast.utility.rewriter.Traverse
-import viper.silver.parser._
-import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
-import viper.silver.verifier.{AbstractError, ConsistencyError, Failure, Success, VerificationResult}
-import viper.silver.verifier.errors.{ExhaleFailed, InhaleFailed, PreconditionInAppFalse}
-import fastparse._
-import viper.silver.ast.pretty.PrettyPrintPrimitives
-import viper.silver.reporter.Entity
+import viper.silver.verifier.{AbstractError, ConsistencyError}
+import viper.silver.verifier.errors.ExhaleFailed
 
-import scala.annotation.unused
-import scala.collection.immutable.ListMap
-import viper.silver.parser.FastParserCompanion.{Pos, reservedKw}
+class LoopSpecsInhaleExhale {
 
-
-
-class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
-                              @unused logger: ch.qos.logback.classic.Logger,
-                              config: viper.silver.frontend.SilFrontendConfig,
-                              fp: FastParser)  extends SilverPlugin with ParserPluginTemplate {
-
-  import fp.{predAcc, ParserExtension, lineCol, _file, parenthesizedExp, semiSeparated, precondition, postcondition, stmtBlock, stmt}
-  import FastParserCompanion._
-
-
-  private def deactivated: Boolean = config != null && config.disableTerminationPlugin.toOption.getOrElse(false)
-
-  //TODO: Add some variable in config to choose which version of desugaring: inex, rec
-
-
-
-
-  def ghostBlock[$: P]: P[PGhostBlock] =
-    P((reservedKw(PGhostKeyword) ~ ghostBody()) map {case (kw, body) => PGhostBlock(kw, body) _ }).pos
-
-  def ghostBody[$: P](allowDefine: Boolean = true): P[PSeqn] =
-    P(semiSeparated(stmt(allowDefine)).braces map PSeqn.apply).pos
-
-
-  def baseCaseBlock[$: P]: P[PBaseCaseBlock] =
-    P((reservedKw(PBaseCaseKeyword) ~ baseCaseBody()) map { case (kw, body) => PBaseCaseBlock(kw, body) _ }).pos
-
-  def baseCaseBody[$: P](allowDefine: Boolean = true): P[PSeqn] =
-    P(semiSeparated(stmt(allowDefine)).braces map PSeqn.apply).pos
-
-
-
-  def loopspecs[$ : P]: P[PLoopSpecs] =
-
-    // Parse the custom while loop
-    P(
-      (
-      reservedKw(PKw.While) ~ parenthesizedExp ~~
-      semiSeparated(precondition) ~~
-      semiSeparated(postcondition) ~~~
-      stmtBlock().lw ~
-      ghostBlock.? ~
-      baseCaseBlock.?
-    ).map {
-      case (whileKw, condExp, preSpec, postSpec, bodySeqn, maybeGhost,  maybeBaseCase) =>
-
-        // PGrouped.Paren[PExp]
-        PLoopSpecs(
-          whileKw,
-          condExp,
-          preSpec,
-          postSpec,
-          bodySeqn,
-          maybeGhost,
-          maybeBaseCase
-        )(_)
-    }).pos
-
-  def preExpr[$: P]: P[PPreExp] =
-    P((reservedKw(PPreKeyword) ~ parenthesizedExp).map{
-      case(preKw, exp) =>
-        PPreExp(preKw, exp)(_)
-    }).pos
-  
-
-  /**
-   * Add extensions to the parser
-   */
-  // So that it can parse our new while loop into a PLoopSpecs
-  override def beforeParse(input: String, isImported: Boolean): String = {
-    // Add 3 new keywords: ghost, basecase, pre
-    ParserExtension.addNewKeywords(Set(PGhostKeyword, PBaseCaseKeyword, PPreKeyword))
-    ParserExtension.addNewExpAtStart(preExpr(_))
-
-    // Add new parser to the precondition
-    //ParserExtension.addNewPreCondition(decreases(_))
-    // Add new parser to the postcondition
-    //ParserExtension.addNewPostCondition(decreases(_))
-    // Add new parser to the invariants
-    ParserExtension.addNewStmtAtStart(loopspecs(_))
-    input
-  }
-
-  //Well-definedness
-  // Reject pre(.) if not in post/ghost/bc (manual checking in befVerify()) ==> add test case DONE
-  // ALso this is taken care of indircetly by Viper as it will complain about what to do with the pre: don't know how readable
-  // the error will be though.
-  // ExpectedOutput(consistency.error) as there's no reason
-  //TODO: transform final englobing inhale error into post error (override def) ??
-  // rn it says cant prove englobing postcond, maybe it should say "basecase not strong enough"
-
-
-  // TODO, add 2 sep files 1 for each desugar, then call method from that class. this is common plugin code
-  //TODO: add more examples when this works ==> might lead to more errors.
-  override def beforeVerify(input: Program): Program ={
+  def beforeVerify(input: Program): Program ={
     // For each loopspecs
     // Identify components of loop
     // Map entire loop to new code 1. inhalexhale 2. rec
@@ -155,10 +52,10 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
 
       //only copy vardecl outside while loop and assigned inside but not decl inside
       def targets_from_stmts(stmts : Seq[Stmt]): Seq[LocalVar] =
-        {
-          val decl_inside = stmts.collect({case v : LocalVarDecl => v.name})
-          stmts.collect({case v : LocalVarAssign => v.lhs}).filter(lv => !decl_inside.contains(lv.name))
-        }
+      {
+        val decl_inside = stmts.collect({case v : LocalVarDecl => v.name})
+        stmts.collect({case v : LocalVarAssign => v.lhs}).filter(lv => !decl_inside.contains(lv.name))
+      }
 
       // TODO: tsf error as such "  [0] Exhale might fail. There might be insufficient permission to access List(curr) (filter.vpr@47.14--47.24)"
       //  into " Precondition might fail." or the specific part of where it happened.
@@ -273,7 +170,7 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
       val inductive_step: Seq[Stmt] =
         Seq(Seqn(ls.body.ss, Seq())()) ++
           checkpoint("after_iteration") ++
-      // TODO: try Mix ADT (by default activated) and LS plugins test.
+          // TODO: try Mix ADT (by default activated) and LS plugins test.
           ls.pres.map(pre => Exhale(pre)(pre.pos, pre.info, MakeTrafoPair(pre.errT, ErrTrafo({
             case ExhaleFailed(offNode, reason, cached) =>
               PreconditionNotPreserved(offNode, reason, cached)
@@ -285,7 +182,7 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
             case ExhaleFailed(offNode, reason, cached) =>
               PostconditionNotPreservedInductiveStep(offNode, reason, cached)
           }))))
-          // [postcondition.not.preserved.inductive.step:insufficient.permission]
+      // [postcondition.not.preserved.inductive.step:insufficient.permission]
 
       // Base step statements
       val base_step: Seq[Stmt] =
@@ -305,35 +202,35 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
           check_pre ++ // exhale failed -> precond not established
           havoc_targets() ++ // always works
           Seq(
-          If(non_det.localVar,
-            Seqn(Seq(
-              While(TrueLit()(),
-                Seq(), // No invariants
-                Seqn(
-                  common_to_both_steps ++
-                    Seq(
-                    If(ls.cond,
-                      Seqn(inductive_step,
-                        declare_targets_with_label("after_iteration"))(),
-                      Seqn(base_step,
-                        Seq())()
-                    )()
-                  ), declare_targets_with_label("pre_iteration")
+            If(non_det.localVar,
+              Seqn(Seq(
+                While(TrueLit()(),
+                  Seq(), // No invariants
+                  Seqn(
+                    common_to_both_steps ++
+                      Seq(
+                        If(ls.cond,
+                          Seqn(inductive_step,
+                            declare_targets_with_label("after_iteration"))(),
+                          Seqn(base_step,
+                            Seq())()
+                        )()
+                      ), declare_targets_with_label("pre_iteration")
+                  )()
                 )()
-              )()
-            ),
-              Seq())(),
-            Seqn(callers_post,
-              Seq())()
-          )()
-        ),
+              ),
+                Seq())(),
+              Seqn(callers_post,
+                Seq())()
+            )()
+          ),
         Seq(non_det) ++ declare_targets_with_label("pre_loop")
       )()
     }
     //inside the seqs of the seqn you have the var decl
 
 
-  //same as call transform
+    //same as call transform
     val newProgram: Program = ViperStrategy.Slim({
       case ls : LoopSpecs =>
         mapLoopSpecs(ls)
@@ -357,9 +254,8 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
     newProgram.copy(methods = transformedMethods)(NoPosition, NoInfo, NoTrafos)
 
   }
-
-
-  override def reportError(error: AbstractError): Unit = {
-    super.reportError(error)
+  def reportError(error: AbstractError): Unit = {
+    //super.reportError(error)
   }
+
 }

@@ -3,17 +3,20 @@ method f(l : Ref)
     requires l != null
    {
    var curr : Ref
-   curr := l
+   curr := pre(l)
 
    while(curr != null)
-      //:: ExpectedOutput(typechecker.error)
+      requires pre(i) == 1
       ensures i == 1
    {
+
+        curr := pre(curr)
         curr := null
         var i : Int := 1
    }
    basecase{
    }
+   //:: ExpectedOutput(parser.error)
    ghost{
    }
 }

@@ -1,5 +1,5 @@
 method f(){
-    var b : Bool := false
+    var b : Bool := true
     while(true)
         //:: ExpectedOutput(precondition.not.preserved:assertion.false)
         requires b
