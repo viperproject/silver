@@ -9,6 +9,8 @@ method f(l : Ref)
         //:: ExpectedOutput(typechecker.error)
         ensures i == 1
    {
+        //:: ExpectedOutput(typechecker.error)
+        i := i + 1
         curr := null
    }
    basecase{

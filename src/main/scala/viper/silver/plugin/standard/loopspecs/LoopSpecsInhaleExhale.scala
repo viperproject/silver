@@ -5,9 +5,9 @@ import viper.silver.ast.utility.ViperStrategy
 import viper.silver.verifier.{AbstractError, ConsistencyError}
 import viper.silver.verifier.errors.ExhaleFailed
 
-class LoopSpecsInhaleExhale {
+class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin) {
 
-  def beforeVerify(input: Program): Program ={
+  def beforeVerify(input: Program): Program = {
     // For each loopspecs
     // Identify components of loop
     // Map entire loop to new code 1. inhalexhale 2. rec
@@ -66,7 +66,6 @@ class LoopSpecsInhaleExhale {
 
       // added test case: variable scoping, see if finds targets correcctly, declare + assign, don't declare, don't assign...
 
-      //TODO: what about vars decl in basecase and used in body?? test case (probably typechecker.error)
       //We use distinct to not count twice a var declared oustide and then used in body plus ghost resp.
       val targets : Seq[LocalVar] =
         (targets_from_stmts(ls.body.ss) ++
@@ -252,10 +251,9 @@ class LoopSpecsInhaleExhale {
     // for each type from targets add the havoc methods
     val transformedMethods = newProgram.methods ++ make_havoc_methods()
     newProgram.copy(methods = transformedMethods)(NoPosition, NoInfo, NoTrafos)
-
   }
   def reportError(error: AbstractError): Unit = {
-    //super.reportError(error)
+    loopSpecsPlugin.reportError(error)
   }
 
 }
