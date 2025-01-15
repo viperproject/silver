@@ -235,8 +235,8 @@ object Consistency {
   /** checks that all quantified variables appear in all triggers */
   def checkAllVarsMentionedInTriggers(variables: Seq[LocalVarDecl], triggers: Seq[Trigger]) : Seq[ConsistencyError] = {
     var s = Seq.empty[ConsistencyError]
-    val varsInTriggers : Seq[Seq[LocalVar]] = triggers map(t=>{
-      t.deepCollect({case lv: LocalVar => lv})
+    val varsInTriggers : Seq[Set[LocalVar]] = triggers map(t=>{
+      Expressions.getContainedVariablesExcludingLet(t)
     })
     variables.foreach(v=>{
       varsInTriggers.foreach(varList=>{
