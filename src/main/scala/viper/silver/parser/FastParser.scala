@@ -46,7 +46,7 @@ object FastParserCompanion {
   implicit def PositionParsing[T](p: => P[Pos => T]) = new PositionParsing(() => p)
   implicit def ExtendedParsing[T](p: => P[T]) = new ExtendedParsing(() => p)
   implicit def reservedKw[$: P, T <: PKeyword](r: T)(implicit lineCol: LineCol, _file: Path): P[PReserved[T]] = P(P(r.token).map { _ => PReserved(r)(_) } ~~ !identContinues)./.pos
-  implicit def reservedSym[$: P, T <: PSymbol](r: T)(implicit lineCol: LineCol, _file: Path): P[PReserved[T]] = P(r.token./ map { _ => PReserved(r)(_) }).pos
+  implicit def reservedSym[$: P, T <: PSymbol](r: T)(implicit lineCol: LineCol, _file: Path): P[PReserved[T]] = P(P(r.token) map { _ => PReserved(r)(_) }).pos
 
   class LeadingWhitespace[T](val p: () => P[T]) extends AnyVal {
     /**
@@ -422,7 +422,7 @@ class FastParser {
 
   def identifier[$: P]: P[Unit] = identStarts ~~ identContinues.repX
 
-  def annotationIdentifier[$: P]: P[PRawString] = P((identStarts ~~ CharIn("0-9", "A-Z", "a-z", "$_.").repX).!./ map PRawString.apply).pos
+  def annotationIdentifier[$: P]: P[PRawString] = P((identStarts ~~ CharIn("0-9", "A-Z", "a-z", "$_.").repX).! map PRawString.apply).pos
 
   def ident[$: P]: P[String] = identifier.!.filter(a => !keywords.contains(a)).opaque("identifier")
 
