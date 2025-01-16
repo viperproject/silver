@@ -750,7 +750,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
     } else {
       n.info.getUniqueInfo[AnnotationInfo] match {
         case Some(ai) if ai.values.nonEmpty =>
-          val docs = ai.values.map(v => char('@') <> v._1 <> parens(ssep(v._2.map(v => text(s"\"${v}\"")), text(", ")))).toSeq
+          val docs = ai.values.filter(v => v._1 != "expandedMacro").map(v => char('@') <> v._1 <> parens(ssep(v._2.map(v => text(s"\"${v}\"")), text(", ")))).toSeq
           Some(ssep(docs, if (breakLines) line else space))
         case _ => None
       }
