@@ -22,38 +22,58 @@ function values(l: Ref): Seq[Int]
 //
 
 // swap c and l
-method list_copy(to_copy : Ref) returns (res : Ref)
-    requires List(to_copy)
-    ensures List(to_copy)
-    ensures List(res) && values(to_copy) == values(res) {
+method list_copy(input : Ref) returns (res : Ref)
+    requires List(input)
+    ensures List(input)
+    ensures List(res)
+    ensures values(input) == values(res)
+    {
 
-    var x : Int, y : Ref, w : Ref, d : Ref
-    if(to_copy == null){
+    var input_ptr : Ref, res_ptr : Ref, curr_append : Ref
+    if(input == null){
         res := null
+        fold List(res)
     }else{
-        res := new(*)
-        res.val := 0
+        unfold List(input)
+
+        res := new(val, next)
         res.next := null
+        res.val := input.val
 
-        res.val := to_copy.val
-        w := res
-        y := to_copy.next
+        res_ptr := res
+        input_ptr := input.next
 
-        while(y != null)
-            //requires exists cdate : Seq[Int] :: values(w) == cdate
-            requires List(y) // && exists data2 : Seq[Int] :: values(y) == data2
-            ensures List(pre(w)) && values(pre(w)) == Seq(pre(w.val)) ++ pre(values(y))
-            ensures List(pre(y)) && values(pre(y)) == pre(values(y))
+        //TODO: allow user to write sep req and then conjoin them
+        while(input_ptr != null)
+            requires List(input_ptr)
+            && acc(res_ptr.next) && acc(res_ptr.val)  // maybe list?? how to add this?? why does list(null) not work??
+            && res_ptr.next == null
+            ensures List(pre(res_ptr)) && values(pre(res_ptr)) == Seq(pre(res_ptr.val)) ++ pre(values(input_ptr))
+            && List(pre(input_ptr)) && values(pre(input_ptr)) == pre(values(input_ptr))
         {
-            d := new(*)
-            d.val := 0
-            d.next := null
+            unfold List(input_ptr) // i.e. input_ptr.val, input_ptr.next, List(input_ptr.next)
 
-            d.val := y.val
-            w.next := d
-            w := d
-            y := y.next
+            curr_append := new(val, next) // new stmt
+            curr_append.next := null //field assign
+            curr_append.val := input_ptr.val
+
+            res_ptr.next := curr_append
+            //fold List(curr_append)
+            //fold List(input_ptr)
+
+            res_ptr := curr_append // res_ptr.next = null //lvar assign
+            input_ptr := input_ptr.next
+        }ghost{
+            fold List(pre(res_ptr))
+            fold List(pre(input_ptr))
+        }basecase{
+            fold List(pre(res_ptr.next)) //maybe we cant fold for this one??
+            fold List(pre(res_ptr))
+            fold List(pre(input_ptr))
         }
+
+        fold List(input)
+        fold List(res)
 
     }
 }

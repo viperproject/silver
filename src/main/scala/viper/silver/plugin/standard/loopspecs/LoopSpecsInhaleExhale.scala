@@ -1,6 +1,6 @@
 package viper.silver.plugin.standard.loopspecs
 
-import viper.silver.ast.{Bool, ErrTrafo, Exhale, Exp, If, Inhale, Label, LabelledOld, LocalVar, LocalVarAssign, LocalVarDecl, MakeTrafoPair, Method, MethodCall, NoInfo, NoPosition, NoTrafos, Node, NodeTrafo, Program, Seqn, Stmt, TrueLit, Type, While}
+import viper.silver.ast.{Bool, ErrTrafo, Exhale, Exp, If, Inhale, Label, LabelledOld, LocalVar, LocalVarAssign, LocalVarDecl, MakeTrafoPair, Method, MethodCall, NewStmt, NoInfo, NoPosition, NoTrafos, Node, NodeTrafo, Program, Seqn, Stmt, TrueLit, Type, While}
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.verifier.{AbstractError, ConsistencyError}
 import viper.silver.verifier.errors.ExhaleFailed
@@ -51,10 +51,15 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin) {
 
 
       //only copy vardecl outside while loop and assigned inside but not decl inside
+      //TODO only pass 0 or 1 els so dont even call it if empty
       def targets_from_stmts(stmts : Seq[Stmt]): Seq[LocalVar] =
       {
-        val decl_inside = stmts.collect({case v : LocalVarDecl => v.name})
-        stmts.collect({case v : LocalVarAssign => v.lhs}).filter(lv => !decl_inside.contains(lv.name))
+        val decl_inside = stmts.flatMap(_.collect{case v : LocalVarDecl => v.name})
+        stmts.flatMap(_.collect({
+          case v : LocalVarAssign => Seq(v.lhs)
+          case vt : NewStmt => Seq(vt.lhs)
+          case mc : MethodCall => mc.targets
+        })).flatten.filter(lv => !decl_inside.contains(lv.name))
       }
 
       // TODO: tsf error as such "  [0] Exhale might fail. There might be insufficient permission to access List(curr) (filter.vpr@47.14--47.24)"
@@ -67,10 +72,11 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin) {
       // added test case: variable scoping, see if finds targets correcctly, declare + assign, don't declare, don't assign...
 
       //We use distinct to not count twice a var declared oustide and then used in body plus ghost resp.
+      //TOdo maybe remove seq??
       val targets : Seq[LocalVar] =
-        (targets_from_stmts(ls.body.ss) ++
-          targets_from_stmts(ls.basecase.getOrElse(Seqn(Seq(), Seq())()).ss) ++
-          targets_from_stmts(ls.ghost.getOrElse(Seqn(Seq(), Seq())()).ss)).distinctBy(lv => lv.name)
+        (targets_from_stmts(Seq(ls.body)) ++
+          targets_from_stmts(ls.basecase.toSeq) ++
+          targets_from_stmts(ls.ghost.toSeq)).distinctBy(lv => lv.name)
 
 
       types = types ++ targets.map(_.typ)
@@ -167,7 +173,7 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin) {
 
       // Inductive step statements
       val inductive_step: Seq[Stmt] =
-        Seq(Seqn(ls.body.ss, Seq())()) ++
+        Seq(ls.body) ++
           checkpoint("after_iteration") ++
           // TODO: try Mix ADT (by default activated) and LS plugins test.
           ls.pres.map(pre => Exhale(pre)(pre.pos, pre.info, MakeTrafoPair(pre.errT, ErrTrafo({
@@ -176,7 +182,7 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin) {
           })))) ++
           havoc_targets() ++ // always works
           ls.posts.map(post => Inhale(pre_desugar(post, "after_iteration"))()) ++
-          ls.ghost.map(_.ss).getOrElse(Seq()).map(s => pre_desugar(s, "pre_iteration")) ++
+          ls.ghost.toSeq.map(s => pre_desugar(s, "pre_iteration")) ++
           ls.posts.map(post => Exhale(pre_desugar(post, "pre_iteration"))(post.pos, post.info, MakeTrafoPair(post.errT, ErrTrafo({
             case ExhaleFailed(offNode, reason, cached) =>
               PostconditionNotPreservedInductiveStep(offNode, reason, cached)
@@ -185,7 +191,7 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin) {
 
       // Base step statements
       val base_step: Seq[Stmt] =
-        ls.basecase.map(_.ss).getOrElse(Seq()).map(s => pre_desugar(s, "pre_iteration")) ++
+        ls.basecase.toSeq.map(s => pre_desugar(s, "pre_iteration")) ++
           ls.posts.map(post => Exhale(pre_desugar(post, "pre_iteration"))(post.pos, post.info, MakeTrafoPair(post.errT, ErrTrafo({
             case ExhaleFailed(offNode, reason, cached) =>
               PostconditionNotPreservedBaseCase(offNode, reason, cached)

@@ -45,7 +45,7 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPlugin) {
         Seq(),
         None)()
 
-    def mapLoopSpecs(ls : LoopSpecs): (Node, Node) = {
+    def mapLoopSpecs(ls : LoopSpecs): (Node, Method) = {
 
 
 
@@ -207,6 +207,7 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPlugin) {
       val lvd = targets.map(lv => LocalVarDecl(lv.name, lv.typ)())
       val helper_method = Method("test", lvd, lvd, Seq(), Seq(), Some(body))()
 
+      //TODO: vars = read not written inside loop
       val args = Seq()
       (Seqn(
         Seq(MethodCall("test", targets, targets)(NoPosition, NoInfo, NoTrafos)) //needs vars + targets
@@ -218,13 +219,13 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPlugin) {
 
 
     //same as call transform
-    var helper_methods = Seq()
+    var helper_methods : Seq[Method] = Seq()
     val newProgram: Program = ViperStrategy.Slim({
       case ls : LoopSpecs =>
         {
 
           val (n, hm) = mapLoopSpecs(ls)
-          helper_methods = helper_methods ++ hm
+          helper_methods = helper_methods ++ Seq(hm)
           n
         }
 
