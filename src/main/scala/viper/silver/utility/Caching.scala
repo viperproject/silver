@@ -104,9 +104,12 @@ trait DependencyAware {
 
   /**
    * Same as `getDependencies`, but instead also collects all methods that are used transitively.
-   * `getDependencies` is used for caching, which for some reason does not include transitively called
-   * methods (only their pres, posts, etc.). `getDependenciesWithMethods` is instead used for the functionality that allows to verify
-   * one specific methods, where we need to determine the
+   * `getDependencies` is used for caching, which does not include transitively called
+   * methods (only their pres, posts, etc.).
+   *
+   * `getDependenciesWithMethods` is instead used for the IDE functionality that allows to verify
+   * a method or function at a specific source code location. In this case, we do want to also include
+   * methods, so that we can form the transitive closure.
    */
   def getMethodDependenciesWithMethods(p: Program, m: Method): List[Hashable] = {
     getDependenciesInner(p, m, true)
