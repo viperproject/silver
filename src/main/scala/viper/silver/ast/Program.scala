@@ -528,8 +528,6 @@ case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition,
    * Returns a local variable with equivalent information
    */
   lazy val localVar = LocalVar(name, typ)(pos, info, errT)
-
-  override def showSimple: String = super.showSimple + s" ($name: $typ)"
 }
 
 
