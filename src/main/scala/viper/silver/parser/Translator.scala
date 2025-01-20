@@ -78,13 +78,13 @@ case class Translator(program: PProgram) {
 
   private def translate(m: PMethod): Method = m match {
     case PMethod(_, _, idndef, _, _, pres, posts, body) =>
-      val m = findMethod(idndef)
+      val me = findMethod(idndef)
 
       val newBody = body.map(actualBody => stmt(actualBody).asInstanceOf[Seqn])
 
-      val finalMethod = m.copy(pres = pres.toSeq map (p => exp(p.e)), posts = posts.toSeq map (p => exp(p.e)), body = newBody)(m.pos, m.info, m.errT)
+      val finalMethod = me.copy(pres = pres.toSeq map (p => exp(p.e)), posts = posts.toSeq map (p => exp(p.e)), body = newBody)(me.pos, me.info, me.errT)
 
-      members(m.name) = finalMethod
+      members(me.name) = finalMethod
 
       finalMethod
   }
