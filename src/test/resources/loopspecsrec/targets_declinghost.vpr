@@ -1,0 +1,19 @@
+// decl inside, not assigned inside
+method f(l : Ref)
+    requires l != null
+   {
+   var curr : Ref
+   curr := l
+
+   while(curr != null)
+        //:: ExpectedOutput(typechecker.error)
+        ensures i == 1
+   {
+        curr := null
+
+   }ghost{
+        var i : Int
+   }
+   //:: ExpectedOutput(typechecker.error)
+   assert (i == 1)
+}

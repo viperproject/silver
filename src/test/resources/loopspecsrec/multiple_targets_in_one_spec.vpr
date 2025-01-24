@@ -1,0 +1,25 @@
+// SPECS, G, BC, PRE
+
+
+
+method add_iterative_spec(l : Ref)
+   {
+   var curr : Ref
+   curr := l
+
+   var x : Int := 0
+   var y : Int := 0
+
+   while(curr != null)
+            //:: ExpectedOutput(postcondition.not.preserved.while.loop:assertion.false)
+        ensures pre(x + y) == 0
+     {
+        curr := null
+        x := x + 1
+        y:= y + 2
+   }
+
+
+
+
+}

@@ -1,0 +1,20 @@
+// TODO: shouldnt rej during typechecking because ghost and bc is nested scopes of body
+//  for the moment sep scopes but have acc to outside
+method f(l : Ref)
+    requires l != null
+   {
+   var curr : Ref
+   curr := l
+
+
+   while(curr != null)
+   {
+
+        var i : Int
+        curr := null
+
+   }ghost{ //TODO: doesn't appear in tslated
+        var i : Int
+        i := 1
+   }
+}

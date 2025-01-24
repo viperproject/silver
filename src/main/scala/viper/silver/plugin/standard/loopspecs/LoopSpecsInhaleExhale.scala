@@ -48,36 +48,67 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin) {
 
     def mapLoopSpecs(ls : LoopSpecs): Node = {
 
+    //TODO: test it can get seqn from diff nested scopes
+      def targets_from_seqn(seqn: Seqn): Seq[LocalVar] = {
+        // All local variable names declared in *this* Seqn (the current scope).
+        val declaredInThisScope: Set[String] =
+          seqn.scopedDecls.collect { case v: LocalVarDecl => v.name }.toSet
+
+        // All local variables assigned (written) in *this* Seqn (excluding nested Seqn).
+        // That means we only look at direct statements in seqn.ss.
+        val assignedInThisScope: Seq[LocalVar] = seqn.ss.flatMap {
+          case LocalVarAssign(lhs, _) => Some(lhs)
+          case NewStmt(lhs, _)        => Some(lhs)
+          case MethodCall(_, _, targets) => targets
+          case _ => None
+        }
+
+        // Recursively collect assigned variables in any nested Seqn statements.
+        // We do recursion *after* collecting from this scope,
+        // because child scopes may declare new variables that overshadow (or should not leak out).
+        val assignedFromSubSeqns: Seq[LocalVar] = seqn.ss.collect {
+          case nested: Seqn =>
+            // Recursively get targets from the nested scope
+            targets_from_seqn(nested)
+        }.flatten
+
+        // Combine local assigned variables with the ones from sub-sequences
+        val combined = assignedInThisScope ++ assignedFromSubSeqns
+
+        // Filter out the variables that were declared in this very scope.
+        // They should *not* bubble up to the parent scope's "undeclared" or external declarations.
+        combined.filterNot(lv => declaredInThisScope.contains(lv.name))
+      }
 
 
       //only copy vardecl outside while loop and assigned inside but not decl inside
-      //TODO only pass 0 or 1 els so dont even call it if empty
-      def targets_from_stmts(stmts : Seq[Stmt]): Seq[LocalVar] =
+      /*def targets_from_stmts(stmts : Seq[Stmt]): Seq[LocalVar] =
       {
-        val decl_inside = stmts.flatMap(_.collect{case v : LocalVarDecl => v.name})
+        val decl_inside = stmts.flatMap(s => s.collect{case v : LocalVarDecl => v.name})
         stmts.flatMap(_.collect({
           case v : LocalVarAssign => Seq(v.lhs)
           case vt : NewStmt => Seq(vt.lhs)
           case mc : MethodCall => mc.targets
         })).flatten.filter(lv => !decl_inside.contains(lv.name))
-      }
+      }*/
 
       // TODO: tsf error as such "  [0] Exhale might fail. There might be insufficient permission to access List(curr) (filter.vpr@47.14--47.24)"
       //  into " Precondition might fail." or the specific part of where it happened.
       //  also: complains on precondition ==> point to actual part of loop (entry start, inductive case, basecase) and same for post(ind, base)
 
-
-      //TODO: change Seq to Seqn to allow for own scope for body resp. ghost resp. bc ({ body} in desugaring )
-
       // added test case: variable scoping, see if finds targets correcctly, declare + assign, don't declare, don't assign...
 
       //We use distinct to not count twice a var declared oustide and then used in body plus ghost resp.
-      //TOdo maybe remove seq??
-      val targets : Seq[LocalVar] =
+      /*val targets : Seq[LocalVar] =
         (targets_from_stmts(Seq(ls.body)) ++
           targets_from_stmts(ls.basecase.toSeq) ++
-          targets_from_stmts(ls.ghost.toSeq)).distinctBy(lv => lv.name)
+          targets_from_stmts(ls.ghost.toSeq)).distinctBy(lv => lv.name)*/
 
+      val targets: Seq[LocalVar] = (
+        ls.basecase.map(targets_from_seqn).getOrElse(Seq()) ++
+          ls.ghost.map(targets_from_seqn).getOrElse(Seq()) ++
+          targets_from_seqn(ls.body)
+        ).distinctBy(_.name)
 
       types = types ++ targets.map(_.typ)
 
@@ -125,8 +156,10 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin) {
       //todo: add tests for failures along the way.
       //todo: or if it verifies but shouldn't
       def pre_desugar_preexp(e : Exp, label : String): Exp = {
+
         e.transform({
           // only rename targets inside pre
+
           case l: LocalVar if targets.contains(l) =>
             LocalVar(s"$prefix${label}_${l.name}", l.typ)(l.pos, l.info, NodeTrafo(l)) // gets the original vars not the copies
 

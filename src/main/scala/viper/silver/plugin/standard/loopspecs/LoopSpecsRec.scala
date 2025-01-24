@@ -1,12 +1,14 @@
 package viper.silver.plugin.standard.loopspecs
 
 import viper.silver.ast.utility.ViperStrategy
-import viper.silver.ast.{Bool, ErrTrafo, Exhale, Exp, If, Inhale, Label, LabelledOld, LocalVar, LocalVarAssign, LocalVarDecl, MakeTrafoPair, Method, MethodCall, NoInfo, NoPosition, NoTrafos, Node, NodeTrafo, Program, Seqn, Stmt, TrueLit, Type, While}
-import viper.silver.verifier.errors.ExhaleFailed
+import viper.silver.ast.{Bool, ErrTrafo, Exhale, Exp, If, Implies, Inhale, Label, LabelledOld, LocalVar, LocalVarAssign, LocalVarDecl, MakeTrafoPair, Method, MethodCall, NewStmt, NoInfo, NoPosition, NoTrafos, Node, NodeTrafo, Not, Old, Program, Seqn, Stmt, TrueLit, Type, While}
+import viper.silver.verifier.errors.{ExhaleFailed, PostconditionViolated, PreconditionInCallFalse}
 import viper.silver.verifier.{AbstractError, ConsistencyError}
+import viper.silver.plugin.standard.termination.transformation.ProgramManager
+import scala.+:
 
-class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPlugin) {
-  def beforeVerify(input: Program): Program ={
+class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPlugin, val program : Program) extends ProgramManager {
+  def beforeVerify(): Program ={
     // For each loopspecs
     // Identify components of loop
     // Map entire loop to new code 1. inhalexhale 2. rec
@@ -32,28 +34,120 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPlugin) {
     //
 
 
-    var types : Set[Type] = Set()
-
-    def make_havoc_methods(): Set[Method] = {
-      types.map(t => make_havoc_type(t))
-    }
-    def make_havoc_type(typ : Type) =
-      Method(s"havoc_${typ}",
-        Seq(),
-        Seq(LocalVarDecl("x", typ)()),
-        Seq(),
-        Seq(),
-        None)()
-
     def mapLoopSpecs(ls : LoopSpecs): (Node, Method) = {
 
+      def vars_from_exp(e : Exp): Set[LocalVar] = {
+        var vars_read : Set[LocalVar] = Set()
+        e.transform({
+          case lv : LocalVar => {
+            vars_read = vars_read + lv //or change
+            lv
+          }
+        })
+        vars_read
+      }
+
+      def vars_from_seqn(seqn: Seqn): Set[LocalVar] = {
+        // All local variable names declared in *this* Seqn (the current scope).
+        val declaredInThisScope: Set[String] =
+          seqn.scopedDecls.collect { case v: LocalVarDecl => v.name }.toSet
+
+        // All local variables read in *this* Seqn (excluding nested Seqn).
+        // That means we only look at direct statements in seqn.ss.
+        var vars_read : Set[LocalVar] = Set()
+        seqn.ss.map({
+            case LocalVarAssign(_, rhs) =>
+              // Only collect vars from the RHS, since LHS is a write
+              vars_read ++= vars_from_exp(rhs)
+
+            case MethodCall(_, args, _) =>
+              // Only collect from the arguments, since the "targets" are writes
+              args.foreach(e => vars_read ++= vars_from_exp(e))
+
+            case nested: Seqn =>
+
+            case other : Node =>
+              // Default: transform the statement to collect LocalVar usage, ignoring LHS if applicable.
+              // This will pick up read references from any expressions inside 'other'.
+              other.transform( {
+                case e: Exp =>
+                  vars_read ++= vars_from_exp(e)
+                  e
+                case se : Seq[Exp] =>
+                  vars_read = vars_read ++ se.flatMap(e => vars_from_exp(e))
+                  se
+              })
+
+          }
+        ) //target read plus vars read
+
+        val assignedInThisScope: Set[String] = seqn.ss.flatMap {
+          case LocalVarAssign(lhs, _) => Some(lhs)
+          case NewStmt(lhs, _)        => Some(lhs)
+          case MethodCall(_, _, targets) => targets
+          case _ => None
+        }.map(_.name).toSet
+
+        // Recursively collect assigned variables in any nested Seqn statements.
+        // We do recursion *after* collecting from this scope,
+        // because child scopes may declare new variables that overshadow (or should not leak out).
+        val assignedFromSubSeqns: Set[String] = seqn.ss.collect {
+          case nested: Seqn =>
+            // Recursively get targets from the nested scope
+            targets_from_seqn(nested)
+        }.flatten.map(_.name).toSet
 
 
-      //only copy vardecl outside while loop and assigned inside but not decl inside
-      def targets_from_stmts(stmts : Seq[Stmt]): Seq[LocalVar] =
-      {
-        val decl_inside = stmts.collect({case v : LocalVarDecl => v.name})
-        stmts.collect({case v : LocalVarAssign => v.lhs}).filter(lv => !decl_inside.contains(lv.name))
+
+        // Recursively collect assigned variables in any nested Seqn statements.
+        // We do recursion *after* collecting from this scope,
+        // because child scopes may declare new variables that overshadow (or should not leak out).
+        val readFromSubSeqns: Set[LocalVar] = seqn.ss.collect {
+          case nested: Seqn =>
+            // Recursively get targets from the nested scope
+            vars_from_seqn(nested)
+        }.flatten.toSet
+
+        // Combine local assigned variables with the ones from sub-sequences
+        val combined : Set[LocalVar] = vars_read ++ readFromSubSeqns
+
+        // Filter out the variables that were declared in this very scope.
+        // They should *not* bubble up to the parent scope's "undeclared" or external declarations.
+        // declaredfromsubseqns would not be licit syntax
+        combined.filterNot(lv => declaredInThisScope.contains(lv.name))
+          .filterNot(lv => assignedInThisScope.contains(lv.name))
+        .filterNot(lv => assignedFromSubSeqns.contains(lv.name))
+      }
+
+      def targets_from_seqn(seqn: Seqn): Seq[LocalVar] = {
+        // All local variable names declared in *this* Seqn (the current scope).
+        val declaredInThisScope: Set[String] =
+          seqn.scopedDecls.collect { case v: LocalVarDecl => v.name }.toSet
+
+        // All local variables assigned (written) in *this* Seqn (excluding nested Seqn).
+        // That means we only look at direct statements in seqn.ss.
+        val assignedInThisScope: Seq[LocalVar] = seqn.ss.flatMap {
+          case LocalVarAssign(lhs, _) => Some(lhs)
+          case NewStmt(lhs, _)        => Some(lhs)
+          case MethodCall(_, _, targets) => targets
+          case _ => None
+        }
+
+        // Recursively collect assigned variables in any nested Seqn statements.
+        // We do recursion *after* collecting from this scope,
+        // because child scopes may declare new variables that overshadow (or should not leak out).
+        val assignedFromSubSeqns: Seq[LocalVar] = seqn.ss.collect {
+          case nested: Seqn =>
+            // Recursively get targets from the nested scope
+            targets_from_seqn(nested)
+        }.flatten
+
+        // Combine local assigned variables with the ones from sub-sequences
+        val combined = assignedInThisScope ++ assignedFromSubSeqns
+
+        // Filter out the variables that were declared in this very scope.
+        // They should *not* bubble up to the parent scope's "undeclared" or external declarations.
+        combined.filterNot(lv => declaredInThisScope.contains(lv.name))
       }
 
       // TODO: tsf error as such "  [0] Exhale might fail. There might be insufficient permission to access List(curr) (filter.vpr@47.14--47.24)"
@@ -61,156 +155,109 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPlugin) {
       //  also: complains on precondition ==> point to actual part of loop (entry start, inductive case, basecase) and same for post(ind, base)
 
 
-      //TODO: change Seq to Seqn to allow for own scope for body resp. ghost resp. bc ({ body} in desugaring )
-
       // added test case: variable scoping, see if finds targets correcctly, declare + assign, don't declare, don't assign...
 
       //We use distinct to not count twice a var declared oustide and then used in body plus ghost resp.
-      val targets : Seq[LocalVar] =
-        (targets_from_stmts(ls.body.ss) ++
-          targets_from_stmts(ls.basecase.getOrElse(Seqn(Seq(), Seq())()).ss) ++
-          targets_from_stmts(ls.ghost.getOrElse(Seqn(Seq(), Seq())()).ss)).distinctBy(lv => lv.name)
+      val targets: Seq[LocalVar] = (
+        ls.basecase.map(targets_from_seqn).getOrElse(Seq()) ++
+          ls.ghost.map(targets_from_seqn).getOrElse(Seq()) ++
+          targets_from_seqn(ls.body)
+        ).distinctBy(_.name)
+
+      val vars: Seq[LocalVar] = (
+        ls.basecase.map(vars_from_seqn).getOrElse(Seq()) ++
+          ls.ghost.map(vars_from_seqn).getOrElse(Seq()) ++
+          vars_from_seqn(ls.body)
+          ++ ls.pres.flatMap(vars_from_exp)
+          ++ ls.posts.flatMap(vars_from_exp)
+        ).toSeq.filterNot(lv => targets.contains(lv)) //probably no need for this then
+//TODO also add cond
+
+      def get_init_target(name : String, typ : Type): LocalVar =
+        LocalVar(s"${name}_init", typ)()
 
 
-      types = types ++ targets.map(_.typ)
 
-
-      val prefix = "" //"__" //  "__plugin_loopspecs_"
-
-      def get_var(label: String, name : String, typ : Type): LocalVar =
-        LocalVar(s"$prefix${label}_${name}", typ)()
-
-      def declare_targets_with_label(label : String): Seq[LocalVarDecl] =
-        targets.map(t => {
-          LocalVarDecl(get_var(label, t.name, t.typ).name, t.typ)()
-        })
-      //Resolution via name (not ref)
-      def copy_targets_with_label(label : String): Seq[Stmt] =
-        targets.map(t => {
-          LocalVarAssign(get_var(label, t.name, t.typ), t)()
-        }) // This can never fail, simple assignment
-
-      def checkpoint(label : String): Seq[Stmt] =
-        Seq(Label(s"$prefix${label}", Seq())()) ++
-          copy_targets_with_label(label)
-
-
-      def call_havoc_type(typ : Type, targets : Seq[LocalVar]): Stmt = {
-        MethodCall(
-          make_havoc_type(typ).name,
-          Seq(),
-          targets
-        )(NoPosition, NoInfo, NoTrafos)
-      }
-
-
-      def havoc_targets(): Seq[Stmt] =
-        targets.map(t  => {
-          call_havoc_type(t.typ, Seq(t))
-        })
-
-      // s"__plugin_loopspecs_{$name}_{$t.name}" = copy at label name
-      // Only put a labelled old outside but could also nest them (doesn't change anything)
-      // pre(list(pre(curr))) == pre(list(curr))
-      // pre(accu)
-      // post, ghost, basecase
 
       //todo: add tests for failures along the way.
       //todo: or if it verifies but shouldn't
-      def pre_desugar_preexp(e : Exp, label : String): Exp = {
+      def pre_desugar_preexp(e : Exp): Exp = {
         e.transform({
           // only rename targets inside pre
           case l: LocalVar if targets.contains(l) =>
-            LocalVar(s"$prefix${label}_${l.name}", l.typ)(l.pos, l.info, NodeTrafo(l)) // gets the original vars not the copies
+            LocalVar(s"${l.name}_init", l.typ)(l.pos, l.info, NodeTrafo(l)) // gets the original vars not the copies
 
           case pre : PreExp => // We only desugared the first pre, further nested pres are simply removed
-            pre_desugar_preexp(pre.exp, label)
+            pre_desugar_preexp(pre.exp)
         })
       }
 
-      def pre_desugar[T <: Node](node : T, label : String): T = {
+      def pre_desugar[T <: Node](node : T, forceChange : Boolean = false): T = {
         node.transform({
           // Even if this was simply a pre around a local var, having a labelled old won't hurt the soundness.
-          case pre : PreExp => LabelledOld(pre_desugar_preexp(pre.exp, label), label)(pre.pos, pre.info, NodeTrafo(pre))
+          case pre : PreExp => Old(pre_desugar_preexp(pre.exp))(pre.pos, pre.info, NodeTrafo(pre))
+
+          case l: LocalVar if forceChange && targets.contains(l) =>
+            LocalVar(s"${l.name}_init", l.typ)(l.pos, l.info, NodeTrafo(l)) //todo verify if NodeTrafo necessary here
         })
       }
 
-      // Exhale all loop preconditions
+      val assign_targets : Seq[Stmt] =
+        targets.map(t => {
+          LocalVarAssign(t, get_init_target(t.name, t.typ))() //target := target_init
+    })
 
-      // From exhale failed to precondition failed on entry
-      //TODO: test this
-      val check_pre: Seq[Stmt] =
-        ls.pres.map(pre => Exhale(pre)(pre.pos, pre.info, MakeTrafoPair(pre.errT, ErrTrafo({
-          case ExhaleFailed(offNode, reason, cached) =>
-            PreconditionNotEstablished(offNode, reason, cached)
-        }))))
-
-      // Declare a non-deterministic Boolean variable
-
-      // Common inhalations of preconditions
-      val common_to_both_steps: Seq[Stmt] =
-        ls.pres.map(pre => Inhale(pre)()) ++ //TODO: can this fail?
-          checkpoint("pre_iteration") // works
-
-
-      // Errors:
-      // -targets done
-      // -pre() in right positions done
-      // -check better error messages (make new errors ids to be able to check them) done
-      // -post works for base not ind, same for precondition, done
-      // -try ghost code failure (wrong fold)
-      // -same for basecase
-
-
-      // Inductive step statements
-      val inductive_step: Seq[Stmt] =
-        Seq(Seqn(ls.body.ss, Seq())()) ++
-          checkpoint("after_iteration") ++
-          // TODO: try Mix ADT (by default activated) and LS plugins test.
-          ls.pres.map(pre => Exhale(pre)(pre.pos, pre.info, MakeTrafoPair(pre.errT, ErrTrafo({
-            case ExhaleFailed(offNode, reason, cached) =>
-              PreconditionNotPreserved(offNode, reason, cached)
-          })))) ++
-          havoc_targets() ++ // always works
-          ls.posts.map(post => Inhale(pre_desugar(post, "after_iteration"))()) ++
-          ls.ghost.map(_.ss).getOrElse(Seq()).map(s => pre_desugar(s, "pre_iteration")) ++
-          ls.posts.map(post => Exhale(pre_desugar(post, "pre_iteration"))(post.pos, post.info, MakeTrafoPair(post.errT, ErrTrafo({
-            case ExhaleFailed(offNode, reason, cached) =>
-              PostconditionNotPreservedInductiveStep(offNode, reason, cached)
-          }))))
-      // [postcondition.not.preserved.inductive.step:insufficient.permission]
-
-      // Base step statements
-      val base_step: Seq[Stmt] =
-        ls.basecase.map(_.ss).getOrElse(Seq()).map(s => pre_desugar(s, "pre_iteration")) ++
-          ls.posts.map(post => Exhale(pre_desugar(post, "pre_iteration"))(post.pos, post.info, MakeTrafoPair(post.errT, ErrTrafo({
-            case ExhaleFailed(offNode, reason, cached) =>
-              PostconditionNotPreservedBaseCase(offNode, reason, cached)
-          }))))
-
-      // Caller's postconditions
-      val callers_post: Seq[Stmt] =
-        ls.posts.map(post => Inhale(pre_desugar(post, "pre_loop"))())
-
+      val args = (vars ++ targets) //.distinctBy(_.name)
 
       val body = Seqn(
-        checkpoint("pre_iteration") ++
+        assign_targets ++
           Seq(
             If(ls.cond,
-            Seqn(Seq(ls.body),  //pre desugar
+            Seqn(Seq(ls.body) ++
+              Seq(MethodCall("test", args, targets)(NoPosition, NoInfo, ErrTrafo({
+                case PreconditionInCallFalse(offNode, reason, cached) =>
+                  PreconditionNotPreservedWhileLoop(offNode.copy()(reason.pos, NoInfo, reason.offendingNode.errT), reason, cached)
+              }))) ++
+              ls.ghost.toSeq.map(pre_desugar(_))
+              ,  //pre desugar
               Seq())(),
-            Seqn(ls.basecase.map(_.ss).getOrElse(Seq()), Seq())()
-            )())
-        ++ ls.ghost.map(_.ss).getOrElse(Seq()),
+              Seqn(ls.basecase.toSeq.map(pre_desugar(_)), Seq())() //todo fix
+            )
+            ())
+        ,
         Seq())()
 
-      val lvd = targets.map(lv => LocalVarDecl(lv.name, lv.typ)())
-      val helper_method = Method("test", lvd, lvd, Seq(), Seq(), Some(body))()
+      def lv_to_lvd(l : Seq[LocalVar], init : Boolean = false): Seq[LocalVarDecl] ={
+        val suffix = if (init) "_init" else ""
+        l.map(lv => LocalVarDecl(s"${lv.name}${suffix}", lv.typ)())
+      }
+
+      val targets_init = lv_to_lvd(targets, init = true)
+      val args_method = (targets_init ++ lv_to_lvd(vars)) //. distinctBy(_.name.dropRight(5))
+
+      val targets_lvd = lv_to_lvd(targets)
+
+      val helper_method = Method(
+        "test", //todo: give rand name?? get unique name so doesnt clash with rest of program
+        args_method,
+        targets_lvd,
+        ls.pres.map(pre =>  //pre_desugar(pre, forceChange = true).withMeta(pre.pos, pre.info,pre.errT)),
+          pre_desugar(pre, forceChange = true)), // can only refer to init targets (args names were changed), vars are kept the same
+        //TODO. replace all with this .+ or MakeTrafoPair
+        ls.posts.map(post => Implies(TrueLit()(), pre_desugar(post))(post.pos, post.info, post.errT.+(ErrTrafo({
+          case PostconditionViolated(offNode, member, reason, cached) => //todo use member??
+            PostconditionNotPreservedWhileLoop(offNode, reason, cached)
+        })))),
+        //TODO is this the best way to change the errT, plus fix error message that now includes this true ==> ...
+        Some(body))()
 
       //TODO: vars = read not written inside loop
-      val args = Seq()
+
       (Seqn(
-        Seq(MethodCall("test", targets, targets)(NoPosition, NoInfo, NoTrafos)) //needs vars + targets
+        Seq(MethodCall("test", args, targets)(NoPosition, NoInfo, ErrTrafo({
+          case PreconditionInCallFalse(offNode, reason, cached) => //PreconditionInCallFalse(offNode, reason, cached)
+            PreconditionNotEstablishedWhileLoop(offNode.copy()(reason.pos, NoInfo, reason.offendingNode.errT), reason, cached)
+        }))) //args, targets//needs vars + targets for args
         , Seq())(), helper_method)
 
 
@@ -225,30 +272,34 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPlugin) {
         {
 
           val (n, hm) = mapLoopSpecs(ls)
-          helper_methods = helper_methods ++ Seq(hm)
+          helper_methods = helper_methods ++  Seq(hm)
           n
         }
 
-    }).execute(input)
+    }).execute(program)
     // This is just traversal not verif
     //TODO: test with nested loops (TD /BU) test
 
 
+    val transformedMethods = newProgram.methods ++ helper_methods
+    val finalProgram : Program =
+      newProgram.copy(methods = transformedMethods)(NoPosition, NoInfo, NoTrafos)
+
     // Check entire program for pre() that are left
     // There should be no pres. Must be user mistake.
 
-    newProgram.transform({
+    finalProgram.transform({
       case p@PreExp(exp) =>
         reportError(ConsistencyError("Found pre expression in wrong part of program. Please only use it in a while loop's postcondition, ghostcode or base case code.", p.pos));
         exp})
 
+    finalProgram
 
-    // for each type from targets add the havoc methods
-    val transformedMethods = newProgram.methods ++ make_havoc_methods() ++ helper_methods
-    newProgram.copy(methods = transformedMethods)(NoPosition, NoInfo, NoTrafos)
   }
   def reportError(error: AbstractError): Unit = {
     loopSpecsPlugin.reportError(error)
   }
+
+
 
 }
