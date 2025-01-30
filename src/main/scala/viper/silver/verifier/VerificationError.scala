@@ -207,7 +207,7 @@ trait PartialVerificationError {
   def withReasonNodeTransformed(t : errors.ErrorNode => errors.ErrorNode) = {
     PartialVerificationError(
       (r:ErrorReason) =>
-      f(r.withNode(t(r.offendingNode)).asInstanceOf[ErrorReason])
+        f(r.withNode(t(r.offendingNode)).asInstanceOf[ErrorReason])
     )
   }
 
@@ -429,6 +429,14 @@ object errors {
   def PostconditionViolated(offendingNode: Exp, member: Contracted): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => PostconditionViolated(offendingNode, member, reason))
 
+  case class PostconditionViolatedBranch(offendingNode: Exp, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
+    val id = "postcondition.violated.branch"
+    val text = s"Branch fails."
+
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = PostconditionViolatedBranch(offendingNode.asInstanceOf[Exp], this.reason, this.cached)
+    def withReason(r: ErrorReason) = PostconditionViolatedBranch(offendingNode, r, cached)
+  }
+
   case class FoldFailed(offendingNode: Fold, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "fold.failed"
     val text = s"Folding ${offendingNode.acc.loc} might fail."
@@ -610,7 +618,7 @@ object reasons {
   }
 
   case class UnexpectedNode(offendingNode: ErrorNode, explanation: String, stackTrace: Seq[StackTraceElement])
-      extends AbstractErrorReason {
+    extends AbstractErrorReason {
 
     val id = "unexpected.node"
     def readableMessage = s"$offendingNode occurred unexpectedly. $explanation"
@@ -623,6 +631,13 @@ object reasons {
     def readableMessage = s"Assertion $offendingNode might not hold."
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = AssertionFalse(offendingNode.asInstanceOf[Exp])
+  }
+
+  case class AssertionFalseAtBranch(offendingNode: Exp, treeString: String) extends AbstractErrorReason {
+    val id = "assertion.false.branch"
+    def readableMessage = "\n" + treeString
+
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = AssertionFalseAtBranch(offendingNode.asInstanceOf[Exp], treeString)
   }
 
   // Note: this class should be deprecated/removed - we no longer support epsilon permissions in the language
