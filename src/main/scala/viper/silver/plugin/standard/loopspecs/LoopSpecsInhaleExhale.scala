@@ -5,13 +5,18 @@ import viper.silver.ast.utility.ViperStrategy
 import viper.silver.verifier.{AbstractError, ConsistencyError}
 import viper.silver.verifier.errors.ExhaleFailed
 
-class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin) {
+/*
+TODO: to make plugin into VSCode
+1. make jar with silver carbon silicon
+ */
 
-  def beforeVerify(input: Program): Program = {
+class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin, val program : Program) {
+
+  def beforeVerify(): Program = {
     // For each loopspecs
     // Identify components of loop
     // Map entire loop to new code 1. inhalexhale 2. rec
-    // Return input before ++ new code ++ input after
+    // Return program before ++ new code ++ program after
 
 
 
@@ -104,17 +109,22 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin) {
           targets_from_stmts(ls.basecase.toSeq) ++
           targets_from_stmts(ls.ghost.toSeq)).distinctBy(lv => lv.name)*/
 
-      val targets: Seq[LocalVar] = (
+      val targets: Seq[LocalVar] = ls.writtenVars.intersect(ls.undeclLocalVars)
+
+      /*(
         ls.basecase.map(targets_from_seqn).getOrElse(Seq()) ++
           ls.ghost.map(targets_from_seqn).getOrElse(Seq()) ++
           targets_from_seqn(ls.body)
-        ).distinctBy(_.name)
+        ).distinctBy(_.name)*/
+      //todo replace with  this if not working anymore
 
       types = types ++ targets.map(_.typ)
 
 
       val prefix = "" //"__" //  "__plugin_loopspecs_"
 
+      //todo add unique name here in an efficient way
+      // is unique name deterministic, i think so
       def get_var(label: String, name : String, typ : Type): LocalVar =
         LocalVar(s"$prefix${label}_${name}", typ)()
 
@@ -178,12 +188,12 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin) {
       // Exhale all loop preconditions
 
       // From exhale failed to precondition failed on entry
-      //TODO: test this
-      val check_pre: Seq[Stmt] =
+      val check_pre: Seq[Stmt] = {
         ls.pres.map(pre => Exhale(pre)(pre.pos, pre.info, MakeTrafoPair(pre.errT, ErrTrafo({
           case ExhaleFailed(offNode, reason, cached) =>
             PreconditionNotEstablished(offNode, reason, cached)
         }))))
+      }
 
       // Declare a non-deterministic Boolean variable
       val non_det =
@@ -211,7 +221,7 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin) {
           // TODO: try Mix ADT (by default activated) and LS plugins test.
           ls.pres.map(pre => Exhale(pre)(pre.pos, pre.info, MakeTrafoPair(pre.errT, ErrTrafo({
             case ExhaleFailed(offNode, reason, cached) =>
-              PreconditionNotPreserved(offNode, reason, cached)
+              PreconditionNotPreserved(offNode, reason, cached) // todo: try changing to reason.offNode.pos to get correct conj expr
           })))) ++
           havoc_targets() ++ // always works
           ls.posts.map(post => Inhale(pre_desugar(post, "after_iteration"))()) ++
@@ -273,7 +283,7 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin) {
       case ls : LoopSpecs =>
         mapLoopSpecs(ls)
 
-    }).execute(input)
+    }).execute(program)
     // This is just traversal not verif
     //TODO: test with nested loops (TD /BU) test
 

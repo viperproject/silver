@@ -8,6 +8,7 @@ import viper.silver.plugin.standard.termination.transformation.ProgramManager
 import scala.+:
 
 class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPlugin, val program : Program) extends ProgramManager {
+  val helper_method_name = "HELPER_" //Todo get name of englobing method?
   def beforeVerify(): Program ={
     // For each loopspecs
     // Identify components of loop
@@ -91,12 +92,14 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPlugin, val program : Program) exte
         // Recursively collect assigned variables in any nested Seqn statements.
         // We do recursion *after* collecting from this scope,
         // because child scopes may declare new variables that overshadow (or should not leak out).
-        val assignedFromSubSeqns: Set[String] = seqn.ss.collect {
+        val assignedFromSubSeqns: Set[String] = Set()
+
+        /*seqn.ss.collect {
           case nested: Seqn =>
             // Recursively get targets from the nested scope
             targets_from_seqn(nested)
         }.flatten.map(_.name).toSet
-
+*/
 
 
         // Recursively collect assigned variables in any nested Seqn statements.
@@ -119,36 +122,6 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPlugin, val program : Program) exte
         .filterNot(lv => assignedFromSubSeqns.contains(lv.name))
       }
 
-      def targets_from_seqn(seqn: Seqn): Seq[LocalVar] = {
-        // All local variable names declared in *this* Seqn (the current scope).
-        val declaredInThisScope: Set[String] =
-          seqn.scopedDecls.collect { case v: LocalVarDecl => v.name }.toSet
-
-        // All local variables assigned (written) in *this* Seqn (excluding nested Seqn).
-        // That means we only look at direct statements in seqn.ss.
-        val assignedInThisScope: Seq[LocalVar] = seqn.ss.flatMap {
-          case LocalVarAssign(lhs, _) => Some(lhs)
-          case NewStmt(lhs, _)        => Some(lhs)
-          case MethodCall(_, _, targets) => targets
-          case _ => None
-        }
-
-        // Recursively collect assigned variables in any nested Seqn statements.
-        // We do recursion *after* collecting from this scope,
-        // because child scopes may declare new variables that overshadow (or should not leak out).
-        val assignedFromSubSeqns: Seq[LocalVar] = seqn.ss.collect {
-          case nested: Seqn =>
-            // Recursively get targets from the nested scope
-            targets_from_seqn(nested)
-        }.flatten
-
-        // Combine local assigned variables with the ones from sub-sequences
-        val combined = assignedInThisScope ++ assignedFromSubSeqns
-
-        // Filter out the variables that were declared in this very scope.
-        // They should *not* bubble up to the parent scope's "undeclared" or external declarations.
-        combined.filterNot(lv => declaredInThisScope.contains(lv.name))
-      }
 
       // TODO: tsf error as such "  [0] Exhale might fail. There might be insufficient permission to access List(curr) (filter.vpr@47.14--47.24)"
       //  into " Precondition might fail." or the specific part of where it happened.
@@ -158,25 +131,32 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPlugin, val program : Program) exte
       // added test case: variable scoping, see if finds targets correcctly, declare + assign, don't declare, don't assign...
 
       //We use distinct to not count twice a var declared oustide and then used in body plus ghost resp.
-      val targets: Seq[LocalVar] = (
+      //decl out, assigned in
+      // so we take all the assigned in and intersect with the decl out
+      val targets: Seq[LocalVar] = ls.writtenVars.intersect(ls.undeclLocalVars)
+      //should be fine as we can't declare targets in pre/post so visting them shouldn't be wrong
+
+      /*
+      (
         ls.basecase.map(targets_from_seqn).getOrElse(Seq()) ++
           ls.ghost.map(targets_from_seqn).getOrElse(Seq()) ++
           targets_from_seqn(ls.body)
         ).distinctBy(_.name)
+       */
 
-      val vars: Seq[LocalVar] = (
+      // decl out, read in, not assigned in
+      val vars: Seq[LocalVar] = ls.undeclLocalVars.diff(targets)
+        /*(
         ls.basecase.map(vars_from_seqn).getOrElse(Seq()) ++
           ls.ghost.map(vars_from_seqn).getOrElse(Seq()) ++
           vars_from_seqn(ls.body)
           ++ ls.pres.flatMap(vars_from_exp)
           ++ ls.posts.flatMap(vars_from_exp)
-        ).toSeq.filterNot(lv => targets.contains(lv)) //probably no need for this then
+        ).toSeq.filterNot(lv => targets.contains(lv)) //probably no need for this then*/
 //TODO also add cond
 
       def get_init_target(name : String, typ : Type): LocalVar =
         LocalVar(s"${name}_init", typ)()
-
-
 
 
       //todo: add tests for failures along the way.
@@ -198,8 +178,8 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPlugin, val program : Program) exte
           case pre : PreExp => Old(pre_desugar_preexp(pre.exp))(pre.pos, pre.info, NodeTrafo(pre))
 
           case l: LocalVar if forceChange && targets.contains(l) =>
-            LocalVar(s"${l.name}_init", l.typ)(l.pos, l.info, NodeTrafo(l)) //todo verify if NodeTrafo necessary here
-        })
+            LocalVar(s"${l.name}_init", l.typ)(l.pos, l.info, NodeTrafo(l)) //todo verify if NodeTrafo necessary here but prob yes because we want the old node not the initnode
+        })//NodeTrafo(l)
       }
 
       val assign_targets : Seq[Stmt] =
@@ -207,25 +187,42 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPlugin, val program : Program) exte
           LocalVarAssign(t, get_init_target(t.name, t.typ))() //target := target_init
     })
 
+      val unique_name = uniqueName(helper_method_name)
+      val unique_name_basecase = uniqueName(helper_method_name + "basecase")
+
       val args = (vars ++ targets) //.distinctBy(_.name)
 
-      val body = Seqn(
+      val inductiveStep : Seq[Stmt] =
+        Seq(ls.body) ++
+          Seq(MethodCall(unique_name, args, targets)(NoPosition, NoInfo, ErrTrafo({
+            case PreconditionInCallFalse(offNode, reason, cached) =>
+              PreconditionNotPreservedWhileLoop(offNode.withMeta(reason.pos, NoInfo, reason.offendingNode.errT), reason, cached)
+
+          }))) ++
+          ls.ghost.toSeq.map(pre_desugar(_))
+            //pre desugar
+
+      val basecase : Seq[Stmt] =
+        ls.basecase.toSeq.map(pre_desugar(_)) //todo verify
+
+
+      val body_inductiveStep = Seqn(
         assign_targets ++
           Seq(
-            If(ls.cond,
-            Seqn(Seq(ls.body) ++
-              Seq(MethodCall("test", args, targets)(NoPosition, NoInfo, ErrTrafo({
-                case PreconditionInCallFalse(offNode, reason, cached) =>
-                  PreconditionNotPreservedWhileLoop(offNode.copy()(reason.pos, NoInfo, reason.offendingNode.errT), reason, cached)
-              }))) ++
-              ls.ghost.toSeq.map(pre_desugar(_))
-              ,  //pre desugar
-              Seq())(),
-              Seqn(ls.basecase.toSeq.map(pre_desugar(_)), Seq())() //todo fix
-            )
-            ())
+            Inhale(ls.cond)()) ++
+          inductiveStep
         ,
         Seq())()
+
+      val body_basecase = Seqn(
+        assign_targets ++
+          Seq(
+            Inhale(Not(ls.cond)())()) ++
+          basecase
+        ,
+        Seq())()
+
+
 
       def lv_to_lvd(l : Seq[LocalVar], init : Boolean = false): Seq[LocalVarDecl] ={
         val suffix = if (init) "_init" else ""
@@ -237,8 +234,9 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPlugin, val program : Program) exte
 
       val targets_lvd = lv_to_lvd(targets)
 
+
       val helper_method = Method(
-        "test", //todo: give rand name?? get unique name so doesnt clash with rest of program
+        unique_name,
         args_method,
         targets_lvd,
         ls.pres.map(pre =>  //pre_desugar(pre, forceChange = true).withMeta(pre.pos, pre.info,pre.errT)),
@@ -246,17 +244,34 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPlugin, val program : Program) exte
         //TODO. replace all with this .+ or MakeTrafoPair
         ls.posts.map(post => Implies(TrueLit()(), pre_desugar(post))(post.pos, post.info, post.errT.+(ErrTrafo({
           case PostconditionViolated(offNode, member, reason, cached) => //todo use member??
-            PostconditionNotPreservedWhileLoop(offNode, reason, cached)
+            PostconditionNotPreservedInductiveStep(offNode, reason, cached)
         })))),
         //TODO is this the best way to change the errT, plus fix error message that now includes this true ==> ...
-        Some(body))()
+        Some(body_inductiveStep))()
+
+//todo add this to method decl of program if not useless
+      val helper_method_basecase = Method(
+        unique_name_basecase,
+        args_method,
+        targets_lvd,
+        ls.pres.map(pre =>  //pre_desugar(pre, forceChange = true).withMeta(pre.pos, pre.info,pre.errT)),
+          pre_desugar(pre, forceChange = true)), // can only refer to init targets (args names were changed), vars are kept the same
+        //TODO. replace all with this .+ or MakeTrafoPair
+        ls.posts.map(post => Implies(TrueLit()(), pre_desugar(post))(post.pos, post.info, post.errT.+(ErrTrafo({
+          case PostconditionViolated(offNode, member, reason, cached) => //todo use member??
+            PostconditionNotPreservedBaseCase(offNode, reason, cached)
+        })))),
+        //TODO is this the best way to change the errT, plus fix error message that now includes this true ==> ...
+        Some(body_basecase))()
 
       //TODO: vars = read not written inside loop
 
       (Seqn(
-        Seq(MethodCall("test", args, targets)(NoPosition, NoInfo, ErrTrafo({
+        Seq(MethodCall(unique_name, args, targets)(NoPosition, NoInfo, ErrTrafo({
           case PreconditionInCallFalse(offNode, reason, cached) => //PreconditionInCallFalse(offNode, reason, cached)
-            PreconditionNotEstablishedWhileLoop(offNode.copy()(reason.pos, NoInfo, reason.offendingNode.errT), reason, cached)
+            PreconditionNotEstablishedWhileLoop(
+              offNode.withMeta(reason.pos, NoInfo, reason.offendingNode.errT)
+             , reason, cached) //todo change to og precond not establ wihtout whiel loop
         }))) //args, targets//needs vars + targets for args
         , Seq())(), helper_method)
 

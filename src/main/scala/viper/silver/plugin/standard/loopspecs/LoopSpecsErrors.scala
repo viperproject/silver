@@ -66,6 +66,7 @@ case class PostconditionNotPreservedInductiveStep(override val offendingNode: Er
   override def withReason(r: ErrorReason) = PostconditionNotPreservedInductiveStep(offendingNode, r, cached)
 }
 
+//TODO rm if unused! and change error msgs from rec
 case class PostconditionNotPreservedWhileLoop(override val offendingNode: ErrorNode,
                                                   override val reason: ErrorReason,
                                                   override val cached: Boolean = false) extends ExtensionAbstractVerificationError {
@@ -82,7 +83,13 @@ case class PreconditionNotPreservedWhileLoop(override val offendingNode: ErrorNo
                                               override val reason: ErrorReason,
                                               override val cached: Boolean = false) extends ExtensionAbstractVerificationError {
   override val id = s"precondition.not.preserved.while.loop"
-  override val text = s"Precondition $offendingNode might not be preserved in while loop."
+  override val text = s"$reason / ${reason.pos}/ ${reason.id} / ${reason.offendingNode} / ${reason.offendingNode.pos} / ${reason.offendingNode.errT}" //  s"Precondition $offendingNode might not be preserved in while loop. $reason. ${reason.pos}"
+  //  Assertion b might not hold. / prec_not_preserved.vpr@7.9--7.19/ assertion.false / b / prec_not_preserved.vpr@7.9--7.19 / NoTrafos Assertion b might not hold. (prec_not_preserved.vpr@7.9--7.19)
+
+  //TODO: b points to the b:= false line and not to the precond b
+  //offNode = b:= Helper_(b)
+  //reason = assertion b might not hold
+  // reason.pos = offNode.pos = pos(b := Helper(b))
 
   override def withNode(offendingNode: errors.ErrorNode = this.offendingNode) =
     PreconditionNotPreservedWhileLoop(this.offendingNode, this.reason, this.cached)
@@ -95,6 +102,7 @@ case class PreconditionNotEstablishedWhileLoop(override val offendingNode: Error
                                              override val cached: Boolean = false) extends ExtensionAbstractVerificationError {
   override val id = s"precondition.not.established.while.loop"
   override val text = s"Precondition $offendingNode might not hold on entry. $reason. ${reason.pos}"
+
 
   override def withNode(offendingNode: errors.ErrorNode = this.offendingNode) =
     PreconditionNotEstablishedWhileLoop(this.offendingNode, this.reason, this.cached)

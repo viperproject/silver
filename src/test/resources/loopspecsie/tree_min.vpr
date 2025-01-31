@@ -1,0 +1,104 @@
+field l : Ref
+field r : Ref
+field val : Int
+
+predicate BST(t : Ref) {
+   (t != null) ==> acc(t.val) && acc(t.l) && acc(t.r) && BST(t.l) && BST(t.r)
+   && forall i : Int :: (0 <= i < |keys(t.l)|) ==> keys(t.l)[i] < t.val
+   && forall j : Int :: (0 <= j < |keys(t.r)|) ==> keys(t.r)[j] > t.val
+}
+
+
+function keys(t : Ref): Seq[Int]
+    requires BST(t)
+{
+    (t != null) ? unfolding BST(t) in Seq(t.val) ++ keys(t.l) ++ keys(t.r) : Seq()
+
+}
+
+
+function min(s : Seq[Int]): Int
+{
+
+        min_acc(s, 100)
+
+}
+
+
+function min_acc(s : Seq[Int], accu : Int): Int{
+    |s| == 0 ? accu : s[0] < accu ? min_acc(s[1..], s[0]) : min_acc(s[1..], accu)
+}
+
+function max(s : Seq[Int]): Int
+{
+
+        max_acc(s, -1)
+
+}
+
+
+function max_acc(s : Seq[Int], accu : Int): Int{
+    |s| == 0 ? accu : s[0] > accu ? max_acc(s[1..], s[0]) : max_acc(s[1..], accu)
+}
+
+
+
+
+
+
+
+method tree_min(t : Ref) returns (t_final : Ref, m : Int)
+    requires BST(t)
+    ensures BST(t)
+    ensures m == min(keys(t))
+    ensures keys(t) ++ Seq(m) == old(keys(t))
+
+    {
+    t_final := t
+
+    var lchild : Ref
+    var parent : Ref
+    var curr : Ref
+
+    unfold BST(t_final)
+    curr := t.l
+
+    if(curr == null){
+        m := t_final.val
+        //lchild := t.r
+        t_final := t_final.r
+    }else{
+        parent := t_final
+
+        unfold BST(curr)
+        lchild := curr.l
+
+        while(lchild != null)
+            requires BST(curr)
+            requires parent.l == curr
+            requires curr.l == lchild
+
+            ensures BST(parent.l)
+            ensures m == min(keys(parent.l))
+            ensures keys(parent.l) ++ Seq(m) == pre(keys(parent.l))
+        {
+            parent := curr
+            curr := lchild
+
+            unfold BST(curr)
+            lchild := curr.l
+
+        }basecase{
+            m := curr.val
+            lchild := curr.r
+            parent.l := lchild
+        }
+
+
+    }
+
+}
+
+
+
+

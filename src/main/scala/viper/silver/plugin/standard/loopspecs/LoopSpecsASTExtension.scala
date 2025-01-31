@@ -32,7 +32,7 @@ case class PreExp(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoI
 
 case class LoopSpecs(
   cond: Exp,
-  pres: Seq[Exp], 
+  pres: Seq[Exp], //todo should this be exp or seq exp??
   posts: Seq[Exp],
   body: Seqn,
   ghost: Option[Seqn],

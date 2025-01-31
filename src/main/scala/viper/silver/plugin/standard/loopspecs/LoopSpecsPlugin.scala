@@ -106,11 +106,11 @@ class LoopSpecsPlugin (@unused reporter: viper.silver.reporter.Reporter,
   // rn it says cant prove englobing postcond, maybe it should say "basecase not strong enough"
 
   //TODO: More positive big examples
-  val choice = 1
+  val choice = 0
   override def beforeVerify(input: Program): Program ={
     if(choice == 0){
-      val ls = new LoopSpecsInhaleExhale(this)
-      ls.beforeVerify(input)
+      val ls = new LoopSpecsInhaleExhale(this, input)
+      ls.beforeVerify()
     }else{
       val ls = new LoopSpecsRec(this, input)
       ls.beforeVerify()
