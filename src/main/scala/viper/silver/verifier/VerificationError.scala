@@ -429,12 +429,12 @@ object errors {
   def PostconditionViolated(offendingNode: Exp, member: Contracted): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => PostconditionViolated(offendingNode, member, reason))
 
-  case class PostconditionViolatedBranch(offendingNode: Exp, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
+  case class PostconditionViolatedBranch(offendingNode: Exp, reason: ErrorReason, leftIsFatal: Boolean, rightIsFatal: Boolean, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "postcondition.violated.branch"
     val text = s"Branch fails."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = PostconditionViolatedBranch(offendingNode.asInstanceOf[Exp], this.reason, this.cached)
-    def withReason(r: ErrorReason) = PostconditionViolatedBranch(offendingNode, r, cached)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = PostconditionViolatedBranch(offendingNode.asInstanceOf[Exp], this.reason, leftIsFatal, rightIsFatal, this.cached)
+    def withReason(r: ErrorReason) = PostconditionViolatedBranch(offendingNode, r, leftIsFatal, rightIsFatal, cached)
   }
 
   case class FoldFailed(offendingNode: Fold, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
