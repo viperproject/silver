@@ -69,7 +69,7 @@ trait Rewritable extends Product {
         // Call constructor
         val newNode = try {constructorMirror(firstArgList ++ secondArgList: _*)}
         catch {
-          case _: Exception if (this.isInstanceOf[PNode]) =>
+          case e: Exception if (this.isInstanceOf[PNode]) =>
             throw ParseTreeDuplicationError(this.asInstanceOf[PNode], children)
         }
 

@@ -210,6 +210,8 @@ case class TypeChecker(names: NameAnalyser) {
     stmt match {
       case PAnnotatedStmt(_, s) =>
         check(s)
+      case PExpandedMacroStmt(s) =>
+        check(s)
       case s@PSeqn(ss) =>
         checkMember(s) {
           ss.inner.toSeq foreach check
@@ -644,6 +646,9 @@ case class TypeChecker(names: NameAnalyser) {
       case t: PExtender => t.typecheck(this, names).getOrElse(Nil) foreach (message =>
         messages ++= FastMessaging.message(t, message))
       case PAnnotatedExp(_, e) =>
+        checkInternal(e)
+        setType(e.typ)
+      case PExpandedMacroExp(e) =>
         checkInternal(e)
         setType(e.typ)
       case psl: PSimpleLiteral=>
