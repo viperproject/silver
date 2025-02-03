@@ -23,7 +23,7 @@ case class PredicateInstance(p: String, args: Seq[Exp])(override val pos: Positi
   override def verifyExtExp(): VerificationResult = ???
 
   override def prettyPrint: PrettyPrintPrimitives#Cont =
-    text("@") <> text(p) <> parens(ssep(args map show, char (',') <> space))
+    text(p) <> parens(ssep(args map show, char (',') <> space))
 
   override lazy val check: Seq[ConsistencyError] = {
     args.flatMap(Consistency.checkPure)
