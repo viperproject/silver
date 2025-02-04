@@ -70,6 +70,10 @@ trait PNode extends Where with Product with Rewritable with HasExtraValList {
   def deepCollect[A](f: PartialFunction[PNode, A]): Seq[A] =
     Visitor.deepCollect(Seq(this), PNode.callSubnodes)(f)
 
+  /** Same as deep collect except that subnodes are visited only if f1 returns true at the current node */
+  def deepCollectOpt[A](f1: PNode => Boolean, f2: PartialFunction[PNode, A]): Seq[A] =
+    Visitor.deepCollect(Seq(this), (n : PNode) => if (f1(n)) PNode.callSubnodes(n) else Seq.empty)(f2)
+
   /** @see [[Visitor.shallowCollect()]] */
   def shallowCollect[R](f: PartialFunction[PNode, R]): Seq[R] =
     Visitor.shallowCollect(Seq(this), PNode.callSubnodes)(f)
