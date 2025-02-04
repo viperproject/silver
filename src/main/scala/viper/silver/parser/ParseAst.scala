@@ -1444,13 +1444,6 @@ case class PSeqn(ss: PDelimited.Block[PStmt])(val pos: (Position, Position)) ext
   override def pretty = ss.prettyLines
 }
 
-trait PExpandedMacro
-case class PExpandedMacroExp(exp: PExp)(val pos: (Position, Position)) extends PExp with PExpandedMacro {
-  override def typeSubstitutions: collection.Seq[PTypeSubstitution] = exp.typeSubstitutions
-  override def forceSubstitution(ts: PTypeSubstitution): Unit = exp.forceSubstitution(ts)
-}
-case class PExpandedMacroStmt(stmt: PStmt)(val pos: (Position, Position)) extends PStmt with PExpandedMacro
-
 ///////////////////////////////////////////////////////////////////////////
 // Wrapper for expanded macros
 trait PExpandedMacro
