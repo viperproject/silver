@@ -1444,15 +1444,6 @@ case class PSeqn(ss: PDelimited.Block[PStmt])(val pos: (Position, Position)) ext
   override def pretty = ss.prettyLines
 }
 
-///////////////////////////////////////////////////////////////////////////
-// Wrapper for expanded macros
-trait PExpandedMacro
-case class PExpandedMacroExp(exp: PExp)(val pos: (Position, Position)) extends PExp with PExpandedMacro {
-  override def typeSubstitutions: collection.Seq[PTypeSubstitution] = exp.typeSubstitutions
-  override def forceSubstitution(ts: PTypeSubstitution): Unit = exp.forceSubstitution(ts)
-}
-case class PExpandedMacroStmt(stmt: PStmt)(val pos: (Position, Position)) extends PStmt with PExpandedMacro
-
 /**
   * PSeqn representing the expanded body of a statement macro.
   * Unlike a normal PSeqn, it does not represent its own scope.
