@@ -35,7 +35,7 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPlugin, val program : Program) exte
     //
 
 
-    def mapLoopSpecs(ls : LoopSpecs): (Node, Method) = {
+    def mapLoopSpecs(ls : LoopSpecs): (Node, Method, Method) = {
 
       def vars_from_exp(e : Exp): Set[LocalVar] = {
         var vars_read : Set[LocalVar] = Set()
@@ -175,7 +175,7 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPlugin, val program : Program) exte
       def pre_desugar[T <: Node](node : T, forceChange : Boolean = false): T = {
         node.transform({
           // Even if this was simply a pre around a local var, having a labelled old won't hurt the soundness.
-          case pre : PreExp => Old(pre_desugar_preexp(pre.exp))(pre.pos, pre.info, NodeTrafo(pre))
+          case pre : PreExp if !forceChange => Old(pre_desugar_preexp(pre.exp))(pre.pos, pre.info, NodeTrafo(pre))
 
           case l: LocalVar if forceChange && targets.contains(l) =>
             LocalVar(s"${l.name}_init", l.typ)(l.pos, l.info, NodeTrafo(l)) //todo verify if NodeTrafo necessary here but prob yes because we want the old node not the initnode
@@ -187,16 +187,16 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPlugin, val program : Program) exte
           LocalVarAssign(t, get_init_target(t.name, t.typ))() //target := target_init
     })
 
-      val unique_name = uniqueName(helper_method_name)
+      val unique_name_inductive_step = uniqueName(helper_method_name + "inductive_step")
       val unique_name_basecase = uniqueName(helper_method_name + "basecase")
 
       val args = (vars ++ targets) //.distinctBy(_.name)
 
       val inductiveStep : Seq[Stmt] =
         Seq(ls.body) ++
-          Seq(MethodCall(unique_name, args, targets)(NoPosition, NoInfo, ErrTrafo({
+          Seq(MethodCall(unique_name_inductive_step, args, targets)(NoPosition, NoInfo, ErrTrafo({
             case PreconditionInCallFalse(offNode, reason, cached) =>
-              PreconditionNotPreservedWhileLoop(offNode.withMeta(reason.pos, NoInfo, reason.offendingNode.errT), reason, cached)
+              PreconditionNotPreserved(offNode.withMeta(reason.pos, NoInfo, reason.offendingNode.errT), reason, cached)
 
           }))) ++
           ls.ghost.toSeq.map(pre_desugar(_))
@@ -230,34 +230,34 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPlugin, val program : Program) exte
       }
 
       val targets_init = lv_to_lvd(targets, init = true)
-      val args_method = (targets_init ++ lv_to_lvd(vars)) //. distinctBy(_.name.dropRight(5))
+      val args_method = (lv_to_lvd(vars) ++ targets_init) //. distinctBy(_.name.dropRight(5))
 
       val targets_lvd = lv_to_lvd(targets)
 
 
       val helper_method = Method(
-        unique_name,
+        unique_name_inductive_step,
         args_method,
         targets_lvd,
-        ls.pres.map(pre =>  //pre_desugar(pre, forceChange = true).withMeta(pre.pos, pre.info,pre.errT)),
-          pre_desugar(pre, forceChange = true)), // can only refer to init targets (args names were changed), vars are kept the same
+          //pre_desugar(pre, forceChange = true).withMeta(pre.pos, pre.info,pre.errT)),
+          Seq(pre_desugar(ls.pres, forceChange = true)), // can only refer to init targets (args names were changed), vars are kept the same
         //TODO. replace all with this .+ or MakeTrafoPair
-        ls.posts.map(post => Implies(TrueLit()(), pre_desugar(post))(post.pos, post.info, post.errT.+(ErrTrafo({
+        Seq(pre_desugar(ls.posts).withMeta(ls.posts.pos, ls.posts.info, ls.posts.errT.+(ErrTrafo({
           case PostconditionViolated(offNode, member, reason, cached) => //todo use member??
             PostconditionNotPreservedInductiveStep(offNode, reason, cached)
         })))),
         //TODO is this the best way to change the errT, plus fix error message that now includes this true ==> ...
         Some(body_inductiveStep))()
 
-//todo add this to method decl of program if not useless
+//todo add this to method decl of program if not useless. test this??
       val helper_method_basecase = Method(
         unique_name_basecase,
         args_method,
         targets_lvd,
-        ls.pres.map(pre =>  //pre_desugar(pre, forceChange = true).withMeta(pre.pos, pre.info,pre.errT)),
-          pre_desugar(pre, forceChange = true)), // can only refer to init targets (args names were changed), vars are kept the same
+          //pre_desugar(pre, forceChange = true).withMeta(pre.pos, pre.info,pre.errT)),
+         Seq(pre_desugar(ls.pres, forceChange = true)), // can only refer to init targets (args names were changed), vars are kept the same
         //TODO. replace all with this .+ or MakeTrafoPair
-        ls.posts.map(post => Implies(TrueLit()(), pre_desugar(post))(post.pos, post.info, post.errT.+(ErrTrafo({
+        Seq(pre_desugar(ls.posts).withMeta(ls.posts.pos, ls.posts.info, ls.posts.errT.+(ErrTrafo({
           case PostconditionViolated(offNode, member, reason, cached) => //todo use member??
             PostconditionNotPreservedBaseCase(offNode, reason, cached)
         })))),
@@ -266,14 +266,18 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPlugin, val program : Program) exte
 
       //TODO: vars = read not written inside loop
 
-      (Seqn(
-        Seq(MethodCall(unique_name, args, targets)(NoPosition, NoInfo, ErrTrafo({
+      val helper_method_call : Seqn =
+        Seqn(
+        Seq(
+          MethodCall(unique_name_inductive_step, args, targets)(NoPosition, NoInfo, ErrTrafo({
           case PreconditionInCallFalse(offNode, reason, cached) => //PreconditionInCallFalse(offNode, reason, cached)
-            PreconditionNotEstablishedWhileLoop(
+            PreconditionNotEstablished(
               offNode.withMeta(reason.pos, NoInfo, reason.offendingNode.errT)
-             , reason, cached) //todo change to og precond not establ wihtout whiel loop
-        }))) //args, targets//needs vars + targets for args
-        , Seq())(), helper_method)
+              , reason, cached) //todo change to og precond not establ wihtout whiel loop
+
+          }))), Seq())() //args, targets//needs vars + targets for args
+
+      (helper_method_call, helper_method, helper_method_basecase)
 
 
     }
@@ -286,8 +290,8 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPlugin, val program : Program) exte
       case ls : LoopSpecs =>
         {
 
-          val (n, hm) = mapLoopSpecs(ls)
-          helper_methods = helper_methods ++  Seq(hm)
+          val (n, hm, hmbc) = mapLoopSpecs(ls)
+          helper_methods = helper_methods ++  Seq(hm, hmbc)
           n
         }
 

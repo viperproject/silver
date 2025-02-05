@@ -118,8 +118,8 @@ case class PLoopSpecs(
       t.exp(cond.inner),
       //todo how to make this simpler than And(true, true)
       //todo rm comments
-      (pres.toSeq map (pre => t.exp(pre.e))), //.foldLeft[Exp](TrueLit())((e1, e2) =>And(e1, e2)(e2.pos)),
-      (posts.toSeq map (post => t.exp(post.e))), //.foldLeft(And(TrueLit()(), TrueLit()())())((e1, e2) =>And(e1, e2)()),
+      (pres.toSeq map (pre => t.exp(pre.e))).foldLeft[Exp](TrueLit()())((e1, e2) =>And(e1, e2)(e2.pos)),
+      (posts.toSeq map (post => t.exp(post.e))).foldLeft[Exp](TrueLit()())((e1, e2) =>And(e1, e2)(e2.pos)),
       t.stmt(body).asInstanceOf[Seqn],
       ghost.map(g => t.stmt(g.body).asInstanceOf[Seqn]),
       basecase.map(bc => t.stmt(bc.body).asInstanceOf[Seqn])

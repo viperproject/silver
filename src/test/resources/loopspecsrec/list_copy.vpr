@@ -73,6 +73,7 @@ method list_copy(input : Ref) returns (res : Ref)
         }
 
         fold List(input)
+        //fold List(res)
 
     }
 }

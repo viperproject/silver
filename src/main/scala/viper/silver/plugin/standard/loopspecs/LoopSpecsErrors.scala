@@ -2,6 +2,7 @@ package viper.silver.plugin.standard.loopspecs
 
 
 
+import viper.silver.ast.Position
 import viper.silver.verifier.reasons.ErrorNode
 import viper.silver.verifier._
 
@@ -18,7 +19,10 @@ case class PreconditionNotEstablished(override val offendingNode: ErrorNode,
                                     override val reason: ErrorReason,
                                     override val cached: Boolean = false) extends ExtensionAbstractVerificationError {
   override val id = s"precondition.not.established"
-  override val text = s"Precondition $offendingNode might not hold on entry."
+  override val text = s"Precondition ${reason.offendingNode} might not hold on entry."
+
+  override val pos = reason.offendingNode.pos
+
 
   override def withNode(offendingNode: errors.ErrorNode = this.offendingNode) =
     PreconditionNotEstablished(this.offendingNode, this.reason, this.cached)
@@ -30,7 +34,10 @@ case class PreconditionNotPreserved(override val offendingNode: ErrorNode,
                                       override val reason: ErrorReason,
                                       override val cached: Boolean = false) extends ExtensionAbstractVerificationError {
   override val id = s"precondition.not.preserved"
-  override val text = s"Precondition $offendingNode might not be preserved."
+  override val text = s"Precondition ${reason.offendingNode} might not be preserved."
+
+  override val pos = reason.offendingNode.pos
+
 
   override def withNode(offendingNode: errors.ErrorNode = this.offendingNode) =
     PreconditionNotPreserved(this.offendingNode, this.reason, this.cached)
@@ -43,7 +50,9 @@ case class PostconditionNotPreservedBaseCase(override val offendingNode: ErrorNo
                                     override val cached: Boolean = false) extends ExtensionAbstractVerificationError {
   override val id = s"postcondition.not.preserved.base.case"
 
-  val r = s"$offendingNode".replaceAll("\\b(inhale|exhale)\\b", "").replaceAll(" +", " ").trim
+  override val pos = reason.offendingNode.pos
+
+  val r = s"${reason.offendingNode}".replaceAll("\\b(inhale|exhale)\\b", "").replaceAll(" +", " ").trim
   override val text = s"Postcondition $r might not be preserved in base case."
 
   override def withNode(offendingNode: errors.ErrorNode = this.offendingNode) =
@@ -57,7 +66,10 @@ case class PostconditionNotPreservedInductiveStep(override val offendingNode: Er
                                              override val cached: Boolean = false) extends ExtensionAbstractVerificationError {
   override val id = s"postcondition.not.preserved.inductive.step"
 
-  val r = s"$offendingNode".replaceAll("\\b(inhale|exhale)\\b", "").replaceAll(" +", " ").trim
+  override val pos = reason.offendingNode.pos
+
+  val r = s"${reason.offendingNode}".replaceAll("\\b(inhale|exhale)\\b", "").replaceAll(" +", " ").trim
+  //Todo rm this replace probably not necessary anymore
   override val text = s"Postcondition $r might not be preserved in inductive step."
 
   override def withNode(offendingNode: errors.ErrorNode = this.offendingNode) =

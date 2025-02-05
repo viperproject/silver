@@ -13,7 +13,7 @@ method f(l : Ref)
    var i : Int := 1
 
    while(curr != null)
-        //:: ExpectedOutput(postcondition.not.preserved.while.loop:assertion.false)
+        //:: ExpectedOutput(postcondition.not.preserved.base.case:assertion.false)
         ensures curr == null ==> i  <  i
    {
 

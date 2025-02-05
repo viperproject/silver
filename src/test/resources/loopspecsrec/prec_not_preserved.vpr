@@ -1,7 +1,7 @@
 method f(){
     var b : Bool := true
     while(true)
-        //:: ExpectedOutput(precondition.not.preserved.while.loop:assertion.false)
+        //:: ExpectedOutput(precondition.not.preserved:assertion.false)
         requires b
     {
         b := false

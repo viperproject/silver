@@ -2,15 +2,18 @@ package viper.silver.plugin.standard.loopspecs
 
 import viper.silver.ast.{Bool, ErrTrafo, Exhale, Exp, If, Inhale, Label, LabelledOld, LocalVar, LocalVarAssign, LocalVarDecl, MakeTrafoPair, Method, MethodCall, NewStmt, NoInfo, NoPosition, NoTrafos, Node, NodeTrafo, Program, Seqn, Stmt, TrueLit, Type, While}
 import viper.silver.ast.utility.ViperStrategy
+import viper.silver.plugin.standard.termination.transformation.ProgramManager
 import viper.silver.verifier.{AbstractError, ConsistencyError}
 import viper.silver.verifier.errors.ExhaleFailed
+
+import scala.collection.mutable
 
 /*
 TODO: to make plugin into VSCode
 1. make jar with silver carbon silicon
  */
 
-class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin, val program : Program) {
+class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin, val program : Program) extends ProgramManager{
 
   def beforeVerify(): Program = {
     // For each loopspecs
@@ -53,7 +56,7 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin, val program : Prog
 
     def mapLoopSpecs(ls : LoopSpecs): Node = {
 
-    //TODO: test it can get seqn from diff nested scopes
+    //TODO: RM if all tests work
       def targets_from_seqn(seqn: Seqn): Seq[LocalVar] = {
         // All local variable names declared in *this* Seqn (the current scope).
         val declaredInThisScope: Set[String] =
@@ -123,14 +126,26 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin, val program : Prog
 
       val prefix = "" //"__" //  "__plugin_loopspecs_"
 
+      val known_targets : mutable.HashMap[String, String] = mutable.HashMap[String, String]()
+
+      def get_var_name(label: String, name : String): String = {
+        val original_str = s"$prefix${label}_${name}"
+
+        known_targets.getOrElse(original_str,  {
+          val new_str = uniqueName(original_str)
+          known_targets.addOne(original_str, new_str)
+          new_str})
+      }
+
       //todo add unique name here in an efficient way
       // is unique name deterministic, i think so
-      def get_var(label: String, name : String, typ : Type): LocalVar =
-        LocalVar(s"$prefix${label}_${name}", typ)()
+      def get_var(label: String, name : String, typ : Type): LocalVar = {
+        LocalVar(get_var_name(label, name), typ)()
+      }
 
       def declare_targets_with_label(label : String): Seq[LocalVarDecl] =
         targets.map(t => {
-          LocalVarDecl(get_var(label, t.name, t.typ).name, t.typ)()
+          LocalVarDecl(get_var_name(label, t.name), t.typ)()
         })
       //Resolution via name (not ref)
       def copy_targets_with_label(label : String): Seq[Stmt] =
@@ -171,7 +186,7 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin, val program : Prog
           // only rename targets inside pre
 
           case l: LocalVar if targets.contains(l) =>
-            LocalVar(s"$prefix${label}_${l.name}", l.typ)(l.pos, l.info, NodeTrafo(l)) // gets the original vars not the copies
+            LocalVar(get_var_name(label, l.name), l.typ)(l.pos, l.info, NodeTrafo(l)) // gets the original vars not the copies
 
           case pre : PreExp => // We only desugared the first pre, further nested pres are simply removed
             pre_desugar_preexp(pre.exp, label)
@@ -188,8 +203,10 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin, val program : Prog
       // Exhale all loop preconditions
 
       // From exhale failed to precondition failed on entry
+
+      //todo make this cleaner with a withMeta or analog?
       val check_pre: Seq[Stmt] = {
-        ls.pres.map(pre => Exhale(pre)(pre.pos, pre.info, MakeTrafoPair(pre.errT, ErrTrafo({
+        Seq(Exhale(ls.pres)(ls.pres.pos, ls.pres.info, MakeTrafoPair(ls.pres.errT, ErrTrafo({
           case ExhaleFailed(offNode, reason, cached) =>
             PreconditionNotEstablished(offNode, reason, cached)
         }))))
@@ -201,7 +218,7 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin, val program : Prog
 
       // Common inhalations of preconditions
       val common_to_both_steps: Seq[Stmt] =
-        ls.pres.map(pre => Inhale(pre)()) ++ //TODO: can this fail?
+        Seq(Inhale(ls.pres)()) ++ //TODO: can this fail?
           checkpoint("pre_iteration") // works
 
 
@@ -219,30 +236,54 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin, val program : Prog
         Seq(ls.body) ++
           checkpoint("after_iteration") ++
           // TODO: try Mix ADT (by default activated) and LS plugins test.
-          ls.pres.map(pre => Exhale(pre)(pre.pos, pre.info, MakeTrafoPair(pre.errT, ErrTrafo({
+          Seq(Exhale(ls.pres)(ls.pres.pos, ls.pres.info, MakeTrafoPair(ls.pres.errT, ErrTrafo({
             case ExhaleFailed(offNode, reason, cached) =>
+              //todo does reason.offNode do the same??
               PreconditionNotPreserved(offNode, reason, cached) // todo: try changing to reason.offNode.pos to get correct conj expr
           })))) ++
           havoc_targets() ++ // always works
-          ls.posts.map(post => Inhale(pre_desugar(post, "after_iteration"))()) ++
+          Seq(Inhale(pre_desugar(ls.posts, "after_iteration"))()) ++
           ls.ghost.toSeq.map(s => pre_desugar(s, "pre_iteration")) ++
-          ls.posts.map(post => Exhale(pre_desugar(post, "pre_iteration"))(post.pos, post.info, MakeTrafoPair(post.errT, ErrTrafo({
+          Seq(Exhale(pre_desugar(ls.posts, "pre_iteration"))(ls.posts.pos, ls.posts.info, MakeTrafoPair(ls.posts.errT, ErrTrafo({
             case ExhaleFailed(offNode, reason, cached) =>
-              PostconditionNotPreservedInductiveStep(offNode, reason, cached)
+              PostconditionNotPreservedInductiveStep(offNode, reason, cached) //todo change this back?? or change inner workings??
           }))))
       // [postcondition.not.preserved.inductive.step:insufficient.permission]
 
       // Base step statements
       val base_step: Seq[Stmt] =
         ls.basecase.toSeq.map(s => pre_desugar(s, "pre_iteration")) ++
-          ls.posts.map(post => Exhale(pre_desugar(post, "pre_iteration"))(post.pos, post.info, MakeTrafoPair(post.errT, ErrTrafo({
+          Seq(Exhale(pre_desugar(ls.posts, "pre_iteration"))(ls.posts.pos, ls.posts.info, MakeTrafoPair(ls.posts.errT, ErrTrafo({
             case ExhaleFailed(offNode, reason, cached) =>
               PostconditionNotPreservedBaseCase(offNode, reason, cached)
           }))))
 
       // Caller's postconditions
       val callers_post: Seq[Stmt] =
-        ls.posts.map(post => Inhale(pre_desugar(post, "pre_loop"))())
+        Seq(Inhale(pre_desugar(ls.posts, "pre_loop"))())
+
+      val thn : Seqn =
+        Seqn(Seq(
+          While(TrueLit()(),
+            Seq(), // No invariants
+            Seqn(
+              common_to_both_steps ++
+                Seq(
+                  If(ls.cond,
+                    Seqn(inductive_step,
+                      declare_targets_with_label("after_iteration"))(),
+                    Seqn(base_step,
+                      Seq())()
+                  )()
+                ), declare_targets_with_label("pre_iteration")
+            )()
+          )()
+        ),
+          Seq())()
+
+      val els : Seqn =
+        Seqn(callers_post,
+          Seq())()
 
       // Construct the transformed sequence
       Seqn(
@@ -251,25 +292,8 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin, val program : Prog
           havoc_targets() ++ // always works
           Seq(
             If(non_det.localVar,
-              Seqn(Seq(
-                While(TrueLit()(),
-                  Seq(), // No invariants
-                  Seqn(
-                    common_to_both_steps ++
-                      Seq(
-                        If(ls.cond,
-                          Seqn(inductive_step,
-                            declare_targets_with_label("after_iteration"))(),
-                          Seqn(base_step,
-                            Seq())()
-                        )()
-                      ), declare_targets_with_label("pre_iteration")
-                  )()
-                )()
-              ),
-                Seq())(),
-              Seqn(callers_post,
-                Seq())()
+              thn,
+              els
             )()
           ),
         Seq(non_det) ++ declare_targets_with_label("pre_loop")

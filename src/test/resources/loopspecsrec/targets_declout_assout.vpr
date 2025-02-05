@@ -8,6 +8,7 @@ method f(l : Ref)
    var i : Int := 1
 
    while(curr != null)
+        //:: ExpectedOutput(postcondition.not.preserved.base.case:assertion.false)
       ensures i == 1
    {
         curr := null

@@ -32,12 +32,12 @@ case class PreExp(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoI
 
 case class LoopSpecs(
   cond: Exp,
-  pres: Seq[Exp], //todo should this be exp or seq exp??
-  posts: Seq[Exp],
+  pres: Exp, //todo should this be exp or seq exp??
+  posts: Exp,
   body: Seqn,
   ghost: Option[Seqn],
   basecase: Option[Seqn])(override val pos: Position = NoPosition, override val info: Info = NoInfo, override val errT: ErrorTrafo = NoTrafos) extends ExtensionStmt {
-    def extensionSubnodes: Seq[Node] = pres ++ posts ++ Seq(body) ++ ghost.map(seqn => seqn) ++ basecase.map(bc => bc)
+    def extensionSubnodes: Seq[Node] = Seq(pres) ++ Seq(posts) ++ Seq(body) ++ ghost.map(seqn => seqn) ++ basecase.map(bc => bc)
     def prettyPrint: PrettyPrintPrimitives#Cont =  text("")
 //        val preStr = pres.pretty
 //        val postStr = posts.pretty
