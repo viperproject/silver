@@ -324,7 +324,7 @@ case class Translator(program: PProgram) {
           ann.values.inner.toSeq.map(_.str)
         }
         (resPexp, innerMap.updated(ann.key.str, combinedValue))
-      case PExpandedMacroExp(e) => extractAnnotation(e)
+      case PExpandedMacroExp(s) => extractAnnotation(s)
       case _ => (pexp, Map())
     }
   }

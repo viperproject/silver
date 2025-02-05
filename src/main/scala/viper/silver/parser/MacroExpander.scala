@@ -340,8 +340,8 @@ object MacroExpander {
 
       // Return expanded macro's body wrapped inside annotation
       bodyWithReplacedParams match {
-        case b: PExp => PAnnotatedExp(PAnnotation(new PSym.At(PSym.At)(pos),PRawString("expandedMacro")(pos),PGrouped.impliedParen(PDelimited.empty))(pos),b)(pos)
-        case b: PStmt => PAnnotatedStmt(PAnnotation(new PSym.At(PSym.At)(pos),PRawString("expandedMacro")(pos),PGrouped.impliedParen(PDelimited.empty))(pos),b)(pos)
+        case b: PExp => PExpandedMacroExp(b)(pos)
+        case b: PStmt => PExpandedMacroStmt(b)(pos)
       }
     }
 
