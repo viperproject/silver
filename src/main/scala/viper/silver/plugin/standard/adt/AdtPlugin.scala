@@ -89,7 +89,7 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
   def adtDerivingDeclBody[$: P]: P[PAdtDerivingInfo] =
     P((idndef ~~~ typ.brackets.lw.? ~~~ adtWithout.lw.?) map ((PAdtDerivingInfo.apply _).tupled)).pos
 
-  def adtConstructorDecl[$: P]: P[PAdtConstructor1] = P((annotation.rep ~ idndef ~ argList(idnTypeBinding.map(PAdtFieldDecl(_))) ~~~ P(PSym.Semi).lw.?) map (PAdtConstructor1.apply _).tupled).pos
+  def adtConstructorDecl[$: P]: P[PAdtConstructor1] = P((annotation().rep ~ idndef ~ argList(idnTypeBinding.map(PAdtFieldDecl(_))) ~~~ P(PSym.Semi).lw.?) map (PAdtConstructor1.apply _).tupled).pos
 
   override def beforeResolve(input: PProgram): PProgram = {
     if (deactivated) {

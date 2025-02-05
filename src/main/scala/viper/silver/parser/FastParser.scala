@@ -16,6 +16,7 @@ import viper.silver.verifier.{ParseError, ParseWarning}
 import scala.collection.{immutable, mutable}
 import scala.util.{Failure, Success}
 import viper.silver.ast.HasLineColumn
+import viper.silver.parser.FastParserCompanion.reservedSymCutless
 
 case class SuffixedExpressionGenerator[+E <: PExp](func: PExp => E) extends (PExp => PExp) {
   override def apply(v1: PExp): E = func(v1)
@@ -48,6 +49,8 @@ object FastParserCompanion {
   implicit def reservedKw[$: P, T <: PKeyword](r: T)(implicit lineCol: LineCol, _file: Path): P[PReserved[T]] = P(P(r.token).map { _ => PReserved(r)(_) } ~~ !identContinues)./.pos
   implicit def reservedSym[$: P, T <: PSymbol](r: T)(implicit lineCol: LineCol, _file: Path): P[PReserved[T]] = P(r.token./ map { _ => PReserved(r)(_) }).pos
 
+  def reservedSymCutless[$: P, T <: PSymbol](r: T)(implicit lineCol: LineCol, _file: Path): P[PReserved[T]] = P(P(r.token) map { _ => PReserved(r)(_) }).pos
+
   class LeadingWhitespace[T](val p: () => P[T]) extends AnyVal {
     /**
       * Using `p.lw` is shorthand for `Pass ~ p` (the same parser but with possibly leading whitespace).
@@ -78,6 +81,8 @@ object FastParserCompanion {
   class ExtendedParsing[T](val p: () => P[T]) extends AnyVal {
     /** `(`...`)` */
     def parens[$: P](implicit lineCol: LineCol, _file: Path) = P((P(PSym.LParen) ~ p() ~ PSym.RParen) map (PGrouped.apply[PSym.Paren, T] _).tupled).pos
+    def parensCutless[$: P](implicit lineCol: LineCol, _file: Path) = P((P(reservedSymCutless(PSym.LParen)) ~ p() ~ reservedSymCutless(PSym.RParen)) map (PGrouped.apply[PSym.Paren, T] _).tupled).pos
+
     /** `<`...`>` */
     def angles[$: P](implicit lineCol: LineCol, _file: Path) = P((P(PSym.LAngle) ~ p() ~ PSym.RAngle) map (PGrouped.apply[PSym.Angle, T] _).tupled).pos
     /** `"`...`"` */
@@ -353,6 +358,8 @@ class FastParser {
   /** `(`...`,` ...`,` ...`)` */
   def argList[$: P, T](p: => P[T]) = p.delimited(PSym.Comma).parens
 
+  def argListCutless[$: P, T](p: => P[T]) = p.delimited(reservedSymCutless(PSym.Comma)).parensCutless
+
   /** `[`...`,` ...`,` ...`]` */
   def typeList[$: P, T](p: => P[T]) = p.delimited(PSym.Comma).brackets
 
@@ -396,21 +403,28 @@ class FastParser {
     ).pos
   }
 
-  def atom(bracketed: Boolean = false)(implicit ctx : P[_]) : P[PExp] = P(ParserExtension.newExpAtStart(ctx) | annotatedAtom
+  def atom(bracketed: Boolean = false, cutless: Boolean = false)(implicit ctx : P[_]) : P[PExp] = P(ParserExtension.newExpAtStart(ctx)
+    | annotatedAtom(cutless)
     | atomReservedKw | integer | unExp | size | lbracketExp
     | maybeTypedFuncApp(bracketed) | idnuse | ParserExtension.newExpAtEnd(ctx))
 
-  def atomParen[$: P](bracketed: Boolean = false): P[PExp] = P(expParen(true).parens.map{ g => g.inner.brackets = Some(g); g.inner } | atom(bracketed))
+  def atomParen[$: P](bracketed: Boolean = false, cutless: Boolean = false): P[PExp] =
+    P(expParen(true, cutless).parens.map{ g => g.inner.brackets = Some(g); g.inner } | atom(bracketed, cutless))
 
   def stringLiteral[$: P]: P[PStringLiteral] = P((CharsWhile(_ != '\"').! map PRawString.apply).pos.quotes map (PStringLiteral.apply _)).pos
 
-  def annotation[$: P]: P[PAnnotation] = P((P(PSym.At) ~~ annotationIdentifier ~ argList(stringLiteral)) map (PAnnotation.apply _).tupled).pos
+  def annotation[$: P](cutless: Boolean = false): P[PAnnotation] = {
+    if (cutless)
+      P((P(reservedSymCutless(PSym.At)) ~~ annotationIdentifierCutless ~ argListCutless(stringLiteral)) map (PAnnotation.apply _).tupled).pos
+    else
+      P((P(PSym.At) ~~ annotationIdentifier ~ argList(stringLiteral)) map (PAnnotation.apply _).tupled).pos
+  }
 
-  def annotated[$: P, T](inner: => P[PAnnotationsPosition => T]): P[T] = P((annotation.rep(0) ~ inner).map {
+  def annotated[$: P, T](inner: => P[PAnnotationsPosition => T]): P[T] = P((annotation().rep(0) ~ inner).map {
     case (annotations, i) => pos: Pos => i(PAnnotationsPosition(annotations, pos))
   }).pos
 
-  def annotatedAtom[$: P]: P[PExp] = P((annotation ~ atomParen()) map (PAnnotatedExp.apply _).tupled).pos
+  def annotatedAtom[$: P](cutless: Boolean = false): P[PExp] = P((annotation(cutless) ~ atomParen(cutless = cutless)) map (PAnnotatedExp.apply _).tupled).pos
 
   def result[$: P]: P[PResultLit] = P(P(PKw.Result) map (PResultLit.apply _)).pos
 
@@ -424,6 +438,8 @@ class FastParser {
 
   def annotationIdentifier[$: P]: P[PRawString] = P((identStarts ~~ CharIn("0-9", "A-Z", "a-z", "$_.").repX).!./ map PRawString.apply).pos
 
+  def annotationIdentifierCutless[$: P]: P[PRawString] = P((identStarts ~~ CharIn("0-9", "A-Z", "a-z", "$_.").repX).! map PRawString.apply).pos
+
   def ident[$: P]: P[String] = identifier.!.filter(a => !keywords.contains(a)).opaque("identifier")
 
   def idnuse[$: P]: P[PIdnUseExp] = P(ident map (PIdnUseExp.apply _)).pos
@@ -436,36 +452,42 @@ class FastParser {
     case (lbl, g) => POldExp(_, lbl, g)
   }
 
-  def magicWandExp[$: P](bracketed: Boolean = false): P[PExp] = P((orExp(bracketed) ~~~ (P(PSymOp.Wand) ~ exp).lw.?).map {
+  def magicWandExp[$: P](bracketed: Boolean = false, cutless: Boolean = false): P[PExp] =
+    P((orExp(bracketed, cutless) ~~~ (P(PSymOp.Wand) ~ expCutOptional(cutless)).lw.?).map {
     case (lhs, b) => pos: Pos => b.map { case (op, rhs) => PMagicWandExp(lhs, op, rhs)(pos) }.getOrElse(lhs)
   }).pos
 
   def realMagicWandExp[$: P]: P[PMagicWandExp] = P((orExp() ~ PSymOp.Wand ~ exp) map (PMagicWandExp.apply _).tupled).pos
 
-  def implExp[$: P](bracketed: Boolean = false): P[PExp] = P((magicWandExp(bracketed) ~~~ (P(PSymOp.Implies) ~ implExp()).lw.?).map {
+  def implExp[$: P](bracketed: Boolean = false, cutless: Boolean = false): P[PExp] =
+    P((magicWandExp(bracketed, cutless) ~~~ (P(PSymOp.Implies) ~ implExp(cutless = cutless)).lw.?).map {
     case (lhs, b) => pos: Pos => b.map { case (op, rhs) => PBinExp(lhs, op, rhs)(pos) }.getOrElse(lhs)
   }).pos
 
-  def iffExp[$: P](bracketed: Boolean = false): P[PExp] = P((implExp(bracketed) ~~~ (P(PSymOp.Iff) ~ iffExp()).lw.?).map {
+  def iffExp[$: P](bracketed: Boolean = false, cutless: Boolean = false): P[PExp] =
+    P((implExp(bracketed, cutless) ~~~ (P(PSymOp.Iff) ~ iffExp(cutless = cutless)).lw.?).map {
     case (lhs, b) => pos: Pos => b.map { case (op, rhs) => PBinExp(lhs, op, rhs)(pos) }.getOrElse(lhs)
   }).pos
 
-  def iteExpr[$: P](bracketed: Boolean = false): P[PExp] = P((iffExp(bracketed) ~~~ (P(PSymOp.Question) ~ iteExpr() ~ PSymOp.Colon ~ iteExpr()).lw.?).map {
+  def iteExpr[$: P](bracketed: Boolean = false, cutless: Boolean = false): P[PExp] =
+    P((iffExp(bracketed, cutless) ~~~ (P(PSymOp.Question) ~ iteExpr(cutless = cutless) ~ PSymOp.Colon ~ iteExpr()).lw.?).map {
     case (lhs, b) => pos: Pos => b.map { case (q, thn, c, els) => PCondExp(lhs, q, thn, c, els)(pos) }.getOrElse(lhs)
   }).pos
 
   /** Expression which had parens around it if `bracketed` is true */
-  def expParen[$: P](bracketed: Boolean): P[PExp] = P(iteExpr(bracketed))
+  def expParen[$: P](bracketed: Boolean, cutless: Boolean = false): P[PExp] = P(iteExpr(bracketed, cutless))
 
   def exp[$: P]: P[PExp] = P(expParen(false))
+
+  def expCutOptional[$: P](cutless: Boolean): P[PExp] = P(expParen(false, cutless))
 
   /** Expression should be parenthesized (e.g. for `if (exp)`). We could consider making these parentheses optional in the future. */
   def parenthesizedExp[$: P]: P[PGrouped.Paren[PExp]] = exp.parens
 
-  def indexSuffix[$: P]: P[(PSymOp.LBracket, PExp, PSymOp.RBracket) => Pos => SuffixedExpressionGenerator[PExp]] = P(
-    (P(PSymOp.Assign) ~ exp).map { case (a, v) => (l: PSymOp.LBracket, i: PExp, r: PSymOp.RBracket) => pos: Pos
+  def indexSuffix[$: P](cutless: Boolean = false): P[(PSymOp.LBracket, PExp, PSymOp.RBracket) => Pos => SuffixedExpressionGenerator[PExp]] = P(
+    (P(PSymOp.Assign) ~ expCutOptional(cutless)).map { case (a, v) => (l: PSymOp.LBracket, i: PExp, r: PSymOp.RBracket) => pos: Pos
       => SuffixedExpressionGenerator[PExp](e => PUpdate(e, l, i, a, v, r)(e.pos._1, pos._2)) } |
-    (P(PSymOp.DotDot) ~ exp.?).map { case (d, m) => (l: PSymOp.LBracket, n: PExp, r: PSymOp.RBracket) => pos: Pos
+    (P(PSymOp.DotDot) ~ expCutOptional(cutless).?).map { case (d, m) => (l: PSymOp.LBracket, n: PExp, r: PSymOp.RBracket) => pos: Pos
       => SuffixedExpressionGenerator[PExp](e => PSeqSlice(e, l, Some(n), d, m, r)(e.pos._1, pos._2)) } |
     Pass.map { _ => (l: PSymOp.LBracket, e1: PExp, r: PSymOp.RBracket) => pos: Pos
       => SuffixedExpressionGenerator[PExp](e0 => PLookup(e0, l, e1, r)(e0.pos._1, pos._2)) })
@@ -473,19 +495,20 @@ class FastParser {
   def fieldAccess[$: P]: P[SuffixedExpressionGenerator[PExp]] =
     P(((!P(PSymOp.DotDot) ~~ PSymOp.Dot) ~ idnref[$, PFieldDecl]) map { case (dot, id) => pos: Pos => SuffixedExpressionGenerator[PExp](e => PFieldAccess(e, dot, id)(e.pos._1, pos._2)) }).pos
 
-  def sliceEnd[$: P]: P[((PSymOp.LBracket, PSymOp.RBracket)) => Pos => SuffixedExpressionGenerator[PExp]] =
-    P((P(PSymOp.DotDot) ~ exp).map { case (d, n) => b => pos: Pos
+  def sliceEnd[$: P](cutless: Boolean = false): P[((PSymOp.LBracket, PSymOp.RBracket)) => Pos => SuffixedExpressionGenerator[PExp]] =
+    P((P(PSymOp.DotDot) ~ expCutOptional(cutless)).map { case (d, n) => b => pos: Pos
           => SuffixedExpressionGenerator[PExp](e => PSeqSlice(e, b._1, None, d, Some(n), b._2)(e.pos._1, pos._2)) })
 
-  def indexContinue[$: P]: P[((PSymOp.LBracket, PSymOp.RBracket)) => Pos => SuffixedExpressionGenerator[PExp]] =
-    P((exp ~ indexSuffix).map { case (e, s) => b => s(b._1, e, b._2) })
+  def indexContinue[$: P](cutless: Boolean = false): P[((PSymOp.LBracket, PSymOp.RBracket)) => Pos => SuffixedExpressionGenerator[PExp]] =
+    P((expCutOptional(cutless) ~ indexSuffix(cutless)).map { case (e, s) => b => s(b._1, e, b._2) })
 
-  def index[$: P]: P[SuffixedExpressionGenerator[PExp]] =
-    P((P(PSymOp.LBracket) ~ (sliceEnd | indexContinue) ~ PSymOp.RBracket) map { case (l, f, r) => f(l, r) }).pos
+  def index[$: P](cutless: Boolean = false): P[SuffixedExpressionGenerator[PExp]] =
+    P((P(PSymOp.LBracket) ~ (sliceEnd(cutless) | indexContinue(cutless)) ~ PSymOp.RBracket) map { case (l, f, r) => f(l, r) }).pos
 
-  def suffix[$: P]: P[SuffixedExpressionGenerator[PExp]] = P(fieldAccess | index)
+  def suffix[$: P](cutless: Boolean = false): P[SuffixedExpressionGenerator[PExp]] = P(fieldAccess | index(cutless))
 
-  def suffixExpr[$: P](bracketed: Boolean = false): P[PExp] = P((atomParen(bracketed) ~~~ suffix.lw.rep).map { case (fac, ss) => foldPExp(fac, ss) })
+  def suffixExpr[$: P](bracketed: Boolean = false, cutless: Boolean = false): P[PExp] =
+    P((atomParen(bracketed, cutless) ~~~ suffix(cutless).lw.rep).map { case (fac, ss) => foldPExp(fac, ss) })
 
   def termOp[$: P] = P(reservedSymMany(None, StringIn("*", "/", "\\", "%"), _ match {
     case "*" => PSymOp.Mul
@@ -494,9 +517,11 @@ class FastParser {
     case "%" => PSymOp.Mod
   }))
 
-  def term[$: P](bracketed: Boolean = false): P[PExp] = P((suffixExpr(bracketed) ~~~ termd.lw.rep).map { case (a, ss) => foldPExp(a, ss) })
+  def term[$: P](bracketed: Boolean = false, cutless: Boolean = false): P[PExp] =
+    P((suffixExpr(bracketed, cutless) ~~~ termd(cutless).lw.rep).map { case (a, ss) => foldPExp(a, ss) })
 
-  def termd[$: P]: P[SuffixedExpressionGenerator[PBinExp]] = P((termOp ~ suffixExpr()) map { case (op, id) => pos: Pos => SuffixedExpressionGenerator(e => PBinExp(e, op, id)(e.pos._1, pos._2)) }).pos
+  def termd[$: P](cutless: Boolean = false): P[SuffixedExpressionGenerator[PBinExp]] =
+    P((termOp ~ suffixExpr(cutless = cutless)) map { case (op, id) => pos: Pos => SuffixedExpressionGenerator(e => PBinExp(e, op, id)(e.pos._1, pos._2)) }).pos
 
   def sumOp[$: P]: P[PReserved[PBinaryOp]] = P(reservedSymMany(Some("--*"), StringIn("++", "+", "-"), _ match {
     case "++" => PSymOp.Append
@@ -509,9 +534,11 @@ class FastParser {
     case "subset" => Pass.map(_ => PReserved(PKwOp.Subset)(_))
   }).pos)
 
-  def sum[$: P](bracketed: Boolean = false): P[PExp] = P((term(bracketed) ~~~ sumd.lw.rep).map { case (a, ss) => foldPExp(a, ss) })
+  def sum[$: P](bracketed: Boolean = false, cutless: Boolean = false): P[PExp] =
+    P((term(bracketed, cutless) ~~~ sumd(cutless).lw.rep).map { case (a, ss) => foldPExp(a, ss) })
 
-  def sumd[$: P]: P[SuffixedExpressionGenerator[PBinExp]] = P((sumOp ~ term()).map { case (op, id) => pos: Pos => SuffixedExpressionGenerator(e => PBinExp(e, op, id)(e.pos._1, pos._2)) }).pos
+  def sumd[$: P](cutless: Boolean = false): P[SuffixedExpressionGenerator[PBinExp]] =
+    P((sumOp ~ term(cutless = cutless)).map { case (op, id) => pos: Pos => SuffixedExpressionGenerator(e => PBinExp(e, op, id)(e.pos._1, pos._2)) }).pos
 
   def cmpOp[$: P]: P[PReserved[PBinaryOp]] = P(reservedSymMany(Some("<==>"), StringIn("<=", ">=", "<", ">"), _ match {
     case "<=" => PSymOp.Le
@@ -522,7 +549,7 @@ class FastParser {
 
   val cmpOps = Set("<=", ">=", "<", ">", "in")
 
-  def cmpd[$: P]: P[PExp => SuffixedExpressionGenerator[PBinExp]] = P((cmpOp ~ sum()).map {
+  def cmpd[$: P](cutless: Boolean = false): P[PExp => SuffixedExpressionGenerator[PBinExp]] = P((cmpOp ~ sum(cutless = cutless)).map {
     case (op, right) => chainComp(op, right) _
   }).pos
 
@@ -534,7 +561,7 @@ class FastParser {
       case left => PBinExp(left, op, right)(left.pos._1, pos._2)
   })
 
-  def cmpExp[$: P](bracketed: Boolean = false): P[PExp] = P((sum(bracketed) ~~~ cmpd.lw.rep).map {
+  def cmpExp[$: P](bracketed: Boolean = false, cutless: Boolean = false): P[PExp] = P((sum(bracketed, cutless) ~~~ cmpd(cutless).lw.rep).map {
     case (from, others) => foldPExp(from, others.map(_(from)))
   })
 
@@ -543,16 +570,18 @@ class FastParser {
     case "!=" => PSymOp.Ne
   }))
 
-  def eqExpParen[$: P](bracketed: Boolean = false): P[PExp] = P((cmpExp(bracketed) ~~~ (eqOp ~ eqExp).lw.?).map {
+  def eqExpParen[$: P](bracketed: Boolean = false, cutless: Boolean = false): P[PExp] = P((cmpExp(bracketed, cutless) ~~~ (eqOp ~ eqExp(cutless)).lw.?).map {
     case (lhs, b) => pos: Pos => b.map { case (op, rhs) => PBinExp(lhs, op, rhs)(pos) }.getOrElse(lhs)
   }).pos
-  def eqExp[$: P]: P[PExp] = eqExpParen()
+  def eqExp[$: P](cutless: Boolean = false): P[PExp] = eqExpParen(cutless = cutless)
 
-  def andExp[$: P](bracketed: Boolean = false): P[PExp] = P((eqExpParen(bracketed) ~~~ (P(PSymOp.AndAnd) ~ andExp()).lw.?).map {
+  def andExp[$: P](bracketed: Boolean = false, cutless: Boolean = false): P[PExp] =
+    P((eqExpParen(bracketed, cutless) ~~~ (P(PSymOp.AndAnd) ~ andExp(cutless = cutless)).lw.?).map {
     case (lhs, b) => pos: Pos => b.map { case (op, rhs) => PBinExp(lhs, op, rhs)(pos) }.getOrElse(lhs)
   }).pos
 
-  def orExp[$: P](bracketed: Boolean = false): P[PExp] = P((andExp(bracketed) ~~~ (P(PSymOp.OrOr) ~ orExp()).lw.?).map {
+  def orExp[$: P](bracketed: Boolean = false, cutless: Boolean = false): P[PExp] =
+    P((andExp(bracketed, cutless) ~~~ (P(PSymOp.OrOr) ~ orExp(cutless = cutless)).lw.?).map {
     case (lhs, b) => pos: Pos => b.map { case (op, rhs) => PBinExp(lhs, op, rhs)(pos) }.getOrElse(lhs)
   }).pos
 
@@ -759,7 +788,7 @@ class FastParser {
     stmtReservedKw(allowDefine) | stmtBlock(allowDefine) |
     assign | ParserExtension.newStmtAtEnd(ctx))
 
-  def annotatedStmt(implicit ctx : P[_]): P[PStmt] = P((annotation ~ stmt()) map (PAnnotatedStmt.apply _).tupled).pos
+  def annotatedStmt(implicit ctx : P[_]): P[PStmt] = P((annotation() ~ stmt()) map (PAnnotatedStmt.apply _).tupled).pos
 
   def assignTarget[$: P]: P[PExp with PAssignTarget] = P(fieldAcc | funcApp | idnuse)
 
