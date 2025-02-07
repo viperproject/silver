@@ -12,6 +12,7 @@ method add_iterative_spec(l : Ref)
 
    while(curr != null)
             //:: ExpectedOutput(postcondition.not.preserved.inductive.step:assertion.false)
+            //:: ExpectedOutput(postcondition.not.preserved.base.case:assertion.false)
         ensures pre(x + y) == 0
      {
         curr := null

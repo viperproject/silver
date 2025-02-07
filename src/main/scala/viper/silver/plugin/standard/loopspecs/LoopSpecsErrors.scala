@@ -19,7 +19,7 @@ case class PreconditionNotEstablished(override val offendingNode: ErrorNode,
                                     override val reason: ErrorReason,
                                     override val cached: Boolean = false) extends ExtensionAbstractVerificationError {
   override val id = s"precondition.not.established"
-  override val text = s"Precondition ${reason.offendingNode} might not hold on entry."
+  override val text = s"Precondition ${reason.offendingNode} might not hold on entry." //todo: might not be necess to have much info in text
 
   override val pos = reason.offendingNode.pos
 

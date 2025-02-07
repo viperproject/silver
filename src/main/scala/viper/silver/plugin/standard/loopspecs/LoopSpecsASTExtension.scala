@@ -47,6 +47,8 @@ case class LoopSpecs(
     
     /** declarations contributed by this statement that should be added to the parent scope */
     override def declarationsInParentScope: Seq[Declaration] = Seq.empty
+
+    //override val check = cond.checkTransitively ++ pre
 }
 
 //object LoopSpecs {

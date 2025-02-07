@@ -13,6 +13,8 @@ TODO: to make plugin into VSCode
 1. make jar with silver carbon silicon
  */
 
+//todo refactor code that is common to botth classes
+
 class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin, val program : Program) extends ProgramManager{
 
   def beforeVerify(): Program = {
@@ -128,17 +130,21 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin, val program : Prog
 
       val known_targets : mutable.HashMap[String, String] = mutable.HashMap[String, String]()
 
-      def get_var_name(label: String, name : String): String = {
-        val original_str = s"$prefix${label}_${name}"
+      val known_labels : mutable.HashMap[String, String] = mutable.HashMap[String, String]()
 
-        known_targets.getOrElse(original_str,  {
-          val new_str = uniqueName(original_str)
-          known_targets.addOne(original_str, new_str)
-          new_str})
+      def get_label(label: String): String =
+        known_labels.getOrElseUpdate(label, uniqueName(label))
+
+      def get_name(full_name: String): String =
+        known_targets.getOrElseUpdate(full_name, uniqueName(full_name))
+
+
+      def get_var_name(label: String = "", name : String): String = {
+        val original_str = s"$prefix${if (label != "") get_label(label) else ""}_${name}"
+        get_name(original_str)
+
       }
 
-      //todo add unique name here in an efficient way
-      // is unique name deterministic, i think so
       def get_var(label: String, name : String, typ : Type): LocalVar = {
         LocalVar(get_var_name(label, name), typ)()
       }
@@ -154,7 +160,7 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin, val program : Prog
         }) // This can never fail, simple assignment
 
       def checkpoint(label : String): Seq[Stmt] =
-        Seq(Label(s"$prefix${label}", Seq())()) ++
+        Seq(Label(get_label(label), Seq())()) ++
           copy_targets_with_label(label)
 
 
@@ -178,8 +184,6 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin, val program : Prog
       // pre(accu)
       // post, ghost, basecase
 
-      //todo: add tests for failures along the way.
-      //todo: or if it verifies but shouldn't
       def pre_desugar_preexp(e : Exp, label : String): Exp = {
 
         e.transform({
@@ -204,7 +208,6 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin, val program : Prog
 
       // From exhale failed to precondition failed on entry
 
-      //todo make this cleaner with a withMeta or analog?
       val check_pre: Seq[Stmt] = {
         Seq(Exhale(ls.pres)(ls.pres.pos, ls.pres.info, MakeTrafoPair(ls.pres.errT, ErrTrafo({
           case ExhaleFailed(offNode, reason, cached) =>
@@ -214,11 +217,11 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin, val program : Prog
 
       // Declare a non-deterministic Boolean variable
       val non_det =
-        LocalVarDecl(s"${prefix}nondet", Bool)()
+        LocalVarDecl(get_var_name(name="nondet"), Bool)()
 
       // Common inhalations of preconditions
       val common_to_both_steps: Seq[Stmt] =
-        Seq(Inhale(ls.pres)()) ++ //TODO: can this fail?
+        Seq(Inhale(ls.pres)()) ++ //This can fail but will produce a contract not wellformed err which is what we want
           checkpoint("pre_iteration") // works
 
 
@@ -235,18 +238,17 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin, val program : Prog
       val inductive_step: Seq[Stmt] =
         Seq(ls.body) ++
           checkpoint("after_iteration") ++
-          // TODO: try Mix ADT (by default activated) and LS plugins test.
           Seq(Exhale(ls.pres)(ls.pres.pos, ls.pres.info, MakeTrafoPair(ls.pres.errT, ErrTrafo({
             case ExhaleFailed(offNode, reason, cached) =>
               //todo does reason.offNode do the same??
-              PreconditionNotPreserved(offNode, reason, cached) // todo: try changing to reason.offNode.pos to get correct conj expr
+              PreconditionNotPreserved(offNode, reason, cached)
           })))) ++
           havoc_targets() ++ // always works
           Seq(Inhale(pre_desugar(ls.posts, "after_iteration"))()) ++
           ls.ghost.toSeq.map(s => pre_desugar(s, "pre_iteration")) ++
           Seq(Exhale(pre_desugar(ls.posts, "pre_iteration"))(ls.posts.pos, ls.posts.info, MakeTrafoPair(ls.posts.errT, ErrTrafo({
             case ExhaleFailed(offNode, reason, cached) =>
-              PostconditionNotPreservedInductiveStep(offNode, reason, cached) //todo change this back?? or change inner workings??
+              PostconditionNotPreservedInductiveStep(offNode, reason, cached)
           }))))
       // [postcondition.not.preserved.inductive.step:insufficient.permission]
 
@@ -286,7 +288,8 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin, val program : Prog
           Seq())()
 
       // Construct the transformed sequence
-      Seqn(
+      val desugared_loop =
+        Seqn(
         checkpoint("pre_loop") ++ // always works
           check_pre ++ // exhale failed -> precond not established
           havoc_targets() ++ // always works
@@ -298,6 +301,7 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin, val program : Prog
           ),
         Seq(non_det) ++ declare_targets_with_label("pre_loop")
       )()
+      desugared_loop
     }
     //inside the seqs of the seqn you have the var decl
 
@@ -323,7 +327,12 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin, val program : Prog
 
     // for each type from targets add the havoc methods
     val transformedMethods = newProgram.methods ++ make_havoc_methods()
-    newProgram.copy(methods = transformedMethods)(NoPosition, NoInfo, NoTrafos)
+    val finalProgram = newProgram.copy(methods = transformedMethods)(NoPosition, NoInfo, NoTrafos)
+    val errs = finalProgram.check //Check again because the desugared program could clash with the outer scope or be wrong on its own
+
+    errs.foreach(reportError(_))
+
+    finalProgram
   }
   def reportError(error: AbstractError): Unit = {
     loopSpecsPlugin.reportError(error)

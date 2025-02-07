@@ -7,7 +7,7 @@ import viper.silver.verifier.{AbstractError, ConsistencyError}
 import viper.silver.plugin.standard.termination.transformation.ProgramManager
 import scala.+:
 
-class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPlugin, val program : Program) extends ProgramManager {
+class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPluginRec, val program : Program) extends ProgramManager {
   val helper_method_name = "HELPER_" //Todo get name of englobing method?
   def beforeVerify(): Program ={
     // For each loopspecs

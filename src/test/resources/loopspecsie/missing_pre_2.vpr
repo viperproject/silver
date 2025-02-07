@@ -1,8 +1,7 @@
 // decl out, assigned inside -> i
 //missing pre as while loop doesn't have this info
 
-// 1. Positive Case V2
-//TODO: hwo to fix this??
+// 1. Neg Case V2
 
 // pos and neg cases for this and ensures pre(i) < i
 // experiment with bc and without
@@ -14,13 +13,14 @@ method f(l : Ref)
    var i : Int := 1
 
    while(curr != null)
+   //:: ExpectedOutput(postcondition.not.preserved.inductive.step:assertion.false)
        ensures curr != null ==> pre(i) + 1 == i
    {
 
         curr := null
         i := i + 1
    }ghost{
-        i := pre(i) + 1
+        i := i + 1
    }
 }
 
