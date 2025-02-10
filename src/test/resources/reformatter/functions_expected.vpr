@@ -1,0 +1,47 @@
+function gte(x: Ref, a: Int): Int
+    requires true
+    ensures true
+{
+    3
+}
+
+@annotation()
+function listLength(l: Ref): Int
+    requires list5(l)
+    ensures result > 0
+{
+    unfolding list5(l) in l.next5 == null ? 1 : 1 + listLength(l.next5)
+}
+
+/**
+ * A function in Viper represents a mathematical function and can be used
+ * in specifications and annotations, unlike methods. Because of that,
+ * functions must be deterministic and side-effect-free.
+ *
+ * This function computes the length of a list recursively.
+ */
+function length6(xs: List2[Int]): Int
+    /**
+     * Viper allows defining pre- and postconditions for functions. In this
+     * example, we only use postconditions, which are introduced with a 'ensures'
+     * keyword. The verifier will attempt to prove that the postcondition holds.
+     * To reference the return value of the function in a postcondition, we use the
+     * keyword 'result'.
+     */
+    ensures result >= 0
+    ensures xs.isNil ==> result == 0
+    ensures (xs.isCons ==> result == length6(xs.tail) + 1)
+    /**
+     * Unlike Dafny, Viper does not check for termination by default. To enable termination
+     * checking, we use a decreases clause. Here we have to specify the list parameter xs as
+     * the variable to prove termination upon. In each recursive call, the list gets one element
+     * shorter. For this proof to work, we need the well-founded order on lists imported above.
+     */
+    decreases xs
+{
+    /**
+     * Viper does not have a 'match' statement. All examples in Dafny that
+     * use this feature are translated to use destructors instead.
+     */
+    (xs.isNil) ? 0 : (1 + length6(xs.tail))
+}

@@ -21,7 +21,7 @@
  *   print tree is that we need to perform some preprocessing on whitespaces, which is just much easier to do
  *   if we store everything in an intermediate representation.
  * - Whenever we hit a leaf node, we get all comments and whitespaces that appear from the last position
- *   we stored up to that leaf node, and store them. This is necessary to preserve comments and certain kinds of
+ *   we stored up to that leaf node, and print them. This is necessary to preserve comments and certain kinds of
  *   newlines, which is important when reformatting a file.
  * - Once we have our finalized list of RNodes, we convert them into a pretty print tree and print that tree,
  *   similarly to how it's done for the pretty printer for the Viper AST.
