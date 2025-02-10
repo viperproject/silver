@@ -23,10 +23,11 @@ case class PPredicateInstance(m: PReserved[PMarkerSymbol.type], idnuse: PIdnRef[
 
   typ = PPrimitiv(PReserved(PPredicateInstanceKeyword)(NoPosition, NoPosition))(NoPosition, NoPosition)
 
-  // TODO: Don't know if this is correct
-  private val _typeSubstitutions = new scala.collection.mutable.ArrayDeque[PTypeSubstitution]()
+  private var _typeSubstitutions = new scala.collection.mutable.ArrayDeque[PTypeSubstitution]()
   final override def typeSubstitutions: mutable.ArrayDeque[PTypeSubstitution] = _typeSubstitutions
-  override def forceSubstitution(ts: PTypeSubstitution): Unit = {}
+  override def forceSubstitution(ts: PTypeSubstitution): Unit = {
+    args.inner.toSeq.foreach(_.forceSubstitution(ts))
+  }
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
     if (idnuse.decls.isEmpty)
@@ -37,6 +38,7 @@ case class PPredicateInstance(m: PReserved[PMarkerSymbol.type], idnuse: PIdnRef[
       // type checking should be the same as for PPredicateAccess nodes
       val predicateAccess = PCall(idnuse.retype(), args, None)(pos)
       t.checkInternal(predicateAccess)
+      _typeSubstitutions = predicateAccess.typeSubstitutions
       None
     }
   }

@@ -10,6 +10,7 @@ import scala.language.implicitConversions
 import scala.collection.immutable.Queue
 import scala.collection.immutable.Queue.{empty => emptyDq}
 import viper.silver.ast._
+import viper.silver.plugin.standard.termination.DecreasesClause
 import viper.silver.verifier.DummyNode
 
 import scala.annotation.tailrec
@@ -527,13 +528,17 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       case Field(name, typ) =>
         text("field") <+> name <> ":" <+> show(typ)
       case Method(name, formalArgs, formalReturns, pres, posts, body) =>
+        // for the time being, the termination plugin transforms decreases clauses into preconditions or postconditions
+        val (terminationMeasuresInPres, actualPres) = pres.partition(exp => exp.isInstanceOf[DecreasesClause])
+        val (terminationMeasuresInPosts, actualPosts) = posts.partition(exp => exp.isInstanceOf[DecreasesClause])
         group(text("method") <+> name <> nest(defaultIndent, parens(showVars(formalArgs))) <> {
           if (formalReturns.isEmpty) nil
           else nest(defaultIndent, line <> "returns" <+> parens(showVars(formalReturns)))
         }) <>
           nest(defaultIndent,
-            showContracts("requires", pres) <>
-            showContracts("ensures", posts)
+            showContracts("requires", actualPres) <>
+              showContracts("ensures", actualPosts) <>
+              showDecreasesClauses(terminationMeasuresInPres ++ terminationMeasuresInPosts)
           ) <>
           line <> (
           body match {
@@ -548,11 +553,15 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
           case Some(exp) => braces(nest(defaultIndent, line <> show(exp)) <> line)
         })
       case Function(name, formalArgs, typ, pres, posts, optBody) =>
+        // for the time being, the termination plugin transforms decreases clauses into preconditions or postconditions
+        val (terminationMeasuresInPres, actualPres) = pres.partition(exp => exp.isInstanceOf[DecreasesClause])
+        val (terminationMeasuresInPosts, actualPosts) = posts.partition(exp => exp.isInstanceOf[DecreasesClause])
         text("function") <+> name <> nest(defaultIndent, parens(showVars(formalArgs))) <>
           ":" <+> show(typ) <>
           nest(defaultIndent,
-            showContracts("requires", pres) <>
-              showContracts("ensures", posts)
+            showContracts("requires", actualPres) <>
+              showContracts("ensures", actualPosts) <>
+              showDecreasesClauses(terminationMeasuresInPres ++ terminationMeasuresInPosts)
           ) <>
           line <>
           (optBody match {
@@ -573,6 +582,11 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       line <> name <+> uninitialized
     else
       lineIfSomeNonEmpty(contracts) <> ssep(contracts.map(c => text(name) <+> nest(defaultIndent, show(c))), line)
+  }
+
+  /** Shows a list of termination measures. */
+  def showDecreasesClauses(measures: Seq[Exp]): Cont = {
+      lineIfSomeNonEmpty(measures) <> ssep(measures.map(c => nest(defaultIndent, show(c))), line)
   }
 
   /** Returns `n` lines if at least one element of `s` is non-empty, and an empty document otherwise. */
@@ -691,11 +705,11 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
           ssep((if (locals == null) Nil else locals map (text("var") <+> showVar(_))) ++ (stmtsToShow map show), line)
         }
       case While(cond, invs, body) =>
+        val (terminationMeasures, actualInvs) = invs.partition(exp => exp.isInstanceOf[DecreasesClause])
         text("while") <+> parens(show(cond)) <>
-          nest(defaultIndent,
-            showContracts("invariant", invs)
-          ) <+> lineIfSomeNonEmpty(invs) <>
-          showBlock(body)
+          nest(defaultIndent, showContracts("invariant", actualInvs) <> showDecreasesClauses(terminationMeasures)) <+>
+            lineIfSomeNonEmpty(invs) <>
+            showBlock(body)
       case If(cond, thn, els) =>
         text("if") <+> parens(show(cond)) <+> showBlock(thn) <> showElse(els)
       case Label(name, invs) =>
