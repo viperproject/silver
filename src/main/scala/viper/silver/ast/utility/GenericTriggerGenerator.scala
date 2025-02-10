@@ -8,6 +8,7 @@ package viper.silver.ast.utility
 
 import java.util.concurrent.atomic.AtomicInteger
 import reflect.ClassTag
+import scala.annotation.unused
 
 object GenericTriggerGenerator {
   case class TriggerSet[E](exps: Seq[E])
@@ -193,7 +194,7 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
         })
 
         /* Collect all the sought (vs) variables in the function application */
-        processedArgs foreach (arg => visit(arg) {
+        processedArgs foreach (arg => getVarsInExp(arg) foreach {
           case v: Var =>
             if (nestedBoundVars.contains(v)) containsNestedBoundVars = true
             if (allRelevantVars.contains(v)) containedVars +:= v
@@ -210,17 +211,25 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
     })
   }
 
+  def getVarsInExp(e: Exp): Set[Var] = {
+    var result: Set[Var] = Set()
+    visit(e) {
+      case v: Var => result += v
+    }
+    result
+  }
+
   /*
    * Hook for clients to add more cases to getFunctionAppsContaining to modify the found possible triggers.
    * Used e.g. to wrap trigger expressions inferred from inside old-expression into old()
    */
-  def modifyPossibleTriggers(relevantVars: Seq[Var]): PartialFunction[Node, Seq[Seq[(PossibleTrigger, Seq[Var], Seq[Var])]] =>
+  def modifyPossibleTriggers(@unused relevantVars: Seq[Var]): PartialFunction[Node, Seq[Seq[(PossibleTrigger, Seq[Var], Seq[Var])]] =>
     Seq[(PossibleTrigger, Seq[Var], Seq[Var])]] = PartialFunction.empty
 
   /*
    * Hook for clients to identify additional variables which can be covered by triggers.
    */
-  def additionalRelevantVariables(relevantVars: Seq[Var], varsToAvoid: Seq[Var]): PartialFunction[Node, Seq[Var]] = PartialFunction.empty
+  def additionalRelevantVariables(@unused relevantVars: Seq[Var], @unused varsToAvoid: Seq[Var]): PartialFunction[Node, Seq[Var]] = PartialFunction.empty
 
   /* Precondition: if vars is non-empty then every (f,vs) pair in functs
    * satisfies the property that vars and vs are not disjoint.
