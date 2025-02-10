@@ -23,6 +23,12 @@ import viper.silver.FastMessaging
  */
 case class MissingDependencyException(msg: String) extends Exception
 
+object FrontendStateCache {
+  var resolver: Resolver = _
+  var pprogram: PProgram = _
+  var translator: Translator = _
+}
+
 trait SilFrontend extends DefaultFrontend {
 
   /**
@@ -325,7 +331,9 @@ trait SilFrontend extends DefaultFrontend {
     plugins.beforeResolve(input) match {
       case Some(inputPlugin) =>
         val r = Resolver(inputPlugin)
-        val analysisResult = r.run
+        FrontendStateCache.resolver = r
+        FrontendStateCache.pprogram = inputPlugin
+        val analysisResult = r.run(if (config == null) true else !config.respectFunctionPrePermAmounts())
         val warnings = for (m <- FastMessaging.sortmessages(r.messages) if !m.error) yield {
           TypecheckerWarning(m.label, m.pos)
         }
@@ -349,7 +357,9 @@ trait SilFrontend extends DefaultFrontend {
 
     plugins.beforeTranslate(input) match {
       case Some(modifiedInputPlugin) =>
-        Translator(modifiedInputPlugin).translate match {
+        val translator = Translator(modifiedInputPlugin)
+        FrontendStateCache.translator = translator
+        translator.translate match {
           case Some(program) =>
             Succ(program)
 
@@ -364,12 +374,16 @@ trait SilFrontend extends DefaultFrontend {
   }
 
   def doConsistencyCheck(input: Program): Result[Program] = {
+    if (config != null) {
+      Consistency.setFunctionPreconditionLegacyMode(config.respectFunctionPrePermAmounts())
+    }
     var errors = input.checkTransitively
     if (backendTypeFormat.isDefined)
       errors = errors ++ Consistency.checkBackendTypes(input, backendTypeFormat.get)
     if (errors.isEmpty) {
       Succ(input)
-    } else
+    } else {
       Fail(errors)
+    }
   }
 }

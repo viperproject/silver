@@ -15,6 +15,7 @@ import viper.silver.verifier.{ConsistencyError, VerificationResult}
 
 /** Expressions. */
 sealed trait Exp extends Hashable with Typed with Positioned with Infoed with TransformableErrors with PrettyExpression {
+  var simplified: Option[Exp] = None
   lazy val isPure = Expressions.isPure(this)
   def isHeapDependent(p: Program) = Expressions.isHeapDependent(this, p)
   def isTopLevelHeapDependent(p: Program) = Expressions.isTopLevelHeapDependent(this, p)
@@ -47,7 +48,7 @@ sealed trait Exp extends Hashable with Typed with Positioned with Infoed with Tr
    */
  // lazy val proofObligations = Expressions.proofObligations(this)
 
-  override def toString() = {
+  override lazy val toString = {
    // Carbon relies on expression pretty-printing resulting in a string without line breaks,
    // so for the special case of directly converting an expression to a string, we remove all line breaks
    // the pretty printer might have inserted.
@@ -72,12 +73,12 @@ case class GtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info
 case class GeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(GeOp) with ForbiddenInTrigger
 
 // Equality and non-equality (defined for all types)
-case class EqCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends EqualityCmp("==") {
+case class EqCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends EqualityCmp("==") with ForbiddenInTrigger {
   override lazy val check : Seq[ConsistencyError] =
     Seq(left, right).flatMap(Consistency.checkPure) ++
     (if(left.typ != right.typ) Seq(ConsistencyError(s"expected the same type, but got ${left.typ} and ${right.typ}", left.pos)) else Seq())
 }
-case class NeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends EqualityCmp("!=") {
+case class NeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends EqualityCmp("!=") with ForbiddenInTrigger {
   override lazy val check : Seq[ConsistencyError] =
     Seq(left, right).flatMap(Consistency.checkPure) ++
     (if(left.typ != right.typ) Seq(ConsistencyError(s"expected the same type, but got ${left.typ} and ${right.typ}", left.pos)) else Seq())
@@ -286,16 +287,18 @@ object AccessPredicate {
 }
 
 /** An accessibility predicate for a field location. */
-case class FieldAccessPredicate(loc: FieldAccess, perm: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AccessPredicate {
+case class FieldAccessPredicate(loc: FieldAccess, permExp: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AccessPredicate {
+  val perm = permExp.getOrElse(FullPerm()(pos, NoInfo, NoTrafos))
   override lazy val check : Seq[ConsistencyError] =
-    (if(!(perm isSubtype Perm)) Seq(ConsistencyError(s"Permission amount parameter of access predicate must be of Perm type, but found ${perm.typ}", perm.pos)) else Seq()) ++ Consistency.checkWildcardUsage(perm)
+    (if(!(perm isSubtype Perm)) Seq(ConsistencyError(s"Permission amount parameter of access predicate must be of Perm type, but found ${perm.typ}", perm.pos)) else Seq())
   val typ: Bool.type = Bool
 }
 
 /** An accessibility predicate for a predicate location. */
-case class PredicateAccessPredicate(loc: PredicateAccess, perm: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AccessPredicate {
+case class PredicateAccessPredicate(loc: PredicateAccess, permExp: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AccessPredicate {
+  val perm = permExp.getOrElse(FullPerm()(pos, NoInfo, NoTrafos))
   override lazy val check : Seq[ConsistencyError] =
-    (if(!(perm isSubtype Perm)) Seq(ConsistencyError(s"Permission amount parameter of access predicate must be of Perm type, but found ${perm.typ}", perm.pos)) else Seq()) ++ Consistency.checkWildcardUsage(perm)
+    (if(!(perm isSubtype Perm)) Seq(ConsistencyError(s"Permission amount parameter of access predicate must be of Perm type, but found ${perm.typ}", perm.pos)) else Seq())
   val typ: Bool.type = Bool
 }
 
@@ -361,6 +364,9 @@ case class PermAdd(left: Exp, right: Exp)(val pos: Position = NoPosition, val in
 case class PermSub(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(PermSubOp) with PermExp with ForbiddenInTrigger
 case class PermMul(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(PermMulOp) with PermExp with ForbiddenInTrigger
 case class IntPermMul(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(IntPermMulOp) with PermExp with ForbiddenInTrigger
+
+/** min expression used in the Silicon debugger */
+case class DebugPermMin(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(DebugPermMinOp) with PermExp with ForbiddenInTrigger
 
 // Comparison expressions
 case class PermLtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(PermLtOp) with ForbiddenInTrigger
@@ -497,6 +503,11 @@ case class Applying(wand: MagicWand, body: Exp)(val pos: Position = NoPosition, 
   lazy val typ = body.typ
 }
 
+case class Asserting(a: Exp, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp {
+  override lazy val check: Seq[ConsistencyError] = Consistency.checkPure(body)
+  lazy val typ = body.typ
+}
+
 // --- Old expressions
 
 sealed trait OldExp extends UnExp {
@@ -512,6 +523,12 @@ case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo
 case class LabelledOld(exp: Exp, oldLabel: String)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends OldExp {
   override lazy val check : Seq[ConsistencyError] =
       Consistency.checkPure(exp)
+}
+
+/** Old expression that are used in the Silicon debugger. */
+case class DebugLabelledOld(exp: Exp, oldLabel: String)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends OldExp {
+  override lazy val check : Seq[ConsistencyError] =
+    Consistency.checkPure(exp)
 }
 
 case object LabelledOld {
@@ -713,6 +730,13 @@ case class LocalVar(name: String, typ: Type)(val pos: Position = NoPosition, val
 /** A special local variable for the result of a function. */
 case class Result(typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractLocalVar {
   lazy val name = "result"
+}
+
+/** A special local variable with a version for Silicon debugging */
+case class LocalVarWithVersion(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractLocalVar with Lhs {
+  def nameWithoutVersion = name.substring(0, name.lastIndexOf("@"))
+  override lazy val check: Seq[ConsistencyError] =
+    if (!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Local var name must be valid identifier.", pos)) else Seq()
 }
 
 // --- Mathematical sequences

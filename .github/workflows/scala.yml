@@ -42,7 +42,7 @@ jobs:
       run: sbt -v +test
     - name: Archive artifacts
       if: matrix.os == 'ubuntu-latest' && matrix.java == 11
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         path: |
           build.sbt

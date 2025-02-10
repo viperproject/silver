@@ -11,6 +11,7 @@ import viper.silver.ast.utility._
 import viper.silver.ast.{SourcePosition, _}
 import viper.silver.plugin.standard.adt.{Adt, AdtType}
 
+import scala.collection.mutable
 import scala.language.implicitConversions
 
 /**
@@ -122,7 +123,7 @@ case class Translator(program: PProgram) {
 
   private def translate(f: PFieldDecl) = findField(f.idndef)
 
-  private val members = collection.mutable.HashMap[String, Node]()
+  protected val members: mutable.Map[String, Node] = collection.mutable.HashMap[String, Node]()
   def getMembers() = members
   /**
     * Translate the signature of a member, so that it can be looked up later.
@@ -173,8 +174,8 @@ case class Translator(program: PProgram) {
   def stmt(pStmt: PStmt): Stmt = {
     val pos = pStmt
     val (s, annotations) = extractAnnotationFromStmt(pStmt)
-    val info = if (annotations.isEmpty) NoInfo else AnnotationInfo(annotations)
-    val subInfo = NoInfo
+    val sourcePNodeInfo = SourcePNodeInfo(pStmt)
+    val info = if (annotations.isEmpty) sourcePNodeInfo else ConsInfo(sourcePNodeInfo, AnnotationInfo(annotations))
     s match {
       case PAssign(targets, _, PCall(method, args, _)) if members(method.name).isInstanceOf[Method] =>
         methodCallAssign(s, targets.toSeq, ts => MethodCall(findMethod(method), args.inner.toSeq map exp, ts)(pos, info))
@@ -188,9 +189,9 @@ case class Translator(program: PProgram) {
         }
         methodCallAssign(s, Seq(targets.head), lv => NewStmt(lv.head, fields)(pos, info))
       case PAssign(PDelimited(idnuse: PIdnUse), _, rhs) =>
-        LocalVarAssign(LocalVar(idnuse.name, ttyp(idnuse.decl.get.asInstanceOf[PAssignableVarDecl].typ))(pos, subInfo), exp(rhs))(pos, info)
+        LocalVarAssign(LocalVar(idnuse.name, ttyp(idnuse.decl.get.asInstanceOf[PAssignableVarDecl].typ))(pos, SourcePNodeInfo(idnuse)), exp(rhs))(pos, info)
       case PAssign(PDelimited(field: PFieldAccess), _, rhs) =>
-        FieldAssign(FieldAccess(exp(field.rcv), findField(field.idnref))(field), exp(rhs))(pos, info)
+        FieldAssign(FieldAccess(exp(field.rcv), findField(field.idnref))(field, SourcePNodeInfo(field)), exp(rhs))(pos, info)
       case lv: PVars =>
         // there are no declarations in the Viper AST; rather they are part of the scope signature
         lv.assign map stmt getOrElse Statements.EmptyStmt
@@ -201,7 +202,7 @@ case class Translator(program: PProgram) {
           case _ => None
         }
         val locals = plocals.flatten.map {
-          case p@PVars(_, vars, _) => vars.toSeq.map(v => LocalVarDecl(v.idndef.name, ttyp(v.typ))(p))
+          case p@PVars(_, vars, _) => vars.toSeq.map(v => LocalVarDecl(v.idndef.name, ttyp(v.typ))(p, SourcePNodeInfo(v)))
         }.flatten
         Seqn(seqn filterNot (_.isInstanceOf[PSkip]) map stmt, locals)(pos, info)
       case PFold(_, e) =>
@@ -306,7 +307,7 @@ case class Translator(program: PProgram) {
         // A PrediateAccessPredicate is a PredicateResourceAccess combined with
         // a Permission. Havoc expects a ResourceAccess. To make types match,
         // we must extract the PredicateResourceAccess.
-        assert(perm.isInstanceOf[FullPerm])
+        assert(perm.isEmpty || perm.get.isInstanceOf[FullPerm])
         (newLhs, predAccess)
       case exp: MagicWand => (newLhs, exp)
       case _ => sys.error("Can't havoc this kind of expression")
@@ -345,7 +346,12 @@ case class Translator(program: PProgram) {
   def exp(parseExp: PExp): Exp = {
     val pos = parseExp
     val (pexp, annotationMap) = extractAnnotation(parseExp)
-    val info = if (annotationMap.isEmpty) NoInfo else AnnotationInfo(annotationMap)
+    val sourcePNodeInfo = SourcePNodeInfo(parseExp)
+    val info = if (annotationMap.isEmpty) sourcePNodeInfo else ConsInfo(sourcePNodeInfo, AnnotationInfo(annotationMap))
+    expInternal(pexp, pos, info)
+  }
+
+  protected def expInternal(pexp: PExp, pos: PExp, info: Info): Exp = {
     pexp match {
       case piu @ PIdnUseExp(name) =>
         piu.decl match {
@@ -498,8 +504,7 @@ case class Translator(program: PProgram) {
             }
           case _: Predicate =>
             val inner = PredicateAccess(args.inner.toSeq map exp, findPredicate(func).name) (pos, info)
-            val fullPerm = FullPerm()(pos, info)
-            PredicateAccessPredicate(inner, fullPerm) (pos, info)
+            PredicateAccessPredicate(inner, None) (pos, info)
           case _ => sys.error("unexpected reference to non-function")
         }
       case PNewExp(_, _) => sys.error("unexpected `new` expression")
@@ -507,6 +512,8 @@ case class Translator(program: PProgram) {
         Unfolding(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos, info)
       case PApplying(_, wand, _, e) =>
         Applying(exp(wand).asInstanceOf[MagicWand], exp(e))(pos, info)
+      case PAsserting(_, a, _, e) =>
+        Asserting(exp(a), exp(e))(pos, info)
       case pl@PLet(_, _, _, exp1, _, PLetNestedScope(body)) =>
         Let(liftLogicalDecl(pl.decl), exp(exp1.inner), exp(body))(pos, info)
       case _: PLetNestedScope =>
@@ -562,7 +569,7 @@ case class Translator(program: PProgram) {
       case PEpsilon(_) =>
         EpsilonPerm()(pos, info)
       case acc: PAccPred =>
-        val p = exp(acc.perm)
+        val p = acc.permExp.map(exp)
         exp(acc.loc) match {
           case loc@FieldAccess(_, _) =>
             FieldAccessPredicate(loc, p)(pos, info)
@@ -641,15 +648,15 @@ case class Translator(program: PProgram) {
 
   /** Takes a `PFormalArgDecl` and turns it into a `LocalVarDecl`. */
   def liftArgDecl(formal: PFormalArgDecl) =
-      LocalVarDecl(formal.idndef.name, ttyp(formal.typ))(formal.idndef)
+      LocalVarDecl(formal.idndef.name, ttyp(formal.typ))(pos = formal.idndef, info = SourcePNodeInfo(formal))
 
   /** Takes a `PFormalReturnDecl` and turns it into a `LocalVarDecl`. */
   def liftReturnDecl(formal: PFormalReturnDecl) =
-      LocalVarDecl(formal.idndef.name, ttyp(formal.typ))(formal.idndef)
+      LocalVarDecl(formal.idndef.name, ttyp(formal.typ))(pos = formal.idndef, info = SourcePNodeInfo(formal))
 
   /** Takes a `PLogicalVarDecl` and turns it into a `LocalVarDecl`. */
   def liftLogicalDecl(logical: PLogicalVarDecl) =
-      LocalVarDecl(logical.idndef.name, ttyp(logical.typ))(logical.idndef)
+      LocalVarDecl(logical.idndef.name, ttyp(logical.typ))(pos = logical.idndef, info = SourcePNodeInfo(logical))
 
   /** Takes a `PType` and turns it into a `Type`. */
   def ttyp(t: PType): Type = t match {

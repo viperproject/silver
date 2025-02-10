@@ -7,7 +7,7 @@
 package viper.silver.plugin.standard.termination
 
 import viper.silver.ast._
-import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, char, space, ssep, text, toParenDoc}
+import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, char, nil, space, ssep, text, toParenDoc}
 import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.ast.utility.Consistency
 import viper.silver.verifier.{ConsistencyError, Failure, VerificationResult}
@@ -50,8 +50,10 @@ case class DecreasesTuple(tupleExpressions: Seq[Exp] = Nil, override val conditi
 
   override val typ: Type = Bool
 
-  override lazy val prettyPrint: PrettyPrintPrimitives#Cont =
-    text("decreases") <> space <> ssep(tupleExpressions map (toParenDoc(_)), char(',') <> space)
+  override lazy val prettyPrint: PrettyPrintPrimitives#Cont = {
+    text("decreases") <>
+      (if (tupleExpressions.nonEmpty) space <> ssep(tupleExpressions map (toParenDoc(_)), char(',') <> space) else nil)
+  }
 
   override val extensionSubnodes: Seq[Node] = tupleExpressions ++ condition
 
@@ -117,7 +119,7 @@ case class DecreasesSpecification(tuple: Option[DecreasesTuple],
                                   star: Option[DecreasesStar]) extends Info {
 
   // The comment of this metadata are the provided decreases clauses
-  override lazy val comment: Seq[String] = (tuple ++ wildcard ++ star).map(_.toString()).toSeq
+  override lazy val comment: Seq[String] = (tuple ++ wildcard ++ star).map(_.toString).toSeq
   override val isCached: Boolean = false
 
   /**

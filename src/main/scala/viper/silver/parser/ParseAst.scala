@@ -296,6 +296,22 @@ case class PIdnRef[T <: PDeclarationInner](name: String)(val pos: (Position, Pos
   override def getExtraVals: Seq[Any] = Seq(pos, ctag)
 }
 
+case class PVersionedIdnUseExp(name: String, version: String, separator: String = "@")(val pos: (Position, Position)) extends PIdnUseName[PTypedVarDecl] with PExp   {
+
+  override def ctag = scala.reflect.classTag[PTypedVarDecl]
+
+  override def rename(newName: String) = PVersionedIdnUseExp(newName, version, separator)(pos)
+
+  val versionedName: String = name + separator + version
+
+  override val typeSubstitutions = List(PTypeSubstitution.id)
+
+  def forceSubstitution(ts: PTypeSubstitution) = {
+    typ = typ.substitute(ts)
+    assert(typ.isGround)
+  }
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // Variable declarations
 
@@ -1064,6 +1080,12 @@ case class PApplying(applying: PKwOp.Applying, wand: PExp, in: PKwOp.In, exp: PE
     List(Map(POpApp.pArgS(0) -> Wand, POpApp.pResS -> POpApp.pArg(1)))
 }
 
+case class PAsserting(asserting: PKwOp.Asserting, a: PExp, in: PKwOp.In, exp: PExp)(val pos: (Position, Position)) extends PHeapOpApp {
+  override val args = Seq(a, exp)
+  override val signatures: List[PTypeSubstitution] =
+    List(Map(POpApp.pArgS(0) -> Impure, POpApp.pResS -> POpApp.pArg(1)))
+}
+
 sealed trait PBinder extends PExp with PScope {
   def boundVars: Seq[PLogicalVarDecl]
 
@@ -1182,13 +1204,22 @@ case class PAccPred(op: PKwOp.Acc, amount: PGrouped.Paren[PMaybePairArgument[PLo
     Map(POpApp.pArgS(1) -> Perm, POpApp.pResS -> Impure),
   )
   def loc = amount.inner.first
-  def perm = amount.inner.second.map(_._2).getOrElse(PFullPerm.implied())
+  def perm = permExp.getOrElse(PFullPerm.implied())
+  def permExp: Option[PExp] = amount.inner.second.map(_._2)
   override val args = Seq(loc, perm)
 }
 
 case class POldExp(op: PKwOp.Old, label: Option[PGrouped[PSym.Bracket, Either[PKw.Lhs, PIdnRef[PLabel]]]], e: PGrouped.Paren[PExp])(val pos: (Position, Position)) extends PCallKeyword with PHeapOpApp {
   override val args = Seq(e.inner)
   override def requirePure = args
+  override val signatures: List[PTypeSubstitution] = List(Map(POpApp.pResS -> POpApp.pArg(0)))
+}
+
+case class PDebugLabelledOldExp(op: PKwOp.Old, label: PVersionedIdnUseExp, e: PExp)(val pos: (Position, Position)) extends PCallKeyword with PHeapOpApp {
+  override val args = Seq(e)
+
+  override def requirePure = args
+
   override val signatures: List[PTypeSubstitution] = List(Map(POpApp.pResS -> POpApp.pArg(0)))
 }
 

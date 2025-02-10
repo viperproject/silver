@@ -25,6 +25,7 @@ object Expressions {
     case CondExp(cnd, thn, els) => isPure(cnd) && isPure(thn) && isPure(els)
     case unf: Unfolding => isPure(unf.body)
     case app: Applying => isPure(app.body)
+    case Asserting(a, e) => isPure(e)
     case QuantifiedExp(_, e0) => isPure(e0)
     case Let(_, _, body) => isPure(body)
     case e: ExtensionExp => e.extensionIsPure
@@ -96,9 +97,10 @@ object Expressions {
   def asBooleanExp(e: Exp): Exp = {
     e.transform({
       case _: AccessPredicate | _: MagicWand => TrueLit()()
-      case fa@Forall(vs,ts,body) => Forall(vs,ts,asBooleanExp(body))(fa.pos,fa.info)
+      case fa@Forall(vs,ts,body) => Forall(vs, ts, asBooleanExp(body))(fa.pos, fa.info, fa.errT)
       case Unfolding(_, exp) => asBooleanExp(exp)
       case Applying(_, exp) => asBooleanExp(exp)
+      case ass@Asserting(a, exp) => Asserting(asBooleanExp(a), asBooleanExp(exp))(ass.pos, ass.info, ass.errT)
     })
   }
 
@@ -131,6 +133,23 @@ object Expressions {
         q.subExps.flatMap(freeVariablesExcluding(_, ignoring))
       case v@AbstractLocalVar(_) if !toIgnore.contains(v) =>
         Seq(v)
+    }.flatten.toSet
+  }
+
+  /** Collects all variables that are actually contained in the given node, filtering out let-variables
+    * as well as variables used in expressions bound to let-variables which are not used in the let body.  */
+  def getContainedVariablesExcludingLet(e: Node): Set[LocalVar] = {
+    Visitor.deepCollect[Node, Set[LocalVar]](Seq(e), {
+      case _: Let => Seq()
+      case n => Nodes.subnodes(n)
+    }) {
+      case lv: LocalVar => Set(lv)
+      case Let(v, e, body) =>
+        val bodyVars = getContainedVariablesExcludingLet(body)
+        if (bodyVars.contains(v.localVar))
+          bodyVars - v.localVar ++ getContainedVariablesExcludingLet(e)
+        else
+          bodyVars - v.localVar
     }.flatten.toSet
   }
 
@@ -191,7 +210,7 @@ object Expressions {
         }
         // Conditions for the current node.
         val conds: Seq[Exp] = n match {
-          case f@FieldAccess(rcv, _) => List(NeCmp(rcv, NullLit()(p))(p), FieldAccessPredicate(f, WildcardPerm()(p))(p))
+          case f@FieldAccess(rcv, _) => List(NeCmp(rcv, NullLit()(p))(p), FieldAccessPredicate(f, Some(WildcardPerm()(p)))(p))
           case f: FuncApp => prog.findFunction(f.funcname).pres
           case Div(_, q) => List(NeCmp(q, IntLit(0)(p))(p))
           case Mod(_, q) => List(NeCmp(q, IntLit(0)(p))(p))
@@ -199,6 +218,7 @@ object Expressions {
           case MapLookup(m, k) => List(MapContains(k, m)(p))
           case Unfolding(pred, _) => List(pred)
           case Applying(wand, _) => List(wand)
+          case Asserting(a, _) => List(a)
           case _ => Nil
         }
         // Only use non-trivial conditions for the subnodes.
