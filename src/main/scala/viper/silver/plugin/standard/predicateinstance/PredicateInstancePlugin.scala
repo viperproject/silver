@@ -64,11 +64,13 @@ class PredicateInstancePlugin(@unused reporter: viper.silver.reporter.Reporter,
         case None =>
           val piFunctionName = s"PI_${predicateInstance.p}"
           val pred = program.findPredicate(predicateInstance.p)
+          val predicateAccess = PredicateAccess(pred.formalArgs.map(_.localVar), pred.name)(predicateInstance.pos, predicateInstance.info, predicateInstance.errT)
+          val predicateAccessPredicate = PredicateAccessPredicate(predicateAccess, Some(WildcardPerm()()))(predicateInstance.pos, predicateInstance.info, predicateInstance.errT)
           val newPIFunction =
             Function(piFunctionName,
               pred.formalArgs,
               DomainType(PredicateInstanceDomain.get, Map()),
-              Seq(PredicateAccessPredicate(PredicateAccess(pred.formalArgs.map(_.localVar), pred.name)(), Some(WildcardPerm()()))(predicateInstance.pos, predicateInstance.info, predicateInstance.errT)),
+              Seq(predicateAccessPredicate),
               Seq(),
               None
             )(PredicateInstanceDomain.get.pos, PredicateInstanceDomain.get.info)

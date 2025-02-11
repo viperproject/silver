@@ -1,0 +1,24 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+field f: Int
+field g: Int
+
+function test1(x: Ref): Bool
+    decreases
+    requires acc(x.f) && acc(x.g)
+{
+    //:: ExpectedOutput(termination.failed:termination.condition.false)
+    nonTerminating(x)
+}
+
+function test2(x: Ref): Bool
+    decreases
+    requires acc(x.f) && acc(x.f) && acc(x.g)
+{
+    nonTerminating(x)
+}
+
+function nonTerminating(x: Ref): Bool
+    decreases *

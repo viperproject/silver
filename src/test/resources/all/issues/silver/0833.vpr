@@ -1,12 +1,9 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-method m1() {
-  while (true) {
-      goto bubble
-  }
-  label bubble
-}
+function gggg(a: Int): Int
+  decreases
 
-
-method m2() { }
+@opaque()
+function hhhh(a: Int): Int
+  decreases
