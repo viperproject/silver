@@ -23,7 +23,6 @@ requires acc(y.f) {
     invariant xs == completed ++ toGo
     invariant forall x: Ref :: x in toGo ==> x.f == old[setupComplete](x.f)
     invariant acc(y.f) && y.f == 1
-
     invariant forall x: Ref :: x in completed ==>
       applying (acc(y.f) --* acc(x.f) && acc(y.f) && y.f == old[lhs](y.f)) in
       x.f == old[setupComplete](x.f) {
@@ -90,6 +89,40 @@ requires acc(y.f) {
     var completed: Seq[Ref] := Seq(some)
     assert forall x: Ref :: x in completed ==> acc(y.f) --* acc(x.f) && acc(y.f)
     assert applying (acc(y.f) --* acc(some.f) && acc(y.f)) in some.f == 0
+    assert applying (acc(y.f) --* acc(some.f) && acc(y.f)) in y.f == 1
+    assert forall x: Ref :: x in xs[1..] ==> acc(x.f)
+
+    //:: ExpectedOutput(assert.failed:insufficient.permission)
+    assert forall x: Ref :: x in xs ==> acc(x.f)
+}
+
+method test5b(xs: Seq[Ref], y: Ref)
+requires forall x: Ref :: x in xs ==> acc(x.f)
+requires injectiveSeq(xs)
+requires |xs| >= 1
+requires acc(y.f) {
+    xs[0].f := 0
+    var some: Ref := xs[0]
+    package acc(y.f) --* acc(some.f) && acc(y.f)
+    var completed: Seq[Ref] := Seq(some)
+    assert forall x: Ref :: x in completed ==> acc(y.f) --* acc(x.f) && acc(y.f)
+    assert applying (acc(y.f) --* acc(some.f) && acc(y.f)) in some.f == 0
+    assert forall x: Ref :: x in xs[1..] ==> acc(x.f)
+
+    //:: ExpectedOutput(assert.failed:insufficient.permission)
+    assert forall x: Ref :: x in xs ==> acc(x.f)
+}
+
+method test5c(xs: Seq[Ref], y: Ref)
+requires forall x: Ref :: x in xs ==> acc(x.f)
+requires injectiveSeq(xs)
+requires |xs| >= 1
+requires acc(y.f) {
+    y.f := 1
+    var some: Ref := xs[0]
+    package acc(y.f) --* acc(some.f) && acc(y.f)
+    var completed: Seq[Ref] := Seq(some)
+    assert forall x: Ref :: x in completed ==> acc(y.f) --* acc(x.f) && acc(y.f)
     assert applying (acc(y.f) --* acc(some.f) && acc(y.f)) in y.f == 1
     assert forall x: Ref :: x in xs[1..] ==> acc(x.f)
 
