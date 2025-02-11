@@ -1,12 +1,10 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-method m1() {
-  while (true) {
-      goto bubble
-  }
-  label bubble
-}
 
+function foo(): Bool
+  decreases
 
-method m2() { }
+function bar(): Int
+  decreases
+  ensures [foo(), true]

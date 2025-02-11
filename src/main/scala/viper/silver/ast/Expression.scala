@@ -73,12 +73,12 @@ case class GtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info
 case class GeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(GeOp) with ForbiddenInTrigger
 
 // Equality and non-equality (defined for all types)
-case class EqCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends EqualityCmp("==") {
+case class EqCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends EqualityCmp("==") with ForbiddenInTrigger {
   override lazy val check : Seq[ConsistencyError] =
     Seq(left, right).flatMap(Consistency.checkPure) ++
     (if(left.typ != right.typ) Seq(ConsistencyError(s"expected the same type, but got ${left.typ} and ${right.typ}", left.pos)) else Seq())
 }
-case class NeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends EqualityCmp("!=") {
+case class NeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends EqualityCmp("!=") with ForbiddenInTrigger {
   override lazy val check : Seq[ConsistencyError] =
     Seq(left, right).flatMap(Consistency.checkPure) ++
     (if(left.typ != right.typ) Seq(ConsistencyError(s"expected the same type, but got ${left.typ} and ${right.typ}", left.pos)) else Seq())
@@ -285,16 +285,18 @@ object AccessPredicate {
 }
 
 /** An accessibility predicate for a field location. */
-case class FieldAccessPredicate(loc: FieldAccess, perm: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AccessPredicate {
+case class FieldAccessPredicate(loc: FieldAccess, permExp: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AccessPredicate {
+  val perm = permExp.getOrElse(FullPerm()(pos, NoInfo, NoTrafos))
   override lazy val check : Seq[ConsistencyError] =
-    (if(!(perm isSubtype Perm)) Seq(ConsistencyError(s"Permission amount parameter of access predicate must be of Perm type, but found ${perm.typ}", perm.pos)) else Seq()) ++ Consistency.checkWildcardUsage(perm)
+    (if(!(perm isSubtype Perm)) Seq(ConsistencyError(s"Permission amount parameter of access predicate must be of Perm type, but found ${perm.typ}", perm.pos)) else Seq())
   val typ: Bool.type = Bool
 }
 
 /** An accessibility predicate for a predicate location. */
-case class PredicateAccessPredicate(loc: PredicateAccess, perm: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AccessPredicate {
+case class PredicateAccessPredicate(loc: PredicateAccess, permExp: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AccessPredicate {
+  val perm = permExp.getOrElse(FullPerm()(pos, NoInfo, NoTrafos))
   override lazy val check : Seq[ConsistencyError] =
-    (if(!(perm isSubtype Perm)) Seq(ConsistencyError(s"Permission amount parameter of access predicate must be of Perm type, but found ${perm.typ}", perm.pos)) else Seq()) ++ Consistency.checkWildcardUsage(perm)
+    (if(!(perm isSubtype Perm)) Seq(ConsistencyError(s"Permission amount parameter of access predicate must be of Perm type, but found ${perm.typ}", perm.pos)) else Seq())
   val typ: Bool.type = Bool
 }
 

@@ -136,6 +136,23 @@ object Expressions {
     }.flatten.toSet
   }
 
+  /** Collects all variables that are actually contained in the given node, filtering out let-variables
+    * as well as variables used in expressions bound to let-variables which are not used in the let body.  */
+  def getContainedVariablesExcludingLet(e: Node): Set[LocalVar] = {
+    Visitor.deepCollect[Node, Set[LocalVar]](Seq(e), {
+      case _: Let => Seq()
+      case n => Nodes.subnodes(n)
+    }) {
+      case lv: LocalVar => Set(lv)
+      case Let(v, e, body) =>
+        val bodyVars = getContainedVariablesExcludingLet(body)
+        if (bodyVars.contains(v.localVar))
+          bodyVars - v.localVar ++ getContainedVariablesExcludingLet(e)
+        else
+          bodyVars - v.localVar
+    }.flatten.toSet
+  }
+
   /** In an expression, rename a list (domain) of variables with given (range) variables. */
   def renameVariables[E <: Exp]
                      (exp: E, domain: Seq[AbstractLocalVar], range: Seq[AbstractLocalVar])
@@ -193,7 +210,7 @@ object Expressions {
         }
         // Conditions for the current node.
         val conds: Seq[Exp] = n match {
-          case f@FieldAccess(rcv, _) => List(NeCmp(rcv, NullLit()(p))(p), FieldAccessPredicate(f, WildcardPerm()(p))(p))
+          case f@FieldAccess(rcv, _) => List(NeCmp(rcv, NullLit()(p))(p), FieldAccessPredicate(f, Some(WildcardPerm()(p)))(p))
           case f: FuncApp => prog.findFunction(f.funcname).pres
           case Div(_, q) => List(NeCmp(q, IntLit(0)(p))(p))
           case Mod(_, q) => List(NeCmp(q, IntLit(0)(p))(p))

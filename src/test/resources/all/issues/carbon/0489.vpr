@@ -1,0 +1,13 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+method test1()
+    ensures (forall q: Bool :: id(q == q))
+{}
+
+function id(a : Bool): Bool { a }
+
+
+method test3()
+  ensures (forall q: Int ::  id(let x == (q) in (true)))
+{}
