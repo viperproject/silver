@@ -46,3 +46,22 @@ method bar(x: Ref)
     //:: ExpectedOutput(assert.failed:assertion.false)
     assert false
 }
+
+
+field x: Int
+field y: Int
+
+method unsound(a: Ref)
+requires acc(a.x) && acc(a.y)
+ensures false
+{
+    package acc(a.x) --* (acc(a.x) && acc(a.y))
+
+    package acc(a.x) --* (acc(a.x) && acc(a.y)) {
+        assert acc(a.x, 2/1)
+        assert false // necessary to trigger unsoundness
+    }
+
+    //:: ExpectedOutput(assert.failed:insufficient.permission)
+    assert acc(a.x) // shouldn't hold as we should have zero permissions
+}
