@@ -48,20 +48,20 @@ method bar(x: Ref)
 }
 
 
-field x: Int
-field y: Int
+field fx: Int
+field fy: Int
 
 method unsound(a: Ref)
-requires acc(a.x) && acc(a.y)
+requires acc(a.fx) && acc(a.fy)
 ensures false
 {
-    package acc(a.x) --* (acc(a.x) && acc(a.y))
+    package acc(a.fx) --* (acc(a.fx) && acc(a.fy))
 
-    package acc(a.x) --* (acc(a.x) && acc(a.y)) {
-        assert acc(a.x, 2/1)
+    package acc(a.fx) --* (acc(a.fx) && acc(a.fy)) {
+        assert acc(a.fx, 2/1)
         assert false // necessary to trigger unsoundness
     }
 
     //:: ExpectedOutput(assert.failed:insufficient.permission)
-    assert acc(a.x) // shouldn't hold as we should have zero permissions
+    assert acc(a.fx) // shouldn't hold as we should have zero permissions
 }
