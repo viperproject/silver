@@ -110,7 +110,7 @@ class PDelimited[+T, +D](
     }
 
     val separator = delimiters.headOption match {
-      case Some(p: PSym.Comma) => rs()
+      case Some(_: PSym.Comma) => rs()
       case None => rn()
       case _ => rlb()
     }
