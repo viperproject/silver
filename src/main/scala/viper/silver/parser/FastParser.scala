@@ -1001,7 +1001,6 @@ class FastParser {
       }
       case _: Parsed.Failure =>
     }
-
     // There was a parsing error, parse member by member to get all errors
     var startIndex = 0
     var members: Seq[PMember] = Nil
