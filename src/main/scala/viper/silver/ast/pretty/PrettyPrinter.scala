@@ -347,7 +347,8 @@ trait FastPrettyPrinterBase extends PrettyPrintPrimitives {
   def parens (d : Cont) : Cont =
     char ('(') <> d <> char (')')
 
-  
+
+
   def brackets (d : Cont) : Cont =
     char ('[') <> d <> char (']')
 

@@ -13,6 +13,7 @@ import viper.silver.ast.{Declaration, ErrorTrafo, Exp, ExtensionExp, ExtensionMe
 import viper.silver.verifier.VerificationResult
 
 import scala.collection.Set
+
 import fastparse._
 
 trait ParserPluginTemplate {
