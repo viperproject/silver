@@ -187,7 +187,7 @@ object FastParserCompanion {
 }
 
 class FastParser {
-  def parse(s: String, f: Path, expandMacros: Boolean, plugins: Option[SilverPluginManager] = None, loader: FileLoader = DiskLoader) = {
+  def parse(s: String, f: Path, plugins: Option[SilverPluginManager] = None, loader: FileLoader = DiskLoader, expandMacros: Boolean = true) = {
     // Strategy to handle imports
     // Idea: Import every import reference and merge imported methods, functions, imports, .. into current program
     //       iterate until no new imports are present.

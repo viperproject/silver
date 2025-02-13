@@ -314,7 +314,7 @@ trait SilFrontend extends DefaultFrontend {
     val file = _inputFile.get
     plugins.beforeParse(input, isImported = false) match {
       case Some(inputPlugin) =>
-        val result = fp.parse(inputPlugin, file, expandMacros, Some(plugins), _loader)
+        val result = fp.parse(inputPlugin, file, Some(plugins), _loader, expandMacros)
         if (result.errors.forall(p => p.isInstanceOf[ParseWarning])) {
           reporter report WarningsDuringParsing(result.errors)
           Succ({
