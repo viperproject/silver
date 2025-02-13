@@ -8,12 +8,7 @@ package viper.silver.parser
 
 import viper.silver.ast.{NoPosition, Position}
 import viper.silver.parser.PSym.Brace
-import viper.silver.parser.RLine.rl
-import viper.silver.parser.RLineBreak.rlb
-import viper.silver.parser.RNest.rne
-import viper.silver.parser.RNil.rn
-import viper.silver.parser.RSpace.rs
-import viper.silver.parser.RText.rt
+import viper.silver.parser.RNode._
 import viper.silver.parser.ReformatPrettyPrinter.{show, showAny}
 import viper.silver.parser.TypeHelper._
 

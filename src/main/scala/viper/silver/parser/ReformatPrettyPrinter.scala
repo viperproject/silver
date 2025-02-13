@@ -34,11 +34,7 @@ import viper.silver.ast
 import viper.silver.ast.HasLineColumn
 import viper.silver.ast.pretty.FastPrettyPrinterBase
 import viper.silver.parser.FastParserCompanion.pTrivia
-import viper.silver.parser.RLine.rl
-import viper.silver.parser.RLineBreak.rlb
-import viper.silver.parser.RNest.rne
-import viper.silver.parser.RNil.rn
-import viper.silver.parser.RSpace.rs
+import viper.silver.parser.RNode._
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -49,20 +45,22 @@ trait RNode {
 trait RCommentFragment
 trait RWhitespace extends RNode with RCommentFragment
 
+object RNode {
+  def rn(): List[RNode] = List(RNil())
+  def rne(l: List[RNode]): List[RNode] = List(RNest(l))
+  def rg(l: List[RNode]): List[RNode] = List(RGroup(l))
+  def rt(text: String): List[RNode] = List(RText(text))
+  def rs(): List[RNode] = List(RSpace())
+  def rl(): List[RNode] = List(RLine())
+  def rlb(): List[RNode] = List(RLineBreak())
+}
+
 case class RNil() extends RNode {
   override def isNil: Boolean = true
 }
 
-object RNil {
-  def rn(): List[RNode] = List(RNil())
-}
-
 case class RText(text: String) extends RNode {
   override def isNil: Boolean = text.isEmpty
-}
-
-object RText {
-  def rt(text: String): List[RNode] = List(RText(text))
 }
 
 case class RTrivia(l: List[RCommentFragment]) extends RNode {
@@ -90,40 +88,20 @@ case class RNest(l: List[RNode]) extends RNode {
   override def isNil: Boolean = l.forall(_.isNil)
 }
 
-object RNest {
-  def rne(l: List[RNode]): List[RNode] = List(RNest(l))
-}
-
 case class RGroup(l: List[RNode]) extends RNode {
   override def isNil: Boolean = l.forall(_.isNil)
-}
-
-object RGroup {
-  def rg(l: List[RNode]): List[RNode] = List(RGroup(l))
 }
 
 case class RSpace() extends RWhitespace with RCommentFragment {
   override def isNil: Boolean = false
 }
 
-object RSpace {
-  def rs(): List[RNode] = List(RSpace())
-}
-
 case class RLine() extends RWhitespace {
   override def isNil: Boolean = false
 }
 
-object RLine {
-  def rl(): List[RNode] = List(RLine())
-}
-
 case class RLineBreak() extends RWhitespace with RCommentFragment {
   override def isNil: Boolean = false
-}
-
-object RLineBreak {
-  def rlb(): List[RNode] = List(RLineBreak())
 }
 
 case class RDLineBreak() extends RWhitespace with RCommentFragment {

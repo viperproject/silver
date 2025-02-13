@@ -12,13 +12,7 @@ import viper.silver.ast.utility.rewriter.{HasExtraValList, HasExtraVars, Rewrita
 import viper.silver.ast.{Exp, Member, NoPosition, SourcePosition, Stmt, Type, FilePosition, HasLineColumn, Position}
 import viper.silver.parser.ReformatPrettyPrinter.{show, showAnnotations, showAny, showBody, showInvs, showOption, showPresPosts, showReturns, showSeq}
 import viper.silver.parser.PSymOp.{EqEq, Iff, Implies}
-import viper.silver.parser.RGroup.rg
-import viper.silver.parser.RLine.rl
-import viper.silver.parser.RLineBreak.rlb
-import viper.silver.parser.RNest.rne
-import viper.silver.parser.RNil.rn
-import viper.silver.parser.RSpace.rs
-import viper.silver.parser.RText.rt
+import viper.silver.parser.RNode._
 import viper.silver.parser.TypeHelper._
 import viper.silver.verifier.ParseReport
 

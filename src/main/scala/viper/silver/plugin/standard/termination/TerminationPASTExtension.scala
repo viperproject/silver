@@ -7,8 +7,7 @@
 package viper.silver.plugin.standard.termination
 
 import viper.silver.ast._
-import viper.silver.parser.RNil.rn
-import viper.silver.parser.RSpace.rs
+import viper.silver.parser.RNode._
 import viper.silver.parser.ReformatPrettyPrinter.{show, showOption}
 import viper.silver.parser.TypeHelper.Bool
 import viper.silver.parser._
