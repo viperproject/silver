@@ -30,10 +30,34 @@ object FastParserCompanion {
       NoTrace((" " | "\t").rep)
   }
 
+  def blockComment[$: P] = {
+    import NoWhitespace._
+    "/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/"
+  }
+
+  def lineCommentBody[$: P] = {
+    import NoWhitespace._
+    "//" ~ CharsWhile(_ != '\n').?
+  }
+
+  /* For regular parsing, we consider the newline after a line comment
+  to be part of the line comment. However, for the reformatter, it's
+  important that the newline is _not_ included, which is why
+  we split into `lineCommentBody` (used for the reformatter) and
+  `lineComment` (used for regular parsing).
+  */
+  def lineComment[$: P] = {
+    import NoWhitespace._
+    lineCommentBody ~ ("\n" | End)
+  }
+
+  def space[$: P] = " " | "\t"
+  def newline[$: P] = StringIn("\r\n") | "\n" | "\r"
+
   implicit val whitespace = {
     import NoWhitespace._
     implicit ctx: ParsingRun[_] =>
-      NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
+      NoTrace((blockComment | lineComment | space | newline).rep)
   }
 
   def identStarts[$: P] = CharIn("A-Z", "a-z", "$_")
@@ -104,24 +128,25 @@ object FastParserCompanion {
       ).pos
   }
 
-  def space[$: P]: P[PSpace] = P(("\t" | " ") map (_ => PSpace()))
+  /* These special parser methods are only used in the reformatter
+  to parse and interpret the whitespaces and comments between two AST nodes.
+  */
+  def pSpace[$: P]: P[PSpace] = P(space map (_ => PSpace()))
 
-  def newline[$: P]: P[PNewLine] = P((StringIn("\n\r") | "\n" | "\r") map (_ => PNewLine()))
+  def pNewline[$: P]: P[PNewLine] = P(newline map (_ => PNewLine()))
 
-  def lineComment[$: P]: P[PComment] = {
-    P(("//" ~~ CharsWhile(_ != '\n').?.!).map { content =>
-      PComment(content, false)
-    })
-  }
-
-  def blockComment[$: P]: P[PComment] = P(("/*" ~~ (!StringIn("*/") ~~ AnyChar).repX.! ~~ "*/").map { content =>
-    PComment(content, true)
+  def pLineComment[$: P]: P[PComment] = P(lineCommentBody.!.map { content =>
+    PComment(content)
   })
 
-  def comment[$: P]: P[PComment] = lineComment | blockComment
+  def pBlockComment[$: P]: P[PComment] = P(blockComment.!.map { content =>
+    PComment(content)
+  })
 
-  def trivia[$: P]: P[Seq[PTrivia]] = {
-    P((space | newline | comment).repX)
+  def pComment[$: P]: P[PComment] = pLineComment | pBlockComment
+
+  def pTrivia[$: P]: P[Seq[PTrivia]] = {
+    P((pSpace | pNewline | pComment).repX)
   }
 
   /**

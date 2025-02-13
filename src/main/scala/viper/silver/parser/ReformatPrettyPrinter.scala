@@ -33,7 +33,7 @@ import fastparse.Parsed
 import viper.silver.ast
 import viper.silver.ast.HasLineColumn
 import viper.silver.ast.pretty.FastPrettyPrinterBase
-import viper.silver.parser.FastParserCompanion.trivia
+import viper.silver.parser.FastParserCompanion.pTrivia
 import viper.silver.parser.RLine.rl
 import viper.silver.parser.RLineBreak.rlb
 import viper.silver.parser.RNest.rne
@@ -196,7 +196,7 @@ class ReformatterContext(val program: String, val offsets: Seq[Int]) {
       val str = program.substring(currentOffset, end);
       currentOffset = updateOffset
 
-      fastparse.parse(str, trivia(_)) match {
+      fastparse.parse(str, pTrivia(_)) match {
         case Parsed.Success(value, _) => {
           // Create a list of deduplicated whitespaces, and comments.
           val trivia = ArrayBuffer[RCommentFragment]()

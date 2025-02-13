@@ -2092,10 +2092,6 @@ trait PTrivia
 case class PSpace() extends PTrivia
 case class PNewLine() extends PTrivia
 
-case class PComment(inner: String, block: Boolean) extends PTrivia {
-  def str: String = if (block) {
-    "/*" + inner + "*/"
-  } else  {
-    "//" + inner
-  }
+case class PComment(inner: String) extends PTrivia {
+  def str: String = inner
 }
