@@ -1,0 +1,35 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+field data: Int
+field f: Int
+
+
+method foo1(x: Ref)
+    requires acc(x.data)
+{
+    package acc(x.data) --* false {
+        assert acc(x.data) && acc(x.data)
+        assert false
+    }
+
+    //:: ExpectedOutput(assert.failed:insufficient.permission)
+    assert acc(x.data)
+}
+
+
+
+method foo2(x: Ref)
+    requires acc(x.data)
+{
+
+    var y: Int
+    package acc(x.data) --* false {
+        assert acc(x.data) && acc(x.data)
+        assert x.f > 0
+    }
+
+    //:: ExpectedOutput(assert.failed:insufficient.permission)
+    assert acc(x.data)
+}
