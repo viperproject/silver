@@ -27,7 +27,7 @@ object FastParserCompanion {
   val whitespaceWithoutNewlineOrComments = {
     import NoWhitespace._
     implicit ctx: ParsingRun[_] =>
-      NoTrace((" " | "\t").rep)
+      NoTrace(space.rep)
   }
 
   def blockComment[$: P] = {
@@ -350,13 +350,13 @@ class FastParser {
   //////////////////////////
 
   import fastparse._
-  import FastParserCompanion.{ExtendedParsing, identContinues, identStarts, LeadingWhitespace, Pos, PositionParsing, reservedKw, reservedSym}
+  import FastParserCompanion.{ExtendedParsing, identContinues, identStarts, LeadingWhitespace, Pos, PositionParsing, reservedKw, reservedSym, blockComment, lineComment, newline, space}
 
 
   implicit val whitespace = {
     import NoWhitespace._
     implicit ctx: ParsingRun[_] =>
-      NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
+      NoTrace((blockComment | lineComment | space | newline).rep)
   }
 
   implicit val lineCol: LineCol = new LineCol(this)
