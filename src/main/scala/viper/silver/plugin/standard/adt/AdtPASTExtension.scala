@@ -101,10 +101,6 @@ trait PAdtChild extends PNode {
 case class PAdtSeq[T <: PNode](seq: PGrouped[PSym.Brace, Seq[T]])(val pos: (Position, Position)) extends PExtender {
   def inner: Seq[T] = seq.inner
   override def pretty = s"${seq.l.pretty}\n  ${seq.inner.map(_.pretty).mkString("\n  ")}\n${seq.r.pretty}"
-
-  override def reformat(implicit ctx: ReformatterContext): List[RNode] = {
-    show(seq)
-  }
 }
 
 /** Any argument to a method, function or predicate. */
@@ -478,9 +474,6 @@ case class PConstructorCall(idnref: PIdnRef[PAdtConstructor], callArgs: PDelimit
       case _ => sys.error("type unification error - should report and not crash")
     }
   }
-
-  override def reformatExp(implicit ctx: ReformatterContext): List[RNode] = show(idnref) <>
-    show(callArgs) <> showOption(typeAnnotated)
 }
 
 case class PDestructorCall(rcv: PExp, dot: PReserved[PDiscDot.type], idnref: PIdnRef[PAdtFieldDecl])
@@ -513,8 +506,6 @@ case class PDestructorCall(rcv: PExp, dot: PReserved[PDiscDot.type], idnref: PId
       case _ => sys.error("type unification error - should report and not crash")
     }
   }
-
-  override def reformatExp(implicit ctx: ReformatterContext): List[RNode] = show(rcv) <> show(dot) <> show(idnref)
 }
 
 case object PIsKeyword extends PKwOp("is") {
@@ -551,6 +542,4 @@ case class PDiscriminatorCall(rcv: PExp, dot: PReserved[PDiscDot.type], is: PRes
       case _ => sys.error("type unification error - should report and not crash")
     }
   }
-
-  override def reformatExp(implicit ctx: ReformatterContext): List[RNode] = show(rcv) <> show(dot) <> show(is) <> show(idnref)
 }

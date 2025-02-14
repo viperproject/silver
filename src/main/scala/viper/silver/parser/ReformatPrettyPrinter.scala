@@ -140,8 +140,11 @@ trait Reformattable extends ReformatBase with Where {
   def reformat(implicit ctx: ReformatterContext): List[RNode]
 }
 
-trait ReformattableExpression extends ReformatBase {
-  def reformatExp(implicit ctx: ReformatterContext): List[RNode]
+trait ReformattableExpression extends ReformatBase with PNode {
+  def reformatExp(implicit ctx: ReformatterContext): List[RNode] = this match {
+    case p: PLeaf => rt(p.pretty)
+    case _ => ReformatPrettyPrinter.reformatNodesNoSpace(this)
+  }
 }
 
 class ReformatterContext(val program: String, val offsets: Seq[Int]) {
@@ -393,5 +396,13 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase with ReformatBase
     } else {
       l.zipWithIndex.map(e => if (e._2 == 0) showAny(e._1) else rlb() <> showAny(e._1)).reduce(_ <> _)
     }
+  }
+
+  def reformatNodesNoSpace(n: PNode)(implicit ctx: ReformatterContext): List[RNode] = {
+    n.subnodes.map(show(_)).reduce(_ <> _)
+  }
+
+  def reformatNodesWithSpace(n: PNode)(implicit ctx: ReformatterContext): List[RNode] = {
+    n.subnodes.map(show(_)).reduce(_ <+> _)
   }
 }

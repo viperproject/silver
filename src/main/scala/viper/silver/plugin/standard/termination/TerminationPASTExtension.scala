@@ -74,6 +74,4 @@ case class PDecreasesStar(star: PSym.Star)(val pos: (Position, Position)) extend
   override def translateExp(t: Translator): ExtensionExp = {
     DecreasesStar()(t.liftPos(this))
   }
-
-  override def reformatExp(implicit ctx: ReformatterContext): List[RNode] = show(star)
 }

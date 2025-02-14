@@ -46,7 +46,4 @@ case class PPredicateInstance(m: PReserved[PMarkerSymbol.type], idnuse: PIdnRef[
   override def translateExp(t: Translator): ExtensionExp = {
     PredicateInstance(idnuse.name, args.inner.toSeq map t.exp)(t.liftPos(this))
   }
-
-  override def reformatExp(implicit ctx: ReformatterContext): List[RNode] = show(m) <>
-    show(idnuse) <> show(args)
 }

@@ -22,7 +22,7 @@ trait LeftSpace extends PReservedString { override def leftPad = " " }
 trait RightSpace extends PReservedString { override def rightPad = " " }
 case class PReserved[+T <: PReservedString](rs: T)(val pos: (Position, Position)) extends PNode with PLeaf {
   override def display = rs.display
-
+  // Need to override implementation because pretty-printing will add space padding
   override def reformat(implicit ctx: ReformatterContext): List[RNode] = rt(rs.token)
 }
 object PReserved {
