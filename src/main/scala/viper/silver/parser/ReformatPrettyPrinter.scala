@@ -197,6 +197,12 @@ class ReformatterContext(val program: String, val offsets: Seq[Int]) {
 
                 newlines = 0
                 spaces = 0
+
+                // In case we had a line comment, add the linebreak
+                // manually, since it was stripped in PComment.
+                if (p.trimmed) {
+                  newlines += 1
+                }
               }
               case _: PNewLine => newlines += 1
               case _: PSpace => spaces += 1

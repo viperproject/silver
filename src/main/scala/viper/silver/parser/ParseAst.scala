@@ -2086,6 +2086,17 @@ trait PTrivia
 case class PSpace() extends PTrivia
 case class PNewLine() extends PTrivia
 
-case class PComment(inner: String) extends PTrivia {
+case class PComment(inner: String, trimmed: Boolean) extends PTrivia {
   def str: String = inner
+}
+
+object PComment {
+  def apply(inner: String): PComment = {
+    // For line comments, the parser will by default include the newline
+    // in the comment. However, for the reformatter it is important that
+    // we strip the newline from the comment and add it manually via a
+    // linebreak instead, so we strip it here.
+    val trimmed = inner.endsWith("\n") || inner.endsWith("\r\n");
+    PComment(inner.trim, trimmed)
+  }
 }

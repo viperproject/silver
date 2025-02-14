@@ -35,20 +35,9 @@ object FastParserCompanion {
     "/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/"
   }
 
-  def lineCommentBody[$: P] = {
-    import NoWhitespace._
-    "//" ~ CharsWhile(_ != '\n').?
-  }
-
-  /* For regular parsing, we consider the newline after a line comment
-  to be part of the line comment. However, for the reformatter, it's
-  important that the newline is _not_ included, which is why
-  we split into `lineCommentBody` (used for the reformatter) and
-  `lineComment` (used for regular parsing).
-  */
   def lineComment[$: P] = {
     import NoWhitespace._
-    lineCommentBody ~ ("\n" | End)
+    "//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)
   }
 
   def space[$: P] = " " | "\t"
@@ -135,7 +124,7 @@ object FastParserCompanion {
 
   def pNewline[$: P]: P[PNewLine] = P(newline map (_ => PNewLine()))
 
-  def pLineComment[$: P]: P[PComment] = P(lineCommentBody.!.map { content =>
+  def pLineComment[$: P]: P[PComment] = P(lineComment.!.map { content =>
     PComment(content)
   })
 
