@@ -22,6 +22,4 @@ case class PRefute(refute: PReserved[PRefuteKeyword.type], e: PExp)(val pos: (Po
   }
 
   override def translateStmt(t: Translator): Stmt = Refute(t.exp(e))(t.liftPos(this))
-
-  override def reformat(implicit ctx: ReformatterContext): List[RNode] = show(refute) <+> show(e)
 }
