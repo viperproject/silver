@@ -6,13 +6,13 @@
 
 package viper.silver.plugin
 
-import viper.silver.parser.{NameAnalyser, PAnnotationsPosition, PExp, PExtender, PKeyword, PSpecification, PKw, PMember, PReserved, PStmt, PTypeSubstitution, Translator, TypeChecker}
+import viper.silver.parser.{NameAnalyser, PAnnotationsPosition, PExp, PExtender, PKeyword, PKw, PMember, PReserved, PSpecification, PStmt, PTypeSubstitution, RNode, ReformatterContext, Translator, TypeChecker}
+import viper.silver.parser.RNode.rt
 import viper.silver.ast.pretty.PrettyPrintPrimitives
-import viper.silver.ast.{Declaration, ErrorTrafo, Exp, ExtensionExp, ExtensionMember, ExtensionStmt, Info, Member, Node, NoPosition, Position, Stmt, Type}
+import viper.silver.ast.{Declaration, ErrorTrafo, Exp, ExtensionExp, ExtensionMember, ExtensionStmt, Info, Member, NoPosition, Node, Position, Stmt, Type}
 import viper.silver.verifier.VerificationResult
 
 import scala.collection.Set
-
 import fastparse._
 
 trait ParserPluginTemplate {

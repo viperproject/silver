@@ -27,13 +27,26 @@ object FastParserCompanion {
   val whitespaceWithoutNewlineOrComments = {
     import NoWhitespace._
     implicit ctx: ParsingRun[_] =>
-      NoTrace((" " | "\t").rep)
+      NoTrace(space.rep)
   }
+
+  def blockComment[$: P] = {
+    import NoWhitespace._
+    "/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/"
+  }
+
+  def lineComment[$: P] = {
+    import NoWhitespace._
+    "//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)
+  }
+
+  def space[$: P] = " " | "\t"
+  def newline[$: P] = StringIn("\r\n") | "\n" | "\r"
 
   implicit val whitespace = {
     import NoWhitespace._
     implicit ctx: ParsingRun[_] =>
-      NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
+      NoTrace((blockComment | lineComment | space | newline).rep)
   }
 
   def identStarts[$: P] = CharIn("A-Z", "a-z", "$_")
@@ -104,6 +117,27 @@ object FastParserCompanion {
       ).pos
   }
 
+  /* These special parser methods are only used in the reformatter
+  to parse and interpret the whitespaces and comments between two AST nodes.
+  */
+  def pSpace[$: P]: P[PSpace] = P(space map (_ => PSpace()))
+
+  def pNewline[$: P]: P[PNewLine] = P(newline map (_ => PNewLine()))
+
+  def pLineComment[$: P]: P[PComment] = P(lineComment.!.map { content =>
+    PComment(content)
+  })
+
+  def pBlockComment[$: P]: P[PComment] = P(blockComment.!.map { content =>
+    PComment(content)
+  })
+
+  def pComment[$: P]: P[PComment] = pLineComment | pBlockComment
+
+  def pTrivia[$: P]: P[Seq[PTrivia]] = {
+    P((pSpace | pNewline | pComment).repX)
+  }
+
   /**
     * A parser which matches leading whitespaces. See `LeadingWhitespace.lw` for more info. Can only be operated on in
     * restricted ways (e.g. `?`, `rep`, `|` or `map`), requiring that it is eventually appended to a normal parser (of type `P[V]`).
@@ -167,7 +201,7 @@ object FastParserCompanion {
 }
 
 class FastParser {
-  def parse(s: String, f: Path, plugins: Option[SilverPluginManager] = None, loader: FileLoader = DiskLoader) = {
+  def parse(s: String, f: Path, plugins: Option[SilverPluginManager] = None, loader: FileLoader = DiskLoader, expandMacros: Boolean = true) = {
     // Strategy to handle imports
     // Idea: Import every import reference and merge imported methods, functions, imports, .. into current program
     //       iterate until no new imports are present.
@@ -179,7 +213,11 @@ class FastParser {
     val file = f.toAbsolutePath().normalize()
     val data = ParserData(plugins, loader, mutable.HashSet(file))
     val program = RecParser(file, data, false).parses(s)
-    MacroExpander.expandDefines(program)
+    if (expandMacros) {
+      MacroExpander.expandDefines(program)
+    } else  {
+      program
+    }
   }
 
   case class ParserData(plugins: Option[SilverPluginManager], loader: FileLoader, local: mutable.HashSet[Path], std: mutable.HashSet[Path] = mutable.HashSet.empty)
@@ -312,13 +350,13 @@ class FastParser {
   //////////////////////////
 
   import fastparse._
-  import FastParserCompanion.{ExtendedParsing, identContinues, identStarts, LeadingWhitespace, Pos, PositionParsing, reservedKw, reservedSym}
+  import FastParserCompanion.{ExtendedParsing, identContinues, identStarts, LeadingWhitespace, Pos, PositionParsing, reservedKw, reservedSym, blockComment, lineComment, newline, space}
 
 
   implicit val whitespace = {
     import NoWhitespace._
     implicit ctx: ParsingRun[_] =>
-      NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
+      NoTrace((blockComment | lineComment | space | newline).rep)
   }
 
   implicit val lineCol: LineCol = new LineCol(this)
@@ -859,7 +897,7 @@ class FastParser {
     P(programMember.rep map (members => {
       val warnings = _warnings
       _warnings = Seq()
-      PProgram(Nil, members)(_, warnings)
+      PProgram(Nil, members)(_, warnings, Nil, "")
     })).pos
 
   def preambleImport[$: P]: P[PKw.Import => PAnnotationsPosition => PImport] = P(
@@ -886,7 +924,7 @@ class FastParser {
       val axioms1 = members collect { case m: PAxiom1 => m }
       val funcs = funcs1 map (f => (PDomainFunction(f.annotations, f.unique, f.function, f.idndef, f.args, f.c, f.typ, f.interpretation)(f.pos), f.s))
       val axioms = axioms1 map (a => (PAxiom(a.annotations, a.axiom, a.idndef, a.exp)(a.pos), a.s))
-      val allMembers = block.update(PDomainMembers(PDelimited(funcs)(NoPosition, NoPosition), PDelimited(axioms)(NoPosition, NoPosition))(block.pos))
+      val allMembers = block.update(PDomainMembers(PDelimited(funcs)(NoPosition, NoPosition), PDelimited(axioms)(NoPosition, NoPosition))(block.pos, block.inner))
       k => ap: PAnnotationsPosition => PDomain(
         ap.annotations,
         k,
@@ -970,7 +1008,11 @@ class FastParser {
 
     // Assume entire file is correct and try parsing it quickly
     fastparse.parse(s, entireProgram(_)) match {
-      case Parsed.Success(value, _) => return value
+      case Parsed.Success(value, _) => {
+        value.offsets = _line_offset;
+        value.rawProgram = s;
+        return value;
+      }
       case _: Parsed.Failure =>
     }
     // There was a parsing error, parse member by member to get all errors
@@ -1018,7 +1060,7 @@ class FastParser {
     val warnings = _warnings
     _warnings = Nil
     val pos = (FilePosition(lineCol.getPos(0)), FilePosition(lineCol.getPos(res.get.index)))
-    PProgram(Nil, members)(pos, errors ++ warnings)
+    PProgram(Nil, members)(pos, errors ++ warnings, Nil, "");
   }
 
   object ParserExtension extends ParserPluginTemplate {

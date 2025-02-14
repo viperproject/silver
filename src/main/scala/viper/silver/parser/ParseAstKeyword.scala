@@ -7,6 +7,9 @@
 package viper.silver.parser
 
 import viper.silver.ast.{NoPosition, Position}
+import viper.silver.parser.PSym.Brace
+import viper.silver.parser.RNode._
+import viper.silver.parser.ReformatPrettyPrinter.{show, showAny}
 import viper.silver.parser.TypeHelper._
 
 trait PReservedString {
@@ -19,6 +22,8 @@ trait LeftSpace extends PReservedString { override def leftPad = " " }
 trait RightSpace extends PReservedString { override def rightPad = " " }
 case class PReserved[+T <: PReservedString](rs: T)(val pos: (Position, Position)) extends PNode with PLeaf {
   override def display = rs.display
+  // Need to override implementation because pretty-printing will add space padding
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = rt(rs.token)
 }
 object PReserved {
   def implied[T <: PReservedString](rs: T): PReserved[T] = PReserved(rs)(NoPosition, NoPosition)
@@ -30,6 +35,21 @@ case class PGrouped[G <: PSym.Group, +T](l: PReserved[G#L], inner: T, r: PReserv
   def prettyLines(implicit ev: T <:< PDelimited[_, _]): String = {
     val iPretty = if (inner.length == 0) "" else s"\n  ${inner.prettyLines.replace("\n", "\n  ")}\n"
     s"${l.pretty}${iPretty}${r.pretty}"
+  }
+
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = {
+    if (l.rs.isInstanceOf[Brace]) {
+      val left = show(l);
+      val inner_ = showAny(inner);
+      val right = show(r);
+      if (inner_.forall(_.isNil)) {
+        left <> right
+      } else {
+        left <> rne(rl() <> inner_) <> rl() <> right
+      }
+    } else  {
+      show(l) <> rne(showAny(inner)) <> show(r)
+    }
   }
 }
 object PGrouped {
@@ -83,6 +103,22 @@ class PDelimited[+T, +D](
   }
   override def hashCode(): Int = viper.silver.utility.Common.generateHashCode(first, inner, end)
   override def toString(): String = s"PDelimited($first,$inner,$end)"
+
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = {
+    if (isEmpty) {
+      return rn()
+    }
+
+    val separator = delimiters.headOption match {
+      case Some(_: PSym.Comma) => rs()
+      case None => rn()
+      case _ => rlb()
+    }
+
+    showAny(first) <>
+      inner.foldLeft(rn())((acc, b) => acc <> showAny(b._1) <> separator <> showAny(b._2)) <>
+      showAny(end)
+  }
 }
 
 object PDelimited {
