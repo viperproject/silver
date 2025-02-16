@@ -12,7 +12,7 @@ import viper.silver.parser.PNode
 
 import scala.util.parsing.input.Position
 
-case class FastMessage (label : String, pos : SourcePosition, error: Boolean) {
+case class FastMessage (label : String, pos : SourcePosition, error: Boolean, node: Option[PNode] = None) {
   def line : Int = pos.line
   def column : Int = pos.column
 }
@@ -50,16 +50,16 @@ object FastMessaging {
   def aMessage (message : FastMessage) =
     IndexedSeq (message)
 
-   /**
-    * Makes a message list if cond is true. Stored with the position of the value
-    */
-  def message (value : PNode, msg : String, cond : Boolean = true, error : Boolean = true) : Messages =
+  /**
+   * Makes a message list if cond is true. Stored with the position of the value
+   */
+  def message (value : PNode, msg : String, cond : Boolean = true, error : Boolean = true, node: Option[PNode]=None) : Messages =
     if (cond) {
       val valuePos = value.errorPosition match {
         case pos: SourcePosition => pos
         case other => sys.error(s"Unexpected position type: ${other} (${other.getClass()})")
       }
-      aMessage (FastMessage (msg, valuePos, error))
+      aMessage (FastMessage (msg, valuePos, error, node))
     } else {
       noMessages
     }

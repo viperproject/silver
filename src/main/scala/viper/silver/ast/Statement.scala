@@ -170,7 +170,7 @@ case class If(cond: Exp, thn: Seqn, els: Seqn)(val pos: Position = NoPosition, v
 /** A while loop. */
 case class While(cond: Exp, invs: Seq[Exp], body: Seqn)
                 (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
-  extends Stmt {
+  extends Stmt with MemberWithSpec {
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
     Consistency.checkPure(cond) ++
@@ -182,7 +182,7 @@ case class While(cond: Exp, invs: Seq[Exp], body: Seqn)
 /** A named label. Labels can be used by gotos as jump targets, and by labelled old-expressions
   * to refer to the state as it existed at that label.
   */
-case class Label(name: String, invs: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt with Declaration {
+case class Label(name: String, invs: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt with MemberWithSpec with Declaration {
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
     invs.flatMap(i=>{ if(!(i isSubtype Bool)) Seq(ConsistencyError(s"Label invariants must be of type Bool, but found ${i.typ}", i.pos)) else Seq()})
