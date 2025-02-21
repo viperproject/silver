@@ -25,12 +25,12 @@ sealed trait Stmt extends Hashable with Infoed with Positioned with Transformabl
     * Returns a list of all undeclared local variables contained in this statement and
     * throws an exception if the same variable is used with different types.
     */
-  def undeclLocalVars = Statements.undeclLocalVars(this)
+  def undeclLocalVars: Seq[LocalVar] = Statements.undeclLocalVars(this)
 
   /**
     * Computes all local variables that are written to in this statement.
     */
-  def writtenVars = Statements.writtenVars(this)
+  def writtenVars: Seq[LocalVar] = Statements.writtenVars(this)
 
   override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)
@@ -54,9 +54,10 @@ sealed trait AbstractAssign extends Stmt {
 }
 
 object AbstractAssign {
-  def apply(lhs: Lhs, rhs: Exp)(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos) = lhs match {
+  def apply(lhs: Lhs, rhs: Exp)(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos): AbstractAssign with Serializable = lhs match {
     case l: LocalVar => LocalVarAssign(l, rhs)(pos, info, errT)
     case l: FieldAccess => FieldAssign(l, rhs)(pos, info, errT)
+    case _ => ???
   }
 
   def unapply(a: AbstractAssign) = Some((a.lhs, a.rhs))

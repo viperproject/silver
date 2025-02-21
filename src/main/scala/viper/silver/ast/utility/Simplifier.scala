@@ -51,7 +51,6 @@ object Simplifier {
       case root@Implies(FalseLit(), _) => TrueLit()(root.pos, root.info)
       case Implies(_, tl@TrueLit()) if assumeWelldefinedness => tl
       case Implies(TrueLit(), consequent) => consequent
-      case root@Implies(FalseLit(), _) => TrueLit()(root.pos, root.info)
       case root@Implies(l1, Implies(l2, r)) => Implies(And(l1, l2)(), r)(root.pos, root.info)
 
       // TODO: Consider checking if Expressions.proofObligations(left) is empty (requires adding the program as parameter).
@@ -216,7 +215,7 @@ object Simplifier {
   private val bigIntZero = BigInt(0)
   private val bigIntOne = BigInt(1)
 
-  object AnyPermLiteral {
+  private object AnyPermLiteral {
     def unapply(p: Exp): Option[(BigInt, BigInt)] = p match {
       case FullPerm() => Some((bigIntOne, bigIntOne))
       case NoPerm() => Some((bigIntZero, bigIntOne))
