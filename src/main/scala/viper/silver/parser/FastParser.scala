@@ -33,7 +33,7 @@ object FastParserCompanion {
   implicit val whitespace = {
     import NoWhitespace._
     implicit ctx: ParsingRun[_] =>
-      NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
+      NoTrace((("/*" ~ (!"*/" ~ AnyChar).rep ~ "*/") | ((("//" ~ !("/")) | "////") ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
   }
 
   def identStarts[$: P] = CharIn("A-Z", "a-z", "$_")
@@ -312,14 +312,7 @@ class FastParser {
   //////////////////////////
 
   import fastparse._
-  import FastParserCompanion.{ExtendedParsing, identContinues, identStarts, LeadingWhitespace, Pos, PositionParsing, reservedKw, reservedSym}
-
-
-  implicit val whitespace = {
-    import NoWhitespace._
-    implicit ctx: ParsingRun[_] =>
-      NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
-  }
+  import FastParserCompanion.{ExtendedParsing, identContinues, identStarts, LeadingWhitespace, Pos, PositionParsing, reservedKw, reservedSym, whitespace}
 
   implicit val lineCol: LineCol = new LineCol(this)
 
@@ -404,7 +397,11 @@ class FastParser {
 
   def stringLiteral[$: P]: P[PStringLiteral] = P((CharsWhile(_ != '\"').! map PRawString.apply).pos.quotes map (PStringLiteral.apply _)).pos
 
-  def annotation[$: P]: P[PAnnotation] = P((P(PSym.At) ~~ annotationIdentifier ~ argList(stringLiteral)) map (PAnnotation.apply _).tupled).pos
+  def docString[$: P]: P[PRawString] = P(CharsWhile(_ != '\n', 0).! map PRawString.apply).pos
+
+  def docAnnotation[$: P]: P[PAnnotation] = P(P(PSym.TripleSlash) ~~ docString).map{ case (s, d) => p => PDocAnnotation(s, d)(p) }.pos
+
+  def annotation[$: P]: P[PAnnotation] = P(P((P(PSym.At) ~~ annotationIdentifier ~ argList(stringLiteral)) map (PAtAnnotation.apply _).tupled).pos | docAnnotation)
 
   def annotated[$: P, T](inner: => P[PAnnotationsPosition => T]): P[T] = P((annotation.rep(0) ~ inner).map {
     case (annotations, i) => pos: Pos => i(PAnnotationsPosition(annotations, pos))
@@ -487,7 +484,7 @@ class FastParser {
 
   def suffixExpr[$: P](bracketed: Boolean = false): P[PExp] = P((atomParen(bracketed) ~~~ suffix.lw.rep).map { case (fac, ss) => foldPExp(fac, ss) })
 
-  def termOp[$: P] = P(reservedSymMany(None, StringIn("*", "/", "\\", "%"), _ match {
+  def termOp[$: P] = P(reservedSymMany(None, !("///") ~ StringIn("*", "/", "\\", "%"), _ match {
     case "*" => PSymOp.Mul
     case "/" => PSymOp.Div
     case "\\" => PSymOp.ArithDiv
@@ -812,9 +809,15 @@ class FastParser {
     P((P(PKw.Else) ~ stmtBlock()) map (PElse.apply _).tupled).pos
 
   def whileStmt[$: P]: P[PKw.While => Pos => PWhile] =
-    P((parenthesizedExp ~~ semiSeparated(invariant) ~ stmtBlock()) map { case (cond, invs, body) => PWhile(_, cond, invs, body) })
+    P((parenthesizedExp ~~ semiSeparated(annotatedInvariant) ~ stmtBlock()) map { case (cond, invs, body) => PWhile(_, cond, invs, body) })
 
-  def invariant(implicit ctx : P[_]) : P[PSpecification[PKw.InvSpec]] = P((P(PKw.Invariant) ~ exp).map((PSpecification.apply _).tupled).pos | ParserExtension.invSpecification(ctx))
+  def annotatedInvariant(implicit ctx : P[_]) : P[PSpecification[PKw.InvSpec]] =
+    NoCut(P(annotation.rep(0) ~ invariant)).map{ case (anns, spec) => p: Pos =>
+            PSpecification[PKw.InvSpec](spec.k, spec.e, anns)(p) }.pos
+
+  def invariant(implicit ctx : P[_]) : P[PSpecification[PKw.InvSpec]] =
+    P((P(PKw.Invariant) ~ exp).map{ case (kw, e) => p: Pos =>
+      PSpecification[PKw.InvSpec](kw, e)(p) }.pos | ParserExtension.invSpecification(ctx))
 
   def localVars[$: P]: P[PKw.Var => Pos => PVars] =
     P((nonEmptyIdnTypeList(PLocalVarDecl(_)) ~~~ (P(PSymOp.Assign) ~ exp).lw.?) map { case (a, i) => PVars(_, a, i) })
@@ -829,7 +832,7 @@ class FastParser {
   def goto[$: P]: P[PKw.Goto => Pos => PGoto] = P(idnref[$, PLabel] map { i => PGoto(_, i) _ })
 
   def label[$: P]: P[PKw.Label => Pos => PLabel] =
-    P((idndef ~~ semiSeparated(invariant)) map { case (i, inv) => k=> PLabel(k, i, inv) _ })
+    P((idndef ~~ semiSeparated(annotatedInvariant)) map { case (i, inv) => k=> PLabel(k, i, inv) _ })
 
   def packageWand[$: P]: P[PKw.Package => Pos => PPackageWand] =
     P((magicWandExp() ~~~ stmtBlock().lw.?) map { case (wand, proof) => PPackageWand(_, wand, proof) _ })
@@ -920,15 +923,26 @@ class FastParser {
   })
 
   def functionDecl[$: P]: P[PKw.Function => PAnnotationsPosition => PFunction] = P((idndef ~ argList(formalArg) ~ PSym.Colon ~ typ
-    ~~ semiSeparated(precondition) ~~ semiSeparated(postcondition) ~~~ bracedExp.lw.?
+    ~~ semiSeparated(annotatedPrecondition) ~~ semiSeparated(annotatedPostcondition) ~~~ bracedExp.lw.?
   ) map { case (idn, args, c, typ, d, e, f) => k =>
       ap: PAnnotationsPosition => PFunction(ap.annotations, k, idn, args, c, typ, d, e, f)(ap.pos)
   })
 
+  def annotatedPrecondition(implicit ctx : P[_]) : P[PSpecification[PKw.PreSpec]] =
+    NoCut(P(annotation.rep(0) ~ precondition)).map{ case (anns, spec) => p: Pos =>
+            PSpecification[PKw.PreSpec](spec.k, spec.e, anns)(p) }.pos
 
-  def precondition(implicit ctx : P[_]) : P[PSpecification[PKw.PreSpec]] = P((P(PKw.Requires) ~ exp).map((PSpecification.apply _).tupled).pos | ParserExtension.preSpecification(ctx))
+  def precondition(implicit ctx : P[_]) : P[PSpecification[PKw.PreSpec]] =
+    P((P(PKw.Requires) ~ exp).map{ case (kw, e) => p: (FilePosition, FilePosition) =>
+        PSpecification[PKw.PreSpec](kw, e)(p)}.pos | ParserExtension.preSpecification(ctx))
 
-  def postcondition(implicit ctx : P[_]) : P[PSpecification[PKw.PostSpec]] = P((P(PKw.Ensures) ~ exp).map((PSpecification.apply _).tupled).pos | ParserExtension.postSpecification(ctx))
+  def annotatedPostcondition(implicit ctx : P[_]) : P[PSpecification[PKw.PostSpec]] =
+    NoCut(P(annotation.rep(0) ~ postcondition)).map{ case (anns, spec) => p: Pos =>
+      PSpecification[PKw.PostSpec](spec.k, spec.e, anns)(p) }.pos
+
+  def postcondition(implicit ctx : P[_]) : P[PSpecification[PKw.PostSpec]] =
+    P((P(PKw.Ensures) ~ exp).map{ case (kw, e) => p: Pos =>
+        PSpecification[PKw.PostSpec](kw, e)(p)}.pos | ParserExtension.postSpecification(ctx))
 
   def predicateDecl[$: P]: P[PKw.Predicate => PAnnotationsPosition => PPredicate] = P(idndef ~ argList(formalArg) ~~~ bracedExp.lw.?).map {
     case (idn, args, c) => k =>
@@ -936,7 +950,7 @@ class FastParser {
   }
 
   def methodDecl[$: P]: P[PKw.Method => PAnnotationsPosition => PMethod] =
-    P((idndef ~ argList(formalArg) ~~~ methodReturns.lw.? ~~ semiSeparated(precondition) ~~ semiSeparated(postcondition) ~~~ stmtBlock().lw.?) map {
+    P((idndef ~ argList(formalArg) ~~~ methodReturns.lw.? ~~ semiSeparated(annotatedPrecondition) ~~ semiSeparated(annotatedPostcondition) ~~~ stmtBlock().lw.?) map {
         case (idn, args, rets, pres, posts, body) => k =>
           ap: PAnnotationsPosition => PMethod(ap.annotations, k, idn, args, rets, pres, posts, body)(ap.pos)
     })
