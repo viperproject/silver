@@ -362,6 +362,7 @@ case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val in
 case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], body: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Location {
   override lazy val check : Seq[ConsistencyError] =
     (if (body.isDefined) Consistency.checkNonPostContract(body.get) ++ Consistency.checkWildcardUsage(body.get, false) else Seq()) ++
+    (if (body.isDefined) Consistency.checkNoInhaleExhale(body.get, "predicates") else Seq()) ++
     (if (body.isDefined && !Consistency.noOld(body.get))
       Seq(ConsistencyError("Predicates must not contain old expressions.",body.get.pos))
      else Seq()) ++
@@ -455,6 +456,7 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres
     posts.flatMap(p=>{ if(!Consistency.noOld(p))
       Seq(ConsistencyError("Function post-conditions must not have old expressions.", p.pos)) else Seq()}) ++
     (pres ++ posts).flatMap(Consistency.checkNoPermForpermExceptInhaleExhale) ++
+    (pres flatMap (pre => Consistency.checkNoInhaleExhale(pre, "function preconditions"))) ++
     (pres ++ posts ++ body.toSeq).flatMap(Consistency.checkWildcardUsage(_, true)) ++
     (if(!(body forall (_ isSubtype typ))) Seq(ConsistencyError("Type of function body must match function type.", pos)) else Seq() ) ++
     (posts flatMap (p => if (!Consistency.noPerm(p) || !Consistency.noForPerm(p)) Seq(ConsistencyError("perm and forperm expressions are not allowed in function postconditions", p.pos)) else Seq() )) ++
