@@ -210,6 +210,8 @@ case class TypeChecker(names: NameAnalyser) {
     stmt match {
       case PAnnotatedStmt(_, s) =>
         check(s)
+      case PExpandedMacroStmt(s) =>
+        check(s)
       case s@PSeqn(ss) =>
         checkMember(s) {
           ss.inner.toSeq foreach check
@@ -299,7 +301,7 @@ case class TypeChecker(names: NameAnalyser) {
         else if (field.decls.length > 1)
           messages ++= FastMessaging.message(field, s"ambiguous field `${field.name}`")
         else
-          messages ++= FastMessaging.message(field, s"undeclared field `${field.name}`")
+          messages ++= FastMessaging.message(field, s"undeclared field `${field.name}`", node=Some(fa) )
       case call: PCall => sys.error(s"Unexpected node $call found")
     }
     // Check rhs
@@ -327,7 +329,7 @@ case class TypeChecker(names: NameAnalyser) {
         fields.inner match {
           case Right(fields) => fields.toSeq foreach (f => {
             if (f.decls.isEmpty)
-              messages ++= FastMessaging.message(f, s"undeclared field `${f.name}`")
+              messages ++= FastMessaging.message(f, s"undeclared field `${f.name}`", node=f.getParent)
             else if (f.decls.length > 1)
               messages ++= FastMessaging.message(f, s"ambiguous field `${f.name}`")
           })
@@ -596,8 +598,8 @@ case class TypeChecker(names: NameAnalyser) {
       *
       * TODO: Similar to Consistency.recordIfNot. Combine!
       */
-    def issueError(n: PNode, m: String): Unit = {
-      messages ++= FastMessaging.message(n, m)
+    def issueError(n: PNode, m: String, node: Option[PNode]=None): Unit = {
+      messages ++= FastMessaging.message(n, m, node=node)
       setErrorType() // suppress further warnings
     }
 
@@ -644,6 +646,9 @@ case class TypeChecker(names: NameAnalyser) {
       case t: PExtender => t.typecheck(this, names).getOrElse(Nil) foreach (message =>
         messages ++= FastMessaging.message(t, message))
       case PAnnotatedExp(_, e) =>
+        checkInternal(e)
+        setType(e.typ)
+      case PExpandedMacroExp(e) =>
         checkInternal(e)
         setType(e.typ)
       case psl: PSimpleLiteral=>
@@ -727,9 +732,9 @@ case class TypeChecker(names: NameAnalyser) {
                 checkMagicWand(wand)
 
               // We checked that the `rcv` is valid above with `poa.args.foreach(checkInternal)`
-              case PFieldAccess(_, _, idnref) =>
+              case fa@PFieldAccess(_, _, idnref) =>
                 if (idnref.decls.isEmpty)
-                  issueError(idnref, s"undeclared field `${idnref.name}`")
+                  issueError(idnref, s"undeclared field `${idnref.name}`", node=Some(fa))
                 else if (idnref.decl.isEmpty)
                   issueError(idnref, s"ambiguous field `${idnref.name}`")
 
