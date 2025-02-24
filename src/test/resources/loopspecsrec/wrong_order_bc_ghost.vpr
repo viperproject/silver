@@ -16,6 +16,7 @@ method f(l : Ref)
    }
    basecase{
    }
+   //:: ExpectedOutput(parser.error)
    ghost{
    }
 }

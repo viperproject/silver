@@ -9,13 +9,17 @@ method f(l : Ref)
    while(curr != null)
    {
         var b : Bool := true
-
-        //:: ExpectedOutput(exceptional.error)
         while(b)
             requires true
             ensures !b
          {
             b := false
+
+            while(b)
+                requires true
+                {
+                    b := false
+                }
         }ghost{
             b := false
         }basecase{

@@ -2,13 +2,14 @@ package viper.silver.plugin.standard.loopspecs
 
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.{Bool, ErrTrafo, Exhale, Exp, If, Implies, Inhale, Label, LabelledOld, LocalVar, LocalVarAssign, LocalVarDecl, MakeTrafoPair, Method, MethodCall, NewStmt, NoInfo, NoPosition, NoTrafos, Node, NodeTrafo, Not, Old, Program, Seqn, Stmt, TrueLit, Type, While}
-import viper.silver.verifier.errors.{ExhaleFailed, PostconditionViolated, PreconditionInCallFalse}
+import viper.silver.verifier.errors.{ContractNotWellformed, ExhaleFailed, PostconditionViolated, PreconditionInCallFalse}
 import viper.silver.verifier.{AbstractError, ConsistencyError}
 import viper.silver.plugin.standard.termination.transformation.ProgramManager
+
 import scala.+:
 
 class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPluginRec, val program : Program) extends ProgramManager {
-  val helper_method_name = "HELPER_" //Todo get name of englobing method?
+  val helper_method_name = "HELPER_"
   def beforeVerify(): Program ={
     // For each loopspecs
     // Identify components of loop
@@ -37,130 +38,24 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPluginRec, val program : Program) e
 
     def mapLoopSpecs(ls : LoopSpecs): (Node, Method, Method) = {
 
-      def vars_from_exp(e : Exp): Set[LocalVar] = {
-        var vars_read : Set[LocalVar] = Set()
-        e.transform({
-          case lv : LocalVar => {
-            vars_read = vars_read + lv //or change
-            lv
-          }
-        })
-        vars_read
-      }
-
-      def vars_from_seqn(seqn: Seqn): Set[LocalVar] = {
-        // All local variable names declared in *this* Seqn (the current scope).
-        val declaredInThisScope: Set[String] =
-          seqn.scopedDecls.collect { case v: LocalVarDecl => v.name }.toSet
-
-        // All local variables read in *this* Seqn (excluding nested Seqn).
-        // That means we only look at direct statements in seqn.ss.
-        var vars_read : Set[LocalVar] = Set()
-        seqn.ss.map({
-            case LocalVarAssign(_, rhs) =>
-              // Only collect vars from the RHS, since LHS is a write
-              vars_read ++= vars_from_exp(rhs)
-
-            case MethodCall(_, args, _) =>
-              // Only collect from the arguments, since the "targets" are writes
-              args.foreach(e => vars_read ++= vars_from_exp(e))
-
-            case nested: Seqn =>
-
-            case other : Node =>
-              // Default: transform the statement to collect LocalVar usage, ignoring LHS if applicable.
-              // This will pick up read references from any expressions inside 'other'.
-              other.transform( {
-                case e: Exp =>
-                  vars_read ++= vars_from_exp(e)
-                  e
-                case se : Seq[Exp] =>
-                  vars_read = vars_read ++ se.flatMap(e => vars_from_exp(e))
-                  se
-              })
-
-          }
-        ) //target read plus vars read
-
-        val assignedInThisScope: Set[String] = seqn.ss.flatMap {
-          case LocalVarAssign(lhs, _) => Some(lhs)
-          case NewStmt(lhs, _)        => Some(lhs)
-          case MethodCall(_, _, targets) => targets
-          case _ => None
-        }.map(_.name).toSet
-
-        // Recursively collect assigned variables in any nested Seqn statements.
-        // We do recursion *after* collecting from this scope,
-        // because child scopes may declare new variables that overshadow (or should not leak out).
-        val assignedFromSubSeqns: Set[String] = Set()
-
-        /*seqn.ss.collect {
-          case nested: Seqn =>
-            // Recursively get targets from the nested scope
-            targets_from_seqn(nested)
-        }.flatten.map(_.name).toSet
-*/
-
-
-        // Recursively collect assigned variables in any nested Seqn statements.
-        // We do recursion *after* collecting from this scope,
-        // because child scopes may declare new variables that overshadow (or should not leak out).
-        val readFromSubSeqns: Set[LocalVar] = seqn.ss.collect {
-          case nested: Seqn =>
-            // Recursively get targets from the nested scope
-            vars_from_seqn(nested)
-        }.flatten.toSet
-
-        // Combine local assigned variables with the ones from sub-sequences
-        val combined : Set[LocalVar] = vars_read ++ readFromSubSeqns
-
-        // Filter out the variables that were declared in this very scope.
-        // They should *not* bubble up to the parent scope's "undeclared" or external declarations.
-        // declaredfromsubseqns would not be licit syntax
-        combined.filterNot(lv => declaredInThisScope.contains(lv.name))
-          .filterNot(lv => assignedInThisScope.contains(lv.name))
-        .filterNot(lv => assignedFromSubSeqns.contains(lv.name))
-      }
 
 
       // TODO: tsf error as such "  [0] Exhale might fail. There might be insufficient permission to access List(curr) (filter.vpr@47.14--47.24)"
       //  into " Precondition might fail." or the specific part of where it happened.
       //  also: complains on precondition ==> point to actual part of loop (entry start, inductive case, basecase) and same for post(ind, base)
 
-
-      // added test case: variable scoping, see if finds targets correcctly, declare + assign, don't declare, don't assign...
-
-      //We use distinct to not count twice a var declared oustide and then used in body plus ghost resp.
       //decl out, assigned in
-      // so we take all the assigned in and intersect with the decl out
       val targets: Seq[LocalVar] = ls.writtenVars.intersect(ls.undeclLocalVars)
-      //should be fine as we can't declare targets in pre/post so visting them shouldn't be wrong
 
-      /*
-      (
-        ls.basecase.map(targets_from_seqn).getOrElse(Seq()) ++
-          ls.ghost.map(targets_from_seqn).getOrElse(Seq()) ++
-          targets_from_seqn(ls.body)
-        ).distinctBy(_.name)
-       */
 
       // decl out, read in, not assigned in
       val vars: Seq[LocalVar] = ls.undeclLocalVars.diff(targets)
-        /*(
-        ls.basecase.map(vars_from_seqn).getOrElse(Seq()) ++
-          ls.ghost.map(vars_from_seqn).getOrElse(Seq()) ++
-          vars_from_seqn(ls.body)
-          ++ ls.pres.flatMap(vars_from_exp)
-          ++ ls.posts.flatMap(vars_from_exp)
-        ).toSeq.filterNot(lv => targets.contains(lv)) //probably no need for this then*/
-//TODO also add cond
+
 
       def get_init_target(name : String, typ : Type): LocalVar =
         LocalVar(s"${name}_init", typ)()
 
 
-      //todo: add tests for failures along the way.
-      //todo: or if it verifies but shouldn't
       def pre_desugar_preexp(e : Exp): Exp = {
         e.transform({
           // only rename targets inside pre
@@ -178,7 +73,8 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPluginRec, val program : Program) e
           case pre : PreExp if !forceChange => Old(pre_desugar_preexp(pre.exp))(pre.pos, pre.info, NodeTrafo(pre))
 
           case l: LocalVar if forceChange && targets.contains(l) =>
-            LocalVar(s"${l.name}_init", l.typ)(l.pos, l.info, NodeTrafo(l)) //todo verify if NodeTrafo necessary here but prob yes because we want the old node not the initnode
+            LocalVar(s"${l.name}_init", l.typ)(l.pos, l.info, NodeTrafo(l))
+            //So the error refers to the old node and not the "_init" node
         })//NodeTrafo(l)
       }
 
@@ -241,15 +137,15 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPluginRec, val program : Program) e
         targets_lvd,
           //pre_desugar(pre, forceChange = true).withMeta(pre.pos, pre.info,pre.errT)),
           Seq(pre_desugar(ls.pres, forceChange = true)), // can only refer to init targets (args names were changed), vars are kept the same
-        //TODO. replace all with this .+ or MakeTrafoPair
         Seq(pre_desugar(ls.posts).withMeta(ls.posts.pos, ls.posts.info, ls.posts.errT.+(ErrTrafo({
-          case PostconditionViolated(offNode, member, reason, cached) => //todo use member??
+          case PostconditionViolated(offNode, member, reason, cached) =>
             PostconditionNotPreservedInductiveStep(offNode, reason, cached)
+
+//          case ContractNotWellformed(offendingNode, reason, cached) =>
+//            ContractNotWellformed(offendingNode.withMeta(reason.pos, NoInfo, reason.offendingNode.errT), reason, cached)
         })))),
-        //TODO is this the best way to change the errT, plus fix error message that now includes this true ==> ...
         Some(body_inductiveStep))()
 
-//todo add this to method decl of program if not useless. test this??
       val helper_method_basecase = Method(
         unique_name_basecase,
         args_method,
@@ -258,13 +154,14 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPluginRec, val program : Program) e
          Seq(pre_desugar(ls.pres, forceChange = true)), // can only refer to init targets (args names were changed), vars are kept the same
         //TODO. replace all with this .+ or MakeTrafoPair
         Seq(pre_desugar(ls.posts).withMeta(ls.posts.pos, ls.posts.info, ls.posts.errT.+(ErrTrafo({
-          case PostconditionViolated(offNode, member, reason, cached) => //todo use member??
+          case PostconditionViolated(offNode, member, reason, cached) =>
             PostconditionNotPreservedBaseCase(offNode, reason, cached)
+
+//          case ContractNotWellformed(offendingNode, reason, cached) =>
+//            ContractNotWellformed(offendingNode.withMeta(reason.pos, NoInfo, reason.offendingNode.errT), reason, cached)
         })))),
-        //TODO is this the best way to change the errT, plus fix error message that now includes this true ==> ...
         Some(body_basecase))()
 
-      //TODO: vars = read not written inside loop
 
       val helper_method_call : Seqn =
         Seqn(
@@ -273,7 +170,7 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPluginRec, val program : Program) e
           case PreconditionInCallFalse(offNode, reason, cached) => //PreconditionInCallFalse(offNode, reason, cached)
             PreconditionNotEstablished(
               offNode.withMeta(reason.pos, NoInfo, reason.offendingNode.errT)
-              , reason, cached) //todo change to og precond not establ wihtout whiel loop
+              , reason, cached)
 
           }))), Seq())() //args, targets//needs vars + targets for args
 
@@ -286,7 +183,7 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPluginRec, val program : Program) e
 
     //same as call transform
     var helper_methods : Seq[Method] = Seq()
-    val newProgram: Program = ViperStrategy.Slim({
+    val map_loopspecs = ViperStrategy.Slim({
       case ls : LoopSpecs =>
         {
 
@@ -295,24 +192,38 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPluginRec, val program : Program) e
           n
         }
 
-    }).execute(program)
+    })
     // This is just traversal not verif
-    //TODO: test with nested loops (TD /BU) test
 
 
-    val transformedMethods = newProgram.methods ++ helper_methods
-    val finalProgram : Program =
-      newProgram.copy(methods = transformedMethods)(NoPosition, NoInfo, NoTrafos)
+    var found = false
+    val find_loopspecs = ViperStrategy.Slim({
+      case ls : LoopSpecs =>
+        found = true
+        ls
+    })
 
-    // Check entire program for pre() that are left
-    // There should be no pres. Must be user mistake.
+    var curr_program = program
+    do {
+      curr_program = map_loopspecs.execute(curr_program)
+      curr_program = curr_program.copy(methods = curr_program.methods ++ helper_methods)(NoPosition, NoInfo, NoTrafos)
+      helper_methods = Seq()
 
-    finalProgram.transform({
+      found = false
+      find_loopspecs.execute(curr_program)
+    }while(found)
+
+    curr_program.transform({
       case p@PreExp(exp) =>
         reportError(ConsistencyError("Found pre expression in wrong part of program. Please only use it in a while loop's postcondition, ghostcode or base case code.", p.pos));
         exp})
 
-    finalProgram
+
+    val errs = curr_program.check //Check again because the desugared program could clash with the outer scope or be wrong on its own
+
+    errs.foreach(reportError(_))
+
+   curr_program
 
   }
   def reportError(error: AbstractError): Unit = {

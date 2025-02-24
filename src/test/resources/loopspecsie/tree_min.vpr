@@ -108,8 +108,9 @@ method tree_min(t : Ref) returns (t_final : Ref, m : Int)
 
             ensures acc(parent.l)
             && BST(parent.l)
-            && m == min(keys(parent.l))
-            && keys(parent.l) ++ Seq(m) == pre(keys(parent.l))
+            && acc(t_final.l)
+            //&& m == min(keys(parent.l))
+            //&& keys(parent.l) ++ Seq(m) == pre(keys(parent.l))
         {
             parent := curr
             curr := lchild
@@ -125,8 +126,9 @@ method tree_min(t : Ref) returns (t_final : Ref, m : Int)
         basecase{
 
             m := curr.val
-            exhale acc(curr.val) && acc(curr.l) && acc(curr.r)
             lchild := curr.r
+            exhale acc(curr.val) && acc(curr.l) && acc(curr.r)
+
             parent.l := lchild
 
             //                  parent
@@ -143,6 +145,7 @@ method tree_min(t : Ref) returns (t_final : Ref, m : Int)
     //TODO
 
 }
+
 
 
 

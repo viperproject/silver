@@ -2,7 +2,7 @@ method f(){
     var b : Bool := true
     while(true)
         //:: ExpectedOutput(precondition.not.preserved:assertion.false)
-        requires b
+        requires !!b
     {
         b := false
     }

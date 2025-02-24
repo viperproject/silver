@@ -28,8 +28,8 @@ method add_iterative_spec(l : Ref)
 
    while(curr != null)
 
-   //:: ExpectedOutput(precondition.not.established:insufficient.permission)
-             //:: ExpectedOutput(not.wellformed:insufficient.permission)
+    //:: ExpectedOutput(precondition.not.established:insufficient.permission)
+                       //:: ExpectedOutput(not.wellformed:insufficient.permission)
       requires List(curr)
       && List(curr.next)
       ensures List(pre(curr))

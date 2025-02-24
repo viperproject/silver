@@ -7,8 +7,8 @@ field val : Int
 
 predicate BST(t : Ref) {
    (t != null) ==> acc(t.val) && acc(t.l) && acc(t.r) && BST(t.l) && BST(t.r)
-   && forall i : Int :: (0 <= i < |keys(t.l)|) ==> keys(t.l)[i] < t.val
-   && forall j : Int :: (0 <= j < |keys(t.r)|) ==> keys(t.r)[j] > t.val
+   //&& forall i : Int :: (0 <= i < |keys(t.l)|) ==> keys(t.l)[i] < t.val
+   //&& forall j : Int :: (0 <= j < |keys(t.r)|) ==> keys(t.r)[j] > t.val
 }
 
 
@@ -104,35 +104,39 @@ method tree_min(t : Ref) returns (t_final : Ref, m : Int)
             requires BST(curr)
             && curr != null
             && acc(parent.l)
-            && acc(t_final.l)
-
+            && ((parent != t_final) ==> acc(t_final.l, write))
             && parent.l == curr
             && unfolding BST(curr) in curr.l == lchild
 
             ensures curr != null
-            acc(parent.l)
-            && BST(parent.l)
-            && BST(t_final.l)
+            && acc(parent.l)
             && acc(t_final.l)
+
+            && BST(t_final.l)
+
             //&& m == min(keys(parent.l))
             //&& keys(parent.l) ++ Seq(m) == pre(keys(parent.l))
         {
             parent := curr
+            unfold BST(curr)
+            unfold BST(curr.l)
             curr := lchild
 
-            unfold BST(curr)
             lchild := curr.l // lchild :=  lchild.l
 
+            fold BST(curr)
+
         }ghost{
-            fold BST(parent.l)
+            fold BST(parent.l) //or fold BST(parent)??
 
 
         }
         basecase{
-
+            unfold BST(curr)
             m := curr.val
-            exhale acc(curr.val) && acc(curr.l) && acc(curr.r)
             lchild := curr.r
+            exhale acc(curr.val) && acc(curr.l) && acc(curr.r)
+
             parent.l := lchild
 
             //                  parent

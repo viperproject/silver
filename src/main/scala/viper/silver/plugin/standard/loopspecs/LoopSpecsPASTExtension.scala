@@ -151,7 +151,7 @@ case class PLoopSpecs(
     val postStr = posts.pretty
     val ghostStr = ghost.map(_.pretty).getOrElse("")
     val basecaseStr = basecase.map(_.pretty).getOrElse("")
-    s"${keyword.pretty}${cond.pretty}\n$preStr\n$postStr\n${body.pretty}\n$ghostStr\n$basecaseStr"
+    s"PLoopSpecs: ${keyword.pretty}${cond.pretty}\n$preStr\n$postStr\n${body.pretty}\n$ghostStr\n$basecaseStr"
   }
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {

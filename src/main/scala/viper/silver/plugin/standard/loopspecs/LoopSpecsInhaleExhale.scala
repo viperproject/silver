@@ -8,10 +8,7 @@ import viper.silver.verifier.errors.ExhaleFailed
 
 import scala.collection.mutable
 
-/*
-TODO: to make plugin into VSCode
-1. make jar with silver carbon silicon
- */
+
 
 //todo refactor code that is common to botth classes
 
@@ -43,87 +40,19 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin, val program : Prog
     //
 
 
-    var types : Set[Type] = Set()
-
-    def make_havoc_methods(): Set[Method] = {
-      types.map(t => make_havoc_type(t))
-    }
-    def make_havoc_type(typ : Type) =
-      Method(s"havoc_${typ}",
-        Seq(),
-        Seq(LocalVarDecl("x", typ)()),
-        Seq(),
-        Seq(),
-        None)()
-
-    def mapLoopSpecs(ls : LoopSpecs): Node = {
-
-    //TODO: RM if all tests work
-      def targets_from_seqn(seqn: Seqn): Seq[LocalVar] = {
-        // All local variable names declared in *this* Seqn (the current scope).
-        val declaredInThisScope: Set[String] =
-          seqn.scopedDecls.collect { case v: LocalVarDecl => v.name }.toSet
-
-        // All local variables assigned (written) in *this* Seqn (excluding nested Seqn).
-        // That means we only look at direct statements in seqn.ss.
-        val assignedInThisScope: Seq[LocalVar] = seqn.ss.flatMap {
-          case LocalVarAssign(lhs, _) => Some(lhs)
-          case NewStmt(lhs, _)        => Some(lhs)
-          case MethodCall(_, _, targets) => targets
-          case _ => None
-        }
-
-        // Recursively collect assigned variables in any nested Seqn statements.
-        // We do recursion *after* collecting from this scope,
-        // because child scopes may declare new variables that overshadow (or should not leak out).
-        val assignedFromSubSeqns: Seq[LocalVar] = seqn.ss.collect {
-          case nested: Seqn =>
-            // Recursively get targets from the nested scope
-            targets_from_seqn(nested)
-        }.flatten
-
-        // Combine local assigned variables with the ones from sub-sequences
-        val combined = assignedInThisScope ++ assignedFromSubSeqns
-
-        // Filter out the variables that were declared in this very scope.
-        // They should *not* bubble up to the parent scope's "undeclared" or external declarations.
-        combined.filterNot(lv => declaredInThisScope.contains(lv.name))
-      }
+    def mapLoopSpecs(ls : LoopSpecs): (Seqn, Iterable[(Type, String)]) = {
 
 
-      //only copy vardecl outside while loop and assigned inside but not decl inside
-      /*def targets_from_stmts(stmts : Seq[Stmt]): Seq[LocalVar] =
-      {
-        val decl_inside = stmts.flatMap(s => s.collect{case v : LocalVarDecl => v.name})
-        stmts.flatMap(_.collect({
-          case v : LocalVarAssign => Seq(v.lhs)
-          case vt : NewStmt => Seq(vt.lhs)
-          case mc : MethodCall => mc.targets
-        })).flatten.filter(lv => !decl_inside.contains(lv.name))
-      }*/
-
-      // TODO: tsf error as such "  [0] Exhale might fail. There might be insufficient permission to access List(curr) (filter.vpr@47.14--47.24)"
-      //  into " Precondition might fail." or the specific part of where it happened.
-      //  also: complains on precondition ==> point to actual part of loop (entry start, inductive case, basecase) and same for post(ind, base)
 
       // added test case: variable scoping, see if finds targets correcctly, declare + assign, don't declare, don't assign...
 
       //We use distinct to not count twice a var declared oustide and then used in body plus ghost resp.
-      /*val targets : Seq[LocalVar] =
-        (targets_from_stmts(Seq(ls.body)) ++
-          targets_from_stmts(ls.basecase.toSeq) ++
-          targets_from_stmts(ls.ghost.toSeq)).distinctBy(lv => lv.name)*/
+
 
       val targets: Seq[LocalVar] = ls.writtenVars.intersect(ls.undeclLocalVars)
 
-      /*(
-        ls.basecase.map(targets_from_seqn).getOrElse(Seq()) ++
-          ls.ghost.map(targets_from_seqn).getOrElse(Seq()) ++
-          targets_from_seqn(ls.body)
-        ).distinctBy(_.name)*/
-      //todo replace with  this if not working anymore
 
-      types = types ++ targets.map(_.typ)
+      //types = types ++ targets.map(_.typ)
 
 
       val prefix = "" //"__" //  "__plugin_loopspecs_"
@@ -132,11 +61,16 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin, val program : Prog
 
       val known_labels : mutable.HashMap[String, String] = mutable.HashMap[String, String]()
 
+      val known_havoc : mutable.HashMap[(Type, String), (Type, String)] = mutable.HashMap[(Type, String), (Type, String)]()
+
       def get_label(label: String): String =
         known_labels.getOrElseUpdate(label, uniqueName(label))
 
       def get_name(full_name: String): String =
         known_targets.getOrElseUpdate(full_name, uniqueName(full_name))
+
+      def get_havoc_name(typ : Type, havocType: String): String =
+        known_havoc.getOrElseUpdate((typ, havocType), (typ, uniqueName(havocType)))._2
 
 
       def get_var_name(label: String = "", name : String): String = {
@@ -166,7 +100,7 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin, val program : Prog
 
       def call_havoc_type(typ : Type, targets : Seq[LocalVar]): Stmt = {
         MethodCall(
-          make_havoc_type(typ).name,
+          get_havoc_name(typ, s"havoc_${typ}"),
           Seq(),
           targets
         )(NoPosition, NoInfo, NoTrafos)
@@ -301,20 +235,27 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin, val program : Prog
           ),
         Seq(non_det) ++ declare_targets_with_label("pre_loop")
       )()
-      desugared_loop
+      (desugared_loop, known_havoc.values)
     }
     //inside the seqs of the seqn you have the var decl
 
-
+    var havoc_methods : Seq[Method] = Seq()
     //same as call transform
     val newProgram: Program = ViperStrategy.Slim({
       case ls : LoopSpecs =>
-        mapLoopSpecs(ls)
+        val (tsf_loop, havocs) = mapLoopSpecs(ls)
+
+        havoc_methods = havoc_methods ++ havocs.map(f =>
+          Method(f._2,
+            Seq(),
+            Seq(LocalVarDecl("x", f._1)()),
+            Seq(),
+            Seq(),
+            None)())
+        tsf_loop
 
     }).execute(program)
     // This is just traversal not verif
-    //TODO: test with nested loops (TD /BU) test
-
 
     // Check entire program for pre() that are left
     // There should be no pres. Must be user mistake.
@@ -326,7 +267,7 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin, val program : Prog
 
 
     // for each type from targets add the havoc methods
-    val transformedMethods = newProgram.methods ++ make_havoc_methods()
+    val transformedMethods = newProgram.methods ++ havoc_methods
     val finalProgram = newProgram.copy(methods = transformedMethods)(NoPosition, NoInfo, NoTrafos)
     val errs = finalProgram.check //Check again because the desugared program could clash with the outer scope or be wrong on its own
 
