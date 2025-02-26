@@ -7,7 +7,6 @@
 package viper.silver.plugin.standard.smoke
 
 import viper.silver.ast.{Position, Stmt}
-import viper.silver.parser.ReformatPrettyPrinter.show
 import viper.silver.parser._
 
 /** Keyword used to define `unreachable` statement. */

@@ -15,14 +15,22 @@ import viper.silver.parser.TypeHelper._
 trait PReservedString {
   def token: String
   def display: String = s"$leftPad$token$rightPad"
-  def leftPad: String = ""
-  def rightPad: String = ""
+  def leftPad: Boolean = false
+  def rightPad: Boolean = false
+  
+  // Unfortunately, there are a few cases where leftPad/rightPad (which are used for the
+  // pretty-printer) are not the same as required for the reformatter, so we need
+  // to keep them as separate variables and override them in certain cases.
+  def reformatLeftPad: RNode = if (leftPad) { RSpace() } else { RNil() }
+  def reformatRightPad: RNode = if (rightPad) { RSpace() } else { RNil() }
 }
-trait LeftSpace extends PReservedString { override def leftPad = " " }
-trait RightSpace extends PReservedString { override def rightPad = " " }
+trait LeftSpace extends PReservedString { override def leftPad = true }
+trait RightSpace extends PReservedString { override def rightPad = true }
 case class PReserved[+T <: PReservedString](rs: T)(val pos: (Position, Position)) extends PNode with PLeaf {
   override def display = rs.display
-  // Need to override implementation because pretty-printing will add space padding
+
+  override def leftPad: RNode = rs.reformatLeftPad
+  override def rightPad: RNode = rs.reformatRightPad
   override def reformat(implicit ctx: ReformatterContext): List[RNode] = rt(rs.token)
 }
 object PReserved {
@@ -110,7 +118,9 @@ class PDelimited[+T, +D](
     }
 
     val separator = delimiters.headOption match {
-      case Some(_: PSym.Comma) => rs()
+      // Commas will already add a space for padding by default,
+      // so we don't add anything here.
+      case Some(_: PSym.Comma) => rn()
       case None => rn()
       case _ => rlb()
     }
@@ -183,7 +193,9 @@ object PKw {
   type Predicate = PReserved[Predicate.type]
   case object Domain extends PKw("domain") with PKeywordLang
   type Domain = PReserved[Domain.type]
-  case object Interpretation extends PKw("interpretation") with PKeywordLang
+  case object Interpretation extends PKw("interpretation") with PKeywordLang {
+    override def reformatLeftPad: RNode = RSpace()
+  }
   type Interpretation = PReserved[Interpretation.type]
   case object Axiom extends PKw("axiom") with PKeywordLang
   type Axiom = PReserved[Axiom.type]
@@ -203,7 +215,7 @@ object PKw {
   type Invariant = PReserved[Invariant.type]
 
   case object Result extends PKw("result") with PKeywordLang with PKeywordAtom {
-    override def rightPad = ""
+    override def rightPad = false
   }
   type Result = PReserved[Result.type]
   case object Exists extends PKw("exists") with PKeywordLang with PKeywordAtom
@@ -213,12 +225,12 @@ object PKw {
   case object Forperm extends PKw("forperm") with PKeywordLang with PKeywordAtom
   type Forperm = PReserved[Forperm.type]
   case object New extends PKw("new") with PKeywordLang with PKeywordAtom {
-    override def rightPad = ""
+    override def rightPad = false
   }
   type New = PReserved[New.type]
 
   case object Lhs extends PKw("lhs") with PKeywordLang {
-    override def rightPad = ""
+    override def rightPad = false
   }
   type Lhs = PReserved[Lhs.type]
 
@@ -378,7 +390,10 @@ trait PSignaturesOp extends POperator {
   def signatures: List[PTypeSubstitution]
 }
 trait PUnaryOp extends POperator with PSignaturesOp
-trait PBinaryOp extends POperator with PSignaturesOp with LeftSpace with RightSpace
+trait PBinaryOp extends POperator with PSignaturesOp with LeftSpace with RightSpace {
+  override def reformatLeftPad: RNode = RNil()
+  override def reformatRightPad: RNode = RNil()
+}
 trait PArithOp extends PBinaryOp {
   override def signatures = List(
     Map(POpApp.pArgS(0) -> Int, POpApp.pArgS(1) -> Int, POpApp.pResS -> Int),

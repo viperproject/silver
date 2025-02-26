@@ -7,7 +7,6 @@
 package viper.silver.plugin.standard.refute
 
 import viper.silver.ast.{Position, Stmt}
-import viper.silver.parser.ReformatPrettyPrinter.show
 import viper.silver.parser.TypeHelper.Bool
 import viper.silver.parser._
 

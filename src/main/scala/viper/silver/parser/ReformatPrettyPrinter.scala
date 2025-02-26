@@ -108,10 +108,6 @@ case class RDLineBreak() extends RWhitespace with RCommentFragment {
   override def isNil: Boolean = false
 }
 
-object RDLineBreak extends RWhitespace {
-  override def isNil: Boolean = false
-}
-
 sealed trait ReformatPrettyPrinterBase extends FastPrettyPrinterBase {
   override val defaultIndent = 4
   override val defaultWidth = 75
@@ -130,14 +126,13 @@ trait ReformatBase {
 
     def <@>(dr: List[RNode]): List[RNode] =
       if (dr.forall(_.isNil)) dl else if (dl.forall(_.isNil)) dr else dl ::: rl() ::: dr
-
-    def <->(dr: List[RNode]): List[RNode] =
-      if (dr.forall(_.isNil)) dl else if (dl.forall(_.isNil)) dr else dl ::: rlb() ::: dr
   }
 }
 
 trait Reformattable extends ReformatBase with Where {
   def reformat(implicit ctx: ReformatterContext): List[RNode]
+  def rightPad: RNode = RNil()
+  def leftPad: RNode = RNil()
 }
 
 trait ReformattableExpression extends ReformatBase with PNode {
@@ -234,8 +229,9 @@ class PrettyPrintContext {
       // If we already have a linebreak, it should not be overwritten e.g. by a space,
       // and special handling applies in case we want a double line break.
       case Some(_: RLineBreak) => w match {
-        case _: RLineBreak => whitespace = Some(RDLineBreak)
-        case _: RDLineBreak => whitespace = Some(RDLineBreak)
+        case _: RLineBreak => whitespace = Some(RDLineBreak())
+        case _: RDLineBreak => whitespace = Some(RDLineBreak())
+        case _ =>
       }
       case Some(_) => whitespace = Some(w)
     }
@@ -243,16 +239,30 @@ class PrettyPrintContext {
 }
 
 object ReformatPrettyPrinter extends ReformatPrettyPrinterBase with ReformatBase {
+  def hasLeadingLwNode(l: List[RNode]): Boolean = l.headOption.map(_ match {
+    case p: RGroup => hasLeadingLwNode(p.l)
+    case p: RNest => hasLeadingLwNode(p.l)
+    case _: RWhitespace => true
+    case _ => false
+  }).getOrElse(false)
+  
   def reformatProgram(p: PProgram): String = {
     implicit val ctx = new ReformatterContext(p.rawProgram, p.offsets)
 
-    def showWhitespace(w:RWhitespace): Cont = {
+    def showWhitespace(w: RWhitespace): Cont = {
       w match {
         case RSpace() => space
         case RLine() => line
         case RLineBreak() => linebreak
         case RDLineBreak() => linebreak <> linebreak
       }
+    }
+    
+    def flushWhitespace(pc: PrettyPrintContext): Cont = {
+      val cont = pc.whitespace.map(showWhitespace(_)).getOrElse(nil)
+      pc.whitespace = None
+      
+      cont
     }
 
     def showTrivia(p: RTrivia): Cont = {
@@ -263,7 +273,7 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase with ReformatBase
           case w: RWhitespace => showWhitespace(w)
           case p: RComment => text(p.comment.str)
         }).reduce((acc, n) => acc <> n)
-      }
+      };
     }
 
     def showNode(p: RNode, pc: PrettyPrintContext): Cont = {
@@ -271,14 +281,14 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase with ReformatBase
         case RNil() => nil
         case w: RWhitespace => {
           pc.register(w)
-          showWhitespace(w)
+
+          nil
         }
         case RText(t: String) => {
-          pc.whitespace = None
-          text(t)
+          flushWhitespace(pc) <> text(t)
         }
         case t: RTrivia => {
-          if (t.hasComment()) {
+          val trivia = if (t.hasComment()) {
             // If we already had a whitespace as part of formatting the program, we might have to
             // trim the leading whitespace from the trivia.
             pc.whitespace match {
@@ -309,9 +319,31 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase with ReformatBase
               case _ => nil
             }
           }
+          
+          flushWhitespace(pc) <> trivia
         }
-        case RGroup(l: List[RNode]) => group(showList(l, pc))
-        case RNest(l: List[RNode]) => nest(defaultIndent, showList(l, pc))
+        case RGroup(l: List[RNode]) => {
+          val lw = flushWhitespace(pc) 
+          val grouped = group(showList(l, pc))
+          
+          if (hasLeadingLwNode(l)) {
+            grouped
+          } else {
+            // Only add the leading whitespace if the current group doesn't start with one.
+            lw <> grouped
+          }
+        }
+        case RNest(l: List[RNode]) => {
+          val lw = flushWhitespace(pc)
+          val nested = nest(defaultIndent, showList(l, pc))
+          
+          if (hasLeadingLwNode(l)) {
+            nested
+          } else {
+            // Only add the leading whitespace if the current nesting doesn't start with one.
+            lw <> nested
+          }
+        }
       }
     }
 
@@ -342,7 +374,7 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase with ReformatBase
     if (annotations.isEmpty) {
       List(RNil())
     } else {
-      annotations.map(show(_)).reduce((acc, n) => acc ::: n)
+      annotations.map(show(_)).reduce((acc, n) => acc <> n)
     }
   }
 
@@ -373,8 +405,10 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase with ReformatBase
 
   def show(r: Reformattable)(implicit ctx: ReformatterContext): List[RNode] = {
     r match {
-      case _: PLeaf => List(ctx.getTrivia(r.pos)) <> r.reformat(ctx)
-      case _ => r.reformat(ctx)
+      case _: PLeaf => {
+        List(r.leftPad) <> List(ctx.getTrivia(r.pos)) <> r.reformat(ctx) <> List(r.rightPad)
+      }
+      case _ => List(r.leftPad) <> r.reformat(ctx) <> List(r.rightPad)
     }
   }
 
@@ -387,6 +421,9 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase with ReformatBase
       case p: Right[Any, Any] => showAny(p.value)
       case p: Left[Any, Any] => showAny(p.value)
       case p: Iterable[Any] => if (p.isEmpty) List() else p.map(showAny).reduce((a, b) => a <> b)
+      case p: Product =>
+        if (p.productArity == 0) List()
+        else (0 until p.productArity).map(i => showAny(p.productElement(i))).reduce((a, b) => a <> b)
     }
   }
 
@@ -397,12 +434,12 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase with ReformatBase
       l.zipWithIndex.map(e => if (e._2 == 0) showAny(e._1) else rlb() <> showAny(e._1)).reduce(_ <> _)
     }
   }
+  
+  def showNestedPaddedExpr(expr: PExp)(implicit ctx: ReformatterContext): List[RNode] = {
+    rne(rg(rl() <> show(expr)))
+  }
 
   def reformatNodesNoSpace(n: PNode)(implicit ctx: ReformatterContext): List[RNode] = {
     n.subnodes.map(show(_)).reduce(_ <> _)
-  }
-
-  def reformatNodesWithSpace(n: PNode)(implicit ctx: ReformatterContext): List[RNode] = {
-    n.subnodes.map(show(_)).reduce(_ <+> _)
   }
 }

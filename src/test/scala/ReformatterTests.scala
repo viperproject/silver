@@ -34,12 +34,17 @@ class ReformatterTests extends AnyFunSuite {
     val ast = Provider.parse(inputProgram)
 
     val reformatted = ReformatPrettyPrinter.reformatProgram(ast);
-    val actual = DiskLoader.loadContent(expected_path).get
-    assert(reformatted == actual)
+    val expected = DiskLoader.loadContent(expected_path).get
+
+    assert(reformatted == expected)
   }
 
   test(s"adts") {
     check_inner("adts")
+  }
+
+  test(s"annotations") {
+    check_inner("annotations")
   }
 
   test(s"domains") {

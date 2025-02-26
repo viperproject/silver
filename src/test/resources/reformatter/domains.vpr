@@ -73,3 +73,8 @@ domain IArray {
         forall a: IArray :: { len(a) } len(a) >= 0
     }
 }
+
+domain myBV    interpretation (
+SMTLIB: "(_ BitVec 32)", Boogie: "bv32") {
+  function toBV32(i: Int): myBV interpretation      "(_ int2bv 32)"
+}

@@ -29,7 +29,7 @@ method sum2(n: Int) returns (res: Int)
 {
     res := 0
     var i: Int := 0;
-    while(i <= n) 
+    while (i <= n)
         invariant i <= (n + 1)
         invariant res == (i - 1) * i / 2
     {
@@ -112,6 +112,7 @@ method removeFirst(first: Ref, last: Ref, values: Seq[Int]) returns (value: Int,
 method client1(a: MyType1[Bool, Ref])
     requires a == bin_oper1(a, a)
 {
+    var a: Map[K, V]
     var b: MyType1[Int, Bool] := constructor_a1(11)
     var c: MyType1[Int, Bool] := constructor_b1(true)
     var d: MyType1[Int, Bool] := bin_oper1(b, c)
@@ -119,4 +120,8 @@ method client1(a: MyType1[Bool, Ref])
 
 method decreasesTuple()
     decreases true, true, true, true if true
+{}
+
+method decreases2()
+    decreases _ if true
 {}

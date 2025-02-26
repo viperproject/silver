@@ -7,7 +7,6 @@
 package viper.silver.plugin.standard.predicateinstance
 
 import viper.silver.ast._
-import viper.silver.parser.ReformatPrettyPrinter.show
 import viper.silver.parser._
 
 import scala.collection.mutable
