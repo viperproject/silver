@@ -7,8 +7,6 @@
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast.utility.rewriter.{Rewritable, StrategyBuilder}
 
-import scala.reflect.runtime.{universe => reflection}
-
 class RewriteWithCycles extends AnyFunSuite {
 
 
@@ -44,7 +42,7 @@ class RewriteWithCycles extends AnyFunSuite {
   }
 
   // Visit all reachable nodes in the graph and call func on them.
-  def visitAll[I : reflection.TypeTag](s:SlimGraph[I], func:I=>I) = {
+  def visitAll[I](s:SlimGraph[I], func:I=>I) = {
     val strat = StrategyBuilder.Ancestor[SlimGraph[I]]({
       case (sG, c) => {
         if(c.ancestorList.dropRight(1).contains(sG))

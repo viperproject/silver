@@ -14,8 +14,8 @@ ThisBuild / scalacOptions ++= Seq(
   "-unchecked",                       // Warn on generated code assumptions
   "-feature",                         // Warn on features that requires explicit import
   "-Wunused",                         // Warn on unused imports
-  "-Ypatmat-exhaust-depth", "40",     // Increase depth of pattern matching analysis
-  // "-Xfatal-warnings",                 // Treat Warnings as errors to guarantee code quality in future changes
+  "-Ypatmat-exhaust-depth", "80",     // Increase depth of pattern matching analysis
+  "-Xfatal-warnings",                 // Treat Warnings as errors to guarantee code quality in future changes
 )
 
 // Enforce UTF-8, instead of relying on properly set locales

@@ -6,8 +6,6 @@
 
 package viper.silver.ast.utility.rewriter
 
-import scala.reflect.runtime.{universe => reflection}
-
 /**
   * Extension of the Strategy context. Encapsulates all the required information for the rewriting
  *
@@ -85,7 +83,7 @@ case class SimpleRegexContext[N <: Rewritable](p: PartialFunction[N, N]) extends
   * @param p Partial function used for rewriting
   * @tparam N Common supertype of every node in the tree
   */
-class SlimRegexStrategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag](a: TRegexAutomaton, p: PartialFunction[N, N]) extends RegexStrategy[N, Any](a, SimpleRegexContext(p), new PartialContextR(null, (x, _) => x, (_, _) => true))
+class SlimRegexStrategy[N <: Rewritable : scala.reflect.ClassTag](a: TRegexAutomaton, p: PartialFunction[N, N]) extends RegexStrategy[N, Any](a, SimpleRegexContext(p), new PartialContextR(null, (x, _) => x, (_, _) => true))
 
 /**
   * A strategy that performs rewriting according to the Regex and Rewriting function specified
@@ -95,7 +93,7 @@ class SlimRegexStrategy[N <: Rewritable : reflection.TypeTag : scala.reflect.Cla
   * @tparam N Common supertype of every node in the tree
   * @tparam COLL Type of custom context
   */
-class RegexStrategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, COLL](a: TRegexAutomaton, p: PartialFunction[(N, RegexContext[N, COLL]), (N, RegexContext[N, COLL])], default: PartialContextR[N, COLL]) extends Strategy[N, RegexContext[N, COLL]](p) {
+class RegexStrategy[N <: Rewritable : scala.reflect.ClassTag, COLL](a: TRegexAutomaton, p: PartialFunction[(N, RegexContext[N, COLL]), (N, RegexContext[N, COLL])], default: PartialContextR[N, COLL]) extends Strategy[N, RegexContext[N, COLL]](p) {
 
   type CTXT = RegexContext[N, COLL]
 
@@ -128,7 +126,7 @@ class RegexStrategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTa
 
     }
     // Get the tuple that matches parameter node
-    def get(node: N, ancList: Seq[N]): Option[CTXT] = {
+    def get(node: N): Option[CTXT] = {
       // Get all matching nodes together with their index (only way to delete them later)
       val candidates = map.zipWithIndex.filter( _._1._1 eq node )
 
@@ -237,10 +235,8 @@ class RegexStrategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTa
         case Some(value) => Some(replaceTopDown(value, matches, ancList)).asInstanceOf[A]
 
         case n: N => {
-          val newAncList = ancList ++ Seq(n)
-
           // Find out if this node is going to be replaced
-          val replaceInfo = matches.get(n, newAncList.asInstanceOf[Seq[N]])
+          val replaceInfo = matches.get(n)
 
           // get resulting node from rewriting
           val resultNodeO = replaceInfo match {
@@ -258,6 +254,7 @@ class RegexStrategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTa
             newNode.asInstanceOf[A]
           else {
             val allowedToRecurse = recursionFunc.applyOrElse(newNode, (_: N) => newNode.children).toSet
+            val newAncList = ancList ++ Seq(n)
             val children = newNode.children.map(child => if (allowedToRecurse(child)) replaceTopDown(child, matches, newAncList) else child)
 
             newNode.withChildren(children).asInstanceOf[A]

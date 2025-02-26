@@ -6,24 +6,20 @@
 
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
-import viper.silver.ast._
-import viper.silver.ast.utility.ImpureAssumeRewriter
-
 
 class UtilityTests extends AnyFunSuite with Matchers {
 
   /* These tests exercise utility methods on the AST (transformers, visitors, rewriters etc.) */
 
   test("Assume rewriter (direct)"){ // assume acc(x.f) -> rewritten to -> assume perm(x.f) >= write
-    val assumeBody = FieldAccessPredicate(FieldAccess(LocalVar("x", Ref)(),Field("f",Int)(NoPosition))(NoPosition), Some(FullPerm()(NoPosition)))(NoPosition)
-    val testMethod : Method = Method("m1", Seq(), Seq(), Seq(), Seq(),
-      Some(Seqn(Seq(
-        Assume(assumeBody)(NoPosition)
-      ), Seq())(NoPosition, NoInfo, NoTrafos))
-      )(NoPosition)
+    // val assumeBody = FieldAccessPredicate(FieldAccess(LocalVar("x", Ref)(),Field("f",Int)(NoPosition))(NoPosition), Some(FullPerm()(NoPosition)))(NoPosition)
+    // val testMethod : Method = Method("m1", Seq(), Seq(), Seq(), Seq(),
+    //  Some(Seqn(Seq(
+    //    Assume(assumeBody)(NoPosition)
+    //  ), Seq())(NoPosition, NoInfo, NoTrafos))
+    //  )(NoPosition)
 
-    val testProgram : Program = Program(Seq(), Seq(Field("f",Int)(NoPosition)), Seq(), Seq(), Seq(testMethod), Seq())(NoPosition)
-
+    // val testProgram : Program = Program(Seq(), Seq(Field("f",Int)(NoPosition)), Seq(), Seq(), Seq(testMethod), Seq())(NoPosition)
     // val rewritten = AssumeRewriter.rewrite(assumeBody,testProgram)
 
     // rewritten should be (TrueLit()(NoPosition)) // this (spurious) test seems to cause an infinite recursion bug..

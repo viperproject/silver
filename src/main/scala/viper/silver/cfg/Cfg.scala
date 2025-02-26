@@ -114,6 +114,8 @@ trait Cfg[S, E] {
         case PostconditionBlock(posts) => PostconditionBlock(posts.map(expMap))
         case LoopHeadBlock(invs, stmts, loopId) => LoopHeadBlock(invs.map(expMap), stmts.flatMap(stmtMap), loopId)
         //case ConstrainingBlock(vars, body) => ConstrainingBlock(vars.map(expMap), body.map[C, S2, E2](factory)(stmtMap, expMap))
+        case _ =>
+          ??? // suppress "match may not be exhaustive"
       }
       block -> mapped
     }.toMap
@@ -162,6 +164,8 @@ trait Cfg[S, E] {
         block.toString + "|" + posts.map(_.toString).map(escape).mkString("|")
       case LoopHeadBlock(invs, stmts, _) =>
         block.toString + "|" + invs.map(inv => "invariant " + escape(inv.toString)).mkString("|") + "|" + stmts.map(_.toString).map(escape).mkString("|")
+      case _ =>
+        ??? // suppress "match may not be exhaustive"
     }
 
     val blockStr = new StringBuilder()
