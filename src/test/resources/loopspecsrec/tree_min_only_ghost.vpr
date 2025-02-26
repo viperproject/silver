@@ -7,8 +7,8 @@ field val : Int
 
 predicate BST(t : Ref) {
    (t != null) ==> acc(t.val) && acc(t.l) && acc(t.r) && BST(t.l) && BST(t.r)
-   //&& forall i : Int :: (0 <= i < |keys(t.l)|) ==> keys(t.l)[i] < t.val
-   //&& forall j : Int :: (0 <= j < |keys(t.r)|) ==> keys(t.r)[j] > t.val
+   && forall i : Int :: (0 <= i < |keys(t.l)|) ==> keys(t.l)[i] < t.val
+   && forall j : Int :: (0 <= j < |keys(t.r)|) ==> keys(t.r)[j] > t.val
 }
 
 
@@ -104,15 +104,26 @@ method tree_min(t : Ref) returns (t_final : Ref, m : Int)
             requires BST(curr)
             && curr != null
             && acc(parent.l)
-            && ((parent != t_final) ==> acc(t_final.l, write))
+            && acc(parent.r)
+            && acc(parent.val)
+            && BST(parent.r)
+            //&& ((parent != t_final) ==> acc(t_final.l, write))
             && parent.l == curr
             && unfolding BST(curr) in curr.l == lchild
+            && forall i : Int :: (0 <= i < |keys(parent.l)|) ==> keys(parent.l)[i] < parent.val
+            && forall j : Int :: (0 <= j < |keys(parent.r)|) ==> keys(parent.r)[j] > parent.val
 
             ensures curr != null
-            && acc(parent.l)
-            && acc(t_final.l)
+            && pre(acc(parent.l))
+            && acc(pre(parent).r)
 
-            && BST(t_final.l)
+            && acc(pre(parent).val)
+            //&& acc(t_final.l)
+
+            && BST(pre(parent).l)
+            && BST(pre(parent).r)
+            && forall i : Int :: (0 <= i < |keys(pre(parent).l)|) ==> keys(pre(parent).l)[i] < pre(parent).val
+            && forall j : Int :: (0 <= j < |keys(pre(parent).r)|) ==> keys(pre(parent).r)[j] > pre(parent).val
 
             //&& m == min(keys(parent.l))
             //&& keys(parent.l) ++ Seq(m) == pre(keys(parent.l))
@@ -126,9 +137,11 @@ method tree_min(t : Ref) returns (t_final : Ref, m : Int)
 
             fold BST(curr)
 
-        }ghost{
-            fold BST(parent.l) //or fold BST(parent)??
+            ghost{
+                fold BST(pre(parent).l) //or fold BST(parent)??
 
+
+            }
 
         }
         basecase{
@@ -142,7 +155,7 @@ method tree_min(t : Ref) returns (t_final : Ref, m : Int)
             //                  parent
             //              /
             //          curr
-            // /                  \
+            //         /                  \
             // lchild = null       curr.r
 
         }

@@ -5,19 +5,20 @@ method f(l : Ref)
    var curr : Ref
    curr := l
 
+   var b : Bool := true
 
    while(curr != null)
    {
-        var b : Bool := true
+        b := true
 
-        //:: ExpectedOutput(exceptional.error)
         while(b)
             requires true
             ensures !b
          {
             b := false
-        }ghost{
-            b := false
+            ghost{
+                        b := false
+                    }
         }basecase{
             b := false
         }
@@ -25,8 +26,10 @@ method f(l : Ref)
         var i : Int
         curr := null
 
-   }ghost{
-        curr := null
+
+        ghost{
+                curr := null
+           }
    }basecase{
         curr := null
    }

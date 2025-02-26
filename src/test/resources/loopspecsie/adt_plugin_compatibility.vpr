@@ -41,8 +41,10 @@ method f2(l : Ref)
         var i : Int
         curr := null
 
-   }ghost{
-        var i : Int
-        i := 1
+        ghost{
+                var i : Int
+                i := 1
+           }
+
    }
 }

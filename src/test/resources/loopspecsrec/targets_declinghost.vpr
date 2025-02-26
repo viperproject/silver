@@ -11,8 +11,9 @@ method f(l : Ref)
    {
         curr := null
 
-   }ghost{
-        var i : Int
+    ghost{
+            var i : Int
+       }
    }
    //:: ExpectedOutput(typechecker.error)
    assert (i == 1)

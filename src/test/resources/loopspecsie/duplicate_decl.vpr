@@ -1,20 +1,19 @@
-// TODO: shouldnt rej during typechecking because ghost and bc is nested scopes of body
-//  for the moment sep scopes but have acc to outside
+// TODO: shouldn't reject during typechecking because ghost and bc are nested scopes of body
+//  For the moment, separate scopes but have access to outside
 method f(l : Ref)
     requires l != null
    {
    var curr : Ref
    curr := l
 
-
    while(curr != null)
    {
-
         var i : Int
         curr := null
 
-   }ghost{ //TODO: doesn't appear in tslated
-        var i : Int
-        i := 1
+        ghost{ // Moved inside the while loop
+            var i : Int
+            i := 1
+        }
    }
 }

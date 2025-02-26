@@ -63,9 +63,11 @@ method list_copy(input : Ref) returns (res : Ref)
 
             res_ptr := curr_append // res_ptr.next = null //lvar assign
             input_ptr := input_ptr.next
-        }ghost{
-            fold List(pre(res_ptr))
-            fold List(pre(input_ptr))
+
+            ghost{
+                        fold List(pre(res_ptr))
+                        fold List(pre(input_ptr))
+                    }
         }basecase{
             fold List(pre(res_ptr.next)) //maybe we cant fold for this one??
             fold List(pre(res_ptr))

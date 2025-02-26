@@ -12,9 +12,9 @@ method f(l : Ref)
 
         var i : Int
         curr := null
-
-   }ghost{ //TODO: doesn't appear in tslated
+ghost{ //TODO: doesn't appear in tslated
         var i : Int
         i := 1
+   }
    }
 }

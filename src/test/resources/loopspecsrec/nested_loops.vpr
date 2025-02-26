@@ -19,18 +19,20 @@ method f(l : Ref)
                 requires true
                 {
                     b := false
+
+                    ghost{
+                                b := false
+                            }
                 }
-        }ghost{
-            b := false
         }basecase{
             b := false
         }
 
         var i : Int
         curr := null
-
-   }ghost{
+ghost{
         curr := null
+   }
    }basecase{
         curr := null
    }

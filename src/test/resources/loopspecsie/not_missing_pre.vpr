@@ -17,7 +17,9 @@ method f(l : Ref)
    {
 
         curr := null
-        i := i + 1
+        ghost{
+            i := i + 1
+        }
    }basecase{ // curr == null && i = pre(i) + 1
         i := i + 1
    }

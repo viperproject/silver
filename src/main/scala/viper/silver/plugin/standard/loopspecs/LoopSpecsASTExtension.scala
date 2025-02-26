@@ -20,7 +20,7 @@ case class PreExp(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoI
 
 
     override def verifyExtExp(): VerificationResult = Success
-    //TODO: probably not called because all desugaring happens before verification
+    //Probably not called because all desugaring happens before verification
 
     /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
      * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression. */
@@ -32,27 +32,20 @@ case class PreExp(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoI
 
 case class LoopSpecs(
   cond: Exp,
-  pres: Exp, //todo should this be exp or seq exp??
+  pres: Exp,
   posts: Exp,
   body: Seqn,
   ghost: Option[Seqn],
   basecase: Option[Seqn])(override val pos: Position = NoPosition, override val info: Info = NoInfo, override val errT: ErrorTrafo = NoTrafos) extends ExtensionStmt {
     def extensionSubnodes: Seq[Node] = Seq(pres) ++ Seq(posts) ++ Seq(body) ++ ghost.map(seqn => seqn) ++ basecase.map(bc => bc)
-    def prettyPrint: PrettyPrintPrimitives#Cont = text("LoopSpecs")
-//    {
-//        val preStr = pres.pretty
-//        val postStr = posts.pretty
-//        val ghostStr = ghost.map(_.pretty).getOrElse("")
-//        val basecaseStr = basecase.map(_.pretty).getOrElse("")
-//        s"LoopSpecs: ${cond.pretty}\n$preStr\n$postStr\n${body.pretty}\n$ghostStr\n$basecaseStr"}
-    
+    def prettyPrint: PrettyPrintPrimitives#Cont = //text("LoopSpecs")
+    // This should not be printed realistically. It should always be desugared. This is for debugging purposes.
+    {
+        val preStr = pres.pretty
+        val postStr = posts.pretty
+        val ghostStr = ghost.map(_.pretty).getOrElse("")
+        val basecaseStr = basecase.map(_.pretty).getOrElse("")
+        s"LoopSpecs: while(${cond.pretty})\n requires $preStr\n ensures $postStr\n {${body.pretty}\nghost{$ghostStr}}\n$basecaseStr"}
     /** declarations contributed by this statement that should be added to the parent scope */
     override def declarationsInParentScope: Seq[Declaration] = Seq.empty
-
-    //override val check = cond.checkTransitively ++ pre
 }
-
-//object LoopSpecs {
-//  val PredicateInstanceDomainName = "PredicateInstance"
-//  def getType: Type = ???
-//}

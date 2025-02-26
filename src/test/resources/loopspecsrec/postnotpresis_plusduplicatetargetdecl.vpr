@@ -14,9 +14,11 @@ method f(l : Ref)
    {
         curr := null
         i := 2
+
+         ghost{
+                i := 3
+           }
    }
-   ghost{
-        i := 3
-   }
+
    assert ( i == 1 )
 }

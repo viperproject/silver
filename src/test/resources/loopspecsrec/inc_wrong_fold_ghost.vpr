@@ -38,11 +38,12 @@ method add_iterative_spec(l : Ref)
       unfold List(curr)
       curr.val := curr.val + 1
       curr := curr.next
+      ghost{
+                             //:: ExpectedOutput(fold.failed:insufficient.permission)
+                             fold List(curr)
+                          }
    }
-   ghost{
-      //:: ExpectedOutput(fold.failed:insufficient.permission)
-      fold List(curr)
-   }
+
    basecase{
       fold List(pre(curr))
    }

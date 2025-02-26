@@ -1,0 +1,13 @@
+method f(){
+
+    var i : Int := 1
+
+    var cond : Bool := true
+
+    while(cond)
+        ensures i == 1
+      {
+        cond := false
+    }
+
+}
