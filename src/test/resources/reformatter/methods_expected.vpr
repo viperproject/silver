@@ -135,3 +135,9 @@ method empty_assign() {
 
 method with_inhale_exhale(lock: Ref)
     ensures [true, forperm r: Ref [r.held] :: false]
+
+method package_wand(lock: Ref) {
+    package A(p, plvs) --* B {
+        fold acc(Tree(p))
+    }
+}

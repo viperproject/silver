@@ -1525,7 +1525,9 @@ case class PFold(fold: PKw.Fold, e: PExp)(val pos: (Position, Position)) extends
 
 case class PUnfold(unfold: PKw.Unfold, e: PExp)(val pos: (Position, Position)) extends PStmt
 
-case class PPackageWand(pckg: PKw.Package, e: PExp, proofScript: Option[PSeqn])(val pos: (Position, Position)) extends PStmt
+case class PPackageWand(pckg: PKw.Package, e: PExp, proofScript: Option[PSeqn])(val pos: (Position, Position)) extends PStmt {
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = show(pckg) <> show(e) <+> showOption(proofScript)
+}
 
 case class PApplyWand(apply: PKw.Apply, e: PExp)(val pos: (Position, Position)) extends PStmt
 
