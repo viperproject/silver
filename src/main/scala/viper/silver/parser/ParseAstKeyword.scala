@@ -492,7 +492,7 @@ object PSymOp {
   type Dot = PReserved[Dot.type]
   case object DotDot  extends PSym("..")  with PSymbolOp
   type DotDot = PReserved[DotDot.type]
-  case object Comma   extends PSym(",")   with PSymbolOp
+  case object Comma   extends PSym(",")   with PSymbolOp with RightSpace
   type Comma = PReserved[Comma.type]
   case object RParen  extends PSym(")")   with PSymbolOp
   type RParen = PReserved[RParen.type]

@@ -128,3 +128,6 @@ method empty_assign() {
     
     swap(a, pivotIndex, right)
 }
+
+method with_inhale_exhale(lock: Ref)
+    ensures [true,forperm r: Ref [r.held] :: false]
