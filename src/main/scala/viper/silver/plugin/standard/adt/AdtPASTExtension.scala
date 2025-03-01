@@ -19,7 +19,9 @@ import viper.silver.ast.utility.rewriter.HasExtraVars
   */
 case object PAdtKeyword extends PKw("adt") with PKeywordLang
 case object PDerivesKeyword extends PKw("derives") with PKeywordLang
-case object PWithoutKeyword extends PKw("without") with PKeywordLang
+case object PWithoutKeyword extends PKw("without") with PKeywordLang {
+  override def reformatLeftPad: RNode = RSpace()
+}
 
 case class PAdt(annotations: Seq[PAnnotation], adt: PReserved[PAdtKeyword.type], idndef: PIdnDef, typVars: Option[PDelimited.Comma[PSym.Bracket, PTypeVarDecl]], c: PAdtSeq[PAdtConstructor], derive: Option[PAdtDeriving])
                (val pos: (Position, Position)) extends PExtender with PSingleMember with PGlobalDeclaration with PPrettySubnodes {
@@ -97,6 +99,9 @@ trait PAdtChild extends PNode {
 case class PAdtSeq[T <: PNode](seq: PGrouped[PSym.Brace, Seq[T]])(val pos: (Position, Position)) extends PExtender {
   def inner: Seq[T] = seq.inner
   override def pretty = s"${seq.l.pretty}\n  ${seq.inner.map(_.pretty).mkString("\n  ")}\n${seq.r.pretty}"
+
+  override def leftPad: RNode = RSpace()
+  override def rightPad: RNode = RSpace()
 }
 
 /** Any argument to a method, function or predicate. */
@@ -491,7 +496,7 @@ case class PDestructorCall(rcv: PExp, dot: PReserved[PDiscDot.type], idnref: PId
 }
 
 case object PIsKeyword extends PKwOp("is") {
-  override def rightPad = ""
+  override def rightPad = false
 }
 case object PDiscDot extends PSym(".") with PSymbolOp
 
