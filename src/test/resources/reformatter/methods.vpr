@@ -121,3 +121,10 @@ method decreasesTuple()
 method decreases2()
     decreases _ if true
 {}
+
+method empty_assign() {
+/* A sample comment.
+   */
+    
+    swap(a, pivotIndex, right)
+}

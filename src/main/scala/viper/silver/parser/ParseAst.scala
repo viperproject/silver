@@ -1539,7 +1539,13 @@ case class PInhale(inhale: PKw.Inhale, e: PExp)(val pos: (Position, Position)) e
 
 /** Can also represent a method call or statement macro with no `:=` when `targets` is empty. */
 case class PAssign(targets: PDelimited[PExp with PAssignTarget, PSym.Comma], op: Option[PSymOp.Assign], rhs: PExp)(val pos: (Position, Position)) extends PStmt {
-  override def reformat(implicit ctx: ReformatterContext): List[RNode] = show(targets) <> showOption(op) <> rne(show(rhs))
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = {
+    if (targets.isEmpty) {
+      show(rhs)
+    } else {
+      show(targets) <> showOption(op) <> rne(show(rhs))
+    }
+  }
 }
 
 sealed trait PIfContinuation extends PStmt
