@@ -70,6 +70,10 @@ trait PNode extends Where with Product with Rewritable with HasExtraValList {
   def deepCollect[A](f: PartialFunction[PNode, A]): Seq[A] =
     Visitor.deepCollect(Seq(this), PNode.callSubnodes)(f)
 
+  /** Same as deep collect except that subnodes are visited only if f1 returns true at the current node */
+  def deepCollectOpt[A](f1: PNode => Boolean, f2: PartialFunction[PNode, A]): Seq[A] =
+    Visitor.deepCollect(Seq(this), (n : PNode) => if (f1(n)) PNode.callSubnodes(n) else Seq.empty)(f2)
+
   /** @see [[Visitor.shallowCollect()]] */
   def shallowCollect[R](f: PartialFunction[PNode, R]): Seq[R] =
     Visitor.shallowCollect(Seq(this), PNode.callSubnodes)(f)
@@ -88,6 +92,10 @@ trait PNode extends Where with Product with Rewritable with HasExtraValList {
     * @see [[PNode.initProperties()]] */
   def deepCopyAll[A <: PNode]: PNode =
     StrategyBuilder.Slim[PNode]({ case n => n }).forceCopy().execute[PNode](this)
+
+  /** @see [[Visitor.find()]] */
+  def find[A](f: PartialFunction[PNode, A]): Option[A] =
+    Visitor.find(this, PNode.callSubnodes)(f)
 
   private val _children = scala.collection.mutable.ListBuffer[PNode]()
 
@@ -1439,6 +1447,15 @@ case class PAnnotatedStmt(annotation: PAnnotation, stmt: PStmt)(val pos: (Positi
 case class PSeqn(ss: PDelimited.Block[PStmt])(val pos: (Position, Position)) extends PStmt with PScope {
   override def pretty = ss.prettyLines
 }
+
+///////////////////////////////////////////////////////////////////////////
+// Wrapper for expanded macros
+trait PExpandedMacro
+case class PExpandedMacroExp(exp: PExp)(val pos: (Position, Position)) extends PExp with PExpandedMacro {
+  override def typeSubstitutions: collection.Seq[PTypeSubstitution] = exp.typeSubstitutions
+  override def forceSubstitution(ts: PTypeSubstitution): Unit = exp.forceSubstitution(ts)
+}
+case class PExpandedMacroStmt(stmt: PStmt)(val pos: (Position, Position)) extends PStmt with PExpandedMacro
 
 /**
   * PSeqn representing the expanded body of a statement macro.
