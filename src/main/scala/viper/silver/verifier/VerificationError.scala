@@ -633,11 +633,11 @@ object reasons {
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = AssertionFalse(offendingNode.asInstanceOf[Exp])
   }
 
-  case class AssertionFalseAtBranch(offendingNode: Exp, treeString: String) extends AbstractErrorReason {
-    val id = "assertion.false.branch"
+  case class BranchFailure(offendingNode: Exp, treeString: String) extends AbstractErrorReason {
+    val id = "branch.Failure"
     def readableMessage = "\n" + treeString
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = AssertionFalseAtBranch(offendingNode.asInstanceOf[Exp], treeString)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = BranchFailure(offendingNode.asInstanceOf[Exp], treeString)
   }
 
   // Note: this class should be deprecated/removed - we no longer support epsilon permissions in the language
