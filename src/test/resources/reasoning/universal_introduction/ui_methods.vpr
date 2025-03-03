@@ -267,23 +267,38 @@ method test9(x: Ref, y: Int)
 }
 
 
-method testRec1(x: Int)
+method testRec1(x: Ref)
     requires acc(x.f)
-    influenced heap by {heap}
+    influenced heap by {heap, x}
 {
-    if (y == 0) {
+    if (x.f == 0) {
         exhale acc(x.f)
     }
 }
 
 
-method testRec2(x: Int)
+method testRec2(x: Ref)
     requires acc(x.f)
-    influenced heap by {heap}
+    influenced heap by {heap, x}
 {
-    testAssumesAbstract1(x)
+    testAssumesAbstract(x)
     testRec1(x)
 }
 
-method testAssumesAbstract(x: Int)
-    assumesUsing {x}
+method testAssumesAbstract(x: Ref)
+    influenced assumes by {x}
+
+function f1(i1: Int, i2: Int): Int
+
+method test_local_var_resolve(i2: Int) returns (ret: Int)
+influenced ret by {i2}
+{
+  var i1: Int
+  ret := f1(i1, i2)
+}
+
+method test_local_var_resolve_caller() {
+    prove forall x: Int assuming x != 0 implies x == 1 {
+        var i: Int := test_local_var_resolve(x)
+    }
+}

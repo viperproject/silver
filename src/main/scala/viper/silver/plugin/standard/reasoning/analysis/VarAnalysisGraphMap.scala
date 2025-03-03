@@ -226,6 +226,15 @@ case class VarAnalysisGraphMap(prog: Program,
               n => reportErrorWithMsg(ConsistencyError(s"Contradicting flow annotation: Method might assume or inhale, which is caused by ${assumeVars.map(_.pretty).mkString(", ")}", n.pos))
             }
           }
+        
+          // Remove sources corresponding to local variables (as opposed to parameters) such that only sources concerned with method arguments and the heap remain:
+          val formalVars = method.formalArgs.map(_.localVar)
+          map = map.map {
+            case (sink, sources) => sink -> sources.filter {
+              case LocalVarSource(v) => formalVars.contains(v)
+              case _ => true
+            }
+          }
 
           // Check calculated value against the provided influencedBy annotations if there are any
           val influencedBys = method.posts.collect { case f: InfluencedBy => f }
