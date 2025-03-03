@@ -1488,7 +1488,9 @@ sealed trait PIfContinuation extends PStmt
 case class PIf(keyword: PReserved[PKeywordIf], cond: PGrouped.Paren[PExp], thn: PSeqn, els: Option[PIfContinuation])(val pos: (Position, Position)) extends PStmt with PIfContinuation
 case class PElse(k: PKw.Else, els: PSeqn)(val pos: (Position, Position)) extends PStmt with PIfContinuation
 
-case class PWhile(keyword: PKw.While, cond: PGrouped.Paren[PExp], invs: PDelimited[PSpecification[PKw.InvSpec], Option[PSym.Semi]], body: PSeqn)(val pos: (Position, Position)) extends PStmt
+trait PMemberWithSpec
+
+case class PWhile(keyword: PKw.While, cond: PGrouped.Paren[PExp], invs: PDelimited[PSpecification[PKw.InvSpec], Option[PSym.Semi]], body: PSeqn)(val pos: (Position, Position)) extends PStmt with PMemberWithSpec
 
 case class PVars(keyword: PKw.Var, vars: PDelimited[PLocalVarDecl, PSym.Comma], init: Option[(PSymOp.Assign, PExp)])(val pos: (Position, Position)) extends PStmt {
   def assign: Option[PAssign] = init map (i => PAssign(vars.update(vars.toSeq.map(_.toIdnUse)), Some(i._1), i._2)(pos))
@@ -1730,7 +1732,7 @@ case class PPredicate(annotations: Seq[PAnnotation], keyword: PKw.Predicate, idn
 }
 
 case class PMethod(annotations: Seq[PAnnotation], keyword: PKw.Method, idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PFormalArgDecl], returns: Option[PMethodReturns], pres: PDelimited[PSpecification[PKw.PreSpec], Option[PSym.Semi]], posts: PDelimited[PSpecification[PKw.PostSpec], Option[PSym.Semi]], body: Option[PSeqn])
-                  (val pos: (Position, Position)) extends PSingleMember with PGlobalCallableNamedArgs with PPrettySubnodes {
+                  (val pos: (Position, Position)) extends PSingleMember with PMemberWithSpec with PGlobalCallableNamedArgs with PPrettySubnodes {
   def formalReturns: Seq[PFormalReturnDecl] = returns.map(_.formalReturns.inner.toSeq).getOrElse(Nil)
   override def returnNodes = returns.toSeq
 }

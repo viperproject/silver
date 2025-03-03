@@ -360,9 +360,7 @@ trait SilFrontend extends DefaultFrontend {
         val translator = Translator(modifiedInputPlugin)
         FrontendStateCache.translator = translator
         translator.translate match {
-          case Some(program) =>
-            program.initProperties()
-            Succ(program)
+          case Some(program) => Succ(program)
 
           case None => // then there are translation messages
             Fail(FastMessaging.sortmessages(Consistency.messages) map (m => {

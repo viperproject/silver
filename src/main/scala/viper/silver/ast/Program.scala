@@ -392,12 +392,10 @@ case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], body: Option[E
   }
 }
 
-trait MemberWithSpec
-
 /** A method declaration. */
 case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], body: Option[Seqn])
                  (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
-    extends Member with MemberWithSpec with Callable with Contracted {
+    extends Member with Callable with Contracted {
 
   /* TODO: Should not have to be a lazy val, see also the comment for method
    *       translateMemberSignature in file parser/Translator.scala

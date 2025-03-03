@@ -8,7 +8,7 @@ package viper.silver.reporter
 
 import viper.silver.reporter.BackendSubProcessStages.BackendSubProcessStage
 import viper.silver.verifier._
-import viper.silver.ast.{QuantifiedExp, Trigger}
+import viper.silver.ast.{Exp, Method, QuantifiedExp, Trigger}
 import viper.silver.parser.PProgram
 
 /**
@@ -167,6 +167,16 @@ case class BranchFailureMessage(verifier: String, concerning: Entity,
   override def toString: String = s"branch_failure_message(" +
     s"verifier=$verifier, concerning=${print(concerning)}, " +
     s"result=${result.toString}, cached=$cached)"
+}
+
+case class BeamInfo(e: Exp, isLeftFatal : Boolean, isRightFatal : Boolean)
+case class BranchTreeReport(method: Method, tree : String, beams : Seq[BeamInfo])
+  extends Message {
+
+  override lazy val toString: String = s"branch_tree_report(" +
+    s"method=${method.name}, tree=$tree, beams=$beams"
+
+  override val name = "branch_tree"
 }
 
 case class StatisticsReport(nOfMethods: Int, nOfFunctions: Int, nOfPredicates: Int, 

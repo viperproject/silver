@@ -180,22 +180,6 @@ trait Node extends Iterable[Node] with Rewritable {
     }
   }
 
-  // TODO Duplicated from ParseAst
-  private var parent: Option[Node] = None
-  def getParent: Option[Node] = parent
-  def getAncestor[T](implicit ctag: scala.reflect.ClassTag[T]): Option[T] = {
-    var p = getParent
-    while (p.isDefined && !ctag.runtimeClass.isInstance(p.get))
-      p = p.get.getParent
-    p.map(_.asInstanceOf[T])
-  }
-  override def initProperties(): Unit = {
-    for (c <- this.subnodes) {
-      c.parent = Some(this)
-      c.initProperties()
-    }
-  }
-
   /* To be overridden in subclasses of Node. */
   def isValid: Boolean = true
 
