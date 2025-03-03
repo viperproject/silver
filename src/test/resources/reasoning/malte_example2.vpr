@@ -1,0 +1,73 @@
+field val: Int
+
+define allacc(arr) forall z: Int :: {slot(arr, z)} 0 <= z < len(arr) ==> acc(slot(arr, z).val)
+
+domain IArray {
+  function slot(a: IArray, i: Int): Ref
+  function len(a: IArray): Int
+  function first(r: Ref): IArray
+  function second(r: Ref): Int
+
+  axiom all_diff {
+    forall a: IArray, i: Int :: { slot(a,i) }
+    first(slot(a,i)) == a && second(slot(a,i)) == i
+  }
+
+  axiom len_nonneg {
+    forall a: IArray :: { len(a) }
+    len(a) >= 0
+  }
+}
+/*
+method test() {
+    prove forall xs: IArray assuming allacc(xs) && P(xs) implies Q(xs) {
+
+    }
+}
+*/
+function P(xs: IArray): Bool
+  requires allacc(xs)
+
+function Q(xs: IArray): Bool
+  requires allacc(xs)
+
+method lemma_establish_Q(xs: IArray)
+  decreases xs
+  requires allacc(xs) && P(xs)
+  ensures  allacc(xs) && Q(xs)
+
+
+define allperm(arr) forall z: Int :: {slot(arr, z)} 0 <= z < len(arr) ==> perm(slot(arr, z).val) == write
+
+method lemma_forall_introduction_Q()
+  ensures [forall ys: IArray :: {P(ys)}{Q(ys)} allperm(ys) && P(ys) ==> Q(ys), true]
+{
+  var xs: IArray
+
+  inhale allacc(xs) && P(xs)
+  lemma_establish_Q(xs)
+  assert Q(xs)
+
+  assert allperm(xs) && P(xs) ==> Q(xs)
+  var zs: IArray
+  if (allperm(zs)) {
+    assert zs == xs
+  }
+}
+
+method client() {
+  var xs: IArray
+  var ys: IArray
+
+  inhale allacc(xs)
+  lemma_forall_introduction_Q()
+  assume P(xs)
+  assert Q(xs)
+
+  inhale allacc(ys)
+  // lemma_forall_introduction_Q()
+  assume P(ys)
+  assert Q(ys) // FAILS (somewhat unexpectedly): since permission to ys are only gained after the
+               // call to lemma_forall_introduction_Q, the postcondition's RHS does not apply to ys.
+               // Permissions must thus be available before calling lemma_forall_introduction_Q.
+}

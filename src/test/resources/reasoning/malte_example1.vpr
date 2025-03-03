@@ -1,0 +1,32 @@
+function P(xs: Seq[Int]): Bool
+
+function Q(xs: Seq[Int]): Bool
+
+method lemma_establish_Q(xs: Seq[Int])
+  decreases xs
+  requires P(xs)
+  ensures Q(xs)
+
+method lemma_forall_introduction_Q()
+  ensures forall ys: Seq[Int] :: {P(ys)}{Q(ys)} P(ys) ==> Q(ys)
+{
+
+  prove forall xs: Seq[Int] {P(xs)} assuming P(xs) implies Q(xs) {
+    if (P(xs)) {
+        lemma_establish_Q(xs)
+    }
+  }
+}
+
+method client() {
+  var xs: Seq[Int]
+  var ys: Seq[Int]
+
+  lemma_forall_introduction_Q()
+
+  assume P(xs)
+  assert Q(xs)
+
+  // // assume P(ys)
+  // assert Q(ys) // FAILS, as expected
+}

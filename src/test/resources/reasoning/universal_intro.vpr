@@ -14,8 +14,71 @@ method ex1()
     }
 }
 
+function times(a: Int, b: Int): Int
+{
+    a * b
+}
 
 
+field f: Int
+
+method subsetLemma(a: Set[Int], b: Set[Int])
+   decreases |a|
+   requires a subset b
+   ensures |a| <= |b|
+{
+    if (a != Set[Int]()) {
+        obtain x: Int where x in a
+        subsetLemma(a setminus Set(x), b setminus Set(x))
+    }
+}
+
+method ex3()
+{
+    // fails to verify (directly):
+    // assert forall a: Int, b: Int, c: Set[Int] :: { a in c, b in c } a in c && b in c && a != b ==> 2 <= |c|
+    prove forall a2: Int, b2: Int, c2: Set[Int] { a2 in c2, b2 in c2 } assuming a2 in c2 && b2 in c2 && a2 != b2 implies 2 <= |c2| {
+        if (a2 in c2 && b2 in c2 && a2 != b2) { // needed as block is executed independently of the `assuming` condition
+            subsetLemma(Set(a2, b2), c2)
+        }
+    }
+    assert forall a: Int, b: Int, c: Set[Int] :: { a in c, b in c } a in c && b in c && a != b ==> 2 <= |c|
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    // assert false
+}
+
+function greaterthan(a: Int, b: Int): Bool
+{
+    a > b
+}
+
+function greaterThanEqual(a: Int, b: Int): Bool
+{
+    a >= b
+}
+
+function weird(x: Int): Int
+decreases x
+{
+    x < 0 ? 1 :
+        (x == 0 ? 2 : weird(x / 2))
+}
+
+method ex4()
+{
+    // fails to verify:
+    // assert forall x2: Int :: { greaterthan(weird(x2), 0) } greaterthan(weird(x2), 0)
+    prove forall x: Int { greaterthan(weird(x), 0) } assuming (forall y: Int :: { greaterthan(weird(y), 0) } 0 <= y < x ==> greaterthan(weird(y), 0)) implies greaterthan(weird(x), 0) {
+        if (x >= 0 && x != 0) {
+            if (forall y: Int :: { greaterthan(weird(y), 0) } 0 <= y < x ==> greaterthan(weird(y), 0)) {
+                assert greaterthan(weird(x / 2), 0)
+            }
+        }
+    }
+}
+
+/*
 function g_zero(x:Int) : Bool {
     x>0
 }
@@ -50,4 +113,98 @@ method m1()
             var y:Int := x+1
         }
 }
+*/
 
+method ex5(a: Int) returns (b: Int)
+    influenced b by {a}
+{
+    b := a
+}
+
+method ex6(r: Ref) returns (b: Int)
+    requires acc(r.f)
+    influenced b by {r, heap}
+{
+    b := r.f
+}
+
+method caller()
+{
+    prove forall a: Int assuming true implies true {
+        ex9(a)
+    }
+}
+
+method ex7(a: Int)
+    influenced assumes by { a }
+{
+    var b: Int := a
+    while (b != 0) {}
+}
+
+method ex7assume(a: Int)
+    influenced assumes by { a }
+{
+    var b: Int := a
+    assume b == 0
+}
+
+method ex8assume(a: Int)
+    influenced assumes by { a }
+{
+    var b: Int := a
+    if (b != 0) {
+        assume false
+    }
+}
+
+method ex9(a: Int)
+    assumesNothing
+{
+    var b: Int := a
+    while (b != 0)
+    decreases b < 0 ? -b : b
+    {
+        if (b < 0) {
+            b := b + 1
+        } else {
+            b := b - 1
+        }
+    }
+}
+
+method ex10(a: Int, c: Int) returns (b: Int, d: Int)
+    requires a >= 0
+    influenced b by { a }
+{
+    b, d := ex11(a, c)
+}
+
+method ex11(a: Int, c: Int) returns (b: Int, d: Int)
+    requires a >= 0
+    influenced b by { a }
+{
+    if (a == 0) {
+        b := 0
+    } else {
+        b, d := ex10(a, c)
+    }
+}
+
+method ex12(a: Int, c: Int) returns (b: Int, d: Int)
+    ensures d != 0
+    influenced b by {}
+    // influenced d by { a, c } inferred
+    assumesNothing // necessary as influeced assumes by { a, c, heap } would be inferred
+{
+    b, d := ex12(a, c)
+    d := 42
+}
+
+method ex12caller() {
+    var d: Int
+    prove forall a: Int, c: Int assuming true implies d != 0 {
+        var b: Int
+        b, d := ex12(a, c)
+    }
+}
