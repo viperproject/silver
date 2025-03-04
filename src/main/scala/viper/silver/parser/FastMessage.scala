@@ -50,9 +50,9 @@ object FastMessaging {
   def aMessage (message : FastMessage) =
     IndexedSeq (message)
 
-  /**
-   * Makes a message list if cond is true. Stored with the position of the value
-   */
+   /**
+    * Makes a message list if cond is true. Stored with the position of the value
+    */
   def message (value : PNode, msg : String, cond : Boolean = true, error : Boolean = true) : Messages =
     if (cond) {
       val valuePos = value.errorPosition match {
