@@ -7,7 +7,6 @@
 package viper.silver.verifier
 
 import viper.silver.ast._
-import viper.silver.parser.PNode
 
 import scala.annotation.unused
 
@@ -113,7 +112,7 @@ case class ConsistencyError(message: String, pos:Position) extends AbstractError
 }
 
 /** A typechecker error. */
-case class TypecheckerError(message: String, pos: Position, node: Option[PNode]) extends AbstractError {
+case class TypecheckerError(message: String, pos: Position) extends AbstractError {
   def fullId = "typechecker.error"
   def readableMessage = s"$message ($pos)"
 }

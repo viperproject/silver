@@ -406,9 +406,9 @@ case object Cached extends Info {
 }
 
 /** An `Info` instance for labelling a node as synthesized. A synthesized node is one that
- * was not present in the original program that was passed to a Viper backend, such as nodes that
- * originate from an AST transformation.
- */
+  * was not present in the original program that was passed to a Viper backend, such as nodes that
+  * originate from an AST transformation.
+  */
 case object Synthesized extends Info {
   override val comment = Nil
   override val isCached = false
@@ -416,7 +416,7 @@ case object Synthesized extends Info {
 
 /** An `Info` instance for labelling an AST node which is expected to fail verification.
  * This is used by Silicon to avoid stopping verification.
- */
+*/
 abstract class FailureExpectedInfo extends Info {
   override val comment = Nil
   override val isCached = false

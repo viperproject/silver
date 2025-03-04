@@ -344,7 +344,7 @@ trait SilFrontend extends DefaultFrontend {
             Succ(modifiedInput)
           case None =>
             val errors = for (m <- FastMessaging.sortmessages(r.messages) if m.error) yield {
-              TypecheckerError(m.label, m.pos, m.node)
+              TypecheckerError(m.label, m.pos)
             }
             Fail(errors)
         }
@@ -360,11 +360,12 @@ trait SilFrontend extends DefaultFrontend {
         val translator = Translator(modifiedInputPlugin)
         FrontendStateCache.translator = translator
         translator.translate match {
-          case Some(program) => Succ(program)
+          case Some(program) =>
+            Succ(program)
 
           case None => // then there are translation messages
             Fail(FastMessaging.sortmessages(Consistency.messages) map (m => {
-              TypecheckerError(m.label, m.pos, m.node)
+              TypecheckerError(m.label, m.pos)
             }))
         }
 
