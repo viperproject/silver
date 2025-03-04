@@ -30,7 +30,7 @@ jobs:
 
     steps:
     - name: Checkout backend
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         repository: ${{ env.fork }}/${{ matrix.repo }}
         token: ${{ secrets.PAT }}
@@ -61,7 +61,7 @@ jobs:
         git push origin ci-test-${{ env.sha }}
 
     - name: Run CI
-      uses: convictional/trigger-workflow-and-wait@v1.6.0
+      uses: convictional/trigger-workflow-and-wait@v1.6.5
       with:
         owner: ${{ env.fork }}
         repo: ${{ matrix.repo }}
