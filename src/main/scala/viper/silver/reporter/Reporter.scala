@@ -69,7 +69,7 @@ case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv
       case BranchFailureMessage(_, concerning, _, cached) =>
         csv_file.write(s"BranchFailureMessage,${concerning.name},${cached}\n")
       case BranchTreeReport(method, tree, _) =>
-        csv_file.write(s"BranchTreeReport,${method.name},$tree\n")
+        csv_file.write(s"BranchTreeReport,${method.name},${tree.prettyPrint()}\n")
 
       case _: SimpleMessage | _: CopyrightReport | _: MissingDependencyReport | _: BackendSubProcessReport |
            _: InternalWarningMessage | _: ConfigurationConfirmation=> // Irrelevant for reporting

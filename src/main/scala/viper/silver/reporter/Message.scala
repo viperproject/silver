@@ -169,12 +169,16 @@ case class BranchFailureMessage(verifier: String, concerning: Entity,
     s"result=${result.toString}, cached=$cached)"
 }
 
+trait BranchTree {
+  def prettyPrint() : String
+  def toDotFile() : Unit
+}
 case class BeamInfo(e: Exp, isLeftFatal : Boolean, isRightFatal : Boolean)
-case class BranchTreeReport(method: Method, tree : String, beams : Seq[BeamInfo])
+case class BranchTreeReport(method: Method, tree : BranchTree, beams : Seq[BeamInfo])
   extends Message {
 
   override lazy val toString: String = s"branch_tree_report(" +
-    s"method=${method.name}, tree=$tree, beams=$beams"
+    s"method=${method.name}, tree=${tree.prettyPrint()}, beams=$beams"
 
   override val name = "branch_tree"
 }
