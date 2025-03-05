@@ -8,8 +8,11 @@ package viper.silver.parser
 
 import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
 import viper.silver.ast.utility.Visitor
-import viper.silver.ast.utility.rewriter.{Rewritable, StrategyBuilder, HasExtraVars, HasExtraValList}
+import viper.silver.ast.utility.rewriter.{HasExtraValList, HasExtraVars, Rewritable, StrategyBuilder}
 import viper.silver.ast.{Exp, FilePosition, HasLineColumn, Member, NoPosition, Position, SourcePosition, Stmt, Type}
+import viper.silver.parser.ReformatPrettyPrinter.{show, showAnnotations, showBody, showInvs, showNestedPaddedExpr, showOption, showPresPosts, showReturns, showSeq}
+import viper.silver.parser.PSymOp.{EqEq, Iff, Implies}
+import viper.silver.parser.RNode._
 import viper.silver.parser.TypeHelper._
 import viper.silver.verifier.ParseReport
 
@@ -30,10 +33,18 @@ trait Where {
   * The root of the parser abstract syntax tree.  Note that we prefix all nodes with `P` to avoid confusion
   * with the actual Viper abstract syntax tree.
   */
-trait PNode extends Where with Product with Rewritable with HasExtraValList {
+trait PNode extends Where with Product with Rewritable with HasExtraValList with Reformattable {
 
   /* Should output something that can be displayed to the user. */
   def pretty: String
+
+  // By default, we can fall back to the `pretty` implementation, for any case where we just
+  // need to show keywords or single tokens. But as soon as we need to add whitespaces,
+  // we will have to override this
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = this match {
+    case p: PLeaf => rt(p.pretty)
+    case _ => ReformatPrettyPrinter.reformatNodesNoSpace(this)
+  }
 
   /** Returns a list of all direct sub-nodes of this node. */
   def subnodes: Seq[PNode] = PNode.children(this, this).flatMap(PNode.nodes(this, _)).toSeq
@@ -627,13 +638,18 @@ case class PFunctionType(argTypes: Seq[PType], resultType: PType) extends PInter
     val argsPretty = argTypes.map(_.pretty).mkString("(", ", ", ")")
     s"$argsPretty: ${resultType.pretty}"
   }
+
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = {
+    rt("(") <> argTypes.map(show(_)).reduce(_ <> rt(", ") <> _) <> rt(")") <>
+    rt(": ") <> show(resultType)
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
 // Expressions
 // typeSubstitutions are the possible substitutions used for type checking and inference
 // The argument types are unified with the (fresh versions of) types  are
-trait PExp extends PNode with PPrettySubnodes {
+trait PExp extends PNode with PPrettySubnodes with ReformattableExpression {
   var brackets: Option[PGrouped.Paren[PExp]] = None
   var typ: PType = PUnknown()
 
@@ -653,6 +669,27 @@ trait PExp extends PNode with PPrettySubnodes {
   override def pretty: String = brackets match {
     case Some(b) => s"${b.l.pretty}${super.pretty}${b.r.pretty}"
     case None => super.pretty
+  }
+
+  // Note: We override the `reformat` for all expressions here, classes implementing this trait
+  // should not override it. Instead, they should implement the `reformatExp` method.
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = {
+    // Unfortunately, we cannot just show exp.brackets, because then we end up in an
+    // endless recursion. So instead, we need to add them manually.
+    brackets match {
+      case Some(b) => {
+        if (b.l.isInstanceOf[PSym.Brace]) {
+          // Braced expressions should either be in the same line but with a space padding
+          // (e.g. { var i := 1; }), or be broken into the next line if too long.
+          rne(rg(show(b.l) <@> this.reformatExp(ctx) <@> show(b.r)))
+        } else {
+          // We don't want i <= (n + 1) to turn into
+          // i <= ( n + 1 ), for example.
+          show(b.l) <> this.reformatExp(ctx) <> show(b.r)
+        }
+      }
+      case None => this.reformatExp(ctx)
+    }
   }
 }
 
@@ -996,6 +1033,16 @@ class PBinExp(val left: PExp, val op: PReserved[PBinaryOp], val right: PExp)(val
 
   override def hashCode(): Int = viper.silver.utility.Common.generateHashCode(left, op.rs.operator, right)
   override def toString(): String = s"PBinExp($left,$op,$right)"
+
+  override def reformatExp(implicit ctx: ReformatterContext): List[RNode] = {
+    op.rs match {
+      // Those operators look a bit better if they stick on the previous line
+      case Iff | Implies | EqEq =>
+        rg(show(left) <+> show(op) <> rne(rl() <> show(right)))
+      case _ => rg(show(left) <@> show(op) <+> show(right))
+    }
+
+  }
 }
 
 object PBinExp {
@@ -1017,6 +1064,10 @@ case class PCondExp(cond: PExp, q: PSymOp.Question, thn: PExp, c: PSymOp.Colon, 
   val signatures: List[PTypeSubstitution] = List(
     Map(POpApp.pArgS(0) -> Bool, POpApp.pArgS(2) -> POpApp.pArg(1), POpApp.pResS -> POpApp.pArg(1))
   )
+
+  override def reformatExp(implicit ctx: ReformatterContext): List[RNode] = show(cond) <+> show(q) <>
+    rne(rg(rl() <> show(thn) <+>
+      show(c) <> rg(rl() <> show(els))))
 }
 
 // Simple literals
@@ -1072,18 +1123,26 @@ case class PUnfolding(unfolding: PKwOp.Unfolding, acc: PAccAssertion, in: PKwOp.
   override val args = Seq(acc, exp)
   override val signatures: List[PTypeSubstitution] =
     List(Map(POpApp.pArgS(0) -> Predicate, POpApp.pResS -> POpApp.pArg(1)))
+
+  override def reformatExp(implicit ctx: ReformatterContext): List[RNode] = show(unfolding) <> show(acc) <+> show(in) <> showNestedPaddedExpr(exp)
 }
 
 case class PApplying(applying: PKwOp.Applying, wand: PExp, in: PKwOp.In, exp: PExp)(val pos: (Position, Position)) extends PHeapOpApp {
   override val args = Seq(wand, exp)
   override val signatures: List[PTypeSubstitution] =
     List(Map(POpApp.pArgS(0) -> Wand, POpApp.pResS -> POpApp.pArg(1)))
+
+  override def reformatExp(implicit ctx: ReformatterContext): List[RNode] = show(applying) <> show(wand) <+> show(in) <> showNestedPaddedExpr(exp)
 }
 
 case class PAsserting(asserting: PKwOp.Asserting, a: PExp, in: PKwOp.In, exp: PExp)(val pos: (Position, Position)) extends PHeapOpApp {
   override val args = Seq(a, exp)
   override val signatures: List[PTypeSubstitution] =
     List(Map(POpApp.pArgS(0) -> Impure, POpApp.pResS -> POpApp.pArg(1)))
+
+  override def reformatExp(implicit ctx: ReformatterContext): List[RNode] = show(asserting) <>
+    rne(rg(rl() <> show(a))) <+>
+    show(in) <> showNestedPaddedExpr(exp)
 }
 
 sealed trait PBinder extends PExp with PScope {
@@ -1114,12 +1173,22 @@ sealed trait PQuantifier extends PBinder {
   override def boundVars = vars.toSeq
 }
 
-case class PExists(keyword: PKw.Exists, vars: PDelimited[PLogicalVarDecl, PSym.Comma], c: PSym.ColonColon, triggers: Seq[PTrigger], body: PExp)(val pos: (Position, Position)) extends PQuantifier
+case class PExists(keyword: PKw.Exists, vars: PDelimited[PLogicalVarDecl, PSym.Comma], c: PSym.ColonColon, triggers: Seq[PTrigger], body: PExp)(val pos: (Position, Position)) extends PQuantifier {
+  override def reformatExp(implicit ctx: ReformatterContext): List[RNode] = show(keyword) <> show(vars) <>
+    show(c) <> rne(rg(rl() <> (showSeq(triggers) <+> show(body))))
+}
 
-case class PForall(keyword: PKw.Forall, vars: PDelimited[PLogicalVarDecl, PSym.Comma], c: PSym.ColonColon, triggers: Seq[PTrigger], body: PExp)(val pos: (Position, Position)) extends PQuantifier
+case class PForall(keyword: PKw.Forall, vars: PDelimited[PLogicalVarDecl, PSym.Comma], c: PSym.ColonColon, triggers: Seq[PTrigger], body: PExp)(val pos: (Position, Position)) extends PQuantifier {
+  override def reformatExp(implicit ctx: ReformatterContext): List[RNode] = show(keyword) <> show(vars) <>
+    show(c) <> rne(rg(rl() <> rg(showSeq(triggers) <+> show(body))))
+}
 
 case class PForPerm(keyword: PKw.Forperm, vars: PDelimited[PLogicalVarDecl, PSym.Comma], accessRes: PGrouped[PSym.Bracket, PResourceAccess], c: PSym.ColonColon, body: PExp)(val pos: (Position, Position)) extends PQuantifier {
   val triggers: Seq[PTrigger] = Seq()
+
+  override def reformatExp(implicit ctx: ReformatterContext): List[RNode] = show(keyword) <>
+    show(vars) <+> show(accessRes) <> show(c) <>
+    rne(rg(rl() <> show(body)))
 }
 
 /* Let-expressions `let x == e1 in e2` are represented by the nested structure
@@ -1142,6 +1211,9 @@ case class PLet(l: PKwOp.Let, variable: PIdnDef, eq: PSymOp.EqEq, exp: PGrouped.
     nestedScope.body.forceSubstitution(ts)
     typ = nestedScope.body.typ
   }
+
+  override def reformatExp(implicit ctx: ReformatterContext): List[RNode] = show(l) <> show(variable) <+>
+    show(eq) <+> show(exp) <+> show(in) <> rg(rl() <> show(nestedScope))
 }
 
 case class PLetNestedScope(body: PExp)(val pos: (Position, Position)) extends PTypedVarDecl with PLocalDeclaration with PScopeUniqueDeclaration {
@@ -1342,7 +1414,6 @@ sealed trait PSetLiteral extends PCollectionLiteral {
 case class PEmptySet(op: PKwOp.Set, pAnnotatedType: Option[PGrouped[PSym.Bracket, PType]], callArgs: PDelimited.Comma[PSym.Paren, Nothing])(val pos: (Position, Position)) extends PSetLiteral with PEmptyCollectionLiteral
 
 case class PExplicitSet(op: PKwOp.Set, callArgs: PDelimited.Comma[PSym.Paren, PExp])(val pos: (Position, Position)) extends PSetLiteral with PExplicitCollectionLiteral
-
 sealed trait PMultiSetLiteral extends PCollectionLiteral {
   def pCollectionType(pType: PType) = if (pType.isUnknown) PUnknown() else MakeMultiset(pType)
 }
@@ -1432,7 +1503,9 @@ case class PMapRange(keyword: PKwOp.Range, base: PGrouped.Paren[PExp])(val pos: 
 
 ///////////////////////////////////////////////////////////////////////////
 // Statements
-trait PStmt extends PNode with PPrettySubnodes
+trait PStmt extends PNode with PPrettySubnodes {
+  // Most statements are just separated by spaces, so we override the default here.
+}
 
 case class PAnnotatedStmt(annotation: PAnnotation, stmt: PStmt)(val pos: (Position, Position)) extends PStmt
 
@@ -1452,7 +1525,9 @@ case class PFold(fold: PKw.Fold, e: PExp)(val pos: (Position, Position)) extends
 
 case class PUnfold(unfold: PKw.Unfold, e: PExp)(val pos: (Position, Position)) extends PStmt
 
-case class PPackageWand(pckg: PKw.Package, e: PExp, proofScript: Option[PSeqn])(val pos: (Position, Position)) extends PStmt
+case class PPackageWand(pckg: PKw.Package, e: PExp, proofScript: Option[PSeqn])(val pos: (Position, Position)) extends PStmt {
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = show(pckg) <> show(e) <+> showOption(proofScript)
+}
 
 case class PApplyWand(apply: PKw.Apply, e: PExp)(val pos: (Position, Position)) extends PStmt
 
@@ -1465,16 +1540,37 @@ case class PAssume(assume: PKw.Assume, e: PExp)(val pos: (Position, Position)) e
 case class PInhale(inhale: PKw.Inhale, e: PExp)(val pos: (Position, Position)) extends PStmt
 
 /** Can also represent a method call or statement macro with no `:=` when `targets` is empty. */
-case class PAssign(targets: PDelimited[PExp with PAssignTarget, PSym.Comma], op: Option[PSymOp.Assign], rhs: PExp)(val pos: (Position, Position)) extends PStmt
+case class PAssign(targets: PDelimited[PExp with PAssignTarget, PSym.Comma], op: Option[PSymOp.Assign], rhs: PExp)(val pos: (Position, Position)) extends PStmt {
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = {
+    if (targets.isEmpty) {
+      show(rhs)
+    } else {
+      show(targets) <> showOption(op) <> rne(show(rhs))
+    }
+  }
+}
 
 sealed trait PIfContinuation extends PStmt
-case class PIf(keyword: PReserved[PKeywordIf], cond: PGrouped.Paren[PExp], thn: PSeqn, els: Option[PIfContinuation])(val pos: (Position, Position)) extends PStmt with PIfContinuation
+case class PIf(keyword: PReserved[PKeywordIf], cond: PGrouped.Paren[PExp], thn: PSeqn, els: Option[PIfContinuation])(val pos: (Position, Position)) extends PStmt with PIfContinuation {
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = show(keyword) <> show(cond) <>
+    showBody(thn, false) <> els.map(showBody(_, false)).getOrElse(rn())
+
+}
 case class PElse(k: PKw.Else, els: PSeqn)(val pos: (Position, Position)) extends PStmt with PIfContinuation
 
-case class PWhile(keyword: PKw.While, cond: PGrouped.Paren[PExp], invs: PDelimited[PSpecification[PKw.InvSpec], Option[PSym.Semi]], body: PSeqn)(val pos: (Position, Position)) extends PStmt
+case class PWhile(keyword: PKw.While, cond: PGrouped.Paren[PExp], invs: PDelimited[PSpecification[PKw.InvSpec], Option[PSym.Semi]], body: PSeqn)(val pos: (Position, Position)) extends PStmt {
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = {
+    show(keyword) <> show(cond) <+>
+      showInvs(invs) <> showBody(body, !invs.isEmpty)
+  }
+}
 
 case class PVars(keyword: PKw.Var, vars: PDelimited[PLocalVarDecl, PSym.Comma], init: Option[(PSymOp.Assign, PExp)])(val pos: (Position, Position)) extends PStmt {
   def assign: Option[PAssign] = init map (i => PAssign(vars.update(vars.toSeq.map(_.toIdnUse)), Some(i._1), i._2)(pos))
+
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] =
+    show(keyword) <> show(vars) <>
+      init.map(s => rne(rg(show(s._1) <@> show(s._2)))).getOrElse(rn())
 }
 
 case class PLabel(label: PKw.Label, idndef: PIdnDef, invs: PDelimited[PSpecification[PKw.InvSpec], Option[PSym.Semi]])(val pos: (Position, Position)) extends PStmt with PMemberDeclaration with PBackwardDeclaration
@@ -1617,7 +1713,12 @@ trait PNoSpecsFunction extends PAnyFunction {
 ///////////////////////////////////////////////////////////////////////////
 // Program Members
 
-case class PProgram(imported: Seq[PProgram], members: Seq[PMember])(val pos: (Position, Position), val localErrors: Seq[ParseReport]) extends PNode {
+case class PProgram(imported: Seq[PProgram], members: Seq[PMember])(
+  val pos: (Position, Position),
+  val localErrors: Seq[ParseReport],
+  var offsets: Seq[Int],
+  var rawProgram: String
+) extends PNode {
   val imports: Seq[PImport] = members.collect { case i: PImport => i } ++ imported.flatMap(_.imports)
   val macros: Seq[PDefine] = members.collect { case m: PDefine => m } ++ imported.flatMap(_.macros)
   val domains: Seq[PDomain] = members.collect { case d: PDomain => d } ++ imported.flatMap(_.domains)
@@ -1634,20 +1735,28 @@ case class PProgram(imported: Seq[PProgram], members: Seq[PMember])(val pos: (Po
     val i = imported.map(_.pretty).mkString("\n")
     prefix + m + "\n\n" + i
   }
+
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = {
+    if (members.isEmpty)
+      rn()
+    else
+      members.zipWithIndex.map(e => (if (e._2 == 0) rn() else rlb()) <> show(e._1)).reduce((acc, n) => acc <> n)
+  }
+
   // Pretty print members in a specific order
   def prettyOrdered: String = {
     val all = Seq(imports, macros, domains, fields, functions, predicates, methods, extensions).filter(_.length > 0)
     all.map(_.map(_.pretty).mkString("\n")).mkString("\n")
   }
 
-  override def getExtraVals: Seq[Any] = Seq(pos, localErrors)
+  override def getExtraVals: Seq[Any] = Seq(pos, localErrors, offsets, rawProgram)
 
-  def filterMembers(f: PMember => Boolean): PProgram = PProgram(imported.map(_.filterMembers(f)), members.filter(f))(pos, localErrors)
-  def newImported(newImported: Seq[PProgram]): PProgram = if (newImported.isEmpty) this else PProgram(imported ++ newImported, members)(pos, localErrors)
+  def filterMembers(f: PMember => Boolean): PProgram = PProgram(imported.map(_.filterMembers(f)), members.filter(f))(pos, localErrors, offsets, rawProgram)
+  def newImported(newImported: Seq[PProgram]): PProgram = if (newImported.isEmpty) this else PProgram(imported ++ newImported, members)(pos, localErrors, offsets, rawProgram)
 }
 
 object PProgram {
-  def error(error: ParseReport): PProgram = PProgram(Nil, Nil)((error.pos, error.pos), Seq(error))
+  def error(error: ParseReport): PProgram = PProgram(Nil, Nil)((error.pos, error.pos), Seq(error), Nil, "")
 }
 
 case class PImport(annotations: Seq[PAnnotation], imprt: PKw.Import, file: PStringLiteral)(val pos: (FilePosition, FilePosition)) extends PMember with PPrettySubnodes {
@@ -1658,11 +1767,22 @@ case class PImport(annotations: Seq[PAnnotation], imprt: PKw.Import, file: PStri
 
 case class PDefineParam(idndef: PIdnDef)(val pos: (Position, Position)) extends PNode with PLocalDeclaration with PPrettySubnodes
 
-case class PDefine(annotations: Seq[PAnnotation], define: PKw.Define, idndef: PIdnDef, parameters: Option[PDelimited.Comma[PSym.Paren, PDefineParam]], body: PNode)(val pos: (FilePosition, FilePosition)) extends PSingleMember with PStmt with PNameAnalyserOpaque
+case class PDefine(annotations: Seq[PAnnotation], define: PKw.Define, idndef: PIdnDef, parameters: Option[PDelimited.Comma[PSym.Paren, PDefineParam]], body: PNode)(val pos: (FilePosition, FilePosition)) extends PSingleMember with PStmt with PNameAnalyserOpaque {
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = {
+    showAnnotations(annotations) <> show(define) <> show(idndef) <> showOption(parameters) <+> show(body)
+  }
+}
 
 case class PDomain(annotations: Seq[PAnnotation], domain: PKw.Domain, idndef: PIdnDef, typVars: Option[PDelimited.Comma[PSym.Bracket, PTypeVarDecl]], interpretations: Option[PDomainInterpretations], members: PGrouped[PSym.Brace, PDomainMembers])
                   (val pos: (Position, Position)) extends PSingleMember with PTypeDeclaration with PPrettySubnodes {
   def typVarsSeq: Seq[PTypeVarDecl] = typVars.map(_.inner.toSeq).getOrElse(Nil)
+
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = {
+    showAnnotations(annotations) <> show(domain) <>
+      show(idndef) <> showOption(typVars) <>
+      (if (interpretations.isEmpty) rn() else rne(rlb() <> showOption(interpretations))) <>
+      showBody(members, !interpretations.isEmpty)
+  }
 }
 
 case class PDomainFunctionInterpretation(k: PKw.Interpretation, i: PStringLiteral)(val pos: (Position, Position)) extends PNode with PPrettySubnodes {
@@ -1675,13 +1795,20 @@ case class PDomainFunction(annotations: Seq[PAnnotation], unique: Option[PKw.Uni
   override def body = None
 }
 
-case class PAxiom(annotations: Seq[PAnnotation], axiom: PKw.Axiom, idndef: Option[PIdnDef], exp: PBracedExp)(val pos: (Position, Position)) extends PDomainMember with PPrettySubnodes
-case class PDomainMembers(funcs: PDelimited[PDomainFunction, Option[PSym.Semi]], axioms: PDelimited[PAxiom, Option[PSym.Semi]])(val pos: (Position, Position)) extends PNode {
+case class PAxiom(annotations: Seq[PAnnotation], axiom: PKw.Axiom, idndef: Option[PIdnDef], exp: PBracedExp)(val pos: (Position, Position)) extends PDomainMember with PPrettySubnodes {
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = showAnnotations(annotations) <> show(axiom) <>
+    showOption(idndef) <+> show(exp)
+}
+case class PDomainMembers(funcs: PDelimited[PDomainFunction, Option[PSym.Semi]], axioms: PDelimited[PAxiom, Option[PSym.Semi]])(val pos: (Position, Position), val original: PDomainMembers1) extends PNode {
   override def pretty: String = {
     val fPretty = if (funcs.length == 0) "" else s"\n  ${funcs.prettyLines.replace("\n", "\n  ")}\n"
     val aPretty = if (axioms.length == 0) "" else s"\n  ${axioms.prettyLines.replace("\n", "\n  ")}\n"
     s"${fPretty}${aPretty}"
   }
+
+  override def getExtraVals: Seq[Any] = Seq(pos, original)
+
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = show(original)
 }
 
 case class PDomainInterpretation(name: PRawString, c: PSym.Colon, lit: PStringLiteral)(val pos: (Position, Position)) extends PNode with PPrettySubnodes
@@ -1691,8 +1818,15 @@ case class PDomainInterpretations(k: PReserved[PKeywordLang], m: PDelimited.Comm
 
 trait PDomainMember1 extends PNode with PPrettySubnodes
 case class PDomainFunction1(annotations: Seq[PAnnotation], unique: Option[PKw.Unique], function: PKw.FunctionD, idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PDomainFunctionArg], c: PSym.Colon, typ: PType, interpretation: Option[PDomainFunctionInterpretation], s: Option[PSym.Semi])(val pos: (Position, Position)) extends PDomainMember1
-case class PAxiom1(annotations: Seq[PAnnotation], axiom: PKw.Axiom, idndef: Option[PIdnDef], exp: PBracedExp, s: Option[PSym.Semi])(val pos: (Position, Position)) extends PDomainMember1
-case class PDomainMembers1(members: Seq[PDomainMember1])(val pos: (Position, Position)) extends PNode with PPrettySubnodes
+case class PAxiom1(annotations: Seq[PAnnotation], axiom: PKw.Axiom, idndef: Option[PIdnDef], exp: PBracedExp, s: Option[PSym.Semi])(val pos: (Position, Position)) extends PDomainMember1 {
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = showAnnotations(annotations) <> show(axiom) <>
+    showOption(idndef) <+> show(exp) <> showOption(s)
+}
+case class PDomainMembers1(members: Seq[PDomainMember1])(val pos: (Position, Position)) extends PNode with PPrettySubnodes {
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = if (members.isEmpty) rn() else members.zipWithIndex
+    .map(m => if (m._2 == 0) show(m._1) else rlb() <> show(m._1))
+    .reduce(_ <> _)
+}
 
 
 case class PFields(annotations: Seq[PAnnotation], field: PKw.Field, fields: PDelimited[PFieldDecl, PSym.Comma], s: Option[PSym.Semi])(val pos: (Position, Position)) extends PMember with PPrettySubnodes {
@@ -1704,18 +1838,32 @@ case class PSpecification[+T <: PKw.Spec](k: PReserved[PKw.Spec], e: PExp)(val p
 }
 
 case class PFunction(annotations: Seq[PAnnotation], keyword: PKw.Function, idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PFormalArgDecl], c: PSym.Colon, resultType: PType, pres: PDelimited[PSpecification[PKw.PreSpec], Option[PSym.Semi]], posts: PDelimited[PSpecification[PKw.PostSpec], Option[PSym.Semi]], body: Option[PBracedExp])
-                    (val pos: (Position, Position)) extends PSingleMember with PAnyFunction with PGlobalCallableNamedArgs with PPrettySubnodes
+                    (val pos: (Position, Position)) extends PSingleMember with PAnyFunction with PGlobalCallableNamedArgs with PPrettySubnodes {
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = {
+    showAnnotations(annotations) <> show(keyword) <> show(idndef) <>
+      show(args) <> show(c) <> show(resultType) <>
+      showPresPosts(pres, posts) <> body.map(showBody(_, !(pres.isEmpty && posts.isEmpty))).getOrElse(rn())
+  }
+}
 
 case class PPredicate(annotations: Seq[PAnnotation], keyword: PKw.Predicate, idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PFormalArgDecl], body: Option[PBracedExp])(val pos: (Position, Position))
   extends PSingleMember with PNoSpecsFunction with PGlobalCallableNamedArgs with PPrettySubnodes {
   override def c = PReserved.implied(PSym.Colon)
   override def resultType = Predicate
+
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] =  showAnnotations(annotations) <> show(keyword) <> show(idndef) <>
+    show(args) <> body.map(showBody(_, false)).getOrElse(rn())
 }
 
 case class PMethod(annotations: Seq[PAnnotation], keyword: PKw.Method, idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PFormalArgDecl], returns: Option[PMethodReturns], pres: PDelimited[PSpecification[PKw.PreSpec], Option[PSym.Semi]], posts: PDelimited[PSpecification[PKw.PostSpec], Option[PSym.Semi]], body: Option[PSeqn])
                   (val pos: (Position, Position)) extends PSingleMember with PGlobalCallableNamedArgs with PPrettySubnodes {
   def formalReturns: Seq[PFormalReturnDecl] = returns.map(_.formalReturns.inner.toSeq).getOrElse(Nil)
   override def returnNodes = returns.toSeq
+
+  override def reformat(implicit ctx: ReformatterContext): List[RNode] = {
+    showAnnotations(annotations) <> show(keyword) <> show(idndef) <> show(args) <> showReturns(returns) <>
+      showPresPosts(pres, posts) <> body.map(showBody(_, !(returns.isEmpty && pres.isEmpty && posts.isEmpty))).getOrElse(rn())
+  }
 }
 
 case class PMethodReturns(k: PKw.Returns, formalReturns: PGrouped.Paren[PDelimited[PFormalReturnDecl, PSym.Comma]])(val pos: (Position, Position)) extends PNode with PPrettySubnodes
@@ -1727,6 +1875,7 @@ case class PAnnotationsPosition(annotations: Seq[PAnnotation], pos: (FilePositio
 
 case class PAnnotation(at: PSym.At, key: PRawString, values: PGrouped.Paren[PDelimited[PStringLiteral, PSym.Comma]])(val pos: (Position, Position)) extends PNode with PPrettySubnodes {
   override def pretty: String = super.pretty + "\n"
+  override def rightPad: RNode = RLineBreak()
 }
 
 // Any unenclosed string (e.g. `hello`)
@@ -1753,4 +1902,24 @@ trait PExtender extends PNode {
   def translateExp(t: Translator): Exp = ???
 
   def translateType(t: Translator): Type = ???
+}
+
+// Trivia (comments, whitespaces)
+trait PTrivia
+case class PSpace() extends PTrivia
+case class PNewLine() extends PTrivia
+
+case class PComment(inner: String, trimmed: Boolean) extends PTrivia {
+  def str: String = inner
+}
+
+object PComment {
+  def apply(inner: String): PComment = {
+    // For line comments, the parser will by default include the newline
+    // in the comment. However, for the reformatter it is important that
+    // we strip the newline from the comment and add it manually via a
+    // linebreak instead, so we strip it here.
+    val trimmed = inner.endsWith("\n") || inner.endsWith("\r\n");
+    PComment(inner.trim, trimmed)
+  }
 }
