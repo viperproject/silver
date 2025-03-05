@@ -31,6 +31,7 @@
   - Fixed unsound definitions of snapshots inside quantifiers with exhaleMode 1 / moreCompleteExhale https://github.com/viperproject/silicon/pull/898
   - Fixed unsound constraints for wildcard variables in function axioms with exhaleMode 1 / moreCompleteExhale https://github.com/viperproject/silicon/pull/895
   - Fixed case where wildcard amount could be unsoundly constrained against itself https://github.com/viperproject/silicon/pull/893
+  - Fixed unsound snapshot definitions in function axioms resulting from state consolidation https://github.com/viperproject/silicon/pull/904
 - Performance improvements:
   - Avoiding generating snapshot definitions that will not be used, reducing potential quantifier instantiations https://github.com/viperproject/silicon/pull/879 
   - State consolidation now also merged quantified chunks https://github.com/viperproject/silicon/pull/860
