@@ -70,6 +70,10 @@ trait PNode extends Where with Product with Rewritable with HasExtraValList {
   def deepCollect[A](f: PartialFunction[PNode, A]): Seq[A] =
     Visitor.deepCollect(Seq(this), PNode.callSubnodes)(f)
 
+  /** Same as deep collect except that subnodes are visited only if f1 returns true at the current node */
+  def deepCollectOpt[A](f1: PNode => Boolean, f2: PartialFunction[PNode, A]): Seq[A] =
+    Visitor.deepCollect(Seq(this), (n : PNode) => if (f1(n)) PNode.callSubnodes(n) else Seq.empty)(f2)
+
   /** @see [[Visitor.shallowCollect()]] */
   def shallowCollect[R](f: PartialFunction[PNode, R]): Seq[R] =
     Visitor.shallowCollect(Seq(this), PNode.callSubnodes)(f)
@@ -88,6 +92,10 @@ trait PNode extends Where with Product with Rewritable with HasExtraValList {
     * @see [[PNode.initProperties()]] */
   def deepCopyAll[A <: PNode]: PNode =
     StrategyBuilder.Slim[PNode]({ case n => n }).forceCopy().execute[PNode](this)
+
+  /** @see [[Visitor.find()]] */
+  def find[A](f: PartialFunction[PNode, A]): Option[A] =
+    Visitor.find(this, PNode.callSubnodes)(f)
 
   private val _children = scala.collection.mutable.ListBuffer[PNode]()
 
@@ -1440,6 +1448,15 @@ case class PSeqn(ss: PDelimited.Block[PStmt])(val pos: (Position, Position)) ext
   override def pretty = ss.prettyLines
 }
 
+///////////////////////////////////////////////////////////////////////////
+// Wrapper for expanded macros
+trait PExpandedMacro
+case class PExpandedMacroExp(exp: PExp)(val pos: (Position, Position)) extends PExp with PExpandedMacro {
+  override def typeSubstitutions: collection.Seq[PTypeSubstitution] = exp.typeSubstitutions
+  override def forceSubstitution(ts: PTypeSubstitution): Unit = exp.forceSubstitution(ts)
+}
+case class PExpandedMacroStmt(stmt: PStmt)(val pos: (Position, Position)) extends PStmt with PExpandedMacro
+
 /**
   * PSeqn representing the expanded body of a statement macro.
   * Unlike a normal PSeqn, it does not represent its own scope.
@@ -1471,7 +1488,9 @@ sealed trait PIfContinuation extends PStmt
 case class PIf(keyword: PReserved[PKeywordIf], cond: PGrouped.Paren[PExp], thn: PSeqn, els: Option[PIfContinuation])(val pos: (Position, Position)) extends PStmt with PIfContinuation
 case class PElse(k: PKw.Else, els: PSeqn)(val pos: (Position, Position)) extends PStmt with PIfContinuation
 
-case class PWhile(keyword: PKw.While, cond: PGrouped.Paren[PExp], invs: PDelimited[PSpecification[PKw.InvSpec], Option[PSym.Semi]], body: PSeqn)(val pos: (Position, Position)) extends PStmt
+trait PMemberWithSpec
+
+case class PWhile(keyword: PKw.While, cond: PGrouped.Paren[PExp], invs: PDelimited[PSpecification[PKw.InvSpec], Option[PSym.Semi]], body: PSeqn)(val pos: (Position, Position)) extends PStmt with PMemberWithSpec
 
 case class PVars(keyword: PKw.Var, vars: PDelimited[PLocalVarDecl, PSym.Comma], init: Option[(PSymOp.Assign, PExp)])(val pos: (Position, Position)) extends PStmt {
   def assign: Option[PAssign] = init map (i => PAssign(vars.update(vars.toSeq.map(_.toIdnUse)), Some(i._1), i._2)(pos))
@@ -1713,7 +1732,7 @@ case class PPredicate(annotations: Seq[PAnnotation], keyword: PKw.Predicate, idn
 }
 
 case class PMethod(annotations: Seq[PAnnotation], keyword: PKw.Method, idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PFormalArgDecl], returns: Option[PMethodReturns], pres: PDelimited[PSpecification[PKw.PreSpec], Option[PSym.Semi]], posts: PDelimited[PSpecification[PKw.PostSpec], Option[PSym.Semi]], body: Option[PSeqn])
-                  (val pos: (Position, Position)) extends PSingleMember with PGlobalCallableNamedArgs with PPrettySubnodes {
+                  (val pos: (Position, Position)) extends PSingleMember with PMemberWithSpec with PGlobalCallableNamedArgs with PPrettySubnodes {
   def formalReturns: Seq[PFormalReturnDecl] = returns.map(_.formalReturns.inner.toSeq).getOrElse(Nil)
   override def returnNodes = returns.toSeq
 }

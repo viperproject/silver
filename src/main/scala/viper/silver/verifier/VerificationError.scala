@@ -9,6 +9,7 @@ package viper.silver.verifier
 import fastparse.Parsed
 import viper.silver.ast._
 import viper.silver.ast.utility.rewriter.Rewritable
+import viper.silver.verifier.errors.{BeamInfo, BranchTree}
 
 
 /**********************************************************************************
@@ -429,6 +430,19 @@ object errors {
   def PostconditionViolated(offendingNode: Exp, member: Contracted): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => PostconditionViolated(offendingNode, member, reason))
 
+  trait BranchTree {
+    def prettyPrint() : String
+    def toDotFile() : Unit
+  }
+  case class BeamInfo(e: Exp, isLeftFatal : Boolean, isRightFatal : Boolean)
+  case class BranchFailed(offendingNode: Method, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
+    val id = "branch.failed"
+    val text = s"Branch fails."
+
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = BranchFailed(offendingNode.asInstanceOf[Method], this.reason, this.cached)
+    def withReason(r: ErrorReason) = BranchFailed(offendingNode, r, cached)
+  }
+
   case class FoldFailed(offendingNode: Fold, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "fold.failed"
     val text = s"Folding ${offendingNode.acc.loc} might fail."
@@ -623,6 +637,13 @@ object reasons {
     def readableMessage = s"Assertion $offendingNode might not hold."
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = AssertionFalse(offendingNode.asInstanceOf[Exp])
+  }
+
+  case class BranchFails(offendingNode: Method, tree: BranchTree, beamInfos: Seq[BeamInfo]) extends AbstractErrorReason {
+    val id = "branch.fails"
+    def readableMessage = s"\n${tree.prettyPrint()}"
+
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = BranchFails(offendingNode.asInstanceOf[Method],tree,beamInfos)
   }
 
   // Note: this class should be deprecated/removed - we no longer support epsilon permissions in the language
