@@ -173,7 +173,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
         Some(name.substring(0, name.length - 16))
       else
         None
-      val wronglyConstrainedTypes = d.members.inner.axioms.toSeq.flatMap(a => constrainsWellfoundednessUnexpectedly(a, typeName))
+      val wronglyConstrainedTypes = d.axioms.flatMap(a => constrainsWellfoundednessUnexpectedly(a, typeName))
       reporter.report(WarningsDuringTypechecking(wronglyConstrainedTypes.map(t =>
         TypecheckerWarning(s"Domain ${d.idndef.name} constrains well-foundedness functions for type ${t} and should be named <Type>WellFoundedOrder instead.", d.pos._1))))
     }

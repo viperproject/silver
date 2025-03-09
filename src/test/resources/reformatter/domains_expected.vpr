@@ -54,9 +54,8 @@ domain MyInteger2 {
     
     axiom axSum {
         forall a: MyInteger2, b: MyInteger2 ::
-            {
-                sum3(a, b)
-            } sum3(a, b) == create_int2(get_value2(a) + get_value2(b))
+            { sum3(a, b) } sum3(a, b) ==
+                create_int2(get_value2(a) + get_value2(b))
     }
 }
 
@@ -69,9 +68,8 @@ domain IArray {
     axiom all_diff {
         // A comment
         forall a: IArray, i: Int ::
-            {
-                slot(a, i)
-            } first4(slot(a, i)) == a && second4(slot(a, i)) == i
+            { slot(a, i) } first4(slot(a, i)) == a
+            && second4(slot(a, i)) == i
     }
     
     axiom len_nonneg {

@@ -7,58 +7,39 @@
 package viper.silver.parser
 
 import viper.silver.ast.{NoPosition, Position}
-import viper.silver.parser.PSym.Brace
-import viper.silver.parser.RNode._
-import viper.silver.parser.ReformatPrettyPrinter.{show, showAny}
 import viper.silver.parser.TypeHelper._
+import viper.silver.parser.ReformatPrettyPrinter.reformatAny
 
-trait PReservedString {
+trait PReservedString extends RReformatPad {
   def token: String
-  def display: String = s"$leftPad$token$rightPad"
-  def leftPad: Boolean = false
-  def rightPad: Boolean = false
-  
-  // Unfortunately, there are a few cases where leftPad/rightPad (which are used for the
-  // pretty-printer) are not the same as required for the reformatter, so we need
-  // to keep them as separate variables and override them in certain cases.
-  def reformatLeftPad: RNode = if (leftPad) { RSpace() } else { RNil() }
-  def reformatRightPad: RNode = if (rightPad) { RSpace() } else { RNil() }
 }
-trait LeftSpace extends PReservedString { override def leftPad = true }
-trait RightSpace extends PReservedString { override def rightPad = true }
-case class PReserved[+T <: PReservedString](rs: T)(val pos: (Position, Position)) extends PNode with PLeaf {
-  override def display = rs.display
 
-  override def leftPad: RNode = rs.reformatLeftPad
-  override def rightPad: RNode = rs.reformatRightPad
-  override def reformat(implicit ctx: ReformatterContext): List[RNode] = rt(rs.token)
+case class PReserved[+T <: PReservedString](rs: T)(val pos: (Position, Position)) extends PNode with PLeaf with RReformatPad {
+  override def display = rs.token
+
+  override def leftPad: Option[RNode] = rs.leftPad
+  override def rightNest: Boolean = rs.rightNest
+  override def rightGroup: Boolean = rs.rightGroup
+  override def rightPad: Option[RNode] = rs.rightPad
 }
 object PReserved {
   def implied[T <: PReservedString](rs: T): PReserved[T] = PReserved(rs)(NoPosition, NoPosition)
 }
 
-case class PGrouped[G <: PSym.Group, +T](l: PReserved[G#L], inner: T, r: PReserved[G#R])(val pos: (Position, Position)) extends PNode with PPrettySubnodes {
+case class PGrouped[G <: PSym.Group, +T](l: PReserved[G#L], inner: T, r: PReserved[G#R])(val pos: (Position, Position)) extends PNode with RReformatPad {
   def update[U](replacement: U): PGrouped[G, U] = PGrouped(l, replacement, r)(pos)
   def update[U, V, D](replacement: Seq[U])(implicit ev: T <:< PDelimited[_, D]) = PGrouped[G, PDelimited[U, D]](l, inner.update(replacement), r)(pos)
-  def prettyLines(implicit ev: T <:< PDelimited[_, _]): String = {
-    val iPretty = if (inner.length == 0) "" else s"\n  ${inner.prettyLines.replace("\n", "\n  ")}\n"
-    s"${l.pretty}${iPretty}${r.pretty}"
+
+  override def reformat(implicit ctx: ReformatterContext, f: PartialFunction[PNode,Seq[RNode]]): Seq[RNode] = {
+    val left = l.reformatSuper
+    val inner_ = reformatAny(this, Iterator(inner))
+    val right = r.reformatSuper
+    if (inner_.isEmpty) left ++ right
+    else if (l.rs.isInstanceOf[PSym.Brace]) left ++ RNode.rne(RNode.rl() ++ inner_) ++ RNode.rl() ++ right
+    else left ++ RNode.rne(inner_) ++ right
   }
 
-  override def reformat(implicit ctx: ReformatterContext): List[RNode] = {
-    if (l.rs.isInstanceOf[Brace]) {
-      val left = show(l);
-      val inner_ = showAny(inner);
-      val right = show(r);
-      if (inner_.forall(_.isNil)) {
-        left <> right
-      } else {
-        left <> rne(rl() <> inner_) <> rl() <> right
-      }
-    } else  {
-      show(l) <> rne(showAny(inner)) <> show(r)
-    }
-  }
+  override def leftPad: Option[RNode] = if (l.rs.isInstanceOf[PSym.Brace]) Some(RSpace()) else None
 }
 object PGrouped {
   /** Grouped and delimited. */
@@ -74,7 +55,7 @@ class PDelimited[+T, +D](
   val first: Option[T],
   val inner: Seq[(D, T)],
   val end: Option[D]
-)(val pos: (Position, Position)) extends PNode with PPrettySubnodes {
+)(val pos: (Position, Position)) extends PNode {
   def headOption: Option[T] = first
   def head: T = first.get
   def tail: Seq[T] = inner.map(_._2)
@@ -88,11 +69,6 @@ class PDelimited[+T, +D](
     assert((first.isEmpty && replacement.isEmpty) || (first.isDefined && inner.length == replacement.length - 1))
     if (replacement.isEmpty) PDelimited(None, Nil, end)(pos)
     else PDelimited(Some(replacement.head), inner.zip(replacement.tail).map { case ((d, _), r) => (d, r) }, end)(pos)
-  }
-  def prettyLines: String = {
-    this.update(this.toSeq.zipWithIndex.map {
-      case (e, i) => (if (i == 0) () else PReserved.implied(PSym.Newline), e)
-    }).pretty
   }
 
   override def canEqual(that: Any): Boolean = that.isInstanceOf[PDelimited[_, _]]
@@ -112,28 +88,23 @@ class PDelimited[+T, +D](
   override def hashCode(): Int = viper.silver.utility.Common.generateHashCode(first, inner, end)
   override def toString(): String = s"PDelimited($first,$inner,$end)"
 
-  override def reformat(implicit ctx: ReformatterContext): List[RNode] = {
-    if (isEmpty) {
-      return rn()
+  override def reformat(implicit ctx: ReformatterContext, f: PartialFunction[PNode, Seq[RNode]] = PartialFunction.empty): Seq[RNode] = {
+    delimiters.headOption match {
+      // Only possible if empty or if no-trailing-delimiter is allowed and length is 1
+      // (e.g. one argument to a function with no commas)
+      case None => super.reformat
+      case Some(ND(_)) => {
+        val reformat = (a: Any) => reformatAny(this, Iterator(a))
+        reformat(first) ++ inner.flatMap(i => reformat(i._1) ++ RNode.rlb() ++ reformat(i._2)) ++ reformat(end)
+      }
+      case _ => super.reformat
     }
-
-    val separator = delimiters.headOption match {
-      // Commas will already add a space for padding by default,
-      // so we don't add anything here.
-      case Some(_: PSym.Comma) => rn()
-      case None => rn()
-      case _ => rlb()
-    }
-
-    showAny(first) <>
-      inner.foldLeft(rn())((acc, b) => acc <> showAny(b._1) <> separator <> showAny(b._2)) <>
-      showAny(end)
   }
 }
 
 object PDelimited {
   /** Grouped and delimited. */
-  type Block[+T <: PNode] = PGrouped[PSym.Brace, PDelimited[T, Option[PSym.Semi]]]
+  type Block[+T <: PNode] = PGrouped[PSym.Brace, PDelimited[T, PSym.OptionSemi]]
 
   /** Grouped and comma delimited. */
   type Comma[G <: PSym.Group, +T <: PNode] = PGrouped[G, PDelimited[T, PSym.Comma]]
@@ -150,7 +121,7 @@ object PDelimited {
     PDelimited[T, D](inner.map((_, d)))(NoPosition, NoPosition)
   }
   def impliedBlock[T <: PNode](inner: Seq[T]): Block[T] = {
-    PGrouped.implied[PSym.Brace, PDelimited[T, Option[PSym.Semi]]](PSym.LBrace, PDelimited.implied(inner, None), PSym.RBrace)
+    PGrouped.implied[PSym.Brace, PDelimited[T, PSym.OptionSemi]](PSym.LBrace, PDelimited.implied(inner, ND(None)), PSym.RBrace)
   }
   def impliedParenComma[T <: PNode](inner: Seq[T]): Comma[PSym.Paren, T] = {
     PGrouped.impliedParen(PDelimited.implied(inner, PReserved.implied(PSym.Comma)))
@@ -166,8 +137,8 @@ trait PKeyword extends PReservedString {
   override def token = keyword
 }
 
-trait PKeywordLang extends PKeyword with RightSpace
-trait PKeywordStmt extends PKeyword with RightSpace
+trait PKeywordLang extends PKeyword with RRightSpace
+trait PKeywordStmt extends PKeyword with RRightSpace
 trait PKeywordType extends PKeyword
 trait PKeywordConstant extends PKeyword
 
@@ -193,14 +164,12 @@ object PKw {
   type Predicate = PReserved[Predicate.type]
   case object Domain extends PKw("domain") with PKeywordLang
   type Domain = PReserved[Domain.type]
-  case object Interpretation extends PKw("interpretation") with PKeywordLang {
-    override def reformatLeftPad: RNode = RSpace()
-  }
+  case object Interpretation extends PKw("interpretation") with PKeywordLang with RLeftSpace
   type Interpretation = PReserved[Interpretation.type]
   case object Axiom extends PKw("axiom") with PKeywordLang
   type Axiom = PReserved[Axiom.type]
 
-  case object Returns extends PKw("returns") with PKeywordLang with LeftSpace
+  case object Returns extends PKw("returns") with PKeywordLang with RLeftSpace
   type Returns = PReserved[Returns.type]
   case object Unique extends PKw("unique") with PKeywordLang
   type Unique = PReserved[Unique.type]
@@ -215,7 +184,7 @@ object PKw {
   type Invariant = PReserved[Invariant.type]
 
   case object Result extends PKw("result") with PKeywordLang with PKeywordAtom {
-    override def rightPad = false
+    override def rightPad: Option[RNode] = Option.empty
   }
   type Result = PReserved[Result.type]
   case object Exists extends PKw("exists") with PKeywordLang with PKeywordAtom
@@ -225,21 +194,21 @@ object PKw {
   case object Forperm extends PKw("forperm") with PKeywordLang with PKeywordAtom
   type Forperm = PReserved[Forperm.type]
   case object New extends PKw("new") with PKeywordLang with PKeywordAtom {
-    override def rightPad = false
+    override def rightPad = Option.empty
   }
   type New = PReserved[New.type]
 
   case object Lhs extends PKw("lhs") with PKeywordLang {
-    override def rightPad = false
+    override def rightPad = Option.empty
   }
   type Lhs = PReserved[Lhs.type]
 
   // Stmts
   case object If extends PKw("if") with PKeywordIf
   type If = PReserved[If.type]
-  case object Elseif extends PKw("elseif") with PKeywordIf
+  case object Elseif extends PKw("elseif") with PKeywordIf with RLeftSpace
   type Elseif = PReserved[Elseif.type]
-  case object Else extends PKw("else") with PKeywordStmt
+  case object Else extends PKw("else") with PKeywordStmt with RLeftSpace
   type Else = PReserved[Else.type]
   case object While extends PKw("while") with PKeywordStmt
   type While = PReserved[While.type]
@@ -355,16 +324,17 @@ object PSym {
   }
   type Quote = PReserved[Quote.type]
 
-  case object Comma extends PSym(",") with PSymbolLang with RightSpace
+  case object Comma extends PSym(",") with PSymbolLang with RRightSpace
   type Comma = PReserved[Comma.type]
   case object Semi extends PSym(";") with PSymbolLang
   type Semi = PReserved[Semi.type]
+  type OptionSemi = ND[Option[PSym.Semi]]
 
   // Used for domain interpretations or type annotations
-  case object Colon extends PSym(":") with PSymbolLang with RightSpace
+  case object Colon extends PSym(":") with PSymbolLang with RRightSpace
   type Colon = PReserved[Colon.type]
   // Used for quantifiers
-  case object ColonColon extends PSym("::") with PSymbolLang with LeftSpace with RightSpace
+  case object ColonColon extends PSym("::") with PSymbolLang with RLeftSpace with RRightNestGroupLine
   type ColonColon = PReserved[ColonColon.type]
   // Used for annotations
   case object At extends PSym("@") with PSymbolLang
@@ -372,9 +342,12 @@ object PSym {
   // Used for `new(*)`
   case object Star extends PSym("*") with PSymbolLang
   type Star = PReserved[Star.type]
-  // Unused, only temporarily created when calling `prettyLines`
+  // Currently unused
   case object Newline extends PSym("\n") with PSymbolLang
 }
+
+/** A wrapper which indicates that the enclosed value is a nesting/linebreak delimiter */
+case class ND[T](t: T)
 
 /** Anything that can act as an operator. */
 trait POperator extends PReservedString {
@@ -390,9 +363,9 @@ trait PSignaturesOp extends POperator {
   def signatures: List[PTypeSubstitution]
 }
 trait PUnaryOp extends POperator with PSignaturesOp
-trait PBinaryOp extends POperator with PSignaturesOp with LeftSpace with RightSpace {
-  override def reformatLeftPad: RNode = RNil()
-  override def reformatRightPad: RNode = RNil()
+trait PBinaryOp extends POperator with PSignaturesOp {
+  override def leftPad: Option[RNode] = Some(RLine())
+  override def rightPad: Option[RNode] = Some(RSpace())
 }
 trait PArithOp extends PBinaryOp {
   override def signatures = List(
@@ -419,6 +392,13 @@ object PCollectionOp {
   val infVar = PTypeVar("#E")
 }
 
+/** BinaryOps such as `==`, `==>` or `<==>` which look better if they stick to the left expression. */
+trait PStickLeftOp extends PBinaryOp {
+  override def leftPad: Option[RNode] = Some(RSpace())
+  override def rightNest: Boolean = true
+  override def rightPad: Option[RNode] = Some(RLine())
+}
+
 object PSymOp {
   case object Wand    extends PSym("--*") with PSymbolOp with PBinaryOp {
     override def signatures = List(
@@ -427,7 +407,7 @@ object PSymOp {
   }
   type Wand = PReserved[Wand.type]
 
-  case object EqEq    extends PSym("==")  with PSymbolOp with PBinaryOp with PEqOp
+  case object EqEq    extends PSym("==")  with PSymbolOp with PBinaryOp with PEqOp with PStickLeftOp
   type EqEq = PReserved[EqEq.type]
   case object Ne      extends PSym("!=")  with PSymbolOp with PBinaryOp with PEqOp
   case object Le      extends PSym("<=")  with PSymbolOp with PBinaryOp with PCmpOp
@@ -441,14 +421,14 @@ object PSymOp {
     )
   }
   case object OrOr    extends PSym("||")  with PSymbolOp with PBinaryOp with PLogicalOp
-  case object Implies extends PSym("==>") with PSymbolOp with PBinaryOp {
+  case object Implies extends PSym("==>") with PSymbolOp with PBinaryOp with PStickLeftOp {
     override def signatures = List(
       Map(POpApp.pArgS(0) -> Bool, POpApp.pArgS(1) -> Bool, POpApp.pResS -> Bool),
       Map(POpApp.pArgS(0) -> Bool, POpApp.pArgS(1) -> Impure, POpApp.pResS -> Impure),
     )
   }
   type Implies = PReserved[Implies.type]
-  case object Iff    extends PSym("<==>") with PSymbolOp with PBinaryOp with PLogicalOp
+  case object Iff    extends PSym("<==>") with PSymbolOp with PBinaryOp with PLogicalOp with PStickLeftOp
   case object Mul     extends PSym("*")   with PSymbolOp with PBinaryOp {
     override def signatures = List(
       Map(POpApp.pArgS(0) -> Perm, POpApp.pArgS(1) -> Perm, POpApp.pResS -> Perm),
@@ -486,13 +466,13 @@ object PSymOp {
     override def signatures = List(Map(POpApp.pArgS(0) -> Bool, POpApp.pResS -> Bool))
   }
 
-  case object Assign  extends PSym(":=")  with PSymbolOp with LeftSpace with RightSpace
+  case object Assign  extends PSym(":=")  with PSymbolOp with RLeftSpace with RRightNestGroupLine
   type Assign = PReserved[Assign.type]
   case object Dot     extends PSym(".")   with PSymbolOp
   type Dot = PReserved[Dot.type]
   case object DotDot  extends PSym("..")  with PSymbolOp
   type DotDot = PReserved[DotDot.type]
-  case object Comma   extends PSym(",")   with PSymbolOp with RightSpace
+  case object Comma   extends PSym(",")   with PSymbolOp with RRightSpace
   type Comma = PReserved[Comma.type]
   case object RParen  extends PSym(")")   with PSymbolOp
   type RParen = PReserved[RParen.type]
@@ -500,9 +480,9 @@ object PSymOp {
   type LBracket = PReserved[LBracket.type]
   case object RBracket extends PSym("]")  with PSymbolOp
   type RBracket = PReserved[RBracket.type]
-  case object Question extends PSym("?")  with PSymbolOp with LeftSpace with RightSpace
+  case object Question extends PSym("?")  with PSymbolOp with RLeftSpace with RRightNestGroupLine
   type Question = PReserved[Question.type]
-  case object Colon   extends PSym(":")   with PSymbolOp with LeftSpace with RightSpace
+  case object Colon   extends PSym(":")   with PSymbolOp with RLeftSpace with RRightGroupLine
   type Colon = PReserved[Colon.type]
   case object Or      extends PSym("|")   with PSymbolOp
   type Or = PReserved[Or.type]
@@ -534,20 +514,20 @@ abstract class PKwOp(val keyword: String) extends POperatorKeyword {
   override def operator = keyword
 }
 object PKwOp {
-  case object In            extends PKwOp("in")           with PBinaryOp with PInOp
+  case object In            extends PKwOp("in")           with PBinaryOp with PInOp with RRightNestGroupLine
   type In = PReserved[In.type]
   case object Union         extends PKwOp("union")        with PBinaryOp with PSetToSetOp
   case object Intersection  extends PKwOp("intersection") with PBinaryOp with PSetToSetOp
   case object Setminus      extends PKwOp("setminus")     with PBinaryOp with PSetToSetOp
   case object Subset        extends PKwOp("subset")       with PBinaryOp with PSubsetOp
 
-  case object Unfolding   extends PKwOp("unfolding")                with PKeywordAtom with RightSpace
+  case object Unfolding   extends PKwOp("unfolding")                with PKeywordAtom with RRightSpace
   type Unfolding = PReserved[Unfolding.type]
-  case object Applying    extends PKwOp("applying")                 with PKeywordAtom with RightSpace
+  case object Applying    extends PKwOp("applying")                 with PKeywordAtom with RRightSpace
   type Applying = PReserved[Applying.type]
-  case object Asserting   extends PKwOp("asserting")                with PKeywordAtom with RightSpace
+  case object Asserting   extends PKwOp("asserting")                with PKeywordAtom with RRightSpace
   type Asserting = PReserved[Asserting.type]
-  case object Let         extends PKwOp("let")                      with PKeywordAtom with RightSpace
+  case object Let         extends PKwOp("let")                      with PKeywordAtom with RRightSpace
   type Let = PReserved[Let.type]
 
   case object Perm        extends PKwOp("perm")                     with PKeywordAtom

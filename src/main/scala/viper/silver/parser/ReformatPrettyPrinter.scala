@@ -34,7 +34,6 @@ import viper.silver.ast
 import viper.silver.ast.HasLineColumn
 import viper.silver.ast.pretty.FastPrettyPrinterBase
 import viper.silver.parser.FastParserCompanion.pTrivia
-import viper.silver.parser.RNode._
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -46,24 +45,20 @@ trait RCommentFragment
 trait RWhitespace extends RNode with RCommentFragment
 
 object RNode {
-  def rn(): List[RNode] = List(RNil())
-  def rne(l: List[RNode]): List[RNode] = List(RNest(l))
-  def rg(l: List[RNode]): List[RNode] = List(RGroup(l))
-  def rt(text: String): List[RNode] = List(RText(text))
-  def rs(): List[RNode] = List(RSpace())
-  def rl(): List[RNode] = List(RLine())
-  def rlb(): List[RNode] = List(RLineBreak())
-}
-
-case class RNil() extends RNode {
-  override def isNil: Boolean = true
+  def rn(): Seq[RNode] = Seq()
+  def rne(l: Seq[RNode]): Seq[RNode] = Seq(RNest(l))
+  def rg(l: Seq[RNode]): Seq[RNode] = Seq(RGroup(l))
+  def rt(text: String): Seq[RNode] = Seq(RText(text))
+  def rs(): Seq[RNode] = Seq(RSpace())
+  def rl(): Seq[RNode] = Seq(RLine())
+  def rlb(): Seq[RNode] = Seq(RLineBreak())
 }
 
 case class RText(text: String) extends RNode {
   override def isNil: Boolean = text.isEmpty
 }
 
-case class RTrivia(l: List[RCommentFragment]) extends RNode {
+case class RTrivia(l: Seq[RCommentFragment]) extends RNode {
   override def isNil: Boolean = l.isEmpty
 
   def hasComment(): Boolean = l.exists(_ match {
@@ -77,18 +72,18 @@ case class RTrivia(l: List[RCommentFragment]) extends RNode {
   }
 
   def replacedLw(r: RWhitespace): RTrivia = l.headOption match {
-    case Some(_: RWhitespace) => RTrivia(r :: l.tail)
+    case Some(_: RWhitespace) => RTrivia(r +: l.tail)
     case _ => this
   }
 }
 
 case class RComment(comment: PComment) extends RCommentFragment
 
-case class RNest(l: List[RNode]) extends RNode {
+case class RNest(l: Seq[RNode]) extends RNode {
   override def isNil: Boolean = l.forall(_.isNil)
 }
 
-case class RGroup(l: List[RNode]) extends RNode {
+case class RGroup(l: Seq[RNode]) extends RNode {
   override def isNil: Boolean = l.forall(_.isNil)
 }
 
@@ -108,47 +103,61 @@ case class RDLineBreak() extends RWhitespace with RCommentFragment {
   override def isNil: Boolean = false
 }
 
+trait RReformatPad {
+  def leftPad: Option[RNode] = None
+  def rightNest: Boolean = false
+  def rightGroup: Boolean = false
+  def rightPad: Option[RNode] = None
+}
+
+trait RLeftSpace extends RReformatPad {
+  override def leftPad: Option[RNode] = Some(RSpace())
+}
+trait RRightSpace extends RReformatPad {
+  override def rightPad: Option[RNode] = Some(RSpace())
+}
+trait RRightGroupLine extends RReformatPad {
+  override def rightGroup: Boolean = true
+  override def rightPad: Option[RNode] = Some(RLine())
+}
+trait RRightNestGroupLine extends RRightGroupLine {
+  override def rightNest: Boolean = true
+}
+
+object RReformatPad {
+  def get(n: PNode): Option[RReformatPad] = n match {
+    case n: RReformatPad => Some(n)
+    case _ => None
+  }
+  def leftPad(n: PNode): Option[RNode] = get(n).flatMap(_.leftPad)
+  def rightNest(n: PNode): Boolean = get(n).exists(_.rightNest)
+  def rightGroup(n: PNode): Boolean = get(n).exists(_.rightGroup)
+  def rightPad(n: PNode): Option[RNode] = get(n).flatMap(_.rightPad)
+}
+
+trait REndLineBreak {
+  def endLinebreak: Boolean = true
+}
+
+object REndLineBreak {
+  def endLinebreak(n: PNode): Boolean = n match {
+    case n: REndLineBreak => n.endLinebreak
+    case _ => false
+  }
+}
+
 sealed trait ReformatPrettyPrinterBase extends FastPrettyPrinterBase {
   override val defaultIndent = 4
   override val defaultWidth = 75
 }
 
-trait ReformatBase {
-  implicit class ContOps(dl: List[RNode]) {
-    def com(dr: List[RNode]): List[RNode] =
-      dl ::: dr
-
-    def <>(dr: List[RNode]): List[RNode] =
-      if (dl.forall(_.isNil)) dr else if (dr.forall(_.isNil)) dl else dl com dr
-
-    def <+>(dr: List[RNode]): List[RNode] =
-      if (dr.forall(_.isNil)) dl else if (dl.forall(_.isNil)) dr else dl ::: rs() ::: dr
-
-    def <@>(dr: List[RNode]): List[RNode] =
-      if (dr.forall(_.isNil)) dl else if (dl.forall(_.isNil)) dr else dl ::: rl() ::: dr
-  }
-}
-
-trait Reformattable extends ReformatBase with Where {
-  def reformat(implicit ctx: ReformatterContext): List[RNode]
-  def rightPad: RNode = RNil()
-  def leftPad: RNode = RNil()
-}
-
-trait ReformattableExpression extends ReformatBase with PNode {
-  def reformatExp(implicit ctx: ReformatterContext): List[RNode] = this match {
-    case p: PLeaf => rt(p.pretty)
-    case _ => ReformatPrettyPrinter.reformatNodesNoSpace(this)
-  }
-}
-
-class ReformatterContext(val program: String, val offsets: Seq[Int]) {
+case class ReformatterContext(val program: String, val offsets: Option[Seq[Int]]) {
   // Store the last position we have processed, so we don't include certain trivia
   // twice.
   var currentOffset: Int = 0
 
   def getByteOffset(p: HasLineColumn): Int = {
-    val row = offsets(p.line - 1);
+    val row = offsets.get(p.line - 1);
     row + p.column - 1
   }
 
@@ -156,18 +165,18 @@ class ReformatterContext(val program: String, val offsets: Seq[Int]) {
   // is the start position of the node (i.e. the end position when getting
   // the trivia) and the second position is the end position of the node (i.e.
   // the value `currentOffset` should be updated to).
-  def getTrivia(pos: (ast.Position, ast.Position)): RTrivia = {
-    (pos._1, pos._2) match {
-      case (p: HasLineColumn, q: HasLineColumn) => {
+  def getTrivia(pos: (ast.Position, ast.Position)): Option[RTrivia] = {
+    (pos._1, pos._2, offsets) match {
+      case (p: HasLineColumn, q: HasLineColumn, Some(_)) => {
         val p_offset = getByteOffset(p);
         val q_offset = getByteOffset(q);
         getTriviaByByteOffset(p_offset, q_offset)
       }
-      case _ => RTrivia(List())
+      case _ => None
     }
   }
 
-  def getTriviaByByteOffset(end: Int, updateOffset: Int): RTrivia = {
+  def getTriviaByByteOffset(end: Int, updateOffset: Int): Option[RTrivia] = {
     if (currentOffset <= end) {
       val str = program.substring(currentOffset, end);
       currentOffset = updateOffset
@@ -210,13 +219,16 @@ class ReformatterContext(val program: String, val offsets: Seq[Int]) {
 
           addTrivia()
 
-          RTrivia(trivia.toList)
+          trivia match {
+            case t if t.isEmpty => None
+            case t => Some(RTrivia(t.toSeq))
+          }
         }
-        case _: Parsed.Failure => RTrivia(List())
+        case _: Parsed.Failure => None
       }
     } else {
-      RTrivia(List())
-    };
+      None
+    }
   }
 }
 
@@ -238,16 +250,71 @@ class PrettyPrintContext {
   }
 }
 
-object ReformatPrettyPrinter extends ReformatPrettyPrinterBase with ReformatBase {
-  def hasLeadingLwNode(l: List[RNode]): Boolean = l.headOption.map(_ match {
-    case p: RGroup => hasLeadingLwNode(p.l)
-    case p: RNest => hasLeadingLwNode(p.l)
-    case _: RWhitespace => true
-    case _ => false
-  }).getOrElse(false)
+object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
+  def reformatAny(parent: PNode, children: Iterator[Any])(implicit ctx: ReformatterContext, f: PartialFunction[PNode, Seq[RNode]] = PartialFunction.empty): Seq[RNode] = {
+    reformatSubnodes(children.flatMap(PNode.nodes(parent, _)))
+  }
+
+  def reformatSubnodes(subnodes: Iterator[PNode], endLinebreak: Boolean = false)(implicit ctx: ReformatterContext, f: PartialFunction[PNode, Seq[RNode]] = PartialFunction.empty): Seq[RNode] = {
+    import scala.collection.mutable.ArrayBuffer
+    val nodes = ArrayBuffer[RNode]()
+    while (subnodes.hasNext) {
+      val n = subnodes.next()
+      RReformatPad.leftPad(n).foreach(nodes += _)
+
+      nodes ++= n.reformatSuper
+
+      n match {
+        case n: RReformatPad if (n.rightNest || n.rightGroup) => {
+          var others = reformatSubnodes(subnodes)
+          n.rightPad.foreach(ws => others = ws +: others)
+
+          (n.rightNest, n.rightGroup) match {
+            case (true, true) => nodes += RNest(Seq(RGroup(others)))
+            case (true, false) => nodes += RNest(others)
+            case (false, true) => nodes += RGroup(others)
+            case (false, false) => ???
+          }
+          return nodes.toSeq
+        }
+        case n: RReformatPad => {
+          n.rightPad.foreach(nodes += _)
+        }
+        case _ =>
+      }
+    }
+    if (endLinebreak) {
+      nodes += RLineBreak()
+    }
+    nodes.toSeq
+  }
+
+  def showNode(p: PNode)(implicit f: PartialFunction[PNode, Seq[RNode]] = PartialFunction.empty): String = {
+    implicit val ctx = ReformatterContext("", None)
+    val reformat = p.reformatSuper
+
+    val pc = new PrettyPrintContext()
+    super.pretty(defaultWidth, showList(reformat, pc))
+  }
   
-  def reformatProgram(p: PProgram): String = {
-    implicit val ctx = new ReformatterContext(p.rawProgram, p.offsets)
+  def showProgram(p: PProgram): String = {
+    implicit val ctx = ReformatterContext(p.rawProgram, Some(p.offsets))
+
+    val pc = new PrettyPrintContext()
+    val mainProgram = p.reformatSuper
+    // Don't forget the trivia after the last program node, i.e. trailing comments!
+    val trailing = ctx.getTriviaByByteOffset(ctx.program.length, ctx.program.length).toSeq
+    val finalProgram = (mainProgram ++ trailing).filter(!_.isNil)
+    super.pretty(defaultWidth, showList(finalProgram, pc))
+  }
+
+  def showList(p: Seq[RNode], pc: PrettyPrintContext): Cont = {
+    def hasLeadingLwNode(l: Seq[RNode]): Boolean = l.headOption.map(_ match {
+      case p: RGroup => hasLeadingLwNode(p.l)
+      case p: RNest => hasLeadingLwNode(p.l)
+      case _: RWhitespace => true
+      case _ => false
+    }).getOrElse(false)
 
     def showWhitespace(w: RWhitespace): Cont = {
       w match {
@@ -278,7 +345,6 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase with ReformatBase
 
     def showNode(p: RNode, pc: PrettyPrintContext): Cont = {
       p match {
-        case RNil() => nil
         case w: RWhitespace => {
           pc.register(w)
 
@@ -295,10 +361,10 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase with ReformatBase
               case None => showTrivia(t)
               // If we want a double linebreak and we already had a linebreak, replace it with a simple linebreak.
               case Some(_: RLineBreak) => if (t.l.headOption == Some(RDLineBreak())) {
-                 showTrivia(t.replacedLw(RLineBreak()))
+                  showTrivia(t.replacedLw(RLineBreak()))
                 } else {
-                 showTrivia(t.trimmedLw())
-              }
+                  showTrivia(t.trimmedLw())
+                }
               // If we want a space and already had a space, do not write double space, trim it instead.
               case Some(_: RSpace) => if (t.l.headOption == Some(RSpace())) {
                 showTrivia(t.trimmedLw())
@@ -322,7 +388,7 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase with ReformatBase
           
           flushWhitespace(pc) <> trivia
         }
-        case RGroup(l: List[RNode]) => {
+        case RGroup(l: Seq[RNode]) => {
           val lw = flushWhitespace(pc) 
           val grouped = group(showList(l, pc))
           
@@ -333,7 +399,7 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase with ReformatBase
             lw <> grouped
           }
         }
-        case RNest(l: List[RNode]) => {
+        case RNest(l: Seq[RNode]) => {
           val lw = flushWhitespace(pc)
           val nested = nest(defaultIndent, showList(l, pc))
           
@@ -347,99 +413,10 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase with ReformatBase
       }
     }
 
-    def showList(p: List[RNode], pc: PrettyPrintContext): Cont = {
-      var reformatted = nil
-      for (n <- p) {
-        reformatted = reformatted <> showNode(n, pc)
-      }
-      reformatted
+    var reformatted = nil
+    for (n <- p) {
+      reformatted = reformatted <> showNode(n, pc)
     }
-
-    val pc = new PrettyPrintContext()
-    val mainProgram = show(p)
-    // Don't forget the trivia after the last program node, i.e. trailing comments!
-    val trailing = List(ctx.getTriviaByByteOffset(ctx.program.length, ctx.program.length))
-    val finalProgram = (mainProgram ::: trailing).filter(!_.isNil)      
-    super.pretty(defaultWidth, showList(finalProgram, pc))
-  }
-
-  def showOption[T <: Any](n: Option[T])(implicit ctx: ReformatterContext): List[RNode] = {
-    n match {
-      case Some(r) => showAny(r)
-      case None => rn()
-    }
-  }
-
-  def showAnnotations(annotations: Seq[PAnnotation])(implicit ctx: ReformatterContext): List[RNode] = {
-    if (annotations.isEmpty) {
-      List(RNil())
-    } else {
-      annotations.map(show(_)).reduce((acc, n) => acc <> n)
-    }
-  }
-
-  def showReturns(returns: Option[PMethodReturns])(implicit ctx: ReformatterContext): List[RNode] = {
-    returns.map(a => rs() ::: show(a)).getOrElse(rn())
-  }
-
-  def showPresPosts(pres: PDelimited[_, _], posts: PDelimited[_, _])(implicit ctx: ReformatterContext): List[RNode] = {
-    rne((if (pres.isEmpty) rn()
-    else rlb() ::: show(pres)) :::
-      (if (posts.isEmpty) rn()
-      else rlb() ::: show(posts)
-        )
-    )
-  }
-
-  def showInvs(invs: PDelimited[_, _])(implicit ctx: ReformatterContext): List[RNode] = {
-    rne(if (invs.isEmpty) rn() else rlb() ::: show(invs))
-  }
-
-  def showBody(body: Reformattable, newline: Boolean)(implicit ctx: ReformatterContext): List[RNode] = {
-    if (newline) {
-      rlb() ::: show(body)
-    } else {
-      rs() ::: show(body)
-    }
-  }
-
-  def show(r: Reformattable)(implicit ctx: ReformatterContext): List[RNode] = {
-    r match {
-      case _: PLeaf => {
-        List(r.leftPad) <> List(ctx.getTrivia(r.pos)) <> r.reformat(ctx) <> List(r.rightPad)
-      }
-      case _ => List(r.leftPad) <> r.reformat(ctx) <> List(r.rightPad)
-    }
-  }
-
-  // We need this method because unfortunately PGrouped and PDelimited can have arbitrary generic parameters.
-  def showAny(n: Any)(implicit ctx: ReformatterContext): List[RNode] = {
-    n match {
-      case p: Reformattable => show(p)
-      case p: Option[Any] => showOption(p)
-      case p: Seq[Any] => showSeq(p)
-      case p: Right[Any, Any] => showAny(p.value)
-      case p: Left[Any, Any] => showAny(p.value)
-      case p: Iterable[Any] => if (p.isEmpty) List() else p.map(showAny).reduce((a, b) => a <> b)
-      case p: Product =>
-        if (p.productArity == 0) List()
-        else (0 until p.productArity).map(i => showAny(p.productElement(i))).reduce((a, b) => a <> b)
-    }
-  }
-
-  def showSeq(l: Seq[Any])(implicit ctx: ReformatterContext): List[RNode] = {
-    if (l.isEmpty) {
-      rn()
-    } else {
-      l.zipWithIndex.map(e => if (e._2 == 0) showAny(e._1) else rlb() <> showAny(e._1)).reduce(_ <> _)
-    }
-  }
-  
-  def showNestedPaddedExpr(expr: PExp)(implicit ctx: ReformatterContext): List[RNode] = {
-    rne(rg(rl() <> show(expr)))
-  }
-
-  def reformatNodesNoSpace(n: PNode)(implicit ctx: ReformatterContext): List[RNode] = {
-    n.subnodes.map(show(_)).reduce(_ <> _)
+    reformatted
   }
 }

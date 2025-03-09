@@ -33,7 +33,7 @@ class ReformatterTests extends AnyFunSuite {
     Provider.setInput(input_path)
     val ast = Provider.parse(inputProgram)
 
-    val reformatted = ReformatPrettyPrinter.reformatProgram(ast);
+    val reformatted = ReformatPrettyPrinter.showProgram(ast);
     val expected = DiskLoader.loadContent(expected_path).get
 
     assert(reformatted == expected)

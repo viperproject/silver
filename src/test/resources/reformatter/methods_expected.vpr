@@ -121,7 +121,7 @@ method client1(a: MyType1[Bool, Ref])
 method decreasesTuple()
     decreases true, true, true, true if true
 {}
-
+/* A comment without double newline before */
 method decreases2()
     decreases _ if true
 {}
