@@ -278,7 +278,6 @@ case class PIdnRef[T <: PDeclarationInner](name: String)(val pos: (Position, Pos
   }
   def replace(n: PNode): Option[PIdnRef[T]] = n match {
     case n: PIdnUse => Some(PIdnRef(n.name)(n.pos)(ctag))
-    case n: PIdnUseExp => Some(PIdnRef(n.name)(n.pos)(ctag))
     case _ => None
   }
   override def getExtraVals: Seq[Any] = Seq(pos, ctag)
