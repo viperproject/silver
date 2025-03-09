@@ -11,9 +11,9 @@ import viper.silver.parser.TypeHelper.Bool
 import viper.silver.parser._
 
 case object PDecreasesKeyword extends PKw("decreases") with PKeywordLang with PKw.AnySpec
-case object PIfKeyword extends PKw("if") with PKeywordLang
+case object PIfKeyword extends PKw("if") with PKeywordLang with RLeftSpace
 
-case object PWildcardSym extends PSym("_") with PSymbolLang
+case object PWildcardSym extends PSym("_") with PSymbolLang with RLeftSpace
 
 /**
  * Any possible decreases clause extends from this trait.
@@ -67,4 +67,3 @@ case class PDecreasesStar(star: PSym.Star)(val pos: (Position, Position)) extend
     DecreasesStar()(t.liftPos(this))
   }
 }
-

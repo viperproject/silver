@@ -173,7 +173,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
         Some(name.substring(0, name.length - 16))
       else
         None
-      val wronglyConstrainedTypes = d.members.inner.axioms.toSeq.flatMap(a => constrainsWellfoundednessUnexpectedly(a, typeName))
+      val wronglyConstrainedTypes = d.axioms.flatMap(a => constrainsWellfoundednessUnexpectedly(a, typeName))
       reporter.report(WarningsDuringTypechecking(wronglyConstrainedTypes.map(t =>
         TypecheckerWarning(s"Domain ${d.idndef.name} constrains well-foundedness functions for type ${t} and should be named <Type>WellFoundedOrder instead.", d.pos._1))))
     }
@@ -194,7 +194,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
       val importOnlyProgram = importStmts.mkString("\n")
       val importPProgram = PAstProvider.generateViperPAst(importOnlyProgram).get.filterMembers(_.isInstanceOf[PDomain])
       val inputFiltered = input.filterMembers(m => !(m.isInstanceOf[PDomain] && m.asInstanceOf[PDomain].idndef.name == "WellFoundedOrder"))
-      val mergedProgram = PProgram(inputFiltered.imported :+ importPProgram, inputFiltered.members)(input.pos, input.localErrors)
+      val mergedProgram = PProgram(inputFiltered.imported :+ importPProgram, inputFiltered.members)(input.pos, input.localErrors, input.offsets, input.rawProgram)
       super.beforeTranslate(mergedProgram)
     } else {
       super.beforeTranslate(input)
