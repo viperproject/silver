@@ -636,7 +636,7 @@ trait PExp extends PNode with PDefineBody {
     // Unfortunately, we cannot just call reformat on exp.brackets, because then we end up in an
     // endless recursion. So instead, we need to add them manually.
     brackets match {
-      case Some(b) => RNode.rg(b.l.reformatSuper ++ this.reformatExp ++ b.r.reformatSuper)
+      case Some(b) => b.l.reformatSuper ++ this.reformatExp ++ b.r.reformatSuper
       case None => this.reformatExp
     }
   }
