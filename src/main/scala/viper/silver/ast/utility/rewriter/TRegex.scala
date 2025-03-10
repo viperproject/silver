@@ -7,7 +7,6 @@
 package viper.silver.ast.utility.rewriter
 
 import scala.annotation.unused
-import scala.reflect.runtime.{universe => reflection}
 
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
@@ -94,7 +93,7 @@ trait Match {
 class NMatch[N <: Rewritable : TypeTag](val pred: N => Boolean, val rewrite: Boolean) extends Match {
 
   // Checks if node n (of type T) is a valid subtype of generic parameter N
-  protected def matches[T: TypeTag](n: T): Boolean = {
+  protected def matches[T](n: T): Boolean = {
     // TODO: This code works but im not really familiar with reflection. Is there a better solution?
     val mirror = runtimeMirror(n.getClass.getClassLoader) // obtain runtime mirror
     val sym = mirror.staticClass(n.getClass.getName) // obtain class symbol for `n`
@@ -102,7 +101,7 @@ class NMatch[N <: Rewritable : TypeTag](val pred: N => Boolean, val rewrite: Boo
 
     // create a type tag which contains above type object
     val t1 = TypeTag(mirror, new api.TypeCreator {
-      def apply[U <: api.Universe with Singleton](m: api.Mirror[U]) =
+      def apply[U <: api.Universe with Singleton](m: api.Mirror[U]): U#Type =
         if (m eq mirror) tpe.asInstanceOf[U#Type]
         else throw new IllegalArgumentException(s"Type tag defined in $mirror cannot be migrated to other mirrors.")
     }).tpe
@@ -283,7 +282,7 @@ class Questionmark(m: Match) extends Match {
   * @tparam N Type of the AST
   * @tparam COLL Type of the context
   */
-class TreeRegexBuilder[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, COLL](val accumulator: (COLL, COLL) => COLL, val combinator: (COLL, COLL) => COLL, val default: COLL) {
+class TreeRegexBuilder[N <: Rewritable : scala.reflect.ClassTag, COLL](val accumulator: (COLL, COLL) => COLL, val combinator: (COLL, COLL) => COLL, val default: COLL) {
 
   /**
     * Generates a TreeRegexBuilderWithMatch by adding the matching part to the mix
@@ -300,7 +299,7 @@ class TreeRegexBuilder[N <: Rewritable : reflection.TypeTag : scala.reflect.Clas
   * @tparam N Type of the AST
   * @tparam COLL Type of the context
   */
-class TreeRegexBuilderWithMatch[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, COLL](tbuilder: TreeRegexBuilder[N, COLL], regex: Match) {
+class TreeRegexBuilderWithMatch[N <: Rewritable : scala.reflect.ClassTag, COLL](tbuilder: TreeRegexBuilder[N, COLL], regex: Match) {
 
   /**
     * Generate the regex strategy by adding the rewriting function into the mix
@@ -314,7 +313,7 @@ class TreeRegexBuilderWithMatch[N <: Rewritable : reflection.TypeTag : scala.ref
   * Same as TreeRegexBuilder just without context
   * @tparam N Type of all AST nodes
   */
-class SimpleRegexBuilder[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag]() {
+class SimpleRegexBuilder[N <: Rewritable : scala.reflect.ClassTag]() {
 
   /**
     * Generates a TreeRegexBuilderWithMatch by adding the matching part to the mix
@@ -329,7 +328,7 @@ class SimpleRegexBuilder[N <: Rewritable : reflection.TypeTag : scala.reflect.Cl
   * @param regex Regular expression used for matching
   * @tparam N Type of all AST nodes
   */
-class SimpleRegexBuilderWithMatch[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag](regex: Match) {
+class SimpleRegexBuilderWithMatch[N <: Rewritable : scala.reflect.ClassTag](regex: Match) {
 
   /**
     * Generate the regex strategy by adding the rewriting function into the mix
@@ -353,21 +352,21 @@ object TreeRegexBuilder {
     * @tparam COLL Type of the context
     * @return
     */
-  def context[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, COLL](accumulator: (COLL, COLL) => COLL, combinator: (COLL, COLL) => COLL, default: COLL) = new TreeRegexBuilder[N, COLL](accumulator, combinator, default)
+  def context[N <: Rewritable : scala.reflect.ClassTag, COLL](accumulator: (COLL, COLL) => COLL, combinator: (COLL, COLL) => COLL, default: COLL) = new TreeRegexBuilder[N, COLL](accumulator, combinator, default)
 
   /**
     * Don't care about the custom context but want ancestor/sibling information
     * @tparam N Type of the AST
     * @return TreeRegexBuilder object
     */
-  def ancestor[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag] = new TreeRegexBuilder[N, Any]((x, _) => x, (_, _) => true, null)
+  def ancestor[N <: Rewritable : scala.reflect.ClassTag] = new TreeRegexBuilder[N, Any]((x, _) => x, (_, _) => true, null)
 
   /**
     * Don't care about context at all
     * @tparam N Type of the AST
     * @return SimpleRegexBuilder
     */
-  def simple[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag] = new SimpleRegexBuilder[N]
+  def simple[N <: Rewritable : scala.reflect.ClassTag] = new SimpleRegexBuilder[N]
 }
 
 

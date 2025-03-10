@@ -9,7 +9,7 @@ import viper.silver.ast.utility.rewriter.Traverse.Traverse
 
 import scala.annotation.unused
 import scala.collection.mutable
-import scala.reflect.runtime.{universe => reflection}
+import scala.collection.mutable.ListBuffer
 
 /**
   * An enumeration that represents traversal modes:
@@ -20,6 +20,7 @@ import scala.reflect.runtime.{universe => reflection}
   */
 object Traverse extends Enumeration {
   type Traverse = Value
+  @unused
   val TopDown, BottomUp, Innermost, Outermost = Value
 }
 
@@ -33,7 +34,7 @@ trait StrategyInterface[N <: Rewritable] {
   // Store every special node we don't want to recurse on
   // A hash set would be more efficient but then we get problems with circular dependencies (calculating hash never terminates)
 
-  protected val noRecursion = mutable.ListBuffer.empty[NodeEq]
+  protected val noRecursion: ListBuffer[NodeEq] = mutable.ListBuffer.empty[NodeEq]
 
   case class NodeEq(node: Rewritable) {
     override def equals(that: Any): Boolean = that match {
@@ -109,7 +110,7 @@ object StrategyBuilder {
     * @tparam N Common supertype of every node in the tree
     * @return Strategy object ready to execute on a tree
     */
-  def Slim[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag](p: PartialFunction[N, N], t: Traverse = Traverse.TopDown) = {
+  def Slim[N <: Rewritable](p: PartialFunction[N, N], t: Traverse = Traverse.TopDown): Strategy[N, SimpleContext[N]] = {
     new SlimStrategy[N](p) defaultContext new NoContext[N] traverse t
   }
 
@@ -121,7 +122,7 @@ object StrategyBuilder {
     * @tparam N Common supertype of every node in the tree
     * @return Strategy object ready to execute on a tree
     */
-  def Ancestor[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag](p: PartialFunction[(N, ContextA[N]), (N, ContextA[N])], t: Traverse = Traverse.TopDown) = {
+  def Ancestor[N <: Rewritable](p: PartialFunction[(N, ContextA[N]), (N, ContextA[N])], t: Traverse = Traverse.TopDown): Strategy[N, ContextA[N]] = {
     new Strategy[N, ContextA[N]](p) defaultContext new PartialContextA[N] traverse t
   }
 
@@ -135,7 +136,7 @@ object StrategyBuilder {
     * @tparam C Type of the context
     * @return Strategy object ready to execute on a tree
     */
-  def Context[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C](p: PartialFunction[(N, ContextC[N, C]), (N, ContextC[N, C])], default: C, t: Traverse = Traverse.TopDown) = {
+  def Context[N <: Rewritable, C](p: PartialFunction[(N, ContextC[N, C]), (N, ContextC[N, C])], default: C, t: Traverse = Traverse.TopDown): Strategy[N, ContextC[N, C]] = {
     new Strategy[N, ContextC[N, C]](p) defaultContext new PartialContextC[N, C](default) traverse t
   }
 
@@ -149,7 +150,7 @@ object StrategyBuilder {
     * @tparam C Type of the context
     * @return Strategy object ready to execute on a tree
     */
-  def CustomContext[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C](p: PartialFunction[(N, C), (N, C)], default: C, t: Traverse = Traverse.TopDown) = {
+  def CustomContext[N <: Rewritable, C](p: PartialFunction[(N, C), (N, C)], default: C, t: Traverse = Traverse.TopDown): Strategy[N, ContextCustom[N, C]] = {
     new Strategy[N, ContextCustom[N, C]]({ // rewrite partial function taking context with parent access etc. to one just taking the custom context
       case (node, context) if p.isDefinedAt(node, context.c) =>
         val (n, c) = p((node, context.c))
@@ -167,7 +168,7 @@ object StrategyBuilder {
     * @tparam C         Type of the context
     * @return           Strategy object ready to execute on a tree
     */
-  def RewriteNodeAndContext[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C](p: PartialFunction[(N, C), (N, C)], context: C, t: Traverse = Traverse.TopDown) = {
+  def RewriteNodeAndContext[N <: Rewritable, C](p: PartialFunction[(N, C), (N, C)], context: C, t: Traverse = Traverse.TopDown): Strategy[N, ContextC[N, C]] = {
     val f: PartialFunction[(N, ContextC[N, C]), (N, ContextC[N, C])] = {
       case (node, context) if p.isDefinedAt(node, context.c) =>
         val (n, c) = p((node, context.c))
@@ -208,7 +209,7 @@ object StrategyBuilder {
     * @tparam C Type of the context
     * @return Visitor object ready to use
     */
-  def ContextVisitor[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C](f: (N, ContextC[N, C]) => ContextC[N, C], default: C) = {
+  def ContextVisitor[N <: Rewritable, C](f: (N, ContextC[N, C]) => ContextC[N, C], default: C): Strategy[N, ContextC[N, C]] = {
     val p: PartialFunction[(N, ContextC[N, C]), (N, ContextC[N, C])] = {
       case (n, c) => (n, f(n, c))
     }
@@ -234,20 +235,13 @@ class AddArtificialContext[N <: Rewritable](p: PartialFunction[N, N]) extends Pa
   * @param p Partial function from node to node
   * @tparam N Type of the
   */
-class SlimStrategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag](p: PartialFunction[N, N]) extends Strategy[N, SimpleContext[N]](new AddArtificialContext(p))
+class SlimStrategy[N <: Rewritable](p: PartialFunction[N, N]) extends Strategy[N, SimpleContext[N]](new AddArtificialContext(p))
 
 // Generic Strategy class. Includes all the required functionality
-class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C <: Context[N]](p: PartialFunction[(N, C), (N, C)]) extends StrategyInterface[N] {
+class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), (N, C)]) extends StrategyInterface[N] {
 
   // Defines the traversion mode
-  protected var traversionMode: Traverse = Traverse.TopDown
-
-  /**
-    * Access to the current traversion mode
-    *
-    * @return Traversion mode
-    */
-  def getTraversionMode = traversionMode
+  private var traversionMode: Traverse = Traverse.TopDown
 
   /**
     * Define the traversion mode
@@ -796,13 +790,13 @@ class ContextC[N <: Rewritable, CUSTOM](aList: Seq[N], val c: CUSTOM, transforme
   }
 
   // Perform the custom update part of the update
-  def updateCustom(n: N): ContextC[N, CUSTOM] = {
+  def updateCustom(): ContextC[N, CUSTOM] = {
     new ContextC[N, CUSTOM](ancestorList, c, transformer)
   }
 
   // Update the context with node and custom context
   override def update(n: N): ContextC[N, CUSTOM] = {
-    replaceNode(n).updateCustom(node)
+    replaceNode(n).updateCustom()
   }
 
   def updateContext(c: CUSTOM) =
@@ -819,14 +813,9 @@ class ContextC[N <: Rewritable, CUSTOM](aList: Seq[N], val c: CUSTOM, transforme
   */
 class ContextCustom[N <: Rewritable, CUSTOM](val c: CUSTOM, override protected val transformer: StrategyInterface[N]) extends SimpleContext[N](transformer) {
 
-  // Perform the custom update part of the update
-  def updateCustom(n: N): ContextCustom[N, CUSTOM] = {
-    new ContextCustom[N, CUSTOM](c, transformer)
-  }
-
   // Update the context with node and custom context
-  override def update(n: N): ContextCustom[N, CUSTOM] = {
-    updateCustom(n)
+  override def update(@unused n: N): ContextCustom[N, CUSTOM] = {
+    new ContextCustom[N, CUSTOM](c, transformer)
   }
 
   def updateContext(c: CUSTOM) =

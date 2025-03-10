@@ -25,10 +25,12 @@ object Expressions {
     case CondExp(cnd, thn, els) => isPure(cnd) && isPure(thn) && isPure(els)
     case unf: Unfolding => isPure(unf.body)
     case app: Applying => isPure(app.body)
-    case Asserting(a, e) => isPure(e)
+    case Asserting(_, e) => isPure(e)
     case QuantifiedExp(_, e0) => isPure(e0)
     case Let(_, _, body) => isPure(body)
     case e: ExtensionExp => e.extensionIsPure
+    case Forall(_, _, e) => isPure(e)
+    case Exists(_, _, e) => isPure(e)
 
     case   _: Literal
          | _: PermExp

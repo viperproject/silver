@@ -16,21 +16,21 @@ import viper.silver.verifier.{ConsistencyError, VerificationResult}
 /** Expressions. */
 sealed trait Exp extends Hashable with Typed with Positioned with Infoed with TransformableErrors with PrettyExpression {
   var simplified: Option[Exp] = None
-  lazy val isPure = Expressions.isPure(this)
-  def isHeapDependent(p: Program) = Expressions.isHeapDependent(this, p)
-  def isTopLevelHeapDependent(p: Program) = Expressions.isTopLevelHeapDependent(this, p)
+  lazy val isPure: Boolean = Expressions.isPure(this)
+  def isHeapDependent(p: Program): Boolean = Expressions.isHeapDependent(this, p)
+  def isTopLevelHeapDependent(p: Program): Boolean = Expressions.isTopLevelHeapDependent(this, p)
 
   /**
    * Returns a representation of this expression as it looks when it is used as a proof obligation, i.e. all
    * InhaleExhaleExp are replaced by the inhale part.
    */
-  lazy val whenInhaling = Expressions.whenInhaling(this)
+  lazy val whenInhaling: Exp = Expressions.whenInhaling(this)
 
   /**
    * Returns a representation of this expression as it looks when it is used as a proof obligation, i.e. all
    * InhaleExhaleExp are replaced by the exhale part.
    */
-  lazy val whenExhaling = Expressions.whenExhaling(this)
+  lazy val whenExhaling: Exp = Expressions.whenExhaling(this)
 
   /** Returns the subexpressions of this expression */
   lazy val subExps = Expressions.subExps(this)

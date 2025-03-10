@@ -242,7 +242,7 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with NestedPredicat
    * Mark already traversed and transformed nodes.
    * Used for while loops because a while node is potentially traversed twice.
    */
-  private final case class Transformed() extends Info {
+  private case class Transformed() extends Info {
     override val comment: Seq[String] = Nil
 
     override val isCached: Boolean = false
