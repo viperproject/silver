@@ -109,7 +109,7 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAllC
       info(s"Time required: $tPhases.")
       val actualErrors = fe.result match {
         case Success => Nil
-        case Failure(es) => es collect {
+        case Failure(es,_) => es collect {
           case e: AbstractVerificationError =>
             e.transformedError()
           case rest: AbstractError => rest

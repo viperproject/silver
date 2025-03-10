@@ -68,6 +68,8 @@ case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv
 
       case BranchFailureMessage(_, concerning, _, cached) =>
         csv_file.write(s"BranchFailureMessage,${concerning.name},${cached}\n")
+      case BranchTreeReport(tree) =>
+        csv_file.write(s"BranchTreeReport,${tree.getMethod().name},${tree.prettyPrint()}\n")
 
       case _: SimpleMessage | _: CopyrightReport | _: MissingDependencyReport | _: BackendSubProcessReport |
            _: InternalWarningMessage | _: ConfigurationConfirmation=> // Irrelevant for reporting
@@ -125,15 +127,15 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
 
       case ExceptionReport(e) =>
         /** Theoretically, we may encounter an exceptional message that has
-          * not yet been reported via AbortedExceptionally. This can happen
-          * if we encounter exeptions in e.g. the parser. */
+         * not yet been reported via AbortedExceptionally. This can happen
+         * if we encounter exeptions in e.g. the parser. */
         println( s"Verification aborted exceptionally: ${e.toString}" )
         e.printStackTrace(System.out);
         Option(e.getCause) match {
           case Some(cause) => println( s"  Cause: ${cause.toString}" )
           case None =>
         }
-        //println( s"  See log file for more details: ..." )
+      //println( s"  See log file for more details: ..." )
 
       case ExternalDependenciesReport(deps) =>
         val s: String = (deps map (dep => {
@@ -179,12 +181,13 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
       case EntitySuccessMessage(_, _, _, _) =>    // FIXME Currently, we only print overall verification results to STDOUT.
       case EntityFailureMessage(_, _, _, _, _) =>    // FIXME Currently, we only print overall verification results to STDOUT.
       case BranchFailureMessage(_, _, _, _) =>    // FIXME Currently, we only print overall verification results to STDOUT.
+      case BranchTreeReport(_) =>
       case ConfigurationConfirmation(_) =>     // TODO  use for progress reporting
-        //println( s"Configuration confirmation: $text" )
+      //println( s"Configuration confirmation: $text" )
       case InternalWarningMessage(_) =>        // TODO  use for progress reporting
-        //println( s"Internal warning: $text" )
+      //println( s"Internal warning: $text" )
       case _: SimpleMessage =>
-        //println( sm.text )
+      //println( sm.text )
       case _: QuantifierInstantiationsMessage => // too verbose, do not print
       case _: QuantifierChosenTriggersMessage => // too verbose, do not print
       case _: VerificationTerminationMessage =>

@@ -54,7 +54,7 @@ trait SilFrontend extends DefaultFrontend {
     if (_state >= DefaultStates.Verification) {
       _appExitReason = result match {
         case Success => ApplicationExitReason.VERIFICATION_SUCCEEDED
-        case Failure(_) => ApplicationExitReason.VERIFICATION_FAILED
+        case Failure(_,_) => ApplicationExitReason.VERIFICATION_FAILED
       }
     }
   }
@@ -283,9 +283,9 @@ trait SilFrontend extends DefaultFrontend {
     val res = plugins.beforeFinish(tRes)
     val filteredRes = res match {
       case Success => res
-      case Failure(errors) =>
+      case Failure(errors,branchTree) =>
         // Remove duplicate errors
-        Failure(errors.distinctBy(failureFilterAndGroupingCriterion))
+        Failure(errors.distinctBy(failureFilterAndGroupingCriterion),branchTree)
     }
     _verificationResult = Some(filteredRes)
     filteredRes match {

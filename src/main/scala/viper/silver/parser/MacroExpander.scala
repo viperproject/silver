@@ -338,8 +338,11 @@ object MacroExpander {
       var bodyWithReplacedParams = replacer.execute[PNode](bodyWithRenamedVars, context)
       bodyWithReplacedParams = adaptPositions(bodyWithReplacedParams, pos)
 
-      // Return expanded macro's body
-      bodyWithReplacedParams
+      // Return expanded macro's body wrapped inside annotation
+      bodyWithReplacedParams match {
+        case b: PExp => PExpandedMacroExp(b)(pos)
+        case b: PStmt => PExpandedMacroStmt(b)(pos)
+      }
     }
 
     def ExpandMacroIfValid(macroCall: PNode, ctx: ContextA[PNode]): PNode = {
