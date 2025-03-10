@@ -1699,7 +1699,7 @@ case class PFields(annotations: Seq[PAnnotation], field: PKw.Field, fields: PDel
   override def declares: Seq[PGlobalDeclaration] = fields.toSeq
 }
 
-case class PSpecification[+T <: PKw.Spec](k: PReserved[PKw.Spec], e: PExp)(val pos: (Position, Position)) extends PNode with PPrettySubnodes {
+case class PSpecification[+T <: PKw.Spec](k: PReserved[PKw.Spec], e: PExp, annotations: Seq[PAnnotation] = Seq())(val pos: (Position, Position)) extends PNode with PPrettySubnodes {
   override def pretty: String = "\n  " + super.pretty
 }
 
@@ -1725,9 +1725,14 @@ case class PMethodReturns(k: PKw.Returns, formalReturns: PGrouped.Paren[PDelimit
   */
 case class PAnnotationsPosition(annotations: Seq[PAnnotation], pos: (FilePosition, FilePosition))
 
-case class PAnnotation(at: PSym.At, key: PRawString, values: PGrouped.Paren[PDelimited[PStringLiteral, PSym.Comma]])(val pos: (Position, Position)) extends PNode with PPrettySubnodes {
+sealed trait PAnnotation extends PNode with PPrettySubnodes {
+  def key: PRawString
   override def pretty: String = super.pretty + "\n"
 }
+
+case class PAtAnnotation(at: PSym.At, key: PRawString, values: PGrouped.Paren[PDelimited[PStringLiteral, PSym.Comma]])(val pos: (Position, Position)) extends PNode with PAnnotation with PPrettySubnodes {}
+
+case class PDocAnnotation(tripleSlash: PSym.TripleSlash, docString: PRawString, key: PRawString = PRawString("doc")(NoPosition, NoPosition))(val pos: (Position, Position)) extends PAnnotation {}
 
 // Any unenclosed string (e.g. `hello`)
 case class PRawString(str: String)(val pos: (Position, Position)) extends PNode with PLeaf {
