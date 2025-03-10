@@ -250,6 +250,8 @@ object MacroExpander {
         MacroApp(app, Some(app.use.args), getMacroByName(app.use.idnref))
 
       // Other macro refs (without arguments)
+      case idnuse: PIdnUse if getMacroPlain(idnuse).isDefined =>
+        MacroApp(idnuse, None, getMacroPlain(idnuse).get)
       case idnuse: PIdnUseExp if getMacroPlain(idnuse.idnref).isDefined =>
         MacroApp(idnuse, None, getMacroPlain(idnuse.idnref).get)
       // Other macro refs (with arguments)
