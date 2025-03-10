@@ -1,0 +1,5 @@
+field val: Int
+field next: Ref;
+
+field left: Int
+field right: Int

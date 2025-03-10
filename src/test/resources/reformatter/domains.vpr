@@ -1,0 +1,80 @@
+domain MyDomain[T, U] {
+    function foo(): Int
+    
+    function bar(x: Bool): Bool
+    
+    axiom axFoo {
+        foo() > 0
+    }
+    
+    axiom axBar {
+        bar(true)
+    }
+    
+    axiom axFoobar {
+        bar(false) ==> foo() == 3
+    }
+}
+domain MyDomain2interpretation
+    interpretation (hi: "bye", second: "third")
+{}
+
+domain MyDomain1 {
+    function foo4(): Int
+    
+    function bar4(x: Bool): Bool
+    
+    axiom axFoo1 {
+         foo4() > 0 }
+    
+    axiom axBar1 {
+        bar4(true)
+    }
+    
+    axiom axFoobar1 {
+        bar4(false) ==> foo4() == 3
+    }
+}
+
+domain MyType1[A, B] {
+    function constructor_a1(x: A): MyType1[A, B]
+    
+    function constructor_b1(y: B): MyType1[A, B]
+    
+    function bin_oper1(a: MyType1[A, B], b: MyType1[A, B]): MyType1[A, B]
+}
+
+domain MyInteger2 {
+    function create_int2(x: Int): MyInteger2
+    
+    function get_value2(a: MyInteger2): Int
+    
+    function sum3(a: MyInteger2, b: MyInteger2): MyInteger2
+    
+    axiom axSum {
+        forall a: MyInteger2, b: MyInteger2 ::{sum3(a, b)} sum3(a, b) == create_int2(get_value2(a) + get_value2(b))
+    }
+}
+
+domain IArray {
+    function slot(a: IArray, i: Int): Ref
+    function len(a: IArray): Int
+    function first4(r: Ref): IArray
+    function second4(r: Ref): Int
+    
+    axiom all_diff {
+        // A comment
+        forall a: IArray, i: Int   :: {
+                slot(a, i)
+            } first4(slot(a, i)) == a && second4(slot(a, i)) == i
+    }
+    
+    axiom len_nonneg {
+        forall a: IArray :: { len(a) } len(a) >= 0
+    }
+}
+
+domain myBV    interpretation (
+SMTLIB: "(_ BitVec 32)", Boogie: "bv32") {
+  function toBV32(i: Int): myBV interpretation      "(_ int2bv 32)"
+}

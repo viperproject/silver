@@ -1,0 +1,26 @@
+@annot()
+import <adt/derives.vpr>
+
+@annot1()
+function foo(): Int
+
+@annot1()
+function foo2(): Int
+
+@annot1()
+@annot2()
+@annot3()
+function foo3(): Int
+
+@annot1()
+domain Domain1[T] {
+    @annot1()
+    @annot2()
+    axiom Axiom1 {
+        forall x: T :: true
+    }
+}
+
+@annot1()
+@annot2()
+predicate Pred1(t: Int)
