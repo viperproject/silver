@@ -142,7 +142,7 @@ trait StatisticalTestSuite extends SilSuite {
         val actualErrors: Seq[AbstractError] =
           fe.result match {
             case Success => Nil
-            case Failure(es) => es collect {
+            case Failure(es,_) => es collect {
               case e: AbstractVerificationError =>
                 e.transformedError()
               case rest: AbstractError => rest

@@ -265,7 +265,7 @@ trait BackendTypeTest extends AnyFunSuite with Matchers with BeforeAndAfterAllCo
     val (prog, assertNode) = generateTypeCombinationTest(false)
     val res  = verifier.verify(prog)
     assert(res match {
-      case Failure(Seq(AssertFailed(a, _, _))) if a == assertNode => true
+      case Failure(Seq(AssertFailed(a, _, _)),_) if a == assertNode => true
       case _ => false
     })
   }
@@ -286,7 +286,7 @@ trait BackendTypeTest extends AnyFunSuite with Matchers with BeforeAndAfterAllCo
     val (prog, assertNode) = generateFieldTypeTest(false)
     val res  = verifier.verify(prog)
     assert(res match {
-      case Failure(Seq(AssertFailed(a, _, _))) if a == assertNode => true
+      case Failure(Seq(AssertFailed(a, _, _)),_) if a == assertNode => true
       case _ => false
     })
   }
@@ -301,7 +301,7 @@ trait BackendTypeTest extends AnyFunSuite with Matchers with BeforeAndAfterAllCo
     val (prog, assertNode) = generateBvOpTest(false)
     val res  = verifier.verify(prog)
     assert(res match {
-      case Failure(Seq(AssertFailed(a, _, _))) if a == assertNode => true
+      case Failure(Seq(AssertFailed(a, _, _)),_) if a == assertNode => true
       case _ => false
     })
   }
@@ -322,7 +322,7 @@ trait BackendTypeTest extends AnyFunSuite with Matchers with BeforeAndAfterAllCo
     val (prog, assertNode) = generateFloatOpTest(false)
     val res  = verifier.verify(prog)
     assert(res match {
-      case Failure(Seq(AssertFailed(a, _, _))) if a == assertNode => true
+      case Failure(Seq(AssertFailed(a, _, _)),_) if a == assertNode => true
       case _ => false
     })
   }
@@ -337,7 +337,7 @@ trait BackendTypeTest extends AnyFunSuite with Matchers with BeforeAndAfterAllCo
     val (prog, assertNode) = generateFloatMinMaxTest(false)
     val res  = verifier.verify(prog)
     assert(res match {
-      case Failure(Seq(AssertFailed(a, _, _))) if a == assertNode => true
+      case Failure(Seq(AssertFailed(a, _, _)),_) if a == assertNode => true
       case _ => false
     })
   }
@@ -352,7 +352,7 @@ trait BackendTypeTest extends AnyFunSuite with Matchers with BeforeAndAfterAllCo
     val (prog, fun, exp) = generateFloatOpFunctionTest(false)
     val res  = verifier.verify(prog)
     assert(res match {
-      case Failure(Seq(PostconditionViolated(e, f, _, _))) if e == exp && fun == f => true
+      case Failure(Seq(PostconditionViolated(e, f, _, _)),_) if e == exp && fun == f => true
       case _ => false
     })
   }

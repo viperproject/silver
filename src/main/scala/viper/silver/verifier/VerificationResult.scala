@@ -7,6 +7,7 @@
 package viper.silver.verifier
 
 import viper.silver.ast._
+import viper.silver.reporter.BranchTree
 
 import scala.annotation.unused
 
@@ -24,15 +25,15 @@ object Success extends VerificationResult {
 }
 
 /** A non-successful verification.
-  *
-  * @param errors The errors encountered during parsing, translation or verification.
-  */
-case class Failure(errors: Seq[AbstractError]) extends VerificationResult {
+ *
+ * @param errors The errors encountered during parsing, translation or verification.
+ */
+case class Failure(errors: Seq[AbstractError], branchTree : Option[BranchTree] = None) extends VerificationResult {
   override def toString = {
     s"Verification failed with ${errors.size} errors:\n  " +
       (errors map (e => "[" + e.fullId + "] " + e.readableMessage)).mkString("\n  ")
   }
-  override def transformedResult(): VerificationResult = Failure(errors.map(_.transformedError()))
+  override def transformedResult(): VerificationResult = Failure(errors.map(_.transformedError()), branchTree)
 }
 
 /**

@@ -103,11 +103,11 @@ class PredicateInstancePlugin(@unused reporter: viper.silver.reporter.Reporter,
   private def translateVerificationResult(input: VerificationResult): VerificationResult = {
     input match {
       case Success => input
-      case Failure(errors) =>
+      case Failure(errors,branchTree) =>
         Failure(errors.map {
           case e@PreconditionInAppFalse(_, _, _) => e.transformedError()
           case e => e
-        })
+        },branchTree)
     }
   }
 

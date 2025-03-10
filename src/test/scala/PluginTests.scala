@@ -61,7 +61,7 @@ class TestPluginReportError extends SilverPlugin {
   override def beforeFinish(input: VerificationResult): VerificationResult = {
     input match {
       case Success => assert(false)
-      case Failure(errs) => assert(errs.contains(error))
+      case Failure(errs,_) => assert(errs.contains(error))
     }
     input
   }
@@ -148,7 +148,7 @@ class TestPluginMapErrors extends SilverPlugin with TestPlugin with FakeResult {
 //        println(">>> detected VerificationResult is Success")
         assert(false)
         input
-      case Failure(errors) =>
+      case Failure(errors,_) =>
 //        println(s">>> detected VerificationResult is Failure: ${errors.toString()}")
         assert(errors.contains(error1))
         Failure(Seq(error2))
@@ -161,7 +161,7 @@ class TestPluginMapErrors extends SilverPlugin with TestPlugin with FakeResult {
       case Success =>
 //        println("]]] detected VerificationResult is Success")
         assert(false)
-      case Failure(errors) =>
+      case Failure(errors,_) =>
 //        println(s"]]] detected VerificationResult is Failure: ${errors.toString()}")
         assert(!errors.contains(error1))
         assert(errors.contains(error2))
@@ -200,7 +200,7 @@ class TestPluginMapVsFinish extends SilverPlugin with TestPlugin {
     finish = true
     input match {
       case Success => assert(false)
-      case Failure(errors) =>
+      case Failure(errors,_) =>
         assert(errors.contains(error))
     }
     input
