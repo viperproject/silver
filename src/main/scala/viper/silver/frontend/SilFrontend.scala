@@ -68,7 +68,7 @@ trait SilFrontend extends DefaultFrontend {
       val pluginClasses = smokeDetectionAndDependencies ++
         // filter `defaultPlugins` to avoid duplicates
         (if (_config.disableDefaultPlugins()) Seq.empty else defaultPlugins.filterNot(p => smokeDetectionAndDependencies.contains(p))) ++
-        _config.plugin.toOption.toSeq
+        _config.plugin.toOption.map(_.split(":").toSeq).getOrElse(Seq.empty)
 
       val duplicatePluginClasses = pluginClasses.groupBy(identity).collect { case (x, instances) if instances.length > 1 => x }
       if (duplicatePluginClasses.nonEmpty) {
