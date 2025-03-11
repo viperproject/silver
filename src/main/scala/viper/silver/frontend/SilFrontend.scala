@@ -72,7 +72,7 @@ trait SilFrontend extends DefaultFrontend {
 
       val duplicatePluginClasses = pluginClasses.groupBy(identity).collect { case (x, instances) if instances.length > 1 => x }
       if (duplicatePluginClasses.nonEmpty) {
-        reporter report ConfigurationWarning(s"The following plugins will be executed multiple times, which is most likely a bug: ${duplicatePluginClasses.mkString(", ")}.")
+        reporter report ConfigurationWarning(s"The following plugins will be executed multiple times, which is most likely a configuration mistake: ${duplicatePluginClasses.mkString(", ")}.")
       }
 
       if (pluginClasses.isEmpty) {
