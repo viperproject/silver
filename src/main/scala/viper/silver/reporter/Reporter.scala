@@ -6,6 +6,9 @@
 
 package viper.silver.reporter
 
+import viper.silver.plugin.SilverPluginManager
+import viper.silver.verifier.Success
+
 import java.io.FileWriter
 import scala.collection.mutable._
 
@@ -18,6 +21,20 @@ trait Reporter {
 object NoopReporter extends Reporter {
   val name: String = "NoopReporter"
   def report(msg: Message): Unit = ()
+}
+
+case class PluginAwareReporter(plugins: SilverPluginManager, reporter: Reporter) extends Reporter {
+
+  val name = reporter.name
+  override def report(msg: Message): Unit = msg match {
+    case esm: EntitySuccessMessage =>
+      val newResult = plugins.mapEntityVerificationResult(esm.concerning, Success)
+      reporter.report(VerificationResultMessage(esm.verifier, esm.concerning, esm.verificationTime, newResult))
+    case efm: EntityFailureMessage =>
+      val newResult = plugins.mapEntityVerificationResult(efm.concerning, efm.result)
+      reporter.report(VerificationResultMessage(efm.verifier, efm.concerning, efm.verificationTime, newResult))
+    case m => reporter.report(m)
+  }
 }
 
 case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv") extends Reporter {
