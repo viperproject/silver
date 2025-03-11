@@ -70,6 +70,11 @@ trait SilFrontend extends DefaultFrontend {
         (if (_config.disableDefaultPlugins()) Seq.empty else defaultPlugins.filterNot(p => smokeDetectionAndDependencies.contains(p))) ++
         _config.plugin.toOption.toSeq
 
+      val duplicatePluginClasses = pluginClasses.groupBy(identity).collect { case (x, instances) if instances.length > 1 => x }
+      if (duplicatePluginClasses.nonEmpty) {
+        reporter report ConfigurationWarning(s"The following plugins will be executed multiple times, which is most likely a bug: ${duplicatePluginClasses.mkString(", ")}.")
+      }
+
       if (pluginClasses.isEmpty) {
         None
       } else {
