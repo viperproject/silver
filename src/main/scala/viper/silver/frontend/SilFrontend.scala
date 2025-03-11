@@ -62,14 +62,16 @@ trait SilFrontend extends DefaultFrontend {
   def resetPlugins(): Unit = {
     val pluginsArg: Option[String] = if (_config != null) {
       // concat defined plugins and default plugins
-      val list = (if (_config.enableSmokeDetection()) Set(smokeDetectionPlugin, refutePlugin) else Set()) ++
-        (if (_config.disableDefaultPlugins()) Set() else defaultPlugins) ++
-        _config.plugin.toOption.toSet
+      // we do not use sets here as the order of plugins matters!
+      val pluginClasses = (if (_config.enableSmokeDetection()) Seq(smokeDetectionPlugin) else Seq.empty) ++
+        (if (_config.disableDefaultPlugins()) Set.empty else defaultPlugins) ++
+        _config.plugin.toOption.toSeq
+      println(s"plugins: $pluginClasses")
 
-      if (list.isEmpty) {
+      if (pluginClasses.isEmpty) {
         None
       } else {
-        Some(list.mkString(":"))
+        Some(pluginClasses.mkString(":"))
       }
     } else {
       None
