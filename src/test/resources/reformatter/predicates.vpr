@@ -1,0 +1,19 @@
+predicate tuple(this: Ref) {
+    acc(this.left) && acc(this.right)
+}
+
+predicate tuple2(this: Ref) {
+    acc(this.left1) && acc(this.right1)
+}
+
+predicate list(this: Ref) {
+    acc(this.elem3) && acc(this.next3) && (this.next3 != null ==> list(this.next3))
+}
+
+predicate lseg(first: Ref, last: Ref, values: Seq[Int]) {
+    first != last ==> acc(first.elem4) && acc(first.next4) && 0 < |values| && first.elem4 == values[0] && lseg(first.next4, last, values[1..])
+}
+
+predicate list5(this: Ref) {
+    acc(this.elem5) && acc(this.next5) && (this.next5 != null ==> list5(this.next5))
+}

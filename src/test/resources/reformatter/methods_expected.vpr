@@ -1,0 +1,143 @@
+method long_method(parameter_1: Int, parameter_2: Int, parameter_3: Int) {
+    var i: Int := 3;
+    
+    var j: Int := 3;
+    var k: Int := 3;
+}
+
+// This is another comment.
+/* This is a block-level commeny
+that spans
+over multiple lines   */
+method simple(n: Int, r: Bool) {}
+
+// This is a comment.
+method sum(nn: Int) returns (res: Int)
+    requires true
+    // A comment in-between.
+    requires /* A comment here */ true
+    requires true
+    requires true
+    ensures true
+    ensures true
+    ensures true
+{}
+
+method sum2(n: Int) returns (res: Int)
+    requires 0 <= n
+    ensures res == n * (n + 1) / 2
+{
+    res := 0
+    var i: Int := 0;
+    while (i <= n)
+        invariant i <= (n + 1)
+        invariant res == (i - 1) * i / 2
+    {
+        res := res + i
+        i := i + 1
+    }
+}
+
+method setTuple(this: Ref, l: Int, r: Int)
+    requires tuple(this)
+    ensures tuple(this)
+{
+    unfold tuple(this)
+    this.left := l
+    this.right := r
+    fold tuple(this)
+}
+
+method addTuple(this: Ref) returns (summ: Int)
+    requires acc(tuple(this), 1 / 2)
+    ensures acc(tuple(this), 1 / 2)
+{
+    unfold acc(tuple(this), 1 / 2)
+    summ := this.left + this.right
+    fold acc(tuple(this), 1 / 2)
+}
+
+method exclusivity(x: Ref, y: Ref) {
+    inhale acc(x.f)
+    inhale acc(y.f)
+    exhale x != y
+}
+
+method client(a1: Ref, b1: Ref) {
+    inhale acc(a1.f1) && acc(b1.f1)
+    a1.f1 := 1
+    b1.f1 := 3
+    inc(a1, 3)
+    assert b1.f1 == 3
+}
+
+method addTuple2(this1: Ref) returns (sum1: Int)
+    requires acc(tuple2(this1), 1 / 2)
+    ensures acc(tuple2(this1), 1 / 2)
+{
+    unfold acc(tuple2(this1), 1 / 2)
+    sum1 := this1.left1 + this1.right1
+    fold acc(tuple2(this1), 1 / 2)
+}
+
+method append(this: Ref, e: Int)
+    requires list(this)
+    ensures list(this)
+{
+    unfold list(this)
+    if (this.next3 == null) {
+        var n: Ref
+        n := new(elem3, next3)
+        n.elem3 := e
+        
+        n.next3 := null
+        this.next3 := n
+        fold list(n)
+    } else {
+        append(this.next3, e)
+    }
+    fold list(this)
+}
+
+method removeFirst(first: Ref, last: Ref, values: Seq[Int]) returns (value: Int, second: Ref)
+    requires lseg(first, last, values)
+    requires first != last
+    ensures lseg(second, last, values[1..])
+{
+    unfold lseg(first, last, values)
+    value := first.elem4
+    second := first.next4
+}
+
+method client1(a: MyType1[Bool, Ref])
+    requires a == bin_oper1(a, a)
+{
+    var a: Map[K, V]
+    var b: MyType1[Int, Bool] := constructor_a1(11)
+    var c: MyType1[Int, Bool] := constructor_b1(true)
+    var d: MyType1[Int, Bool] := bin_oper1(b, c)
+}
+
+method decreasesTuple()
+    decreases true, true, true, true if true
+{}
+/* A comment without double newline before */
+method decreases2()
+    decreases _ if true
+{}
+
+method empty_assign() {
+    /* A sample comment.
+   */
+    
+    swap(a, pivotIndex, right)
+}
+
+method with_inhale_exhale(lock: Ref)
+    ensures [true, forperm r: Ref [r.held] :: false]
+
+method package_wand(lock: Ref) {
+    package A(p, plvs) --* B {
+        fold acc(Tree(p))
+    }
+}
