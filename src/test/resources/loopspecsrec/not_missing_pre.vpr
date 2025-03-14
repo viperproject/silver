@@ -9,7 +9,6 @@ method f(l : Ref)
     requires l != null
    {
    var curr : Ref := l
-
    var i : Int := 1
 
    while(curr != null)

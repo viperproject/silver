@@ -27,7 +27,6 @@ method len_iterative_spec(l : Ref) returns (len : Int)
    requires List(l)
    ensures List(l)
    ensures old(length(l)) == len
-   //ensures len == length(l)
    {
        var curr : Ref := l
        var accu : Int := 0

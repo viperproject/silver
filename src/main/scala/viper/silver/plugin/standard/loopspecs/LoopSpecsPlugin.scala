@@ -36,6 +36,7 @@ class LoopSpecsPlugin(
   import fp.{ParserExtension, lineCol, _file, parenthesizedExp, semiSeparated, precondition, postcondition, stmt}
   import FastParserCompanion._
   import viper.silver.parser.PDelimited
+  import viper.silver.parser.PKw.InvSpec
 
   /**
    * Parses a `ghost` block of the form `ghost { ... }`, returning a `PGhostBlock`.
@@ -74,23 +75,43 @@ class LoopSpecsPlugin(
    *
    * Returns a `PWhileBodyBlock` with both the body statements and the optional ghost block.
    */
-  def whileBodyBlock[$: P](allowDefine: Boolean = true): P[PWhileBodyBlock] = {
-    P(
-      (semiSeparated(stmt(allowDefine)) ~ ghostBlock.?).braces.map { wrapped =>
-        val (stmtsDelimited, ghostOpt) = wrapped.inner
-        val first = stmtsDelimited.first
-        val inner = stmtsDelimited.inner.map { case (_, stmt) => stmt }
+  def whileBodyBlock[$: P](allowDefine: Boolean = true, forceGhost : Boolean = false): P[PWhileBodyBlock] = {
+    if(forceGhost){
+      P(
+        (semiSeparated(stmt(allowDefine)) ~ ghostBlock).braces.map { wrapped =>
+          val (stmtsDelimited, ghostOpt) = wrapped.inner
+          val first = stmtsDelimited.first
+          val inner = stmtsDelimited.inner.map { case (_, stmt) => stmt }
 
-        // Combine statements into a single PSeqn node.
-        val stmtsSeqn = PSeqn(PDelimited.impliedBlock(first.toSeq ++ inner))(wrapped.pos)
+          // Combine statements into a single PSeqn node.
+          val stmtsSeqn = PSeqn(PDelimited.impliedBlock(first.toSeq ++ inner))(wrapped.pos)
 
-        // Build a single AST node with the body + optional ghost block.
-        PWhileBodyBlock(
-          body  = stmtsSeqn,
-          ghost = ghostOpt
-        )(wrapped.pos)
-      }
-    )
+          // Build a single AST node with the body + optional ghost block.
+          PWhileBodyBlock(
+            body  = stmtsSeqn,
+            ghost = Some(ghostOpt)
+          )(wrapped.pos)
+        }
+      )
+    }else{
+      P(
+        (semiSeparated(stmt(allowDefine)) ~ ghostBlock.?).braces.map { wrapped =>
+          val (stmtsDelimited, ghostOpt) = wrapped.inner
+          val first = stmtsDelimited.first
+          val inner = stmtsDelimited.inner.map { case (_, stmt) => stmt }
+
+          // Combine statements into a single PSeqn node.
+          val stmtsSeqn = PSeqn(PDelimited.impliedBlock(first.toSeq ++ inner))(wrapped.pos)
+
+          // Build a single AST node with the body + optional ghost block.
+          PWhileBodyBlock(
+            body  = stmtsSeqn,
+            ghost = ghostOpt
+          )(wrapped.pos)
+        }
+      )
+    }
+
   }
 
   /**
@@ -100,21 +121,53 @@ class LoopSpecsPlugin(
    *     requires ...
    *     ensures ...
    *   {
-   *     <body statements>    // required
+   *     <body statements>    // optional
    *     ghost { ... }        // optional
    *   }
    *   basecase { ... }       // optional block following the loop
    * }}}
    */
+    //todo: have this not conflict with normal while loops
+    // test this with all tests
   def loopspecs[$: P]: P[PLoopSpecs] = P(
-    reservedKw(PKw.While)
-      ~ parenthesizedExp ~~
-      semiSeparated(precondition) ~~
-      semiSeparated(postcondition) ~
-      whileBodyBlock() ~
-      baseCaseBlock.?
-  ).map {
-    case (whileKw, condExp, preSpec, postSpec, whileBodyBlock, maybeBaseCase) =>
+//    (reservedKw(PKw.While)
+//      ~ parenthesizedExp ~~
+//      semiSeparatedMinOne(precondition) ~~ //>= 1 precond
+//      semiSeparated(postcondition) ~
+//      whileBodyBlock() ~
+//      baseCaseBlock.?) |
+//
+//      (reservedKw(PKw.While)
+//        ~ parenthesizedExp ~~
+//        semiSeparated(precondition) ~~
+//        semiSeparatedMinOne(postcondition) ~ // >= 1 postcond
+//        whileBodyBlock() ~
+//        baseCaseBlock.?) |
+//
+//      (reservedKw(PKw.While)
+//        ~ parenthesizedExp ~~
+//        semiSeparated(precondition) ~~
+//        semiSeparated(postcondition) ~
+//        whileBodyBlock(forceGhost = true) ~ //or ghost block
+//        baseCaseBlock.?) |
+
+      NoCut(reservedKw(PKw.While)
+        ~ parenthesizedExp ~~
+        semiSeparated(precondition) ~~
+        semiSeparated(postcondition) ~
+        whileBodyBlock() ~
+        baseCaseBlock.?)
+  )
+    .filter(f =>
+  {
+    val (_, _, preSpec, postSpec, whileBodyBlock, maybeBaseCase) = f
+
+    preSpec.length > 0 || postSpec.length > 0 || whileBodyBlock.ghost.nonEmpty || maybeBaseCase.nonEmpty
+  })
+    .map {
+    case (whileKw, condExp, preSpec, postSpec, whileBodyBlock, maybeBaseCase)
+      //if preSpec.length > 0 || postSpec.length > 0 || whileBodyBlock.ghost.nonEmpty || maybeBaseCase.nonEmpty
+      =>
       PLoopSpecs(
         whileKw,
         condExp,
@@ -124,6 +177,8 @@ class LoopSpecsPlugin(
         whileBodyBlock.ghost,
         maybeBaseCase
       )(_)
+    //case (whileKw, condExp, preSpec, postSpec, whileBodyBlock, maybeBaseCase) =>
+      //PWhile(whileKw, condExp, PDelimited(None, Seq(), None)(NoPosition, NoPosition), whileBodyBlock.body)(_)
   }.pos
 
   /**

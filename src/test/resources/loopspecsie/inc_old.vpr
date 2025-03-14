@@ -27,12 +27,9 @@ method add_iterative_spec(l : Ref)
    curr := l
 
    while(curr != null)
-
-                       //:: ExpectedOutput(not.wellformed:insufficient.permission)
       requires List(curr)
-    //:: ExpectedOutput(precondition.not.established:insufficient.permission)
-      && List(curr.next)
-      ensures List(pre(curr))
+      ensures List(old(curr))
+      //:: ExpectedOutput(application.precondition:insufficient.permission)
        && |values(pre(curr))| == |pre(values(pre(curr)))|
         && forall i : Int ::
              (0 <= i < |values(pre(curr))|) ==> values(pre(curr))[i] == pre(values(pre(curr))[i]) + 1
@@ -40,10 +37,9 @@ method add_iterative_spec(l : Ref)
       unfold List(curr)
       curr.val := curr.val + 1
       curr := curr.next
-
       ghost{
-            fold List(pre(curr))
-         }
+         fold List(pre(curr))
+      }
    }
 
    basecase{

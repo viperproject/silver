@@ -1,7 +1,5 @@
 field val : Int
 field next : Ref
-//field prev : Ref
-
 
 predicate List(l : Ref) {
    (l != null) ==> acc(l.val) && acc(l.next) && List(l.next)
@@ -17,11 +15,6 @@ function values(l: Ref): Seq[Int]
         : Seq(l.val) ++ values(l.next)
 }
 
-// Pre: List(curr)
-// Post: List(curr)
-//
-
-// swap c and l
 method list_copy(input : Ref) returns (res : Ref)
     requires List(input)
     ensures List(input)
@@ -43,10 +36,9 @@ method list_copy(input : Ref) returns (res : Ref)
         res_ptr := res
         input_ptr := input.next
 
-        //TODO: allow user to write sep req and then conjoin them
         while(input_ptr != null)
             requires List(input_ptr)
-            && acc(res_ptr.next) && acc(res_ptr.val)  // maybe list?? how to add this?? why does list(null) not work??
+            && acc(res_ptr.next) && acc(res_ptr.val)
             && res_ptr.next == null
             ensures List(pre(res_ptr)) && values(pre(res_ptr)) == Seq(pre(res_ptr.val)) ++ pre(values(input_ptr))
             && List(pre(input_ptr)) && values(pre(input_ptr)) == pre(values(input_ptr))
@@ -58,25 +50,20 @@ method list_copy(input : Ref) returns (res : Ref)
             curr_append.val := input_ptr.val
 
             res_ptr.next := curr_append
-            //fold List(curr_append)
-            //fold List(input_ptr)
 
-            res_ptr := curr_append // res_ptr.next = null //lvar assign
+            res_ptr := curr_append
             input_ptr := input_ptr.next
 
             ghost{
-                        fold List(pre(res_ptr))
-                        fold List(pre(input_ptr))
-                    }
+                fold List(pre(res_ptr))
+                fold List(pre(input_ptr))
+            }
         }basecase{
-            fold List(pre(res_ptr.next)) //maybe we cant fold for this one??
+            fold List(pre(res_ptr.next))
             fold List(pre(res_ptr))
             fold List(pre(input_ptr))
         }
 
         fold List(input)
-        //fold List(res)
-
     }
 }
-

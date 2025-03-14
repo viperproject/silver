@@ -1,6 +1,6 @@
 package viper.silver.plugin.standard.loopspecs
 
-import viper.silver.ast.{Bool, ErrTrafo, Exhale, Exp, If, Inhale, Label, LabelledOld, LocalVar, LocalVarAssign, LocalVarDecl, MakeTrafoPair, Method, MethodCall, NewStmt, NoInfo, NoPosition, NoTrafos, Node, NodeTrafo, Program, Seqn, Stmt, TrueLit, Type, While}
+import viper.silver.ast.{Bool, ErrTrafo, Exhale, Exp, Goto, If, Inhale, Label, LabelledOld, LocalVar, LocalVarAssign, LocalVarDecl, MakeTrafoPair, Method, MethodCall, NewStmt, NoInfo, NoPosition, NoTrafos, Node, NodeTrafo, Program, Seqn, Stmt, TrueLit, Type, While}
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.plugin.standard.termination.transformation.ProgramManager
 import viper.silver.verifier.{AbstractError, ConsistencyError}
@@ -32,6 +32,10 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin, val program: Progr
    * @return The transformed program ready for verification.
    */
   def beforeVerify(): Program = {
+
+    var labels : Seq[String] = Seq("")
+
+
     // Mapping from types to their unique havoc method names.
     val havoc_type_to_method_name: mutable.HashMap[Type, String] = mutable.HashMap[Type, String]()
 
@@ -48,6 +52,19 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin, val program: Progr
      * @return   The desugared loop as a Seqn.
      */
     def mapLoopSpecs(ls: LoopSpecs): Seqn = {
+      ls.collect({
+        case l@Label(name, invs) =>
+          labels = labels ++ Seq(name)
+        case g@ Goto(target) =>
+          reportError(
+            ConsistencyError(
+              f"Found goto expression in while loop with specifications going to $target. " +
+                "Please don't use any gotos inside the augmented while loop.", g.pos))
+
+
+      })
+
+
       // Identify target variables: those that are both written and undeclared in the augmented while loop's body.
       val targets: Seq[LocalVar] = ls.writtenVars.intersect(ls.undeclLocalVars)
 
@@ -193,6 +210,7 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin, val program: Progr
             PreconditionNotEstablished(offNode, reason, cached)
         }))))
       }
+      //todo: check, im getting a weird error for treemin rn where it doesnt convert to precond not established
 
       // Declare a non-deterministic Boolean variable for branching.
       val non_det =
@@ -305,42 +323,54 @@ class LoopSpecsInhaleExhale(loopSpecsPlugin: LoopSpecsPlugin, val program: Progr
       desugared_loop
     }
 
+    var hasLoopSpecs : Boolean = false
     // Apply the transformation to each LoopSpecs element in the program.
     var havoc_methods: Seq[Method] = Seq()
     val newProgram: Program = ViperStrategy.Slim({
       case ls: LoopSpecs =>
-        mapLoopSpecs(ls) // Transform the loop specification.
+        hasLoopSpecs = true ; mapLoopSpecs(ls) // Transform the loop specification.
     }).execute(program)
     // This pass is a transformation, not a verification.
 
     // Ensure no stray pre expressions remain in the program.
-    newProgram.transform({
+    newProgram.collect({
       case p @ PreExp(exp) =>
         reportError(ConsistencyError("Found pre expression in wrong part of program. Please only use it in a while loop's postcondition, ghostcode or base case code.", p.pos))
-        exp
+      case g @ Goto(target) =>
+        if(labels.contains(target)){
+          reportError(
+            ConsistencyError(
+              f"Found goto expression outside of while loop with specs going to $target inside a while loop with specifications. " +
+                "Please don't jump inside an augmented while loop.", g.pos))
+        }
     })
 
-    // For each target type, add the corresponding havoc methods.
-    havoc_methods = havoc_type_to_method_name.map { f =>
-      Method(
-        f._2,
-        Seq(),
-        Seq(LocalVarDecl("x", f._1)()),
-        Seq(),
-        Seq(),
-        None
-      )()
-    }.toSeq
 
-    // Append havoc methods to the program's method list.
-    val transformedMethods = newProgram.methods ++ havoc_methods
-    val finalProgram = newProgram.copy(methods = transformedMethods)(NoPosition, NoInfo, NoTrafos)
+    if(hasLoopSpecs) {
+      // For each target type, add the corresponding havoc methods.
+      havoc_methods = havoc_type_to_method_name.map { f =>
+        Method(
+          f._2,
+          Seq(),
+          Seq(LocalVarDecl("x", f._1)()),
+          Seq(),
+          Seq(),
+          None
+        )()
+      }.toSeq
 
-    // Recheck the transformed program for any errors introduced during transformation.
-    // The transformed program might not type-check or could conflict with its outer scope.
-    val errs = finalProgram.check
-    errs.foreach(reportError(_))
-    finalProgram
+      // Append havoc methods to the program's method list.
+      val transformedMethods = newProgram.methods ++ havoc_methods
+      val finalProgram = newProgram.copy(methods = transformedMethods)(NoPosition, NoInfo, NoTrafos)
+
+      // Recheck the transformed program for any errors introduced during transformation.
+      // The transformed program might not type-check or could conflict with its outer scope.
+      val errs = finalProgram.check
+      errs.foreach(reportError(_))
+      finalProgram
+    }else{
+      program
+    }
   }
 
   /**

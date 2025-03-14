@@ -2,15 +2,8 @@ package viper.silver.plugin.standard.loopspecs
 
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.Traverse
-import viper.silver.ast.{
-  Bool, ErrTrafo, Exhale, Exp, If, Implies, Inhale, Label, LabelledOld, LocalVar,
-  LocalVarAssign, LocalVarDecl, MakeTrafoPair, Method, MethodCall, NewStmt, NoInfo,
-  NoPosition, NoTrafos, Node, NodeTrafo, Not, Old, Program, Seqn, Stmt, TrueLit,
-  Type, While
-}
-import viper.silver.verifier.errors.{
-  ContractNotWellformed, ExhaleFailed, PostconditionViolated, PreconditionInCallFalse
-}
+import viper.silver.ast.{Bool, ErrTrafo, Exhale, Exp, Goto, If, Implies, Inhale, Label, LabelledOld, LocalVar, LocalVarAssign, LocalVarDecl, MakeTrafoPair, Method, MethodCall, NewStmt, NoInfo, NoPosition, NoTrafos, Node, NodeTrafo, Not, Old, Program, Seqn, Stmt, TrueLit, Type, While}
+import viper.silver.verifier.errors.{ContractNotWellformed, ExhaleFailed, PostconditionViolated, PreconditionInCallFalse}
 import viper.silver.verifier.{AbstractError, ConsistencyError}
 import viper.silver.plugin.standard.termination.transformation.ProgramManager
 
@@ -34,6 +27,8 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPluginRec, val program: Program) ex
   /** Prefix to identify newly generated helper methods. */
   val helper_method_name = "HELPER_"
 
+
+
   /**
    * Main entry point for rewriting loops with specs. It:
    *   - Traverses the AST to find LoopSpecs nodes.
@@ -45,6 +40,7 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPluginRec, val program: Program) ex
    * @return A modified Program with all loop specs expanded into recursive methods.
    */
   def beforeVerify(): Program ={
+    var labels : Seq[String] = Seq("")
 
     /**
      * Maps a LoopSpecs node to:
@@ -53,6 +49,31 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPluginRec, val program: Program) ex
      *  3) The base-case method definition.
      */
     def mapLoopSpecs(ls : LoopSpecs): (Node, Method, Method) = {
+      ls.posts.collect({
+        case o@ Old(exp) =>
+          reportError(ConsistencyError("Olds should not be used in the post-conditions as they will clash with the desugared program's olds.", o.pos))
+      })
+      ls.ghost.getOrElse(Seqn(Seq(), Seq())()).collect({
+        case o@ Old(exp) =>
+          reportError(ConsistencyError("Olds should not be used in the ghost code as they will clash with the desugared program's olds.", o.pos))
+      })
+      ls.basecase.getOrElse(Seqn(Seq(), Seq())()).collect({
+        case o@ Old(exp) =>
+          reportError(ConsistencyError("Olds should not be used in the base-case code as they will clash with the desugared program's olds.", o.pos))
+      })
+
+      ls.collect({
+        case l@Label(name, invs) =>
+          labels = labels ++ Seq(name)
+        case g@ Goto(target) =>
+          reportError(
+            ConsistencyError(
+              f"Found goto expression in while loop with specifications going to $target. " +
+                "Please don't use any gotos inside the augmented while loop.", g.pos))
+
+
+      })
+
 
       // Identify local variables that are read/modified inside the loop.
       // We create “targets” for variables that are both written and not declared in the loop scope.
@@ -119,7 +140,7 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPluginRec, val program: Program) ex
       val inductiveStep : Seq[Stmt] =
         Seq(ls.body) ++
           Seq(MethodCall(unique_name_inductive_step, args, targets)(NoPosition, NoInfo, ErrTrafo({
-            // Custom error mapping
+            // Custom error mapping to make the error more readable and useful (pointing to the right position)
             case PreconditionInCallFalse(offNode, reason, cached) =>
               PreconditionNotPreserved(offNode.withMeta(reason.pos, NoInfo, reason.offendingNode.errT), reason, cached)
           }))) ++
@@ -212,6 +233,7 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPluginRec, val program: Program) ex
       (helper_method_call, helper_method, helper_method_basecase)
     }
 
+    var hasLoopSpecs : Boolean = false
     // Collect newly created methods so we can append them at the end.
     var helper_methods : Seq[Method] = Seq()
 
@@ -220,6 +242,7 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPluginRec, val program: Program) ex
       case ls : LoopSpecs =>
         val (callNode, inductiveM, basecaseM) = mapLoopSpecs(ls)
         helper_methods = helper_methods ++ Seq(inductiveM, basecaseM)
+        hasLoopSpecs = true
         callNode
     }, Traverse.BottomUp)
 
@@ -231,22 +254,36 @@ class LoopSpecsRec(loopSpecsPlugin: LoopSpecsPluginRec, val program: Program) ex
       curr_program.copy(methods = curr_program.methods ++ helper_methods)(NoPosition, NoInfo, NoTrafos)
 
     // Double-check that no leftover PreExp nodes remain outside the intended context.
-    finalProgram.transform({
+    finalProgram.collect({
       case p@PreExp(exp) =>
         reportError(ConsistencyError(
           "Found pre expression in an invalid context. " +
             "Only use it in a while loop's postcondition, ghost code, or base case.",
           p.pos
         ))
-        exp
+
+      case g @ Goto(target) =>
+        if(labels.contains(target)){
+          reportError(
+            ConsistencyError(
+              f"Found goto expression outside of while loop with specs going to $target inside a while loop with specifications. " +
+                "Please don't jump inside an augmented while loop.", g.pos))
+
+        }
+
+
     })
+    if(hasLoopSpecs){
+      // Perform a final consistency check on the transformed program.
+      // It might not type-check or conflict with the outer scope.
+      val errs = finalProgram.check
+      errs.foreach(reportError)
 
-    // Perform a final consistency check on the transformed program.
-    // It might not type-check or conflict with the outer scope.
-    val errs = finalProgram.check
-    errs.foreach(reportError)
+      finalProgram
+    }else{ // no need to do it here if noloopspecs
+      finalProgram
+    }
 
-    finalProgram
   }
 
   /**

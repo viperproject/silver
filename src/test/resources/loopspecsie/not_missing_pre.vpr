@@ -13,14 +13,17 @@ method f(l : Ref)
    var i : Int := 1
 
    while(curr != null)
-        ensures curr == null ==> pre(i)  <  i
+        requires true
+        ensures curr == null ==> pre(i)  < i
    {
 
         curr := null
-        ghost{
-            i := i + 1
-        }
-   }basecase{ // curr == null && i = pre(i) + 1
+        i := i + 1
+        
+   }
+
+   basecase{
+      // curr == null && pre(i) < i
         i := i + 1
    }
 }

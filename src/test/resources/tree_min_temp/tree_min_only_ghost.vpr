@@ -7,8 +7,9 @@ field val : Int
 
 predicate BST(t : Ref) {
    (t != null) ==> acc(t.val) && acc(t.l) && acc(t.r) && BST(t.l) && BST(t.r)
-   && forall i : Int :: (0 <= i < |keys(t.l)|) ==> keys(t.l)[i] < t.val
-   && forall j : Int :: (0 <= j < |keys(t.r)|) ==> keys(t.r)[j] > t.val
+   //&& t.val > max(keys(t.l))
+   //&& forall i : Int :: (0 <= i < |keys(t.l)|) ==> keys(t.l)[i] < t.val
+   //&& forall j : Int :: (0 <= j < |keys(t.r)|) ==> keys(t.r)[j] > t.val
 }
 
 
@@ -75,6 +76,7 @@ method tree_min(t : Ref) returns (t_final : Ref, m : Int)
     //ensures m == min(old(keys(t)))
     //ensures keys(t_final) ++ Seq(m) == old(keys(t))
 
+
     {
     t_final := t
 
@@ -90,8 +92,6 @@ method tree_min(t : Ref) returns (t_final : Ref, m : Int)
         m := t_final.val
         //lchild := t.r
         t_final := t_final.r
-
-        //todo: m fails here for min
     }else{
         parent := t_final
 
@@ -101,29 +101,29 @@ method tree_min(t : Ref) returns (t_final : Ref, m : Int)
         fold BST(curr)
 
         while(lchild != null)
-            requires BST(curr)
-            && curr != null
-            && acc(parent.l)
-            && acc(parent.r)
+            requires
+                 acc(parent.l)
             && acc(parent.val)
-            && BST(parent.r)
-            //&& ((parent != t_final) ==> acc(t_final.l, write))
+            && BST(curr)
+            && curr != null
             && parent.l == curr
+            //&& parent.val > max(keys(parent.l))
+            
             && unfolding BST(curr) in curr.l == lchild
-            && forall i : Int :: (0 <= i < |keys(parent.l)|) ==> keys(parent.l)[i] < parent.val
-            && forall j : Int :: (0 <= j < |keys(parent.r)|) ==> keys(parent.r)[j] > parent.val
+            
+
+            
 
             ensures curr != null
-            && pre(acc(parent.l))
-            && acc(pre(parent).r)
-
+            && acc(pre(parent).l)
             && acc(pre(parent).val)
+            //&& acc(pre(parent).val)
             //&& acc(t_final.l)
 
             && BST(pre(parent).l)
-            && BST(pre(parent).r)
-            && forall i : Int :: (0 <= i < |keys(pre(parent).l)|) ==> keys(pre(parent).l)[i] < pre(parent).val
-            && forall j : Int :: (0 <= j < |keys(pre(parent).r)|) ==> keys(pre(parent).r)[j] > pre(parent).val
+
+            //&& pre(parent).val > max(keys(pre(parent).l))
+           // && forall i : Int :: (0 <= i < |keys(pre(parent).l)|) ==> keys(pre(parent).l)[i] < pre(parent).val
 
             //&& m == min(keys(parent.l))
             //&& keys(parent.l) ++ Seq(m) == pre(keys(parent.l))
@@ -139,8 +139,6 @@ method tree_min(t : Ref) returns (t_final : Ref, m : Int)
 
             ghost{
                 fold BST(pre(parent).l) //or fold BST(parent)??
-
-
             }
 
         }

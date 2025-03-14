@@ -43,7 +43,6 @@ method list_copy(input : Ref) returns (res : Ref)
         res_ptr := res
         input_ptr := input.next
 
-        //TODO: allow user to write sep req and then conjoin them
         while(input_ptr != null)
             requires List(input_ptr)
             && acc(res_ptr.next) && acc(res_ptr.val)  // maybe list?? how to add this?? why does list(null) not work??
