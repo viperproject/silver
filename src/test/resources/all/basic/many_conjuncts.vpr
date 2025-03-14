@@ -15,7 +15,7 @@ field acq: Bool
 predicate AcqConjunct(x: Ref, idx: Int)
 
 domain parallelHeaps {
-  function heap(x: Ref) : Int
+  function heap_lookup(x: Ref) : Int
   function is_ghost(x:Ref) : Bool
 }
 
@@ -28,25 +28,25 @@ domain reads {
 
 
 method read(data: Ref, count: Ref, ghost: Ref) returns (v: Int)
-  requires heap(data) == 0 && (heap(count) == 0 && (heap(ghost) == 0 && (is_ghost(ghost) && (acc(data.val, rd()) && (acc(ghost.val, rd()) && (acc(count.acq, wildcard) && count.acq == false && acc(AcqConjunct(count, 0), wildcard) && (acc(count.rel, wildcard) && count.rel == 0 && acc(count.init, wildcard))))))))
-  ensures heap(data) == 0 && (heap(count) == 0 && (heap(ghost) == 0 && (is_ghost(ghost) && (acc(data.val, rd()) && (acc(ghost.val, rd()) && (acc(count.acq, wildcard) && count.acq == false && acc(AcqConjunct(count, 0), wildcard) && (acc(count.rel, wildcard) && count.rel == 0 && acc(count.init, wildcard)))))))) && (data.val == v && [true, perm(data.val) == none])
+  requires heap_lookup(data) == 0 && (heap_lookup(count) == 0 && (heap_lookup(ghost) == 0 && (is_ghost(ghost) && (acc(data.val, rd()) && (acc(ghost.val, rd()) && (acc(count.acq, wildcard) && count.acq == false && acc(AcqConjunct(count, 0), wildcard) && (acc(count.rel, wildcard) && count.rel == 0 && acc(count.init, wildcard))))))))
+  ensures heap_lookup(data) == 0 && (heap_lookup(count) == 0 && (heap_lookup(ghost) == 0 && (is_ghost(ghost) && (acc(data.val, rd()) && (acc(ghost.val, rd()) && (acc(count.acq, wildcard) && count.acq == false && acc(AcqConjunct(count, 0), wildcard) && (acc(count.rel, wildcard) && count.rel == 0 && acc(count.init, wildcard)))))))) && (data.val == v && [true, perm(data.val) == none])
 {
   v := data.val
 }
 
 method read_erroneous(data: Ref, count: Ref, ghost: Ref) returns (v: Int)
-  requires heap(data) == 0 && (heap(count) == 0 && (heap(ghost) == 0 && (is_ghost(ghost) && (acc(data.val, rd()) && (acc(ghost.val, rd()) && (acc(count.acq, wildcard) && count.acq == false && acc(AcqConjunct(count, 0), wildcard) && (acc(count.rel, wildcard) && count.rel == 0 && acc(count.init, wildcard))))))))
+  requires heap_lookup(data) == 0 && (heap_lookup(count) == 0 && (heap_lookup(ghost) == 0 && (is_ghost(ghost) && (acc(data.val, rd()) && (acc(ghost.val, rd()) && (acc(count.acq, wildcard) && count.acq == false && acc(AcqConjunct(count, 0), wildcard) && (acc(count.rel, wildcard) && count.rel == 0 && acc(count.init, wildcard))))))))
   //:: ExpectedOutput(postcondition.violated:assertion.false)
-  ensures heap(data) == 0 && (heap(count) == 0 && (heap(ghost) == 0 && (is_ghost(ghost) && (acc(data.val, rd()) && (acc(ghost.val, rd()) && (acc(count.acq, wildcard) && count.acq == false && acc(AcqConjunct(count, 0), wildcard) && (acc(count.rel, wildcard) && count.rel == 0 && acc(count.init, wildcard)))))))) && (data.val == v && [true, perm(data.val) == none] && false)
+  ensures heap_lookup(data) == 0 && (heap_lookup(count) == 0 && (heap_lookup(ghost) == 0 && (is_ghost(ghost) && (acc(data.val, rd()) && (acc(ghost.val, rd()) && (acc(count.acq, wildcard) && count.acq == false && acc(AcqConjunct(count, 0), wildcard) && (acc(count.rel, wildcard) && count.rel == 0 && acc(count.init, wildcard)))))))) && (data.val == v && [true, perm(data.val) == none] && false)
 {
   v := data.val
 }
 
 method read2(data: Ref, count: Ref, ghost: Ref) returns (v: Int)
   requires
-    heap(data) == 0 &&
-    heap(count) == 0 &&
-    heap(ghost) == 0 &&
+    heap_lookup(data) == 0 &&
+    heap_lookup(count) == 0 &&
+    heap_lookup(ghost) == 0 &&
     is_ghost(ghost) &&
     acc(data.val, rd()) &&
     acc(ghost.val, rd()) &&
@@ -58,9 +58,9 @@ method read2(data: Ref, count: Ref, ghost: Ref) returns (v: Int)
     acc(count.init, wildcard)
 
   ensures
-    heap(data) == 0 &&
-    heap(count) == 0 &&
-    heap(ghost) == 0 &&
+    heap_lookup(data) == 0 &&
+    heap_lookup(count) == 0 &&
+    heap_lookup(ghost) == 0 &&
     is_ghost(ghost) &&
     acc(data.val, rd()) &&
     acc(ghost.val, rd()) &&
@@ -78,9 +78,9 @@ method read2(data: Ref, count: Ref, ghost: Ref) returns (v: Int)
 
 method read2_erroneous(data: Ref, count: Ref, ghost: Ref) returns (v: Int)
   requires
-    heap(data) == 0 &&
-    heap(count) == 0 &&
-    heap(ghost) == 0 &&
+    heap_lookup(data) == 0 &&
+    heap_lookup(count) == 0 &&
+    heap_lookup(ghost) == 0 &&
     is_ghost(ghost) &&
     acc(data.val, rd()) &&
     acc(ghost.val, rd()) &&
@@ -93,9 +93,9 @@ method read2_erroneous(data: Ref, count: Ref, ghost: Ref) returns (v: Int)
 
   ensures
     //:: ExpectedOutput(postcondition.violated:assertion.false)
-    heap(data) == 0 &&
-    heap(count) == 0 &&
-    heap(ghost) == 0 &&
+    heap_lookup(data) == 0 &&
+    heap_lookup(count) == 0 &&
+    heap_lookup(ghost) == 0 &&
     is_ghost(ghost) &&
     acc(data.val, rd()) &&
     acc(ghost.val, rd()) &&
