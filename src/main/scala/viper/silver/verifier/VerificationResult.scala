@@ -7,9 +7,10 @@
 package viper.silver.verifier
 
 import viper.silver.ast._
-import viper.silver.reporter.BranchTree
+import viper.silver.reporter.ExploredBranches
 
 import scala.annotation.unused
+import viper.silver.reporter.ExploredBranches
 
 /** Describes the outcome of a verification attempt of a Viper program.
 
@@ -28,12 +29,12 @@ object Success extends VerificationResult {
  *
  * @param errors The errors encountered during parsing, translation or verification.
  */
-case class Failure(errors: Seq[AbstractError], branchTree : Option[BranchTree] = None) extends VerificationResult {
+case class Failure(errors: Seq[AbstractError], exploredBranches : Option[ExploredBranches] = None) extends VerificationResult {
   override def toString = {
     s"Verification failed with ${errors.size} errors:\n  " +
       (errors map (e => "[" + e.fullId + "] " + e.readableMessage)).mkString("\n  ")
   }
-  override def transformedResult(): VerificationResult = Failure(errors.map(_.transformedError()), branchTree)
+  override def transformedResult(): VerificationResult = Failure(errors.map(_.transformedError()), exploredBranches)
 }
 
 /**

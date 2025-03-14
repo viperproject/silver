@@ -283,9 +283,9 @@ trait SilFrontend extends DefaultFrontend {
     val res = plugins.beforeFinish(tRes)
     val filteredRes = res match {
       case Success => res
-      case Failure(errors,branchTree) =>
+      case Failure(errors,exploredBranches) =>
         // Remove duplicate errors
-        Failure(errors.distinctBy(failureFilterAndGroupingCriterion),branchTree)
+        Failure(errors.distinctBy(failureFilterAndGroupingCriterion),exploredBranches)
     }
     _verificationResult = Some(filteredRes)
     filteredRes match {

@@ -74,14 +74,14 @@ class RefutePlugin(@unused reporter: viper.silver.reporter.Reporter,
     mapVerificationResultsForNode(program, input)
 
   private def mapVerificationResultsForNode(n: Node, input: VerificationResult): VerificationResult = {
-    val (refutesForWhichErrorOccurred, otherErrors, branchTree_) = input match {
+    val (refutesForWhichErrorOccurred, otherErrors, exploredBranches_) = input match {
       case Success => (Seq.empty, Seq.empty,None)
-      case Failure(errors,branchTree) =>
+      case Failure(errors,exploredBranches) =>
         val partErrs = errors.partitionMap {
         case AssertFailed(NodeWithRefuteInfo(RefuteInfo(r)), _, _) => Left((r, r.pos))
         case err => Right(err)
       }
-      (partErrs._1, partErrs._2, branchTree)
+      (partErrs._1, partErrs._2, exploredBranches)
     }
     val refutesContainedInNode = n.collect {
       case NodeWithRefuteInfo(RefuteInfo(r)) => (r, r.pos)
@@ -95,7 +95,7 @@ class RefutePlugin(@unused reporter: viper.silver.reporter.Reporter,
 
     val errors = otherErrors ++ missingErrorsInNode
     if (errors.isEmpty) Success
-    else Failure(errors, branchTree_)
+    else Failure(errors, exploredBranches_)
   }
 }
 

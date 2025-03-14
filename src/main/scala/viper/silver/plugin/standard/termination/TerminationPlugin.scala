@@ -297,10 +297,10 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
 
     input match {
       case Success => input
-      case Failure(errors,branchTree) => Failure(errors.map({
+      case Failure(errors,exploredBranches) => Failure(errors.map({
         case a@AssertFailed(Assert(_), _, _) => a.transformedError()
         case e => e
-      }),branchTree)
+      }),exploredBranches)
     }
   }
 

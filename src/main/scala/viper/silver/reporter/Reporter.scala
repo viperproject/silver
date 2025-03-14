@@ -68,8 +68,8 @@ case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv
 
       case BranchFailureMessage(_, concerning, _, cached) =>
         csv_file.write(s"BranchFailureMessage,${concerning.name},${cached}\n")
-      case BranchTreeReport(tree) =>
-        csv_file.write(s"BranchTreeReport,${tree.getMethod().name},${tree.prettyPrint()}\n")
+      case ExploredBranchesReport(eb) =>
+        csv_file.write(s"ExploredBranchesReport,${eb.method.name},${eb.paths}, ${eb.cached}\n")
 
       case _: SimpleMessage | _: CopyrightReport | _: MissingDependencyReport | _: BackendSubProcessReport |
            _: InternalWarningMessage | _: ConfigurationConfirmation=> // Irrelevant for reporting
@@ -181,7 +181,7 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
       case EntitySuccessMessage(_, _, _, _) =>    // FIXME Currently, we only print overall verification results to STDOUT.
       case EntityFailureMessage(_, _, _, _, _) =>    // FIXME Currently, we only print overall verification results to STDOUT.
       case BranchFailureMessage(_, _, _, _) =>    // FIXME Currently, we only print overall verification results to STDOUT.
-      case BranchTreeReport(_) =>
+      case ExploredBranchesReport(_) =>
       case ConfigurationConfirmation(_) =>     // TODO  use for progress reporting
       //println( s"Configuration confirmation: $text" )
       case InternalWarningMessage(_) =>        // TODO  use for progress reporting

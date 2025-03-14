@@ -8,7 +8,7 @@ package viper.silver.reporter
 
 import viper.silver.reporter.BackendSubProcessStages.BackendSubProcessStage
 import viper.silver.verifier._
-import viper.silver.ast.{Exp, Method, QuantifiedExp, Trigger}
+import viper.silver.ast.{Method, QuantifiedExp, Trigger}
 import viper.silver.parser.PProgram
 
 /**
@@ -169,22 +169,14 @@ case class BranchFailureMessage(verifier: String, concerning: Entity,
     s"result=${result.toString}, cached=$cached)"
 }
 
-trait BranchTree {
-  val DotFilePath : String
-  var cached: Boolean = false
-  def getMethod() : Method
-  def getBeams() : Seq[BeamInfo]
-  def prettyPrint() : String
-  def toDotFile() : Unit
-}
-case class BeamInfo(e: Exp, isLeftFatal : Boolean, isRightFatal : Boolean)
-case class BranchTreeReport(tree : BranchTree)
+case class ExploredBranches(method: Method, paths: Vector[(Seq[Exp], Boolean)], var cached : Boolean = false)
+case class ExploredBranchesReport(exploredBranches : ExploredBranches)
   extends Message {
 
-  override lazy val toString: String = s"branch_tree_report(" +
-    s"method=${tree.getMethod().name}, tree=${tree.prettyPrint()}, beams=${tree.getBeams()}"
+  override lazy val toString: String = s"explored_branches_report(" +
+    s"method=${exploredBranches.method.name}, paths=${exploredBranches.paths}"
 
-  override val name = "branch_tree"
+  override val name = "explored_branches"
 }
 
 case class StatisticsReport(nOfMethods: Int, nOfFunctions: Int, nOfPredicates: Int,
