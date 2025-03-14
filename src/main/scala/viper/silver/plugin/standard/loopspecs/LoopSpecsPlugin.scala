@@ -75,25 +75,8 @@ class LoopSpecsPlugin(
    *
    * Returns a `PWhileBodyBlock` with both the body statements and the optional ghost block.
    */
-  def whileBodyBlock[$: P](allowDefine: Boolean = true, forceGhost : Boolean = false): P[PWhileBodyBlock] = {
-    if(forceGhost){
-      P(
-        (semiSeparated(stmt(allowDefine)) ~ ghostBlock).braces.map { wrapped =>
-          val (stmtsDelimited, ghostOpt) = wrapped.inner
-          val first = stmtsDelimited.first
-          val inner = stmtsDelimited.inner.map { case (_, stmt) => stmt }
+  def whileBodyBlock[$: P](allowDefine: Boolean = true): P[PWhileBodyBlock] = {
 
-          // Combine statements into a single PSeqn node.
-          val stmtsSeqn = PSeqn(PDelimited.impliedBlock(first.toSeq ++ inner))(wrapped.pos)
-
-          // Build a single AST node with the body + optional ghost block.
-          PWhileBodyBlock(
-            body  = stmtsSeqn,
-            ghost = Some(ghostOpt)
-          )(wrapped.pos)
-        }
-      )
-    }else{
       P(
         (semiSeparated(stmt(allowDefine)) ~ ghostBlock.?).braces.map { wrapped =>
           val (stmtsDelimited, ghostOpt) = wrapped.inner
@@ -110,7 +93,6 @@ class LoopSpecsPlugin(
           )(wrapped.pos)
         }
       )
-    }
 
   }
 

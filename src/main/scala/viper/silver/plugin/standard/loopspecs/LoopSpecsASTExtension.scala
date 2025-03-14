@@ -38,14 +38,9 @@ case class LoopSpecs(
   ghost: Option[Seqn],
   basecase: Option[Seqn])(override val pos: Position = NoPosition, override val info: Info = NoInfo, override val errT: ErrorTrafo = NoTrafos) extends ExtensionStmt {
     def extensionSubnodes: Seq[Node] = Seq(pres) ++ Seq(posts) ++ Seq(body) ++ ghost.map(seqn => seqn) ++ basecase.map(bc => bc)
-    def prettyPrint: PrettyPrintPrimitives#Cont = //text("LoopSpecs")
+    def prettyPrint: PrettyPrintPrimitives#Cont = text("LoopSpecs")
     // This should not be printed realistically. It should always be desugared. This is for debugging purposes.
-    {
-        val preStr = pres.pretty
-        val postStr = posts.pretty
-        val ghostStr = ghost.map(_.pretty).getOrElse("")
-        val basecaseStr = basecase.map(_.pretty).getOrElse("")
-        s"LoopSpecs: while(${cond.pretty})\n requires $preStr\n ensures $postStr\n {${body.pretty}\nghost{$ghostStr}}\n$basecaseStr"}
+
     /** declarations contributed by this statement that should be added to the parent scope */
     override def declarationsInParentScope: Seq[Declaration] = Seq.empty
 }
