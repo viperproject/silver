@@ -62,14 +62,23 @@ trait SilFrontend extends DefaultFrontend {
   def resetPlugins(): Unit = {
     val pluginsArg: Option[String] = if (_config != null) {
       // concat defined plugins and default plugins
-      val list = (if (_config.enableSmokeDetection()) Set(smokeDetectionPlugin, refutePlugin) else Set()) ++
-        (if (_config.disableDefaultPlugins()) Set() else defaultPlugins) ++
-        _config.plugin.toOption.toSet
+      // we do not use sets here as the order of plugins matters!
+      // note that the smoke detection plugin requires the refute plugin
+      val smokeDetectionAndDependencies = if (_config.enableSmokeDetection()) Seq(smokeDetectionPlugin, refutePlugin) else Seq.empty
+      val pluginClasses = smokeDetectionAndDependencies ++
+        // filter `defaultPlugins` to avoid duplicates
+        (if (_config.disableDefaultPlugins()) Seq.empty else defaultPlugins.filterNot(p => smokeDetectionAndDependencies.contains(p))) ++
+        _config.plugin.toOption.map(_.split(":").toSeq).getOrElse(Seq.empty)
 
-      if (list.isEmpty) {
+      val duplicatePluginClasses = pluginClasses.groupBy(identity).collect { case (x, instances) if instances.length > 1 => x }
+      if (duplicatePluginClasses.nonEmpty) {
+        reporter report ConfigurationWarning(s"The following plugins will be executed multiple times, which is most likely a configuration mistake: ${duplicatePluginClasses.mkString(", ")}.")
+      }
+
+      if (pluginClasses.isEmpty) {
         None
       } else {
-        Some(list.mkString(":"))
+        Some(pluginClasses.mkString(":"))
       }
     } else {
       None
