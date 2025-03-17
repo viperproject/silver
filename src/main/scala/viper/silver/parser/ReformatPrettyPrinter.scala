@@ -257,6 +257,7 @@ object ReformatPrettyPrinter extends ReformatPrettyPrinterBase {
 
   def reformatSubnodes(subnodes: Iterator[PNode], endLinebreak: Boolean = false)(implicit ctx: ReformatterContext, f: PartialFunction[PNode, Seq[RNode]] = PartialFunction.empty): Seq[RNode] = {
     import scala.collection.mutable.ArrayBuffer
+    
     val nodes = ArrayBuffer[RNode]()
     while (subnodes.hasNext) {
       val n = subnodes.next()
