@@ -75,6 +75,10 @@ trait SilFrontend extends DefaultFrontend {
       None
     }
     _plugins = SilverPluginManager(pluginsArg)(reporter, logger, _config, fp)
+    reporter match {
+      case par: PluginAwareReporter => par.setPluginManager(Some(_plugins))
+      case _ =>
+    }
   }
 
   /**

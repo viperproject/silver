@@ -23,27 +23,38 @@ object NoopReporter extends Reporter {
   def report(msg: Message): Unit = ()
 }
 
-case class PluginAwareReporter(plugins: SilverPluginManager, reporter: Reporter) extends Reporter {
+trait PluginAwareReporter extends Reporter {
 
-  val name = reporter.name
-  override def report(msg: Message): Unit = msg match {
-    case esm: EntitySuccessMessage =>
-      val newResult = plugins.mapEntityVerificationResult(esm.concerning, Success)
-      reporter.report(VerificationResultMessage(esm.verifier, esm.concerning, esm.verificationTime, newResult))
-    case efm: EntityFailureMessage =>
-      val newResult = plugins.mapEntityVerificationResult(efm.concerning, efm.result)
-      reporter.report(VerificationResultMessage(efm.verifier, efm.concerning, efm.verificationTime, newResult))
-    case m => reporter.report(m)
+  var plugins: Option[SilverPluginManager] = None
+
+  def setPluginManager(pm: Option[SilverPluginManager]): Unit = {
+    plugins = pm
   }
+
+  override def report(msg: Message): Unit = {
+    if (plugins.isEmpty)
+      return doReport(msg)
+    msg match {
+      case esm: EntitySuccessMessage =>
+        val newResult = plugins.get.mapEntityVerificationResult(esm.concerning, Success)
+        doReport(VerificationResultMessage(esm.verifier, esm.concerning, esm.verificationTime, newResult))
+      case efm: EntityFailureMessage =>
+        val newResult = plugins.get.mapEntityVerificationResult(efm.concerning, efm.result)
+        doReport(VerificationResultMessage(efm.verifier, efm.concerning, efm.verificationTime, newResult))
+      case m => doReport(m)
+    }
+  }
+
+  def doReport(msg: Message): Unit
 }
 
-case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv") extends Reporter {
+case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv") extends PluginAwareReporter {
 
   def this() = this("csv_reporter", "report.csv")
 
   val csv_file = new FileWriter(path, true)
 
-  def report(msg: Message): Unit = {
+  def doReport(msg: Message): Unit = {
     msg match {
       case AstConstructionFailureMessage(time, _) =>
         csv_file.write(s"AstConstructionFailureMessage,${time}\n")
@@ -99,7 +110,7 @@ case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv
   }
 }
 
-case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = true) extends Reporter {
+case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = true) extends PluginAwareReporter {
 
   var counter = 0
 
@@ -110,7 +121,7 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
 
   private def bulletFmt(num_items: Int): String = s"%${num_items.toString.length}d"
 
-  def report(msg: Message): Unit = {
+  def doReport(msg: Message): Unit = {
     msg match {
       case AstConstructionFailureMessage(t, res) =>
         val num_errors = res.errors.length
@@ -194,7 +205,9 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
 
       // These get reported without being transformed by any plugins, it would be an issue if we printed them to STDOUT.
       case EntitySuccessMessage(_, _, _, _) =>    // FIXME Currently, we only print overall verification results to STDOUT.
+        println(msg)
       case EntityFailureMessage(_, _, _, _, _) =>    // FIXME Currently, we only print overall verification results to STDOUT.
+        println(msg)
       case BranchFailureMessage(_, _, _, _) =>    // FIXME Currently, we only print overall verification results to STDOUT.
       case ConfigurationConfirmation(_) =>     // TODO  use for progress reporting
         //println( s"Configuration confirmation: $text" )
@@ -212,11 +225,11 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
   }
 }
 
-case class PollingReporter(name: String = "polling_reporter", pass_through_reporter: Reporter) extends Reporter {
+case class PollingReporter(name: String = "polling_reporter", pass_through_reporter: Reporter) extends PluginAwareReporter {
   // this reporter stores the messages it receives and reports them upon polling
   var messages: Queue[Message] = Queue()
 
-  def report(msg: Message): Unit = this.synchronized {
+  def doReport(msg: Message): Unit = this.synchronized {
     messages = messages.enqueue(msg)
     pass_through_reporter.report(msg)
   }
