@@ -31,7 +31,7 @@ trait PluginAwareReporter extends Reporter {
     plugins = pm
   }
 
-  override def report(msg: Message): Unit = {
+  final override def report(msg: Message): Unit = {
     if (plugins.isEmpty)
       return doReport(msg)
     msg match {
