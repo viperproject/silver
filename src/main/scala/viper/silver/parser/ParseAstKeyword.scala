@@ -369,16 +369,16 @@ trait PBinaryOp extends POperator with PSignaturesOp {
 }
 trait PArithOp extends PBinaryOp {
   override def signatures = List(
-    Map(POpApp.pArgS(0) -> Int, POpApp.pArgS(1) -> Int, POpApp.pResS -> Int),
-    Map(POpApp.pArgS(0) -> Perm, POpApp.pArgS(1) -> Perm, POpApp.pResS -> Perm))
+    Map(POpApp.pArgS(0) -> Perm, POpApp.pArgS(1) -> Perm, POpApp.pResS -> Perm),
+    Map(POpApp.pArgS(0) -> Int, POpApp.pArgS(1) -> Int, POpApp.pResS -> Int))
 }
 trait PIntOp extends PBinaryOp {
   override def signatures = List(Map(POpApp.pArgS(0) -> Int, POpApp.pArgS(1) -> Int, POpApp.pResS -> Int))
 }
 trait PCmpOp extends PBinaryOp {
   override def signatures = List(
-    Map(POpApp.pArgS(0) -> Int, POpApp.pArgS(1) -> Int, POpApp.pResS -> Bool),
-    Map(POpApp.pArgS(0) -> Perm, POpApp.pArgS(1) -> Perm, POpApp.pResS -> Bool))
+    Map(POpApp.pArgS(0) -> Perm, POpApp.pArgS(1) -> Perm, POpApp.pResS -> Bool),
+    Map(POpApp.pArgS(0) -> Int, POpApp.pArgS(1) -> Int, POpApp.pResS -> Bool))
 }
 trait PLogicalOp extends PBinaryOp {
   override def signatures = List(Map(POpApp.pArgS(0) -> Bool, POpApp.pArgS(1) -> Bool, POpApp.pResS -> Bool))
@@ -440,11 +440,10 @@ object PSymOp {
   }
   case object Div     extends PSym("/")   with PSymbolOp with PBinaryOp {
     override def signatures = List(
-      // The following two are not necessary if `Int` is a subtype of `Perm`
-      Map(POpApp.pArgS(0) -> Int, POpApp.pArgS(1) -> Int, POpApp.pResS -> Perm),
-      Map(POpApp.pArgS(0) -> Perm, POpApp.pArgS(1) -> Int, POpApp.pResS -> Perm),
-      Map(POpApp.pArgS(0) -> Int, POpApp.pArgS(1) -> Int, POpApp.pResS -> Int),
       Map(POpApp.pArgS(0) -> Perm, POpApp.pArgS(1) -> Perm, POpApp.pResS -> Perm),
+      Map(POpApp.pArgS(0) -> Perm, POpApp.pArgS(1) -> Int, POpApp.pResS -> Perm),
+      Map(POpApp.pArgS(0) -> Int, POpApp.pArgS(1) -> Int, POpApp.pResS -> Perm),
+      Map(POpApp.pArgS(0) -> Int, POpApp.pArgS(1) -> Int, POpApp.pResS -> Int),
     )
   }
   case object ArithDiv extends PSym("\\") with PSymbolOp with PBinaryOp with PIntOp
@@ -459,8 +458,8 @@ object PSymOp {
 
   case object Neg     extends PSym("-")   with PSymbolOp with PUnaryOp {
     override def signatures = List(
-      Map(POpApp.pArgS(0) -> Int, POpApp.pResS -> Int),
-      Map(POpApp.pArgS(0) -> Perm, POpApp.pResS -> Perm))
+      Map(POpApp.pArgS(0) -> Perm, POpApp.pResS -> Perm),
+      Map(POpApp.pArgS(0) -> Int, POpApp.pResS -> Int))
   }
   case object Not     extends PSym("!")   with PSymbolOp with PUnaryOp {
     override def signatures = List(Map(POpApp.pArgS(0) -> Bool, POpApp.pResS -> Bool))
