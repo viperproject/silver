@@ -1296,4 +1296,7 @@ trait ExtensionExp extends Exp {
   /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
     * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression.*/
   def prettyPrint: PrettyPrintPrimitives#Cont
+
+  /** Defines whether this expression can be used as a trigger. Defaults to false. */
+  def extensionIsValidTrigger(): Boolean = false
 }
