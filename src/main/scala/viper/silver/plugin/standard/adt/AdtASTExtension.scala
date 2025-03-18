@@ -207,7 +207,7 @@ case class AdtConstructorApp(name: String, args: Seq[Exp], typVarMap: Map[TypeVa
     }
   }
 
-  override def validTrigger(p: Program): Boolean = args.forall(a => !a.existsDefined {case _: ForbiddenInTrigger => })
+  override def extensionIsValidTrigger(): Boolean = args.forall(a => !a.existsDefined {case _: ForbiddenInTrigger => })
 }
 
 object AdtConstructorApp {
@@ -256,7 +256,7 @@ case class AdtDestructorApp(name: String, rcv: Exp, typVarMap: Map[TypeVar, Type
     }
   }
 
-  override def validTrigger(p: Program): Boolean = !rcv.existsDefined {case _: ForbiddenInTrigger => }
+  override def extensionIsValidTrigger(): Boolean = !rcv.existsDefined {case _: ForbiddenInTrigger => }
 }
 
 object AdtDestructorApp {
@@ -310,7 +310,7 @@ case class AdtDiscriminatorApp(name: String, rcv: Exp, typVarMap: Map[TypeVar, T
     }
   }
 
-  override def validTrigger(p: Program): Boolean = !rcv.existsDefined {case _: ForbiddenInTrigger => }
+  override def extensionIsValidTrigger(): Boolean = !rcv.existsDefined {case _: ForbiddenInTrigger => }
 }
 
 object AdtDiscriminatorApp {

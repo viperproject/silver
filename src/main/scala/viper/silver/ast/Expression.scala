@@ -1297,5 +1297,6 @@ trait ExtensionExp extends Exp {
     * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression.*/
   def prettyPrint: PrettyPrintPrimitives#Cont
 
-  def validTrigger(p: Program): Boolean = false
+  /** Defines whether this expression can be used as a trigger. Defaults to false. */
+  def extensionIsValidTrigger(): Boolean = false
 }
