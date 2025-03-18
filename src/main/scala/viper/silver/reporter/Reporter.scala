@@ -32,16 +32,19 @@ trait PluginAwareReporter extends Reporter {
   }
 
   final override def report(msg: Message): Unit = {
-    if (plugins.isEmpty)
-      return doReport(msg)
-    msg match {
-      case esm: EntitySuccessMessage =>
-        val newResult = plugins.get.mapEntityVerificationResult(esm.concerning, Success)
-        doReport(VerificationResultMessage(esm.verifier, esm.concerning, esm.verificationTime, newResult))
-      case efm: EntityFailureMessage =>
-        val newResult = plugins.get.mapEntityVerificationResult(efm.concerning, efm.result)
-        doReport(VerificationResultMessage(efm.verifier, efm.concerning, efm.verificationTime, newResult))
-      case m => doReport(m)
+    plugins match {
+      case None => doReport(msg)
+      case Some(plgns) =>
+        val transformed = msg match {
+          case esm: EntitySuccessMessage =>
+            val newResult = plgns.mapEntityVerificationResult(esm.concerning, Success)
+            doReport(VerificationResultMessage(esm.verifier, esm.concerning, esm.verificationTime, newResult))
+          case efm: EntityFailureMessage =>
+            val newResult = plgns.mapEntityVerificationResult(efm.concerning, efm.result)
+            doReport(VerificationResultMessage(efm.verifier, efm.concerning, efm.verificationTime, newResult))
+          case m => doReport(m)
+        }
+    }
     }
   }
 
