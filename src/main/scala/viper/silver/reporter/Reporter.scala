@@ -41,10 +41,10 @@ trait PluginAwareReporter extends Reporter {
           // *before* reporting the corresponding message.
           case esm: EntitySuccessMessage =>
             val newResult = plgns.mapEntityVerificationResult(esm.concerning, Success)
-            doReport(VerificationResultMessage(esm.verifier, esm.concerning, esm.verificationTime, newResult))
+            doReport(VerificationResultMessage(esm.verifier, esm.concerning, esm.verificationTime, newResult, esm.cached))
           case efm: EntityFailureMessage =>
             val newResult = plgns.mapEntityVerificationResult(efm.concerning, efm.result)
-            doReport(VerificationResultMessage(efm.verifier, efm.concerning, efm.verificationTime, newResult))
+            doReport(VerificationResultMessage(efm.verifier, efm.concerning, efm.verificationTime, newResult, efm.cached))
           case m => doReport(m)
         }
     }
