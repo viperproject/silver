@@ -35,7 +35,10 @@ trait PluginAwareReporter extends Reporter {
     plugins match {
       case None => doReport(msg)
       case Some(plgns) =>
-        val transformed = msg match {
+        msg match {
+          // We transform only EntrySuccessMessage and EntityFailureMessage, not OverallSuccessMessage and
+          // OverallFailureMessage here, since the overall verification results are already transformed by the verifier
+          // *before* reporting the corresponding message.
           case esm: EntitySuccessMessage =>
             val newResult = plgns.mapEntityVerificationResult(esm.concerning, Success)
             doReport(VerificationResultMessage(esm.verifier, esm.concerning, esm.verificationTime, newResult))
@@ -44,7 +47,6 @@ trait PluginAwareReporter extends Reporter {
             doReport(VerificationResultMessage(efm.verifier, efm.concerning, efm.verificationTime, newResult))
           case m => doReport(m)
         }
-    }
     }
   }
 
