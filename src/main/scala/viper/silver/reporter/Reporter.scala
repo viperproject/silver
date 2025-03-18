@@ -25,7 +25,7 @@ object NoopReporter extends Reporter {
 
 trait PluginAwareReporter extends Reporter {
 
-  var plugins: Option[SilverPluginManager] = None
+  protected var plugins: Option[SilverPluginManager] = None
 
   def setPluginManager(pm: Option[SilverPluginManager]): Unit = {
     plugins = pm
