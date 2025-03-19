@@ -1,0 +1,18 @@
+import <adt/derives.vpr>
+
+adt Tree[T, U, V] {
+    None1()
+    None2()
+}
+
+/**
+ * We define a list in a standard way, Nil() represents the empty list and Cons(x, xs)
+ * (from construct) represents a list with element x as its head and list xs as its tail.
+ * Note that while Viper supports generic ADTs, it does not support generic functions.
+ * So all functions operating on this ADT will be defined for a specific type, in this
+ * case Int.
+ */
+adt List2[T] {
+    Nil()
+    Cons(value: T,     tail: List2[T])
+}

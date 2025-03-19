@@ -181,13 +181,13 @@ case class TypeChecker(names: NameAnalyser) {
 
   def checkFunctions(d: PDomain): Unit = {
     checkMember(d) {
-      d.members.inner.funcs.toSeq foreach check
+      d.funcs foreach check
     }
   }
 
   def checkAxioms(d: PDomain): Unit = {
     checkMember(d) {
-      d.members.inner.axioms.toSeq foreach check
+      d.axioms foreach check
     }
   }
 
@@ -280,18 +280,18 @@ case class TypeChecker(names: NameAnalyser) {
   def checkAssign(stmt: PAssign): Unit = {
     // Check targets
     stmt.targets.toSeq foreach {
-      case idnuse: PIdnUseExp =>
-        idnuse.assignUse = true
-        if (idnuse.decls.nonEmpty) {
-          idnuse.filterDecls(_.isInstanceOf[PAssignableVarDecl])
-          if (idnuse.decl.isDefined)
-            check(idnuse, idnuse.decl.get.typ)
-          else if (idnuse.decls.isEmpty)
-            messages ++= FastMessaging.message(idnuse, s"expected an assignable identifier `${idnuse.name}` as lhs")
+      case idnuse@PIdnUseExp(idnref) =>
+        idnref.assignUse = true
+        if (idnref.decls.nonEmpty) {
+          idnref.filterDecls(_.isInstanceOf[PAssignableVarDecl])
+          if (idnref.decl.isDefined)
+            check(idnuse, idnref.decl.get.typ)
+          else if (idnref.decls.isEmpty)
+            messages ++= FastMessaging.message(idnuse, s"expected an assignable identifier `${idnref.name}` as lhs")
           else
-            messages ++= FastMessaging.message(idnuse, s"ambiguous identifier `${idnuse.name}`, expected single parameter or local variable")
+            messages ++= FastMessaging.message(idnuse, s"ambiguous identifier `${idnref.name}`, expected single parameter or local variable")
         } else
-          messages ++= FastMessaging.message(idnuse, s"undeclared identifier `${idnuse.name}`, expected parameter or local variable")
+          messages ++= FastMessaging.message(idnuse, s"undeclared identifier `${idnref.name}`, expected parameter or local variable")
       case fa@PFieldAccess(_, _, field) =>
         field.assignUse = true
         if (field.decl.isDefined)
@@ -799,13 +799,13 @@ case class TypeChecker(names: NameAnalyser) {
           }
         }
 
-      case piu: PIdnUseExp =>
-        if (piu.decls.isEmpty)
-          issueError(piu, s"undeclared identifier `${piu.name}`")
-        else if (piu.decl.isEmpty)
-          issueError(piu, s"ambiguous identifier `${piu.name}`")
+      case piu@PIdnUseExp(idnref) =>
+        if (idnref.decls.isEmpty)
+          issueError(piu, s"undeclared identifier `${idnref.name}`")
+        else if (idnref.decl.isEmpty)
+          issueError(piu, s"ambiguous identifier `${idnref.name}`")
         else
-          piu.typ = piu.decl.get.typ
+          piu.typ = idnref.decl.get.typ
 
       case piu: PVersionedIdnUseExp =>
         if (piu.decls.isEmpty)
@@ -833,7 +833,7 @@ case class TypeChecker(names: NameAnalyser) {
         permBan = Some("forperm quantifier bodies")
         check(pq.body, Bool)
         permBan = oldPermBan
-        checkInternal(pq.accessRes.inner)
+        checkInternal(pq.accessRes)
         pq.triggers foreach (_.exp.inner.toSeq foreach (tpe => checkTopTyped(tpe, None)))
         pq._typeSubstitutions = pq.body.typeSubstitutions.toList.distinct
         pq.typ = Bool
