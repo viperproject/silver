@@ -41,8 +41,10 @@ object Block {
 /**
   * A basic block containing statements.
   *
-  * @param id    The id of the basic block.
-  * @param stmts The list of statements of the basic block.
+  * @param id     The id of the basic block.
+  * @param stmts  The list of statements of the basic block.
+  * @param invs   The list of invariants of this basic block *in case* it turns out to be a loop head.
+  * @param loopId The loopId of this basic block *in case* it turns out to be a loop head.
   * @tparam S The type of the statements.
   * @tparam E The type of the expressions.
   */
