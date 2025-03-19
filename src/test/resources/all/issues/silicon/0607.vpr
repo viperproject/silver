@@ -1,0 +1,20 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+method f() returns (i:Int, j:Int)
+{
+    i := 10
+    j := 10
+    label W
+    invariant i == j
+    i := i - 1
+    goto X
+    j := j - 1
+    if (i > 0) {
+        goto W
+    }
+    label X
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert i == j
+}

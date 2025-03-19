@@ -429,7 +429,7 @@ object CfgGenerator {
           case (l@Label(_, invs)) :: rest if invs.nonEmpty =>
             val loopId = l.info.getUniqueInfo[IdInfo].map(_.id)
             val label = Label(l.name, Nil)(pos = l.pos, l.info)
-            LoopHeadBlock(invs, label :: rest, loopId)
+            StatementBlock(label :: rest, invs, loopId)
           case stmts =>
             StatementBlock(stmts)
         }

@@ -46,7 +46,7 @@ object Block {
   * @tparam S The type of the statements.
   * @tparam E The type of the expressions.
   */
-final class StatementBlock[S, E] private(val id: Int, val stmts: Seq[S])
+final class StatementBlock[S, E] private(val id: Int, val stmts: Seq[S], val invs: Option[Seq[E]] = None, val loopId: Option[Option[Int]] = None)
   extends Block[S, E] {
 
   override lazy val elements: Seq[Either[S, E]] = stmts.map(Left(_))
@@ -57,6 +57,9 @@ final class StatementBlock[S, E] private(val id: Int, val stmts: Seq[S])
 object StatementBlock {
   def apply[S, E](stmts: Seq[S] = Nil): StatementBlock[S, E] =
     new StatementBlock(Block.nextId(), stmts)
+
+  def apply[S, E](stmts: Seq[S], invs: Seq[E], loopId: Option[Int]): StatementBlock[S, E] =
+    new StatementBlock(Block.nextId(), stmts, Some(invs), Some(loopId))
 
   def unapply[S, E](block: StatementBlock[S, E]): Some[Seq[S]] =
     Some(block.stmts)
