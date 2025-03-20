@@ -27,9 +27,9 @@ jobs:
       shell: bash
       run: "git config --global core.autocrlf false"
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Set up Scala and JDK 1.${{ matrix.java }}
-      uses: olafurpg/setup-scala@v11
+      uses: olafurpg/setup-scala@v14
       with:
         # Should probably be changed to `temurin` once supported by `olafurpg/setup-scala`
         # See https://github.com/actions/setup-java#supported-distributions
@@ -42,7 +42,7 @@ jobs:
       run: sbt -v +test
     - name: Archive artifacts
       if: matrix.os == 'ubuntu-latest' && matrix.java == 11
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         path: |
           build.sbt

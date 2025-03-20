@@ -27,13 +27,26 @@ object FastParserCompanion {
   val whitespaceWithoutNewlineOrComments = {
     import NoWhitespace._
     implicit ctx: ParsingRun[_] =>
-      NoTrace((" " | "\t").rep)
+      NoTrace(space.rep)
   }
+
+  def blockComment[$: P] = {
+    import NoWhitespace._
+    "/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/"
+  }
+
+  def lineComment[$: P] = {
+    import NoWhitespace._
+    "//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)
+  }
+
+  def space[$: P] = " " | "\t"
+  def newline[$: P] = StringIn("\r\n") | "\n" | "\r"
 
   implicit val whitespace = {
     import NoWhitespace._
     implicit ctx: ParsingRun[_] =>
-      NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
+      NoTrace((blockComment | lineComment | space | newline).rep)
   }
 
   def identStarts[$: P] = CharIn("A-Z", "a-z", "$_")
@@ -95,13 +108,35 @@ object FastParserCompanion {
         .map { case (first, inner) => PDelimited(first, inner, None)(_) }
     ).pos
 
-    def delimitedTrailing[$: P, U](sep: => P[U], min: Int = 0, max: Int = Int.MaxValue, exactly: Int = -1)(implicit lineCol: LineCol, _file: Path): P[PDelimited[T, Option[U]]] =
+    def delimitedTrailing[$: P, U, V](sep: => P[U], map: Option[U] => V = (u: Option[U]) => u, min: Int = 0, max: Int = Int.MaxValue, exactly: Int = -1)(implicit lineCol: LineCol, _file: Path): P[PDelimited[T, V]] =
       P((p().lw ~~~ sep.lw.?./).repX(min = min, max = max, exactly = exactly)
         .map(seq => {
           val (ts, us) = seq.unzip
-          PDelimited(ts.headOption, us.zip(ts.drop(1)), us.lastOption)(_)
+          val usm = us.map(map)
+          PDelimited(ts.headOption, usm.zip(ts.drop(1)), usm.lastOption)(_)
         })
       ).pos
+  }
+
+  /* These special parser methods are only used in the reformatter
+  to parse and interpret the whitespaces and comments between two AST nodes.
+  */
+  def pSpace[$: P]: P[PSpace] = P(space map (_ => PSpace()))
+
+  def pNewline[$: P]: P[PNewLine] = P(newline map (_ => PNewLine()))
+
+  def pLineComment[$: P]: P[PComment] = P(lineComment.!.map { content =>
+    PComment(content)
+  })
+
+  def pBlockComment[$: P]: P[PComment] = P(blockComment.!.map { content =>
+    PComment(content)
+  })
+
+  def pComment[$: P]: P[PComment] = pLineComment | pBlockComment
+
+  def pTrivia[$: P]: P[Seq[PTrivia]] = {
+    P((pSpace | pNewline | pComment).repX)
   }
 
   /**
@@ -152,7 +187,7 @@ object FastParserCompanion {
     // maps
     PKw.Map, PKwOp.Range, PKwOp.Domain,
     // prover hint expressions
-    PKwOp.Unfolding, PKwOp.In, PKwOp.Applying,
+    PKwOp.Unfolding, PKwOp.In, PKwOp.Applying, PKwOp.Asserting,
     // old expression
     PKwOp.Old, PKw.Lhs,
     // other expressions
@@ -167,7 +202,7 @@ object FastParserCompanion {
 }
 
 class FastParser {
-  def parse(s: String, f: Path, plugins: Option[SilverPluginManager] = None, loader: FileLoader = DiskLoader) = {
+  def parse(s: String, f: Path, plugins: Option[SilverPluginManager] = None, loader: FileLoader = DiskLoader, expandMacros: Boolean = true) = {
     // Strategy to handle imports
     // Idea: Import every import reference and merge imported methods, functions, imports, .. into current program
     //       iterate until no new imports are present.
@@ -179,7 +214,11 @@ class FastParser {
     val file = f.toAbsolutePath().normalize()
     val data = ParserData(plugins, loader, mutable.HashSet(file))
     val program = RecParser(file, data, false).parses(s)
-    MacroExpander.expandDefines(program)
+    if (expandMacros) {
+      MacroExpander.expandDefines(program)
+    } else  {
+      program
+    }
   }
 
   case class ParserData(plugins: Option[SilverPluginManager], loader: FileLoader, local: mutable.HashSet[Path], std: mutable.HashSet[Path] = mutable.HashSet.empty)
@@ -312,13 +351,13 @@ class FastParser {
   //////////////////////////
 
   import fastparse._
-  import FastParserCompanion.{ExtendedParsing, identContinues, identStarts, LeadingWhitespace, Pos, PositionParsing, reservedKw, reservedSym}
+  import FastParserCompanion.{ExtendedParsing, identContinues, identStarts, LeadingWhitespace, Pos, PositionParsing, reservedKw, reservedSym, blockComment, lineComment, newline, space}
 
 
   implicit val whitespace = {
     import NoWhitespace._
     implicit ctx: ParsingRun[_] =>
-      NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
+      NoTrace((blockComment | lineComment | space | newline).rep)
   }
 
   implicit val lineCol: LineCol = new LineCol(this)
@@ -357,7 +396,7 @@ class FastParser {
   def typeList[$: P, T](p: => P[T]) = p.delimited(PSym.Comma).brackets
 
   /** ...`;`? ...`;`? ...`;`? */
-  def semiSeparated[$: P, T](p: => P[T]) = p.delimitedTrailing(PSym.Semi)
+  def semiSeparated[$: P, T](p: => P[T]): P[PDelimited[T, PSym.OptionSemi]] = p.delimitedTrailing(PSym.Semi, map = ND.apply)
 
   def foldPExp[E <: PExp](e: E, es: Seq[SuffixedExpressionGenerator[E]]): E =
     es.foldLeft(e) { (t, a) => a(t) }
@@ -365,7 +404,7 @@ class FastParser {
   def atomReservedKw[$: P]: P[PExp] = {
     reservedKwMany(
       StringIn("true", "false", "null", "old", "result", "acc", "none", "wildcard", "write", "epsilon", "perm", "let", "forall", "exists", "forperm",
-        "unfolding", "applying", "Set", "Seq", "Multiset", "Map", "range", "domain", "new"),
+        "unfolding", "applying", "asserting", "Set", "Seq", "Multiset", "Map", "range", "domain", "new"),
       str => pos => str match {
         case "true" => Pass.map(_ => PBoolLit(PReserved(PKw.True)(pos))(_))
         case "false" => Pass.map(_ => PBoolLit(PReserved(PKw.False)(pos))(_))
@@ -384,6 +423,7 @@ class FastParser {
         case "forperm" => forperm.map(_(PReserved(PKw.Forperm)(pos)))
         case "unfolding" => unfolding.map(_(PReserved(PKwOp.Unfolding)(pos)))
         case "applying" => applying.map(_(PReserved(PKwOp.Applying)(pos)))
+        case "asserting" => asserting.map(_(PReserved(PKwOp.Asserting)(pos)))
         case "Set" => setConstructor.map(_(PReserved(PKwOp.Set)(pos)))
         case "Seq" => seqConstructor.map(_(PReserved(PKwOp.Seq)(pos)))
         case "Multiset" => multisetConstructor.map(_(PReserved(PKwOp.Multiset)(pos)))
@@ -425,7 +465,7 @@ class FastParser {
 
   def ident[$: P]: P[String] = identifier.!.filter(a => !keywords.contains(a)).opaque("identifier")
 
-  def idnuse[$: P]: P[PIdnUseExp] = P(ident map (PIdnUseExp.apply _)).pos
+  def idnuse[$: P]: P[PIdnUseExp] = P(idnref[$, PTypedVarDecl] map (PIdnUseExp.apply _))
 
   def idnref[$: P, T <: PDeclarationInner](implicit ctag: scala.reflect.ClassTag[T]): P[PIdnRef[T]] = P(ident map (PIdnRef.apply[T] _)).pos
 
@@ -639,7 +679,7 @@ class FastParser {
   def trigger[$: P]: P[PTrigger] = P(exp.delimited(PSym.Comma).braces map (PTrigger.apply _)).pos
 
   def forperm[$: P]: P[PKw.Forperm => Pos => PExp] = P(nonEmptyIdnTypeList(PLogicalVarDecl(_)) ~ resAcc.brackets ~ PSym.ColonColon ~ exp).map {
-    case (args, res, op, body) => PForPerm(_, args, res, op, body)
+    case (args, res, op, body) => PForPerm(_, args, PPermTrigger(res), op, body)
   }
 
   def unfolding[$: P]: P[PKwOp.Unfolding => Pos => PExp] = P(predicateAccessAssertion ~ PKwOp.In ~ exp).map {
@@ -650,6 +690,10 @@ class FastParser {
     case (wand, op, b) =>
       wand.inner.brackets = Some(wand)
       PApplying(_, wand.inner, op, b)
+  }
+
+  def asserting[$: P]: P[PKwOp.Asserting => Pos => PExp] = P(exp.parens ~ PKwOp.In ~ exp).map {
+    case (a, in, b) => PAsserting(_, a.inner, in, b)
   }
 
   def predicateAccessAssertion[$: P]: P[PAccAssertion] = P(accessPred | predAcc)
@@ -762,7 +806,7 @@ class FastParser {
   // delimited sequence of field access, function application or identifier)
   def assign[$: P]: P[PAssign] = P(
     (assignTarget.delimited(PSym.Comma, min = 1) ~~~ (P(PSymOp.Assign).map(Some(_)) ~ exp).lw.?)
-      filter (a => a._2.isDefined || (a._1.length == 1 && (a._1.head.isInstanceOf[PIdnUse] || a._1.head.isInstanceOf[PCall])))
+      filter (a => a._2.isDefined || (a._1.length == 1 && !a._1.head.isInstanceOf[PFieldAccess]))
       map (a => if (a._2.isDefined) PAssign(a._1, a._2.get._1, a._2.get._2) _ else PAssign(PDelimited.empty, None, a._1.head) _)
     ).pos
 
@@ -807,7 +851,7 @@ class FastParser {
     P((P(PKw.Else) ~ stmtBlock()) map (PElse.apply _).tupled).pos
 
   def whileStmt[$: P]: P[PKw.While => Pos => PWhile] =
-    P((parenthesizedExp ~~ semiSeparated(invariant) ~ stmtBlock()) map { case (cond, invs, body) => PWhile(_, cond, invs, body) })
+    P((parenthesizedExp ~~ specifications(invariant) ~ stmtBlock()) map { case (cond, invs, body) => PWhile(_, cond, invs, body) })
 
   def invariant(implicit ctx : P[_]) : P[PSpecification[PKw.InvSpec]] = P((P(PKw.Invariant) ~ exp).map((PSpecification.apply _).tupled).pos | ParserExtension.invSpecification(ctx))
 
@@ -816,7 +860,7 @@ class FastParser {
 
   def defineDecl[$: P]: P[PKw.Define => PAnnotationsPosition => PDefine] =
     P((idndef ~~~/ NoCut(argList((idndef map PDefineParam.apply).pos)).lw.? ~ (stmtBlock(false) | exp)) map {
-      case (idn, args, body) => k => ap: PAnnotationsPosition => PDefine(ap.annotations, k, idn, args, body)(ap.pos)
+      case (idn, args, body) => k => ap: PAnnotationsPosition => PDefine(ap.annotations, k, idn, args, PDefineInner(body))(ap.pos)
     })
 
   def defineDeclStmt[$: P]: P[PKw.Define => Pos => PDefine] = P(defineDecl.map { f => k => pos: Pos => f(k)(PAnnotationsPosition(Nil, pos)) })
@@ -854,7 +898,7 @@ class FastParser {
     P(programMember.rep map (members => {
       val warnings = _warnings
       _warnings = Seq()
-      PProgram(Nil, members)(_, warnings)
+      PProgram(Nil, members)(_, warnings, Nil, "")
     })).pos
 
   def preambleImport[$: P]: P[PKw.Import => PAnnotationsPosition => PImport] = P(
@@ -874,28 +918,22 @@ class FastParser {
     P((P(PKw.Interpretation) ~ argList(domainInterp)) map (PDomainInterpretations.apply _).tupled).pos
 
   def domainDecl[$: P]: P[PKw.Domain => PAnnotationsPosition => PDomain] = P(idndef ~~~ typeList(domainTypeVarDecl).lw.? ~~~ domainInterps.lw.? ~
-    annotated(domainFunctionDecl | axiomDecl).rep.map(PDomainMembers1.apply _).pos.braces).map {
+    semiSeparated(annotated(domainFunctionDecl | axiomDecl)).braces).map {
     case (name, typparams, interpretations, block) =>
-      val members = block.inner.members
-      val funcs1 = members collect { case m: PDomainFunction1 => m }
-      val axioms1 = members collect { case m: PAxiom1 => m }
-      val funcs = funcs1 map (f => (PDomainFunction(f.annotations, f.unique, f.function, f.idndef, f.args, f.c, f.typ, f.interpretation)(f.pos), f.s))
-      val axioms = axioms1 map (a => (PAxiom(a.annotations, a.axiom, a.idndef, a.exp)(a.pos), a.s))
-      val allMembers = block.update(PDomainMembers(PDelimited(funcs)(NoPosition, NoPosition), PDelimited(axioms)(NoPosition, NoPosition))(block.pos))
       k => ap: PAnnotationsPosition => PDomain(
         ap.annotations,
         k,
         name,
         typparams,
         interpretations,
-        allMembers)(ap.pos)
+        block)(ap.pos)
   }
 
   def domainTypeVarDecl[$: P]: P[PTypeVarDecl] = P(idndef map (PTypeVarDecl.apply _)).pos
 
   def domainFunctionInterpretation[$: P]: P[PDomainFunctionInterpretation] = P((P(PKw.Interpretation) ~ stringLiteral) map (PDomainFunctionInterpretation.apply _).tupled).pos
-  def domainFunctionDecl[$: P]: P[PAnnotationsPosition => PDomainFunction1] = P(P(PKw.Unique).? ~ domainFunctionSignature ~ domainFunctionInterpretation.? ~~~ P(PSym.Semi).lw.?).map {
-    case (unique, (function, idn, args, c, typ), interpretation, s) => ap: PAnnotationsPosition => PDomainFunction1(ap.annotations, unique, function, idn, args, c, typ, interpretation, s)(ap.pos)
+  def domainFunctionDecl[$: P]: P[PAnnotationsPosition => PDomainFunction] = P(P(PKw.Unique).? ~ domainFunctionSignature ~ domainFunctionInterpretation.?).map {
+    case (unique, (function, idn, args, c, typ), interpretation) => ap: PAnnotationsPosition => PDomainFunction(ap.annotations, unique, function, idn, args, c, typ, interpretation)(ap.pos)
   }
 
   def domainFunctionSignature[$: P] = P(P(PKw.FunctionD) ~ idndef ~ argList(domainFunctionArg) ~ PSym.Colon ~ typ)
@@ -906,8 +944,8 @@ class FastParser {
 
   def bracedExp[$: P]: P[PBracedExp] = P(exp.braces map (PBracedExp(_) _)).pos
 
-  def axiomDecl[$: P]: P[PAnnotationsPosition => PAxiom1] = P(P(PKw.Axiom) ~ idndef.? ~ bracedExp ~~~ P(PSym.Semi).lw.?).map { case (k, a, b, s) =>
-    ap: PAnnotationsPosition => PAxiom1(ap.annotations, k, a, b, s)(ap.pos)
+  def axiomDecl[$: P]: P[PAnnotationsPosition => PAxiom] = P(P(PKw.Axiom) ~ idndef.? ~ bracedExp).map { case (k, a, b) =>
+    ap: PAnnotationsPosition => PAxiom(ap.annotations, k, a, b)(ap.pos)
   }
 
   def fieldDecl[$: P]: P[PKw.Field => PAnnotationsPosition => PFields] = P((nonEmptyIdnTypeList(PFieldDecl(_)) ~~~ P(PSym.Semi).lw.?) map {
@@ -915,11 +953,12 @@ class FastParser {
   })
 
   def functionDecl[$: P]: P[PKw.Function => PAnnotationsPosition => PFunction] = P((idndef ~ argList(formalArg) ~ PSym.Colon ~ typ
-    ~~ semiSeparated(precondition) ~~ semiSeparated(postcondition) ~~~ bracedExp.lw.?
+    ~~ specifications(precondition) ~~ specifications(postcondition) ~~~ bracedExp.lw.?
   ) map { case (idn, args, c, typ, d, e, f) => k =>
       ap: PAnnotationsPosition => PFunction(ap.annotations, k, idn, args, c, typ, d, e, f)(ap.pos)
   })
 
+  def specifications[$: P, T <: PKw.Spec](kw: => P[PSpecification[T]]): P[PSpecs[T]] = P(semiSeparated(kw) map (PSpecs.apply _)).pos
 
   def precondition(implicit ctx : P[_]) : P[PSpecification[PKw.PreSpec]] = P((P(PKw.Requires) ~ exp).map((PSpecification.apply _).tupled).pos | ParserExtension.preSpecification(ctx))
 
@@ -931,7 +970,7 @@ class FastParser {
   }
 
   def methodDecl[$: P]: P[PKw.Method => PAnnotationsPosition => PMethod] =
-    P((idndef ~ argList(formalArg) ~~~ methodReturns.lw.? ~~ semiSeparated(precondition) ~~ semiSeparated(postcondition) ~~~ stmtBlock().lw.?) map {
+    P((idndef ~ argList(formalArg) ~~~ methodReturns.lw.? ~~ specifications(precondition) ~~ specifications(postcondition) ~~~ stmtBlock().lw.?) map {
         case (idn, args, rets, pres, posts, body) => k =>
           ap: PAnnotationsPosition => PMethod(ap.annotations, k, idn, args, rets, pres, posts, body)(ap.pos)
     })
@@ -965,7 +1004,11 @@ class FastParser {
 
     // Assume entire file is correct and try parsing it quickly
     fastparse.parse(s, entireProgram(_)) match {
-      case Parsed.Success(value, _) => return value
+      case Parsed.Success(value, _) => {
+        value.offsets = _line_offset;
+        value.rawProgram = s;
+        return value;
+      }
       case _: Parsed.Failure =>
     }
     // There was a parsing error, parse member by member to get all errors
@@ -1013,7 +1056,7 @@ class FastParser {
     val warnings = _warnings
     _warnings = Nil
     val pos = (FilePosition(lineCol.getPos(0)), FilePosition(lineCol.getPos(res.get.index)))
-    PProgram(Nil, members)(pos, errors ++ warnings)
+    PProgram(Nil, members)(pos, errors ++ warnings, Nil, "");
   }
 
   object ParserExtension extends ParserPluginTemplate {

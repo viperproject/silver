@@ -18,13 +18,13 @@ case class Resolver(p: PProgram) {
   val names = NameAnalyser()
   val typechecker = TypeChecker(names)
 
-  def run: Option[PProgram] = {
+  def run(warnAboutFunctionPermAmounts: Boolean): Option[PProgram] = {
     val nameSuccess = names.run(p)
     // Run typechecker even if name resolution failed, to add more information to the
     // program, and report any other errors. A name resolution error should not cause
     // a typechecker error however!
     val typeckSuccess = try {
-      typechecker.run(p)
+      typechecker.run(p, warnAboutFunctionPermAmounts)
     } catch {
       case e: Throwable =>
         // TODO: remove this try/catch once all assumptions that
@@ -55,12 +55,14 @@ case class TypeChecker(names: NameAnalyser) {
   var curFunction: PFunction = null
   var resultAllowed: Boolean = false
   var permBan: Option[String] = None
+  var warnAboutFunctionPermAmounts: Boolean = false
 
   /** to record error messages */
   var messages: FastMessaging.Messages = Nil
   def success: Boolean = messages.isEmpty || messages.forall(m => !m.error)
 
-  def run(p: PProgram): Boolean = {
+  def run(p: PProgram, warnAboutFunctionPermAmounts: Boolean): Boolean = {
+    this.warnAboutFunctionPermAmounts = warnAboutFunctionPermAmounts
     check(p)
     success
   }
@@ -179,13 +181,13 @@ case class TypeChecker(names: NameAnalyser) {
 
   def checkFunctions(d: PDomain): Unit = {
     checkMember(d) {
-      d.members.inner.funcs.toSeq foreach check
+      d.funcs foreach check
     }
   }
 
   def checkAxioms(d: PDomain): Unit = {
     checkMember(d) {
-      d.members.inner.axioms.toSeq foreach check
+      d.axioms foreach check
     }
   }
 
@@ -278,18 +280,18 @@ case class TypeChecker(names: NameAnalyser) {
   def checkAssign(stmt: PAssign): Unit = {
     // Check targets
     stmt.targets.toSeq foreach {
-      case idnuse: PIdnUseExp =>
-        idnuse.assignUse = true
-        if (idnuse.decls.nonEmpty) {
-          idnuse.filterDecls(_.isInstanceOf[PAssignableVarDecl])
-          if (idnuse.decl.isDefined)
-            check(idnuse, idnuse.decl.get.typ)
-          else if (idnuse.decls.isEmpty)
-            messages ++= FastMessaging.message(idnuse, s"expected an assignable identifier `${idnuse.name}` as lhs")
+      case idnuse@PIdnUseExp(idnref) =>
+        idnref.assignUse = true
+        if (idnref.decls.nonEmpty) {
+          idnref.filterDecls(_.isInstanceOf[PAssignableVarDecl])
+          if (idnref.decl.isDefined)
+            check(idnuse, idnref.decl.get.typ)
+          else if (idnref.decls.isEmpty)
+            messages ++= FastMessaging.message(idnuse, s"expected an assignable identifier `${idnref.name}` as lhs")
           else
-            messages ++= FastMessaging.message(idnuse, s"ambiguous identifier `${idnuse.name}`, expected single parameter or local variable")
+            messages ++= FastMessaging.message(idnuse, s"ambiguous identifier `${idnref.name}`, expected single parameter or local variable")
         } else
-          messages ++= FastMessaging.message(idnuse, s"undeclared identifier `${idnuse.name}`, expected parameter or local variable")
+          messages ++= FastMessaging.message(idnuse, s"undeclared identifier `${idnref.name}`, expected parameter or local variable")
       case fa@PFieldAccess(_, _, field) =>
         field.assignUse = true
         if (field.decl.isDefined)
@@ -606,6 +608,17 @@ case class TypeChecker(names: NameAnalyser) {
       setType(PUnknown())
     }
 
+    /**
+      * Checks if a given expression contains a permission amount that is more specific than stating whether an amount
+      * is zero or positive.
+      */
+    def hasSpecificPermAmounts(e: PExp): Boolean = e match {
+      case PCondExp(_, _, thn, _, els) => hasSpecificPermAmounts(thn) || hasSpecificPermAmounts(els)
+      case _: PWildcard => false
+      case _: PNoPerm => false
+      case _ => true
+    }
+
     def getFreshTypeSubstitution(tvs: Seq[PDomainType]): PTypeRenaming =
       PTypeVar.freshTypeSubstitutionPTVs(tvs)
 
@@ -727,6 +740,12 @@ case class TypeChecker(names: NameAnalyser) {
                   case loc =>
                     issueError(loc, "specified location is not a field nor a predicate")
                 }
+                acc.permExp match {
+                  case Some(pe) if curMember.isInstanceOf[PFunction] && warnAboutFunctionPermAmounts && hasSpecificPermAmounts(pe) =>
+                    val msg = "Function contains specific permission amount that will be treated like wildcard if it is positive and none otherwise."
+                    messages ++= FastMessaging.message(pe, msg, error = false)
+                  case _ =>
+                }
 
               case pecl: PEmptyCollectionLiteral if !pecl.pElementType.isValidOrUndeclared =>
                 check(pecl.pElementType)
@@ -780,13 +799,13 @@ case class TypeChecker(names: NameAnalyser) {
           }
         }
 
-      case piu: PIdnUseExp =>
-        if (piu.decls.isEmpty)
-          issueError(piu, s"undeclared identifier `${piu.name}`")
-        else if (piu.decl.isEmpty)
-          issueError(piu, s"ambiguous identifier `${piu.name}`")
+      case piu@PIdnUseExp(idnref) =>
+        if (idnref.decls.isEmpty)
+          issueError(piu, s"undeclared identifier `${idnref.name}`")
+        else if (idnref.decl.isEmpty)
+          issueError(piu, s"ambiguous identifier `${idnref.name}`")
         else
-          piu.typ = piu.decl.get.typ
+          piu.typ = idnref.decl.get.typ
 
       case piu: PVersionedIdnUseExp =>
         if (piu.decls.isEmpty)
@@ -814,7 +833,7 @@ case class TypeChecker(names: NameAnalyser) {
         permBan = Some("forperm quantifier bodies")
         check(pq.body, Bool)
         permBan = oldPermBan
-        checkInternal(pq.accessRes.inner)
+        checkInternal(pq.accessRes)
         pq.triggers foreach (_.exp.inner.toSeq foreach (tpe => checkTopTyped(tpe, None)))
         pq._typeSubstitutions = pq.body.typeSubstitutions.toList.distinct
         pq.typ = Bool

@@ -30,7 +30,7 @@ class FeatureCombinationsTests extends AnyFunSuite with Matchers {
   }
 
   test("Forall of the Quantified Permissions form") {
-    val q0 = Forall( Seq(LocalVarDecl("x", Ref)()), Seq(), Implies(TrueLit()(), FieldAccessPredicate(FieldAccess(LocalVar("x", Ref)(), Field("a", Int)())(), FullPerm()())() )() )()
+    val q0 = Forall( Seq(LocalVarDecl("x", Ref)()), Seq(), Implies(TrueLit()(), FieldAccessPredicate(FieldAccess(LocalVar("x", Ref)(), Field("a", Int)())(), None)() )() )()
 
     assert(q0.isValid)
   }
@@ -46,7 +46,7 @@ class FeatureCombinationsTests extends AnyFunSuite with Matchers {
   test("Forall with predicate application in body expression") {
     val pred = PredicateAccess(Seq(LocalVar("x", Ref)()), "pred")(NoPosition, NoInfo, NoTrafos)
     val perm = FullPerm()()
-    val q1 = Forall(Seq(LocalVarDecl("i", Int)()), Seq(), PredicateAccessPredicate(pred, perm)())()
+    val q1 = Forall(Seq(LocalVarDecl("i", Int)()), Seq(), PredicateAccessPredicate(pred, Some(perm))())()
 
     assert(!q1.isValid)
   }
@@ -103,8 +103,8 @@ class FeatureCombinationsTests extends AnyFunSuite with Matchers {
   }
 
   test("Magic wand with Quantified Permissions") {
-    val wand1 = MagicWand(TrueLit()(), Forall(Seq(LocalVarDecl("x", Ref)()), Seq(), Implies(TrueLit()(), FieldAccessPredicate(FieldAccess(LocalVar("x", Ref)(), Field("a", Int)())(), FullPerm()())())() )())()
-    val wand2 = MagicWand(Forall(Seq(LocalVarDecl("x", Ref)()), Seq(), Implies(TrueLit()(), FieldAccessPredicate(FieldAccess(LocalVar("x", Ref)(), Field("a", Int)())(), FullPerm()())())() )(), TrueLit()())()
+    val wand1 = MagicWand(TrueLit()(), Forall(Seq(LocalVarDecl("x", Ref)()), Seq(), Implies(TrueLit()(), FieldAccessPredicate(FieldAccess(LocalVar("x", Ref)(), Field("a", Int)())(), None)())() )())()
+    val wand2 = MagicWand(Forall(Seq(LocalVarDecl("x", Ref)()), Seq(), Implies(TrueLit()(), FieldAccessPredicate(FieldAccess(LocalVar("x", Ref)(), Field("a", Int)())(), Some(FullPerm()()))())() )(), TrueLit()())()
 
     assert(!wand1.isValid)
     assert(!wand2.isValid)

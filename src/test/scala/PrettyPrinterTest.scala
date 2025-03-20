@@ -118,5 +118,45 @@ class PrettyPrinterTest extends AnyFunSuite with Matchers {
     assert(origString == resString)
   }
 
+  test("Test pretty printing conditional wildcard termination measures") {
+    import viper.silver.plugin.standard.termination.DecreasesWildcard
+
+    val m = Method(
+      name = "f",
+      formalArgs = Seq.empty,
+      formalReturns = Seq.empty,
+      pres = Seq(DecreasesWildcard(Some(TrueLit()()))()),
+      posts = Seq.empty,
+      body = None
+    )()
+    val actual = m.toString().trim
+    val expected =
+      """
+        |method f()
+        |  decreases _ if true
+        |""".stripMargin.trim
+    assert(actual == expected)
+  }
+
+  test("Test pretty printing conditional tuple termination measures") {
+    import viper.silver.plugin.standard.termination.DecreasesTuple
+
+    val m = Method(
+      name = "f",
+      formalArgs = Seq.empty,
+      formalReturns = Seq.empty,
+      pres = Seq(DecreasesTuple(Seq(IntLit(1)()), Some(TrueLit()()))()),
+      posts = Seq.empty,
+      body = None
+    )()
+    val actual = m.toString().trim
+    val expected =
+      """
+        |method f()
+        |  decreases 1 if true
+        |""".stripMargin.trim
+    assert(actual == expected)
+  }
+
 
 }
