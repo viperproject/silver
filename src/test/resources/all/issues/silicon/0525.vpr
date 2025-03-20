@@ -1,0 +1,15 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+method testLabel(x: Ref)
+  requires acc(x.f)
+{
+  label dummy
+    invariant acc(x.f, 1/2)
+
+  assert acc(x.f)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+field f: Int

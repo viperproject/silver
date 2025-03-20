@@ -90,6 +90,9 @@ object Consistency {
   /** Returns true if the given node contains no location accesses. */
   def noLocationAccesses(n: Node) = !n.existsDefined { case _: LocationAccess => }
 
+  /** Returns true if the given node contains no asserting expressions. */
+  def noAsserting(n: Node) = !n.existsDefined { case _: Asserting => }
+
   /** Returns true if the given node contains no accessibility predicates (unfolding predicates is
     * allowed) and no magic wands (applying wands is allowed).
     */

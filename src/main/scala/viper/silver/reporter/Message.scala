@@ -289,6 +289,10 @@ case class ConfigurationConfirmation(override val text: String) extends SimpleMe
   override val name: String = "configuration_confirmation"
 }
 
+case class ConfigurationWarning(override val text: String) extends SimpleMessage(text) {
+  override val name: String = "configuration_warning"
+}
+
 case class AnnotationWarning(override val text: String) extends SimpleMessage(text) {
   override val name: String = "annotation_warning"
 }
