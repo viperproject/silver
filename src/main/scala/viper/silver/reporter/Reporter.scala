@@ -6,6 +6,9 @@
 
 package viper.silver.reporter
 
+import viper.silver.plugin.SilverPluginManager
+import viper.silver.verifier.Success
+
 import java.io.FileWriter
 import scala.collection.mutable._
 
@@ -20,13 +23,43 @@ object NoopReporter extends Reporter {
   def report(msg: Message): Unit = ()
 }
 
-case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv") extends Reporter {
+trait PluginAwareReporter extends Reporter {
+
+  protected var plugins: Option[SilverPluginManager] = None
+
+  def setPluginManager(pm: Option[SilverPluginManager]): Unit = {
+    plugins = pm
+  }
+
+  final override def report(msg: Message): Unit = {
+    plugins match {
+      case None => doReport(msg)
+      case Some(plgns) =>
+        msg match {
+          // We transform only EntrySuccessMessage and EntityFailureMessage, not OverallSuccessMessage and
+          // OverallFailureMessage here, since the overall verification results are already transformed by the verifier
+          // *before* reporting the corresponding message.
+          case esm: EntitySuccessMessage =>
+            val newResult = plgns.mapEntityVerificationResult(esm.concerning, Success)
+            doReport(VerificationResultMessage(esm.verifier, esm.concerning, esm.verificationTime, newResult, esm.cached))
+          case efm: EntityFailureMessage =>
+            val newResult = plgns.mapEntityVerificationResult(efm.concerning, efm.result)
+            doReport(VerificationResultMessage(efm.verifier, efm.concerning, efm.verificationTime, newResult, efm.cached))
+          case m => doReport(m)
+        }
+    }
+  }
+
+  def doReport(msg: Message): Unit
+}
+
+case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv") extends PluginAwareReporter {
 
   def this() = this("csv_reporter", "report.csv")
 
   val csv_file = new FileWriter(path, true)
 
-  def report(msg: Message): Unit = {
+  def doReport(msg: Message): Unit = {
     msg match {
       case AstConstructionFailureMessage(time, _) =>
         csv_file.write(s"AstConstructionFailureMessage,${time}\n")
@@ -82,7 +115,7 @@ case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv
   }
 }
 
-case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = true) extends Reporter {
+case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = true) extends PluginAwareReporter {
 
   var counter = 0
 
@@ -93,7 +126,7 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
 
   private def bulletFmt(num_items: Int): String = s"%${num_items.toString.length}d"
 
-  def report(msg: Message): Unit = {
+  def doReport(msg: Message): Unit = {
     msg match {
       case AstConstructionFailureMessage(t, res) =>
         val num_errors = res.errors.length
@@ -195,11 +228,11 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
   }
 }
 
-case class PollingReporter(name: String = "polling_reporter", pass_through_reporter: Reporter) extends Reporter {
+case class PollingReporter(name: String = "polling_reporter", pass_through_reporter: Reporter) extends PluginAwareReporter {
   // this reporter stores the messages it receives and reports them upon polling
   var messages: Queue[Message] = Queue()
 
-  def report(msg: Message): Unit = this.synchronized {
+  def doReport(msg: Message): Unit = this.synchronized {
     messages = messages.enqueue(msg)
     pass_through_reporter.report(msg)
   }

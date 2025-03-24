@@ -361,7 +361,7 @@ case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val in
 /** A predicate declaration. */
 case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], body: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Location {
   override lazy val check : Seq[ConsistencyError] =
-    (if (body.isDefined) Consistency.checkNonPostContract(body.get) else Seq()) ++
+    (if (body.isDefined) Consistency.checkNonPostContract(body.get) ++ Consistency.checkWildcardUsage(body.get, false) else Seq()) ++
     (if (body.isDefined && !Consistency.noOld(body.get))
       Seq(ConsistencyError("Predicates must not contain old expressions.",body.get.pos))
      else Seq()) ++
@@ -426,7 +426,8 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
     body.fold(Seq.empty[ConsistencyError])(Consistency.checkNoArgsReassigned(formalArgs, _)) ++
     (if (!((formalArgs ++ formalReturns) forall (_.typ.isConcrete))) Seq(ConsistencyError("Formal args and returns must have concrete types.", pos)) else Seq()) ++
     (pres ++ posts).flatMap(Consistency.checkNoPermForpermExceptInhaleExhale) ++
-    checkReturnsNotUsedInPreconditions
+    checkReturnsNotUsedInPreconditions ++
+    (pres ++ posts ++ body.toSeq).flatMap(Consistency.checkWildcardUsage(_, false))
 
   lazy val checkReturnsNotUsedInPreconditions: Seq[ConsistencyError] = {
     val varsInPreconditions: Seq[LocalVar] = pres flatMap {_.deepCollect {case l: LocalVar => l}}
@@ -454,6 +455,7 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres
     posts.flatMap(p=>{ if(!Consistency.noOld(p))
       Seq(ConsistencyError("Function post-conditions must not have old expressions.", p.pos)) else Seq()}) ++
     (pres ++ posts).flatMap(Consistency.checkNoPermForpermExceptInhaleExhale) ++
+    (pres ++ posts ++ body.toSeq).flatMap(Consistency.checkWildcardUsage(_, true)) ++
     (if(!(body forall (_ isSubtype typ))) Seq(ConsistencyError("Type of function body must match function type.", pos)) else Seq() ) ++
     (posts flatMap (p => if (!Consistency.noPerm(p) || !Consistency.noForPerm(p)) Seq(ConsistencyError("perm and forperm expressions are not allowed in function postconditions", p.pos)) else Seq() )) ++
     pres.flatMap(Consistency.checkPre) ++
@@ -566,6 +568,7 @@ sealed trait DomainAxiom extends DomainMember {
     (if(!Consistency.noResult(exp)) Seq(ConsistencyError("Axioms can never contain result variables.", exp.pos)) else Seq()) ++
     (if(!Consistency.noOld(exp)) Seq(ConsistencyError("Axioms can never contain old expressions.", exp.pos)) else Seq()) ++
     (if(!Consistency.noLocationAccesses(exp)) Seq(ConsistencyError("Axioms can never contain location accesses.", exp.pos)) else Seq()) ++
+    (if(!Consistency.noAsserting(exp)) Seq(ConsistencyError("Axioms can never contain asserting expressions.", exp.pos)) else Seq()) ++
     (if(!(exp isSubtype Bool)) Seq(ConsistencyError("Axioms must be of Bool type", exp.pos)) else Seq()) ++
     Consistency.checkPure(exp)
 

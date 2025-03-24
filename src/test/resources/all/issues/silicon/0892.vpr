@@ -1,0 +1,23 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+predicate P(r: Ref) {
+  Q(r) &&
+  unfolding Q(r) in true
+}
+
+predicate Q(r: Ref) {true}
+
+predicate R(r: Ref) {
+  P(r) && unfolding P(r) in true
+}
+
+method test01(r: Ref) returns ()
+  requires P(r)
+{
+  fold acc(R(r), wildcard)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
