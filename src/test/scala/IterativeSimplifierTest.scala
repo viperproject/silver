@@ -526,12 +526,14 @@ class IterativeSimplifierTest extends AnyFunSuite with Matchers{
     simplify(expr) should be (a)
   }
 
-  test("ce6") {
+  test("ce6 ispure") {
     val a = LocalVar("a", Bool)()
     val b = LocalVar("b", Bool)()
     val expr = CondExp(a, FalseLit()(), Not(a)())()
 
-    simplify(expr) should be (Not(Or(a,a)())())
+    println(simplify(expr))
+
+    simplify(expr) should be (Not(a)())
   }
   test("ce6bis assumeWelldefinedeness") {
     val a = LocalVar("a", Bool)()
@@ -678,4 +680,19 @@ class IterativeSimplifierTest extends AnyFunSuite with Matchers{
 
     simplify (And(a, Implies(a, b)())()) should be (And(a, b)())
   }
+
+  test("neue2") {
+
+    val a = LocalVar("a", Bool)()
+    val b = LocalVar("b", Bool)()
+    val c = LocalVar("c", Bool)()
+
+    println(simplify(And(a, And(And(a,b)(), c)())(), true, 5000, true))
+
+    true should be (true)
+  }
+
+
+
+
 }

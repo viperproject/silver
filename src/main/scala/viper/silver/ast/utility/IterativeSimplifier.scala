@@ -1,11 +1,13 @@
 package viper.silver.ast.utility
 
 import viper.silver.ast._
+import viper.silver.ast.utility.Statements.EmptyStmt
+import viper.silver.utility.Common.Rational
 
 import scala.collection.mutable
 import scala.collection.mutable._
 
-object IterativeSimplifier {
+trait IterativeSimplifier {
 
   /**
    * Simplify 'n' by matching nodes in the AST with a list of transformations
@@ -41,7 +43,7 @@ object IterativeSimplifier {
     getShortest(visited)
   }
 
-  private def getShortest[N <: Node](visited: ArrayBuffer[N]): N = {
+  protected def getShortest[N <: Node](visited: ArrayBuffer[N]): N = {
     visited.minBy(treeSize)
   }
 
@@ -53,8 +55,16 @@ object IterativeSimplifier {
     n.reduceTree[Boolean]((node, doubleNegs) => doubleNegs.contains(true) || isDoubleNeg(node))
   }
 
-  private def pfSimplify[N <: Node](n: N, assumeWelldefinedness: Boolean): ArrayBuffer[N] = {
+  def pfSimplify[N <: Node](n: N, assumeWelldefinedness: Boolean): ArrayBuffer[N] = {
 
+    val result: ArrayBuffer[N] = ArrayBuffer()
+
+    result ++= pfSilverCases(n, assumeWelldefinedness)
+
+    result
+  }
+
+  protected def pfSilverCases[N <: Node](n: N, assumeWelldefinedness: Boolean): ArrayBuffer[N] = {
     val result: ArrayBuffer[Node] = ArrayBuffer()
 
     val cases: List[PartialFunction[N, Node]] = List(
@@ -80,15 +90,17 @@ object IterativeSimplifier {
       { case root@And(_, FalseLit()) => FalseLit()(root.pos, root.info) },
 
       //Idempotence
-      { case root@And(a, b) if assumeWelldefinedness && a == b => a},
-      { case root@Or(a, b) if assumeWelldefinedness && a == b => a},
+      { case root@And(a, b) if (assumeWelldefinedness || (a.isPure && b.isPure)) && a == b => a},
+      { case root@Or(a, b) if (assumeWelldefinedness || (a.isPure && b.isPure)) && a == b => a},
 
-      { case root@And(a, b) => And(b, a)(root.pos, root.info)},
-      { case root@Or(a, b) => Or(b, a)(root.pos, root.info)},
+      { case root@And(a, b) if (assumeWelldefinedness || (a.isPure && b.isPure)) => And(b, a)(root.pos, root.info)},
+      { case root@Or(a, b) if (assumeWelldefinedness || (a.isPure && b.isPure)) => Or(b, a)(root.pos, root.info)},
+
+      { case root@And(a, b) if (assumeWelldefinedness || (a.isPure && b.isPure)) => And(b, a)(root.pos, root.info)},
+      { case root@Or(a, b) if (assumeWelldefinedness || (a.isPure && b.isPure)) => Or(b, a)(root.pos, root.info)},
 
 
       //associativity
-      //WARNING: position and info attribute not correctly maintained for lchild, left and right
       { case root@And(And(left, right), rchild) => And(left, And(right, rchild)(root.pos, root.info))(root.pos, root.info)},
       { case root@And(lchild, And(left, right)) => And(And(lchild, left)(root.pos, root.info), right)(root.pos, root.info)},
 
@@ -96,7 +108,6 @@ object IterativeSimplifier {
       { case root@Or(uleft, Or(left, right)) => Or(Or(uleft, left)(root.pos, root.info), right)(root.pos, root.info)},
 
       //implication rules
-      //WARNING: position and info attributes not correctly maintained
       { case root@Implies(FalseLit(), _) => TrueLit()(root.pos, root.info) },
       { case Implies(TrueLit(), consequent) => consequent },
       { case root@Implies(l1, Implies(l2, r)) => Implies(And(l1, l2)(root.pos, root.info), r)(root.pos, root.info) },
@@ -108,9 +119,7 @@ object IterativeSimplifier {
       { case root@And(a, Implies(a2, b)) if a == a2 => And(a, b)(root.pos, root.info) },
 
       //contrapositive
-      { case root@Implies(Not(left), Not(right)) => Implies(right, left)(root.pos, root.info) },
-
-      //extended rules and/or
+      { case root@Implies(Not(left), Not(right)) if (assumeWelldefinedness || (left.isPure && right.isPure)) => Implies(right, left)(root.pos, root.info) },
 
       //de morgan
       { case root@Not(Or(left, right)) => And(Not(left)(), Not(right)())(root.pos, root.info)},
@@ -142,18 +151,14 @@ object IterativeSimplifier {
       { case root@NeCmp(left, right) if assumeWelldefinedness && left == right => FalseLit()(root.pos, root.info) },
 
       //extended equality/nonequality comparison
-      //some possible rules could introduce more statements, but not these ones
       { case root@EqCmp(left, right) => EqCmp(right, left)(root.pos, root.info) },
       { case root@NeCmp(left, right) => NeCmp(right, left)(root.pos, root.info) },
-      //{ case root@EqCmp(left, right) => Not(NeCmp(left, right)(root.pos, root.info))(root.pos, root.info) },
-      //{ case root@NeCmp(left, right) => Not(EqCmp(left, right)(root.pos, root.info))(root.pos, root.info) },
       { case root@Not(EqCmp(left, right)) => NeCmp(left, right)(root.pos, root.info) },
       { case root@Not(NeCmp(left, right)) => EqCmp(left, right)(root.pos, root.info) },
       { case root@And(EqCmp(le, re), NeCmp(ln, rn)) if assumeWelldefinedness && le == ln && re == rn => FalseLit()(root.pos, root.info)},
       { case root@Or(EqCmp(le, re), NeCmp(ln, rn)) if assumeWelldefinedness && le == ln && re == rn => TrueLit()(root.pos, root.info)},
 
       //conditional expressions
-
       { case CondExp(TrueLit(), ifTrue, _) => ifTrue },
       { case CondExp(FalseLit(), _, ifFalse) => ifFalse },
       { case CondExp(_, ifTrue, ifFalse) if assumeWelldefinedness && ifTrue == ifFalse => ifTrue },
@@ -171,6 +176,102 @@ object IterativeSimplifier {
       { case root@CondExp(condition, ifTrue, TrueLit()) => Implies(condition, ifTrue)(root.pos, root.info) },
 
       //forall&exists
+      { case root@Forall(_, _, BoolLit(literal)) =>
+        BoolLit(literal)(root.pos, root.info) },
+      { case root@Exists(_, _, BoolLit(literal)) =>
+        BoolLit(literal)(root.pos, root.info) },
+
+      { case root@Minus(IntLit(literal)) => IntLit(-literal)(root.pos, root.info) },
+      { case Minus(Minus(single)) => single },
+
+      { case PermMinus(PermMinus(single)) => single },
+      { case PermMul(fst, FullPerm()) => fst },
+      { case PermMul(FullPerm(), snd) => snd },
+      { case root@PermMul(AnyPermLiteral(a, b), AnyPermLiteral(c, d)) =>
+        val product = Rational(a, b) * Rational(c, d)
+        FractionalPerm(IntLit(product.numerator)(root.pos, root.info), IntLit(product.denominator)(root.pos, root.info))(root.pos, root.info)
+      case PermMul(_, np@NoPerm()) if assumeWelldefinedness => np
+      case PermMul(np@NoPerm(), _) if assumeWelldefinedness => np },
+
+
+      { case PermMul(wc@WildcardPerm(), _) if assumeWelldefinedness => wc },
+      { case PermMul(_, wc@WildcardPerm()) if assumeWelldefinedness => wc },
+
+      { case root@PermGeCmp(a, b) if assumeWelldefinedness && a == b => TrueLit()(root.pos, root.info) },
+      { case root@PermLeCmp(a, b) if assumeWelldefinedness && a == b => TrueLit()(root.pos, root.info) },
+      { case root@PermGtCmp(a, b) if assumeWelldefinedness && a == b => FalseLit()(root.pos, root.info) },
+      { case root@PermLtCmp(a, b) if assumeWelldefinedness && a == b => FalseLit()(root.pos, root.info) },
+
+      { case root@PermGtCmp(AnyPermLiteral(a, b), AnyPermLiteral(c, d)) =>
+        BoolLit(Rational(a, b) > Rational(c, d))(root.pos, root.info) },
+      { case root@PermGeCmp(AnyPermLiteral(a, b), AnyPermLiteral(c, d)) =>
+        BoolLit(Rational(a, b) >= Rational(c, d))(root.pos, root.info) },
+      { case root@PermLtCmp(AnyPermLiteral(a, b), AnyPermLiteral(c, d)) =>
+        BoolLit(Rational(a, b) < Rational(c, d))(root.pos, root.info) },
+      { case root@PermLeCmp(AnyPermLiteral(a, b), AnyPermLiteral(c, d)) =>
+        BoolLit(Rational(a, b) <= Rational(c, d))(root.pos, root.info) },
+      { case root@EqCmp(AnyPermLiteral(a, b), AnyPermLiteral(c, d)) =>
+        BoolLit(Rational(a, b) == Rational(c, d))(root.pos, root.info) },
+      { case root@NeCmp(AnyPermLiteral(a, b), AnyPermLiteral(c, d)) =>
+        BoolLit(Rational(a, b) != Rational(c, d))(root.pos, root.info) },
+
+      { case root@PermLeCmp(NoPerm(), WildcardPerm()) =>
+        TrueLit()(root.pos, root.info) },
+      { case root@NeCmp(WildcardPerm(), NoPerm()) =>
+        TrueLit()(root.pos, root.info) },
+
+      { case DebugPermMin(e0@AnyPermLiteral(a, b), e1@AnyPermLiteral(c, d)) =>
+        if (Rational(a, b) < Rational(c, d)) {
+          e0
+        } else {
+          e1
+        }
+      },
+
+      { case root@PermSub(AnyPermLiteral(a, b), AnyPermLiteral(c, d)) =>
+        val diff = Rational(a, b) - Rational(c, d)
+        FractionalPerm(IntLit(diff.numerator)(root.pos, root.info), IntLit(diff.denominator)(root.pos, root.info))(root.pos, root.info) },
+      { case root@PermAdd(AnyPermLiteral(a, b), AnyPermLiteral(c, d)) =>
+        val sum = Rational(a, b) + Rational(c, d)
+        FractionalPerm(IntLit(sum.numerator)(root.pos, root.info), IntLit(sum.denominator)(root.pos, root.info))(root.pos, root.info) },
+      { case PermAdd(NoPerm(), rhs) => rhs },
+      { case PermAdd(lhs, NoPerm()) => lhs },
+      { case PermSub(lhs, NoPerm()) => lhs },
+
+      { case root@GeCmp(IntLit(left), IntLit(right)) =>
+        BoolLit(left >= right)(root.pos, root.info) },
+      { case root@GtCmp(IntLit(left), IntLit(right)) =>
+        BoolLit(left > right)(root.pos, root.info) },
+      { case root@LeCmp(IntLit(left), IntLit(right)) =>
+        BoolLit(left <= right)(root.pos, root.info) },
+      { case root@LtCmp(IntLit(left), IntLit(right)) =>
+        BoolLit(left < right)(root.pos, root.info) },
+
+      { case root@Add(IntLit(left), IntLit(right)) =>
+        IntLit(left + right)(root.pos, root.info) },
+      { case root@Sub(IntLit(left), IntLit(right)) =>
+        IntLit(left - right)(root.pos, root.info) },
+      { case root@Mul(IntLit(left), IntLit(right)) =>
+        IntLit(left * right)(root.pos, root.info) },
+      /* In the general case, Viper uses the SMT division and modulo. Scala's division is not in-sync with SMT division.
+         For nonnegative dividends and divisors, all used division and modulo definitions coincide. So, in order to not
+         not make any assumptions on the SMT division, division and modulo are simplified only if the dividend and divisor
+         are nonnegative. Also see Carbon PR #448.
+       */
+      { case root@Div(IntLit(left), IntLit(right)) if left >= bigIntZero && right > bigIntZero =>
+        IntLit(left / right)(root.pos, root.info) },
+      { case root@Mod(IntLit(left), IntLit(right)) if left >= bigIntZero && right > bigIntZero =>
+        IntLit(left % right)(root.pos, root.info) },
+
+      // statement simplifications
+      { case Seqn(EmptyStmt, _) => EmptyStmt }, // remove empty Seqn (including unnecessary scopedDecls)
+      { case s@Seqn(ss, scopedDecls) if ss.contains(EmptyStmt) => // remove empty statements
+        val newSS = ss.filterNot(_ == EmptyStmt)
+        Seqn(newSS, scopedDecls)(s.pos, s.info, s.errT) },
+      { case If(_, EmptyStmt, EmptyStmt) => EmptyStmt }, // remove empty If clause
+      { case If(TrueLit(), thn, _) => thn }, // remove trivial If conditions
+      { case If(FalseLit(), _, els) => els }, // remove trivial If conditions
+
     )
 
     result ++= cases.collect { case lcase if lcase.isDefinedAt(n) => lcase(n) }
@@ -188,7 +289,7 @@ object IterativeSimplifier {
     case _ => false
   }
 
-  private def pfRecSimplify[N <: Node](n: N, assumeWelldefinedness: Boolean): ArrayBuffer[N] = {
+  protected def pfRecSimplify[N <: Node](n: N, assumeWelldefinedness: Boolean): ArrayBuffer[N] = {
     val result: ArrayBuffer[N] = ArrayBuffer()
     result ++= pfSimplify(n, assumeWelldefinedness)
     val newChildrenList = n.children.zipWithIndex.map {
@@ -197,9 +298,6 @@ object IterativeSimplifier {
       }
       case (child: N, index) => {
         val temp = new ArrayBuffer[List[Any]]()
-          temp ++=pfSimplify(child, assumeWelldefinedness).map { pfSimpChild =>
-          n.children.toList.updated(index, pfSimpChild)
-        }
         temp ++= pfRecSimplify(child, assumeWelldefinedness).toList.map { recSimpChild =>
           n.children.toList.updated(index, recSimpChild)
         }
@@ -219,4 +317,21 @@ object IterativeSimplifier {
     newlist.map (listelem => result ++= listelem)
     result
   }
+
+
+  private val bigIntZero = BigInt(0)
+  private val bigIntOne = BigInt(1)
+
+  object AnyPermLiteral {
+    def unapply(p: Exp): Option[(BigInt, BigInt)] = p match {
+      case FullPerm() => Some((bigIntOne, bigIntOne))
+      case NoPerm() => Some((bigIntZero, bigIntOne))
+      case FractionalPerm(IntLit(n), IntLit(d)) => Some((n, d))
+      case _ => None
+    }
+  }
 }
+
+
+object IterativeSimplifier extends IterativeSimplifier
+
