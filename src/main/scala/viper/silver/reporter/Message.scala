@@ -169,7 +169,7 @@ case class BranchFailureMessage(verifier: String, concerning: Entity,
     s"result=${result.toString}, cached=$cached)"
 }
 
-case class ExploredBranches(method: Method, paths: Vector[(Seq[Exp], Boolean)], var cached : Boolean = false)
+case class ExploredBranches(method: Method, paths: Vector[(Vector[(String, Boolean)], Boolean)], var cached : Boolean = false)
 case class ExploredBranchesReport(exploredBranches : ExploredBranches)
   extends Message {
 
