@@ -10,7 +10,6 @@ import viper.silver.ast._
 import viper.silver.reporter.ExploredBranches
 
 import scala.annotation.unused
-import viper.silver.reporter.ExploredBranches
 
 /** Describes the outcome of a verification attempt of a Viper program.
 
