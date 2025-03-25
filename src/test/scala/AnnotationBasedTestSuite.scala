@@ -41,7 +41,7 @@ abstract class AnnotationBasedTestSuite extends ResourceBasedTestSuite {
       val parserErrors = input.annotations.errors
 
       // Match expected outputs with actual outputs
-      val actualOutputs = system.run(input).filterNot(_.toString.contains("postcondition.violated.branch")).toSeq
+      val actualOutputs = system.run(input)
       val expectedOutputs = input.annotations.outputAnnotations
 
       val matcher = OutputMatcher(actualOutputs, expectedOutputs)
