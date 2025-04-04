@@ -39,7 +39,7 @@ object Triggers {
     /* Note: If Add and Sub were type arguments of GenericTriggerGenerator, the latter
      *       could implement isForbiddenInTrigger already */
     def isForbiddenInTrigger(e: Exp) = (customIsForbiddenInTrigger orElse {
-      case _: ForbiddenInTrigger => true
+      case e if Expressions.isForbiddenInTrigger.isDefinedAt(e) => true
       case _ => false
     }: PartialFunction[Exp, Boolean])(e)
 

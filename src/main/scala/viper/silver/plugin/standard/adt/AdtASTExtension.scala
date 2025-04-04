@@ -9,7 +9,7 @@ package viper.silver.plugin.standard.adt
 import viper.silver.ast._
 import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, braces, brackets, char, defaultIndent, line, nest, nil, parens, show, showType, showVars, space, ssep, text}
 import viper.silver.ast.pretty.PrettyPrintPrimitives
-import viper.silver.ast.utility.Consistency
+import viper.silver.ast.utility.{Consistency, Expressions}
 import viper.silver.verifier.{ConsistencyError, Failure, VerificationResult}
 
 /**
@@ -207,7 +207,9 @@ case class AdtConstructorApp(name: String, args: Seq[Exp], typVarMap: Map[TypeVa
     }
   }
 
-  override def extensionIsValidTrigger(): Boolean = args.forall(a => !a.existsDefined {case _: ForbiddenInTrigger => })
+  override def extensionIsValidTrigger(): Boolean = args.forall(a => !a.existsDefined(Expressions.isForbiddenInTrigger))
+
+  override def extensionIsForbiddenInTrigger(): Boolean = false
 }
 
 object AdtConstructorApp {
@@ -256,7 +258,9 @@ case class AdtDestructorApp(name: String, rcv: Exp, typVarMap: Map[TypeVar, Type
     }
   }
 
-  override def extensionIsValidTrigger(): Boolean = !rcv.existsDefined {case _: ForbiddenInTrigger => }
+  override def extensionIsValidTrigger(): Boolean = !rcv.existsDefined(Expressions.isForbiddenInTrigger)
+
+  override def extensionIsForbiddenInTrigger(): Boolean = false
 }
 
 object AdtDestructorApp {
@@ -310,7 +314,9 @@ case class AdtDiscriminatorApp(name: String, rcv: Exp, typVarMap: Map[TypeVar, T
     }
   }
 
-  override def extensionIsValidTrigger(): Boolean = !rcv.existsDefined {case _: ForbiddenInTrigger => }
+  override def extensionIsValidTrigger(): Boolean = !rcv.existsDefined(Expressions.isForbiddenInTrigger)
+
+  override def extensionIsForbiddenInTrigger(): Boolean = false
 }
 
 object AdtDiscriminatorApp {
