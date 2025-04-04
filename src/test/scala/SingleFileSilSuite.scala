@@ -24,5 +24,5 @@ trait SingleFileSilSuite extends SilSuite {
   def frontend(verifier: Verifier, input: String): Frontend
 
   override def buildTestInput(file: Path, prefix: String) =
-    super.buildTestInput(file, prefix).copy(files = Seq(file))
+    super.buildTestInput(file, prefix).copyWithFiles(files = Seq(file))
 }
