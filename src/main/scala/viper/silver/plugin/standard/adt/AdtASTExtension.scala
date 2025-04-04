@@ -314,9 +314,11 @@ case class AdtDiscriminatorApp(name: String, rcv: Exp, typVarMap: Map[TypeVar, T
     }
   }
 
-  override def extensionIsValidTrigger(): Boolean = !rcv.existsDefined(Expressions.isForbiddenInTrigger)
+  // Since a discriminator desugars to ADT_tag(rcv) == name_tag, which contains an equality,
+  // it cannot be used anywhere inside a trigger.
+  override def extensionIsValidTrigger(): Boolean = false
 
-  override def extensionIsForbiddenInTrigger(): Boolean = false
+  override def extensionIsForbiddenInTrigger(): Boolean = true
 }
 
 object AdtDiscriminatorApp {

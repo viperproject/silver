@@ -46,14 +46,9 @@ method testDestr2(s: Set[Term], c: Term) {
 
 method testDiscr(s: Set[Term], c: Term) {
   assume c in s
-  assume forall i: Term :: {i.isConst} i in s ==> foo(i)
+  // i.isConst must not be picked as a trigger, otherwise the backends may crash
+  assume forall i: Term :: i.isConst ==> foo(i)
   var t: Bool := c.isConst
   assert foo(c)
 }
 
-method testDiscr2(s: Set[Term], c: Term) {
-  assume c in s
-  assume forall i: Term :: {i.isConst} i in s ==> foo(i)
-  //:: ExpectedOutput(assert.failed:assertion.false)
-  assert foo(c)
-}
