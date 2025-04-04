@@ -295,9 +295,10 @@ object Expressions {
     leftConds ++ guardedRightConds
   }
 
-  def isForbiddenInTrigger: PartialFunction[Node, Unit] = {
-    case _: ForbiddenInTrigger =>
-    case ee: ExtensionExp if ee.extensionIsForbiddenInTrigger() =>
+  def isForbiddenInTrigger(n: Node): Boolean = n match {
+    case _: ForbiddenInTrigger => true
+    case ee: ExtensionExp => ee.extensionIsForbiddenInTrigger()
+    case _ => false
   }
 
   /** See [[viper.silver.ast.utility.Triggers.TriggerGeneration.generateTriggerSetGroups]] */
