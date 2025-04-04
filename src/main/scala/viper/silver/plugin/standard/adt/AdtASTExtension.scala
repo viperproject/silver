@@ -9,7 +9,7 @@ package viper.silver.plugin.standard.adt
 import viper.silver.ast._
 import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, braces, brackets, char, defaultIndent, line, nest, nil, parens, show, showType, showVars, space, ssep, text}
 import viper.silver.ast.pretty.PrettyPrintPrimitives
-import viper.silver.ast.utility.Consistency
+import viper.silver.ast.utility.{Consistency, Expressions}
 import viper.silver.verifier.{ConsistencyError, Failure, VerificationResult}
 
 /**
@@ -206,6 +206,10 @@ case class AdtConstructorApp(name: String, args: Seq[Exp], typVarMap: Map[TypeVa
       AdtConstructorApp(first, second, third)(this.pos, this.info, this.typ, this.adtName, this.errT).asInstanceOf[this.type]
     }
   }
+
+  override def extensionIsValidTrigger(): Boolean = args.forall(a => !a.exists(Expressions.isForbiddenInTrigger))
+
+  override def extensionIsForbiddenInTrigger(): Boolean = false
 }
 
 object AdtConstructorApp {
@@ -253,6 +257,10 @@ case class AdtDestructorApp(name: String, rcv: Exp, typVarMap: Map[TypeVar, Type
       AdtDestructorApp(first, second, third)(this.pos, this.info, this.typ, this.adtName, this.errT).asInstanceOf[this.type]
     }
   }
+
+  override def extensionIsValidTrigger(): Boolean = !rcv.exists(Expressions.isForbiddenInTrigger)
+
+  override def extensionIsForbiddenInTrigger(): Boolean = false
 }
 
 object AdtDestructorApp {
@@ -306,6 +314,11 @@ case class AdtDiscriminatorApp(name: String, rcv: Exp, typVarMap: Map[TypeVar, T
     }
   }
 
+  // Since a discriminator desugars to ADT_tag(rcv) == name_tag, which contains an equality,
+  // it cannot be used anywhere inside a trigger.
+  override def extensionIsValidTrigger(): Boolean = false
+
+  override def extensionIsForbiddenInTrigger(): Boolean = true
 }
 
 object AdtDiscriminatorApp {
