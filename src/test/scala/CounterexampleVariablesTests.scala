@@ -8,7 +8,8 @@ package viper.silver.testing
 
 import fastparse._
 import viper.silver.parser.FastParserCompanion.whitespace
-import viper.silver.parser.{FastParser, PAccPred, PBinExp, PExp, PSymOp}
+import viper.silver.parser.{FastParser, PAccPred, PBinExp, PBoolLit, PExp, PIdnUseExp, PIntLit, PSymOp, PUnExp}
+import viper.silver.verifier.{ConstantEntry, Model, ModelEntry}
 
 import java.nio.file.Path
 
@@ -74,6 +75,38 @@ trait CounterexampleVariablesTests extends SilSuite {
         case _ => None
       }
     }
+  }
+}
+
+object CounterexampleComparison {
+
+  /** returns true if model2 contains at least the content expressed by model1 */
+  def meetsExpectations(model1: ExpectedCounterexample, model2: Model): Boolean = {
+    model1.exprs.forall {
+      case PBinExp(lhs, r, rhs) if r.rs == PSymOp.EqEq => containsEquality(lhs, rhs, model2)
+    }
+  }
+
+  def containsEquality(lhs: PExp, rhs: PExp, model: Model): Boolean =
+    resolve(Vector(lhs, rhs), model).exists { case Vector(resolvedLhs, resolvedRhs) =>
+      areEqualEntries(resolvedLhs, resolvedRhs)
+    }
+
+  /** resolves `expr` to a model entry in the given model. In case it's a field access, the corresponding permissions are returned as well */
+  def resolve(expr: PExp, model: Model): Option[ModelEntry] = expr match {
+    case PIntLit(value) => Some(ConstantEntry(value.toString()))
+    case PBoolLit(value) => Some(ConstantEntry(value.rs.keyword))
+    case PUnExp(r, PIntLit(value)) if r.rs == PSymOp.Neg => Some(ConstantEntry((-value).toString()))
+    case idnuse: PIdnUseExp => model.entries.get(idnuse.name)
+  }
+
+  def resolve(exprs: Vector[PExp], model: Model): Option[Vector[ModelEntry]] = {
+    val entries = exprs.map(expr => resolve(expr, model)).collect { case Some(entry) => entry }
+    if (exprs.size == entries.size) Some(entries) else None
+  }
+
+  def areEqualEntries(entry1: ModelEntry, entry2: ModelEntry): Boolean = (entry1, entry2) match {
+    case (ConstantEntry(value1), ConstantEntry(value2)) => value1 == value2
   }
 }
 

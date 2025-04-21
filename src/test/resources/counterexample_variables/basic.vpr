@@ -8,10 +8,10 @@ method branchCond(b: Bool, x: Ref, y: Ref)
     var z: Ref
     if (b) {
       res := 1
-      z := x
+      assume z == x
     } else {
       res := 2
-      z := y
+      assume z == y
     }
     //:: ExpectedCounterexample(assert.failed:assertion.false, (b == true, z == x, res == 1))
     assert res == 2
@@ -24,10 +24,10 @@ method branchCond2(b: Bool, x: Ref, y: Ref)
     var z: Ref
     if (b) {
       res := 1
-      z := x
+      assume z == x
     } else {
       res := 2
-      z := y
+      assume z == y
     }
     //:: ExpectedCounterexample(assert.failed:assertion.false, (b == false, z == y, res == 2))
     assert res == 1
