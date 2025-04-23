@@ -9,7 +9,7 @@ package viper.silver.testing
 import fastparse._
 import viper.silver.parser.FastParserCompanion.whitespace
 import viper.silver.parser.{FastParser, PAccPred, PBinExp, PBoolLit, PExp, PIdnUseExp, PIntLit, PSymOp, PUnExp}
-import viper.silver.verifier.{ConstantEntry, Model, ModelEntry}
+import viper.silver.verifier.{ConstantEntry, FailureContext, Model, ModelEntry, VerificationError}
 
 import java.nio.file.Path
 
@@ -19,7 +19,7 @@ trait CounterexampleVariablesTests extends SilSuite {
   override def buildTestInput(file: Path, prefix: String): DefaultAnnotatedTestInput =
     CounterexampleTestInput(file, prefix)
 
-  def createExpectedValuesCounterexampleAnnotation(id: OutputAnnotationId, file: Path, forLineNr: Int, expectedCounterexample: ExpectedCounterexample): CustomAnnotation
+  def createExpectedValuesCounterexampleAnnotation(id: OutputAnnotationId, file: Path, forLineNr: Int, expectedCounterexample: ExpectedCounterexample): ExpectedValuesCounterexampleAnnotation
 
   /** we override the default annotation parser because we use special annotations to express expected counterexamples */
   object CounterexampleTestInput extends TestAnnotationParser {
@@ -76,6 +76,22 @@ trait CounterexampleVariablesTests extends SilSuite {
       }
     }
   }
+}
+
+abstract class ExpectedValuesCounterexampleAnnotation(id: OutputAnnotationId, file: Path, forLineNr: Int, expectedCounterexample: ExpectedCounterexample) extends CustomAnnotation {
+  override def matches(actual: AbstractOutput): Boolean =
+    id.matches(actual.fullId) && actual.isSameLine(file, forLineNr) && containsModel(actual)
+
+  /** returns true if the expected model (i.e. class parameter) is a subset of a model given in a failure context */
+  def containsModel(is: AbstractOutput): Boolean = is match {
+    case SilOutput(err) => err match {
+      case vErr: VerificationError => vErr.failureContexts.toVector.exists(containsExpectedCounterexample)
+      case _ => false
+    }
+    case _ => false
+  }
+
+  def containsExpectedCounterexample(failureContext: FailureContext): Boolean
 }
 
 object CounterexampleComparison {
