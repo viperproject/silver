@@ -66,7 +66,7 @@ case class Adt(name: String, constructors: Seq[AdtConstructor], typVars: Seq[Typ
   * @param typ        the return type of the constructor
   * @param adtName    the name corresponding of the corresponding ADT
   */
-case class AdtConstructor(name: String, formalArgs: Seq[LocalVarDecl])
+case class AdtConstructor(name: String, formalArgs: Seq[LocalVarDecl], axiom: Option[Exp])
                          (val pos: Position, val info: Info, val typ: AdtType, val adtName: String, val errT: ErrorTrafo)
   extends ExtensionMember {
 
@@ -84,19 +84,20 @@ case class AdtConstructor(name: String, formalArgs: Seq[LocalVarDecl])
     if (!forceRewrite && this.children == children && pos.isEmpty)
       this
     else {
-      assert(children.length == 2, s"AdtConstructor : expected length 2 but got ${children.length}")
+      assert(children.length == 3, s"AdtConstructor : expected length 3 but got ${children.length}")
       val first = children.head.asInstanceOf[String]
       val second = children.tail.head.asInstanceOf[Seq[LocalVarDecl]]
-      AdtConstructor(first, second)(this.pos, this.info, this.typ, this.adtName, this.errT).asInstanceOf[this.type]
+      val third = children.tail.tail.head.asInstanceOf[Option[Exp]]
+      AdtConstructor(first, second, third)(this.pos, this.info, this.typ, this.adtName, this.errT).asInstanceOf[this.type]
     }
 
   }
 }
 
 object AdtConstructor {
-  def apply(adt: Adt, name: String, formalArgs: Seq[LocalVarDecl])
+  def apply(adt: Adt, name: String, formalArgs: Seq[LocalVarDecl], axiom: Option[Exp])
            (pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos): AdtConstructor = {
-    AdtConstructor(name, formalArgs)(pos, info, AdtType(adt, (adt.typVars zip adt.typVars).toMap), adt.name, errT)
+    AdtConstructor(name, formalArgs, axiom)(pos, info, AdtType(adt, (adt.typVars zip adt.typVars).toMap), adt.name, errT)
   }
 }
 

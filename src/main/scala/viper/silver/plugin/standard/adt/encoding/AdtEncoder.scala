@@ -90,7 +90,7 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
         val domain = Domain(name, null, null, typVars)(adt.pos, adt.info, adt.errT)
         val functions: Seq[DomainFunc] = (constructors map encodeAdtConstructorAsDomainFunc(domain)) ++
           (constructors flatMap generateDestructorDeclarations(domain)) ++ Seq(generateTagDeclaration(domain))
-        val axioms = (constructors flatMap generateInjectivityAxiom(domain)) ++
+        val axioms = (constructors flatMap generateInjectivityAxiom(domain)) ++ (constructors flatMap generateUserAxiom(domain)) ++
           (constructors map generateTagAxiom(domain)) ++ Seq(generateExclusivityAxiom(domain)(constructors))
         val derivingAxioms = if (derivingInfo.contains(getContainsFunctionName))
           constructors filter (_.formalArgs.nonEmpty) map generateContainsAxiom(domain, derivingInfo(getContainsFunctionName)._2) else Seq.empty
@@ -136,6 +136,11 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     }
   }
 
+  private def formalArgsToLocalVars(ac: AdtConstructor): Seq[LocalVar] = ac.formalArgs map (lv => lv.typ match {
+      case a: AdtType => localVarTFromType(encodeAdtTypeAsDomainType(a), Some(lv.name))(ac.pos, ac.info, ac.errT)
+      case d => localVarTFromType(d, Some(lv.name))(ac.pos, ac.info, ac.errT)
+    })
+
   /**
     * This method encodes an ADT constructor as a domain function
     *
@@ -145,7 +150,7 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     */
   private def encodeAdtConstructorAsDomainFunc(domain: Domain)(ac: AdtConstructor): DomainFunc = {
     ac match {
-      case AdtConstructor(name, formalArgs) =>
+      case AdtConstructor(name, formalArgs, _) =>
         DomainFunc(name, formalArgs, encodeAdtTypeAsDomainType(ac.typ))(ac.pos, ac.info, domain.name, ac.errT)
     }
   }
@@ -222,7 +227,7 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     * This method generates the corresponding injectivity axiom for an ADT constructor.
     *
     * axiom {
-    *     forall p_1: T_1, ..., p_n: T_n :: {C(p_1, ..., p_n)} p_i == D_Ci(C(p_1, ..., p_n))
+    *     forall p_1: T_1, ..., p_n: T_n :: {C(p_1, ..., p_n)} p_i == D_i(C(p_1, ..., p_n))
     * }
     *
     * where C is the ADT constructor, D_i the destructor for i-th argument of C
@@ -234,12 +239,7 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
   private def generateInjectivityAxiom(domain: Domain)(ac: AdtConstructor): Seq[AnonymousDomainAxiom] = {
     assert(domain.name == ac.adtName, "AdtEncoder: An error in the ADT encoding occurred.")
     val localVarDecl = ac.formalArgs.collect { case l: LocalVarDecl => l }
-    val localVars = ac.formalArgs.map { lv =>
-      lv.typ match {
-        case a: AdtType => localVarTFromType(encodeAdtTypeAsDomainType(a), Some(lv.name))(ac.pos, ac.info, ac.errT)
-        case d => localVarTFromType(d, Some(lv.name))(ac.pos, ac.info, ac.errT)
-      }
-    }
+    val localVars = formalArgsToLocalVars(ac)
     assert(localVarDecl.size == localVars.size, "AdtEncoder: An error in the ADT encoding occurred.")
 
     val constructorApp = DomainFuncApp(
@@ -256,9 +256,47 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
         defaultTypeVarsFromDomain(domain)
       )(ac.pos, ac.info, lv.typ, ac.adtName, ac.errT)
       val eq = EqCmp(lv, right)(ac.pos, ac.info, ac.errT)
-      val forall = Forall(localVarDecl, Seq(trigger), eq)(ac.pos, ac.info, ac.errT)
+      val cond_eq = ac.axiom.map(p => Implies(p, eq)(ac.pos, ac.info, ac.errT)).getOrElse(eq)
+      val forall = Forall(localVarDecl, Seq(trigger), cond_eq)(ac.pos, ac.info, ac.errT)
       AnonymousDomainAxiom(forall)(ac.pos, ac.info, ac.adtName, ac.errT)
     }
+  }
+
+  /**
+    * This method generates the corresponding user axiom for an ADT constructor.
+    *
+    * axiom {
+    *     forall t: AdtType :: {D_1(t)}...{D_n(t)} user_axiom
+    * }
+    *
+    * where D_i the destructor for i-th argument of C
+    *
+    * @param domain The domain the encoded constructor belongs to
+    * @param ac     The adt constructor for which we want to generate the user axiom
+    * @return The user axiom if the constructor has a user annotated axiom
+    */
+  private def generateUserAxiom(domain: Domain)(ac: AdtConstructor): Option[AnonymousDomainAxiom] = {
+    assert(domain.name == ac.adtName, "AdtEncoder: An error in the ADT encoding occurred.")
+    ac.axiom.map(pre => {
+      val localVarDecl = localVarTDeclFromType(domainTypeFromDomain(domain))(domain.pos, domain.info, domain.errT)
+      val localVar = localVarTFromType(domainTypeFromDomain(domain))(domain.pos, domain.info, domain.errT)
+
+      val destructorCalls = ac.formalArgs.map { lv =>
+        DomainFuncApp(
+          getDestructorName(domain.name, lv.name),
+          Seq(localVar),
+          defaultTypeVarsFromDomain(domain)
+        )(domain.pos, domain.info, lv.typ, domain.name, domain.errT)
+      }
+      val localVars = formalArgsToLocalVars(ac)
+      assert(destructorCalls.size == localVars.size, "AdtEncoder: An error in the ADT encoding occurred.")
+
+      val triggers = destructorCalls.map { t => Trigger(Seq(t))(domain.pos, domain.info, domain.errT) }
+      val pre_sub = pre.replace(localVars.zip(destructorCalls).toMap)
+      AnonymousDomainAxiom(
+        Forall(Seq(localVarDecl), triggers, pre_sub)(domain.pos, domain.info, domain.errT)
+      )(domain.pos, domain.info, domain.name, domain.errT)
+    })
   }
 
   /**
