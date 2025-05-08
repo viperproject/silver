@@ -1,0 +1,89 @@
+field next : Ref
+field val : Int
+
+predicate List(start : Ref)
+{
+  acc(start.val) && acc(start.next) && (start.next != null ==> List(start.next))
+}
+
+function elems(start: Ref) : Seq[Int]
+  requires List(start)
+{
+  unfolding List(start) in (
+    (start.next == null ? Seq(start.val) : Seq(start.val) ++ elems(start.next) )
+  )
+}
+
+function sorted(start: Ref) : Bool
+  requires List(start)
+{
+  unfolding List(start) in
+    start.next == null
+      ? true
+      : (unfolding List(start.next) in start.val <= start.next.val)
+          && sorted(start.next)
+}
+
+method append_it(l1 : Ref, l2: Ref)
+  requires List(l1) && List(l2) && l2 != null
+  //:: UnexpectedOutput(assert.failed:assertion.false, /Carbon/issue/000/)
+  ensures List(l1) && elems(l1) == old(elems(l1) ++ elems(l2))
+{
+  unfold List(l1)
+
+  if (l1.next == null) {
+    l1.next := l2
+    fold List(l1)
+
+  } else {
+    var tmp : Ref := l1.next
+    var index : Int := 1
+
+    package List(tmp) --* List(l1) && elems(l1) == old(elems(l1)[..index]) ++ old[lhs](elems(tmp))
+    {
+      fold List(l1)
+    }
+
+    while (unfolding List(tmp) in tmp.next != null)
+      invariant index >= 0
+      invariant List(tmp) && elems(tmp) == old(elems(l1))[index..]
+
+      invariant List(tmp) --* List(l1) && elems(l1) == old(elems(l1)[..index]) ++ old[lhs](elems(tmp))
+    {
+      unfold List(tmp)
+      var prev : Ref := tmp
+      tmp := tmp.next
+      index := index + 1
+
+      //:: UnexpectedOutput(assert.failed:assertion.false, /Carbon/issue/000/)
+      package List(tmp) --* List(l1) && elems(l1) == old(elems(l1)[..index]) ++ old[lhs](elems(tmp))
+      {
+        fold List(prev)
+
+        apply List(prev) --* List(l1) && elems(l1) == old(elems(l1)[..index-1]) ++ old[lhs](elems(prev))
+      }
+    }
+
+    unfold List(tmp)
+    tmp.next := l2
+    fold List(tmp)
+
+    apply List(tmp) --* List(l1) && elems(l1) == old(elems(l1)[..index]) ++ old[lhs](elems(tmp))
+  }
+}
+
+method traverse_sorted(l: Ref)
+  requires List(l) && sorted(l)
+  ensures List(l) && sorted(l) && (unfolding List(l) in l.val) == old(unfolding List(l) in l.val)
+{
+  unfold List(l)
+
+  if (l == null) {
+    fold List(l)
+  } elseif (l.next == null) {
+    fold List(l)
+  } else {
+    traverse_sorted(l.next)
+    fold List(l)
+  }
+}
