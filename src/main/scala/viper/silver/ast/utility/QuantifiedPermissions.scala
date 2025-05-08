@@ -40,7 +40,7 @@ object QuantifiedPermissions {
         case Forall(_, _, implies: Implies) =>
           Some((forall, implies))
         case Forall(_, _, expr) =>
-          Some(forall, Implies(BoolLit(true)(forall.pos, forall.info, forall.errT), expr)(forall.pos, forall.info, forall.errT))
+          Some(forall, Implies(BoolLit(b = true)(forall.pos, forall.info, forall.errT), expr)(forall.pos, forall.info, forall.errT))
         case _ =>
           None
       }
@@ -252,13 +252,16 @@ object QuantifiedPermissions {
             // desugar the let-body
             val desugaredWithoutLet = desugarSourceQuantifiedPermissionSyntax(forallWithoutLet)
             desugaredWithoutLet.map{
-              case SourceQuantifiedPermissionAssertion(iqp, Implies(icond, irhs)) if (!irhs.isPure) =>
+              case SourceQuantifiedPermissionAssertion(iqp, Implies(icond, irhs)) if !irhs.isPure =>
                 // Since the rhs cannot be a let-binding, we expand the let-expression in it.
                 // However, we still use a let in the condition; this preserves well-definedness if v isn't used anywhere
                 Forall(iqp.variables, iqp.triggers.map(t => t.replace(v.localVar, e)), Implies(And(cond, Let(v, e, icond)(lt.pos, lt.info, lt.errT))(lt.pos, lt.info, lt.errT), irhs.replace(v.localVar, e))(iqp.pos, iqp.info, iqp.errT))(iqp.pos, iqp.info, iqp.errT)
               case iforall@Forall(ivars, itriggers, Implies(icond, ibod)) =>
                 // For all pure parts of the quantifier, we just re-wrap the body into a let.
                 Forall(ivars, itriggers, Implies(cond, Let(v, e, Implies(icond, ibod)(lt.pos, lt.info))(lt.pos, lt.info, lt.errT))(lt.pos, lt.info, lt.errT))(iforall.pos, iforall.info)
+              case _ =>
+                // suppress error: "Exhaustivity analysis reached max recursion depth, not all missing cases are reported."
+                ???
             }
           }
           case _ =>
