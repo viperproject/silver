@@ -12,6 +12,7 @@ import org.jgrapht.alg.connectivity.GabowStrongConnectivityInspector
 import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 import org.jgrapht.traverse.TopologicalOrderIterator
 
+import scala.collection.immutable.ListMap
 import scala.collection.mutable.{ListBuffer, Set => MSet}
 import scala.jdk.CollectionConverters._
 
@@ -19,6 +20,9 @@ import scala.jdk.CollectionConverters._
  * Utility methods for functions.
  */
 object Functions {
+
+  type FuncName = String
+
   case class Edge[T](source: T, target: T)
 
   def allSubexpressions(func: Function): Seq[Exp] = func.pres ++ func.posts ++ func.body
@@ -50,17 +54,17 @@ object Functions {
     * TODO: Memoize invocations of `getFunctionCallgraph`. Note that it's unclear how to derive a useful key from `subs`
     */
   def getFunctionCallgraph(program: Program, subs: Function => Seq[Exp] = allSubexpressions)
-                          : DefaultDirectedGraph[Function, DefaultEdge] = {
-    val graph = new DefaultDirectedGraph[Function, DefaultEdge](classOf[DefaultEdge])
+                          : DefaultDirectedGraph[FuncName, DefaultEdge] = {
+    val graph = new DefaultDirectedGraph[FuncName, DefaultEdge](classOf[DefaultEdge])
 
     for (f <- program.functions) {
-      graph.addVertex(f)
+      graph.addVertex(f.name)
     }
 
     def process(f: Function, e: Exp): Unit = {
       e visit {
         case FuncApp(f2name, _) =>
-          graph.addEdge(f, program.findFunction(f2name))
+          graph.addEdge(f.name, f2name)
       }
     }
 
@@ -80,8 +84,8 @@ object Functions {
     * calls f1). If the flag considerUnfoldings is set, calls to f2 in the body of
     * a predicate that is unfolded by f1 are also taken into account.
     */
-  def heights(program: Program, considerUnfoldings: Boolean = false): Map[Function, Int] = {
-    val result = collection.mutable.Map[Function, Int]()
+  def heights(program: Program, considerUnfoldings: Boolean = false): Map[FuncName, Int] = {
+    val result = collection.mutable.Map[FuncName, Int]()
 
     /* Compute the call-graph over all functions in the given program.
      * An edge from f1 to f2 denotes that f1 calls f2, either in the function
@@ -95,18 +99,6 @@ object Functions {
       getFunctionCallgraph(program, allSubexpressions)
     }
 
-///* debugging */
-//    val functionVNP = new org.jgrapht.ext.VertexNameProvider[Function] {
-//      def getVertexName(vertex: Function) = vertex.name
-//    }
-//
-//    val dotExporter = new org.jgrapht.ext.DOTExporter(functionVNP, //new org.jgrapht.ext.IntegerNameProvider[Function](),
-//                                                      functionVNP,
-//                                                      null)
-//
-//    dotExporter.export(new java.io.FileWriter("callgraph.dot"), callGraph.asInstanceOf[Graph[Function, Nothing]])
-///* /debugging */
-
     /* Get all strongly connected components (SCCs) of the call-graph, represented as
      * sets of functions.
      */
@@ -116,12 +108,12 @@ object Functions {
      * but where each strongly connected component has been condensed into a
      * single node.
      */
-    val condensedCallGraph = new DefaultDirectedGraph[MSet[Function], DefaultEdge](classOf[DefaultEdge])
+    val condensedCallGraph = new DefaultDirectedGraph[MSet[FuncName], DefaultEdge](classOf[DefaultEdge])
 
     /* Add each SCC as a vertex to the condensed call-graph */
     stronglyConnectedSets.foreach(v => condensedCallGraph.addVertex(v.asScala))
 
-    def condensationOf(func: Function): MSet[Function] =
+    def condensationOf(func: FuncName): MSet[FuncName] =
       stronglyConnectedSets.find(_ contains func).get.asScala
 
     /* Add edges from the call-graph (between individual functions) as edges
@@ -135,21 +127,6 @@ object Functions {
       if (sourceSet != targetSet)
         condensedCallGraph.addEdge(sourceSet, targetSet)
     }
-
-///* debugging */
-//    val functionSetVNP = new org.jgrapht.ext.VertexNameProvider[java.util.Set[Function]] {
-//      def getVertexName(vertex: java.util.Set[Function]) = vertex.map(_.name).mkString(", ")
-//    }
-//
-//    val functionSetIDP = new org.jgrapht.ext.VertexNameProvider[java.util.Set[Function]] {
-//      def getVertexName(vertex: java.util.Set[Function]) = s""""${vertex.map(_.name).mkString(", ")}""""
-//    }
-//
-//    val dotExporter2 = new org.jgrapht.ext.DOTExporter(functionSetIDP, // new org.jgrapht.ext.IntegerNameProvider[java.util.Set[Function]](),
-//                                                       functionSetVNP,
-//                                                       null)
-//    dotExporter2.export(new java.io.FileWriter("sccg.dot"), sccg.asInstanceOf[Graph[java.util.Set[Function], Nothing]])
-///* /debugging */
 
     /* The behaviour of TopologicalOrderIterator is undefined if it is applied
      * to a cyclic graph, hence this check.
@@ -208,7 +185,7 @@ object Functions {
     *         functions `fs`, then `f` (transitively) recurses via its precondition, and the
     *         formed cycles involves the set of functions `fs`.
     */
-  def findFunctionCyclesViaPreconditions(program: Program): Map[Function, Set[Function]] = {
+  def findFunctionCyclesViaPreconditions(program: Program): Map[Function, Set[FuncName]] = {
     findFunctionCyclesVia(program, func => func.pres, allSubexpressions)
   }
 
@@ -223,17 +200,18 @@ object Functions {
     *         formed cycles involves the set of functions `fs`.
     */
   def findFunctionCyclesVia(program: Program, via: Function => Seq[Exp], subs: Function => Seq[Exp] = allSubexpressions)
-      :Map[Function, Set[Function]] = {
+      :Map[Function, Set[FuncName]] = {
     def viaSubs(entryFunc: Function)(otherFunc: Function): Seq[Exp] =
       if (otherFunc == entryFunc)
         via(otherFunc)
       else
         subs(otherFunc)
 
-    program.functions.flatMap(func => {
+    val res = program.functions.flatMap(func => {
       val graph = getFunctionCallgraph(program, viaSubs(func))
       findCycles(graph, func)
-    }).toMap[Function, Set[Function]]
+    })
+    ListMap.from(res)
   }
 
   /** Returns all cycles formed by functions that (transitively through certain subexpressions)
@@ -247,16 +225,17 @@ object Functions {
     *         formed cycles involves the set of functions `fs`.
     */
   def findFunctionCyclesViaOptimized(program: Program, via: Function => Seq[Exp])
-  : Map[Function, Set[Function]] = {
+  : Map[Function, Set[FuncName]] = {
     val graph = getFunctionCallgraph(program, via)
-    program.functions.flatMap(func => {
+    val res = program.functions.flatMap(func => {
       findCycles(graph, func)
-    }).toMap[Function, Set[Function]]
+    })
+    ListMap.from(res)
   }
 
-  private def findCycles(graph: DefaultDirectedGraph[Function, DefaultEdge], func: Function): Option[(Function, Set[Function])] = {
+  private def findCycles(graph: DefaultDirectedGraph[FuncName, DefaultEdge], func: Function): Option[(Function, Set[FuncName])] = {
     val cycleDetector = new CycleDetector(graph)
-    val cycle = cycleDetector.findCyclesContainingVertex(func).asScala
+    val cycle = cycleDetector.findCyclesContainingVertex(func.name).asScala
     if (cycle.isEmpty)
       None
     else

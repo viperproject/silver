@@ -352,7 +352,7 @@ object Consistency {
       var msg = s"Function ${func.name} recurses via its precondition"
 
       if (cycleSet.nonEmpty) {
-        msg = s"$msg: the cycle contains the function(s) ${cycleSet.map(_.name).mkString(", ")}"
+        msg = s"$msg: the cycle contains the function(s) ${cycleSet.mkString(", ")}"
       }
 
       s :+= ConsistencyError(msg, func.pos)
