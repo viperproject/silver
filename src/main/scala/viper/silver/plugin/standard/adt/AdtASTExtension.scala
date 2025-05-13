@@ -291,7 +291,7 @@ case class AdtDiscriminatorApp(name: String, rcv: Exp, typVarMap: Map[TypeVar, T
 
   override def typ: Type = Bool
 
-  override def prettyPrint: PrettyPrintPrimitives#Cont = show(rcv) <> "." <> name <> "?"
+  override def prettyPrint: PrettyPrintPrimitives#Cont = show(rcv) <> ".is" <> name
 
   override def extensionIsPure: Boolean = true
 
