@@ -7,7 +7,7 @@
 package viper.silver.plugin.standard.adt
 
 import viper.silver.ast._
-import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, braces, brackets, char, defaultIndent, line, nest, nil, parens, show, showType, showVars, space, ssep, text}
+import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, braces, brackets, char, defaultIndent, linebreak, nest, nil, parens, show, showType, showVars, space, ssep, text}
 import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.ast.utility.{Consistency, Expressions}
 import viper.silver.verifier.{ConsistencyError, Failure, VerificationResult}
@@ -44,15 +44,13 @@ case class Adt(name: String, constructors: Seq[AdtConstructor], typVars: Seq[Typ
     text("adt") <+> name <>
       (if (typVars.isEmpty) nil else text("[") <> ssep(typVars map show, char(',') <> space) <> "]") <+>
       braces(nest(defaultIndent,
-        line <> line <>
-          ssep(constructors map show, line <> line)
-      ) <> line) <+>
-      (if (derivingInfo.isEmpty) nil else text("derives") <+>
+        linebreak <> ssep(constructors map show, linebreak)
+      ) <> linebreak) <>
+      (if (derivingInfo.isEmpty) nil else space <> text("derives") <+>
         braces(nest(defaultIndent,
-          line <> line <>
-            ssep(derivingInfo.toSeq map showDerivingInfo, line <> line)
-        ) <> line)
-        )
+          linebreak <> ssep(derivingInfo.toSeq map showDerivingInfo, linebreak)
+        ) <> linebreak)
+      )
   }
 }
 
