@@ -200,6 +200,23 @@ object Expressions {
     case _ => false
   }
 
+  def isKnownWellDefined(e: Exp, program: Option[Program]): Boolean = {
+    e match {
+      case FieldAccessPredicate(FieldAccess(rcv, _), prm) =>
+        // Extra case for field access predicates because the contained field access does NOT require already having the field permission.
+        isKnownWellDefined(rcv, program) && (prm.isEmpty || isKnownWellDefined(prm.get, program))
+      case _: FieldAccess | _: Unfolding | _: Applying | _: Asserting => false
+      case _: SeqIndex | _: MapLookup => false
+      case _: Div | _: Mod => false
+      case f: FuncApp =>
+        program match {
+          case Some(p) => p.findFunction(f.funcname).pres.isEmpty && f.args.forall(isKnownWellDefined(_, program))
+          case None => false // conservative
+        }
+      case other => other.subExps.forall(isKnownWellDefined(_, program))
+    }
+  }
+
   // note: dependency on program for looking up function preconditions
   def proofObligations(e: Exp): (Program => Seq[Exp]) = (prog: Program) => {
     e.reduceTree[Seq[Exp]] {
