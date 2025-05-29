@@ -95,7 +95,7 @@ object ImpureAssumeRewriter {
 //    seqn
 
     Seqn(
-      exps.map(e => Inhale(e)(e.pos, e.info, e.errT)),
+      exps.map(e => Inhale(e)(e.pos, MakeInfoPair(e.info, inhale.info), e.errT)), // TODO ake: clarify
       Seq()
     )(inhale.pos, inhale.info, inhale.errT)
   }
@@ -227,7 +227,7 @@ object ImpureAssumeRewriter {
     }).execute(p)
 
     val pAssume: Program = ViperStrategy.Slim({
-      case a: Assume => rewriteInhale(Inhale(rewrite(a.exp, pInvs))(a.pos))
+      case a: Assume => rewriteInhale(Inhale(rewrite(a.exp, pInvs))(a.pos, a.info, a.errT))
     }).execute(pInvs)
 
     if (funcs.isEmpty && domains.isEmpty) {
