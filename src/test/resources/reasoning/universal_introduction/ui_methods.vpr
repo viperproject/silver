@@ -1,0 +1,304 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+function P(x: Int) : Bool {
+    x == 0
+}
+
+function Q(x: Int) : Bool {
+    x == 0
+}
+
+method example1(x:Int, y:Int) returns (res: Int)
+influenced res by {x, y}
+{
+    res := x-y
+}
+
+method example2(x:Int, y:Int) returns (res: Int)
+{
+    res := 0
+}
+
+method mMethodCallNOK1()
+{
+    var z: Int
+    //:: ExpectedOutput(consistency.error)
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) && z == 0 {
+        z := example1(x,x)
+    }
+}
+
+method mMethodCallNOK2()
+{
+    var z: Int
+    // This should be OK, since the return value in example2 does not depend on its arguments
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) && z == 0 {
+        z := example2(x,x)
+    }
+}
+
+//code with influenced by statement
+method example3(x:Int, y:Int) returns (res: Int)
+influenced res by {}
+{
+    res := 0
+}
+
+method mMethodCallOK1()
+{
+    var z: Int
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) && z == 0 {
+        var y:Int := 3
+        z := example3(y,y)
+    }
+}
+
+//method with several return values
+method exampleMult(x:Int, y:Int) returns (diff:Int, id:Int)
+influenced diff by {x, y}
+influenced id by {x}
+{
+    diff := x-y
+    id := x
+}
+
+method mMethodCallNOK3()
+{
+    var z: Int
+    var w: Int
+    //:: ExpectedOutput(consistency.error)
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) && z == x - 3 && w == x {
+        var y: Int := 3
+        z,w := exampleMult(y,x)
+    }
+}
+
+method exampleIncomplete(b:Bool,c:Int) returns (z:Int, w:Int)
+influenced w by {b}
+{
+    z := 3
+    if (b) {
+        w := w + 1
+    }
+}
+
+method mMethodCallNOK4()
+{
+    var y:Int
+    var v:Int
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) && y == 3 && v == x + 1 {
+        var bool:Bool := true
+        y,v := exampleIncomplete(bool,x)
+    }
+}
+
+method exampleCompleteInfluence(b:Bool,c:Int) returns (z:Int, w:Int)
+influenced w by {b}
+influenced z by {}
+{
+    z := 3
+    if (b) {
+        w := 13
+    }
+}
+
+method mMethodCallOK4()
+{
+    var y:Int
+    var v:Int
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) && y == 3 && v == x + 1 {
+        var bool:Bool := true
+        y,v := exampleCompleteInfluence(bool,x)
+    }
+}
+
+
+
+field f: Int
+
+method test()
+{
+    var r: Ref
+    var p: Perm
+    var i: Int
+    var j: Int
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) {
+        r := test1(r)
+        r := test2(r)
+        p := test3(p)
+        p := test4(p)
+        j, i := test5(i, j)
+        j, i := test5_equivalent(i, j)
+        j, i := test5_caller(i, j)
+        j, i := test6(i, j)
+        j, i := test7(i, j)
+        j, i := caller_test6(i, j, r)
+        j, i := caller_test6(i, j, r)
+        caller_caller_test6(i, j, r)
+        test8(r, j)
+        test9(r, i)
+    }
+}
+
+
+// Should be accepted
+method test1(x: Ref) returns (z: Ref)
+    influenced z by {x}
+{
+    z := x
+}
+
+// Should be rejected
+method test2(x: Ref) returns (z: Ref)
+//:: ExpectedOutput(consistency.error)
+    influenced z by {heap}
+{
+    z := x
+}
+
+// Should be accepted
+method test3(x: Perm) returns (y: Perm)
+    influenced y by {x}
+{
+    y := x
+}
+
+// Should be rejected
+method test4(x: Perm) returns (y: Perm)
+//:: ExpectedOutput(consistency.error)
+    influenced y by {heap}
+{
+    y := x
+}
+
+// Should be accepted (we interpret absence of influenced by as influenced by everything, as shown below)
+method test5(x: Int, y: Int) returns (a: Int, b: Int)
+{
+    a := x + y
+    b := x + y
+}
+
+// Both specifications are over approximated, the heap is not needed. An error is not expected, but a warning is logged
+method test5_equivalent(x: Int, y: Int) returns (a: Int, b: Int)
+    influenced a by {y, x, heap}
+    influenced b by {x, heap, y}
+{
+    a := x + y
+    b := x + y
+}
+
+method test5_caller(x: Int, y: Int) returns (a: Int, b: Int)
+    influenced heap by {heap}
+    influenced a by {y, x}
+    influenced b by {x, y}
+{
+    a, b := test5(x, y)
+}
+
+// should be rejected (at most 1 line per return variable)
+method test6(x: Int, y: Int) returns (a: Int, b: Int)
+    influenced a by {y, x}
+//:: ExpectedOutput(consistency.error)
+    influenced b by { }
+//:: ExpectedOutput(consistency.error)
+    influenced b by {x, y}
+{
+    a := x + y
+    b := x + y
+}
+
+// should be rejected: x cannot be influenced by anything, since it's a formal argument
+method test7(x: Int, y: Int) returns (a: Int, b: Int)
+    influenced a by {y, x}
+    influenced b by {x, y}
+//:: ExpectedOutput(consistency.error)
+    influenced x by {x}
+{
+    a := x + y
+    b := x + y
+}
+
+// The most precise annotation for this test is
+// influenced a by {x, y}
+// influenced b by {x, y}
+// influenced heap by {heap, x}
+method caller_test6(x: Int, y: Int, r: Ref) returns (a: Int, b: Int)
+    requires acc(r.f)
+    influenced b by {x, y}
+    influenced a by {x, y}
+{
+    a, b := test6(x, y)
+    r.f := x
+}
+
+// Should be rejected: the heap (r.f in this case)
+// is influenced by x in caller_test6
+method caller_caller_test6(x: Int, y: Int, r: Ref)
+    requires acc(r.f)
+//:: ExpectedOutput(consistency.error)
+    influenced heap by {heap}
+{
+    var a: Int
+    var b: Int
+    a, b := caller_test6(x, y, r)
+}
+
+// Should be rejected: The heap (x.f in this case)
+// is influenced by y
+method test8(x: Ref, y: Int)
+    requires acc(x.f)
+//:: ExpectedOutput(consistency.error)
+    influenced heap by {heap}
+{
+    x.f := y
+}
+
+// Should be rejected: The heap (permission to x.f in this case)
+// is influenced by y
+method test9(x: Ref, y: Int)
+    requires acc(x.f)
+//:: ExpectedOutput(consistency.error)
+    influenced heap by {heap}
+{
+    if (y == 0) {
+        exhale acc(x.f)
+    }
+}
+
+
+method testRec1(x: Ref)
+    requires acc(x.f)
+    influenced heap by {heap, x}
+{
+    if (x.f == 0) {
+        exhale acc(x.f)
+    }
+}
+
+
+method testRec2(x: Ref)
+    requires acc(x.f)
+    influenced heap by {heap, x}
+{
+    testAssumesAbstract(x)
+    testRec1(x)
+}
+
+method testAssumesAbstract(x: Ref)
+    influenced assumes by {x}
+
+function f1(i1: Int, i2: Int): Int
+
+method test_local_var_resolve(i2: Int) returns (ret: Int)
+influenced ret by {i2}
+{
+  var i1: Int
+  ret := f1(i1, i2)
+}
+
+method test_local_var_resolve_caller() {
+    prove forall x: Int assuming x != 0 implies x == 1 {
+        var i: Int := test_local_var_resolve(x)
+    }
+}
