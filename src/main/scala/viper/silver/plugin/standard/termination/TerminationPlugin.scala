@@ -251,7 +251,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
           val funcCycles = cycles.get(f)
           val problematicFuncApps = f.posts.flatMap(p => p.shallowCollect {
             case fa: FuncApp if fa.func(input) == f => fa
-            case fa: FuncApp if funcCycles.isDefined && funcCycles.get.contains(fa.func(input)) => fa
+            case fa: FuncApp if funcCycles.isDefined && funcCycles.get.contains(fa.funcname) => fa
           }).toSet
           for (fa <- problematicFuncApps) {
             val calledFunc = fa.func(input)
