@@ -14,5 +14,5 @@ field f: F
 function ptrDeref(p: Pointer[]): Ref
 
 method baz()
-  //:: ExpectedOutput(consistency.error)
+  //:: ExpectedOutput(typechecker.error)
   ensures [true, (forperm this: Pointer[] [foo(ptrDeref(this).f).int] :: false)]
