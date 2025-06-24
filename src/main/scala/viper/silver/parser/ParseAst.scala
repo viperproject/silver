@@ -965,11 +965,6 @@ case class PCall(idnref: PIdnRef[PCallable], callArgs: PDelimited.Comma[PSym.Par
       case _ => ots
     }
     super.forceSubstitution(ts)
-    typeSubstitutions.clear()
-    typeSubstitutions += ts
-    typ = typ.substitute(ts)
-    assert(typ.isGround)
-    args.foreach(_.forceSubstitution(ts))
   }
 }
 

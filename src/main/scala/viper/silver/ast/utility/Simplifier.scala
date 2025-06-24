@@ -24,6 +24,10 @@ object Simplifier {
    */
   def simplify[N <: Node](n: N, assumeWelldefinedness: Boolean = false): N = {
 
+    def isKnownWellDefined(e: Exp): Boolean = {
+      assumeWelldefinedness || Expressions.isKnownWellDefined(e, None)
+    }
+
     val simplifySingle: PartialFunction[Node, Node] = {
       // expression simplifications
       case root: Exp if root.simplified.isDefined =>
@@ -43,19 +47,26 @@ object Simplifier {
       case root@And(FalseLit(), _) => FalseLit()(root.pos, root.info)
       case root@And(_, FalseLit()) => FalseLit()(root.pos, root.info)
 
+      case And(p1@FieldAccessPredicate(loc1, Some(perm1)), FieldAccessPredicate(loc2, Some(perm2))) if loc1 == loc2 =>
+        FieldAccessPredicate(loc1, Some(PermAdd(perm1, perm2)(perm1.pos, perm1.info)))(p1.pos, p1.info)
+
       case Or(FalseLit(), right) => right
       case Or(left, FalseLit()) => left
       case root@Or(TrueLit(), _) => TrueLit()(root.pos, root.info)
       case root@Or(_, TrueLit()) => TrueLit()(root.pos, root.info)
 
       case root@Implies(FalseLit(), _) => TrueLit()(root.pos, root.info)
-      case Implies(_, tl@TrueLit()) if assumeWelldefinedness => tl
+      case Implies(l1, tl@TrueLit()) if isKnownWellDefined(l1) => tl
       case Implies(TrueLit(), consequent) => consequent
       case root@Implies(FalseLit(), _) => TrueLit()(root.pos, root.info)
-      case root@Implies(l1, Implies(l2, r)) => Implies(And(l1, l2)(), r)(root.pos, root.info)
+      case root@Implies(l1, i2@Implies(l2, r)) =>
+        if (l1 == l2)
+          i2
+        else
+          Implies(And(l1, l2)(), r)(root.pos, root.info)
 
       // TODO: Consider checking if Expressions.proofObligations(left) is empty (requires adding the program as parameter).
-      case root@EqCmp(left, right) if assumeWelldefinedness && left == right => TrueLit()(root.pos, root.info)
+      case root@EqCmp(left, right) if left == right && isKnownWellDefined(left) => TrueLit()(root.pos, root.info)
       case root@EqCmp(BoolLit(left), BoolLit(right)) =>
         BoolLit(left == right)(root.pos, root.info)
       case root@EqCmp(FalseLit(), right) => Not(right)(root.pos, root.info)
@@ -76,11 +87,11 @@ object Simplifier {
         BoolLit(left != right)(root.pos, root.info)
       case root@NeCmp(NullLit(), NullLit()) =>
         FalseLit()(root.pos, root.info)
-      case root@NeCmp(left, right) if assumeWelldefinedness && left == right => FalseLit()(root.pos, root.info)
+      case root@NeCmp(left, right) if left == right && isKnownWellDefined(left) => FalseLit()(root.pos, root.info)
 
       case CondExp(TrueLit(), ifTrue, _) => ifTrue
       case CondExp(FalseLit(), _, ifFalse) => ifFalse
-      case CondExp(_, ifTrue, ifFalse) if assumeWelldefinedness && ifTrue == ifFalse =>
+      case CondExp(condition, ifTrue, ifFalse) if ifTrue == ifFalse && isKnownWellDefined(condition) && isKnownWellDefined(ifTrue) =>
         ifTrue
       case root@CondExp(condition, FalseLit(), TrueLit()) =>
         Not(condition)(root.pos, root.info)
@@ -98,6 +109,36 @@ object Simplifier {
       case root@CondExp(condition, ifTrue, TrueLit()) =>
         Implies(condition, ifTrue)(root.pos, root.info)
 
+      case root@CondExp(c1, CondExp(c2, a, _), c) if c1 == c2 =>
+        if (a == c && isKnownWellDefined(c1))
+          a
+        else
+          CondExp(c1, a, c)(root.pos, root.info)
+
+      case root@CondExp(c1, a, CondExp(c2, _, c)) if c1 == c2 =>
+        if (a == c && isKnownWellDefined(c1))
+          a
+        else
+          CondExp(c1, a, c)(root.pos, root.info)
+
+      case root@CondExp(c1, CondExp(c2, a, b), c) if a == c =>
+        CondExp(And(c1, Not(c2)(c2.pos, c2.info))(c1.pos, c1.info), b, a)(root.pos, root.info)
+
+      case root@CondExp(c1, CondExp(c2, a, b), c) if b == c =>
+        CondExp(And(c1, c2)(c1.pos, c1.info), a, b)(root.pos, root.info)
+
+      case root@CondExp(c1, a, CondExp(c2, b, c)) if a == b =>
+        CondExp(Or(c1, c2)(c1.pos, c1.info), a, c)(root.pos, root.info)
+
+      case root@CondExp(c1, a, CondExp(c2, b, c)) if a == c =>
+        CondExp(Or(c1, Not(c2)(c2.pos, c2.info))(c1.pos, c1.info), a, b)(root.pos, root.info)
+
+      case root@CondExp(c1, a, Implies(c2, b)) if a == b =>
+        Implies(Or(c1, c2)(c1.pos, c1.info), a)(root.pos, root.info)
+
+      case root@CondExp(c1, Implies(c2, a), b) if a == b =>
+        Implies(Or(Not(c1)(c1.pos, c1.info), c2)(c1.pos, c1.info), a)(root.pos, root.info)
+
       case root@Forall(_, _, BoolLit(literal)) =>
         BoolLit(literal)(root.pos, root.info)
       case root@Exists(_, _, BoolLit(literal)) =>
@@ -112,16 +153,16 @@ object Simplifier {
       case root@PermMul(AnyPermLiteral(a, b), AnyPermLiteral(c, d)) =>
         val product = Rational(a, b) * Rational(c, d)
         FractionalPerm(IntLit(product.numerator)(root.pos, root.info), IntLit(product.denominator)(root.pos, root.info))(root.pos, root.info)
-      case PermMul(_, np@NoPerm()) if assumeWelldefinedness => np
-      case PermMul(np@NoPerm(), _) if assumeWelldefinedness => np
+      case PermMul(p, np@NoPerm()) if isKnownWellDefined(p) => np
+      case PermMul(np@NoPerm(), p) if isKnownWellDefined(p) => np
 
-      case PermMul(wc@WildcardPerm(), _) if assumeWelldefinedness => wc
-      case PermMul(_, wc@WildcardPerm()) if assumeWelldefinedness => wc
+      case PermMul(wc@WildcardPerm(), p) if isKnownWellDefined(p) => wc
+      case PermMul(p, wc@WildcardPerm()) if isKnownWellDefined(p) => wc
 
-      case root@PermGeCmp(a, b) if assumeWelldefinedness && a == b => TrueLit()(root.pos, root.info)
-      case root@PermLeCmp(a, b) if assumeWelldefinedness && a == b => TrueLit()(root.pos, root.info)
-      case root@PermGtCmp(a, b) if assumeWelldefinedness && a == b => FalseLit()(root.pos, root.info)
-      case root@PermLtCmp(a, b) if assumeWelldefinedness && a == b => FalseLit()(root.pos, root.info)
+      case root@PermGeCmp(a, b) if a == b && isKnownWellDefined(a) => TrueLit()(root.pos, root.info)
+      case root@PermLeCmp(a, b) if a == b && isKnownWellDefined(a) => TrueLit()(root.pos, root.info)
+      case root@PermGtCmp(a, b) if a == b && isKnownWellDefined(a) => FalseLit()(root.pos, root.info)
+      case root@PermLtCmp(a, b) if a == b && isKnownWellDefined(a) => FalseLit()(root.pos, root.info)
 
       case root@PermGtCmp(AnyPermLiteral(a, b), AnyPermLiteral(c, d)) =>
         BoolLit(Rational(a, b) > Rational(c, d))(root.pos, root.info)

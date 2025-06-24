@@ -1290,10 +1290,20 @@ sealed trait Lhs extends Exp
   * reach the backend verifiers. */
 trait ExtensionExp extends Exp {
   def extensionIsPure: Boolean
+
   def extensionSubnodes: Seq[Node]
+
   def typ: Type
+
   def verifyExtExp(): VerificationResult
+
   /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
-    * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression.*/
+    * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression. */
   def prettyPrint: PrettyPrintPrimitives#Cont
+
+  /** Defines whether this expression can be used as a trigger. Defaults to false. */
+  def extensionIsValidTrigger(): Boolean = false
+
+  /** Defines whether this expression is forbidden from occurring *anywhere* in a trigger. Defaults to true.  */
+  def extensionIsForbiddenInTrigger(): Boolean = true
 }

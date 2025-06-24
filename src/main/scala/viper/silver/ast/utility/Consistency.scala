@@ -269,8 +269,9 @@ object Consistency {
     e match {
       case Old(nested) => validTrigger(nested, program) // case corresponds to OldTrigger node
       case LabelledOld(nested, _) => validTrigger(nested, program)
-      case wand: MagicWand => wand.subexpressionsToEvaluate(program).forall(e => !e.existsDefined {case _: ForbiddenInTrigger => })
-      case _ : PossibleTrigger | _: FieldAccess | _: PredicateAccess => !e.existsDefined { case _: ForbiddenInTrigger => }
+      case ee: ExtensionExp => ee.extensionIsValidTrigger()
+      case wand: MagicWand => wand.subexpressionsToEvaluate(program).forall(e => !e.exists(Expressions.isForbiddenInTrigger))
+      case _ : PossibleTrigger | _: FieldAccess | _: PredicateAccess => !e.exists(Expressions.isForbiddenInTrigger)
       case _ => false
     }
   }
