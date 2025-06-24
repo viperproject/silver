@@ -20,7 +20,7 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
                 config: viper.silver.frontend.SilFrontendConfig,
                 fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
 
-  import fp.{annotation, argList, idnTypeBinding, idndef, idnref, semiSeparated, typ, typeList, domainTypeVarDecl, ParserExtension, lineCol, _file}
+  import fp.{annotation, argList, idnTypeBinding, idndef, idnref, semiSeparated, typ, nonEmptyTypeList, domainTypeVarDecl, ParserExtension, lineCol, _file}
   import FastParserCompanion.{ExtendedParsing, LeadingWhitespace, PositionParsing, reservedKw, reservedSym, whitespace}
 
   /**
@@ -68,7 +68,7 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
     *
     */
   def adtDecl[$: P]: P[PAnnotationsPosition => PAdt] =
-    P(P(PAdtKeyword) ~ idndef ~ typeList(domainTypeVarDecl).? ~ adtConstructorDecls ~~~ adtDerivesDecl.lw.?).map {
+    P(P(PAdtKeyword) ~ idndef ~ nonEmptyTypeList(domainTypeVarDecl).? ~ adtConstructorDecls ~~~ adtDerivesDecl.lw.?).map {
       case (k, name, typparams, c, dec) =>
         ap: PAnnotationsPosition => {
           PAdt(

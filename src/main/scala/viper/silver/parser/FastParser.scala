@@ -393,7 +393,7 @@ class FastParser {
   def argList[$: P, T](p: => P[T]) = p.delimited(PSym.Comma).parens
 
   /** `[`...`,` ...`,` ...`]` */
-  def typeList[$: P, T](p: => P[T]) = p.delimited(PSym.Comma).brackets
+  def nonEmptyTypeList[$: P, T](p: => P[T]) = p.delimited(PSym.Comma, min = 1).brackets
 
   /** ...`;`? ...`;`? ...`;`? */
   def semiSeparated[$: P, T](p: => P[T]): P[PDelimited[T, PSym.OptionSemi]] = p.delimitedTrailing(PSym.Semi, map = ND.apply)
@@ -663,7 +663,7 @@ class FastParser {
 
   def typ[$: P]: P[PType] = P(typReservedKw | domainTyp | macroType)
 
-  def domainTyp[$: P]: P[PDomainType] = P((idnref[$, PTypeDeclaration] ~~~ typeList(typ).lw.?) map (PDomainType.apply _).tupled).pos
+  def domainTyp[$: P]: P[PDomainType] = P((idnref[$, PTypeDeclaration] ~~~ nonEmptyTypeList(typ).lw.?) map (PDomainType.apply _).tupled).pos
 
   def seqType[$: P]: P[PKw.Seq => Pos => PSeqType] = P(typ.brackets map { t => PSeqType(_, t) })
 
@@ -917,7 +917,7 @@ class FastParser {
   def domainInterps[$: P]: P[PDomainInterpretations] =
     P((P(PKw.Interpretation) ~ argList(domainInterp)) map (PDomainInterpretations.apply _).tupled).pos
 
-  def domainDecl[$: P]: P[PKw.Domain => PAnnotationsPosition => PDomain] = P(idndef ~~~ typeList(domainTypeVarDecl).lw.? ~~~ domainInterps.lw.? ~
+  def domainDecl[$: P]: P[PKw.Domain => PAnnotationsPosition => PDomain] = P(idndef ~~~ nonEmptyTypeList(domainTypeVarDecl).lw.? ~~~ domainInterps.lw.? ~
     semiSeparated(annotated(domainFunctionDecl | axiomDecl)).braces).map {
     case (name, typparams, interpretations, block) =>
       k => ap: PAnnotationsPosition => PDomain(
