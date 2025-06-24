@@ -833,7 +833,7 @@ case class TypeChecker(names: NameAnalyser) {
         permBan = Some("forperm quantifier bodies")
         check(pq.body, Bool)
         permBan = oldPermBan
-        checkInternal(pq.accessRes)
+        checkTopTyped(pq.accessRes, None)
         pq.triggers foreach (_.exp.inner.toSeq foreach (tpe => checkTopTyped(tpe, None)))
         pq._typeSubstitutions = pq.body.typeSubstitutions.toList.distinct
         pq.typ = Bool
