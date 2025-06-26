@@ -987,8 +987,6 @@ class FastParser {
     ////
 
     _file = file
-    // Add an empty line at the end to make `computeFrom(s.length)` return
-    // `(lines.length, 1)`, as the old implementation of `computeFrom` used to do.
     val lines = s.linesWithSeparators
     _line_offset = lines.map(_.length).toArray
     var offset = 0
