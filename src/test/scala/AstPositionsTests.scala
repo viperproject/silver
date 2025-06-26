@@ -63,7 +63,7 @@ class AstPositionsTests extends AnyFunSuite {
         |method bar(r: Ref)
         |  requires  0  >  r . foo
         |// Comment
-        |""".stripMargin
+        |function end(): Ref""".stripMargin
 
     val res: Program = generateViperAst(code).get
     // Check position of field
@@ -187,6 +187,18 @@ class AstPositionsTests extends AnyFunSuite {
       }
       case _ =>
         fail("methods must have start and end positions set")
+    }
+    // Check position of function
+    assert(res.functions.length === 1)
+    val fn: Function = res.functions(0)
+    fn.pos match {
+      case spos: AbstractSourcePosition =>
+        assert(spos.start.line === 15 && spos.end.get.line === 15)
+        // Here it is unclear if we want to include the `function ` part in the pos
+        assert(spos.start.column === 1 || spos.start.column === 10)
+        assert(spos.end.get.column === 20)
+      case _ =>
+        fail("functions must have start and end positions set")
     }
   }
 }
