@@ -108,7 +108,7 @@ case class Translator(program: PProgram) {
   private def translate(f: PFunction): Function = f match {
     case PFunction(_, _, idndef, _, _, _, pres, posts, pats, body) =>
       val f = findFunction(idndef)
-      val ff = f.copy( pres = pres.toSeq map (p => exp(p.e)), posts = posts.toSeq map (p => exp(p.e)), pats = pats.toSeq map (p => exp(p.e)), body = body map (_.e.inner) map exp)(f.pos, f.info, f.errT)
+      val ff = f.copy( pres = pres.toSeq map (p => exp(p.e)), posts = posts.toSeq map (p => exp(p.e)), pats = pats.toSeq map (p => Trigger(p.subp.toSeq map exp)()), body = body map (_.e.inner) map exp)(f.pos, f.info, f.errT)
       members(f.name) = ff
       ff
   }

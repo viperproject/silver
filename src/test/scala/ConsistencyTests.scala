@@ -124,6 +124,7 @@ class ConsistencyTests extends AnyFunSuite with Matchers {
         typ           = Int,
         pres          = Seq(),
         posts         = Seq(),
+        pats          = Seq(),
         body          = None
       )()
 
@@ -260,7 +261,7 @@ class ConsistencyTests extends AnyFunSuite with Matchers {
   test("Testing if Forall AST nodes have at least one quantified variable, all variables are mentioned in " +
     "the trigger, and each trigger expression contains at least one quantified variable.") {
 
-    val f = Function("f", Seq(LocalVarDecl("i", Int)()), Int, Seq(), Seq(), None)()
+    val f = Function("f", Seq(LocalVarDecl("i", Int)()), Int, Seq(), Seq(), Seq(), None)()
     val forallNoVar = Forall(Seq(), Seq(), TrueLit()())()
     val forallUnusedVar = Forall(Seq(LocalVarDecl("i", Int)(), LocalVarDecl("j", Int)()), Seq(Trigger(Seq(FuncApp(f, Seq(LocalVar("j", Int)()))()))()), TrueLit()())()
     val forallUnusedVarLet = Forall(Seq(LocalVarDecl("i", Int)()), Seq(Trigger(Seq(FuncApp(f, Seq(Let(LocalVarDecl("j", Int)(), LocalVar("i", Int)(), TrueLit()())()))()))()), TrueLit()())()
@@ -284,10 +285,10 @@ class ConsistencyTests extends AnyFunSuite with Matchers {
   }
 
   test("Domain types and backend types refer only to existing domains and are used correctly.") {
-    val f1 = Function("f1", Seq(LocalVarDecl("i", DomainType("nonexisting", Map())(Seq()))()), Int, Seq(), Seq(), None)()
-    val f2 = Function("f2", Seq(LocalVarDecl("i", BackendType("nonexisting", Map()))()), Int, Seq(), Seq(), None)()
-    val f3 = Function("f3", Seq(LocalVarDecl("i", DomainType("existing2", Map())(Seq()))()), Int, Seq(), Seq(), None)()
-    val f4 = Function("f4", Seq(LocalVarDecl("i", BackendType("existing1", Map()))()), Int, Seq(), Seq(), None)()
+    val f1 = Function("f1", Seq(LocalVarDecl("i", DomainType("nonexisting", Map())(Seq()))()), Int, Seq(), Seq(), Seq(), None)()
+    val f2 = Function("f2", Seq(LocalVarDecl("i", BackendType("nonexisting", Map()))()), Int, Seq(), Seq(), Seq(), None)()
+    val f3 = Function("f3", Seq(LocalVarDecl("i", DomainType("existing2", Map())(Seq()))()), Int, Seq(), Seq(), Seq(), None)()
+    val f4 = Function("f4", Seq(LocalVarDecl("i", BackendType("existing1", Map()))()), Int, Seq(), Seq(), Seq(), None)()
 
     val d1 = Domain("existing1", Seq(), Seq(), Seq(), None)()
     val d2 = Domain("existing2", Seq(), Seq(), Seq(), Some(Map("SMTLIL" -> "Bool")))()

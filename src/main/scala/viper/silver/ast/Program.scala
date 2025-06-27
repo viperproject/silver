@@ -450,7 +450,7 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
 }
 
 /** A function declaration */
-case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres: Seq[Exp], posts: Seq[Exp], pats: Seq[Exp], body: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Member with FuncLike with Contracted {
+case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres: Seq[Exp], posts: Seq[Exp], pats: Seq[Trigger], body: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Member with FuncLike with Contracted {
   override lazy val check : Seq[ConsistencyError] =
     posts.flatMap(p=>{ if(!Consistency.noOld(p))
       Seq(ConsistencyError("Function post-conditions must not have old expressions.", p.pos)) else Seq()}) ++

@@ -33,7 +33,7 @@ object Nodes {
         m match {
           case Field(_, _) => Nil
           case Function(_, formalArgs, _, pres, posts, pats, body) =>
-            formalArgs ++ pres ++ posts ++ pats ++ body
+            formalArgs ++ pres ++ posts ++ pats.flatten ++ body
           case Method(_, formalArgs, formalReturns, pres, posts, body) =>
             formalArgs ++ formalReturns ++ pres ++ posts ++ body.toSeq
           case Predicate(_, formalArg, body) => formalArg ++ body.toSeq

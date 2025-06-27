@@ -964,7 +964,7 @@ class FastParser {
 
   def postcondition(implicit ctx : P[_]) : P[PSpecification[PKw.PostSpec]] = P((P(PKw.Ensures) ~ exp).map((PSpecification.apply[PKw.PostSpec] _).tupled).pos | ParserExtension.postSpecification(ctx))
 
-  def pattern(implicit ctx : P[_]) : P[PSpecification[PKw.Pattern.type]] = (P(PKw.Pattern) ~ exp).map((PSpecification.apply[PKw.Pattern.type] _).tupled).pos
+  def pattern(implicit ctx : P[_]) : P[PPattern] = (P(PKw.Pattern) ~ maybeTypedFuncApp(false).delimited(PSym.Comma)).map((PPattern.apply _).tupled).pos
 
   def predicateDecl[$: P]: P[PKw.Predicate => PAnnotationsPosition => PPredicate] = P(idndef ~ argList(formalArg) ~~~ bracedExp.lw.?).map {
     case (idn, args, c) => k =>

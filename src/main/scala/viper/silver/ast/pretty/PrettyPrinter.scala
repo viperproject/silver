@@ -537,8 +537,8 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
           else nest(defaultIndent, line <> "returns" <+> parens(showVars(formalReturns)))
         }) <>
           nest(defaultIndent,
-            showContracts("requires", actualPres) <>
-              showContracts("ensures", actualPosts) <>
+            showContracts("requires", actualPres, show) <>
+              showContracts("ensures", actualPosts, show) <>
               showDecreasesClauses(terminationMeasuresInPres ++ terminationMeasuresInPosts)
           ) <>
           line <> (
@@ -560,10 +560,10 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
         text("function") <+> name <> nest(defaultIndent, parens(showVars(formalArgs))) <>
           ":" <+> show(typ) <>
           nest(defaultIndent,
-            showContracts("requires", actualPres) <>
-              showContracts("ensures", actualPosts) <>
+            showContracts("requires", actualPres, show) <>
+              showContracts("ensures", actualPosts, show) <>
               showDecreasesClauses(terminationMeasuresInPres ++ terminationMeasuresInPosts) <>
-              showContracts("pattern", pats)
+              showContracts("pattern", pats, { p: Trigger => ssep(p.exps map show, group(char (',') <> line)) })
           ) <>
           line <>
           (optBody match {
@@ -579,11 +579,11 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
   }
 
   /** Shows contracts and use `name` as the contract name (usually `requires` or `ensures`). */
-  def showContracts(name: String, contracts: Seq[Exp]): Cont = {
+  def showContracts[T](name: String, contracts: Seq[T], showF: T => Cont): Cont = {
     if (contracts == null)
       line <> name <+> uninitialized
     else
-      lineIfSomeNonEmpty(contracts) <> ssep(contracts.map(c => text(name) <+> nest(defaultIndent, show(c))), line)
+      lineIfSomeNonEmpty(contracts) <> ssep(contracts.map(c => text(name) <+> nest(defaultIndent, showF(c))), line)
   }
 
   /** Shows a list of termination measures. */
@@ -709,7 +709,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       case While(cond, invs, body) =>
         val (terminationMeasures, actualInvs) = invs.partition(exp => exp.isInstanceOf[DecreasesClause])
         text("while") <+> parens(show(cond)) <>
-          nest(defaultIndent, showContracts("invariant", actualInvs) <> showDecreasesClauses(terminationMeasures)) <+>
+          nest(defaultIndent, showContracts("invariant", actualInvs, show) <> showDecreasesClauses(terminationMeasures)) <+>
             lineIfSomeNonEmpty(invs) <>
             showBlock(body)
       case If(cond, thn, els) =>
@@ -717,7 +717,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       case Label(name, invs) =>
         text("label") <+> name <>
           nest(defaultIndent,
-            showContracts("invariant", invs)
+            showContracts("invariant", invs, show)
           )
       case Goto(target) =>
         text("goto") <+> target

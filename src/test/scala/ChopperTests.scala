@@ -15,7 +15,7 @@ class ChopperTests extends AnyFunSuite with Matchers with Inside {
 
   test("Single function") {
     val functions = Seq(
-      ast.Function("functionA", Seq.empty, ast.Int, Seq.empty, Seq.empty, None)()
+      ast.Function("functionA", Seq.empty, ast.Int, Seq.empty, Seq.empty, Seq.empty, None)()
     )
     val program = ast.Program(Seq.empty, Seq.empty, functions, Seq.empty, Seq.empty, Seq.empty)()
     Chopper.chop(program)(bound = Some(5), penalty = Penalty.DefaultWithoutForcedMerge) shouldEqual Vector(program)
@@ -23,8 +23,8 @@ class ChopperTests extends AnyFunSuite with Matchers with Inside {
 
   test("Two independent functions without shared dependency") {
     val functions = Seq(
-      ast.Function("functionA", Seq.empty, ast.Int, Seq.empty, Seq.empty, None)(),
-      ast.Function("functionB", Seq.empty, ast.Int, Seq.empty, Seq.empty, None)(),
+      ast.Function("functionA", Seq.empty, ast.Int, Seq.empty, Seq.empty, Seq.empty, None)(),
+      ast.Function("functionB", Seq.empty, ast.Int, Seq.empty, Seq.empty, Seq.empty, None)(),
     )
     val program = ast.Program(Seq.empty, Seq.empty, functions, Seq.empty, Seq.empty, Seq.empty)()
     val result = Chopper.chop(program)(bound = Some(5), penalty = Penalty.DefaultWithoutForcedMerge)
@@ -55,11 +55,11 @@ class ChopperTests extends AnyFunSuite with Matchers with Inside {
     val assertionWithDomainType = ast.NeCmp(ast.FieldAccess(refVarDecl.localVar, field)(),  ast.FieldAccess(refVarDecl.localVar, field)())()
 
     val functions = Seq(
-      ast.Function("functionA", Seq(domainVarDecl), ast.Bool, Seq.empty, Seq.empty, None)(),
-      ast.Function("functionB", Seq.empty, domainType, Seq.empty, Seq.empty, None)(),
-      ast.Function("functionC", Seq(refVarDecl), ast.Bool, Seq(assertionWithDomainType), Seq.empty, None)(),
-      ast.Function("functionD", Seq(refVarDecl), ast.Bool, Seq.empty, Seq(assertionWithDomainType), None)(),
-      ast.Function("functionE", Seq(refVarDecl), ast.Bool, Seq.empty, Seq.empty, Some(assertionWithDomainType))(),
+      ast.Function("functionA", Seq(domainVarDecl), ast.Bool, Seq.empty, Seq.empty, Seq.empty, None)(),
+      ast.Function("functionB", Seq.empty, domainType, Seq.empty, Seq.empty, Seq.empty, None)(),
+      ast.Function("functionC", Seq(refVarDecl), ast.Bool, Seq(assertionWithDomainType), Seq.empty, Seq.empty, None)(),
+      ast.Function("functionD", Seq(refVarDecl), ast.Bool, Seq.empty, Seq(assertionWithDomainType), Seq.empty, None)(),
+      ast.Function("functionE", Seq(refVarDecl), ast.Bool, Seq.empty, Seq.empty, Seq.empty, Some(assertionWithDomainType))(),
     )
     val program = ast.Program(Seq(domain), Seq(field), functions, Seq.empty, Seq.empty, Seq.empty)()
     val result = Chopper.chop(program)(bound = Some(10), penalty = Penalty.DefaultWithoutForcedMerge)
@@ -75,8 +75,8 @@ class ChopperTests extends AnyFunSuite with Matchers with Inside {
 
   test("Two dependent functions without shared dependency") {
     val functions = Seq(
-      ast.Function("functionA", Seq.empty, ast.Int, Seq.empty, Seq.empty, None)(),
-      ast.Function("functionB", Seq.empty, ast.Int, Seq.empty, Seq.empty, None)(),
+      ast.Function("functionA", Seq.empty, ast.Int, Seq.empty, Seq.empty, Seq.empty, None)(),
+      ast.Function("functionB", Seq.empty, ast.Int, Seq.empty, Seq.empty, Seq.empty, None)(),
     )
     val program = ast.Program(Seq.empty, Seq.empty, functions, Seq.empty, Seq.empty, Seq.empty)()
     val result = Chopper.chop(program)(bound = Some(5), penalty = Penalty.DefaultWithoutForcedMerge)
@@ -96,8 +96,8 @@ class ChopperTests extends AnyFunSuite with Matchers with Inside {
   }
 
   test("Two dependent functions") {
-    val calleeStub = ast.Function("functionA", Seq.empty, ast.Bool, Seq.empty, Seq.empty, None)()
-    val callerStub = ast.Function("functionB", Seq.empty, ast.Bool, Seq.empty, Seq.empty, None)()
+    val calleeStub = ast.Function("functionA", Seq.empty, ast.Bool, Seq.empty, Seq.empty, Seq.empty, None)()
+    val callerStub = ast.Function("functionB", Seq.empty, ast.Bool, Seq.empty, Seq.empty, Seq.empty, None)()
     val callee = calleeStub.copy(body = Some(ast.TrueLit()()))(ast.NoPosition, ast.NoInfo, ast.NoTrafos)
     val call = ast.FuncApp(func = callee, Seq.empty)()
     val caller = callerStub.copy(body = Some(call))(ast.NoPosition, ast.NoInfo, ast.NoTrafos)
@@ -124,7 +124,7 @@ class ChopperTests extends AnyFunSuite with Matchers with Inside {
     val intVarDecl = ast.LocalVarDecl("i", ast.Int)()
 
     // function functionA(i int) domainA
-    val function = ast.Function("functionA", Seq(intVarDecl), domainType, Seq.empty, Seq.empty, None)()
+    val function = ast.Function("functionA", Seq(intVarDecl), domainType, Seq.empty, Seq.empty, Seq.empty, None)()
 
     // functionA(i) == functionA(0)
     val assertionWithDomainType = ast.EqCmp(ast.FuncApp(function, Seq(intVarDecl.localVar))(),  ast.FuncApp(function, Seq(ast.IntLit(0)()))())()

@@ -121,7 +121,7 @@ class ASTTransformationTests extends AnyFunSuite {
     def commaParen[T <: PNode](args: Seq[T]) = PDelimited.impliedParenComma(args)
 
     val p = (NoPosition, NoPosition)
-    val function = PFunction(Seq(), PReserved.implied(PKw.Function), PIdnDef("f")(p), commaParen(Seq(PFormalArgDecl(PIdnDef("x")(p), PReserved.implied(PSym.Colon), TypeHelper.Int)(p), PFormalArgDecl(PIdnDef("y")(p), PReserved.implied(PSym.Colon), TypeHelper.Int)(p))), PReserved.implied(PSym.Colon), TypeHelper.Int, PSpecs.empty, PSpecs.empty, None)(p)
+    val function = PFunction(Seq(), PReserved.implied(PKw.Function), PIdnDef("f")(p), commaParen(Seq(PFormalArgDecl(PIdnDef("x")(p), PReserved.implied(PSym.Colon), TypeHelper.Int)(p), PFormalArgDecl(PIdnDef("y")(p), PReserved.implied(PSym.Colon), TypeHelper.Int)(p))), PReserved.implied(PSym.Colon), TypeHelper.Int, PSpecs.empty, PSpecs.empty, PDelimited.empty, None)(p)
     val assume1 = PAssume(PReserved.implied(PKw.Assume), PBinExp(PCall(PIdnRef("f")(p), commaParen(Seq(PIntLit(1)(p), PIntLit(1)(p))), None)(p), PReserved.implied(PSymOp.EqEq), PCall(PIdnRef("f")(p), commaParen(Seq(PIntLit(1)(p), PCall(PIdnRef("f")(p), commaParen(Seq(PIntLit(1)(p), PCall(PIdnRef("f")(p), commaParen(Seq(PIntLit(1)(p), PIntLit(1)(p))), None)(p))), None)(p))), None)(p))(p))(p)
     val method1 = PMethod(Seq(), PReserved.implied(PKw.Method), PIdnDef("m")(p), PGrouped.impliedParen(PDelimited.empty), None, PSpecs.empty, PSpecs.empty, Some(PSeqn(PDelimited.impliedBlock(Seq(assume1)))(p)))(p)
     val original = PProgram(Nil, Seq(function, method1))(p, Seq(), Seq(), "")
@@ -148,7 +148,7 @@ class ASTTransformationTests extends AnyFunSuite {
 
     val p = (NoPosition, NoPosition)
     val requires = PForall(PReserved.implied(PKw.Forall), PDelimited.implied(Seq(PLogicalVarDecl(PIdnDef("y")(p), PReserved.implied(PSym.Colon), TypeHelper.Int)(p)), PReserved.implied(PSym.Comma)), PReserved.implied(PSym.ColonColon), Seq(), PBinExp(PIdnUseExp(PIdnRef("y")(p)), PReserved.implied(PSymOp.EqEq), PIdnUseExp(PIdnRef("y")(p)))(p))(p)
-    val function = PFunction(Seq(), PReserved.implied(PKw.Function), PIdnDef("f")(p), PDelimited.impliedParenComma(Seq(PFormalArgDecl(PIdnDef("x")(p), PReserved.implied(PSym.Colon), TypeHelper.Ref)(p))), PReserved.implied(PSym.Colon), TypeHelper.Bool, PSpecs(PDelimited.implied(Seq(PSpecification(PReserved.implied(PKw.Requires), requires)(p)), ND(None)))(p), PSpecs.empty, None)(p)
+    val function = PFunction(Seq(), PReserved.implied(PKw.Function), PIdnDef("f")(p), PDelimited.impliedParenComma(Seq(PFormalArgDecl(PIdnDef("x")(p), PReserved.implied(PSym.Colon), TypeHelper.Ref)(p))), PReserved.implied(PSym.Colon), TypeHelper.Bool, PSpecs(PDelimited.implied(Seq(PSpecification(PReserved.implied(PKw.Requires), requires)(p)), ND(None)))(p), PSpecs.empty, PDelimited.empty, None)(p)
     val program = PProgram(Nil, Seq(function))(p, Seq(), Seq(), "")
 
     case class Context()
