@@ -1209,8 +1209,8 @@ object FuncLikeApp {
   def unapply(fa: FuncLikeApp) = Some((fa.funcname, fa.args))
   def apply(f: FuncLike, args: Seq[Exp], typVars: Map[TypeVar, Type]) = {
     f match {
-      case f@Function(_, _, _, _, _, _) => FuncApp(f, args)()
-      case f@DomainFunc(_, _, _, _, _) => DomainFuncApp(f, args, typVars)()
+      case f: Function => FuncApp(f, args)()
+      case f: DomainFunc => DomainFuncApp(f, args, typVars)()
       case _ => sys.error(s"should not occur: $f (${f.getClass})")
     }
   }

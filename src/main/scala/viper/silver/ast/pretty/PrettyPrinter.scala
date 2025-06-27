@@ -553,7 +553,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
           case None => nil
           case Some(exp) => braces(nest(defaultIndent, line <> show(exp)) <> line)
         })
-      case Function(name, formalArgs, typ, pres, posts, optBody) =>
+      case Function(name, formalArgs, typ, pres, posts, pats, optBody) =>
         // for the time being, the termination plugin transforms decreases clauses into preconditions or postconditions
         val (terminationMeasuresInPres, actualPres) = pres.partition(exp => exp.isInstanceOf[DecreasesClause])
         val (terminationMeasuresInPosts, actualPosts) = posts.partition(exp => exp.isInstanceOf[DecreasesClause])
@@ -562,7 +562,8 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
           nest(defaultIndent,
             showContracts("requires", actualPres) <>
               showContracts("ensures", actualPosts) <>
-              showDecreasesClauses(terminationMeasuresInPres ++ terminationMeasuresInPosts)
+              showDecreasesClauses(terminationMeasuresInPres ++ terminationMeasuresInPosts) <>
+              showContracts("pattern", pats)
           ) <>
           line <>
           (optBody match {

@@ -182,6 +182,8 @@ object PKw {
   type Ensures = PReserved[Ensures.type]
   case object Invariant extends PKw("invariant") with PKeywordLang with InvSpec
   type Invariant = PReserved[Invariant.type]
+  case object Pattern extends PKw("pattern") with PKeywordLang with AnySpec
+  type Pattern = PReserved[Pattern.type]
 
   case object Result extends PKw("result") with PKeywordLang with PKeywordAtom {
     override def rightPad: Option[RNode] = Option.empty

@@ -135,7 +135,7 @@ trait BackendTypeTest extends AnyFunSuite with Matchers with BeforeAndAfterAllCo
 
     val equality = BackendFuncApp(fp_eq, Seq(Result(fp.typ)(), result_addition))()
 
-    val fun = Function("test", Seq(), fp.typ, Seq(), Seq(equality), Some(addition))()
+    val fun = Function("test", Seq(), fp.typ, Seq(), Seq(equality), Seq(), Some(addition))()
     val program = Program(Seq(fp.constructDomain(Seq(to_fp, fp_eq, fp_add)), bv32.constructDomain(Seq(from_int))), Seq(), Seq(fun), Seq(), Seq(), Seq())()
     (program, fun, equality)
   }

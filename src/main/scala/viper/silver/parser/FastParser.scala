@@ -175,7 +175,7 @@ object FastParserCompanion {
     // declaration keywords
     PKw.Method, PKw.Function, PKw.Predicate, PKw.Domain, PKw.Axiom, PKw.Var, PKw.Returns, PKw.Field, PKw.Define, PKw.Interpretation,
     // specifications
-    PKw.Requires, PKw.Ensures, PKw.Invariant,
+    PKw.Requires, PKw.Ensures, PKw.Invariant, PKw.Pattern,
     // statements
     PKw.Fold, PKw.Unfold, PKw.Inhale, PKw.Exhale, PKw.New, PKw.Assert, PKw.Assume, PKw.Package, PKw.Apply, PKw.Quasihavoc, PKw.Quasihavocall,
     // control flow
@@ -853,7 +853,7 @@ class FastParser {
   def whileStmt[$: P]: P[PKw.While => Pos => PWhile] =
     P((parenthesizedExp ~~ specifications(invariant) ~ stmtBlock()) map { case (cond, invs, body) => PWhile(_, cond, invs, body) })
 
-  def invariant(implicit ctx : P[_]) : P[PSpecification[PKw.InvSpec]] = P((P(PKw.Invariant) ~ exp).map((PSpecification.apply _).tupled).pos | ParserExtension.invSpecification(ctx))
+  def invariant(implicit ctx : P[_]) : P[PSpecification[PKw.InvSpec]] = P((P(PKw.Invariant) ~ exp).map((PSpecification.apply[PKw.InvSpec] _).tupled).pos | ParserExtension.invSpecification(ctx))
 
   def localVars[$: P]: P[PKw.Var => Pos => PVars] =
     P((nonEmptyIdnTypeList(PLocalVarDecl(_)) ~~~ (P(PSymOp.Assign) ~ exp).lw.?) map { case (a, i) => PVars(_, a, i) })
@@ -953,16 +953,18 @@ class FastParser {
   })
 
   def functionDecl[$: P]: P[PKw.Function => PAnnotationsPosition => PFunction] = P((idndef ~ argList(formalArg) ~ PSym.Colon ~ typ
-    ~~ specifications(precondition) ~~ specifications(postcondition) ~~~ bracedExp.lw.?
-  ) map { case (idn, args, c, typ, d, e, f) => k =>
-      ap: PAnnotationsPosition => PFunction(ap.annotations, k, idn, args, c, typ, d, e, f)(ap.pos)
+    ~~ specifications(precondition) ~~ specifications(postcondition) ~~ semiSeparated(pattern) ~~~ bracedExp.lw.?
+  ) map { case (idn, args, c, typ, pre, post, pat, body) => k =>
+      ap: PAnnotationsPosition => PFunction(ap.annotations, k, idn, args, c, typ, pre, post, pat, body)(ap.pos)
   })
 
   def specifications[$: P, T <: PKw.Spec](kw: => P[PSpecification[T]]): P[PSpecs[T]] = P(semiSeparated(kw) map (PSpecs.apply _)).pos
 
-  def precondition(implicit ctx : P[_]) : P[PSpecification[PKw.PreSpec]] = P((P(PKw.Requires) ~ exp).map((PSpecification.apply _).tupled).pos | ParserExtension.preSpecification(ctx))
+  def precondition(implicit ctx : P[_]) : P[PSpecification[PKw.PreSpec]] = P((P(PKw.Requires) ~ exp).map((PSpecification.apply[PKw.PreSpec] _).tupled).pos | ParserExtension.preSpecification(ctx))
 
-  def postcondition(implicit ctx : P[_]) : P[PSpecification[PKw.PostSpec]] = P((P(PKw.Ensures) ~ exp).map((PSpecification.apply _).tupled).pos | ParserExtension.postSpecification(ctx))
+  def postcondition(implicit ctx : P[_]) : P[PSpecification[PKw.PostSpec]] = P((P(PKw.Ensures) ~ exp).map((PSpecification.apply[PKw.PostSpec] _).tupled).pos | ParserExtension.postSpecification(ctx))
+
+  def pattern(implicit ctx : P[_]) : P[PSpecification[PKw.Pattern.type]] = (P(PKw.Pattern) ~ exp).map((PSpecification.apply[PKw.Pattern.type] _).tupled).pos
 
   def predicateDecl[$: P]: P[PKw.Predicate => PAnnotationsPosition => PPredicate] = P(idndef ~ argList(formalArg) ~~~ bracedExp.lw.?).map {
     case (idn, args, c) => k =>

@@ -106,9 +106,9 @@ case class Translator(program: PProgram) {
   }
 
   private def translate(f: PFunction): Function = f match {
-    case PFunction(_, _, idndef, _, _, _, pres, posts, body) =>
+    case PFunction(_, _, idndef, _, _, _, pres, posts, pats, body) =>
       val f = findFunction(idndef)
-      val ff = f.copy( pres = pres.toSeq map (p => exp(p.e)), posts = posts.toSeq map (p => exp(p.e)), body = body map (_.e.inner) map exp)(f.pos, f.info, f.errT)
+      val ff = f.copy( pres = pres.toSeq map (p => exp(p.e)), posts = posts.toSeq map (p => exp(p.e)), pats = pats.toSeq map (p => exp(p.e)), body = body map (_.e.inner) map exp)(f.pos, f.info, f.errT)
       members(f.name) = ff
       ff
   }
@@ -140,8 +140,8 @@ case class Translator(program: PProgram) {
     val t = decl match {
       case pf@PFieldDecl(_, _, typ) =>
         Field(name, ttyp(typ))(pos, Translator.toInfo(p.annotations, pf))
-      case pf@PFunction(_, _, _, _, _, typ, _, _, _) =>
-        Function(name, pf.formalArgs map liftArgDecl, ttyp(typ), null, null, null)(pos, Translator.toInfo(p.annotations, pf))
+      case pf@PFunction(_, _, _, _, _, typ, _, _, _, _) =>
+        Function(name, pf.formalArgs map liftArgDecl, ttyp(typ), null, null, null, null)(pos, Translator.toInfo(p.annotations, pf))
       case pdf@PDomainFunction(_, unique, _, _, _, _, typ, interp) =>
         DomainFunc(name, pdf.formalArgs map liftAnyArgDecl, ttyp(typ), unique.isDefined, interp.map(_.i.str))(pos, Translator.toInfo(p.annotations, pdf), pdf.domain.idndef.name)
       case pd@PDomain(_, _, _, typVars, interp, _) =>

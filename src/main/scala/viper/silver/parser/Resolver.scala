@@ -151,6 +151,10 @@ case class TypeChecker(names: NameAnalyser) {
       permBan = None
       f.body.map(_.e.inner).foreach(check(_, f.typ.resultType)) //result in the function body gets the error message somewhere else
       resultAllowed = false
+      f.pats.toSeq foreach (p => {
+        check(p.e, Impure)
+        checkNoPermForpermExceptInhaleExhale(p.e)
+      })
       curFunction = null
     }
   }

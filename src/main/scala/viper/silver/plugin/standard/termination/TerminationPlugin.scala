@@ -45,7 +45,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
    * decreases *
    */
   def decreases[$: P]: P[PSpecification[PDecreasesKeyword.type]] =
-    P((P(PDecreasesKeyword) ~ (decreasesWildcard | decreasesStar | decreasesTuple)) map (PSpecification.apply _).tupled).pos
+    P((P(PDecreasesKeyword) ~ (decreasesWildcard | decreasesStar | decreasesTuple)) map (PSpecification.apply[PDecreasesKeyword.type] _).tupled).pos
   def decreasesTuple[$: P]: P[PDecreasesTuple] =
     P((NoCut(exp).delimited(PSym.Comma) ~~~ condition.lw.?) map (PDecreasesTuple.apply _).tupled).pos
   def decreasesWildcard[$: P]: P[PDecreasesWildcard] = P((P(PWildcardSym) ~~~ condition.lw.?) map (PDecreasesWildcard.apply _).tupled).pos
@@ -103,7 +103,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
         dc
       case d => d
     }).recurseFunc({ // decreases clauses can only appear in functions/methods pres, posts and methods bodies
-      case PFunction(_, _, _, _, _, _, pres, posts, _) => Seq(pres, posts)
+      case PFunction(_, _, _, _, _, _, pres, posts, _, _) => Seq(pres, posts)
       case PMethod(_, _, _, _, _, pres, posts, body) => Seq(pres, posts, body)
       case _: PMember => Nil
     }).execute(input)

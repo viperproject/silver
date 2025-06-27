@@ -1713,9 +1713,9 @@ object PSpecs {
   def empty[T <: PKw.Spec]: PSpecs[T] = PSpecs(PDelimited.empty)(NoPosition, NoPosition)
 }
 
-case class PSpecification[+T <: PKw.Spec](k: PReserved[PKw.Spec], e: PExp)(val pos: (Position, Position)) extends PNode
+case class PSpecification[+T <: PKw.Spec](k: PReserved[T], e: PExp)(val pos: (Position, Position)) extends PNode
 
-case class PFunction(annotations: Seq[PAnnotation], keyword: PKw.Function, idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PFormalArgDecl], c: PSym.Colon, resultType: PType, pres: PSpecs[PKw.PreSpec], posts: PSpecs[PKw.PostSpec], body: Option[PBracedExp])
+case class PFunction(annotations: Seq[PAnnotation], keyword: PKw.Function, idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PFormalArgDecl], c: PSym.Colon, resultType: PType, pres: PSpecs[PKw.PreSpec], posts: PSpecs[PKw.PostSpec], pats: PDelimited[PSpecification[PKw.Pattern.type], PSym.OptionSemi], body: Option[PBracedExp])
                     (val pos: (Position, Position)) extends PSingleMember with PAnyFunction with PGlobalCallableNamedArgs {
 }
 

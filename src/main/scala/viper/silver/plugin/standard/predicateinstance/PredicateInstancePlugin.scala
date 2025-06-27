@@ -72,6 +72,7 @@ class PredicateInstancePlugin(@unused reporter: viper.silver.reporter.Reporter,
               DomainType(PredicateInstanceDomain.get, Map()),
               Seq(predicateAccessPredicate),
               Seq(),
+              Seq(),
               None
             )(PredicateInstanceDomain.get.pos, PredicateInstanceDomain.get.info)
           createdPIFunctions = createdPIFunctions.updated(predicateInstance.p, newPIFunction)
