@@ -1,0 +1,28 @@
+field f: Int
+
+function fn(x: Ref, y: Ref): Int
+    requires acc(x.f)
+    requires acc(y.f)
+{
+    (let z == (x) in z.f) +
+    (let z == (y) in z.f)
+}
+
+method m(x: Ref, y: Ref)
+    requires acc(x.f) && x.f == 3
+    requires acc(y.f) && y.f == 4
+{
+    var tmp: Int
+    tmp := fn(x, y)
+    assert tmp == 7
+}
+
+method m2(x: Ref, y: Ref)
+    requires acc(x.f) && x.f == 3
+    requires acc(y.f) && y.f == 4
+{
+    var tmp: Int
+    tmp := fn(x, y)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert tmp == 6
+}
