@@ -365,8 +365,6 @@ trait Info {
     case info => info
   }
 
-
-  def getSourceString: String = ""
 }
 
 /** A default `Info` that is empty. */
