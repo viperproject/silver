@@ -95,7 +95,7 @@ object ImpureAssumeRewriter {
 //    seqn
 
     Seqn(
-      exps.map(e => Inhale(e)(e.pos, MakeInfoPair(e.info, inhale.info), e.errT)), // TODO ake: clarify
+      exps.map(e => Inhale(e)(e.pos, MakeInfoPair(e.info, inhale.info), e.errT)),
       Seq()
     )(inhale.pos, inhale.info, inhale.errT)
   }
