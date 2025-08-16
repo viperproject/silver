@@ -90,6 +90,9 @@ object Consistency {
   /** Returns true if the given node contains no location accesses. */
   def noLocationAccesses(n: Node) = !n.existsDefined { case _: LocationAccess => }
 
+  /** Returns true if the given node contains no asserting expressions. */
+  def noAsserting(n: Node) = !n.existsDefined { case _: Asserting => }
+
   /** Returns true if the given node contains no accessibility predicates (unfolding predicates is
     * allowed) and no magic wands (applying wands is allowed).
     */
@@ -235,8 +238,8 @@ object Consistency {
   /** checks that all quantified variables appear in all triggers */
   def checkAllVarsMentionedInTriggers(variables: Seq[LocalVarDecl], triggers: Seq[Trigger]) : Seq[ConsistencyError] = {
     var s = Seq.empty[ConsistencyError]
-    val varsInTriggers : Seq[Seq[LocalVar]] = triggers map(t=>{
-      t.deepCollect({case lv: LocalVar => lv})
+    val varsInTriggers : Seq[Set[LocalVar]] = triggers map(t=>{
+      Expressions.getContainedVariablesExcludingLet(t)
     })
     variables.foreach(v=>{
       varsInTriggers.foreach(varList=>{
@@ -266,8 +269,9 @@ object Consistency {
     e match {
       case Old(nested) => validTrigger(nested, program) // case corresponds to OldTrigger node
       case LabelledOld(nested, _) => validTrigger(nested, program)
-      case wand: MagicWand => wand.subexpressionsToEvaluate(program).forall(e => !e.existsDefined {case _: ForbiddenInTrigger => })
-      case _ : PossibleTrigger | _: FieldAccess | _: PredicateAccess => !e.existsDefined { case _: ForbiddenInTrigger => }
+      case ee: ExtensionExp => ee.extensionIsValidTrigger()
+      case wand: MagicWand => wand.subexpressionsToEvaluate(program).forall(e => !e.exists(Expressions.isForbiddenInTrigger))
+      case _ : PossibleTrigger | _: FieldAccess | _: PredicateAccess => !e.exists(Expressions.isForbiddenInTrigger)
       case _ => false
     }
   }

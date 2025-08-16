@@ -73,12 +73,12 @@ case class GtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info
 case class GeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(GeOp) with ForbiddenInTrigger
 
 // Equality and non-equality (defined for all types)
-case class EqCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends EqualityCmp("==") {
+case class EqCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends EqualityCmp("==") with ForbiddenInTrigger {
   override lazy val check : Seq[ConsistencyError] =
     Seq(left, right).flatMap(Consistency.checkPure) ++
     (if(left.typ != right.typ) Seq(ConsistencyError(s"expected the same type, but got ${left.typ} and ${right.typ}", left.pos)) else Seq())
 }
-case class NeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends EqualityCmp("!=") {
+case class NeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends EqualityCmp("!=") with ForbiddenInTrigger {
   override lazy val check : Seq[ConsistencyError] =
     Seq(left, right).flatMap(Consistency.checkPure) ++
     (if(left.typ != right.typ) Seq(ConsistencyError(s"expected the same type, but got ${left.typ} and ${right.typ}", left.pos)) else Seq())
@@ -1290,10 +1290,20 @@ sealed trait Lhs extends Exp
   * reach the backend verifiers. */
 trait ExtensionExp extends Exp {
   def extensionIsPure: Boolean
+
   def extensionSubnodes: Seq[Node]
+
   def typ: Type
+
   def verifyExtExp(): VerificationResult
+
   /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
-    * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression.*/
+    * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression. */
   def prettyPrint: PrettyPrintPrimitives#Cont
+
+  /** Defines whether this expression can be used as a trigger. Defaults to false. */
+  def extensionIsValidTrigger(): Boolean = false
+
+  /** Defines whether this expression is forbidden from occurring *anywhere* in a trigger. Defaults to true.  */
+  def extensionIsForbiddenInTrigger(): Boolean = true
 }

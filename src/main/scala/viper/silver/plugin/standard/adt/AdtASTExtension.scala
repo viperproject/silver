@@ -7,9 +7,9 @@
 package viper.silver.plugin.standard.adt
 
 import viper.silver.ast._
-import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, braces, brackets, char, defaultIndent, line, nest, nil, parens, show, showType, showVars, space, ssep, text}
+import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, braces, brackets, char, defaultIndent, linebreak, nest, nil, parens, show, showType, showVars, space, ssep, text}
 import viper.silver.ast.pretty.PrettyPrintPrimitives
-import viper.silver.ast.utility.Consistency
+import viper.silver.ast.utility.{Consistency, Expressions}
 import viper.silver.verifier.{ConsistencyError, Failure, VerificationResult}
 
 /**
@@ -44,15 +44,13 @@ case class Adt(name: String, constructors: Seq[AdtConstructor], typVars: Seq[Typ
     text("adt") <+> name <>
       (if (typVars.isEmpty) nil else text("[") <> ssep(typVars map show, char(',') <> space) <> "]") <+>
       braces(nest(defaultIndent,
-        line <> line <>
-          ssep(constructors map show, line <> line)
-      ) <> line) <+>
-      (if (derivingInfo.isEmpty) nil else text("derives") <+>
+        linebreak <> ssep(constructors map show, linebreak)
+      ) <> linebreak) <>
+      (if (derivingInfo.isEmpty) nil else space <> text("derives") <+>
         braces(nest(defaultIndent,
-          line <> line <>
-            ssep(derivingInfo.toSeq map showDerivingInfo, line <> line)
-        ) <> line)
-        )
+          linebreak <> ssep(derivingInfo.toSeq map showDerivingInfo, linebreak)
+        ) <> linebreak)
+      )
   }
 }
 
@@ -206,6 +204,10 @@ case class AdtConstructorApp(name: String, args: Seq[Exp], typVarMap: Map[TypeVa
       AdtConstructorApp(first, second, third)(this.pos, this.info, this.typ, this.adtName, this.errT).asInstanceOf[this.type]
     }
   }
+
+  override def extensionIsValidTrigger(): Boolean = args.forall(a => !a.exists(Expressions.isForbiddenInTrigger))
+
+  override def extensionIsForbiddenInTrigger(): Boolean = false
 }
 
 object AdtConstructorApp {
@@ -253,6 +255,10 @@ case class AdtDestructorApp(name: String, rcv: Exp, typVarMap: Map[TypeVar, Type
       AdtDestructorApp(first, second, third)(this.pos, this.info, this.typ, this.adtName, this.errT).asInstanceOf[this.type]
     }
   }
+
+  override def extensionIsValidTrigger(): Boolean = !rcv.exists(Expressions.isForbiddenInTrigger)
+
+  override def extensionIsForbiddenInTrigger(): Boolean = false
 }
 
 object AdtDestructorApp {
@@ -283,7 +289,7 @@ case class AdtDiscriminatorApp(name: String, rcv: Exp, typVarMap: Map[TypeVar, T
 
   override def typ: Type = Bool
 
-  override def prettyPrint: PrettyPrintPrimitives#Cont = show(rcv) <> "." <> name <> "?"
+  override def prettyPrint: PrettyPrintPrimitives#Cont = show(rcv) <> ".is" <> name
 
   override def extensionIsPure: Boolean = true
 
@@ -306,6 +312,11 @@ case class AdtDiscriminatorApp(name: String, rcv: Exp, typVarMap: Map[TypeVar, T
     }
   }
 
+  // Since a discriminator desugars to ADT_tag(rcv) == name_tag, which contains an equality,
+  // it cannot be used anywhere inside a trigger.
+  override def extensionIsValidTrigger(): Boolean = false
+
+  override def extensionIsForbiddenInTrigger(): Boolean = true
 }
 
 object AdtDiscriminatorApp {

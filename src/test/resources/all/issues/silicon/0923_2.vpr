@@ -1,0 +1,36 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+predicate f(r: Ref)
+function getF(r: Ref): Int
+    requires f(r)
+
+
+predicate Mem(x: Ref)
+{
+    f(x) && 0 <= getF(x)
+}
+
+predicate nothing() {
+  forall r: Ref :: false ==> acc(f(r), 1/2)
+}
+
+function recurse(x: Ref): Int
+requires nothing()
+requires acc(f(x), 1/2)
+requires acc(Mem(x), wildcard)
+{
+    (unfolding nothing() in 0) + (unfolding acc(Mem(x), wildcard) in getF(x))
+}
+
+method fooUnsound(x: Ref)
+requires nothing()
+requires acc(Mem(x), 1/2)
+requires acc(f(x), 1/2)
+requires getF(x) == 0
+ensures  acc(Mem(x), 1/2)
+{
+
+    var oldResult: Int := recurse(x)
+    assert oldResult == 0
+}

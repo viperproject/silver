@@ -136,6 +136,23 @@ object Expressions {
     }.flatten.toSet
   }
 
+  /** Collects all variables that are actually contained in the given node, filtering out let-variables
+    * as well as variables used in expressions bound to let-variables which are not used in the let body.  */
+  def getContainedVariablesExcludingLet(e: Node): Set[LocalVar] = {
+    Visitor.deepCollect[Node, Set[LocalVar]](Seq(e), {
+      case _: Let => Seq()
+      case n => Nodes.subnodes(n)
+    }) {
+      case lv: LocalVar => Set(lv)
+      case Let(v, e, body) =>
+        val bodyVars = getContainedVariablesExcludingLet(body)
+        if (bodyVars.contains(v.localVar))
+          bodyVars - v.localVar ++ getContainedVariablesExcludingLet(e)
+        else
+          bodyVars - v.localVar
+    }.flatten.toSet
+  }
+
   /** In an expression, rename a list (domain) of variables with given (range) variables. */
   def renameVariables[E <: Exp]
                      (exp: E, domain: Seq[AbstractLocalVar], range: Seq[AbstractLocalVar])
@@ -181,6 +198,23 @@ object Expressions {
     case _: CurrentPerm => true
     case _: ForPerm => true
     case _ => false
+  }
+
+  def isKnownWellDefined(e: Exp, program: Option[Program]): Boolean = {
+    e match {
+      case FieldAccessPredicate(FieldAccess(rcv, _), prm) =>
+        // Extra case for field access predicates because the contained field access does NOT require already having the field permission.
+        isKnownWellDefined(rcv, program) && (prm.isEmpty || isKnownWellDefined(prm.get, program))
+      case _: FieldAccess | _: Unfolding | _: Applying | _: Asserting => false
+      case _: SeqIndex | _: MapLookup => false
+      case _: Div | _: Mod => false
+      case f: FuncApp =>
+        program match {
+          case Some(p) => p.findFunction(f.funcname).pres.isEmpty && f.args.forall(isKnownWellDefined(_, program))
+          case None => false // conservative
+        }
+      case other => other.subExps.forall(isKnownWellDefined(_, program))
+    }
   }
 
   // note: dependency on program for looking up function preconditions
@@ -276,6 +310,12 @@ object Expressions {
       List(Implies(evalCond, combinedRightCond)(p))
     } else Nil
     leftConds ++ guardedRightConds
+  }
+
+  def isForbiddenInTrigger(n: Node): Boolean = n match {
+    case _: ForbiddenInTrigger => true
+    case ee: ExtensionExp => ee.extensionIsForbiddenInTrigger()
+    case _ => false
   }
 
   /** See [[viper.silver.ast.utility.Triggers.TriggerGeneration.generateTriggerSetGroups]] */

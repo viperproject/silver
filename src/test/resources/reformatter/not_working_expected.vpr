@@ -1,0 +1,30 @@
+// This test demonstrates three code snippets which are (to the best of my
+// knowledge) the only very big limitations to the current version of the
+// formatter, and unfortunately fixing them is very difficult with the current
+// architecture of the reformatter, since we have limited flexibility due to the
+// fact that we rely on `PrettyPrintPrimitives` instead of having a hand-written
+// reformatter.
+
+method test1() {
+    // Problem 1: The side comment will be pushed to the next line.
+    // The reason for this is that we separate variables with a newline by
+    // default, and since the newline will be added before adding the trivia,
+    // the newline will be added before the comment, and thus move to the next
+    // line.
+    var a: Int := 1;
+    // A side comment
+    // Problem 2: The 4 in the next line will not be indented.
+    var b: Int := 2 + // Another comment
+4
+}
+
+// Problem 3: Trailing comments might not be indented correctly.
+// In this case, since we always attach the trivia to the next node below
+// (the closing bracket in this case), it will also be subject to the indentation
+// of that node.
+method c() {
+    if (true) {
+        var b: Int := 3;
+    }
+// A trailing comment
+}

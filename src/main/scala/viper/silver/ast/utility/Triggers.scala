@@ -30,6 +30,7 @@ object Triggers {
     /* True iff the given node is a possible trigger */
     protected def isPossibleTrigger(e: Exp): Boolean = (customIsPossibleTrigger orElse {
       case _: PossibleTrigger => true
+      case ee: ExtensionExp => ee.extensionIsValidTrigger()
       case Old(_: PossibleTrigger) => true
       case LabelledOld(_: PossibleTrigger, _) => true
       case _ => false
@@ -38,7 +39,7 @@ object Triggers {
     /* Note: If Add and Sub were type arguments of GenericTriggerGenerator, the latter
      *       could implement isForbiddenInTrigger already */
     def isForbiddenInTrigger(e: Exp) = (customIsForbiddenInTrigger orElse {
-      case _: ForbiddenInTrigger => true
+      case e if Expressions.isForbiddenInTrigger(e) => true
       case _ => false
     }: PartialFunction[Exp, Boolean])(e)
 
@@ -58,6 +59,10 @@ object Triggers {
       case _ => sys.error(s"Unexpected expression $e")
     }
 
+    override def getVarsInExp(e: Exp): Set[LocalVar] = {
+      Expressions.getContainedVariablesExcludingLet(e)
+    }
+
     override def modifyPossibleTriggers(relevantVars: Seq[LocalVar]) = {
       case ast.Old(_) => results =>
         results.flatten.map(t => {
@@ -69,16 +74,17 @@ object Triggers {
           val exp = t._1
           (ast.LabelledOld(exp, l)(exp.pos, exp.info, exp.errT), t._2, t._3)
         })
-      case ast.Let(v, e, _) => results =>
+      case ast.Let(v, e, body) => results =>
         results.flatten.map(t => {
           val exp = t._1
-          val coveredVars = t._2.filter(cv => cv != v.localVar) ++ relevantVars.filter(rv => e.contains(rv))
+          val coveredVars = t._2.filter(cv => cv != v.localVar) ++
+            (if (body.contains(v.localVar)) relevantVars.filter(rv => e.contains(rv)) else Seq())
           (exp.replace(v.localVar, e), coveredVars, t._3)
         })
     }
 
     override def additionalRelevantVariables(relevantVars: Seq[LocalVar], varsToAvoid: Seq[LocalVar]): PartialFunction[Node, Seq[LocalVar]] = {
-      case ast.Let(v, e, _) if relevantVars.exists(v => e.contains(v)) && varsToAvoid.forall(v => !e.contains(v)) =>
+      case ast.Let(v, e, body) if body.contains(v.localVar) && relevantVars.exists(v => e.contains(v)) && varsToAvoid.forall(v => !e.contains(v)) =>
         Seq(v.localVar)
     }
   }
