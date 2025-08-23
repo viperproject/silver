@@ -1,0 +1,16 @@
+field b: Bool
+
+method test06(x: Ref) {
+    inhale acc(x.b)
+
+    package acc(x.b) --* true
+
+    x.b := true
+    assert applying (acc(x.b) --* true) in true
+
+    x.b := false
+    assert applying (acc(x.b) --* true) in true
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
