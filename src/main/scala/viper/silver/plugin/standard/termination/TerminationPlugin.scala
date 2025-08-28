@@ -47,7 +47,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
   def decreases[$: P]: P[PSpecification[PDecreasesKeyword.type]] =
     P((P(PDecreasesKeyword) ~ (decreasesWildcard | decreasesStar | decreasesTuple)) map (PSpecification.apply _).tupled).pos
   def decreasesTuple[$: P]: P[PDecreasesTuple] =
-    P((exp.delimited(PSym.Comma) ~~~ condition.lw.?) map (PDecreasesTuple.apply _).tupled).pos
+    P((NoCut(exp).delimited(PSym.Comma) ~~~ condition.lw.?) map (PDecreasesTuple.apply _).tupled).pos
   def decreasesWildcard[$: P]: P[PDecreasesWildcard] = P((P(PWildcardSym) ~~~ condition.lw.?) map (PDecreasesWildcard.apply _).tupled).pos
   def decreasesStar[$: P]: P[PDecreasesStar] = P(P(PSym.Star) map (PDecreasesStar(_) _)).pos
   def condition[$: P]: P[(PReserved[PIfKeyword.type], PExp)] = P(P(PIfKeyword) ~ exp)
@@ -173,7 +173,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
         Some(name.substring(0, name.length - 16))
       else
         None
-      val wronglyConstrainedTypes = d.members.inner.axioms.toSeq.flatMap(a => constrainsWellfoundednessUnexpectedly(a, typeName))
+      val wronglyConstrainedTypes = d.axioms.flatMap(a => constrainsWellfoundednessUnexpectedly(a, typeName))
       reporter.report(WarningsDuringTypechecking(wronglyConstrainedTypes.map(t =>
         TypecheckerWarning(s"Domain ${d.idndef.name} constrains well-foundedness functions for type ${t} and should be named <Type>WellFoundedOrder instead.", d.pos._1))))
     }
@@ -194,7 +194,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
       val importOnlyProgram = importStmts.mkString("\n")
       val importPProgram = PAstProvider.generateViperPAst(importOnlyProgram).get.filterMembers(_.isInstanceOf[PDomain])
       val inputFiltered = input.filterMembers(m => !(m.isInstanceOf[PDomain] && m.asInstanceOf[PDomain].idndef.name == "WellFoundedOrder"))
-      val mergedProgram = PProgram(inputFiltered.imported :+ importPProgram, inputFiltered.members)(input.pos, input.localErrors)
+      val mergedProgram = PProgram(inputFiltered.imported :+ importPProgram, inputFiltered.members)(input.pos, input.localErrors, input.offsets, input.rawProgram)
       super.beforeTranslate(mergedProgram)
     } else {
       super.beforeTranslate(input)

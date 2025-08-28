@@ -1,0 +1,17 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field next: Ref
+field value: Int
+
+predicate list(r: Ref) {
+  acc(r.next) && acc(r.value) &&
+  (r.next != null ==> list(r.next))
+}
+
+function len(r: Ref): Int
+  requires list(r)
+  decreases list(r)
+{
+  1 + (unfolding list(r) in (r.next == null ? 0 : len(r.next)))
+}
