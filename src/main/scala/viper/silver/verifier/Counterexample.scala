@@ -8,6 +8,7 @@ import viper.silver.ast.{AbstractLocalVar, Exp, Type, Resource}
 
 case class StoreCounterexample(storeEntries: Seq[StoreEntry]) {
   override lazy val toString = storeEntries.map(x => x.toString).mkString("", "\n", "\n")
+  lazy val asMap: Map[String, CEValue] = storeEntries.map(se => (se.id.name, se.entry)).toMap
 }
 
 case class StoreEntry(id: AbstractLocalVar, entry: CEValue) {
@@ -54,6 +55,14 @@ sealed trait CEValue {
   val id : String
   val value : Any
   val valueType : Option[ast.Type]
+}
+
+object CEValueOnly {
+  def apply(value: ModelEntry, typ: Option[ast.Type]): CEValue = CEVariable("#undefined", value, typ)
+  def unapply(ce: CEValue): Option[(ModelEntry, Option[ast.Type])] = ce match {
+    case CEVariable(_, entryValue, typ) => Some((entryValue, typ))
+    case _ => None
+  }
 }
 
 case class CEVariable(name: String, entryValue: ModelEntry, typ: Option[Type]) extends CEValue {
