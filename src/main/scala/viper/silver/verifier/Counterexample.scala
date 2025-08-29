@@ -6,6 +6,27 @@ import viper.silver.ast.{AbstractLocalVar, Exp, Type, Resource}
   * Classes used for to build "intermediate" and "extended" counterexamples.
   */
 
+trait IntermediateCounterexample {
+  val basicVariables: Seq[CEVariable]
+  val allSequences: Seq[CEValue]
+  val allSets: Seq[CEValue]
+  val allMultisets: Seq[CEValue]
+  val allCollections: Seq[CEValue] = allSequences ++ allSets ++ allMultisets
+  def basicHeaps: Seq[(String, BasicHeap)]
+
+  val domainEntries: Seq[BasicDomainEntry]
+  val nonDomainFunctions: Seq[BasicFunctionEntry]
+}
+
+trait ExtendedCounterexample {
+  val imCE: IntermediateCounterexample
+  val ceStore: StoreCounterexample
+  val ceHeaps: Seq[(String, HeapCounterexample)]
+  lazy val heapMap = ceHeaps.toMap
+  val domainEntries: Seq[BasicDomainEntry]
+  val functionEntries: Seq[BasicFunctionEntry]
+}
+
 case class StoreCounterexample(storeEntries: Seq[StoreEntry]) {
   override lazy val toString = storeEntries.map(x => x.toString).mkString("", "\n", "\n")
   lazy val asMap: Map[String, CEValue] = storeEntries.map(se => (se.id.name, se.entry)).toMap
@@ -123,7 +144,7 @@ case class BasicHeapEntry(reference: Seq[String], field: Seq[String], valueID: S
   }
 }
 
-case class BasicDomainEntry(name: String, types: Seq[ast.Type], functions: Seq[BasicFunction]) {
+case class BasicDomainEntry(name: String, types: Seq[ast.Type], functions: Seq[BasicFunctionEntry]) {
   override def toString: String = s"domain $valueName{\n ${functions.map(_.toString()).mkString("\n")}\n}"
   val valueName: String = s"$name${printTypes()}"
   private def printTypes(): String =
@@ -136,7 +157,7 @@ case class BasicDomainEntry(name: String, types: Seq[ast.Type], functions: Seq[B
 }
 
 
-case class BasicFunction(fname: String, argtypes: Seq[ast.Type], returnType: ast.Type, options: Map[Seq[String], String], default: String) {
+case class BasicFunctionEntry(fname: String, argtypes: Seq[ast.Type], returnType: ast.Type, options: Map[Seq[String], String], default: String) {
   override def toString: String = {
     if (options.nonEmpty)
       s"$fname${argtypes.mkString("(", ",", ")")}:${returnType}{\n" + options.map(o => "    " + o._1.mkString(" ") + " -> " + o._2).mkString("\n") + "\n    else -> " + default + "\n}"
