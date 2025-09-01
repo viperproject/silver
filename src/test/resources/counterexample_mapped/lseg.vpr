@@ -19,6 +19,7 @@ method removeFirst(first: Ref, last: Ref, values: Seq[Int]) returns  (value: Int
   ensures  lseg(second, last, values[1..])
   // we have insufficient field permissions when second is equal to last:
   //:: ExpectedCounterexample(not.wellformed:insufficient.permission, (second == last))
+  //:: ExpectedCounterexample(postcondition.violated:assertion.false, (second == last))
   ensures  value != unfolding lseg(second, last, values[1..]) in second.elem
 {
   unfold lseg(first, last, values)

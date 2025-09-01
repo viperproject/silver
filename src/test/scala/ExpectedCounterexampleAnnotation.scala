@@ -91,8 +91,22 @@ case class ExpectedCounterexampleAnnotation(id: OutputAnnotationId, file: Path, 
         } catch {
           case _: NumberFormatException => None
         }
-
     }
+    case PCall(idnuse, args, _) =>
+      val argValues = args.inner.toSeq.map(a => resolveWoPerm(a, model) match {
+        case Some(CEVariable(_, entry, _)) => Some(entry.toString)
+        case _ => None
+      })
+      if (argValues.forall(_.isDefined)) {
+        model.heapMap.get("current").flatMap(_.heapEntries.find({
+          case (p: ast.Predicate, pe: PredFinalEntry) if p.name == idnuse.name && pe.args == argValues.map(_.get) => true
+          case _ => false
+        }).map(he =>
+          (CEValueOnly(ConstantEntry(""), None), he._2.asInstanceOf[PredFinalEntry].perm)
+        ))
+      } else {
+        None
+      }
   }
 
   def resolve(exprs: Vector[PExp], model: ExtendedCounterexample): Option[Vector[(CEValue, Option[Rational])]] = {
