@@ -11,8 +11,8 @@ trait IntermediateCounterexample {
   val allSequences: Seq[CEValue]
   val allSets: Seq[CEValue]
   val allMultisets: Seq[CEValue]
-  val allCollections: Seq[CEValue] = allSequences ++ allSets ++ allMultisets
-  def basicHeaps: Seq[(String, BasicHeap)]
+  lazy val allCollections: Seq[CEValue] = allSequences ++ allSets ++ allMultisets
+  def allBasicHeaps: Seq[(String, BasicHeap)]
 
   val domainEntries: Seq[BasicDomainEntry]
   val nonDomainFunctions: Seq[BasicFunctionEntry]
@@ -25,6 +25,7 @@ trait ExtendedCounterexample {
   lazy val heapMap = ceHeaps.toMap
   val domainEntries: Seq[BasicDomainEntry]
   val functionEntries: Seq[BasicFunctionEntry]
+  lazy val domainsAndFunctions = domainEntries ++ functionEntries
 }
 
 case class StoreCounterexample(storeEntries: Seq[StoreEntry]) {
