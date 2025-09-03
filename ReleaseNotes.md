@@ -1,3 +1,54 @@
+## Release 2025.8
+
+**Date 04/09/25**
+
+### Changes in Viper Language
+
+- The annotation previously called ``@proverArgs``, (i.e. for example ``@proverArgs("smt.arith.solver=6")``) is now called ``@proverConfigArgs`` to match the name of Silicon's corresponding command line option ``--proverConfigArgs``. https://github.com/viperproject/silicon/pull/932 
+- ``asserting``-expressions are now disallowed in domain axioms. https://github.com/viperproject/silver/pull/858
+- We changed the type priority of ambiguously-typed division expressions (e.g. ``1/2`` can be an ``Int`` or a ``Perm``); these now always default to be ``Perm``-typed, and an ``Int`` type can be enforced by using the ``\`` operator instead. https://github.com/viperproject/silver/pull/855
+
+### Changes in Plugins
+
+- Plugins can now specify whether new expression types added by the plugin can be used inside triggers. https://github.com/viperproject/silver/pull/857
+- Created a new ``PluginAwareReporter`` that allows plugins to transform ``EntitySuccessMessage``s and ``EntityFailureMessage``s. https://github.com/viperproject/silver/pull/854 and https://github.com/viperproject/silver/pull/856
+- Optimized encoding for termination checks to omit unnecessary expression evaluation and unfoldings. https://github.com/viperproject/silver/pull/879 
+- Fixed incomplete termination check encoding for functions which incorrectly used explicit permission amounts. https://github.com/viperproject/silver/pull/876
+
+### Other Changes and Bug Fixes
+
+- Fixed a crash in the type checker for some ``forperm`` expressions. https://github.com/viperproject/silver/pull/873
+- Removed unnecessary duplicate work in the type checker that could lead to non-termination in extreme cases. https://github.com/viperproject/silver/pull/865
+- Fixed loop head detection that could in rare cases lead to unsound verification. https://github.com/viperproject/silver/pull/859
+- Improved ``Simplifier`` to simplify more aggressively in the presence of expressions that are statically known to be well-defined. https://github.com/viperproject/silver/pull/863
+- No longer using sets internally so that the plugin execution order is always deterministic. https://github.com/viperproject/silver/pull/853
+
+### Backend-specific Upgrades/Changes
+
+#### Symbolic Execution Backend (Silicon)
+
+- A new command line option ``--enableSimplifiedUnfolds`` can be used to simplify and speed up predicate unfoldings. It is experimental and disabled by default for now, but will likely become the default setting in future releases. https://github.com/viperproject/silicon/pull/929
+- Soundness fixes:
+  - Fixed two unsoundnesses in heap-dependent function encoding resulting from state consolidation. https://github.com/viperproject/silicon/pull/904 and https://github.com/viperproject/silicon/pull/910
+  - Fixed incorrect translation of some heap accesses inside heap-dependent functions that could lead to crashes or the use of incorrect function definitions. https://github.com/viperproject/silicon/pull/928
+- Performance improvements:
+  - Localizing potentially expensive assumption of function preconditions for QP injectivity. https://github.com/viperproject/silicon/pull/916
+  - Simplifying checks about permission amounts inside functions s.t. they can more often be performed without use of the SMT solver. https://github.com/viperproject/silicon/pull/921
+  - Stricter triggers on expensive extensionality axiom for QP snapshots (used for framing functions that depend on QPs). https://github.com/viperproject/silicon/pull/936
+- Completeness fixes:
+  - Fixing incorrect usage of (shorter) check timeout for SMT query that should use the assert timeout, leading to incompleteness. https://github.com/viperproject/silicon/pull/920
+  - Fixed recording of QP-related definitions in heap-dependent functions that was previously missing. https://github.com/viperproject/silicon/pull/924
+  - Fixed an incompleteness where QP-related definitions generated while evaluating quantifiers used an arbitrary value of the quantified variable instead of a universally quantified one https://github.com/viperproject/silicon/pull/93.5
+- Bug fixes:
+  - Fixed ``--counterexample=variables`` option. https://github.com/viperproject/silicon/pull/915
+  - Fixed crash with ``--moreJoins`` option when using ``forperm``. https://github.com/viperproject/silicon/pull/922
+  - Fixed crash with branch parallelization. https://github.com/viperproject/silicon/pull/939
+- Others: 
+  - When using CVC5, Silicon is now using proper timeouts for its SMT queries. https://github.com/viperproject/silicon/pull/933
+  - Quantifiers in axioms related to built-in types like sequences now have quantifier IDs in the generated SMTLIB code, which simplifies debugging the SMT output. https://github.com/viperproject/silicon/pull/927
+  - Significant parts of Silicon have been refactored to simplify future extensions, in particular, to enable the addition of different heap encodings. https://github.com/viperproject/silicon/pull/930
+ 
+
 ## Release 2025.2
 
 **Date 28/02/25**
