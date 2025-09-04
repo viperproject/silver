@@ -23,6 +23,10 @@
 - Improved ``Simplifier`` to simplify more aggressively in the presence of expressions that are statically known to be well-defined. https://github.com/viperproject/silver/pull/863
 - No longer using sets internally so that the plugin execution order is always deterministic. https://github.com/viperproject/silver/pull/853
 
+### Viper-IDE & ViperServer
+
+- Significantly enhanced IDE experience
+
 ### Backend-specific Upgrades/Changes
 
 #### Symbolic Execution Backend (Silicon)
