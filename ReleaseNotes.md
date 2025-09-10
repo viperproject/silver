@@ -2,6 +2,16 @@
 
 **Date 04/09/25**
 
+### Viper-IDE & ViperServer
+
+- Significantly enhanced IDE experience (https://github.com/viperproject/viperserver/pull/204 and https://github.com/viperproject/viper-ide/pull/433 and others):
+  - Enabled semantic code actions such as "Show / Jump to Definitions", "Find References" or "Rename Symbols"
+  - Improved autocomplete
+  - Show inferred triggers
+  - Show parameter names in method calls
+  - Show parser errors without triggering full verification
+- Reworked extension settings. Some custom settings have been renamed and may need to be updated.
+
 ### Changes in Viper Language
 
 - The annotation previously called ``@proverArgs``, (i.e. for example ``@proverArgs("smt.arith.solver=6")``) is now called ``@proverConfigArgs`` to match the name of Silicon's corresponding command line option ``--proverConfigArgs``. https://github.com/viperproject/silicon/pull/932 
@@ -22,10 +32,6 @@
 - Fixed loop head detection that could in rare cases lead to unsound verification. https://github.com/viperproject/silver/pull/859
 - Improved ``Simplifier`` to simplify more aggressively in the presence of expressions that are statically known to be well-defined. https://github.com/viperproject/silver/pull/863
 - No longer using sets internally so that the plugin execution order is always deterministic. https://github.com/viperproject/silver/pull/853
-
-### Viper-IDE & ViperServer
-
-- Significantly enhanced IDE experience
 
 ### Backend-specific Upgrades/Changes
 
