@@ -235,6 +235,7 @@ trait SilFrontend extends DefaultFrontend {
       resetPlugins()
       reporter match {
         case cf: ConfigurableReporter => cf.setConfig(Some(_config))
+        case _ =>
       }
     }
   }

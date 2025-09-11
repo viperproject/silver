@@ -153,7 +153,7 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
   )
 
   val reportPartialResults = opt[Boolean](name = "reportPartialResults",
-    descr = "Whether to report partial verification success and failure for individual members and branches.",
+    descr = "Whether to report partial verification success and failure for individual members and branches via the StdIOReporter.",
     default = Some(false),
     noshort = true
   )
