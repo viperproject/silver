@@ -233,6 +233,9 @@ trait SilFrontend extends DefaultFrontend {
 
     if (_config != null) {
       resetPlugins()
+      reporter match {
+        case cf: ConfigurableReporter => cf.setConfig(Some(_config))
+      }
     }
   }
 
