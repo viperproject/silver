@@ -16,7 +16,7 @@ import viper.silver.verifier._
 
 import java.nio.file.{Path, Paths}
 import viper.silver.FastMessaging
-import viper.silver.ast.utility.chopper.Chopper
+import viper.silver.ast.utility.chopper.PluginAwareChopper
 
 /**
  * Common functionality to implement a command-line verifier for Viper.  This trait
@@ -265,10 +265,10 @@ trait SilFrontend extends DefaultFrontend {
           val program = config.select.toOption match {
             case Some(names) =>
               val namesSet = names.split(",").toSet
-              val chopped = Chopper.chop(inputPlugin)(Some {
+              val chopped = PluginAwareChopper.chop(inputPlugin)(Some {
                 case m if namesSet.contains(m.name) => true
                 case _ => false
-              }, Some(1), beforeTerminationPlugin = true)
+              }, Some(1))
               if (chopped.isEmpty) {
                 reporter report WarningsDuringTypechecking(Seq(TypecheckerWarning("No members were selected.", inputPlugin.pos)))
                 Program(Seq(), Seq(), Seq(), Seq(), Seq(), Seq())(inputPlugin.pos, inputPlugin.info, inputPlugin.errT)
