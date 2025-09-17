@@ -333,5 +333,5 @@ case class VerificationTerminationMessage() extends Message {
 
 case class BenchmarkingMessage(category: String, payload: String) extends Message {
   override val name: String = "benchmarking_message"
-  override val toString: String = s"Benchmarking message of type $category with payload $payload")
+  override val toString: String = s"Benchmarking message of type $category with payload $payload"
 }
