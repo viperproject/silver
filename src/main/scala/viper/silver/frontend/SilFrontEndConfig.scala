@@ -152,6 +152,12 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     noshort = true
   )
 
+  val reportPartialResults = opt[Boolean](name = "reportPartialResults",
+    descr = "Whether to report partial verification success and failure for individual members and branches via the StdIOReporter.",
+    default = Some(false),
+    noshort = true
+  )
+
   validateOpt(file, ignoreFile) {
     case (_, Some(true)) => Right(())
     case (Some(filepath), _) => validateFileOpt(file.name, filepath)
