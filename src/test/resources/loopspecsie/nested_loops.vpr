@@ -1,0 +1,36 @@
+//should do TD and BU
+method f(l : Ref)
+    requires l != null
+   {
+   var curr : Ref
+   curr := l
+
+   var b : Bool := true
+
+   while(curr != null)
+   {
+        b := true
+
+        while(b)
+            requires true
+            ensures !b
+         {
+            b := false
+            ghost{
+                        b := false
+                    }
+        }basecase{
+            b := false
+        }
+
+        var i : Int
+        curr := null
+
+
+        ghost{
+                curr := null
+           }
+   }basecase{
+        curr := null
+   }
+}

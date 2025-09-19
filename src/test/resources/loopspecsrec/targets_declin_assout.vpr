@@ -1,0 +1,17 @@
+// decl inside, assigned outside
+method f(l : Ref)
+    requires l != null
+   {
+   var curr : Ref
+   curr := l
+
+   while(curr != null)
+    //:: ExpectedOutput(typechecker.error)
+      ensures i == 1
+   {
+        curr := null
+        var i : Int := 1
+   }
+   //:: ExpectedOutput(typechecker.error)
+   i := 2
+}

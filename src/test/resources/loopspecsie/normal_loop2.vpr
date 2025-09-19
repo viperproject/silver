@@ -1,0 +1,7 @@
+method f(){
+    while(true)
+        invariant true
+    {
+        var x: Int := 0
+    }
+}

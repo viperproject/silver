@@ -1,0 +1,86 @@
+field l: Ref
+
+field r: Ref
+
+field val: Int
+
+function keys(t: Ref): Seq[Int]
+  requires acc(BST(t), write)
+{
+  (t != null ?
+    (unfolding acc(BST(t), write) in Seq(t.val) ++ keys(t.l) ++ keys(t.r)) :
+    Seq[Int]())
+}
+
+function min(s: Seq[Int]): Int
+  ensures |s| == 0 ==> result == 0
+  ensures |s| > 0 ==>
+    (exists i: Int :: { s[i] } 0 <= i && i < |s| && s[i] == result) &&
+    (forall i: Int :: { s[i] } 0 <= i && i < |s| ==> result <= s[i])
+{
+  (|s| == 0 ? 0 : min_acc(s[1..], s[0]))
+}
+
+function min_acc(s: Seq[Int], accu: Int): Int
+  ensures (forall i: Int :: { s[i] } 0 <= i && i < |s| ==> result <= s[i])
+  ensures result <= accu
+  ensures result == accu ||
+    (exists i: Int :: { s[i] } 0 <= i && i < |s| && result == s[i])
+{
+  (|s| == 0 ?
+    accu :
+    (s[0] < accu ? min_acc(s[1..], s[0]) : min_acc(s[1..], accu)))
+}
+
+function max(s: Seq[Int]): Int
+{
+  max_acc(s, -1)
+}
+
+function max_acc(s: Seq[Int], accu: Int): Int
+{
+  (|s| == 0 ?
+    accu :
+    (s[0] > accu ? max_acc(s[1..], s[0]) : max_acc(s[1..], accu)))
+}
+
+predicate BST(t: Ref) {
+  t != null ==>
+  acc(t.val, write) &&
+  (acc(t.l, write) &&
+  (acc(t.r, write) && (acc(BST(t.l), write) && acc(BST(t.r), write))))
+  //&& forall i : Int :: (0 <= i < |keys(t.l)|) ==> keys(t.l)[i] < t.val
+   //&& forall j : Int :: (0 <= j < |keys(t.r)|) ==> keys(t.r)[j] > t.val
+}
+
+method tree_minn(t: Ref) returns (t_final: Ref, m: Int)
+    requires BST(t) && t != null
+    ensures BST(t_final)
+    //ensures m == min(old(keys(t)))wh
+    //ensures keys(t_final) ++ Seq(m) == old(keys(t))
+{
+    // Open the BST predicate to get access to the fields of t.
+    unfold BST(t);
+    if (t.l == null) {
+        // Base case: no left child means t holds the minimal value.
+        m := t.val;
+        // We now remove t by replacing it with its right subtree.
+        t_final := t.r;
+        //exhale acc(t.val, write) && acc(t.l, write) && acc(t.r, write);
+
+        // No further unfolding needed here.
+    } else {
+        // Recursive case: there is a left subtree.
+        var rec_tree: Ref;
+        var rec_min: Int;
+        // Recursively remove the minimum from the left subtree.
+        rec_tree, rec_min := tree_minn(t.l);
+        // Reconnect the updated left subtree.
+        t.l := rec_tree;
+        m := rec_min;
+        t_final := t;
+    fold BST(t_final);
+
+    }
+    // Reassemble the BST predicate for t_final.
+}

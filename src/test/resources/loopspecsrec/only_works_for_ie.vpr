@@ -1,0 +1,14 @@
+method f(){
+
+    var i : Int := 1
+
+    var cond : Bool := true
+
+    while(cond)
+          //:: ExpectedOutput(postcondition.not.preserved.base.case:assertion.false)
+        ensures i == 1
+      {
+        cond := false
+    }
+
+}

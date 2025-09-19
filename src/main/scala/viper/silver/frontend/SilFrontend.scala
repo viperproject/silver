@@ -117,6 +117,7 @@ trait SilFrontend extends DefaultFrontend {
 
   private val refutePlugin: String = "viper.silver.plugin.standard.refute.RefutePlugin"
   private val smokeDetectionPlugin: String = "viper.silver.plugin.standard.smoke.SmokeDetectionPlugin"
+  private val loopSpecsPlugin : String = "viper.silver.plugin.standard.loopspecs.LoopSpecsPlugin"
 
   /**
    * Default plugins are always activated and are run as last plugins.

@@ -1,0 +1,9 @@
+method f(){
+    var b : Bool := true
+    while(true)
+        //:: ExpectedOutput(consistency.error)
+        requires pre(b)
+    {
+
+    }
+}

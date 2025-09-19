@@ -1,0 +1,26 @@
+// SPECS, G, BC, PRE
+
+field next : Ref
+
+predicate List(l : Ref) {
+   (l != null) ==> acc(l.next) && List(l.next)
+}
+
+
+method add_iterative_spec(l : Ref)
+   requires List(l)
+   {
+   var curr : Ref
+   curr := l
+
+   while(curr != null)
+      requires List(curr)
+        //:: ExpectedOutput(not.wellformed:insufficient.permission)
+
+      //:: ExpectedOutput(precondition.not.established:insufficient.permission)
+      requires List(curr.next)
+   {
+   }
+
+
+}

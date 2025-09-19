@@ -1,0 +1,11 @@
+//goto inside aug loop
+method f(){
+    while(true)
+        requires true
+        {
+        //:: ExpectedOutput(consistency.error)
+        goto here
+    }
+    label here
+
+}

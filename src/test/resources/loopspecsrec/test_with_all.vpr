@@ -1,0 +1,27 @@
+field val : Int
+field next : Ref
+
+predicate List(l : Ref) {
+   (l != null) ==> acc(l.val) && acc(l.next) && List(l.next)
+}
+
+method add_iterative_spec(l : Ref)
+   requires List(l)
+   ensures List(l)
+   {
+   var curr : Ref := l
+
+   while(curr != null)
+      requires List(curr)
+      ensures List(pre(curr))
+   {
+      unfold List(curr)
+      curr := curr.next
+      ghost{
+         fold List(pre(curr))
+      }
+   }
+   basecase{
+      fold List(pre(curr))
+   }
+}

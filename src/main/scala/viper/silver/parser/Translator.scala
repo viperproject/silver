@@ -607,7 +607,7 @@ case class Translator(program: PProgram) {
         case _: PSeqType => SeqLength(exp(base))(pos, info)
         case _: PMapType => MapCardinality(exp(base))(pos, info)
         case _: PSetType | _: PMultisetType => AnySetCardinality(exp(base))(pos, info)
-        case t => sys.error(s"unexpected type $t")
+        case t => sys.error(s"unexpected type $t with base $base")
       }
 
       case _: PEmptySet =>

@@ -1,0 +1,24 @@
+// post not preserverved ind step
+method f(l : Ref)
+    requires l != null
+   {
+   var curr : Ref
+   curr := l
+
+   var i : Int := 1
+
+   while(curr != null)
+        //:: ExpectedOutput(postcondition.not.preserved.inductive.step:assertion.false)
+        //:: ExpectedOutput(postcondition.not.preserved.base.case:assertion.false)
+      ensures i == 1
+   {
+        curr := null
+        i := 2
+
+        ghost{
+                i := 3
+           }
+   }
+
+   assert ( i == 1 )
+}
