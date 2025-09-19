@@ -112,7 +112,7 @@ case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv
         csv_file.write(s"BranchFailureMessage,${concerning.name},${cached}\n")
 
       case _: SimpleMessage | _: CopyrightReport | _: MissingDependencyReport | _: BackendSubProcessReport |
-           _: InternalWarningMessage | _: ConfigurationConfirmation=> // Irrelevant for reporting
+           _: InternalWarningMessage | _: ConfigurationConfirmation | _: BenchmarkingMessage => // Irrelevant for reporting
 
       case q: QuantifierInstantiationsMessage => csv_file.write(s"${q.toString}\n")
       case q: QuantifierChosenTriggersMessage => csv_file.write(s"${q.toString}\n")
@@ -236,6 +236,7 @@ case class StdIOReporter(name: String = "stdout_reporter",
       case _: QuantifierInstantiationsMessage => // too verbose, do not print
       case _: QuantifierChosenTriggersMessage => // too verbose, do not print
       case _: VerificationTerminationMessage =>
+      case _: BenchmarkingMessage =>
       case _ =>
         println( s"Cannot properly print message of unsupported type: $msg" )
     }
