@@ -6,6 +6,7 @@
 
 package viper.silver.reporter
 
+import viper.silver.frontend.SilFrontendConfig
 import viper.silver.plugin.SilverPluginManager
 import viper.silver.verifier.Success
 
@@ -21,6 +22,14 @@ trait Reporter {
 object NoopReporter extends Reporter {
   val name: String = "NoopReporter"
   def report(msg: Message): Unit = ()
+}
+
+trait ConfigurableReporter extends Reporter {
+  protected var config: Option[SilFrontendConfig] = None
+
+  def setConfig(c: Option[SilFrontendConfig]): Unit = {
+    config = c
+  }
 }
 
 trait PluginAwareReporter extends Reporter {
@@ -115,7 +124,8 @@ case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv
   }
 }
 
-case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = true) extends PluginAwareReporter {
+case class StdIOReporter(name: String = "stdout_reporter",
+                         timeInfo: Boolean = true) extends PluginAwareReporter with ConfigurableReporter {
 
   var counter = 0
 
@@ -125,6 +135,8 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
   private def plurals(num_things: Int): String = if (num_things==1) "" else "s"
 
   private def bulletFmt(num_items: Int): String = s"%${num_items.toString.length}d"
+
+  private def shouldReportPartial = config.isDefined && config.get.reportPartialResults.getOrElse(false)
 
   def doReport(msg: Message): Unit = {
     msg match {
@@ -209,9 +221,12 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
         println( s"encountered missing dependency: $text" )
 
       // These get reported without being transformed by any plugins, it would be an issue if we printed them to STDOUT.
-      case EntitySuccessMessage(_, _, _, _) =>    // FIXME Currently, we only print overall verification results to STDOUT.
-      case EntityFailureMessage(_, _, _, _, _) =>    // FIXME Currently, we only print overall verification results to STDOUT.
-      case BranchFailureMessage(_, _, _, _) =>    // FIXME Currently, we only print overall verification results to STDOUT.
+      case EntitySuccessMessage(_, _, _, _) =>
+        if (shouldReportPartial) println(msg)
+      case EntityFailureMessage(_, _, _, _, _) =>
+        if (shouldReportPartial) println(msg)
+      case BranchFailureMessage(_, _, _, _) =>
+        if (shouldReportPartial) println(msg)
       case ConfigurationConfirmation(_) =>     // TODO  use for progress reporting
         //println( s"Configuration confirmation: $text" )
       case InternalWarningMessage(_) =>        // TODO  use for progress reporting
