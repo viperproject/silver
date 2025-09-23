@@ -13,8 +13,10 @@ import viper.silver.plugin.SilverPluginManager
 import viper.silver.plugin.SilverPluginManager.PluginException
 import viper.silver.reporter._
 import viper.silver.verifier._
+
 import java.nio.file.{Path, Paths}
 import viper.silver.FastMessaging
+import viper.silver.ast.utility.chopper.PluginAwareChopper
 
 /**
  * Common functionality to implement a command-line verifier for Viper.  This trait
@@ -264,13 +266,21 @@ trait SilFrontend extends DefaultFrontend {
     def filter(input: Program): Result[Program] = {
       plugins.beforeMethodFilter(input) match {
         case Some(inputPlugin) =>
-          // Filter methods according to command-line arguments.
-          val verifyMethods =
-            if (config != null && config.methods() != ":all") Seq("methods", config.methods())
-            else inputPlugin.methods map (_.name)
-
-          val methods = inputPlugin.methods filter (m => verifyMethods.contains(m.name))
-          val program = Program(inputPlugin.domains, inputPlugin.fields, inputPlugin.functions, inputPlugin.predicates, methods, inputPlugin.extensions)(inputPlugin.pos, inputPlugin.info, inputPlugin.errT)
+          val program = config.select.toOption match {
+            case Some(names) =>
+              val namesSet = names.split(",").toSet
+              val chopped = PluginAwareChopper.chop(inputPlugin)(Some {
+                case m if namesSet.contains(m.name) => true
+                case _ => false
+              }, Some(1))
+              if (chopped.isEmpty) {
+                reporter report WarningsDuringTypechecking(Seq(TypecheckerWarning("No members were selected.", inputPlugin.pos)))
+                Program(Seq(), Seq(), Seq(), Seq(), Seq(), Seq())(inputPlugin.pos, inputPlugin.info, inputPlugin.errT)
+              } else {
+                chopped.head
+              }
+            case _ => inputPlugin
+          }
 
           plugins.beforeVerify(program) match {
             case Some(programPlugin) => Succ(programPlugin)

@@ -52,9 +52,11 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     hidden = true
   )
 
-  val methods = opt[String]("methods",
-    descr = "The Viper methods that should be verified. :all means all methods.",
-    default = Some(":all"),
+  val select = opt[String]("select",
+    descr = "Selects specific Viper methods, functions and predicates to be be verified along with the necessary " +
+      "dependencies. All other parts of the given Viper program will be ignored. " +
+      "The expected format is a list of method/function/predicate names separated by commas, e.g., name1,name2,name3.",
+    default = None,
     noshort = true,
     hidden = true
   )
