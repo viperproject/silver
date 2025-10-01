@@ -27,7 +27,7 @@ jobs:
       shell: bash
       run: "git config --global core.autocrlf false"
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
     - name: Set up Scala and JDK 1.${{ matrix.java }}
       uses: olafurpg/setup-scala@v14
       with:
