@@ -77,9 +77,10 @@ object Triggers {
       case ast.Let(v, e, body) => results =>
         results.flatten.flatMap(t => {
           val exp = t._1
+          val varIsUsed = body.contains(v.localVar)
           val coveredVars = t._2.filter(cv => cv != v.localVar) ++
-            (if (body.contains(v.localVar)) relevantVars.filter(rv => e.contains(rv)) else Seq())
-          if (isForbiddenInTrigger(e)) {
+            (if (varIsUsed) relevantVars.filter(rv => e.contains(rv)) else Seq())
+          if (varIsUsed && isForbiddenInTrigger(e)) {
             None
           } else {
             Some((exp.replace(v.localVar, e), coveredVars, t._3))
