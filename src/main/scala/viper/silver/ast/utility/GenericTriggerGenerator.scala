@@ -167,10 +167,15 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
       deepCollect(toSearch){ case qe: Quantification => Quantification_vars(qe)}.flatten
 
     val additionalRelevantVars: Seq[Var] = {
-      val additionalVarFinder = additionalRelevantVariables(vs, nestedBoundVars)
-      deepCollect(toSearch){
-        case n if additionalVarFinder.isDefinedAt(n) => additionalVarFinder(n)
-      }.flatten
+      var currentRelevantVars = vs
+      var varFinder = additionalRelevantVariables(currentRelevantVars, nestedBoundVars)
+      visit(toSearch){
+        case n if varFinder.isDefinedAt(n) =>
+          val newVars = varFinder.apply(n)
+          currentRelevantVars = (currentRelevantVars ++ newVars).distinct
+          varFinder = additionalRelevantVariables(currentRelevantVars, nestedBoundVars)
+      }
+      currentRelevantVars
     }
     val allRelevantVars = (vs ++ additionalRelevantVars).distinct
     val modifyTriggers = modifyPossibleTriggers(allRelevantVars)
