@@ -1,0 +1,22 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field x: Int
+field y: Int
+
+predicate P(this: Ref, n: Int) {
+  acc(this.x) && acc(this.y) && this.x == n
+}
+
+method foo(refs: Set[Ref], r2: Ref, r3: Ref)
+  requires forall r: Ref :: r in refs ==> P(r, 3)
+  requires forall i: Int, r: Ref :: r == r2 && i == 4 ==> P(r, i)
+{
+  if (r3 in refs) {
+    assert P(r3, 3);
+    exhale acc(P(r2, 4), 1/2)
+
+    //:: ExpectedCounterexample(assert.failed:assertion.false, (acc(P(r3, 3), 1/1), acc(P(r2, 4), 1/2)))
+    assert false
+  }
+}
