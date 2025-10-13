@@ -1,0 +1,783 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+domain s_UInt_u32  {
+
+  function s_UInt_u32_value(arg0: s_UInt_u32): Int
+
+  function s_UInt_u32_cons(arg0: Int): s_UInt_u32
+
+  axiom s_UInt_u32_ax_cons {
+    (forall s: s_UInt_u32 ::
+      { s_UInt_u32_value(s) }
+      s_UInt_u32_cons(s_UInt_u32_value(s)) == s)
+  }
+
+  axiom s_UInt_u32_ax_bounds {
+    (forall s: s_UInt_u32 ::
+      { s_UInt_u32_value(s) }
+      0 <= s_UInt_u32_value(s) && s_UInt_u32_value(s) <= 4294967295)
+  }
+
+  axiom s_UInt_u32_ax_value {
+    (forall value: Int ::
+      { s_UInt_u32_cons(value) }
+      0 <= value && value <= 4294967295 ==>
+      s_UInt_u32_value(s_UInt_u32_cons(value)) == value)
+  }
+}
+
+domain s_Int_i8  {
+
+  function s_Int_i8_value(arg0: s_Int_i8): Int
+
+  function s_Int_i8_cons(arg0: Int): s_Int_i8
+
+  axiom s_Int_i8_ax_cons {
+    (forall s: s_Int_i8 ::
+      { s_Int_i8_value(s) }
+      s_Int_i8_cons(s_Int_i8_value(s)) == s)
+  }
+
+  axiom s_Int_i8_ax_bounds {
+    (forall s: s_Int_i8 ::
+      { s_Int_i8_value(s) }
+      -128 <= s_Int_i8_value(s) && s_Int_i8_value(s) <= 127)
+  }
+
+  axiom s_Int_i8_ax_value {
+    (forall value: Int ::
+      { s_Int_i8_cons(value) }
+      -128 <= value && value <= 127 ==>
+      s_Int_i8_value(s_Int_i8_cons(value)) == value)
+  }
+}
+
+domain s_Param  {
+
+
+}
+
+domain s_Bool  {
+
+  function s_Bool_value(arg0: s_Bool): Bool
+
+  function s_Bool_cons(arg0: Bool): s_Bool
+
+  axiom s_Bool_ax_cons {
+    (forall s: s_Bool ::
+      { s_Bool_value(s) }
+      s_Bool_cons(s_Bool_value(s)) == s)
+  }
+
+  axiom s_Bool_ax_value {
+    (forall value: Bool ::
+      { s_Bool_cons(value) }
+      s_Bool_value(s_Bool_cons(value)) == value)
+  }
+}
+
+domain TypeOf  {
+
+  function s_Bool_typeof(arg0: s_Bool): Type
+
+  function s_Int_i8_typeof(arg0: s_Int_i8): Type
+
+  function s_Param_typeof(arg0: s_Param): Type
+
+  function s_Fields_typeof(arg0: s_Fields): Type
+
+  function s_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0_typeof(arg0: s_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0): Type
+
+  function s_Ref_immutable_typeof(arg0: s_Ref_immutable): Type
+
+  function s_UInt_u32_typeof(arg0: s_UInt_u32): Type
+}
+
+field p_UInt_u32_val: s_UInt_u32
+
+field p_Int_i8_val: s_Int_i8
+
+field p_Bool_val: s_Bool
+
+field p_Ref_immutable_val: s_Ref_immutable
+
+function f_Fields$colon$$colon$get_field_1(_1p: s_Ref_immutable): s_UInt_u32
+{
+  (let _0_1s_bb0_s0_i0 ==
+    (_1p) in
+    (let _0_0s_bb0_s0_i0 ==
+      (make_concrete_s_Fields(_0_1s_bb0_s0_i0.s_Ref_immutable_1).s_Fields_0) in
+      _0_0s_bb0_s0_i0))
+}
+
+function mir_binop_Ge_u32_u32(arg1: s_UInt_u32, arg2: s_UInt_u32): s_Bool
+{
+  s_Bool_cons(s_UInt_u32_value(arg1) >= s_UInt_u32_value(arg2))
+}
+
+function mir_unop_Neg_i8(arg: s_Int_i8): s_Int_i8
+{
+  (s_Int_i8_value(arg) == -128 ? arg : s_Int_i8_cons(-s_Int_i8_value(arg)))
+}
+
+function make_generic_s_Bool(self: s_Bool): s_Param
+  ensures make_concrete_s_Bool(result) == self
+
+
+function make_concrete_s_Bool(snap: s_Param): s_Bool
+  ensures make_generic_s_Bool(result) == snap
+
+
+function make_generic_s_Int_i8(self: s_Int_i8): s_Param
+  ensures make_concrete_s_Int_i8(result) == self
+
+
+function make_concrete_s_Int_i8(snap: s_Param): s_Int_i8
+  ensures make_generic_s_Int_i8(result) == snap
+
+
+function make_generic_s_Fields(self: s_Fields): s_Param
+  ensures make_concrete_s_Fields(result) == self
+
+
+function make_concrete_s_Fields(snap: s_Param): s_Fields
+  ensures make_generic_s_Fields(result) == snap
+
+
+function make_generic_s_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0(self: s_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0,
+  T: Type): s_Param
+  ensures make_concrete_s_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0(result,
+    s_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0_typeof(self).s_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0_typaram_T) ==
+    self
+
+
+function make_concrete_s_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0(snap: s_Param,
+  T: Type): s_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0
+  ensures make_generic_s_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0(result,
+    T) ==
+    snap
+
+
+function s_UInt_u32_unreachable(): s_UInt_u32
+  requires false
+  ensures false
+
+
+function s_0_Tuple_unreachable(): s_0_Tuple
+  requires false
+  ensures false
+
+
+function s_Fields_unreachable(): s_Fields
+  requires false
+  ensures false
+
+
+function s_Int_i8_unreachable(): s_Int_i8
+  requires false
+  ensures false
+
+
+function s_Param_unreachable(): s_Param
+  requires false
+  ensures false
+
+
+function s_3_Tuple_unreachable(): s_3_Tuple
+  requires false
+  ensures false
+
+
+function s_Tuple_unreachable(): s_Tuple
+  requires false
+  ensures false
+
+
+function s_Bool_unreachable(): s_Bool
+  requires false
+  ensures false
+
+
+function s_Ref_immutable_unreachable(): s_Ref_immutable
+  requires false
+  ensures false
+
+
+function s_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0_unreachable(): s_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0
+  requires false
+  ensures false
+
+
+function s_1_Tuple_unreachable(): s_1_Tuple
+  requires false
+  ensures false
+
+
+function p_UInt_u32_snap(self: Ref): s_UInt_u32
+  requires acc(p_UInt_u32(self), write)
+{
+  (unfolding acc(p_UInt_u32(self), write) in self.p_UInt_u32_val)
+}
+
+function p_0_Tuple_snap(self: Ref): s_0_Tuple
+  requires acc(p_0_Tuple(self), write)
+{
+  (unfolding acc(p_0_Tuple(self), write) in s_0_Tuple_cons())
+}
+
+function p_Fields_field_0(self: Ref): Ref
+  ensures (self == null) == (result == null)
+
+
+function p_Fields_field_1(self: Ref): Ref
+  ensures (self == null) == (result == null)
+
+
+function p_Fields_snap(self: Ref): s_Fields
+  requires acc(p_Fields(self), write)
+{
+  (unfolding acc(p_Fields(self), write) in
+    s_Fields_cons(p_UInt_u32_snap(p_Fields_field_0(self)), p_0_Tuple_snap(p_Fields_field_1(self))))
+}
+
+function p_Int_i8_snap(self: Ref): s_Int_i8
+  requires acc(p_Int_i8(self), write)
+{
+  (unfolding acc(p_Int_i8(self), write) in self.p_Int_i8_val)
+}
+
+function p_Param_snap(self: Ref, T: Type): s_Param
+
+
+function p_3_Tuple_field_0(self: Ref, T0: Type, T1: Type, T2: Type): Ref
+  ensures (self == null) == (result == null)
+
+
+function p_3_Tuple_field_1(self: Ref, T0: Type, T1: Type, T2: Type): Ref
+  ensures (self == null) == (result == null)
+
+
+function p_3_Tuple_field_2(self: Ref, T0: Type, T1: Type, T2: Type): Ref
+  ensures (self == null) == (result == null)
+
+
+function p_3_Tuple_snap(self: Ref, T0: Type, T1: Type, T2: Type): s_3_Tuple
+  requires acc(p_3_Tuple(self, T0, T1, T2), write)
+{
+  (unfolding acc(p_3_Tuple(self, T0, T1, T2), write) in
+    s_3_Tuple_cons(p_Param_snap(p_3_Tuple_field_0(self, T0, T1, T2), T0), p_Param_snap(p_3_Tuple_field_1(self,
+    T0, T1, T2), T0), p_Param_snap(p_3_Tuple_field_2(self, T0, T1, T2), T0)))
+}
+
+function p_Bool_snap(self: Ref): s_Bool
+  requires acc(p_Bool(self), write)
+{
+  (unfolding acc(p_Bool(self), write) in self.p_Bool_val)
+}
+
+function p_Tuple_field_0(self: Ref, T: Type): Ref
+  ensures (self == null) == (result == null)
+
+
+function p_Tuple_field_1(self: Ref, T: Type): Ref
+  ensures (self == null) == (result == null)
+
+
+function p_Tuple_snap(self: Ref, T: Type): s_Tuple
+  requires acc(p_Tuple(self, T), write)
+{
+  (unfolding acc(p_Tuple(self, T), write) in
+    s_Tuple_cons(p_3_Tuple_snap(p_Tuple_field_0(self, T), s_Bool_type(), T,
+    s_Int_i8_type()), p_Fields_snap(p_Tuple_field_1(self, T))))
+}
+
+function p_Ref_immutable_deref(self: Ref, T: Type): Ref
+  requires acc(p_Ref_immutable(self, T), write)
+{
+  (unfolding acc(p_Ref_immutable(self, T), write) in
+    self.p_Ref_immutable_val.s_Ref_immutable_0)
+}
+
+function p_Ref_immutable_snap(self: Ref, T: Type): s_Ref_immutable
+  requires acc(p_Ref_immutable(self, T), write)
+  ensures s_Param_typeof(result.s_Ref_immutable_1) == T
+{
+  (unfolding acc(p_Ref_immutable(self, T), write) in
+    self.p_Ref_immutable_val)
+}
+
+function p_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0_field_0(self: Ref,
+  T: Type): Ref
+  ensures (self == null) == (result == null)
+
+
+function p_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0_snap(self: Ref,
+  T: Type): s_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0
+  requires acc(p_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0(self,
+    T), write)
+{
+  (unfolding acc(p_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0(self,
+    T), write) in
+    s_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0_cons(p_Ref_immutable_snap(p_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0_field_0(self,
+    T), s_Fields_type())))
+}
+
+predicate p_UInt_u32(self: Ref) {
+  acc(self.p_UInt_u32_val, write)
+}
+
+predicate p_0_Tuple(self: Ref) {
+  true
+}
+
+predicate p_Fields(self: Ref) {
+  acc(p_UInt_u32(p_Fields_field_0(self)), write) &&
+  acc(p_0_Tuple(p_Fields_field_1(self)), write)
+}
+
+predicate p_Int_i8(self: Ref) {
+  acc(self.p_Int_i8_val, write)
+}
+
+predicate p_Param(self: Ref, T: Type)
+
+predicate p_3_Tuple(self: Ref, T0: Type, T1: Type, T2: Type) {
+  acc(p_Param(p_3_Tuple_field_0(self, T0, T1, T2), T0), write) &&
+  (acc(p_Param(p_3_Tuple_field_1(self, T0, T1, T2), T0), write) &&
+  acc(p_Param(p_3_Tuple_field_2(self, T0, T1, T2), T0), write))
+}
+
+predicate p_Bool(self: Ref) {
+  acc(self.p_Bool_val, write)
+}
+
+predicate p_Tuple(self: Ref, T: Type) {
+  acc(p_3_Tuple(p_Tuple_field_0(self, T), s_Bool_type(), T, s_Int_i8_type()), write) &&
+  acc(p_Fields(p_Tuple_field_1(self, T)), write)
+}
+
+predicate p_Ref_immutable(self: Ref, T: Type) {
+  acc(self.p_Ref_immutable_val, write) &&
+  s_Param_typeof(self.p_Ref_immutable_val.s_Ref_immutable_1) == T
+}
+
+predicate p_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0(self: Ref,
+  T: Type) {
+  acc(p_Ref_immutable(p_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0_field_0(self,
+  T), s_Fields_type()), write)
+}
+
+method m_test(_0p: Ref, _1p: Ref, _2p: Ref, T: Type)
+  requires acc(p_Int_i8(_1p), write)
+  requires acc(p_Param(_2p, T), write)
+  requires true
+  ensures acc(p_Fields(_0p), write)
+  ensures true
+  ensures s_Bool_value((let _0_1s_bb0_s0_i0 ==
+      (old(p_Int_i8_snap(_1p))) in
+      (let _0_2s_bb0_s0_i0 ==
+        (old(p_Param_snap(_2p, T))) in
+        (let _0_3s_bb0_s0_i0 ==
+          (p_Fields_snap(_0p)) in
+          (let _0_5s_bb0_s2_i1 ==
+            (s_0_Tuple_cons()) in
+            (let _0_9s_bb0_s7_i1 ==
+              (s_Ref_immutable_cons(null, make_generic_s_Fields(_0_3s_bb0_s0_i0))) in
+              (let _0_8s_bb0_s8_i1 ==
+                (s_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0_cons(_0_9s_bb0_s7_i1)) in
+                (let _0_7s_bb0_s10_i1 ==
+                  (s_Ref_immutable_cons(null, make_generic_s_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0(_0_8s_bb0_s8_i1,
+                  T))) in
+                  (let _0_6s_bb0_s11_i1 ==
+                    (s_Ref_immutable_cons(null, make_generic_s_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0(make_concrete_s_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0(_0_7s_bb0_s10_i1.s_Ref_immutable_1,
+                    T), T))) in
+                    (let _0_4s_bb0_s12_i1 ==
+                      (s_Bool_cons((forall qvar_0_0: s_UInt_u32 :: // HERE { mir_binop_Ge_u32_u32(qvar_0_0, qvar_0_0) }
+                      s_Bool_value((let _1_1s_bb0_s0_i0 ==
+                          (_0_6s_bb0_s11_i1) in
+                          (let _1_2s_bb0_s0_i0 ==
+                            (qvar_0_0) in
+                            (let _1_4s_bb0_s2_i1 ==
+                              (_1_2s_bb0_s0_i0) in
+                              (let _1_6s_bb0_s5_i1 ==
+                                (s_Ref_immutable_cons(null, make_generic_s_Fields(make_concrete_s_Fields(make_concrete_s_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0(_1_1s_bb0_s0_i0.s_Ref_immutable_1,
+                                T).s_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0_0.s_Ref_immutable_1)))) in
+                                (let _1_5s_bb0_s6_i1 ==
+                                  (f_Fields$colon$$colon$get_field_1(_1_6s_bb0_s5_i1)) in
+                                  (let _1_3s_bb1_s1_i1 ==
+                                    (mir_binop_Ge_u32_u32(_1_4s_bb0_s2_i1, _1_5s_bb0_s6_i1)) in
+                                    (let _1_phi_bb1_s2_i0 ==
+                                      ((s_Bool_value(_1_3s_bb1_s1_i1) ==
+                                      false ?
+                                        (let _1_0s_bb3_s2_i0 ==
+                                          (s_Bool_cons(true)) in
+                                          s_1_Tuple_cons(make_generic_s_Bool(_1_0s_bb3_s2_i0))) :
+                                        (let _1_7s_bb2_s3_i1 ==
+                                          (_1_2s_bb0_s0_i0) in
+                                          (let _1_8s_bb2_s5_i1 ==
+                                            (_1_2s_bb0_s0_i0) in
+                                            (let _1_0s_bb2_s6_i1 ==
+                                              (mir_binop_Ge_u32_u32(_1_7s_bb2_s3_i1,
+                                              _1_8s_bb2_s5_i1)) in
+                                              s_1_Tuple_cons(make_generic_s_Bool(_1_0s_bb2_s6_i1))))))) in
+                                      (let _1_0s_bb1_s2_i2 ==
+                                        (make_concrete_s_Bool(_1_phi_bb1_s2_i0.s_1_Tuple_0)) in
+                                        _1_0s_bb1_s2_i2)))))))))))) in
+                      (let _0_0s_bb1_s6_i0 ==
+                        (_0_4s_bb0_s12_i1) in
+                        _0_0s_bb1_s6_i0)))))))))))
+{
+  var _3p: Ref
+  var _4p: Ref
+  var _5p: Ref
+  var _6p: Ref
+  var _7p: Ref
+  var _8p: Ref
+  var _9p: Ref
+  var _10p: Ref
+  var _from_bb0_to_bb1: Bool
+  var _from_bb3_to_bb4: Bool
+  var _from_bb1_to_bb2: Bool
+  var _from_bb2_to_bb3: Bool
+  var _tmp0: s_Param
+  var _tmp1: s_Int_i8
+  var _tmp2: s_Param
+  var _tmp3: s_Int_i8
+  var _tmp4: s_0_Tuple
+  var _tmp5: s_3_Tuple
+  var _tmp6: s_Fields
+  var _tmp7: s_0_Tuple
+  label start
+  // var _3p
+  // var _4p
+  // var _5p
+  // var _6p
+  // var _7p
+  // var _8p
+  // var _9p
+  // var _10p
+  _from_bb0_to_bb1 := false
+  _from_bb3_to_bb4 := false
+  _from_bb1_to_bb2 := false
+  _from_bb2_to_bb3 := false
+  goto bb_0
+  label bb_0
+  // [MIR] bb0[0]: StorageLive(_3)
+  // [MIR] bb0[1]: StorageLive(_4)
+  // [MIR] bb0[2]: StorageLive(_5)
+  // [MIR] bb0[3]: _5 = move _2
+  // (ignoring)
+  // (ignoring)
+  // (ignoring)
+  // (ignoring)
+  // (ignoring)
+  // var _tmp0
+  _tmp0 := p_Param_snap(_2p, T)
+  exhale acc(p_Param(_2p, T), write)
+  p_Param_assign(_5p, T, _tmp0)
+  label _after_0_3
+  // [MIR] bb0[4]: StorageLive(_6)
+  // [MIR] bb0[5]: StorageLive(_7)
+  // [MIR] bb0[6]: _7 = copy _1
+  // (ignoring)
+  // (ignoring)
+  // (ignoring)
+  p_Int_i8_assign(_7p, p_Int_i8_snap(_1p))
+  label _after_0_6
+  // [MIR] bb0[7]: _6 = Neg(move _7)
+  // (ignoring)
+  // (ignoring)
+  // (ignoring)
+  // (ignoring)
+  // (ignoring)
+  // var _tmp1
+  _tmp1 := p_Int_i8_snap(_7p)
+  exhale acc(p_Int_i8(_7p), write)
+  p_Int_i8_assign(_6p, mir_unop_Neg_i8(_tmp1))
+  label _after_0_7
+  // [MIR] bb0[8]: StorageDead(_7)
+  // (ignoring)
+  // [MIR] bb0[9]: _4 = (const true, move _5, move _6)
+  // (ignoring)
+  // (ignoring)
+  // (ignoring)
+  // (ignoring)
+  // (ignoring)
+  // (ignoring)
+  // (ignoring)
+  // var _tmp2
+  _tmp2 := p_Param_snap(_5p, T)
+  exhale acc(p_Param(_5p, T), write)
+  // var _tmp3
+  _tmp3 := p_Int_i8_snap(_6p)
+  exhale acc(p_Int_i8(_6p), write)
+  p_3_Tuple_assign(_4p, s_Bool_type(), T, s_Int_i8_type(), s_3_Tuple_cons(make_generic_s_Bool(s_Bool_cons(true)), _tmp2, make_generic_s_Int_i8(_tmp3)))
+  label _after_0_9
+  // [MIR] bb0[10]: StorageDead(_6)
+  // (ignoring)
+  // [MIR] bb0[11]: drop(_5) -> [return: bb1, unwind: bb5]
+  // PCG (T) pre_operands
+  // PCG (T) post_operands
+  // PCG (T) pre_main
+  // (ignoring)
+  // (ignoring)
+  // PCG (T) post_main
+  _from_bb0_to_bb1 := true
+  label _after_0_11
+  goto bb_1
+  label bb_1
+  // [MIR] bb1[0]: StorageDead(_5)
+  // (ignoring)
+  // [MIR] bb1[1]: StorageLive(_8)
+  // [MIR] bb1[2]: StorageLive(_9)
+  // [MIR] bb1[3]: _9 = ()
+  // (ignoring)
+  // (ignoring)
+  // (ignoring)
+  p_0_Tuple_assign(_9p, s_0_Tuple_cons())
+  label _after_1_3
+  // [MIR] bb1[4]: _8 = Fields { field_1: const 0_u32, field_2: move _9 }
+  // (ignoring)
+  // (ignoring)
+  // (ignoring)
+  // (ignoring)
+  // (ignoring)
+  // var _tmp4
+  _tmp4 := p_0_Tuple_snap(_9p)
+  exhale acc(p_0_Tuple(_9p), write)
+  p_Fields_assign(_8p, s_Fields_cons(s_UInt_u32_cons(0), _tmp4))
+  label _after_1_4
+  // [MIR] bb1[5]: StorageDead(_9)
+  // (ignoring)
+  // [MIR] bb1[6]: _3 = Tuple::<T>(move _4, move _8)
+  // (ignoring)
+  // (ignoring)
+  // (ignoring)
+  // (ignoring)
+  // (ignoring)
+  // (ignoring)
+  // (ignoring)
+  // var _tmp5
+  _tmp5 := p_3_Tuple_snap(_4p, s_Bool_type(), T, s_Int_i8_type())
+  exhale acc(p_3_Tuple(_4p, s_Bool_type(), T, s_Int_i8_type()), write)
+  // var _tmp6
+  _tmp6 := p_Fields_snap(_8p)
+  exhale acc(p_Fields(_8p), write)
+  p_Tuple_assign(_3p, T, s_Tuple_cons(_tmp5, _tmp6))
+  label _after_1_6
+  // [MIR] bb1[7]: StorageDead(_8)
+  // (ignoring)
+  // [MIR] bb1[8]: drop(_4) -> [return: bb2, unwind: bb6]
+  // PCG (T) pre_operands
+  // PCG (T) post_operands
+  // PCG (T) pre_main
+  // (ignoring)
+  // (ignoring)
+  // PCG (T) post_main
+  _from_bb1_to_bb2 := true
+  label _after_1_8
+  goto bb_2
+  label bb_2
+  // [MIR] bb2[0]: StorageDead(_4)
+  // (ignoring)
+  // [MIR] bb2[1]: FakeRead(ForLet(None), _3)
+  label _after_2_1
+  // [MIR] bb2[2]: StorageLive(_10)
+  // [MIR] bb2[3]: _10 = ()
+  // (ignoring)
+  // (ignoring)
+  // (ignoring)
+  p_0_Tuple_assign(_10p, s_0_Tuple_cons())
+  label _after_2_3
+  // [MIR] bb2[4]: _0 = Fields { field_1: const 0_u32, field_2: move _10 }
+  // (ignoring)
+  // (ignoring)
+  // (ignoring)
+  // (ignoring)
+  // (ignoring)
+  // var _tmp7
+  _tmp7 := p_0_Tuple_snap(_10p)
+  exhale acc(p_0_Tuple(_10p), write)
+  p_Fields_assign(_0p, s_Fields_cons(s_UInt_u32_cons(0), _tmp7))
+  label _after_2_4
+  // [MIR] bb2[5]: StorageDead(_10)
+  // (ignoring)
+  // [MIR] bb2[6]: drop(_3) -> [return: bb3, unwind: bb6]
+  // PCG (T) pre_operands
+  // PCG (T) post_operands
+  // PCG (T) pre_main
+  // (ignoring)
+  // (ignoring)
+  // PCG (T) post_main
+  _from_bb2_to_bb3 := true
+  label _after_2_6
+  goto bb_3
+  label bb_3
+  // [MIR] bb3[0]: StorageDead(_3)
+  // (ignoring)
+  // [MIR] bb3[1]: drop(_2) -> [return: bb4, unwind: bb7]
+  // PCG (T) pre_operands
+  // PCG (T) post_operands
+  // PCG (T) pre_main
+  // (ignoring)
+  // (ignoring)
+  // PCG (T) post_main
+  _from_bb3_to_bb4 := true
+  label _after_3_1
+  goto bb_4
+  label bb_4
+  // [MIR] bb4[0]: return
+  // PCG (T) pre_operands
+  // PCG (T) post_operands
+  // PCG (T) pre_main
+  // PCG (T) post_main
+  label package_post0
+  label _after_4_0
+  goto end
+  label bb_5
+  // cleanup block
+  assert false
+  label bb_6
+  // cleanup block
+  assert false
+  label bb_7
+  // cleanup block
+  assert false
+  label end
+  // return
+}
+
+method make_generic_p_Bool(self: Ref)
+  requires acc(p_Bool(self), write)
+  ensures acc(p_Param(self, s_Bool_type()), write)
+  ensures old(make_generic_s_Bool(p_Bool_snap(self))) ==
+    p_Param_snap(self, s_Bool_type())
+
+
+method make_concrete_p_Bool(self: Ref)
+  requires acc(p_Param(self, s_Bool_type()), write)
+  ensures acc(p_Bool(self), write)
+  ensures old(p_Param_snap(self, s_Bool_type())) ==
+    make_generic_s_Bool(p_Bool_snap(self))
+
+
+method make_generic_p_Int_i8(self: Ref)
+  requires acc(p_Int_i8(self), write)
+  ensures acc(p_Param(self, s_Int_i8_type()), write)
+  ensures old(make_generic_s_Int_i8(p_Int_i8_snap(self))) ==
+    p_Param_snap(self, s_Int_i8_type())
+
+
+method make_concrete_p_Int_i8(self: Ref)
+  requires acc(p_Param(self, s_Int_i8_type()), write)
+  ensures acc(p_Int_i8(self), write)
+  ensures old(p_Param_snap(self, s_Int_i8_type())) ==
+    make_generic_s_Int_i8(p_Int_i8_snap(self))
+
+
+method make_generic_p_Fields(self: Ref)
+  requires acc(p_Fields(self), write)
+  ensures acc(p_Param(self, s_Fields_type()), write)
+  ensures old(make_generic_s_Fields(p_Fields_snap(self))) ==
+    p_Param_snap(self, s_Fields_type())
+
+
+method make_concrete_p_Fields(self: Ref)
+  requires acc(p_Param(self, s_Fields_type()), write)
+  ensures acc(p_Fields(self), write)
+  ensures old(p_Param_snap(self, s_Fields_type())) ==
+    make_generic_s_Fields(p_Fields_snap(self))
+
+
+method p_UInt_u32_assign(self: Ref, value: s_UInt_u32)
+  ensures acc(p_UInt_u32(self), write)
+  ensures p_UInt_u32_snap(self) == value
+
+
+method p_0_Tuple_assign(self: Ref, value: s_0_Tuple)
+  ensures acc(p_0_Tuple(self), write)
+  ensures p_0_Tuple_snap(self) == value
+
+
+method p_Fields_assign(self: Ref, value: s_Fields)
+  ensures acc(p_Fields(self), write)
+  ensures p_Fields_snap(self) == value
+
+
+method p_Int_i8_assign(self: Ref, value: s_Int_i8)
+  ensures acc(p_Int_i8(self), write)
+  ensures p_Int_i8_snap(self) == value
+
+
+method p_Param_assign(self: Ref, T: Type, value: s_Param)
+  ensures acc(p_Param(self, T), write)
+  ensures p_Param_snap(self, T) == value
+
+
+method p_3_Tuple_assign(self: Ref, T0: Type, T1: Type, T2: Type, value: s_3_Tuple)
+  ensures acc(p_3_Tuple(self, T0, T1, T2), write)
+  ensures p_3_Tuple_snap(self, T0, T1, T2) == value
+
+
+method p_Bool_assign(self: Ref, value: s_Bool)
+  ensures acc(p_Bool(self), write)
+  ensures p_Bool_snap(self) == value
+
+
+method p_Tuple_assign(self: Ref, T: Type, value: s_Tuple)
+  ensures acc(p_Tuple(self, T), write)
+  ensures p_Tuple_snap(self, T) == value
+
+
+method p_Ref_immutable_assign(self: Ref, T: Type, value: s_Ref_immutable)
+  ensures acc(p_Ref_immutable(self, T), write)
+  ensures p_Ref_immutable_snap(self, T) == value
+
+
+method p_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0_assign(self: Ref,
+  T: Type, value: s_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0)
+  ensures acc(p_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0(self,
+    T), write)
+  ensures p_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0_snap(self,
+    T) ==
+    value
+
+
+adt s_0_Tuple {
+  s_0_Tuple_cons()
+}
+
+adt s_Fields {
+  s_Fields_cons(s_Fields_0: s_UInt_u32, s_Fields_1: s_0_Tuple)
+}
+
+adt s_3_Tuple {
+  s_3_Tuple_cons(s_3_Tuple_0: s_Param, s_3_Tuple_1: s_Param, s_3_Tuple_2: s_Param)
+}
+
+adt s_Tuple {
+  s_Tuple_cons(s_Tuple_0: s_3_Tuple, s_Tuple_1: s_Fields)
+}
+
+adt s_Ref_immutable {
+  s_Ref_immutable_cons(s_Ref_immutable_0: Ref, s_Ref_immutable_1: s_Param)
+}
+
+adt s_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0 {
+  s_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0_cons(s_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0_0: s_Ref_immutable)
+}
+
+adt s_1_Tuple {
+  s_1_Tuple_cons(s_1_Tuple_0: s_Param)
+}
+
+adt Type {
+  s_Bool_type()
+  s_Int_i8_type()
+  s_Fields_type()
+  s_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0_type(s_prusti_post_item_test_3bb22df32a5a482fa3eacc11be0995f6_Closure_0_typaram_T: Type)
+  s_Ref_immutable_type(s_Ref_immutable_typaram_T: Type)
+  s_UInt_u32_type()
+  Unknown_type(non_unit: Int)
+}
