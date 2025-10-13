@@ -1,0 +1,25 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+field f: Int
+
+predicate p(x: Ref)
+
+method m(xs: Set[Ref], q: Perm, xs1: Set[Ref]) {
+
+  inhale none < q
+  inhale forall x: Ref :: (x in xs) ==> acc(x.f) --* acc(p(x))
+
+  assume (forall x1: Ref :: {acc(x1.f, q) --* acc(p(x1), q)} (x1 in xs1) ==> acc(x1.f, q) --* acc(p(x1), q))
+
+  var a: Ref
+
+  assume a in xs1
+
+  //:: UnexpectedOutput(assert.failed:wand.not.found, /carbon/issue/257/)
+  assert acc(a.f, q) --* acc(p(a), q)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert q == write ==> false // MS: Can we expect this to hold?
+}
