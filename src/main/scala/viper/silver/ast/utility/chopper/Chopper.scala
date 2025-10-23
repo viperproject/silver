@@ -961,6 +961,7 @@ trait Edges { this: Vertices =>
         case _ => Seq(Vertices.FunctionSpec(n.funcname))
       }
       case n: ast.DomainFuncApp => Seq(Vertices.DomainFunction(n.funcname))
+      case n: ast.BackendFuncApp => Seq(Vertices.DomainFunction(n.funcname))
       case n: ast.PredicateAccess => Seq(Vertices.PredicateSig(n.predicateName))
       // The call is fine because the result is used as the target of a dependency.
       case n: ast.Unfold => Seq(Vertices.unsafeGetPredicateBody(n.acc.loc.predicateName))
