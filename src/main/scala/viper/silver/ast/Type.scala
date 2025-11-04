@@ -99,7 +99,7 @@ sealed trait CollectionType extends BuiltInType with GenericType {
   protected def make(et:Type) : MyType
 }
 /** Type for sequences */
-sealed case class SeqType(override val elementType: Type) extends CollectionType{
+final case class SeqType(override val elementType: Type) extends CollectionType{
   override type MyType = SeqType
   override def make(et:Type) : MyType = SeqType(et)
   override val genericName = "Seq"
@@ -107,7 +107,7 @@ sealed case class SeqType(override val elementType: Type) extends CollectionType
 //    SeqType(elementType.substitute(typVarsMap))y
 }
 /** Type for sets */
-sealed case class SetType(override val  elementType: Type) extends CollectionType{
+final case class SetType(override val  elementType: Type) extends CollectionType{
 //  override lazy val isConcrete = elementType.isConcrete
   override type MyType = SetType
   override def make(et:Type) : MyType = SetType(et)
@@ -116,7 +116,7 @@ sealed case class SetType(override val  elementType: Type) extends CollectionTyp
 //    SetType(elementType.substitute(typVarsMap))
 }
 /** Type for multisets */
-sealed case class MultisetType(override val  elementType: Type) extends CollectionType{
+final case class MultisetType(override val  elementType: Type) extends CollectionType{
 //  override lazy val isConcrete = elementType.isConcrete
   override type MyType = MultisetType
   override def make(et:Type) : MyType = MultisetType(et)
@@ -126,7 +126,7 @@ sealed case class MultisetType(override val  elementType: Type) extends Collecti
 }
 
 /** Type of maps */
-sealed case class MapType(keyType : Type, valueType : Type) extends BuiltInType with GenericType {
+final case class MapType(keyType : Type, valueType : Type) extends BuiltInType with GenericType {
   val keyTypeParameter : TypeVar = TypeVar("K")
   val ValueTypeParameter : TypeVar = TypeVar("E")
 
@@ -149,7 +149,7 @@ sealed case class MapType(keyType : Type, valueType : Type) extends BuiltInType 
   * @param partialTypVarsMap Maps type parameters to (possibly concrete) types. May not map all
   *                          type parameters, may even be empty.
   */
-sealed case class DomainType(domainName: String, partialTypVarsMap: Map[TypeVar, Type])
+final case class DomainType(domainName: String, partialTypVarsMap: Map[TypeVar, Type])
                             (val typeParameters: Seq[TypeVar])
     extends GenericType {
 
@@ -187,7 +187,7 @@ object DomainType{
     DomainType(domain.name, typVarsMap)(domain.typVars)
 }
 /** Type variables. */
-case class TypeVar(name: String) extends Type {
+final case class TypeVar(name: String) extends Type {
   lazy val isConcrete = false
 
   def substitute(typVarsMap: Map[TypeVar, Type]): Type = {
@@ -200,7 +200,7 @@ case class TypeVar(name: String) extends Type {
   //def !=(other: TypeVar) = name != other
 }
 
-case class BackendType(viperName: String, interpretations: Map[String, String]) extends AtomicType
+final case class BackendType(viperName: String, interpretations: Map[String, String]) extends AtomicType
 
 trait ExtensionType extends Type{
   def getAstType: Type = ???

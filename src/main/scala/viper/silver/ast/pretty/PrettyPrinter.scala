@@ -129,7 +129,8 @@ trait PrettyPrintPrimitives {
       scan (1, outLine)
     }
 
-  def group(d: Cont): Cont =
+  @inline
+  final def group(d: Cont): Cont =
     (iw: IW) =>
       (c: TreeCont) =>
         Call(() =>
@@ -139,7 +140,8 @@ trait PrettyPrintPrimitives {
             (dq: Dq) => { t (p) (dq :+ (p, (_: Horizontal) => (c: Out) => Done(c))) })
 
 
-  def nest(j: Indent, d: Cont) : Cont =
+  @inline
+  final def nest(j: Indent, d: Cont) : Cont =
     (iw: IW) => {
       val (i, w) = iw
       d ((i+j, w))
@@ -154,7 +156,8 @@ trait PrettyPrintPrimitives {
     res.runT.mkString
   }
 
-  def nil: Cont =
+  @inline
+  final def nil: Cont =
     (_: IW) =>
       (c: TreeCont) =>
         Done(c)
@@ -279,7 +282,8 @@ trait FastPrettyPrinterBase extends PrettyPrintPrimitives {
     }
 
 
-  def string (s : String) : Cont = {
+  @inline
+  final def string (s : String) : Cont = {
     if (s == "") {
       nil
     } else if (s.charAt(0) == '\n') {
@@ -293,7 +297,8 @@ trait FastPrettyPrinterBase extends PrettyPrintPrimitives {
   /**
     * Convert a character to a document.  The character can be a newline.
     */
-  implicit def char (c : Char) : Cont =
+  @inline
+  implicit final def char (c : Char) : Cont =
     if (c == '\n')
       line
     else
@@ -318,7 +323,8 @@ trait FastPrettyPrinterBase extends PrettyPrintPrimitives {
     else
       ds.tail.foldLeft (ds.head) (f)
 
-  def ssep (ds : Seq[Cont], sep : Cont) : Cont =
+  @inline
+  final def ssep (ds : Seq[Cont], sep : Cont) : Cont =
     folddoc (ds, _ <> sep <> _)
 
 
@@ -328,41 +334,48 @@ trait FastPrettyPrinterBase extends PrettyPrintPrimitives {
     else
       linebreak <> folddoc (ds, _ <> sep <@> _)
 
-
-  def value (v : Any) : Cont =
+  @inline
+  final def value (v : Any) : Cont =
     if (v == null)
       "null"
     else
       string (v.toString)
 
 
-  def surround (d : Cont, b : Cont) : Cont =
+  @inline
+  final def surround (d : Cont, b : Cont) : Cont =
     b <> d <> b
 
 
-  def braces (d : Cont) : Cont =
+  @inline
+  final def braces (d : Cont) : Cont =
     char ('{') <> d <> char ('}')
 
 
-  def parens (d : Cont) : Cont =
+  @inline
+  final def parens (d : Cont) : Cont =
     char ('(') <> d <> char (')')
 
 
 
-  def brackets (d : Cont) : Cont =
+  @inline
+  final def brackets (d : Cont) : Cont =
     char ('[') <> d <> char (']')
 
 
-  def space : Cont =
+  @inline
+  final def space : Cont =
     char (' ')
 
 
-  def linebreak : Cont =
+  @inline
+  final def linebreak : Cont =
     line ("\n")
 
 
   implicit class ContOps(dl: Cont) {
-    def <>(dr: Cont) : Cont =
+    @inline
+    final def <>(dr: Cont) : Cont =
       (iw: IW) =>
         (c: TreeCont) => {
           Call(() =>
@@ -372,14 +385,17 @@ trait FastPrettyPrinterBase extends PrettyPrintPrimitives {
             } yield t2)
         }
 
-    def <+> (dr : Cont) : Cont =
+    @inline
+    final def <+> (dr : Cont) : Cont =
       dl <> space <> dr
 
-    def <@> (dr: Cont) : Cont =
+    @inline
+    final def <@> (dr: Cont) : Cont =
       if (dl == nil) dr else if (dr == nil) dl else dl <> line <> dr
   }
 
-  def line: Cont = line(" ")
+  @inline
+  final def line: Cont = line(" ")
 
 
 }

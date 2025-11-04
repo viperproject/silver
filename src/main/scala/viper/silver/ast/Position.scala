@@ -45,7 +45,7 @@ trait HasIdentifier extends HasLineColumn {
   def id: String
 }
 
-case class LineColumnPosition(line: Int, column: Int) extends HasLineColumn {
+final case class LineColumnPosition(line: Int, column: Int) extends HasLineColumn {
   override def deltaColumn(delta: Int) = LineColumnPosition(line, column + delta)
 }
 
@@ -137,7 +137,7 @@ object SourcePosition {
 }
 
 /** Refers to a position in a source language that has been translated to Silver. */
-case class TranslatedPosition(pos: AbstractSourcePosition) extends AbstractSourcePosition {
+final case class TranslatedPosition(pos: AbstractSourcePosition) extends AbstractSourcePosition {
   val file: Path = pos.file
   val start: HasLineColumn = pos.start
   val end: Option[HasLineColumn] = pos.end
@@ -145,7 +145,7 @@ case class TranslatedPosition(pos: AbstractSourcePosition) extends AbstractSourc
     new TranslatedPosition(pos.deltaColumn(delta))
 }
 
-case class FilePosition(file: Path, vline: Int, col: Int) extends util.parsing.input.Position with HasLineColumn {
+final case class FilePosition(file: Path, vline: Int, col: Int) extends util.parsing.input.Position with HasLineColumn {
   override lazy val line: Int = vline
   override lazy val column: Int = col
   override lazy val lineContents: String = toString
@@ -161,7 +161,7 @@ object FilePosition {
   *
   * @param identifier The string identifying the position.
   */
-case class VirtualPosition(identifier: String) extends Position {
+final case class VirtualPosition(identifier: String) extends Position {
   override def toString: String = identifier
   override def deltaColumn(delta: Int): VirtualPosition = this
 }

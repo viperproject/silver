@@ -224,7 +224,7 @@ object Simplifier {
         IntLit(left % right)(root.pos, root.info)
 
       // statement simplifications
-      case Seqn(EmptyStmt, _) => EmptyStmt // remove empty Seqn (including unnecessary scopedDecls)
+      case Seqn(Seq(), _) => EmptyStmt // remove empty Seqn (including unnecessary scopedDecls)
       case s@Seqn(ss, scopedDecls) if ss.contains(EmptyStmt) => // remove empty statements
         val newSS = ss.filterNot(_ == EmptyStmt)
         Seqn(newSS, scopedDecls)(s.pos, s.info, s.errT)

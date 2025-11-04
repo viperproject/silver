@@ -16,6 +16,9 @@ ThisBuild / scalacOptions ++= Seq(
   "-Wunused",                         // Warn on unused imports
   "-Ypatmat-exhaust-depth", "40",     // Increase depth of pattern matching analysis
   // "-Xfatal-warnings",                 // Treat Warnings as errors to guarantee code quality in future changes
+  "-opt:inline:**",
+  "-Wopt",
+  //"-Vinline my/project/C.f",
 )
 
 // Enforce UTF-8, instead of relying on properly set locales

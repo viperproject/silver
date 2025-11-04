@@ -21,8 +21,8 @@ import viper.silver.verifier.{AbstractVerificationError, ConsistencyError, Error
 This is the Viper abstract syntax description.
 
 Some design choices:
-- Everything is either a trait, an abstract class, a case class or a case object.  Everything that we
-  instantiate is a case class or case object.
+- Everything is either a trait, an abstract class, a final case class or a case object.  Everything that we
+  instantiate is a final case class or case object.
 - We use structural equality for everything, which is provided by default for case classes/objects.
 - We use local consistency checks when nodes are created if possible, and if we know that the condition
   we check is necessary.
@@ -272,28 +272,28 @@ case object NoTrafos extends ErrorTrafo {
 }
 
 /** Class that allows generation of all transformations */
-case class Trafos(error: List[PartialFunction[AbstractVerificationError, AbstractVerificationError]], reason: List[PartialFunction[ErrorReason, ErrorReason]], node: Option[ErrorNode]) extends ErrorTrafo {
+final case class Trafos(error: List[PartialFunction[AbstractVerificationError, AbstractVerificationError]], reason: List[PartialFunction[ErrorReason, ErrorReason]], node: Option[ErrorNode]) extends ErrorTrafo {
   val eTransformations = error
   val rTransformations = reason
   val nTransformations = node
 }
 
 /** Create new error transformation */
-case class ErrTrafo(error: PartialFunction[AbstractVerificationError, AbstractVerificationError]) extends ErrorTrafo {
+final case class ErrTrafo(error: PartialFunction[AbstractVerificationError, AbstractVerificationError]) extends ErrorTrafo {
   val eTransformations = List(error)
   val rTransformations = Nil
   val nTransformations = None
 }
 
 /** Create new reason transformation */
-case class ReTrafo(reason: PartialFunction[ErrorReason, ErrorReason]) extends ErrorTrafo {
+final case class ReTrafo(reason: PartialFunction[ErrorReason, ErrorReason]) extends ErrorTrafo {
   val eTransformations = Nil
   val rTransformations = List(reason)
   val nTransformations = None
 }
 
 /** Create new node transformation */
-case class NodeTrafo(node: ErrorNode) extends ErrorTrafo {
+final case class NodeTrafo(node: ErrorNode) extends ErrorTrafo {
   val eTransformations = Nil
   val rTransformations = Nil
   val nTransformations = Some(node)
@@ -372,18 +372,18 @@ case object NoInfo extends Info {
   override val isCached = false
 }
 
-case class SourcePNodeInfo(sourcePNode: PNode) extends Info {
+final case class SourcePNodeInfo(sourcePNode: PNode) extends Info {
   override val comment = Nil
   override val isCached = false
 }
 
-case class AnnotationInfo(values: Map[String, Seq[String]]) extends Info {
+final case class AnnotationInfo(values: Map[String, Seq[String]]) extends Info {
   override val isCached = false
   override val comment = Nil
 }
 
 /** A simple `Info` that contains a list of comments. */
-case class SimpleInfo(comment: Seq[String]) extends Info {
+final case class SimpleInfo(comment: Seq[String]) extends Info {
   override val isCached = false
 }
 
@@ -394,7 +394,7 @@ case object AutoTriggered extends Info {
 }
 
 /** An `Info` for specifying the weight of a quantifier in the SMT encoding. */
-case class WeightedQuantifier(weight: Int) extends Info {
+final case class WeightedQuantifier(weight: Int) extends Info {
   override val comment = Nil
   override val isCached = false
 }
@@ -423,7 +423,7 @@ abstract class FailureExpectedInfo extends Info {
 }
 
 /** An `Info` instance for composing multiple `Info`s together */
-case class ConsInfo(head: Info, tail: Info) extends Info {
+final case class ConsInfo(head: Info, tail: Info) extends Info {
   override val comment = head.comment ++ tail.comment
   override val isCached = head.isCached || tail.isCached
 }
