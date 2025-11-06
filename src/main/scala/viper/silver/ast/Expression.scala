@@ -124,8 +124,8 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
   val perm: Exp = FullPerm()(pos, NoInfo, NoTrafos)
 
   override val typ: Wand.type = Wand
+  override def args(p: Program) = subexpressionsToEvaluate(p)
 
-  //maybe rename this sometime
   def subexpressionsToEvaluate(p: Program): Seq[Exp] = {
     /* The code collects expressions that can/are to be evaluated in a fixed state, i.e.
      * a state that is known when this method is called.
@@ -434,6 +434,7 @@ sealed trait LocationAccess extends Exp with ResourceAccess {
 
 sealed trait ResourceAccess extends Exp {
   def res(p: Program): Resource
+  def args(p: Program): Seq[Exp]
 }
 
 object LocationAccess {
@@ -448,10 +449,11 @@ case class FieldAccess(rcv: Exp, field: Field)
 
   def loc(p : Program) = field
   lazy val typ = field.typ
+  override def args(p: Program): Seq[Exp] = Seq(rcv)
 
-  def getArgs: Seq[Exp] = Seq(rcv)
+  def getArgs() = Seq(rcv)
+
   def withArgs(args: Seq[Exp]): FieldAccess = copy(rcv = args.head, field)(pos, info, errT)
-//  def asManifestation: Exp = this
 }
 
 /** A predicate access expression. See also companion object below for an alternative creation signature */
@@ -462,6 +464,7 @@ case class PredicateAccess(args: Seq[Exp], predicateName: String)
   def loc(p:Program) = p.findPredicate(predicateName)
   lazy val typ = Bool
   override lazy val check : Seq[ConsistencyError] = args.flatMap(Consistency.checkPure)
+  override def args(p: Program) = this.args
 
   /** The body of the predicate with the arguments instantiated correctly. */
   def predicateBody(program : Program, scope: Set[String]) = {

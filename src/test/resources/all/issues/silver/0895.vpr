@@ -1,0 +1,23 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+predicate OhHi() { true }
+
+function mark(): Bool
+{
+  true
+}
+
+function make_your_own_matching_loop(n: Int): Bool
+  requires OhHi()
+{
+    n <= 0 ? true : (unfolding OhHi() in mark()) && make_your_own_matching_loop(n - 1)
+}
+
+method main()
+{
+  fold OhHi()
+  var f: Bool := make_your_own_matching_loop(49)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert f
+}

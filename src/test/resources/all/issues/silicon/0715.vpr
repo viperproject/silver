@@ -1,0 +1,27 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field ref_f: Ref
+predicate ref_p(self: Ref) {
+    acc(self.ref_f)
+}
+function snap_ref(self: Ref): Ref_s
+    requires ref_p(self)
+{
+    unfolding ref_p(self) in cons_Ref(self.ref_f)
+}
+adt Ref_s {
+    cons_Ref(ref: Ref)
+}
+
+function f_RefMut_i32_borrow(self: Ref): Ref
+function f_RefMut_i32_borrow_rev(self: Ref): Ref
+
+function map_f_RefMut_i32_borrow(s: Set[Ref]): Set[Ref]
+    requires forall x: Ref :: x in s ==> RefMut_i32_p(x)
+    ensures forall x: Ref :: x in s ==> (unfolding RefMut_i32_p(x) in snap_ref(f_RefMut_i32_borrow(x)).ref) in result
+    ensures forall z: Ref :: (f_RefMut_i32_borrow_rev(z)) in s && (unfolding RefMut_i32_p((f_RefMut_i32_borrow_rev(z))) in snap_ref(f_RefMut_i32_borrow((f_RefMut_i32_borrow_rev(z)))).ref) == z
+
+predicate RefMut_i32_p(self: Ref) {
+    ref_p(f_RefMut_i32_borrow(self))
+}

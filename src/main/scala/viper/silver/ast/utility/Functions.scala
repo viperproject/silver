@@ -168,7 +168,9 @@ object Functions {
       case uf@Unfolding (_, body) =>
         recordCallsAndUnfoldings (body, ufs :+ uf) // note: acc is not recursively-processed - we may want to revisit this decision
       case fa@FuncApp (_, args) =>
-        result +:= (fa, ufs)
+        if (fa.funcname == f.name){
+          result +:= (fa, ufs)
+        }
         args.foreach ((n) => recordCallsAndUnfoldings (n, ufs) )
       }
     }

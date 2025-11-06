@@ -9,6 +9,7 @@ package viper.silver.ast.utility.chopper
 import viper.silver.ast
 import viper.silver.ast.AnnotationInfo
 import viper.silver.ast.utility.{Nodes, Visitor}
+import viper.silver.plugin.standard.termination.TerminationPluginConstants
 
 import scala.annotation.tailrec
 import scala.collection.{immutable, mutable}
@@ -50,9 +51,10 @@ trait ChopperLike { this: ViperGraphs with Cut =>
     * for all returned Viper programs. Members that are not dependencies of important nodes are not contained
     * in any of the returned programs.
     *
-    * The chopper does not support AST nodes introduced by Viper plugins. However, the chopper can be invoked
-    * after the AST nodes are translated through SilverPlugin.beforeVerify. Furthermore, in the input Viper program,
-    * all quantified expressions must have triggers.
+    * The chopper does not support AST nodes introduced by Viper plugins. However, the chopper can be
+    * invoked after the AST nodes are translated through SilverPlugin.beforeVerify. Furthermore, in the
+    * input Viper program, all quantified expressions must have triggers.
+    * A version of the chopper that is compatible with the termination plugin is defined below.
     *
     * @param choppee   Targeted program.
     * @param selection Specifies which members of the program should be verified.
@@ -959,6 +961,7 @@ trait Edges { this: Vertices =>
         case _ => Seq(Vertices.FunctionSpec(n.funcname))
       }
       case n: ast.DomainFuncApp => Seq(Vertices.DomainFunction(n.funcname))
+      case n: ast.BackendFuncApp => Seq(Vertices.DomainFunction(n.funcname))
       case n: ast.PredicateAccess => Seq(Vertices.PredicateSig(n.predicateName))
       // The call is fine because the result is used as the target of a dependency.
       case n: ast.Unfold => Seq(Vertices.unsafeGetPredicateBody(n.acc.loc.predicateName))
@@ -1173,4 +1176,58 @@ trait SCC {
     (counter, fastIdEdges, id, rev(_))
   }
 
+}
+
+/**
+  * Chopper with support for plugins used by Gobra, in particular Viper's termination plugin.
+  */
+object PluginAwareChopper extends ChopperLike with ViperGraphs with PluginAwareEdges with Vertices with Cut with SCC
+
+/**
+  * Extends the chopper's dependency computation to add artificial dependencies for domains ending in 'WellFoundedOrder',
+  * their axioms, and subexpressions.
+  * These artificial dependencies ensure that these axioms are retained by the chopper, which is necessary
+  * to ensure successful verification of the chopped program because these axioms define well-founded orders
+  * via "bounded" and "decreasing" functions. Without these artificial dependencies, the chopper would remove
+  * these axioms as the decreases measures do not explicitly depend on, i.e., call these domain functions.
+  */
+trait PluginAwareEdges extends Edges {
+  this: Vertices =>
+
+  import viper.silver.ast
+  import viper.silver.ast.utility.chopper.Edges.Edge
+
+  override def dependencies(member: ast.Member): Seq[Edge[Vertices.Vertex]] = member match {
+    case d: ast.Domain if d.name.endsWith(TerminationPluginConstants.WellFoundedOrderDomainName) =>
+      val defVertex = toDefVertex(member)
+      val useVertex = toUseVertex(member)
+
+      val usageDependencies = {
+        // If we are computing dependencies before the termination plugin has run, then
+        // we conservatively include all domains that define well founded orders for
+        // termination checking, given that, at this point, there is no explicit dependency between
+        // the expressions in the termination measure and the "bounded" and "decreasing" functions defined
+        // in the domains that establish a well-founded order, and these domains end up being removed,
+        // leading to errors.
+        val domainVertex = toDefVertex(d)
+        val axiomDeps = d.axioms.flatMap { ax =>
+          val axVertex = Vertices.DomainAxiom(ax, d)
+          val dependenciesOfAxiom = dependenciesToChildren(ax.exp, axVertex)
+          val dependenciesToAxiom = Seq(domainVertex -> axVertex)
+          dependenciesOfAxiom ++ dependenciesToAxiom
+        }
+        val funcDeps = d.functions.flatMap { f =>
+          val fVertex = Vertices.DomainFunction(f.name)
+          val dependenciesOfFunction = dependenciesToChildren(f, fVertex)
+          val dependenciesToFunction = Seq(domainVertex -> fVertex)
+          dependenciesOfFunction ++ dependenciesToFunction
+
+        }
+        (Vertices.Always -> domainVertex) +: (axiomDeps ++ funcDeps)
+      }
+      // to ensure that nodes that depend on Vertex.Always are indeed always included
+      val alwaysDependencies = Seq(defVertex -> Vertices.Always, useVertex -> Vertices.Always)
+      usageDependencies ++ alwaysDependencies
+    case _ => super.dependencies(member)
+  }
 }
