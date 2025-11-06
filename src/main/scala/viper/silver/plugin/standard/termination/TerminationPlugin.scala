@@ -249,10 +249,10 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
           case dc: DecreasesClause => dc
         }.nonEmpty)
         if (!hasDecreasesClause) {
-          val funcCycles = cycles.get(f)
+          val funcCycles = cycles.get(f.name)
           val problematicFuncApps = f.posts.flatMap(p => p.shallowCollect {
             case fa: FuncApp if fa.func(input) == f => fa
-            case fa: FuncApp if funcCycles.isDefined && funcCycles.get.contains(fa.func(input)) => fa
+            case fa: FuncApp if funcCycles.isDefined && funcCycles.get.contains(fa.funcname) => fa
           }).toSet
           for (fa <- problematicFuncApps) {
             val calledFunc = fa.func(input)
