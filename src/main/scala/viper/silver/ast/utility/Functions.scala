@@ -187,7 +187,7 @@ object Functions {
     *         functions `fs`, then `f` (transitively) recurses via its precondition, and the
     *         formed cycles involves the set of functions `fs`.
     */
-  def findFunctionCyclesViaPreconditions(program: Program): Map[Function, Set[FuncName]] = {
+  def findFunctionCyclesViaPreconditions(program: Program): Map[FuncName, Set[FuncName]] = {
     findFunctionCyclesVia(program, func => func.pres, allSubexpressions)
   }
 
@@ -202,7 +202,7 @@ object Functions {
     *         formed cycles involves the set of functions `fs`.
     */
   def findFunctionCyclesVia(program: Program, via: Function => Seq[Exp], subs: Function => Seq[Exp] = allSubexpressions)
-      :Map[Function, Set[FuncName]] = {
+      :Map[FuncName, Set[FuncName]] = {
     def viaSubs(entryFunc: Function)(otherFunc: Function): Seq[Exp] =
       if (otherFunc == entryFunc)
         via(otherFunc)
@@ -227,7 +227,7 @@ object Functions {
     *         formed cycles involves the set of functions `fs`.
     */
   def findFunctionCyclesViaOptimized(program: Program, via: Function => Seq[Exp])
-  : Map[Function, Set[FuncName]] = {
+  : Map[FuncName, Set[FuncName]] = {
     val graph = getFunctionCallgraph(program, via)
     val res = program.functions.flatMap(func => {
       findCycles(graph, func)
@@ -235,12 +235,12 @@ object Functions {
     ListMap.from(res)
   }
 
-  private def findCycles(graph: DefaultDirectedGraph[FuncName, DefaultEdge], func: Function): Option[(Function, Set[FuncName])] = {
+  private def findCycles(graph: DefaultDirectedGraph[FuncName, DefaultEdge], func: Function): Option[(FuncName, Set[FuncName])] = {
     val cycleDetector = new CycleDetector(graph)
     val cycle = cycleDetector.findCyclesContainingVertex(func.name).asScala
     if (cycle.isEmpty)
       None
     else
-      Some(func -> cycle.toSet)
+      Some(func.name -> cycle.toSet)
   }
 }
