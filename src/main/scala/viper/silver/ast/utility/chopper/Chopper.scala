@@ -76,17 +76,17 @@ trait ChopperLike { this: ViperGraphs with Cut =>
   }
 
   /**
-    * chops `choppee` into multiple Viper programs. See [[chop]] for more details.
+    * chops `choppee` into a single Viper program containing only the selected members. See [[chop]] for more details.
     *
     * @param choppee   Targeted program.
     * @param selection Specifies the names of all members that should be verified.
-    * @return Chopped programs and metrics.
+    * @return Chopped program, if anything was selected.
     */
   def chop(
             choppee: ast.Program,
             selection: Set[String],
-          ): Vector[ast.Program] = {
-    chopWithMetrics(choppee)(Some(m => selection.contains(m.name)))._1
+          ): Option[ast.Program] = {
+    chopWithMetrics(choppee)(Some(m => selection.contains(m.name)))._1.headOption
   }
 
   /**
