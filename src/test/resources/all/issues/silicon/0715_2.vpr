@@ -1,0 +1,183 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <decreases/int.vpr>
+import <decreases/set.vpr>
+import <decreases/seq.vpr>
+
+field left : Ref // true case
+field right: Ref // false case
+field id   : Int // var from code
+field val  : Bool
+
+function isLeaf(r:Ref) : Bool // type information
+
+method allocLeaf() returns (r: Ref)
+  ensures isLeaf(r) && acc(r.val)
+  decreases 0
+
+method allocCompound() returns (r: Ref)
+  ensures !isLeaf(r) && acc(r.left) && acc(r.right) && acc(r.id)
+  decreases 0
+
+define nodePerms(r)
+  (isLeaf(r) ? acc(r.val) : acc(r.left) && acc(r.right) && acc(r.id))
+
+define mapInv(m) (forall k1: Ref, k2: Ref :: {k1 in m,k2 in m}
+  (k1 != k2 && k1 in m && k2 in m ==> m[k1] != m[k2])) // no dups
+  && forall k: Ref :: {k in m}{k in range(m)} k in m ==> nodePerms(m[k]) && m[k] == k &&
+  (!isLeaf(k) ==> k.left in m && k.right in m)
+
+
+field table : Map[Ref,Ref]
+
+define BDD(this) acc(this.table) && mapInv(this.table)
+
+
+// we use this to abstract over the hashMap get function itself
+function tableGet(this:Ref, node:Ref) : Ref
+  requires BDD(this) && (!(node in this.table) ==> nodePerms(node))
+  ensures result != null ==> result in range(this.table) && toKNode(result) == toKNode(node)
+  ensures result == null ==> !isLeaf(node) && forall k:Ref :: {k in this.table} k in this.table ==> toKNode(k) != toKNode(node)
+
+method getNode(this:Ref, node:Ref) returns (res:Ref)
+  requires BDD(this) && (nodePerms(node)) && (!isLeaf(node) ==> node.left in this.table && node.right in this.table) // TODO? Maybe (!(toKNode(node) in this.table) ==> nodePerms(node))
+  ensures BDD(this) && res in this.table && forall k: Ref :: {k in this.table} old(k in this.table) ==> k in this.table && this.table[k] == old(this.table[k])
+  ensures isLeaf(node) ==> isLeaf(res) && res.val == old(node.val)
+  decreases 0 // termination is trivial
+  {
+    var returned : Bool := false// models whether we hit "return" already
+    if(!isLeaf(node)) {         // if (node instanceof CompoundNode) {
+      var that : Ref := node    // no need to "cast" - type info is in logic
+      if (that.left == that.right) {// if (that.low == that.high)
+        res := that.left;        // return that.low;
+        returned := true         // skip rest of code
+      }
+    }
+    if(!returned) {              // to model early return
+      res := tableGet(this, node) // Node result = table.get(node);
+
+        if (res == null) {
+            node.id := |this.table|  // table.size();
+            this.table := this.table[node := node] // table.put(node, node);
+            res := node         // return node;
+        }
+      }
+    }
+
+
+
+///BOUNDARY///
+
+//
+
+function isTrue(n: Ref): Bool
+  requires nodePerms(n)
+{
+  isLeaf(n) && n.val
+}
+
+function isFalse(n: Ref): Bool
+  requires nodePerms(n)
+{
+  isLeaf(n) && !n.val
+}
+
+method node1(this: Ref, v: Bool) returns (res: Ref)
+  requires BDD(this)
+  ensures BDD(this) && res in range(this.table) && isLeaf(res) && res.val == v
+  ensures forall k: Ref :: {k in this.table} old(k in this.table) ==> k in this.table && this.table[k] == old(this.table[k])
+  decreases 1
+{
+  var l: Ref
+  l := allocLeaf()
+  l.val := v
+  res := getNode(this, l)
+}
+
+method node2(this: Ref, v: Int, l: Ref, r: Ref) returns (res: Ref)
+  requires BDD(this) && l in range(this.table) && r in range(this.table)
+  ensures BDD(this)
+  //ensures res in range(this.table) && !isLeaf(res) // && TODO
+  decreases 1
+{
+  var c: Ref
+  c := allocCompound()
+  c.left := l
+  c.right := r
+  c.id := v
+  res := getNode(this, c)
+}
+
+method not(this: Ref, node: Ref) returns (res: Ref)
+  requires BDD(this) && node in range(this.table)
+  ensures BDD(this)
+  decreases 2
+  //ensures forall s: State :: eval(toPNode(this, res), s) == !(eval(toPNode(this, node), s))
+{
+  if (isTrue(node)) {
+    assert forall s: State :: eval(toPNode(this, node), s)
+    res := node1(this, false)
+    //assert forall s: State :: eval(toPNode(this, node), s)
+    //assert forall s: State :: !eval(toPNode(this, res), s)
+
+  } else {
+    if (isFalse(node)) {
+      res := node1(this, true)
+      assert forall s: State :: eval(toPNode(this, res), s)
+    } else {
+      res := node2(this, node.id, node.left, node.right)
+    }
+  }
+}
+
+function toKNode(r: Ref): KNode
+  requires isLeaf(r) ==> acc(r.val)
+  requires !isLeaf(r) ==> acc(r.left) && acc(r.right) && acc(r.id)
+{
+  isLeaf(r) ?
+    (KLeaf(r.val)) :
+    (KCompound(r.id, r.left, r.right))
+}
+
+
+adt KNode {
+  KLeaf(v: Bool)
+  KCompound(i: Int, kleft: Ref, kright: Ref)
+}
+
+adt PNode {
+    PLeafTrue()
+    PLeafFalse()
+    PCompound(vl: Int, lft: PNode, rght: PNode)
+}
+
+function toPNode(bdd: Ref, n: Ref): PNode
+  requires BDD(bdd) && n in range(bdd.table)
+{
+  isLeaf(n) ?
+    (n.val ? PLeafTrue() : PLeafFalse()) :
+    (PCompound(n.id, toPNode(bdd, n.left), toPNode(bdd, n.right)))
+}
+
+domain State {
+  function getVal(s: State, v: Int): Bool
+}
+
+domain Evaluator {
+
+  function eval(n: PNode, s: State): Bool
+
+  axiom {
+    forall s: State :: { eval(PLeafTrue(), s) } eval(PLeafTrue(), s)
+  }
+
+  axiom {
+    forall s: State :: { eval(PLeafFalse(), s) } !eval(PLeafFalse(), s)
+  }
+
+  axiom {
+    forall s: State, n1: PNode, n2: PNode, vall: Int :: { eval(PCompound(vall, n1, n2), s) }
+      eval(PCompound(vall, n1, n2), s) == (getVal(s, vall) ? eval(n1, s) : eval(n2, s) )
+  }
+}

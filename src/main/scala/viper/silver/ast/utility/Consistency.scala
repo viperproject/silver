@@ -269,8 +269,9 @@ object Consistency {
     e match {
       case Old(nested) => validTrigger(nested, program) // case corresponds to OldTrigger node
       case LabelledOld(nested, _) => validTrigger(nested, program)
-      case wand: MagicWand => wand.subexpressionsToEvaluate(program).forall(e => !e.existsDefined {case _: ForbiddenInTrigger => })
-      case _ : PossibleTrigger | _: FieldAccess | _: PredicateAccess => !e.existsDefined { case _: ForbiddenInTrigger => }
+      case ee: ExtensionExp => ee.extensionIsValidTrigger()
+      case wand: MagicWand => wand.subexpressionsToEvaluate(program).forall(e => !e.exists(Expressions.isForbiddenInTrigger))
+      case _ : PossibleTrigger | _: FieldAccess | _: PredicateAccess => !e.exists(Expressions.isForbiddenInTrigger)
       case _ => false
     }
   }
@@ -347,14 +348,14 @@ object Consistency {
 
   def checkNoFunctionRecursesViaPreconditions(program: Program): Seq[ConsistencyError] = {
     var s = Seq.empty[ConsistencyError]
-    Functions.findFunctionCyclesViaPreconditions(program) foreach { case (func, cycleSet) =>
-      var msg = s"Function ${func.name} recurses via its precondition"
+    Functions.findFunctionCyclesViaPreconditions(program) foreach { case (funcName, cycleSet) =>
+      var msg = s"Function ${funcName} recurses via its precondition"
 
       if (cycleSet.nonEmpty) {
-        msg = s"$msg: the cycle contains the function(s) ${cycleSet.map(_.name).mkString(", ")}"
+        msg = s"$msg: the cycle contains the function(s) ${cycleSet.mkString(", ")}"
       }
 
-      s :+= ConsistencyError(msg, func.pos)
+      s :+= ConsistencyError(msg, program.findFunction(funcName).pos)
     }
     s
   }

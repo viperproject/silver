@@ -19,6 +19,7 @@ import fastparse._
 import viper.silver.frontend.{DefaultStates, ViperPAstProvider}
 import viper.silver.logger.SilentLogger
 import viper.silver.parser.FastParserCompanion.whitespace
+import viper.silver.plugin.standard.termination.TerminationPluginConstants.WellFoundedOrderDomainName
 import viper.silver.reporter.{Entity, NoopReporter, WarningsDuringTypechecking}
 
 import scala.annotation.unused
@@ -118,7 +119,7 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
       if (!(c.idnref.name == "decreases" || c.idnref.name == "bounded"))
         return false
       c.funcDecl match {
-        case Some(df: PDomainFunction) => df.domain.idndef.name == "WellFoundedOrder"
+        case Some(df: PDomainFunction) => df.domain.idndef.name == WellFoundedOrderDomainName
         case _ => false
       }
     }
@@ -169,31 +170,31 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
     // Check if the program contains any domains that define decreasing and bounded functions that do *not* have the expected names.
     for (d <- input.domains) {
       val name = d.idndef.name
-      val typeName = if (name.endsWith("WellFoundedOrder"))
+      val typeName = if (name.endsWith(WellFoundedOrderDomainName))
         Some(name.substring(0, name.length - 16))
       else
         None
       val wronglyConstrainedTypes = d.axioms.flatMap(a => constrainsWellfoundednessUnexpectedly(a, typeName))
       reporter.report(WarningsDuringTypechecking(wronglyConstrainedTypes.map(t =>
-        TypecheckerWarning(s"Domain ${d.idndef.name} constrains well-foundedness functions for type ${t} and should be named <Type>WellFoundedOrder instead.", d.pos._1))))
+        TypecheckerWarning(s"Domain ${d.idndef.name} constrains well-foundedness functions for type ${t} and should be named <Type>${WellFoundedOrderDomainName} instead.", d.pos._1))))
     }
 
-    val predImport = if (usesPredicate && !presentDomains.contains("PredicateInstancesWellFoundedOrder")) Some("import <decreases/predicate_instance.vpr>") else None
+    val predImport = if (usesPredicate && !presentDomains.contains(s"PredicateInstances${WellFoundedOrderDomainName}")) Some("import <decreases/predicate_instance.vpr>") else None
     val importStmts = (allClauseTypes flatMap {
-      case TypeHelper.Int if !presentDomains.contains("IntWellFoundedOrder") => Some("import <decreases/int.vpr>")
-      case TypeHelper.Ref if !presentDomains.contains("RefWellFoundedOrder") => Some("import <decreases/ref.vpr>")
-      case TypeHelper.Bool if !presentDomains.contains("BoolWellFoundedOrder") => Some("import <decreases/bool.vpr>")
-      case TypeHelper.Perm if !presentDomains.contains("RationalWellFoundedOrder") && !presentDomains.contains("PermWellFoundedOrder") => Some("import <decreases/perm.vpr>")
-      case _: PMultisetType if !presentDomains.contains("MultiSetWellFoundedOrder") => Some("import <decreases/multiset.vpr>")
-      case _: PSeqType if !presentDomains.contains("SeqWellFoundedOrder") => Some("import <decreases/seq.vpr>")
-      case _: PSetType if !presentDomains.contains("SetWellFoundedOrder") => Some("import <decreases/set.vpr>")
-      case _ if !presentDomains.contains("WellFoundedOrder") => Some("import <decreases/declaration.vpr>")
+      case TypeHelper.Int if !presentDomains.contains(s"Int${WellFoundedOrderDomainName}") => Some("import <decreases/int.vpr>")
+      case TypeHelper.Ref if !presentDomains.contains(s"Ref${WellFoundedOrderDomainName}") => Some("import <decreases/ref.vpr>")
+      case TypeHelper.Bool if !presentDomains.contains(s"Bool${WellFoundedOrderDomainName}") => Some("import <decreases/bool.vpr>")
+      case TypeHelper.Perm if !presentDomains.contains(s"Rational${WellFoundedOrderDomainName}") && !presentDomains.contains(s"Perm${WellFoundedOrderDomainName}") => Some("import <decreases/perm.vpr>")
+      case _: PMultisetType if !presentDomains.contains(s"MultiSet${WellFoundedOrderDomainName}") => Some("import <decreases/multiset.vpr>")
+      case _: PSeqType if !presentDomains.contains(s"Seq${WellFoundedOrderDomainName}") => Some("import <decreases/seq.vpr>")
+      case _: PSetType if !presentDomains.contains(s"Set${WellFoundedOrderDomainName}") => Some("import <decreases/set.vpr>")
+      case _ if !presentDomains.contains(WellFoundedOrderDomainName) => Some("import <decreases/declaration.vpr>")
       case _ => None
     }) ++ predImport.toSet
     if (importStmts.nonEmpty) {
       val importOnlyProgram = importStmts.mkString("\n")
       val importPProgram = PAstProvider.generateViperPAst(importOnlyProgram).get.filterMembers(_.isInstanceOf[PDomain])
-      val inputFiltered = input.filterMembers(m => !(m.isInstanceOf[PDomain] && m.asInstanceOf[PDomain].idndef.name == "WellFoundedOrder"))
+      val inputFiltered = input.filterMembers(m => !(m.isInstanceOf[PDomain] && m.asInstanceOf[PDomain].idndef.name == WellFoundedOrderDomainName))
       val mergedProgram = PProgram(inputFiltered.imported :+ importPProgram, inputFiltered.members)(input.pos, input.localErrors, input.offsets, input.rawProgram)
       super.beforeTranslate(mergedProgram)
     } else {
@@ -248,10 +249,10 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
           case dc: DecreasesClause => dc
         }.nonEmpty)
         if (!hasDecreasesClause) {
-          val funcCycles = cycles.get(f)
+          val funcCycles = cycles.get(f.name)
           val problematicFuncApps = f.posts.flatMap(p => p.shallowCollect {
             case fa: FuncApp if fa.func(input) == f => fa
-            case fa: FuncApp if funcCycles.isDefined && funcCycles.get.contains(fa.func(input)) => fa
+            case fa: FuncApp if funcCycles.isDefined && funcCycles.get.contains(fa.funcname) => fa
           }).toSet
           for (fa <- problematicFuncApps) {
             val calledFunc = fa.func(input)
@@ -411,4 +412,8 @@ class TerminationPlugin(@unused reporter: viper.silver.reporter.Reporter,
     case Unfolding(_, exp) => Seq(exp)
     case CurrentPerm(_) => Nil
   })
+}
+
+object TerminationPluginConstants {
+  val WellFoundedOrderDomainName = "WellFoundedOrder"
 }
