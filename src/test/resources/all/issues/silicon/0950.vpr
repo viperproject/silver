@@ -1,0 +1,687 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+domain PyType  {
+
+  function tuple_args(t: PyType): Seq[PyType]
+
+  unique function object(): PyType
+
+  unique function str(): PyType
+
+  unique function bool(): PyType
+
+  function extends_(sub: PyType, super: PyType): Bool
+
+  unique function __prim__Seq_type(): PyType
+
+  function tuple_arg(typ: PyType, index: Int): PyType
+
+  unique function bytes(): PyType
+
+  unique function LevelType(): PyType
+
+  function get_basic(t: PyType): PyType
+
+  function typeof(obj: Ref): PyType
+
+  unique function __prim__perm(): PyType
+
+  unique function union_basic(): PyType
+
+  unique function tuple_basic(): PyType
+
+  function union_type_2(arg_1: PyType, arg_2: PyType): PyType
+
+  unique function float(): PyType
+
+  unique function slice(): PyType
+
+  unique function traceback(): PyType
+
+  unique function ConnectionRefusedError(): PyType
+
+  function union_type_3(arg_1: PyType, arg_2: PyType, arg_3: PyType): PyType
+
+  function list(arg0: PyType): PyType
+
+  unique function int(): PyType
+
+  unique function list_basic(): PyType
+
+  unique function NoneType(): PyType
+
+  function issubtype(sub: PyType, super: PyType): Bool
+
+  unique function type(): PyType
+
+  function list_arg(typ: PyType, index: Int): PyType
+
+  function union_type_4(arg_1: PyType, arg_2: PyType, arg_3: PyType, arg_4: PyType): PyType
+
+  unique function Exception(): PyType
+
+  function tuple(args: Seq[PyType]): PyType
+
+  function isnotsubtype(sub: PyType, super: PyType): Bool
+
+  unique function Thread_0(): PyType
+
+  unique function Node(): PyType
+
+  unique function range_0(): PyType
+
+  unique function Place(): PyType
+
+  function union_type_1(arg_1: PyType): PyType
+
+  axiom subtype___prim__perm {
+    extends_(__prim__perm(), object()) &&
+    get_basic(__prim__perm()) == __prim__perm()
+  }
+
+  axiom subtype_union_4 {
+    (forall arg_1: PyType, arg_2: PyType, arg_3: PyType, arg_4: PyType, X: PyType ::
+      { issubtype(union_type_4(arg_1, arg_2, arg_3, arg_4), X) }
+      issubtype(union_type_4(arg_1, arg_2, arg_3, arg_4), X) ==
+      (true &&
+      (issubtype(arg_1, X) &&
+      (issubtype(arg_2, X) && (issubtype(arg_3, X) && issubtype(arg_4, X))))))
+  }
+
+  axiom subtype_NoneType {
+    extends_(NoneType(), object()) && get_basic(NoneType()) == NoneType()
+  }
+
+  axiom subtype_float {
+    extends_(float(), object()) && get_basic(float()) == float()
+  }
+
+  axiom subtype_type {
+    extends_(type(), object()) && get_basic(type()) == type()
+  }
+
+  axiom union_subtype_1 {
+    (forall arg_1: PyType, X: PyType ::
+      { issubtype(X, union_type_1(arg_1)) }
+      get_basic(X) != union_basic() ==>
+      issubtype(X, union_type_1(arg_1)) == (false || issubtype(X, arg_1)))
+  }
+
+  axiom subtype_list {
+    (forall var0: PyType ::
+      { list(var0) }
+      extends_(list(var0), object()) &&
+      get_basic(list(var0)) == list_basic())
+  }
+
+  axiom subtype_union_2 {
+    (forall arg_1: PyType, arg_2: PyType, X: PyType ::
+      { issubtype(union_type_2(arg_1, arg_2), X) }
+      issubtype(union_type_2(arg_1, arg_2), X) ==
+      (true && (issubtype(arg_1, X) && issubtype(arg_2, X))))
+  }
+
+  axiom issubtype_transitivity {
+    (forall sub: PyType, middle: PyType, super: PyType ::
+      { issubtype(sub, middle), issubtype(middle, super) }
+      { issubtype(sub, super), issubtype(middle, super) }
+      { issubtype(sub, middle), issubtype(sub, super) }
+      issubtype(sub, middle) && issubtype(middle, super) ==>
+      issubtype(sub, super))
+  }
+
+  axiom union_subtype_4 {
+    (forall arg_1: PyType, arg_2: PyType, arg_3: PyType, arg_4: PyType, X: PyType ::
+      { issubtype(X, union_type_4(arg_1, arg_2, arg_3, arg_4)) }
+      get_basic(X) != union_basic() ==>
+      issubtype(X, union_type_4(arg_1, arg_2, arg_3, arg_4)) ==
+      (false ||
+      (issubtype(X, arg_1) ||
+      (issubtype(X, arg_2) || (issubtype(X, arg_3) || issubtype(X, arg_4))))))
+  }
+
+  axiom issubtype_exclusion {
+    (forall sub: PyType, sub2: PyType, super: PyType ::
+      { extends_(sub, super), extends_(sub2, super) }
+      extends_(sub, super) && (extends_(sub2, super) && sub != sub2) ==>
+      isnotsubtype(sub, sub2) && isnotsubtype(sub2, sub))
+  }
+
+  axiom subtype_bool {
+    extends_(bool(), int()) && get_basic(bool()) == bool()
+  }
+
+  axiom subtype_union_3 {
+    (forall arg_1: PyType, arg_2: PyType, arg_3: PyType, X: PyType ::
+      { issubtype(union_type_3(arg_1, arg_2, arg_3), X) }
+      issubtype(union_type_3(arg_1, arg_2, arg_3), X) ==
+      (true &&
+      (issubtype(arg_1, X) && (issubtype(arg_2, X) && issubtype(arg_3, X)))))
+  }
+
+  axiom issubtype_reflexivity {
+    (forall type_: PyType ::
+      { issubtype(type_, type_) }
+      issubtype(type_, type_))
+  }
+
+  axiom issubtype_exclusion_2 {
+    (forall sub: PyType, super: PyType ::
+      { issubtype(sub, super) }
+      { issubtype(super, sub) }
+      issubtype(sub, super) && sub != super ==> !issubtype(super, sub))
+  }
+
+  axiom subtype_str {
+    extends_(str(), object()) && get_basic(str()) == str()
+  }
+
+  axiom subtype_Place {
+    extends_(Place(), object()) && get_basic(Place()) == Place()
+  }
+
+  axiom subtype_LevelType {
+    extends_(LevelType(), object()) &&
+    get_basic(LevelType()) == LevelType()
+  }
+
+  axiom subtype_union_1 {
+    (forall arg_1: PyType, X: PyType ::
+      { issubtype(union_type_1(arg_1), X) }
+      issubtype(union_type_1(arg_1), X) == (true && issubtype(arg_1, X)))
+  }
+
+  axiom union_subtype_3 {
+    (forall arg_1: PyType, arg_2: PyType, arg_3: PyType, X: PyType ::
+      { issubtype(X, union_type_3(arg_1, arg_2, arg_3)) }
+      get_basic(X) != union_basic() ==>
+      issubtype(X, union_type_3(arg_1, arg_2, arg_3)) ==
+      (false ||
+      (issubtype(X, arg_1) || (issubtype(X, arg_2) || issubtype(X, arg_3)))))
+  }
+
+  axiom subtype_range_0 {
+    extends_(range_0(), object()) && get_basic(range_0()) == range_0()
+  }
+
+  axiom extends_implies_subtype {
+    (forall sub: PyType, sub2: PyType ::
+      { extends_(sub, sub2) }
+      extends_(sub, sub2) ==> issubtype(sub, sub2))
+  }
+
+  axiom subtype_Thread_0 {
+    extends_(Thread_0(), object()) && get_basic(Thread_0()) == Thread_0()
+  }
+
+  axiom union_basic_1 {
+    (forall arg_1: PyType ::
+      { union_type_1(arg_1) }
+      get_basic(union_type_1(arg_1)) == union_basic())
+  }
+
+  axiom subtype_Exception {
+    extends_(Exception(), object()) &&
+    get_basic(Exception()) == Exception()
+  }
+
+  axiom nothing_has_union_type {
+    (forall r: Ref :: { typeof(r) } get_basic(typeof(r)) != union_basic())
+  }
+
+  axiom union_basic_2 {
+    (forall arg_1: PyType, arg_2: PyType ::
+      { union_type_2(arg_1, arg_2) }
+      get_basic(union_type_2(arg_1, arg_2)) == union_basic())
+  }
+
+  axiom union_basic_3 {
+    (forall arg_1: PyType, arg_2: PyType, arg_3: PyType ::
+      { union_type_3(arg_1, arg_2, arg_3) }
+      get_basic(union_type_3(arg_1, arg_2, arg_3)) == union_basic())
+  }
+
+  axiom union_basic_4 {
+    (forall arg_1: PyType, arg_2: PyType, arg_3: PyType, arg_4: PyType ::
+      { union_type_4(arg_1, arg_2, arg_3, arg_4) }
+      get_basic(union_type_4(arg_1, arg_2, arg_3, arg_4)) == union_basic())
+  }
+
+  axiom subtype_bytes {
+    extends_(bytes(), object()) && get_basic(bytes()) == bytes()
+  }
+
+  axiom subtype_traceback {
+    extends_(traceback(), object()) &&
+    get_basic(traceback()) == traceback()
+  }
+
+  axiom union_subtype_2 {
+    (forall arg_1: PyType, arg_2: PyType, X: PyType ::
+      { issubtype(X, union_type_2(arg_1, arg_2)) }
+      get_basic(X) != union_basic() ==>
+      issubtype(X, union_type_2(arg_1, arg_2)) ==
+      (false || (issubtype(X, arg_1) || issubtype(X, arg_2))))
+  }
+
+  axiom issubtype_exclusion_propagation {
+    (forall sub: PyType, middle: PyType, super: PyType ::
+      { issubtype(sub, middle), isnotsubtype(middle, super) }
+      issubtype(sub, middle) && isnotsubtype(middle, super) ==>
+      !issubtype(sub, super))
+  }
+
+  axiom null_nonetype {
+    (forall r: Ref ::
+      { typeof(r) }
+      issubtype(typeof(r), NoneType()) == (r == null))
+  }
+
+  axiom subtype_slice {
+    extends_(slice(), object()) && get_basic(slice()) == slice()
+  }
+
+  axiom issubtype_object {
+    (forall type_: PyType ::
+      { issubtype(type_, object()) }
+      issubtype(type_, object()))
+  }
+
+  axiom list_args0 {
+    (forall Z: PyType, arg0: PyType ::
+      { list(arg0), list_arg(Z, 0) }
+      issubtype(Z, list(arg0)) ==> list_arg(Z, 0) == arg0)
+  }
+
+  axiom subtype_Node {
+    extends_(Node(), object()) && get_basic(Node()) == Node()
+  }
+
+  axiom subtype_ConnectionRefusedError {
+    extends_(ConnectionRefusedError(), Exception()) &&
+    get_basic(ConnectionRefusedError()) == ConnectionRefusedError()
+  }
+
+  axiom subtype_int {
+    extends_(int(), float()) && get_basic(int()) == int()
+  }
+
+  axiom subtype___prim__Seq_type {
+    extends_(__prim__Seq_type(), object()) &&
+    get_basic(__prim__Seq_type()) == __prim__Seq_type()
+  }
+}
+
+domain tuple_types  {
+
+  function tuple_var(arg0: PyType): PyType
+
+  axiom tuple_type_basic_2 {
+    (forall arg0: PyType, arg1: PyType, Z: PyType ::
+      { issubtype(Z, tuple_var(arg0)), issubtype(Z, arg1) }
+      issubtype(Z, tuple_var(arg0)) && issubtype(Z, arg1) ==>
+      get_basic(arg1) == tuple_basic() ||
+      (get_basic(arg1) == object() || get_basic(arg1) == union_basic()))
+  }
+
+  axiom subtype_tuple_var_tuple {
+    (forall var0: PyType, var1: Seq[PyType] ::
+      { issubtype(tuple(var1), tuple_var(var0)) }
+      issubtype(tuple(var1), tuple_var(var0)) ==
+      (forall i: Int ::
+        { issubtype(var1[i], var0) }
+        i >= 0 && i < |var1| ==> issubtype(var1[i], var0)))
+  }
+
+  axiom tuple_type_basic_1 {
+    (forall seq: Seq[PyType], Z: PyType, arg1: PyType ::
+      { issubtype(Z, tuple(seq)), issubtype(Z, arg1) }
+      issubtype(Z, tuple(seq)) && issubtype(Z, arg1) ==>
+      get_basic(arg1) == tuple_basic() ||
+      (get_basic(arg1) == object() || get_basic(arg1) == union_basic()))
+  }
+
+  axiom tuple_arg_def_2 {
+    (forall arg0: PyType, i: Int, Z: PyType ::
+      { issubtype(Z, tuple_var(arg0)), tuple_arg(Z, i) }
+      issubtype(Z, tuple_var(arg0)) ==> issubtype(tuple_arg(Z, i), arg0))
+  }
+
+  axiom subtype_tuple_var_self {
+    (forall var0: PyType, var1: PyType ::
+      { issubtype(tuple_var(var0), tuple_var(var1)) }
+      issubtype(tuple_var(var0), tuple_var(var1)) == issubtype(var0, var1))
+  }
+
+  axiom subtype_tuple {
+    (forall args: Seq[PyType] ::
+      { tuple(args) }
+      (forall e: PyType :: { (e in args) } (e in args) ==> e == object()) ==>
+      extends_(tuple(args), object()))
+  }
+
+  axiom tuple_arg_def {
+    (forall seq: Seq[PyType], i: Int, Z: PyType ::
+      { issubtype(Z, tuple(seq)), tuple_arg(Z, i) }
+      issubtype(Z, tuple(seq)) ==> issubtype(tuple_arg(Z, i), seq[i]))
+  }
+
+  axiom tuple_args_def {
+    (forall seq: Seq[PyType], Z: PyType ::
+      { issubtype(Z, tuple(seq)) }
+      issubtype(Z, tuple(seq)) ==> |tuple_args(Z)| == |seq|)
+  }
+
+  axiom tuple_args_subtype_1 {
+    (forall seq: Seq[PyType], Z: PyType ::
+      { issubtype(Z, tuple(seq)), issubtype(Z, tuple(tuple_args(Z))) }
+      issubtype(Z, tuple(seq)) ==> issubtype(Z, tuple(tuple_args(Z))))
+  }
+
+  axiom tuple_args_subtype_2 {
+    (forall Z: PyType, arg0: PyType ::
+      { issubtype(Z, tuple(tuple_args(Z))), issubtype(Z, tuple_var(arg0)) }
+      issubtype(Z, tuple_var(arg0)) ==> issubtype(Z, tuple(tuple_args(Z))))
+  }
+
+  axiom subtype_tuple_var {
+    (forall var0: PyType ::
+      { tuple_var(var0) }
+      issubtype(tuple_var(var0), object()))
+  }
+}
+
+domain __ObjectEquality  {
+
+  function object___eq__(Ref, Ref): Bool
+
+  axiom {
+    (forall o1: Ref, o2: Ref, o3: Ref ::
+      { object___eq__(o1, o2), object___eq__(o2, o3) }
+      { object___eq__(o1, o2), object___eq__(o1, o3) }
+      { object___eq__(o2, o3), object___eq__(o1, o3) }
+      object___eq__(o1, o2) && object___eq__(o2, o3) ==>
+      object___eq__(o1, o3))
+  }
+
+  axiom {
+    (forall o1: Ref, o2: Ref ::
+      { object___eq__(o1, o2) }
+      object___eq__(o1, o2) == object___eq__(o2, o1) &&
+      ((o1 == o2 ==> object___eq__(o1, o2)) &&
+      ((o1 == null) != (o2 == null) ==> !object___eq__(o1, o2))))
+  }
+}
+
+field list_acc: Seq[Ref]
+
+field Node_children: Ref
+
+field Node_function_name: Ref
+
+function list___getitem__(self: Ref, key: Ref): Ref
+  requires issubtype(typeof(self), list(list_arg(typeof(self), 0)))
+  requires issubtype(typeof(key), int())
+  requires acc(self.list_acc, wildcard)
+  requires @error("List index may be out of bounds.")
+    ((let ln ==
+      (list___len__(self)) in
+      int___unbox__(key) < 0 ==> int___unbox__(key) >= -ln))
+  requires @error("List index may be out of bounds.")
+    ((let ln ==
+      (list___len__(self)) in
+      int___unbox__(key) >= 0 ==> int___unbox__(key) < ln))
+  ensures result ==
+    (int___unbox__(key) >= 0 ?
+      self.list_acc[int___unbox__(key)] :
+      self.list_acc[list___len__(self) + int___unbox__(key)])
+  ensures issubtype(typeof(result), list_arg(typeof(self), 0))
+
+
+function float___ge__(self: Ref, other: Ref): Bool
+  requires issubtype(typeof(self), float())
+  requires issubtype(typeof(other), float())
+  ensures issubtype(typeof(self), int()) && issubtype(typeof(other), int()) ==>
+    result == int___ge__(self, other)
+
+
+function int___eq__(self: Ref, other: Ref): Bool
+  requires issubtype(typeof(self), int())
+  requires issubtype(typeof(other), int()) ||
+    issubtype(typeof(other), float())
+  ensures issubtype(typeof(other), int()) ==>
+    result == (int___unbox__(self) == int___unbox__(other))
+  ensures issubtype(typeof(other), int()) ==>
+    result == object___eq__(self, other)
+  ensures issubtype(typeof(other), float()) ==>
+    result == float___eq__(self, other)
+
+
+function can_node_be_compressed(marked_execution_tree: Ref): Ref
+  requires issubtype(typeof(marked_execution_tree), Node())
+  requires acc(marked_execution_tree.Node_children, write) &&
+    issubtype(typeof(marked_execution_tree.Node_children), list(Node()))
+  requires acc(marked_execution_tree.Node_children.list_acc, write)
+  requires (forall lambda21_25$i: Ref, lambda21_25$j: Ref ::
+      { typeof(lambda21_25$i), issubtype(typeof(lambda21_25$j), int()) }
+      { typeof(lambda21_25$i), int___ge__(lambda21_25$j, __prim__int___box__(0)) }
+      { typeof(lambda21_25$i), int___lt__(lambda21_25$j, __prim__int___box__(list___len__(marked_execution_tree.Node_children))) }
+      { typeof(lambda21_25$i), list___getitem__(marked_execution_tree.Node_children,
+      lambda21_25$j) }
+      { issubtype(typeof(lambda21_25$i), int()), typeof(lambda21_25$j) }
+      { issubtype(typeof(lambda21_25$i), int()), issubtype(typeof(lambda21_25$j),
+      int()) }
+      { issubtype(typeof(lambda21_25$i), int()), int___ge__(lambda21_25$j, __prim__int___box__(0)) }
+      { issubtype(typeof(lambda21_25$i), int()), int___lt__(lambda21_25$j, __prim__int___box__(list___len__(marked_execution_tree.Node_children))) }
+      { issubtype(typeof(lambda21_25$i), int()), list___getitem__(marked_execution_tree.Node_children,
+      lambda21_25$j) }
+      { typeof(lambda21_25$j), int___ge__(lambda21_25$i, __prim__int___box__(0)) }
+      { typeof(lambda21_25$j), int___lt__(lambda21_25$i, __prim__int___box__(list___len__(marked_execution_tree.Node_children))) }
+      { typeof(lambda21_25$j), list___getitem__(marked_execution_tree.Node_children,
+      lambda21_25$i) }
+      { issubtype(typeof(lambda21_25$j), int()), typeof(lambda21_25$i) }
+      { issubtype(typeof(lambda21_25$j), int()), int___ge__(lambda21_25$i, __prim__int___box__(0)) }
+      { issubtype(typeof(lambda21_25$j), int()), int___lt__(lambda21_25$i, __prim__int___box__(list___len__(marked_execution_tree.Node_children))) }
+      { issubtype(typeof(lambda21_25$j), int()), list___getitem__(marked_execution_tree.Node_children,
+      lambda21_25$i) }
+      { int___ge__(lambda21_25$i, __prim__int___box__(0)), int___ge__(lambda21_25$j,
+      __prim__int___box__(0)) }
+      { int___ge__(lambda21_25$i, __prim__int___box__(0)), int___lt__(lambda21_25$j,
+      __prim__int___box__(list___len__(marked_execution_tree.Node_children))) }
+      { int___ge__(lambda21_25$i, __prim__int___box__(0)), list___getitem__(marked_execution_tree.Node_children,
+      lambda21_25$j) }
+      { int___ge__(lambda21_25$j, __prim__int___box__(0)), int___lt__(lambda21_25$i,
+      __prim__int___box__(list___len__(marked_execution_tree.Node_children))) }
+      { int___ge__(lambda21_25$j, __prim__int___box__(0)), list___getitem__(marked_execution_tree.Node_children,
+      lambda21_25$i) }
+      { int___lt__(lambda21_25$i, __prim__int___box__(list___len__(marked_execution_tree.Node_children))),
+      int___lt__(lambda21_25$j, __prim__int___box__(list___len__(marked_execution_tree.Node_children))) }
+      { int___lt__(lambda21_25$i, __prim__int___box__(list___len__(marked_execution_tree.Node_children))),
+      list___getitem__(marked_execution_tree.Node_children, lambda21_25$j) }
+      { int___lt__(lambda21_25$j, __prim__int___box__(list___len__(marked_execution_tree.Node_children))),
+      list___getitem__(marked_execution_tree.Node_children, lambda21_25$i) }
+      { list___getitem__(marked_execution_tree.Node_children, lambda21_25$i),
+      list___getitem__(marked_execution_tree.Node_children, lambda21_25$j) }
+      lambda21_25$i != lambda21_25$j &&
+      (issubtype(typeof(lambda21_25$i), int()) &&
+      (issubtype(typeof(lambda21_25$j), int()) &&
+      (int() == typeof(lambda21_25$i) &&
+      (int() == typeof(lambda21_25$j) &&
+      (int___ge__(lambda21_25$i, __prim__int___box__(0)) &&
+      (int___ge__(lambda21_25$j, __prim__int___box__(0)) &&
+      (int___lt__(lambda21_25$i, __prim__int___box__(list___len__(marked_execution_tree.Node_children))) &&
+      int___lt__(lambda21_25$j, __prim__int___box__(list___len__(marked_execution_tree.Node_children)))))))))) ==>
+      list___getitem__(marked_execution_tree.Node_children, lambda21_25$i) !=
+      list___getitem__(marked_execution_tree.Node_children, lambda21_25$j))
+  requires true &&
+    ((forall lambda21_25$i: Ref ::
+      { issubtype(typeof(lambda21_25$i), int()) }
+      issubtype(typeof(lambda21_25$i), int()) &&
+      (issubtype(typeof(lambda21_25$i), int()) &&
+      (int() == typeof(lambda21_25$i) &&
+      (int___ge__(lambda21_25$i, __prim__int___box__(0)) &&
+      int___lt__(lambda21_25$i, __prim__int___box__(list___len__(marked_execution_tree.Node_children)))))) ==>
+      acc(list___getitem__(marked_execution_tree.Node_children, lambda21_25$i).Node_function_name, write)) &&
+    ((forall lambda21_25$i: Ref ::
+      { issubtype(typeof(lambda21_25$i), int()) }
+      issubtype(typeof(lambda21_25$i), int()) &&
+      (issubtype(typeof(lambda21_25$i), int()) &&
+      (int() == typeof(lambda21_25$i) &&
+      (int___ge__(lambda21_25$i, __prim__int___box__(0)) &&
+      int___lt__(lambda21_25$i, __prim__int___box__(list___len__(marked_execution_tree.Node_children)))))) ==>
+      issubtype(typeof(list___getitem__(marked_execution_tree.Node_children,
+      lambda21_25$i).Node_function_name), str())) &&
+    ((forall lambda21_25$i: Ref ::
+      { issubtype(typeof(lambda21_25$i), int()) }
+      issubtype(typeof(lambda21_25$i), int()) &&
+      (issubtype(typeof(lambda21_25$i), int()) &&
+      (int() == typeof(lambda21_25$i) &&
+      (int___ge__(lambda21_25$i, __prim__int___box__(0)) &&
+      int___lt__(lambda21_25$i, __prim__int___box__(list___len__(marked_execution_tree.Node_children)))))) ==>
+      acc(list___getitem__(marked_execution_tree.Node_children, lambda21_25$i).Node_children, write)) &&
+    ((forall lambda21_25$i: Ref ::
+      { issubtype(typeof(lambda21_25$i), int()) }
+      issubtype(typeof(lambda21_25$i), int()) &&
+      (issubtype(typeof(lambda21_25$i), int()) &&
+      (int() == typeof(lambda21_25$i) &&
+      (int___ge__(lambda21_25$i, __prim__int___box__(0)) &&
+      int___lt__(lambda21_25$i, __prim__int___box__(list___len__(marked_execution_tree.Node_children)))))) ==>
+      issubtype(typeof(list___getitem__(marked_execution_tree.Node_children,
+      lambda21_25$i).Node_children), list(Node()))) &&
+    ((forall lambda21_25$i: Ref, lambda21_25$j: Ref ::
+      { typeof(lambda21_25$i), issubtype(typeof(lambda21_25$j), int()) }
+      { typeof(lambda21_25$i), int___ge__(lambda21_25$j, __prim__int___box__(0)) }
+      { typeof(lambda21_25$i), int___lt__(lambda21_25$j, __prim__int___box__(list___len__(marked_execution_tree.Node_children))) }
+      { typeof(lambda21_25$i), list___getitem__(marked_execution_tree.Node_children,
+      lambda21_25$j) }
+      { issubtype(typeof(lambda21_25$i), int()), typeof(lambda21_25$j) }
+      { issubtype(typeof(lambda21_25$i), int()), issubtype(typeof(lambda21_25$j),
+      int()) }
+      { issubtype(typeof(lambda21_25$i), int()), int___ge__(lambda21_25$j, __prim__int___box__(0)) }
+      { issubtype(typeof(lambda21_25$i), int()), int___lt__(lambda21_25$j, __prim__int___box__(list___len__(marked_execution_tree.Node_children))) }
+      { issubtype(typeof(lambda21_25$i), int()), list___getitem__(marked_execution_tree.Node_children,
+      lambda21_25$j) }
+      { typeof(lambda21_25$j), int___ge__(lambda21_25$i, __prim__int___box__(0)) }
+      { typeof(lambda21_25$j), int___lt__(lambda21_25$i, __prim__int___box__(list___len__(marked_execution_tree.Node_children))) }
+      { typeof(lambda21_25$j), list___getitem__(marked_execution_tree.Node_children,
+      lambda21_25$i) }
+      { issubtype(typeof(lambda21_25$j), int()), typeof(lambda21_25$i) }
+      { issubtype(typeof(lambda21_25$j), int()), int___ge__(lambda21_25$i, __prim__int___box__(0)) }
+      { issubtype(typeof(lambda21_25$j), int()), int___lt__(lambda21_25$i, __prim__int___box__(list___len__(marked_execution_tree.Node_children))) }
+      { issubtype(typeof(lambda21_25$j), int()), list___getitem__(marked_execution_tree.Node_children,
+      lambda21_25$i) }
+      { int___ge__(lambda21_25$i, __prim__int___box__(0)), int___ge__(lambda21_25$j,
+      __prim__int___box__(0)) }
+      { int___ge__(lambda21_25$i, __prim__int___box__(0)), int___lt__(lambda21_25$j,
+      __prim__int___box__(list___len__(marked_execution_tree.Node_children))) }
+      { int___ge__(lambda21_25$i, __prim__int___box__(0)), list___getitem__(marked_execution_tree.Node_children,
+      lambda21_25$j) }
+      { int___ge__(lambda21_25$j, __prim__int___box__(0)), int___lt__(lambda21_25$i,
+      __prim__int___box__(list___len__(marked_execution_tree.Node_children))) }
+      { int___ge__(lambda21_25$j, __prim__int___box__(0)), list___getitem__(marked_execution_tree.Node_children,
+      lambda21_25$i) }
+      { int___lt__(lambda21_25$i, __prim__int___box__(list___len__(marked_execution_tree.Node_children))),
+      int___lt__(lambda21_25$j, __prim__int___box__(list___len__(marked_execution_tree.Node_children))) }
+      { int___lt__(lambda21_25$i, __prim__int___box__(list___len__(marked_execution_tree.Node_children))),
+      list___getitem__(marked_execution_tree.Node_children, lambda21_25$j) }
+      { int___lt__(lambda21_25$j, __prim__int___box__(list___len__(marked_execution_tree.Node_children))),
+      list___getitem__(marked_execution_tree.Node_children, lambda21_25$i) }
+      { list___getitem__(marked_execution_tree.Node_children, lambda21_25$i),
+      list___getitem__(marked_execution_tree.Node_children, lambda21_25$j) }
+      lambda21_25$i != lambda21_25$j &&
+      (issubtype(typeof(lambda21_25$i), int()) &&
+      (issubtype(typeof(lambda21_25$j), int()) &&
+      (int() == typeof(lambda21_25$i) &&
+      (int() == typeof(lambda21_25$j) &&
+      (int___ge__(lambda21_25$i, __prim__int___box__(0)) &&
+      (int___ge__(lambda21_25$j, __prim__int___box__(0)) &&
+      (int___lt__(lambda21_25$i, __prim__int___box__(list___len__(marked_execution_tree.Node_children))) &&
+      int___lt__(lambda21_25$j, __prim__int___box__(list___len__(marked_execution_tree.Node_children)))))))))) ==>
+      list___getitem__(marked_execution_tree.Node_children, lambda21_25$i).Node_children !=
+      list___getitem__(marked_execution_tree.Node_children, lambda21_25$j).Node_children) &&
+    (forall lambda21_25$i: Ref ::
+      { issubtype(typeof(lambda21_25$i), int()) }
+      issubtype(typeof(lambda21_25$i), int()) &&
+      (issubtype(typeof(lambda21_25$i), int()) &&
+      (int() == typeof(lambda21_25$i) &&
+      (int___ge__(lambda21_25$i, __prim__int___box__(0)) &&
+      int___lt__(lambda21_25$i, __prim__int___box__(list___len__(marked_execution_tree.Node_children)))))) ==>
+      acc(list___getitem__(marked_execution_tree.Node_children, lambda21_25$i).Node_children.list_acc, write)))))))
+  requires acc(marked_execution_tree.Node_function_name, write) &&
+    issubtype(typeof(marked_execution_tree.Node_function_name), str())
+  ensures issubtype(typeof(result), int())
+  ensures !int___eq__(__prim__int___box__(list___len__(marked_execution_tree.Node_children)),
+    __prim__int___box__(1)) ==>
+    int___eq__(result, __prim__int___box__(0))
+  ensures int___eq__(result, __prim__int___box__(0))
+
+
+function list___len__(self: Ref): Int
+  requires issubtype(typeof(self), list(list_arg(typeof(self), 0)))
+  requires acc(self.list_acc, wildcard)
+{
+  |self.list_acc|
+}
+
+function __prim__bool___box__(prim: Bool): Ref
+  ensures typeof(result) == bool()
+  ensures bool___unbox__(result) == prim
+  ensures int___unbox__(result) == (prim ? 1 : 0)
+
+
+// decreases _
+function int___unbox__(box: Ref): Int
+  decreases _
+  requires issubtype(typeof(box), int())
+  ensures !issubtype(typeof(box), bool()) ==>
+    __prim__int___box__(result) == box
+  ensures issubtype(typeof(box), bool()) ==>
+    __prim__bool___box__(result != 0) == box
+  ensures (forall i: Ref ::
+      { object___eq__(box, i), int___unbox__(i) }
+      object___eq__(box, i) && issubtype(typeof(i), int()) ==>
+      int___unbox__(i) == result)
+
+
+function int___ge__(self: Ref, other: Ref): Bool
+  requires issubtype(typeof(self), int())
+  requires issubtype(typeof(other), float())
+{
+  (issubtype(typeof(other), int()) ?
+    int___unbox__(self) >= int___unbox__(other) :
+    float___ge__(self, other))
+}
+
+function float___lt__(self: Ref, other: Ref): Bool
+  requires issubtype(typeof(self), float())
+  requires issubtype(typeof(other), float())
+  ensures issubtype(typeof(self), int()) && issubtype(typeof(other), int()) ==>
+    result == int___lt__(self, other)
+
+
+function __prim__int___box__(prim: Int): Ref
+  ensures typeof(result) == int()
+  ensures int___unbox__(result) == prim
+
+
+function int___lt__(self: Ref, other: Ref): Bool
+  requires issubtype(typeof(self), int())
+  requires issubtype(typeof(other), float())
+{
+  (issubtype(typeof(other), int()) ?
+    int___unbox__(self) < int___unbox__(other) :
+    float___lt__(self, other))
+}
+
+function bool___unbox__(box: Ref): Bool
+  requires issubtype(typeof(box), bool())
+  ensures __prim__bool___box__(result) == box
+
+
+function float___eq__(self: Ref, other: Ref): Bool
+  requires issubtype(typeof(self), float())
+  requires issubtype(typeof(other), float())
+  ensures issubtype(typeof(self), int()) && issubtype(typeof(other), int()) ==>
+    result == int___eq__(self, other)
