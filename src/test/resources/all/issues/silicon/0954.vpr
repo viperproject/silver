@@ -1,0 +1,57 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+domain Array  {
+
+  function array_loc(a: Array, i: Int): Ref
+
+  function alen(a: Array): Int
+
+  function loc_inv_1(loc: Ref): Array
+
+  function loc_inv_2(loc: Ref): Int
+
+  axiom {
+    (forall a: Array, i: Int ::
+      { array_loc(a, i) }
+      loc_inv_1(array_loc(a, i)) == a && loc_inv_2(array_loc(a, i)) == i)
+  }
+
+  axiom {
+    (forall a: Array :: { alen(a) } alen(a) >= 0)
+  }
+}
+
+field int: Int
+
+function aloc(a: Array, i: Int): Ref
+  requires 0 <= i
+  requires i < alen(a)
+  ensures loc_inv_1(result) == a
+  ensures loc_inv_2(result) == i
+  decreases
+{
+  array_loc(a, i)
+}
+
+
+function relaxed(pat: Array, splitPoint: Int): Bool
+  requires (forall i: Int ::
+      { aloc(pat, i) }
+      0 <= i && i < alen(pat) ==>
+      acc(aloc(pat, i).int))
+
+method foo(pat: Array, splitPoint: Int, shift: Int)
+  requires (forall i: Int ::
+      { aloc(pat, i) }
+      0 <= i && i < alen(pat) ==>
+      acc(aloc(pat, i).int, write))
+  requires 0 <= splitPoint;
+{
+    inhale shift == 1 ==> relaxed(pat, splitPoint)
+    assert shift == 1 ==> (
+        exists sp: Int ::
+        { relaxed(pat, sp) }
+        0 <= sp && relaxed(pat, sp)
+    )
+}
