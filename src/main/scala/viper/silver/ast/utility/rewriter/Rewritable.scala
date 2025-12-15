@@ -7,7 +7,7 @@
 package viper.silver.ast.utility.rewriter
 
 import viper.silver.parser.PNode
-import viper.silver.ast.{AtomicType, BackendFuncApp, DomainFuncApp, ErrorTrafo, FuncApp, Info, Node, Position}
+import viper.silver.ast.{AtomicType, BackendFuncApp, DomainFuncApp, DomainMember, ErrorTrafo, FuncApp, Info, Node, Position}
 
 import scala.reflect.runtime.{universe => reflection}
 
@@ -112,6 +112,7 @@ trait Rewritable extends Product {
       val arguments = this match {
         case fa: FuncApp => this.children ++ Seq(pos, info, fa.typ, trafo)
         case df: DomainFuncApp => this.children ++ Seq(pos, info, df.typ, df.domainName, trafo)
+        case dm: DomainMember => this.children ++ Seq(pos, info, dm.domainName, trafo)
         case _ => this.children ++ Seq(pos, info, trafo)
       }
 

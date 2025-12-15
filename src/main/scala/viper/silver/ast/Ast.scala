@@ -364,6 +364,8 @@ trait Info {
     case _: T => NoInfo
     case info => info
   }
+
+  def getSourceString: String = ""
 }
 
 /** A default `Info` that is empty. */
