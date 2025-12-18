@@ -364,8 +364,6 @@ trait Info {
     case _: T => NoInfo
     case info => info
   }
-
-  def getSourceString: String = ""
 }
 
 /** A default `Info` that is empty. */
@@ -424,12 +422,16 @@ abstract class FailureExpectedInfo extends Info {
   override val isCached = false
 }
 
+case class DependencyAnalysisInfo(info: String, pos: AbstractSourcePosition) extends Info {
+  override val comment = Nil
+  override val isCached = false
+}
+
+
 /** An `Info` instance for composing multiple `Info`s together */
 case class ConsInfo(head: Info, tail: Info) extends Info {
   override val comment = head.comment ++ tail.comment
   override val isCached = head.isCached || tail.isCached
-
-  override def getSourceString: String = head.getSourceString ++ tail.getSourceString
 }
 
 /** Build a `ConsInfo` instance out of two `Info`s, unless the latter is `NoInfo` (which can be dropped) */
