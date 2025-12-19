@@ -65,7 +65,8 @@ trait DecreasesCheck extends ProgramManager with ErrorReporter {
    * @param tupleCondition     for which tuple decreasing should be checked (default: true)
    * @param errTrafo           for termination related assertions
    * @param reasonTrafoFactory for termination related assertion reasons
-   * @return termination check as a Assert Stmt (if decreasing and bounded are defined, otherwise EmptyStmt)
+   * @return termination check as a
+   *         Stmt (if decreasing and bounded are defined, otherwise EmptyStmt)
    */
   protected def createTupleCheck(tupleCondition: Option[Exp], biggerTuple: Seq[Exp], smallerTuple: Seq[Exp],
                                  errTrafo: ErrTrafo, reasonTrafoFactory: ReasonTrafoFactory): Stmt = {
@@ -87,11 +88,11 @@ trait DecreasesCheck extends ProgramManager with ErrorReporter {
     val decreasesSimpleReasonTrafo = reasonTrafoFactory.generateTupleSimpleFalse()
 
     val tupleImplies = tupleCondition match {
-      case Some(c) => Implies(c, lexCheck)(errT = decreasesSimpleReasonTrafo)
+      case Some(c) => Implies(c, lexCheck)(lexCheck.pos, lexCheck.info, decreasesSimpleReasonTrafo)
       case None => lexCheck
     }
 
-    val tupleAssert = Assert(tupleImplies)(errT = errTrafo)
+    val tupleAssert = Assert(tupleImplies)(lexCheck.pos, lexCheck.info, errTrafo)
 
     tupleAssert
   }
@@ -158,13 +159,13 @@ trait DecreasesCheck extends ProgramManager with ErrorReporter {
               argTypeVarsDecr.last -> bigger.typ
             ))(errT = boundReTrafo)
 
-          val andPart = And(dec, bound)(errT = simpleReTrafo)
+          val andPart = And(dec, bound)(smaller.pos, smaller.info,simpleReTrafo)
 
-          val eq = EqCmp(smaller, bigger)(errT = decreasesReTrafo)
+          val eq = EqCmp(smaller, bigger)(smaller.pos, smaller.info, decreasesReTrafo)
 
           val next = createExp(bTuple.tail, sTuple.tail)
-          val nextPart = And(eq, next)(errT = simpleReTrafo)
-          Or(andPart, nextPart)(errT = simpleReTrafo)
+          val nextPart = And(eq, next)(eq.pos, eq.info, simpleReTrafo)
+          Or(andPart, nextPart)(smaller.pos, smaller.info, simpleReTrafo)
         }
       }
     }
