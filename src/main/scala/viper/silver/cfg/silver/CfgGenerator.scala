@@ -185,17 +185,22 @@ object CfgGenerator {
         // check whether the loop is tagged with an id
         val loopId = stmt.info.getUniqueInfo[IdInfo].map(_.id)
         // create labels
+        val thnTarget = TmpLabel.generate("then")
         val headTarget = TmpLabel.generate("head")
         val loopTarget = TmpLabel.generate("loop")
         val afterTarget = TmpLabel.generate("after")
+        // unroll first iter
+        addStatement(ConditionalJumpStmt(Not(cond)(), afterTarget, thnTarget))
+        addLabel(thnTarget)
         // process loop head
         addLabel(headTarget, addEmptyStmt = false)
         addStatement(LoopHeadStmt(invs, afterTarget, loopId))
-        addStatement(ConditionalJumpStmt(cond, loopTarget, afterTarget))
+        addStatement(JumpStmt(loopTarget))
         // process loop body
         addLabel(loopTarget)
+        addStatement(WrappedStmt(Inhale(cond)()))
         run(body)
-        addStatement(JumpStmt(headTarget))
+        addStatement(ConditionalJumpStmt(cond, headTarget, afterTarget))
         // set label after loop
         addLabel(afterTarget)
       case Seqn(ss, scopedDecls) =>
