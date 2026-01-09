@@ -9,7 +9,6 @@ package viper.silver.verifier
 import fastparse.Parsed
 import viper.silver.ast._
 import viper.silver.ast.utility.rewriter.Rewritable
-import viper.silver.dependencyAnalysis.AbstractDependencyGraphInterpreter
 
 
 /**********************************************************************************
@@ -349,17 +348,6 @@ object errors {
 
   def ErrorWrapperWithExampleTransformer(pve: PartialVerificationError, transformer: CounterexampleTransformer) : PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => ErrorWrapperWithExampleTransformer(pve.f(reason).asInstanceOf[AbstractVerificationError], transformer))
-
-  case class DependencyAnalysisFakeError(dependencyGraphInterpreter: AbstractDependencyGraphInterpreter) extends AbstractVerificationError {
-    override protected def text: String = "Dependency Analysis results available."
-    override def withReason(reason: ErrorReason): AbstractVerificationError = this
-    override def reason: ErrorReason = DummyReason
-    override def id: String = "dependencyAnalysis.result"
-    override def offendingNode: ErrorNode = DummyNode
-    override def withNode(offendingNode: ErrorNode): ErrorMessage = this
-
-    override def transformedError(): AbstractVerificationError = this
-  }
 
   case class ExhaleFailed(offendingNode: Exhale, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "exhale.failed"
