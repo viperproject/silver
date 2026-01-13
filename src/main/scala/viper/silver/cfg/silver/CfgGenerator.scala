@@ -363,8 +363,13 @@ object CfgGenerator {
             current = None
           case ConditionalJumpStmt(cond, thnTarget, elsTarget) =>
             current.foreach { currentIndex =>
-              val neg = Not(cond)(cond.pos, cond.info, cond.errT)
-              addTmpEdge(TmpConditionalEdge(cond, currentIndex, resolve(thnTarget)))
+              val negInfo = cond.pos match {
+                case position: AbstractSourcePosition if cond.info.getUniqueInfo[DependencyAnalysisInfo].isEmpty =>
+                  MakeInfoPair(cond.info, DependencyAnalysisInfo(cond.toString, position))
+                case _ => cond.info
+              }
+              val neg = Not(cond)(cond.pos, negInfo, cond.errT)
+              addTmpEdge(TmpConditionalEdge(cond.withMeta(cond.pos, negInfo, cond.errT), currentIndex, resolve(thnTarget)))
               addTmpEdge(TmpConditionalEdge(neg, currentIndex, resolve(elsTarget)))
             }
             current = None
