@@ -422,12 +422,6 @@ abstract class FailureExpectedInfo extends Info {
   override val isCached = false
 }
 
-case class DependencyAnalysisInfo(info: String, pos: AbstractSourcePosition) extends Info {
-  override val comment = Nil
-  override val isCached = false
-}
-
-
 /** An `Info` instance for composing multiple `Info`s together */
 case class ConsInfo(head: Info, tail: Info) extends Info {
   override val comment = head.comment ++ tail.comment
