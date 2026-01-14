@@ -364,8 +364,8 @@ object CfgGenerator {
           case ConditionalJumpStmt(cond, thnTarget, elsTarget) =>
             current.foreach { currentIndex =>
               val negInfo = cond.pos match {
-                case position: AbstractSourcePosition if cond.info.getUniqueInfo[DependencyAnalysisInfo].isEmpty =>
-                  MakeInfoPair(cond.info, DependencyAnalysisInfo(cond.toString, position))
+//                case position: AbstractSourcePosition if cond.info.getUniqueInfo[DependencyAnalysisInfo].isEmpty => TODO ake
+//                  MakeInfoPair(cond.info, DependencyAnalysisInfo(cond.toString, position))
                 case _ => cond.info
               }
               val neg = Not(cond)(cond.pos, negInfo, cond.errT)
