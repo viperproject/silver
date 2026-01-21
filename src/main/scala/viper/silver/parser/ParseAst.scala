@@ -268,6 +268,11 @@ sealed trait PIdnUseName[T <: PDeclarationInner] extends PIdnUse {
 /** Any `PNode` which should be ignored (as well as it's children) by the `NameAnalyser`. */
 trait PNameAnalyserOpaque extends PNode
 
+trait PNameAnalyserCustom extends PNode {
+  def nameDown(map: NameAnalyserCtxt): Unit
+  def nameUp(map: NameAnalyserCtxt): Unit
+}
+
 case class PIdnRef[T <: PDeclarationInner](name: String)(val pos: (Position, Position))(implicit val ctag: scala.reflect.ClassTag[T]) extends PIdnUseName[T] {
   override def rename(newName: String): PIdnUse = PIdnRef(newName)(pos)
   /** Changes the type of declaration which is referenced, preserves all previously added `decls` but discards `filters`. */
@@ -1691,7 +1696,11 @@ case class PDomainFunction(annotations: Seq[PAnnotation], unique: Option[PKw.Uni
   override def endLinebreak = false
 }
 
-case class PAxiom(annotations: Seq[PAnnotation], axiom: PKw.Axiom, idndef: Option[PIdnDef], exp: PBracedExp)(val pos: (Position, Position)) extends PDomainMember
+/** Declares that all children expressions must always be well-defined. This is
+ * enforced during type-checking. Used e.g. for axioms. */
+trait PAlwaysWellDefined
+
+case class PAxiom(annotations: Seq[PAnnotation], axiom: PKw.Axiom, idndef: Option[PIdnDef], exp: PBracedExp)(val pos: (Position, Position)) extends PDomainMember with PAlwaysWellDefined
 
 case class PDomainInterpretation(name: PRawString, c: PSym.Colon, lit: PStringLiteral)(val pos: (Position, Position)) extends PNode
 case class PDomainInterpretations(k: PReserved[PKeywordLang], m: PDelimited.Comma[PSym.Paren, PDomainInterpretation])(val pos: (Position, Position)) extends PNode {
