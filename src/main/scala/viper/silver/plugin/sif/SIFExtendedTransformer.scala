@@ -51,6 +51,11 @@ trait SIFExtendedTransformer {
     var enableNaginiSpecificFeatures: Boolean = false
     /** Function to be called when errors are encountered. Prints to stdout by default. */
     var reportError: AbstractError => Unit = defaultReportError
+    /**
+     * Optional callback that is invoked after applying the SIF transformation, which can be used to print the AST for
+     * debugging purposes
+     */
+    var transformedProgramCallback: Option[Program => Unit] = None
   }
   def optimizeControlFlow(v: Boolean): Unit = {
     Config.optimizeControlFlow = v
@@ -234,8 +239,10 @@ trait SIFExtendedTransformer {
       p.methods.map(m => translateMethod(m))
     }
 
-    p.copy(domains = newDomains, fields = productFields, functions = newFunctions, predicates = newPredicates,
+    val res = p.copy(domains = newDomains, fields = productFields, functions = newFunctions, predicates = newPredicates,
       methods = newMethods)(p.pos, p.info, p.errT)
+    Config.transformedProgramCallback.foreach(fn => fn(res))
+    res
   }
 
   // TODO REM: depends on the results of relationalPredicates
