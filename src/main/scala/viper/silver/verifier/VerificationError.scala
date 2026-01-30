@@ -680,11 +680,11 @@ object reasons {
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = NonPositivePermission(offendingNode.asInstanceOf[Exp])
   }
 
-  case class InsufficientPermission(offendingNode: LocationAccess) extends AbstractErrorReason {
+  case class InsufficientPermission(offendingNode: LocationAccess, permExp: Option[Exp]) extends AbstractErrorReason {
     val id = "insufficient.permission"
-    def readableMessage = s"There might be insufficient permission to access $offendingNode"
+    def readableMessage = s"There might be insufficient permission to access $offendingNode, $permExp"
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = InsufficientPermission(offendingNode.asInstanceOf[LocationAccess])
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = InsufficientPermission(offendingNode.asInstanceOf[LocationAccess], permExp)
   }
 
   case class InvalidPermMultiplication(offendingNode: PermMul) extends AbstractErrorReason {
