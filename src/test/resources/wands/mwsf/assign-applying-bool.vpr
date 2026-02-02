@@ -1,0 +1,16 @@
+field b: Bool
+
+method test07a(x: Ref)
+    requires acc(x.b)
+{
+    package acc(x.b) --* acc(x.b)
+
+    x.b := applying (acc(x.b) --* acc(x.b)) in !x.b
+
+    apply acc(x.b) --* acc(x.b)
+
+    assert acc(x.b) && x.b != old(x.b)
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}

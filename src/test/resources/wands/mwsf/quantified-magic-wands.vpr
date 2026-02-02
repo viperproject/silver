@@ -1,0 +1,162 @@
+field f: Int
+
+predicate Cell(x: Ref) {
+    acc(x.f)
+}
+
+function get(x: Ref): Int
+    requires acc(Cell(x), 1/2)
+{
+    unfolding acc(Cell(x), 1/2) in x.f
+}
+
+// Test adapted from QPWands.vpr test0
+method test0b(xs: Seq[Ref], y: Ref)
+  requires forall x: Ref :: x in xs ==> acc(x.f)
+  requires forall i: Int, j: Int :: 0 <= i && 0 <= j && i < |xs| && j < |xs| && i != j ==> xs[i] != xs[j]
+  requires |xs| >= 1
+  requires acc(y.f)
+{
+  xs[0].f := 0
+  y.f := 1
+
+  label setupComplete
+  var toGo: Seq[Ref] := xs
+  var completed: Seq[Ref] := Seq()
+
+  var localX: Ref := toGo[0]
+  package acc(y.f) --* acc(localX.f) && acc(y.f) && y.f == old[lhs](y.f)
+  completed := completed ++ Seq(localX)
+  toGo := toGo[1..]
+
+  assert forall x: Ref :: x in completed ==> applying (acc(y.f) --* acc(x.f) && acc(y.f) && y.f == old[lhs](y.f)) in x.f == old[setupComplete](x.f)
+}
+
+method test0c(xs: Seq[Ref], y: Ref)
+  requires forall x: Ref :: x in xs ==> acc(x.f)
+  requires |xs| >= 1
+  requires acc(y.f)
+{
+  var localX: Ref := xs[0]
+
+  var toGo: Seq[Ref] := xs[1..]
+  var completed: Seq[Ref] := Seq(localX)
+
+  package acc(y.f) --* acc(localX.f) && acc(y.f) && y.f == old[lhs](y.f)
+
+  assert forall x: Ref :: x in completed ==> applying (acc(y.f) --* acc(x.f) && acc(y.f) && y.f == old[lhs](y.f)) in x.f == old(x.f)
+}
+
+method test0d(xs: Seq[Ref], y: Ref)
+  requires forall x: Ref :: x in xs ==> acc(x.f)
+  requires |xs| >= 1
+  requires acc(y.f)
+{
+  xs[0].f := 0
+  y.f := 1
+  label setupComplete
+
+  var completed: Seq[Ref] := Seq(xs[0])
+
+  package acc(y.f) --* acc(xs[0].f) && acc(y.f) && y.f == old[lhs](y.f)
+
+  assert forall x: Ref :: x in completed ==> applying (acc(y.f) --* acc(x.f) && acc(y.f) && y.f == old[lhs](y.f)) in x.f == old[setupComplete](x.f)
+}
+
+method test16a(xs: Seq[Ref], some: Ref, y: Ref)
+    requires forall x: Ref :: x in xs ==> acc(x.f)
+    requires some in xs && some.f == 0
+    requires acc(y.f)
+{
+    package acc(y.f) --* acc(some.f)
+
+    var completed: Seq[Ref] := Seq(some)
+    assert forall z: Ref :: z in completed ==> acc(y.f) --* acc(z.f)
+
+    apply acc(y.f) --* acc(some.f)
+    assert some.f == 0
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+method test16b(xs: Seq[Ref], some: Ref, y: Ref)
+    requires forall x: Ref :: x in xs ==> acc(x.f)
+    requires some in xs
+    requires acc(y.f) && y.f == 42
+{
+    package acc(y.f) --* acc(some.f) && acc(y.f)
+
+    var completed: Seq[Ref] := Seq(some)
+    assert forall z: Ref :: z in completed ==> acc(y.f) --* acc(z.f) && acc(y.f)
+
+    apply acc(y.f) --* acc(some.f) && acc(y.f)
+    assert y.f == 42
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+method test16c(xs: Seq[Ref], some: Ref, y: Ref)
+    requires forall x: Ref :: x in xs ==> acc(x.f)
+    requires some in xs && some.f == 0
+    requires acc(y.f) && y.f == 42
+{
+    package acc(y.f) --* acc(some.f) && acc(y.f)
+
+    var completed: Seq[Ref] := Seq(some)
+    assert forall z: Ref :: z in completed ==> acc(y.f) --* acc(z.f) && acc(y.f)
+
+    apply acc(y.f) --* acc(some.f) && acc(y.f)
+    assert some.f == 0
+    assert y.f == 42
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+method test17a(xs: Seq[Ref], some: Ref, y: Ref)
+    requires forall x: Ref :: x in xs ==> Cell(x)
+    requires some in xs && get(some) == 0
+    requires Cell(y)
+{
+    package Cell(y) --* Cell(some)
+
+    var completed: Seq[Ref] := Seq(some)
+    assert forall z: Ref :: z in completed ==> Cell(y) --* Cell(z)
+
+    apply Cell(y) --* Cell(some)
+    assert get(some) == 0
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+method test17b(xs: Seq[Ref], some: Ref, y: Ref)
+    requires forall x: Ref :: x in xs ==> Cell(x)
+    requires some in xs
+    requires Cell(y) && get(y) == 42
+{
+    package Cell(y) --* Cell(some) && Cell(y)
+
+    var completed: Seq[Ref] := Seq(some)
+    assert forall z: Ref :: z in completed ==> Cell(y) --* Cell(z) && Cell(y)
+
+    apply Cell(y) --* Cell(some) && Cell(y)
+    assert get(y) == 42
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+method test17c(xs: Seq[Ref], some: Ref, y: Ref)
+    requires forall x: Ref :: x in xs ==> Cell(x)
+    requires some in xs && get(some) == 0
+    requires Cell(y) && get(y) == 42
+{
+    package Cell(y) --* Cell(some) && Cell(y)
+
+    var completed: Seq[Ref] := Seq(some)
+    assert forall z: Ref :: z in completed ==> Cell(y) --* Cell(z) && Cell(y)
+
+    apply Cell(y) --* Cell(some) && Cell(y)
+    assert get(some) == 0
+    assert get(y) == 42
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}

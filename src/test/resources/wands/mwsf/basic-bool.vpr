@@ -1,0 +1,50 @@
+field b: Bool
+
+method test01a(x: Ref)
+{
+    inhale acc(x.b) && x.b
+
+    package true --* acc(x.b)
+
+    //:: UnexpectedOutput(exhale.failed:insufficient.permission, /Carbon/issue/488/)
+    assert applying (true --* acc(x.b)) in x.b
+}
+
+method test01b(x: Ref)
+{
+    inhale acc(x.b) && x.b
+
+    package true --* acc(x.b)
+
+    apply true --* acc(x.b)
+
+    assert x.b
+}
+
+method test01c(x: Ref)
+{
+    inhale acc(x.b) && x.b
+
+    package true --* acc(x.b)
+
+    //:: UnexpectedOutput(exhale.failed:insufficient.permission, /Carbon/issue/488/)
+    assert applying (true --* acc(x.b)) in x.b
+
+    apply true --* acc(x.b)
+
+    assert x.b
+}
+
+method test01d(x: Ref, a: Bool)
+{
+    inhale acc(x.b) && x.b == a
+
+    package true --* acc(x.b)
+
+    //:: UnexpectedOutput(exhale.failed:insufficient.permission, /Carbon/issue/488/)
+    assert applying (true --* acc(x.b)) in x.b == a
+
+    apply true --* acc(x.b)
+
+    assert x.b == a
+}

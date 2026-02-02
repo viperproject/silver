@@ -1,0 +1,50 @@
+field f: Int
+
+method test04a(x: Ref, y: Ref)
+{
+    inhale acc(x.f) && x.f == 42 && acc(y.f) && y.f == 37
+
+    package acc(x.f) --* acc(x.f) && acc(y.f)
+
+    //:: UnexpectedOutput(exhale.failed:insufficient.permission, /Carbon/issue/488/)
+    assert applying (acc(x.f) --* acc(x.f) && acc(y.f)) in x.f == 42 && y.f == 37
+}
+
+method test04b(x: Ref, y: Ref)
+{
+    inhale acc(x.f) && x.f == 42 && acc(y.f) && y.f == 37
+
+    package acc(x.f) --* acc(x.f) && acc(y.f)
+
+    apply acc(x.f) --* acc(x.f) && acc(y.f)
+
+    assert x.f == 42 && y.f == 37
+}
+
+method test04c(x: Ref, y: Ref)
+{
+    inhale acc(x.f) && x.f == 42 && acc(y.f) && y.f == 37
+
+    package acc(x.f) --* acc(x.f) && acc(y.f)
+
+    //:: UnexpectedOutput(exhale.failed:insufficient.permission, /Carbon/issue/488/)
+    assert applying (acc(x.f) --* acc(x.f) && acc(y.f)) in x.f == 42 && y.f == 37
+
+    apply acc(x.f) --* acc(x.f) && acc(y.f)
+
+    assert x.f == 42 && y.f == 37
+}
+
+method test04d(x: Ref, y: Ref, a: Int, b: Int)
+{
+    inhale acc(x.f) && x.f == a && acc(y.f) && y.f == b
+
+    package acc(x.f) --* acc(x.f) && acc(y.f)
+
+    //:: UnexpectedOutput(exhale.failed:insufficient.permission, /Carbon/issue/488/)
+    assert applying (acc(x.f) --* acc(x.f) && acc(y.f)) in x.f == a && y.f == b
+
+    apply acc(x.f) --* acc(x.f) && acc(y.f)
+
+    assert x.f == a && y.f == b
+}
