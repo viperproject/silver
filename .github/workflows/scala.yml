@@ -27,7 +27,7 @@ jobs:
       shell: bash
       run: "git config --global core.autocrlf false"
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
     - name: Set up Scala and JDK 1.${{ matrix.java }}
       uses: olafurpg/setup-scala@v14
       with:
@@ -42,7 +42,7 @@ jobs:
       run: sbt -v +test
     - name: Archive artifacts
       if: matrix.os == 'ubuntu-latest' && matrix.java == 11
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         path: |
           build.sbt
