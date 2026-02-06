@@ -1,0 +1,70 @@
+// Test cases showing unsound behaviour of current Viper
+// Related to wands/new_syntax/QPWands.vpr
+
+field f: Int
+
+method test12a(xs: Seq[Ref], y: Ref)
+    requires forall x: Ref :: x in xs ==> acc(x.f)
+    requires |xs| >= 1
+    requires acc(y.f)
+{
+    xs[0].f := 0
+    var some: Ref := xs[0]
+
+    package acc(some.f) --* true
+
+    var completed: Seq[Ref] := Seq(some)
+    assert forall x: Ref :: x in completed ==> acc(x.f) --* true
+
+    some.f := 1
+    assert applying (acc(some.f) --* true) in true
+
+    some.f := 2
+    assert applying (acc(some.f) --* true) in true
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    //:: MissingOutput(assert.failed:assertion.false, /Silicon/issue/307/)
+    assert false
+}
+
+method test12b(xs: Seq[Ref], y: Ref)
+    requires forall x: Ref :: x in xs ==> acc(x.f)
+    requires |xs| >= 1
+    requires acc(y.f)
+{
+    xs[0].f := 0
+    var some: Ref := xs[0]
+
+    package acc(some.f) --* acc(some.f)
+
+    var completed: Seq[Ref] := Seq(some)
+    assert forall x: Ref :: x in completed ==> acc(x.f) --* acc(x.f)
+
+    some.f := applying (acc(some.f) --* acc(some.f)) in some.f + 1
+    apply acc(some.f) --* acc(some.f)
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    //:: MissingOutput(assert.failed:assertion.false, /Silicon/issue/307/)
+    assert false
+}
+
+method test12c(xs: Seq[Ref], y: Ref)
+    requires forall x: Ref :: x in xs ==> acc(x.f)
+    requires |xs| >= 1
+    requires acc(y.f)
+{
+    xs[0].f := 0
+    var some: Ref := xs[0]
+
+    package acc(some.f) --* acc(some.f)
+
+    var completed: Seq[Ref] := Seq(some)
+    assert forall x: Ref :: x in completed ==> acc(x.f) --* acc(x.f)
+
+    some.f := applying (acc(some.f) --* acc(some.f)) in some.f + 1
+    some.f := applying (acc(some.f) --* acc(some.f)) in some.f + 1
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    //:: MissingOutput(assert.failed:assertion.false, /Silicon/issue/307/)
+    assert false
+}
