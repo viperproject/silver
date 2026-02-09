@@ -87,4 +87,35 @@ object Statements {
 
     writtenTo.distinct
   }
+
+  def hasProofObligations(s: Stmt, p: Program): Boolean = {
+    def goE(exp: Exp): Boolean = !Expressions.isKnownWellDefined(exp, Some(p))
+
+    def goEs(exps: Seq[Exp]): Boolean = exps exists goE
+
+    s match {
+      case _: FieldAssign | _: Exhale | _: Assert | _: Fold | _: Unfold | _: Package | _: Apply => true
+      case NewStmt(lhs, _) => goE(lhs)
+      case LocalVarAssign(lhs, rhs) => goE(lhs) || goE(rhs)
+      case MethodCall(methodName, args, targets) => p.findMethod(methodName).pres.nonEmpty || goEs(args) || goEs(targets)
+      case Inhale(exp) => goE(exp)
+      case Assume(exp) => goE(exp)
+      case Seqn(ss, _) => ss exists (hasProofObligations(_, p))
+      case If(cond, thn, els) => goE(cond) || hasProofObligations(thn, p) || hasProofObligations(els, p)
+      case While(cond, invs, body) => invs.nonEmpty || goE(cond) || hasProofObligations(body, p)
+      case Label(_, invs) => invs.nonEmpty
+      case _: Goto | _: LocalVarDeclStmt => false
+      case _: Quasihavoc | _: Quasihavocall => true
+      case _: ExtensionStmt => true // TODO ake
+    }
+  }
+
+  def introducesSmtAssumptions(s: Stmt): Boolean = s match {
+      case Seqn(ss, _) => ss exists introducesSmtAssumptions
+      case Label(_, invs) => invs.nonEmpty
+      case _: Exhale | _: Assert | _: Goto | _: LocalVarDeclStmt | _: Quasihavoc | _: Quasihavocall => false
+      case _: ExtensionStmt => true // TODO ake
+      case _ => true
+    }
+
 }
