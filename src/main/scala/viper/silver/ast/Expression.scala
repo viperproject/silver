@@ -163,7 +163,7 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
     collectedExpressions
   }
 
-  def structure(p: Program): MagicWandStructure = {
+  def structure(p: Program, uniqueNames: Boolean = false): MagicWandStructure = {
     /* High-level idea: take the input wand (`this`) and perform a sequence of
      * substitutions that transform the wand into a canonical form suitable for
      * checking whether or not a given state provides a particular wand.
@@ -208,10 +208,12 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
         decl.copy(name(decl.typ, bindings(decl.name)))(decl.pos, decl.info, decl.errT))
     }
 
+    var uniqueNameIndex = -1
     val structure = StrategyBuilder.Context[Node, Bindings](
       {
         case (exp: Exp, c) if subexpressionsToEvaluate.contains(exp) =>
-          (LocalVar(exp.typ.toString(),exp.typ)(), c)
+          val varName = exp.typ.toString() + (if (uniqueNames) s"${uniqueNameIndex += 1; uniqueNameIndex}" else "")
+          (LocalVar(varName, exp.typ)(), c)
 
         case (quant: QuantifiedExp, context) =>
           /* NOTE: This case, i.e. the transformation case, is reached before the

@@ -116,6 +116,8 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     case "native" => NativeModel
     case "variables" => VariablesModel
     case "mapped" => MappedModel
+    case "extended" => ExtendedModel
+    case "intermediate" => IntermediateModel
     case i => throw new IllegalArgumentException(s"Unsupported counterexample model provided. Expected 'native', 'variables' or 'mapped' but got $i")
   }))
 
@@ -211,3 +213,5 @@ trait CounterexampleModel
 case object NativeModel extends CounterexampleModel
 case object VariablesModel extends CounterexampleModel
 case object MappedModel extends CounterexampleModel
+case object IntermediateModel extends CounterexampleModel
+case object ExtendedModel extends CounterexampleModel
