@@ -1370,7 +1370,7 @@ trait SIFExtendedTransformer {
         Seqn(Seq(newNew) ++  /*allFieldAssigns ++*/ Seq(assign1, assign2, incrementTime(p1, p2)), Seq(tmpd))()
 
       // var p1_, p2_, p3_, p4_;
-      // p1_ := a1 && cond; p2_ := a2 && P[cond]; p3_ := a1 && !cond; p4 := a2 && !P[cond]
+      // p1_ := a1 && Normal[cond]; p2_ := a2 && Prime[cond]; p3_ := a1 && !Normal[cond]; p4 := a2 && !Prime[cond]
       // if p1 { time1 += 1 }; if p2 { time2 += 1 }
       // Statement[thn]<p1_, p2_>
       // Statement[els]<p3_, p4_>
@@ -1380,9 +1380,9 @@ trait SIFExtendedTransformer {
         val (p3d, p3r) = getNewBool("p3")
         val (p4d, p4r) = getNewBool("p4")
 
-        val p1Assign = LocalVarAssign(p1r, And(act1, cond)())(i.pos, i.info, i.errT)
+        val p1Assign = LocalVarAssign(p1r, And(act1, translateNormal(cond, p1, p2))())(i.pos, i.info, i.errT)
         val p2Assign = LocalVarAssign(p2r, And(act2, translatePrime(cond, p1, p2))())(i.pos, i.info, i.errT)
-        val p3Assign = LocalVarAssign(p3r, And(act1, Not(cond)())())(i.pos, i.info, i.errT)
+        val p3Assign = LocalVarAssign(p3r, And(act1, Not(translateNormal(cond, p1, p2))())())(i.pos, i.info, i.errT)
         val p4Assign = LocalVarAssign(p4r, And(act2, Not(translatePrime(cond, p1, p2))())())(i.pos, i.info, i.errT)
 
         val thnCtx = ctx.copy(p1 = p1r, p2 = p2r, ctrlVars = ctrlVars)
