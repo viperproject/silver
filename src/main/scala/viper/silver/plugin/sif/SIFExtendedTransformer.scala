@@ -1965,15 +1965,21 @@ trait SIFExtendedTransformer {
     *
     * N[Low(e)] -> p1 && p2 ==> Eq[e]
     * N[low(e)] -> p1 && p2 ==> Eq[e]
+    * N[LowEvent] -> p1 && p2
+    * N[lowEvent] -> p1 && p2
+    * N[Rel(e, 1)] -> P[e]
+    * N[Rel(e, i)] && i != 1 -> N[e]
     */
   def translateNormal[T <: Exp](e: T, p1: Exp, p2: Exp): T = {
     e.transform{
       case l: SIFLowExp => Implies(And(p1, p2)(), translateSIFLowExpComparison(l, p1, p2))(errT = fwTs(l, l))
+      case _: SIFLowEventExp => And(p1, p2)()
       case r@SIFRelExp(e, i) =>
         if (!Config.enableExperimentalFeatures)
           reportError(Internal(r, FeatureUnsupported(r, "rel-expressions are an experimental feature and must be explicitly enabled.")))
         if (i.i == BigInt.int2bigInt(1)) translatePrime(e, p1, p2) else translateNormal(e, p1, p2)
       case DomainFuncApp("Low", args, _) if Config.enableNaginiSpecificFeatures => Implies(And(p1, p2)(), translateSIFLowExpComparison(SIFLowExp(args.head)(), p1, p2))()
+      case DomainFuncApp("LowEvent", Seq(), _) if Config.enableNaginiSpecificFeatures => And(p1, p2)()
     }
   }
 
@@ -1984,11 +1990,14 @@ trait SIFExtendedTransformer {
     *
     * Unary[low(e)] -> true
     * Unary[Low(e)] -> true
+    * Unary[lowEvent] -> true
+    * Unary[LowEvent] -> true
     *
     * */
   def translateToUnary(e: Exp): Exp = {
     val transformed = e.transform{
       case _: SIFLowExp => TrueLit()()
+      case _: SIFLowEventExp => TrueLit()()
       case DomainFuncApp("Low", _, _) if Config.enableNaginiSpecificFeatures => TrueLit()()
       case DomainFuncApp("LowEvent", Seq(), _) if Config.enableNaginiSpecificFeatures => TrueLit()()
     }

@@ -30,7 +30,7 @@ method InLowEventContexts2(t: Int)
 
     assert lowEvent
 }
-/*
+
 method InNonLowEventContexts(t: Int)
     requires !lowEvent
 {
@@ -42,4 +42,3 @@ method InNonLowEventContexts(t: Int)
     // the loop will never terminate as `low(t)` trivially evaluates to `true` as there is no second execution
     assert false
 }
-*/
