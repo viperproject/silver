@@ -1,0 +1,45 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// this testcase demonstrates how looping on a SIF expression behaves semantically
+
+method InLowEventContexts(t: Int)
+    requires lowEvent
+{
+    while (low(t))
+    {
+        assert low(t)
+    }
+
+    // this case is reachable as `t` might be the same in both executions or it might not
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+method InLowEventContexts2(t: Int)
+    requires lowEvent
+{
+    // since `low(t)` evaluates to the same value in both executions, both executions are guaranteed
+    // to execute the loop bodies in sync
+
+    while (low(t))
+    invariant lowEvent
+    {
+        assert lowEvent
+    }
+
+    assert lowEvent
+}
+/*
+method InNonLowEventContexts(t: Int)
+    requires !lowEvent
+{
+    while (low(t))
+    {
+        assert low(t)
+    }
+
+    // the loop will never terminate as `low(t)` trivially evaluates to `true` as there is no second execution
+    assert false
+}
+*/
