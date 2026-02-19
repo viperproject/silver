@@ -1,0 +1,39 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// this testcase demonstrates how branching on a SIF expression behaves semantically
+
+method InLowEventContexts(t: Int)
+  requires lowEvent
+{
+    if (low(t)) {
+        assert low(t)
+    } else {
+        // this case is reachable as `t` might be the same in both executions or it might not
+        //:: ExpectedOutput(assert.failed:assertion.false)
+        assert false
+    }
+}
+
+method InLowEventContexts2(t: Int)
+  requires lowEvent
+{
+    // since `low(t)` evaluates to the same value in both executions, both executions are guaranteed
+    // to enter the same branch
+    if (low(t)) {
+        assert lowEvent
+    } else {
+        assert lowEvent
+    }
+}
+
+method InNonLowEventContexts(t: Int)
+    requires !lowEvent
+{
+    if (low(t)) {
+        assert low(t)
+    } else {
+        // this is a dead branch as `low(t)` trivially evaluates to `true` as there is no second execution
+        assert false
+    }
+}

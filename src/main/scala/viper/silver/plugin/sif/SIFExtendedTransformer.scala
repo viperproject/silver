@@ -761,44 +761,44 @@ trait SIFExtendedTransformer {
     *
     * <br> var bypass1 := !(p1 && !ret1 && !break1 && !cont1 && !except1 && !L1...)
     * <br> var bypass2 := !(p2 && !ret2 && !break2 && !cont2 && !except2 && !L2...)
-    * <br> if bypass1 { tmp1_1 := Target_1; ... tmp1_N := Target_N } // to derive that modified vars of non-active execs are unchanged
-    * <br> if bypass2 { tmp2_1 := P[Target_1]; ... tmp2_N := P[Target_N] }
+    * <br> if bypass1 { tmp1_1 := Normal[Target_1]; ... tmp1_N := Normal[Target_N] } // to derive that modified vars of non-active execs are unchanged
+    * <br> if bypass2 { tmp2_1 := Prime[Target_1]; ... tmp2_N := Prime[Target_N] }
     * <br> var old_ret1 := ret1; var old_ret2 := ret2; ... // forall control variables (includes lables)
     * <br> var idle1 := false; var idl2 := false // if invariant has InhaleExhaleExp
     * <br> // if there is a termination measure
     * <br>   assert Assertion[!Termination ==> low_event]
     * <br>   assert Assertion[low(Termination)]
     * <br>   var term_cond1, term_cond2
-    * <br>   if p1 { term_cond1 := Termination }
-    * <br>   if p2 { term_cond2 := P[Termination] }
+    * <br>   if p1 { term_cond1 := Normal[Termination] }
+    * <br>   if p2 { term_cond2 := Prime[Termination] }
     * <br> var p1_, p2_
     * <br>
     * <br> while (
-    * <br>   (p1 && !ret1 && !break1 && !except1 && !L1... && !bypass1 && cond) ||
-    * <br>   (p2 && !ret2 && !break2 && !except2 && !L2... && !bypass2 && P[cond])
+    * <br>   (p1 && !ret1 && !break1 && !except1 && !L1... && !bypass1 && Normal[cond]) ||
+    * <br>   (p2 && !ret2 && !break2 && !except2 && !L2... && !bypass2 && Prime[cond])
     * <br> )
     * <br>   invariant Assertion[ I[ InEx(A,B) -> InEx(A, !idle1 ==> B ) ] ]< p1 && !bypass1, p2 && !bypass2 >
     * <br>   invariant Assertion[ !term_cond1 ==> cond ]< p1 && !bypass1, p2 && !bypass2 >
-    * <br>   invariant (bypass1 ==> tmp1_1 == Target_1) && ... (bypass1 ==> tmp1_N == Target_N)
-    * <br>   invariant (bypass2 ==> tmp2_1 == P[Target_1]) && ... (bypass2 ==> tmp2_N == P[Target_N]) // TODO REM: maybe group them
+    * <br>   invariant (bypass1 ==> tmp1_1 == Normal[Target_1]) && ... (bypass1 ==> tmp1_N == Normal[Target_N])
+    * <br>   invariant (bypass2 ==> tmp2_1 == Prime[Target_1]) && ... (bypass2 ==> tmp2_N == Prime[Target_N]) // TODO REM: maybe group them
     * <br> {
     * <br>   // preamble
     * <br>   cont1 := false; cont2 := false
-    * <br>   p1_ := a1 && cond; p2_ := a2 && P[cond]
-    * <br>   idle1 := a1 && !cond; idle2 := a2 && !P[cond]      // if invariant has InhaleExhaleExp
+    * <br>   p1_ := a1 && Normal[cond]; p2_ := a2 && Prime[cond]
+    * <br>   idle1 := a1 && !Normal[cond]; idle2 := a2 && !Prime[cond]      // if invariant has InhaleExhaleExp
     * <br>   // body
     * <br>   Statement[body]< p1_, p2_ >
     * <br> }
     * <br>
     * <br> if (!bypass1 && (ret1 || break1 || except1)) || (!bypass2 && (ret2 || break2 || except2)) {
     * <br>   ret1 := old_ret1; var ret2 := old_ret2;... // forall control variables (includes lables)
-    * <br>   inhale p1 && !ret1 && !break1 && !except1 && !L1... ==> cond
+    * <br>   inhale p1 && !ret1 && !break1 && !except1 && !L1... ==> Normal[cond]
     * <br>   inhale p2 && !ret2 && !break2 && !except2 && !L2... ==> Prime[cond]
     * <br>
     * <br>   // preamble
     * <br>   cont1 := false; cont2 := false
-    * <br>   p1_ := a1 && cond; p2_ := a2 && P[cond]
-    * <br>   idle1 := a1 && !cond; idle2 := a2 && !P[cond]      // if invariant has InhaleExhaleExp
+    * <br>   p1_ := a1 && Normal[cond]; p2_ := a2 && Prime[cond]
+    * <br>   idle1 := a1 && !Normal[cond]; idle2 := a2 && !Prime[cond]      // if invariant has InhaleExhaleExp
     * <br>   // body
     * <br>   Statement[body]< p1_, p2_ >
     * <br>
@@ -860,8 +860,8 @@ trait SIFExtendedTransformer {
 
     var tmpAssigns1 = Seq[LocalVarAssign]()
     var tmpAssigns2 = Seq[LocalVarAssign]()
-    // tmpAssigns1 += tmp1_1 := t1...; tmpAssigns2 += tmp1_2 := P[t1]...,
-    // targetValEqualities1 += tmp1_1 == t1...; targetValEqualities2 += tmp1_2 == P[t2])
+    // tmpAssigns1 += tmp1_1 := Normal[t1]...; tmpAssigns2 += tmp1_2 := Prime[t1]...,
+    // targetValEqualities1 += tmp1_1 == Normal[t1]...; targetValEqualities2 += tmp1_2 == Prime[t2])
     for (t <- targets) {
       // make sure the variable is defined outside the loop
       if (primedNames.contains(t.name)){ // TODO REM: should be an assert, but currently fails due to cont2 break2
@@ -869,16 +869,16 @@ trait SIFExtendedTransformer {
         val (tmp2d, tmp2r) = getNewVar("tmp2", t.typ)
         newVarDecls ++= Seq(tmp1d, tmp2d)
         //targetValRefs ++= Seq(tmp1r, tmp2r)
-        tmpAssigns1 :+= LocalVarAssign(tmp1r, t)()
+        tmpAssigns1 :+= LocalVarAssign(tmp1r, translateNormal(t, p1, p2))()
         tmpAssigns2 :+= LocalVarAssign(tmp2r, translatePrime(t, p1, p2))()
-        val eq1 = EqCmp(tmp1r, t)()
+        val eq1 = EqCmp(tmp1r, translateNormal(t, p1, p2))()
         val eq2 = EqCmp(tmp2r, translatePrime(t, p1, p2))()
         targetValEqualities1 ++= Seq(eq1)
         targetValEqualities2 ++= Seq(eq2)
       }
     }
-    // if bypass1 { tmp1_1 := Target_1; ... tmp1_N := Target_N }
-    // if bypass2 { tmp2_1 := P[Target_1]; ... tmp2_N := P[Target_N] }
+    // if bypass1 { tmp1_1 := Normal[Target_1]; ... tmp1_N := Normal[Target_N] }
+    // if bypass2 { tmp2_1 := Prime[Target_1]; ... tmp2_N := Prime[Target_N] }
     if (targets.nonEmpty) targetValAssigns :+= If(bypass1r, Seqn(tmpAssigns1, Seq())(), skip)()
     if (targets.nonEmpty) targetValAssigns :+= If(bypass2r, Seqn(tmpAssigns2, Seq())(), skip)()
 
@@ -886,10 +886,10 @@ trait SIFExtendedTransformer {
       val (tmp1d, tmp1r) = getNewVar("tmp1", Int)
       val (tmp2d, tmp2r) = getNewVar("tmp2", Int)
       newVarDecls ++= Seq(tmp1d, tmp2d)
-      val assign1 = LocalVarAssign(tmp1r, time.get)()
+      val assign1 = LocalVarAssign(tmp1r, translateNormal(time.get, p1, p2))()
       val assign2 = LocalVarAssign(tmp2r, translatePrime(time.get, p1, p2))()
       targetValAssigns ++= Seq(assign1, assign2)
-      val eq1 = EqCmp(tmp1r, time.get)()
+      val eq1 = EqCmp(tmp1r, translateNormal(time.get, p1, p2))()
       val eq2 = EqCmp(tmp2r, translatePrime(time.get, p1, p2))()
       targetValEqualities1 ++= Seq(eq1)
       targetValEqualities2 ++= Seq(eq2)
@@ -908,10 +908,10 @@ trait SIFExtendedTransformer {
       }
     }
 
-    // (p1 && !ret1 && !break1 && !except1 && !L1... && !bypass1 && cond) ||
-    // (p2 && !ret2 && !break2 && !except2 && !L2... && !bypass2 && P[cond])
+    // (p1 && !ret1 && !break1 && !except1 && !L1... && !bypass1 && Normal[cond]) ||
+    // (p2 && !ret2 && !break2 && !except2 && !L2... && !bypass2 && Prime[cond])
     val newCond = Or(
-      And(And(ctrlVars.activeExecNoContNormal(Some(p1)), Not(bypass1r)())(), w.cond)(),
+      And(And(ctrlVars.activeExecNoContNormal(Some(p1)), Not(bypass1r)())(), translateNormal(w.cond, p1, p2))(),
       And(And(ctrlVars.activeExecNoContPrime(Some(p2)), Not(bypass2r)())(), translatePrime(w.cond, p1, p2))()
     )()
     var bodyPreamble: Seq[Stmt] = Seq()
@@ -919,11 +919,11 @@ trait SIFExtendedTransformer {
     if (ctrlVars.cont1r.isDefined) bodyPreamble = bodyPreamble :+
       LocalVarAssign(ctrlVars.cont1r.get, FalseLit()())() :+
       LocalVarAssign(ctrlVars.cont2r.get, FalseLit()())()
-    // var p1 := a1 && cond; var p2 := a2 && P[cond]
+    // var p1 := a1 && Normal[cond]; var p2 := a2 && Prime[cond]
     val (p1d, p1r) = getNewBool("p1")
     val (p2d, p2r) = getNewBool("p2")
     newVarDecls ++= Seq(p1d, p2d)
-    val p1Assign = LocalVarAssign(p1r, And(ctrlVars.activeExecNormal(Some(p1)), w.cond)())()
+    val p1Assign = LocalVarAssign(p1r, And(ctrlVars.activeExecNormal(Some(p1)), translateNormal(w.cond, p1, p2))())()
     val p2Assign = LocalVarAssign(p2r, And(ctrlVars.activeExecPrime(Some(p2)), translatePrime(w.cond, p1, p2))())()
     bodyPreamble ++= Seq(p1Assign, p2Assign)
 
@@ -939,7 +939,7 @@ trait SIFExtendedTransformer {
         LocalVarAssign(idle2r, FalseLit()())())
       // assign inside loop body that the execution is idling
       val idle1Assign = LocalVarAssign(idle1r,
-        And(ctrlVars.activeExecNormal(Some(p1)), Not(w.cond)())())()
+        And(ctrlVars.activeExecNormal(Some(p1)), Not(translateNormal(w.cond, p1, p2))())())()
       val idle2Assign = LocalVarAssign(idle2r,
         And(ctrlVars.activeExecPrime(Some(p2)), Not(translatePrime(w.cond, p1, p2))())())()
       bodyPreamble ++= Seq(idle1Assign, idle2Assign)
@@ -963,7 +963,7 @@ trait SIFExtendedTransformer {
       primedNames.update(cond1r.name, cond2r.name)
       newVarDecls ++= Seq(cond1d, cond2d)
       stmts ++= Seq(
-        If(p1, Seqn(Seq(LocalVarAssign(cond1r, terminates.get.cond)()), Seq())(), skip)(),
+        If(p1, Seqn(Seq(LocalVarAssign(cond1r, translateNormal(terminates.get.cond, p1, p2))()), Seq())(), skip)(),
         If(p2, Seqn(Seq(LocalVarAssign(cond2r, translatePrime(terminates.get.cond, p1, p2))()), Seq())(), skip)()
       )
       newStdInvs :+= Implies(Not(cond1r)(), w.cond)(
@@ -1010,10 +1010,10 @@ trait SIFExtendedTransformer {
       val ctrlVarAssigns: Seq[Stmt] = ctrlVars.declarations()
         .map(d => d.localVar)
         .map(v => LocalVarAssign(v, ctrlVarToOldMap(v))())
-      // inhale p1 && !ret1 && !break1 && !except1 && !L1... ==> cond
+      // inhale p1 && !ret1 && !break1 && !except1 && !L1... ==> Normal[cond]
       // inhale p2 && !ret2 && !break2 && !except2 && !L2... ==> Prime[cond]
       val recInhales: Seq[Stmt] = Seq() :+ //newStdInvs.map(i => Inhale(i)()) :+
-        Inhale(Implies(ctrlVars.activeExecNoContNormal(Some(p1)), w.cond)())() :+
+        Inhale(Implies(ctrlVars.activeExecNoContNormal(Some(p1)), translateNormal(w.cond, p1, p2))())() :+
         Inhale(Implies(ctrlVars.activeExecNoContNormal(Some(p2)), translatePrime(w.cond, p1, p2))())()
       // inhale !p1_ || !(p1 && !ret1 && !break1 && !except1 && !L1..)
       // inhale !p2_ || !(p2 && !ret2 && !break2 && !except2 && !L2..)
@@ -1370,7 +1370,7 @@ trait SIFExtendedTransformer {
         Seqn(Seq(newNew) ++  /*allFieldAssigns ++*/ Seq(assign1, assign2, incrementTime(p1, p2)), Seq(tmpd))()
 
       // var p1_, p2_, p3_, p4_;
-      // p1_ := a1 && cond; p2_ := a2 && P[cond]; p3_ := a1 && !cond; p4 := a2 && !P[cond]
+      // p1_ := a1 && Normal[cond]; p2_ := a2 && Prime[cond]; p3_ := a1 && !Normal[cond]; p4 := a2 && !Prime[cond]
       // if p1 { time1 += 1 }; if p2 { time2 += 1 }
       // Statement[thn]<p1_, p2_>
       // Statement[els]<p3_, p4_>
@@ -1380,9 +1380,9 @@ trait SIFExtendedTransformer {
         val (p3d, p3r) = getNewBool("p3")
         val (p4d, p4r) = getNewBool("p4")
 
-        val p1Assign = LocalVarAssign(p1r, And(act1, cond)())(i.pos, i.info, i.errT)
+        val p1Assign = LocalVarAssign(p1r, And(act1, translateNormal(cond, p1, p2))())(i.pos, i.info, i.errT)
         val p2Assign = LocalVarAssign(p2r, And(act2, translatePrime(cond, p1, p2))())(i.pos, i.info, i.errT)
-        val p3Assign = LocalVarAssign(p3r, And(act1, Not(cond)())())(i.pos, i.info, i.errT)
+        val p3Assign = LocalVarAssign(p3r, And(act1, Not(translateNormal(cond, p1, p2))())())(i.pos, i.info, i.errT)
         val p4Assign = LocalVarAssign(p4r, And(act2, Not(translatePrime(cond, p1, p2))())())(i.pos, i.info, i.errT)
 
         val thnCtx = ctx.copy(p1 = p1r, p2 = p2r, ctrlVars = ctrlVars)
@@ -1965,15 +1965,21 @@ trait SIFExtendedTransformer {
     *
     * N[Low(e)] -> p1 && p2 ==> Eq[e]
     * N[low(e)] -> p1 && p2 ==> Eq[e]
+    * N[LowEvent] -> p1 && p2
+    * N[lowEvent] -> p1 && p2
+    * N[Rel(e, 1)] -> P[e]
+    * N[Rel(e, i)] && i != 1 -> N[e]
     */
   def translateNormal[T <: Exp](e: T, p1: Exp, p2: Exp): T = {
     e.transform{
       case l: SIFLowExp => Implies(And(p1, p2)(), translateSIFLowExpComparison(l, p1, p2))(errT = fwTs(l, l))
+      case _: SIFLowEventExp => And(p1, p2)()
       case r@SIFRelExp(e, i) =>
         if (!Config.enableExperimentalFeatures)
           reportError(Internal(r, FeatureUnsupported(r, "rel-expressions are an experimental feature and must be explicitly enabled.")))
         if (i.i == BigInt.int2bigInt(1)) translatePrime(e, p1, p2) else translateNormal(e, p1, p2)
       case DomainFuncApp("Low", args, _) if Config.enableNaginiSpecificFeatures => Implies(And(p1, p2)(), translateSIFLowExpComparison(SIFLowExp(args.head)(), p1, p2))()
+      case DomainFuncApp("LowEvent", Seq(), _) if Config.enableNaginiSpecificFeatures => And(p1, p2)()
     }
   }
 
@@ -1984,11 +1990,14 @@ trait SIFExtendedTransformer {
     *
     * Unary[low(e)] -> true
     * Unary[Low(e)] -> true
+    * Unary[lowEvent] -> true
+    * Unary[LowEvent] -> true
     *
     * */
   def translateToUnary(e: Exp): Exp = {
     val transformed = e.transform{
       case _: SIFLowExp => TrueLit()()
+      case _: SIFLowEventExp => TrueLit()()
       case DomainFuncApp("Low", _, _) if Config.enableNaginiSpecificFeatures => TrueLit()()
       case DomainFuncApp("LowEvent", Seq(), _) if Config.enableNaginiSpecificFeatures => TrueLit()()
     }
