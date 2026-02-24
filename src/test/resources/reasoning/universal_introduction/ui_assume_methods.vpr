@@ -1,0 +1,167 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+function P(x: Int) : Bool {
+    x == 0
+}
+
+function Q(x: Int) : Bool {
+    x == 0
+}
+
+method assumeMethodCall1()
+{
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) {
+        abstractNonTermImpl(10)
+        if(x > 0) {
+            //:: ExpectedOutput(consistency.error)
+            abstractNonTermImpl(10)
+        }
+        while(x > 0)
+        decreases x
+        {
+            //:: ExpectedOutput(consistency.error)
+            abstractNonTermImpl(10)
+        }
+    }
+}
+
+
+method assumeMethodCall2()
+{
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) {
+        //:: ExpectedOutput(consistency.error)
+        abstractNonTermImpl(x)
+        if(x > 0) {
+            //:: ExpectedOutput(consistency.error)
+            abstractNonTermImpl(x)
+        }
+        while(x > 0)
+        decreases x
+        {
+            //:: ExpectedOutput(consistency.error)
+            abstractNonTermImpl(x)
+        }
+    }
+}
+
+method assumeMethodCall3()
+{
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) {
+        //:: ExpectedOutput(consistency.error)
+        abstractNonTermExpl(x)
+        if(x > 0) {
+            //:: ExpectedOutput(consistency.error)
+            abstractNonTermExpl(x)
+        }
+        while(x > 0)
+        decreases x
+        {
+            //:: ExpectedOutput(consistency.error)
+            abstractNonTermExpl(x)
+        }
+    }
+}
+
+method assumeMethodCall4()
+{
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) {
+        abstractNonTermImplSpec(x)
+        if(x > 0) {
+            //:: ExpectedOutput(consistency.error)
+            abstractNonTermImplSpec(x)
+        }
+        while(x > 0)
+        decreases x
+        {
+            //:: ExpectedOutput(consistency.error)
+            abstractNonTermImplSpec(x)
+        }
+    }
+}
+
+method assumeMethodCall5()
+{
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) {
+        abstractNonTermExplSpec(x)
+        if(x > 0) {
+            //:: ExpectedOutput(consistency.error)
+            abstractNonTermExplSpec(x)
+        }
+        //:: ExpectedOutput(consistency.error)
+        while(x > 0) {
+            //:: ExpectedOutput(consistency.error)
+            abstractNonTermExplSpec(x)
+        }
+    }
+}
+
+method assumeMethodCall6()
+{
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) {
+        abstractNonTermImplNoAssumesSpec(x)
+        if(x > 0) {
+            abstractNonTermImplNoAssumesSpec(x)
+        }
+        while(x > 0)
+        decreases x
+        {
+            abstractNonTermImplNoAssumesSpec(x)
+        }
+    }
+}
+
+method assumeMethodCall7()
+{
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) {
+        abstractNonTermExplNoAssumesSpec(x)
+        if(x > 0) {
+            abstractNonTermExplNoAssumesSpec(x)
+        }
+        while(x > 0)
+        decreases x
+        {
+            abstractNonTermExplNoAssumesSpec(x)
+        }
+    }
+}
+
+method assumeMethodCall8()
+{
+    prove forall x: Int {P(x)} assuming P(x) implies Q(x) {
+        abstractTerm(x)
+        if(x > 0) {
+            abstractTerm(x)
+        }
+        while(x > 0)
+        decreases x
+        {
+            abstractTerm(x)
+        }
+    }
+}
+
+
+method abstractNonTermImpl(x: Int)
+
+method abstractNonTermImplSpec(x: Int)
+    influenced assumes by {}
+
+method abstractNonTermExpl(x: Int)
+    decreases *
+
+method abstractNonTermExplSpec(x: Int)
+    decreases *
+    influenced assumes by {}
+
+method abstractNonTermImplNoAssumesSpec(x: Int)
+    assumesNothing
+
+method abstractNonTermExplNoAssumesSpec(x: Int)
+    decreases *
+    assumesNothing
+
+method abstractTerm(x: Int)
+    decreases x
+
+

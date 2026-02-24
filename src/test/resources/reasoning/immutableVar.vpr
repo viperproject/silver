@@ -1,0 +1,59 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+function P(x: Int) : Bool {
+    x == 0
+}
+
+function Q(x: Int) : Bool {
+    x == 0
+}
+
+method xassigned()
+{
+    var z:Int := 0
+    //:: ExpectedOutput(consistency.error)
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) {
+        var y:Int := x+1
+        x:=2
+    }
+}
+
+method xwhile()
+{
+    //:: ExpectedOutput(consistency.error)
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) {
+        while (x<0) {
+            x := x+1
+        }
+    }
+}
+
+method xif()
+{
+    //:: ExpectedOutput(consistency.error)
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) {
+        var y: Int := 2
+        if (y==2) {
+            y:= y-1
+        } else {
+            x := x+1
+        }
+    }
+}
+
+method xmultOK()
+{
+    prove forall x:Int, y:Int {P(x),P(y)} assuming P(x) implies Q(x) {
+        var z: Int := 5
+    }
+}
+
+method xmult()
+{
+    //:: ExpectedOutput(consistency.error)
+    prove forall x:Int, y:Int {P(x),P(y)} assuming P(x) implies Q(x) {
+        x:=y
+        y:=3
+    }
+}
