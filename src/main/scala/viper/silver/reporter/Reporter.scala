@@ -90,6 +90,9 @@ case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv
         warnings.foreach(report => {
           csv_file.write(s"WarningsDuringParsing,${report}\n")
         })
+      case TargetSelectionReport(ts) => {
+        csv_file.write(s"TargetSelection,${ts}\n")
+      }
       case WarningsDuringTypechecking(warnings) =>
         warnings.foreach(report => {
           csv_file.write(s"WarningsDuringTypechecking,${report}\n")
@@ -197,6 +200,9 @@ case class StdIOReporter(name: String = "stdout_reporter",
 
       case AnnotationWarning(text) =>
         println(s"Annotation warning: ${text}")
+
+      case TargetSelectionReport(rep) =>
+        println(s"Target selection: ${rep}")
 
       case InvalidArgumentsReport(_, errors) =>
         errors.foreach(e => println(s"  ${e.readableMessage}"))
