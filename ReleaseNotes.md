@@ -1,3 +1,39 @@
+## Release 2026.2
+
+**Date 20/02/26**
+
+### Viper-IDE & ViperServer
+
+- Improved autocomplete by removing unwanted suggestions  (https://github.com/viperproject/viper-ide/pull/543 and https://github.com/viperproject/viperserver/pull/333)
+- Removed duplicate inlays and hover hints (https://github.com/viperproject/viperserver/pull/329)
+- Added beginner mode that disables some advanced IDE features that can be confusing for beginners, particularly inlays; this mode is enabled by default and can be disabled in the settings in VSCode (https://github.com/viperproject/viper-ide/pull/542 and https://github.com/viperproject/viperserver/pull/332)
+
+
+### General Changes
+
+- Added a command line option to select what parts of the input Viper program to verify. The new option ``--select=name1,name2,name3`` allows users to specify a number of identifiers of functions, methods, predicates in the input program to instruct Viper to verify only those members *and their dependencies*. The previous command line option ``--methods`` that had the same purpose but could only select methods and did not compute dependencies was removed. (https://github.com/viperproject/silver/pull/886)
+- Added a command line option ``--reportPartialResults`` to report partial verification results as they come in when using the symbolic execution backend (https://github.com/viperproject/silver/pull/887)
+- Improved internal handling of resources, which enables compatibility with GraalVM (https://github.com/viperproject/silver/pull/891)
+- Improved trigger inference for let-expressions (https://github.com/viperproject/silver/pull/890)
+- Fixed dependency tracking for interpreted domain functions in Chopper (https://github.com/viperproject/silver/pull/892)
+- Fixed incorrect computation of predicate triggers for recursive, heap-dependent functions (https://github.com/viperproject/silver/pull/896)
+- Updated the used Scala version from 2.13.10 to 2.13.18 (https://github.com/viperproject/silver/pull/899)
+
+### Changes in Plugins
+
+- Information Flow Plugin:
+  - The information flow plugin now correctly supports relational expressions such as ``low(e)`` as conditions in ``if``-statements (https://github.com/viperproject/silver/pull/904)
+  - Added a callback hook that allows frontends or other code to inspect the Viper AST after the product transformation (https://github.com/viperproject/silver/pull/900)
+
+### Backend-specific Upgrades/Changes
+
+#### Symbolic Execution Backend (Silicon)
+
+- The symbolic execution backend now uses resource bounds instead of timeouts for quick auxiliary SMT queries, which should make its behavior entirely deterministic between runs unless parallelism is used. The previous behavior can be enabled using the command line option ``--proverEnableTimeBounds``. The previously existing option to enable resource bounds, ``--proverEnableResourceBounds``, no longer exists. (https://github.com/viperproject/silicon/pull/949)
+- Fixed incompleteness related to heap-related functions depending on quantified permissions (https://github.com/viperproject/silicon/pull/955)
+- Fixed crash because of use of undeclared constant on the SMT level (https://github.com/viperproject/silicon/pull/952)
+
+
 ## Release 2025.8
 
 **Date 04/09/25**
