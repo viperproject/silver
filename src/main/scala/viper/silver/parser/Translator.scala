@@ -9,6 +9,7 @@ package viper.silver.parser
 import viper.silver.FastMessaging
 import viper.silver.ast.utility._
 import viper.silver.ast.{SourcePosition, _}
+import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyType}
 import viper.silver.plugin.standard.adt.{Adt, AdtType}
 
 import scala.collection.mutable
@@ -82,7 +83,9 @@ case class Translator(program: PProgram) {
 
       val newBody = body.map(actualBody => stmt(actualBody).asInstanceOf[Seqn])
 
-      val finalMethod = m.copy(pres = pres.toSeq map (p => exp(p.e)), posts = posts.toSeq map (p => exp(p.e)), body = newBody)(m.pos, m.info, m.errT)
+      val postconditionType = if(body.isDefined) DependencyType.make(AssumptionType.ImplicitPostcondition) else DependencyType.make(AssumptionType.ExplicitPostcondition)
+
+      val finalMethod = m.copy(pres = pres.toSeq map (p => exp(p.e, Some(DependencyType.make(AssumptionType.Precondition)))), posts = posts.toSeq map (p => exp(p.e, Some(postconditionType))), body = newBody)(m.pos, m.info, m.errT)
 
       members(m.name) = finalMethod
 
@@ -108,7 +111,8 @@ case class Translator(program: PProgram) {
   private def translate(f: PFunction): Function = f match {
     case PFunction(_, _, idndef, _, _, _, pres, posts, body) =>
       val f = findFunction(idndef)
-      val ff = f.copy( pres = pres.toSeq map (p => exp(p.e)), posts = posts.toSeq map (p => exp(p.e)), body = body map (_.e.inner) map exp)(f.pos, f.info, f.errT)
+      val postconditionType = if(body.isDefined) DependencyType.make(AssumptionType.ImplicitPostcondition) else DependencyType.make(AssumptionType.ExplicitPostcondition)
+      val ff = f.copy( pres = pres.toSeq map (p => exp(p.e, Some(DependencyType.make(AssumptionType.Precondition)))), posts = posts.toSeq map (p => exp(p.e, Some(postconditionType))), body = body map (_.e.inner) map (exp(_, Some(DependencyType.make(AssumptionType.FunctionBody)))))(f.pos, f.info, f.errT)
       members(f.name) = ff
       ff
   }
@@ -176,7 +180,7 @@ case class Translator(program: PProgram) {
     val (s, annotations) = extractAnnotationFromStmt(pStmt)
     val sourcePNodeInfo = SourcePNodeInfo(pStmt)
     val info = if (annotations.isEmpty) sourcePNodeInfo else ConsInfo(sourcePNodeInfo, AnnotationInfo(annotations))
-    s match {
+    val resS = s match {
       case PAssign(targets, _, PCall(method, args, _)) if members(method.name).isInstanceOf[Method] =>
         methodCallAssign(s, targets.toSeq, ts => MethodCall(findMethod(method), args.inner.toSeq map exp, ts)(pos, info))
       case PAssign(targets, _, _) if targets.length != 1 =>
@@ -215,9 +219,9 @@ case class Translator(program: PProgram) {
       case PApplyWand(_, e) =>
         Apply(exp(e).asInstanceOf[MagicWand])(pos, info)
       case PInhale(_, e) =>
-        Inhale(exp(e))(pos, info)
+        Inhale(exp(e, Some(DependencyType.ExplicitAssumption)))(pos, info)
       case PAssume(_, e) =>
-        Assume(exp(e))(pos, info)
+        Assume(exp(e, Some(DependencyType.ExplicitAssumption)))(pos, info)
       case PExhale(_, e) =>
         Exhale(exp(e))(pos, info)
       case PAssert(_, e) =>
@@ -227,13 +231,13 @@ case class Translator(program: PProgram) {
       case PGoto(_, label) =>
         Goto(label.name)(pos, info)
       case PIf(_, cond, thn, els) =>
-        If(exp(cond.inner), stmt(thn).asInstanceOf[Seqn], els map (stmt(_) match {
+        If(exp(cond.inner, Some(DependencyType.PathCondition)), stmt(thn).asInstanceOf[Seqn], els map (stmt(_) match {
           case s: Seqn => s
           case s => Seqn(Seq(s), Nil)(s.pos, s.info)
         }) getOrElse Statements.EmptyStmt)(pos, info)
       case PElse(_, els) => stmt(els)
       case PWhile(_, cond, invs, body) =>
-        While(exp(cond.inner), invs.toSeq map (inv => exp(inv.e)), stmt(body).asInstanceOf[Seqn])(pos, info)
+        While(exp(cond.inner, Some(DependencyType.PathCondition)), invs.toSeq map (inv => exp(inv.e, Some(DependencyType.Invariant))), stmt(body).asInstanceOf[Seqn])(pos, info)
       case PQuasihavoc(_, lhs, e) =>
         val (newLhs, newE) = havocStmtHelper(lhs, e)
         Quasihavoc(newLhs, newE)(pos, info)
@@ -245,6 +249,7 @@ case class Translator(program: PProgram) {
       case _: PDefine | _: PSkip =>
         sys.error(s"Found unexpected intermediate statement $s (${s.getClass.getName}})")
     }
+    resS.withMeta(resS.pos, MakeInfoPair(MakeInfoPair(AnalysisSourceInfo.createAnalysisSourceInfo(resS), DependencyTypeInfo.getDependencyTypeInfo(resS)), resS.info), resS.errT)
   }
 
   /**
@@ -342,17 +347,20 @@ case class Translator(program: PProgram) {
     }
   }
 
+  def exp(parseExp: PExp): Exp = exp(parseExp, None)
+
   /** Takes a `PExp` and turns it into an `Exp`. */
-  def exp(parseExp: PExp): Exp = {
+  def exp(parseExp: PExp, dependencyType: Option[DependencyType]): Exp = {
     val pos = parseExp
     val (pexp, annotationMap) = extractAnnotation(parseExp)
     val sourcePNodeInfo = SourcePNodeInfo(parseExp)
-    val info = if (annotationMap.isEmpty) sourcePNodeInfo else ConsInfo(sourcePNodeInfo, AnnotationInfo(annotationMap))
+    val info0 = if (annotationMap.isEmpty) sourcePNodeInfo else ConsInfo(sourcePNodeInfo, AnnotationInfo(annotationMap))
+    val info = if(dependencyType.isDefined) ConsInfo(info0, DependencyTypeInfo(dependencyType.get)) else info0
     expInternal(pexp, pos, info)
   }
 
   protected def expInternal(pexp: PExp, pos: PExp, info: Info): Exp = {
-    pexp match {
+    val expr = pexp match {
       case PIdnUseExp(piu) =>
         piu.decl match {
           case Some(_: PTypedVarDecl) => LocalVar(piu.name, ttyp(pexp.typ))(pos, info)
@@ -634,6 +642,7 @@ case class Translator(program: PProgram) {
 
       case t: PExtender => t.translateExp(this)
     }
+    expr.withMeta((expr.pos, MakeInfoPair(AnalysisSourceInfo.createAnalysisSourceInfo(expr), expr.info), expr.errT))
   }
 
   implicit def liftPos(node: Where): SourcePosition = Translator.liftWhere(node)
