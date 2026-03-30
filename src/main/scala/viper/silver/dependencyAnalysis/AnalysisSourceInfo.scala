@@ -46,21 +46,6 @@ trait AnalysisSourceInfo extends ast.Info {
 
   def getPosition: Position
 
-  /**
-   * @return the analysis source info used for lifting low-level graphs to higher-level graphs
-   *         and presenting dependency results to the user
-   */
-  def getTopLevelSource: AnalysisSourceInfo = this
-
-  /**
-   * @return the analysis source info used for adding transitive edges within a source exp/stmt
-   */
-  def getSourceForTransitiveEdges: AnalysisSourceInfo = getTopLevelSource
-
-  /**
-   * @return the analysis source info used for joining graphs
-   */
-  def getFineGrainedSource: AnalysisSourceInfo = this
 
   def isAnalysisEnabled: Boolean = true
 
@@ -105,14 +90,3 @@ case class StringAnalysisSourceInfo(description: String, position: Position) ext
   override def getDescription: String = description.replaceAll("\n", "\t")
 }
 
-case class CompositeAnalysisSourceInfo(coarseGrainedSource: AnalysisSourceInfo, fineGrainedSource: AnalysisSourceInfo) extends AnalysisSourceInfo {
-  override def toString: String = getTopLevelSource.toString
-  override def getPosition: Position = coarseGrainedSource.getPosition
-
-  override def getTopLevelSource: AnalysisSourceInfo = coarseGrainedSource.getTopLevelSource
-  override def getFineGrainedSource: AnalysisSourceInfo = fineGrainedSource.getFineGrainedSource
-
-  override def isAnalysisEnabled: Boolean = coarseGrainedSource.isAnalysisEnabled && fineGrainedSource.isAnalysisEnabled
-
-  override def getDescription: String = coarseGrainedSource.getDescription
-}
