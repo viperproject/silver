@@ -101,11 +101,20 @@ case class Translator(program: PProgram) {
       dd
   }
 
-  private def translate(a: PAxiom): DomainAxiom = a match {
-    case pa@PAxiom(anns, _, Some(name), e) =>
-      NamedDomainAxiom(name.name, exp(e.e.inner))(a, Translator.toInfo(anns, pa), domainName = pa.domain.idndef.name)
-    case pa@PAxiom(anns, _, None, e) =>
-      AnonymousDomainAxiom(exp(e.e.inner))(a, Translator.toInfo(anns, pa), domainName = pa.domain.idndef.name)
+  private def translate(a: PAxiom): DomainAxiom = {
+    def attachInfo(axiom: DomainAxiom) = {
+      val info = ConsInfo(axiom.info, ConsInfo(AnalysisSourceInfo.createAnalysisSourceInfo(axiom.exp), DependencyTypeInfo(DependencyType.Axiom)))
+      axiom.withMeta(axiom.pos, info, axiom.errT)
+    }
+
+    a match {
+      case pa@PAxiom(anns, _, Some(name), e) =>
+        val axiom = NamedDomainAxiom(name.name, exp(e.e.inner, Some(DependencyType.Axiom)))(a, Translator.toInfo(anns, pa), domainName = pa.domain.idndef.name)
+        attachInfo(axiom)
+      case pa@PAxiom(anns, _, None, e) =>
+        val axiom = AnonymousDomainAxiom(exp(e.e.inner, Some(DependencyType.make(AssumptionType.DomainAxiom))))(a, Translator.toInfo(anns, pa), domainName = pa.domain.idndef.name)
+        attachInfo(axiom)
+    }
   }
 
   private def translate(f: PFunction): Function = f match {
@@ -210,22 +219,22 @@ case class Translator(program: PProgram) {
         }.flatten
         Seqn(seqn filterNot (_.isInstanceOf[PSkip]) map stmt, locals)(pos, info)
       case PFold(_, e) =>
-        Fold(exp(e).asInstanceOf[PredicateAccessPredicate])(pos, info)
+        Fold(exp(e, Some(DependencyType.Rewrite)).asInstanceOf[PredicateAccessPredicate])(pos, info)
       case PUnfold(_, e) =>
-        Unfold(exp(e).asInstanceOf[PredicateAccessPredicate])(pos, info)
+        Unfold(exp(e, Some(DependencyType.Rewrite)).asInstanceOf[PredicateAccessPredicate])(pos, info)
       case PPackageWand(_, e, proofScript) =>
-        val wand = exp(e).asInstanceOf[MagicWand]
+        val wand = exp(e, Some(DependencyType.Rewrite)).asInstanceOf[MagicWand]
         Package(wand, proofScript map (stmt(_).asInstanceOf[Seqn]) getOrElse Statements.EmptyStmt)(pos, info)
       case PApplyWand(_, e) =>
-        Apply(exp(e).asInstanceOf[MagicWand])(pos, info)
+        Apply(exp(e, Some(DependencyType.Rewrite)).asInstanceOf[MagicWand])(pos, info)
       case PInhale(_, e) =>
         Inhale(exp(e, Some(DependencyType.ExplicitAssumption)))(pos, info)
       case PAssume(_, e) =>
         Assume(exp(e, Some(DependencyType.ExplicitAssumption)))(pos, info)
       case PExhale(_, e) =>
-        Exhale(exp(e))(pos, info)
+        Exhale(exp(e, Some(DependencyType.ExplicitAssertion)))(pos, info)
       case PAssert(_, e) =>
-        Assert(exp(e))(pos, info)
+        Assert(exp(e, Some(DependencyType.ExplicitAssertion)))(pos, info)
       case PLabel(_, name, invs) =>
         Label(name.name, invs.toSeq map (_.e) map exp)(pos, info)
       case PGoto(_, label) =>
@@ -355,11 +364,11 @@ case class Translator(program: PProgram) {
     val (pexp, annotationMap) = extractAnnotation(parseExp)
     val sourcePNodeInfo = SourcePNodeInfo(parseExp)
     val info0 = if (annotationMap.isEmpty) sourcePNodeInfo else ConsInfo(sourcePNodeInfo, AnnotationInfo(annotationMap))
-    val info = if(dependencyType.isDefined) ConsInfo(info0, DependencyTypeInfo(dependencyType.get)) else info0
-    expInternal(pexp, pos, info)
+    val info = if(dependencyType.isDefined) MakeInfoPair(info0, DependencyTypeInfo(dependencyType.get)) else info0
+    expInternal(pexp, pos, info, dependencyType)
   }
 
-  protected def expInternal(pexp: PExp, pos: PExp, info: Info): Exp = {
+  protected def expInternal(pexp: PExp, pos: PExp, info: Info, dependencyType: Option[DependencyType]): Exp = {
     val expr = pexp match {
       case PIdnUseExp(piu) =>
         piu.decl match {
@@ -369,7 +378,7 @@ case class Translator(program: PProgram) {
           case _ => sys.error("should not occur in type-checked program")
         }
       case pbe @ PBinExp(left, op, right) =>
-        val (l, r) = (exp(left), exp(right))
+        val (l, r) = (exp(left, dependencyType), exp(right, dependencyType))
         op.rs match {
           case PSymOp.Plus =>
             r.typ match {
