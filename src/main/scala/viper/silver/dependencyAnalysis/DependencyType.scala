@@ -55,6 +55,7 @@ object DependencyType {
   val MethodCall: DependencyType = DependencyType(AssumptionType.MethodCall, AssumptionType.MethodCall)
   val Ghost: DependencyType = DependencyType.make(AssumptionType.Ghost)
   val Annotation: DependencyType = DependencyType.make(AssumptionType.Annotation)
+  val Axiom: DependencyType = DependencyType.make(AssumptionType.DomainAxiom)
 
   def make(singleType: AssumptionType): DependencyType = DependencyType(singleType, singleType)
 
