@@ -9,7 +9,7 @@ package viper.silver.parser
 import viper.silver.FastMessaging
 import viper.silver.ast.utility._
 import viper.silver.ast.{SourcePosition, _}
-import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyType}
+import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalysisJoinNodeInfo, DependencyType}
 import viper.silver.plugin.standard.adt.{Adt, AdtType}
 
 import scala.collection.mutable
@@ -103,7 +103,7 @@ case class Translator(program: PProgram) {
 
   private def translate(a: PAxiom): DomainAxiom = {
     def attachInfo(axiom: DomainAxiom) = {
-      val info = ConsInfo(axiom.info, ConsInfo(AnalysisSourceInfo.createAnalysisSourceInfo(axiom.exp), DependencyTypeInfo(DependencyType.Axiom)))
+      val info = ConsInfo(axiom.info, ConsInfo(ConsInfo(AnalysisSourceInfo.createAnalysisSourceInfo(axiom.exp), DependencyTypeInfo(DependencyType.Axiom)), SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(axiom.exp), JoinType.Source, EdgeType.Down)))
       axiom.withMeta(axiom.pos, info, axiom.errT)
     }
 
