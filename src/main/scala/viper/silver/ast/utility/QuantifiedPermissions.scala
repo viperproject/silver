@@ -9,6 +9,7 @@ package viper.silver.ast.utility
 import scala.collection.mutable
 import scala.language.postfixOps
 import viper.silver.ast._
+import viper.silver.dependencyAnalysis.AnalysisSourceInfo
 
 /** Utility methods for quantified predicate permissions. */
 object QuantifiedPermissions {
@@ -164,7 +165,7 @@ object QuantifiedPermissions {
   def desugarSourceQuantifiedPermissionSyntax(source: Forall): Seq[Forall] = {
 
 
-    source match {
+    val res = source match {
       case SourceQuantifiedPermissionAssertion(_, Implies(cond, rhs)) if (!rhs.isPure) =>
         /* Source forall denotes a quantified permission assertion that potentially
          * needs to be desugared
@@ -272,5 +273,7 @@ object QuantifiedPermissions {
          */
         Seq(source)
     }
+
+    res.map(e => e.withMeta(e.pos, MakeInfoPair(AnalysisSourceInfo.createAnalysisSourceInfo(e), e.info), e.errT))
   }
 }

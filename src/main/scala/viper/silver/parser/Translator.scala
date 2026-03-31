@@ -369,6 +369,9 @@ case class Translator(program: PProgram) {
   }
 
   protected def expInternal(pexp: PExp, pos: PExp, info: Info, dependencyType: Option[DependencyType]): Exp = {
+
+    def goExp(parseExp: PExp) = exp(parseExp, dependencyType)
+
     val expr = pexp match {
       case PIdnUseExp(piu) =>
         piu.decl match {
@@ -378,7 +381,7 @@ case class Translator(program: PProgram) {
           case _ => sys.error("should not occur in type-checked program")
         }
       case pbe @ PBinExp(left, op, right) =>
-        val (l, r) = (exp(left, dependencyType), exp(right, dependencyType))
+        val (l, r) = (goExp(left), goExp(right))
         op.rs match {
           case PSymOp.Plus =>
             r.typ match {
@@ -471,7 +474,7 @@ case class Translator(program: PProgram) {
           case _ => sys.error(s"unexpected operator $op")
         }
       case PUnExp(op, pe) =>
-        val e = exp(pe)
+        val e = goExp(pe)
         op.rs match {
           case PSymOp.Neg =>
             e.typ match {
@@ -482,7 +485,7 @@ case class Translator(program: PProgram) {
           case PSymOp.Not => Not(e)(pos, info)
         }
       case PInhaleExhaleExp(_, in, _, ex, _) =>
-        InhaleExhaleExp(exp(in), exp(ex))(pos, info)
+        InhaleExhaleExp(goExp(in), goExp(ex))(pos, info)
       case PIntLit(i) =>
         IntLit(i)(pos, info)
       case p@PResultLit(_) =>
@@ -494,13 +497,13 @@ case class Translator(program: PProgram) {
       case PNullLit(_) =>
         NullLit()(pos, info)
       case PFieldAccess(rcv, _, idn) =>
-        FieldAccess(exp(rcv), findField(idn))(pos, info)
-      case PMagicWandExp(left, _, right) => MagicWand(exp(left), exp(right))(pos, info)
+        FieldAccess(goExp(rcv), findField(idn))(pos, info)
+      case PMagicWandExp(left, _, right) => MagicWand(goExp(left), goExp(right))(pos, info)
       case pfa@PCall(func, args, _) =>
         members(func.name) match {
-          case f: Function => FuncApp(f, args.inner.toSeq map exp)(pos, info)
+          case f: Function => FuncApp(f, args.inner.toSeq map goExp)(pos, info)
           case f @ DomainFunc(_, _, _, _, _) =>
-            val actualArgs = args.inner.toSeq map exp
+            val actualArgs = args.inner.toSeq map goExp
             /* TODO: Not used - problem?*/
             type TypeSubstitution = Map[TypeVar, Type]
             val so : Option[TypeSubstitution] = pfa.domainSubstitution match{
@@ -520,33 +523,33 @@ case class Translator(program: PProgram) {
               case _ => sys.error("type unification error - should report and not crash")
             }
           case _: Predicate =>
-            val inner = PredicateAccess(args.inner.toSeq map exp, findPredicate(func).name) (pos, info)
+            val inner = PredicateAccess(args.inner.toSeq map goExp, findPredicate(func).name) (pos, info)
             PredicateAccessPredicate(inner, None) (pos, info)
           case _ => sys.error("unexpected reference to non-function")
         }
       case PNewExp(_, _) => sys.error("unexpected `new` expression")
       case PUnfolding(_, loc, _, e) =>
-        Unfolding(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos, info)
+        Unfolding(goExp(loc).asInstanceOf[PredicateAccessPredicate], goExp(e))(pos, info)
       case PApplying(_, wand, _, e) =>
-        Applying(exp(wand).asInstanceOf[MagicWand], exp(e))(pos, info)
+        Applying(goExp(wand).asInstanceOf[MagicWand], goExp(e))(pos, info)
       case PAsserting(_, a, _, e) =>
-        Asserting(exp(a), exp(e))(pos, info)
+        Asserting(goExp(a), goExp(e))(pos, info)
       case pl@PLet(_, _, _, exp1, _, PLetNestedScope(body)) =>
-        Let(liftLogicalDecl(pl.decl), exp(exp1.inner), exp(body))(pos, info)
+        Let(liftLogicalDecl(pl.decl), goExp(exp1.inner), goExp(body))(pos, info)
       case _: PLetNestedScope =>
         sys.error("unexpected node PLetNestedScope, should only occur as a direct child of PLet nodes")
       case PExists(_, vars, _, triggers, e) =>
-        val ts = triggers map (t => Trigger((t.exp.inner.toSeq map exp) map (e => e match {
+        val ts = triggers map (t => Trigger((t.exp.inner.toSeq map goExp) map (e => e match {
           case PredicateAccessPredicate(inner, _) => inner
           case _ => e
         }))(t))
-        Exists(vars.toSeq map liftLogicalDecl, ts, exp(e))(pos, info)
+        Exists(vars.toSeq map liftLogicalDecl, ts, goExp(e))(pos, info)
       case PForall(_, vars, _, triggers, e) =>
-        val ts = triggers map (t => Trigger((t.exp.inner.toSeq map exp) map (e => e match {
+        val ts = triggers map (t => Trigger((t.exp.inner.toSeq map goExp) map (e => e match {
           case PredicateAccessPredicate(inner, _) => inner
           case _ => e
         }))(t))
-        val fa = Forall(vars.toSeq map liftLogicalDecl, ts, exp(e))(pos, info)
+        val fa = Forall(vars.toSeq map liftLogicalDecl, ts, goExp(e))(pos, info)
         if (fa.isPure) {
           fa
         } else {
@@ -556,21 +559,21 @@ case class Translator(program: PProgram) {
         }
       case fp@PForPerm(_, vars, _, _, e) =>
         val varList = vars.toSeq map liftLogicalDecl
-        exp(fp.accessRes) match {
-          case PredicateAccessPredicate(inner, _) => ForPerm(varList, inner, exp(e))(pos, info)
-          case f : FieldAccess => ForPerm(varList, f, exp(e))(pos, info)
-          case p : PredicateAccess => ForPerm(varList, p, exp(e))(pos, info)
-          case w : MagicWand => ForPerm(varList, w, exp(e))(pos, info)
+        goExp(fp.accessRes) match {
+          case PredicateAccessPredicate(inner, _) => ForPerm(varList, inner, goExp(e))(pos, info)
+          case f : FieldAccess => ForPerm(varList, f, goExp(e))(pos, info)
+          case p : PredicateAccess => ForPerm(varList, p, goExp(e))(pos, info)
+          case w : MagicWand => ForPerm(varList, w, goExp(e))(pos, info)
           case other =>
             sys.error(s"Internal Error: Unexpectedly found $other in forperm")
         }
       case POldExp(_, lbl, e) =>
-        val ee = exp(e.inner)
+        val ee = goExp(e.inner)
         lbl.map(l => LabelledOld(ee, l.inner.fold(_.rs.keyword, _.name))(pos, info)).getOrElse(Old(ee)(pos, info))
       case PCondExp(cond, _, thn, _, els) =>
-        CondExp(exp(cond), exp(thn), exp(els))(pos, info)
+        CondExp(goExp(cond), goExp(thn), goExp(els))(pos, info)
       case PCurPerm(_, res) =>
-        exp(res.inner) match {
+        goExp(res.inner) match {
           case PredicateAccessPredicate(inner, _) => CurrentPerm(inner)(pos, info)
           case x: FieldAccess => CurrentPerm(x)(pos, info)
           case x: PredicateAccess => CurrentPerm(x)(pos, info)
@@ -586,8 +589,8 @@ case class Translator(program: PProgram) {
       case PEpsilon(_) =>
         EpsilonPerm()(pos, info)
       case acc: PAccPred =>
-        val p = acc.permExp.map(exp)
-        exp(acc.loc) match {
+        val p = acc.permExp.map(goExp)
+        goExp(acc.loc) match {
           case loc@FieldAccess(_, _) =>
             FieldAccessPredicate(loc, p)(pos, info)
           case loc@PredicateAccess(_, _) =>
@@ -599,55 +602,55 @@ case class Translator(program: PProgram) {
       case _: PEmptySeq =>
         EmptySeq(ttyp(pexp.typ.asInstanceOf[PSeqType].elementType.inner))(pos, info)
       case PExplicitSeq(_, elems) =>
-        ExplicitSeq(elems.inner.toSeq map exp)(pos, info)
+        ExplicitSeq(elems.inner.toSeq map goExp)(pos, info)
       case PRangeSeq(_, low, _, high, _) =>
-        RangeSeq(exp(low), exp(high))(pos, info)
+        RangeSeq(goExp(low), goExp(high))(pos, info)
 
       case PLookup(base, _, index, _) => base.typ match {
-        case _: PSeqType => SeqIndex(exp(base), exp(index))(pos, info)
-        case _: PMapType => MapLookup(exp(base), exp(index))(pos, info)
+        case _: PSeqType => SeqIndex(goExp(base), goExp(index))(pos, info)
+        case _: PMapType => MapLookup(goExp(base), goExp(index))(pos, info)
         case t => sys.error(s"unexpected type $t")
       }
 
       case PSeqSlice(seq, _, s, _, e, _) =>
-        val es = exp(seq)
-        val ss = e.map(exp).map(SeqTake(es, _)(pos, info)).getOrElse(es)
-        s.map(exp).map(SeqDrop(ss, _)(pos, info)).getOrElse(ss)
+        val es = goExp(seq)
+        val ss = e.map(goExp).map(SeqTake(es, _)(pos, info)).getOrElse(es)
+        s.map(goExp).map(SeqDrop(ss, _)(pos, info)).getOrElse(ss)
 
       case PUpdate(base, _, key, _, value, _) => base.typ match {
-        case _: PSeqType => SeqUpdate(exp(base), exp(key), exp(value))(pos, info)
-        case _: PMapType => MapUpdate(exp(base), exp(key), exp(value))(pos, info)
+        case _: PSeqType => SeqUpdate(goExp(base), goExp(key), goExp(value))(pos, info)
+        case _: PMapType => MapUpdate(goExp(base), goExp(key), goExp(value))(pos, info)
         case t => sys.error(s"unexpected type $t")
       }
 
       case PSize(_, base, _) => base.typ match {
-        case _: PSeqType => SeqLength(exp(base))(pos, info)
-        case _: PMapType => MapCardinality(exp(base))(pos, info)
-        case _: PSetType | _: PMultisetType => AnySetCardinality(exp(base))(pos, info)
+        case _: PSeqType => SeqLength(goExp(base))(pos, info)
+        case _: PMapType => MapCardinality(goExp(base))(pos, info)
+        case _: PSetType | _: PMultisetType => AnySetCardinality(goExp(base))(pos, info)
         case t => sys.error(s"unexpected type $t")
       }
 
       case _: PEmptySet =>
         EmptySet(ttyp(pexp.typ.asInstanceOf[PSetType].elementType.inner))(pos, info)
       case PExplicitSet(_, elems) =>
-        ExplicitSet(elems.inner.toSeq map exp)(pos, info)
+        ExplicitSet(elems.inner.toSeq map goExp)(pos, info)
       case _: PEmptyMultiset =>
         EmptyMultiset(ttyp(pexp.typ.asInstanceOf[PMultisetType].elementType.inner))(pos, info)
       case PExplicitMultiset(_, elems) =>
-        ExplicitMultiset(elems.inner.toSeq map exp)(pos, info)
+        ExplicitMultiset(elems.inner.toSeq map goExp)(pos, info)
 
       case _: PEmptyMap => EmptyMap(
         ttyp(pexp.typ.asInstanceOf[PMapType].keyType),
         ttyp(pexp.typ.asInstanceOf[PMapType].valueType)
       )(pos, info)
       case PExplicitMap(_, elems) =>
-        ExplicitMap(elems.inner.toSeq map exp)(pos, info)
+        ExplicitMap(elems.inner.toSeq map goExp)(pos, info)
       case PMaplet(key, _, value) =>
-        Maplet(exp(key), exp(value))(pos, info)
+        Maplet(goExp(key), goExp(value))(pos, info)
       case PMapDomain(_, base) =>
-        MapDomain(exp(base.inner))(pos, info)
+        MapDomain(goExp(base.inner))(pos, info)
       case PMapRange(_, base) =>
-        MapRange(exp(base.inner))(pos, info)
+        MapRange(goExp(base.inner))(pos, info)
 
       case t: PExtender => t.translateExp(this)
     }
