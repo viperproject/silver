@@ -104,10 +104,17 @@ object Expressions {
     })
   }
 
+  /** Returns only the functional parts of an expression.
+    * Note: Result is likely not self-framing.
+    */
   def asPureFragment(e: Exp): Option[Exp] = {
     asFragment(e, pureFragment = true)
   }
 
+  /** Returns only the access/permission parts of an expression.
+    * Note: Result may not be well-defined on its own if functional properties are dropped,
+    * e.g. index bounds in QPs.
+    */
   def asAccessFragment(e: Exp): Option[Exp] = {
     asFragment(e, pureFragment = false)
   }
