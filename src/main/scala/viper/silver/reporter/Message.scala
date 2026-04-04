@@ -335,3 +335,21 @@ case class BenchmarkingMessage(category: String, payload: String) extends Messag
   override val name: String = "benchmarking_message"
   override val toString: String = s"Benchmarking message of type $category with payload $payload"
 }
+
+/** Reported when the block of a method CFG is reached. */
+case class BlockReachedMessage(methodName: String, label: String, pathId: Int) extends  Message {
+  override val toString: String = s"block_reached_message(methodName=$methodName, label=$label, pathId=$pathId)"
+  override val name: String = "block_reached_message"
+}
+
+/** Reported when the block of a method CFG failed to verify. */
+case class BlockFailureMessage(methodName: String, label: String, pathId: Int) extends  Message {
+  override val toString: String = s"block_failure_message(methodName=$methodName, label=$label, pathId=$pathId)"
+  override val name: String = "block_failure_message"
+}
+
+/** Reported when an execution path through the method has completed. */
+case class PathProcessedMessage(methodName: String, pathId: Int, result: String) extends  Message {
+  override val toString: String = s"path_processed_message(methodName=$methodName, pathId=$pathId, result=$result)"
+  override val name: String = "path_processed_message"
+}
