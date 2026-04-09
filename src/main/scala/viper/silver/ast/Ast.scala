@@ -502,6 +502,11 @@ object SimpleDependencyAnalysisMerge {
 		val mergeInfo = SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(exp))
 		exp.withMeta((exp.pos, ast.MakeInfoPair(mergeInfo, exp.info), exp.errT))
 	}
+
+	def attachExpMergeInfo(exp: ast.Exp, source: AnalysisSourceInfo): ast.Exp = {
+		val mergeInfo = SimpleDependencyAnalysisMerge(source)
+		exp.withMeta((exp.pos, ast.MakeInfoPair(mergeInfo, exp.info), exp.errT))
+	}
 }
 
 /** An `Info` instance for composing multiple `Info`s together */
