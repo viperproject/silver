@@ -45,7 +45,7 @@ object DependencyType {
   val Implicit: DependencyType = DependencyType(AssumptionType.Implicit, AssumptionType.Implicit)
   val SourceCode: DependencyType = DependencyType(AssumptionType.SourceCode, AssumptionType.SourceCode)
   val Explicit: DependencyType = DependencyType(AssumptionType.Explicit, AssumptionType.Explicit)
-  val ExplicitAssertion: DependencyType = DependencyType(AssumptionType.Ghost, AssumptionType.Explicit)
+  val ExplicitAssertion: DependencyType = DependencyType(AssumptionType.Internal, AssumptionType.Explicit)
   val ExplicitAssumption: DependencyType = DependencyType(AssumptionType.Explicit, AssumptionType.Implicit)
   val PathCondition: DependencyType = DependencyType(AssumptionType.PathCondition, AssumptionType.Implicit)
   val Invariant: DependencyType = DependencyType(AssumptionType.LoopInvariant, AssumptionType.LoopInvariant)
