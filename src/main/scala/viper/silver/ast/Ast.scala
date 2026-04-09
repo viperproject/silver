@@ -6,20 +6,21 @@
 
 package viper.silver.ast
 
-import scala.collection.mutable
-import scala.reflect.ClassTag
-import pretty.FastPrettyPrinter
-import utility._
 import viper.silver.ast
 import viper.silver.ast.EdgeType.EdgeType
 import viper.silver.ast.JoinType.JoinType
+import viper.silver.ast.pretty.FastPrettyPrinter
+import viper.silver.ast.utility._
 import viper.silver.ast.utility.rewriter.Traverse.Traverse
 import viper.silver.ast.utility.rewriter.{Rewritable, StrategyBuilder, Traverse}
-import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyType}
 import viper.silver.dependencyAnalysis.DependencyType.{ExplicitAssertion, ExplicitAssumption, MethodCall, Rewrite, SourceCode}
+import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyType}
 import viper.silver.parser.PNode
 import viper.silver.verifier.errors.ErrorNode
 import viper.silver.verifier.{AbstractVerificationError, ConsistencyError, ErrorReason}
+
+import scala.collection.mutable
+import scala.reflect.ClassTag
 
 /*
 
@@ -490,6 +491,17 @@ case class NoDependencyAnalysisMerge() extends DependencyAnalysisMergeInfo {
 
 case class SimpleDependencyAnalysisMerge(sourceInfo: AnalysisSourceInfo) extends DependencyAnalysisMergeInfo {
   override def isMerge: Boolean = true
+}
+
+object SimpleDependencyAnalysisMerge {
+	def attachExpMergeInfo(exps: Seq[ast.Exp]): Seq[ast.Exp] = {
+		exps.map(attachExpMergeInfo)
+	}
+
+	def attachExpMergeInfo(exp: ast.Exp): ast.Exp = {
+		val mergeInfo = SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(exp))
+		exp.withMeta((exp.pos, ast.MakeInfoPair(mergeInfo, exp.info), exp.errT))
+	}
 }
 
 /** An `Info` instance for composing multiple `Info`s together */
