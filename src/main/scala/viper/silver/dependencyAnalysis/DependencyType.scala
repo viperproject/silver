@@ -11,15 +11,10 @@ object AssumptionType extends Enumeration {
   def preconditionTypes: Set[AssumptionType] = Set(Precondition)
   def explicitAssertionTypes: Set[AssumptionType] = Set(Explicit, ImplicitPostcondition, ExplicitPostcondition)
   def internalTypes: Set[AssumptionType] = Set(Internal, Trigger, CustomInternal) // will always be hidden from user
-  def joinConditionTypes: Set[AssumptionType] = preconditionTypes ++ postconditionTypes ++ Set(FunctionBody, MethodCall)
   def importedTypes: Set[AssumptionType] = Set(ImportedPostcondition)
   def verificationAnnotationTypes: Set[AssumptionType] = Set(FunctionBody /* TODO ake: review */, LoopInvariant, Rewrite, ExplicitPostcondition, ImplicitPostcondition, ImportedPostcondition, Precondition, Explicit, DomainAxiom, Annotation)
   def sourceCodeTypes: Set[AssumptionType] = AssumptionType.values.diff(explicitAssumptionTypes ++ explicitAssertionTypes ++ verificationAnnotationTypes ++ internalTypes)
 
-  def getMaxPriorityAssumptionType(types: Set[AssumptionType]): Option[AssumptionType] = {
-    val priorityList = List(ExplicitPostcondition, Explicit) ++ internalTypes.toList ++ verificationAnnotationTypes.toList ++ sourceCodeTypes.toList ++ values.toList
-    priorityList.find(t => types.contains(t))
-  }
 
   def getPostcondType(isAbstractFunction: Boolean, dependencyType: Option[DependencyType]=None, isImported: Boolean=false): AssumptionType = {
     if(isImported) return ImportedPostcondition
@@ -41,7 +36,6 @@ object AssumptionType extends Enumeration {
 import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
 
 object DependencyType {
-
   val Implicit: DependencyType = DependencyType(AssumptionType.Implicit, AssumptionType.Implicit)
   val SourceCode: DependencyType = DependencyType(AssumptionType.SourceCode, AssumptionType.SourceCode)
   val Explicit: DependencyType = DependencyType(AssumptionType.Explicit, AssumptionType.Explicit)
@@ -58,30 +52,6 @@ object DependencyType {
   val Axiom: DependencyType = DependencyType.make(AssumptionType.DomainAxiom)
 
   def make(singleType: AssumptionType): DependencyType = DependencyType(singleType, singleType)
-
-//  def get(stmt: ast.Stmt): DependencyType = {
-//    val annotatedDependencyType = DependencyAnalyzer.extractDependencyTypeFromInfo(stmt.info)
-//    if(annotatedDependencyType.isDefined) return annotatedDependencyType.get
-//
-//    stmt match {
-//      case _: ast.MethodCall => MethodCall
-//      case  _: ast.NewStmt | _: ast.AbstractAssign => SourceCode
-//      case _: ast.Exhale | _: ast.Assert => ExplicitAssertion
-//      case _: ast.Inhale | _: ast.Assume => ExplicitAssumption
-//      case _: ast.Fold | _: ast.Unfold | _: ast.Package | _: ast.Apply => Rewrite
-//      case _: ast.Quasihavoc | _: ast.Quasihavocall => DependencyType.Implicit
-//      case _ => DependencyType.make(Unknown) /* TODO: should not happen */
-//    }
-//  }
-//
-//  def get(exp: ast.Exp, dependencyType: DependencyType): DependencyType = DependencyAnalyzer.extractDependencyTypeFromInfo(exp.info).getOrElse(dependencyType)
-
-  def getMaxPriorityType(types: Set[DependencyType]): Option[DependencyType] = {
-    val assumptionType = AssumptionType.getMaxPriorityAssumptionType(types.map(_.assumptionType))
-    val assertionType = AssumptionType.getMaxPriorityAssumptionType(types.map(_.assertionType))
-    if(assumptionType.isDefined && assertionType.isDefined) Some(DependencyType(assumptionType.get, assertionType.get)) else None
-  }
-
 }
 
 case class DependencyType(assumptionType: AssumptionType, assertionType: AssumptionType)
