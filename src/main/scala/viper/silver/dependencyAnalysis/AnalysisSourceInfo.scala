@@ -14,17 +14,13 @@ object AnalysisSourceInfo {
     }
   }
 
-  def createAnalysisSourceInfo(exp: ast.Exp): AnalysisSourceInfo = {
-    val depInfo = exp.info.getUniqueInfo[FrontendDependencyAnalysisInfo]
-    if(depInfo.isDefined) depInfo.get.getAnalysisSourceInfo
-    else ExpAnalysisSourceInfo(exp, exp.pos)
-  }
-
-  def createAnalysisSourceInfo(stmt: ast.Stmt): AnalysisSourceInfo = {
-    val depInfo = stmt.info.getUniqueInfo[FrontendDependencyAnalysisInfo]
-    if(depInfo.isDefined) depInfo.get.getAnalysisSourceInfo
-    else StmtAnalysisSourceInfo(stmt, stmt.pos)
-  }
+	def createAnalysisSourceInfo(node: ast.Node): AnalysisSourceInfo = {
+		node match {
+			case stmt: ast.Stmt => StmtAnalysisSourceInfo(stmt, stmt.pos)
+			case exp: ast.Exp => ExpAnalysisSourceInfo(exp, exp.pos)
+			case _ => createAnalysisSourceInfo("Unknown", NoPosition)
+		}
+	}
 
   def createAnalysisSourceInfo(description: String, pos: Position): AnalysisSourceInfo = StringAnalysisSourceInfo(description, pos)
 
