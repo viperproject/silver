@@ -13,7 +13,7 @@ object AssumptionType extends Enumeration {
   def internalTypes: Set[AssumptionType] = Set(Internal, Trigger, CustomInternal) // will always be hidden from user
   def joinConditionTypes: Set[AssumptionType] = preconditionTypes ++ postconditionTypes ++ Set(FunctionBody, MethodCall)
   def importedTypes: Set[AssumptionType] = Set(ImportedPostcondition)
-  def verificationAnnotationTypes: Set[AssumptionType] = Set(FunctionBody, LoopInvariant, Rewrite, ExplicitPostcondition, ImplicitPostcondition, ImportedPostcondition, Precondition, Explicit, DomainAxiom, Annotation)
+  def verificationAnnotationTypes: Set[AssumptionType] = Set(FunctionBody /* TODO ake: review */, LoopInvariant, Rewrite, ExplicitPostcondition, ImplicitPostcondition, ImportedPostcondition, Precondition, Explicit, DomainAxiom, Annotation)
   def sourceCodeTypes: Set[AssumptionType] = AssumptionType.values.diff(explicitAssumptionTypes ++ explicitAssertionTypes ++ verificationAnnotationTypes ++ internalTypes)
 
   def getMaxPriorityAssumptionType(types: Set[AssumptionType]): Option[AssumptionType] = {

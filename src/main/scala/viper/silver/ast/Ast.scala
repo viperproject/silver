@@ -493,18 +493,25 @@ case class SimpleDependencyAnalysisMerge(sourceInfo: AnalysisSourceInfo) extends
   override def isMerge: Boolean = true
 }
 
-object SimpleDependencyAnalysisMerge {
-	def attachExpMergeInfo(exps: Seq[ast.Exp]): Seq[ast.Exp] = {
-		exps.map(attachExpMergeInfo)
+case class CompositeDependencyAnalysisMergeInfo(sourceInfo1: AnalysisSourceInfo, sourceInfo2: AnalysisSourceInfo) extends DependencyAnalysisMergeInfo {
+	override def isMerge: Boolean = true
+}
+
+object DependencyAnalysisMergeInfo {
+	def attachExpMergeInfo(exps: Seq[ast.Exp], sourceInfo2: Option[AnalysisSourceInfo]): Seq[ast.Exp] = {
+		exps.map(attachExpMergeInfo(_, sourceInfo2))
 	}
 
-	def attachExpMergeInfo(exp: ast.Exp): ast.Exp = {
-		val mergeInfo = SimpleDependencyAnalysisMerge(AnalysisSourceInfo.createAnalysisSourceInfo(exp))
-		exp.withMeta((exp.pos, ast.MakeInfoPair(mergeInfo, exp.info), exp.errT))
+	def attachExpMergeInfo(exp: ast.Exp, sourceInfo2: Option[AnalysisSourceInfo]): ast.Exp = {
+		val expSourceInfo = AnalysisSourceInfo.createAnalysisSourceInfo(exp)
+		attachExpMergeInfo(exp, expSourceInfo, sourceInfo2)
 	}
 
-	def attachExpMergeInfo(exp: ast.Exp, source: AnalysisSourceInfo): ast.Exp = {
-		val mergeInfo = SimpleDependencyAnalysisMerge(source)
+	def attachExpMergeInfo(exp: ast.Exp, sourceInfo1: AnalysisSourceInfo, sourceInfo2: Option[AnalysisSourceInfo]): ast.Exp = {
+		val mergeInfo = if(sourceInfo2.isDefined)
+			CompositeDependencyAnalysisMergeInfo(sourceInfo1, sourceInfo2.get)
+		else
+			SimpleDependencyAnalysisMerge(sourceInfo1)
 		exp.withMeta((exp.pos, ast.MakeInfoPair(mergeInfo, exp.info), exp.errT))
 	}
 }
