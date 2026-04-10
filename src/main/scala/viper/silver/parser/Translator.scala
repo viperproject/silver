@@ -9,7 +9,7 @@ package viper.silver.parser
 import viper.silver.FastMessaging
 import viper.silver.ast.utility._
 import viper.silver.ast.{SourcePosition, _}
-import viper.silver.dependencyAnalysis.{AnalysisSourceInfo, AssumptionType, DependencyAnalysisJoinNodeInfo, DependencyType}
+import viper.silver.dependencyAnalysis._
 import viper.silver.plugin.standard.adt.{Adt, AdtType}
 
 import scala.collection.mutable
