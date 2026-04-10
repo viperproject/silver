@@ -459,7 +459,10 @@ object EdgeType extends Enumeration {
   val Up, Down = Value
 }
 
-
+/**
+ * Represent the piece of information to be stored in dependency nodes in order to join dependency graphs of
+ * individual verification components. Nodes with matching join information are connected by an interprocedural edge.
+ */
 trait DependencyAnalysisJoinInfo extends ast.Info {
   override def comment: Seq[String] = Nil
   override def isCached: Boolean = false
@@ -476,7 +479,10 @@ case class EvalStackDependencyAnalysisJoin(joinType: JoinType, edgeType: EdgeTyp
 
 case class SimpleDependencyAnalysisJoin(sourceInfo: AnalysisSourceInfo, joinType: JoinType, edgeType: EdgeType) extends DependencyAnalysisJoinInfo
 
-
+/**
+ * Represent the piece of information to be stored in dependency nodes in order to finalize the intraprocedural
+ * dependency graph. Nodes with matching merge information are connected by an intraprocedural edge.
+ */
 trait DependencyAnalysisMergeInfo extends ast.Info {
 
   def isMerge: Boolean
