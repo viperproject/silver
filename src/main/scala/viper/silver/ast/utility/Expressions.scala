@@ -140,7 +140,8 @@ object Expressions {
         (rec(thn), rec(els)) match {
           case (Some(thn2), Some(els2)) => Some(CondExp(cond, thn2, els2)(ite.pos, ite.info, ite.errT))
           case (Some(thn2), None) => Some(Implies(cond, thn2)(ite.pos, ite.info, ite.errT))
-          case (None, Some(els2)) => Some(Implies(cond, els2)(ite.pos, ite.info, ite.errT))
+          case (None, Some(els2)) =>
+            Some(Implies(Not(cond)(cond.pos, cond.info, cond.errT), els2)(ite.pos, ite.info, ite.errT))
           case (None, None) => None
         }
       case unf@Unfolding(acc, body) => rec(body).map(Unfolding(acc, _)(unf.pos, unf.info, unf.errT))
