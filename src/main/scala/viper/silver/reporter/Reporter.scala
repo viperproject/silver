@@ -117,6 +117,9 @@ case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv
       case q: QuantifierInstantiationsMessage => csv_file.write(s"${q.toString}\n")
       case q: QuantifierChosenTriggersMessage => csv_file.write(s"${q.toString}\n")
       case t: VerificationTerminationMessage => csv_file.write(s"${t.toString}\n")
+      case r: BlockReachedMessage => csv_file.write(s"${r.toString}\n")
+      case f: BlockFailureMessage => csv_file.write(s"${f.toString}\n")
+      case p: PathProcessedMessage => csv_file.write(s"${p.toString}\n")
       case _ =>
         println( s"Cannot properly print message of unsupported type: $msg" )
     }
@@ -235,6 +238,9 @@ case class StdIOReporter(name: String = "stdout_reporter",
         //println( sm.text )
       case _: QuantifierInstantiationsMessage => // too verbose, do not print
       case _: QuantifierChosenTriggersMessage => // too verbose, do not print
+      case _: BlockReachedMessage => // too verbose, do not print
+      case _: BlockFailureMessage =>  // too verbose, do not print
+      case _: PathProcessedMessage =>  // too verbose, do not print
       case _: VerificationTerminationMessage =>
       case _: BenchmarkingMessage =>
       case _ =>
