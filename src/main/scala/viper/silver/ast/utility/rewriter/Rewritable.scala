@@ -6,8 +6,8 @@
 
 package viper.silver.ast.utility.rewriter
 
+import viper.silver.ast._
 import viper.silver.parser.PNode
-import viper.silver.ast.{AtomicType, BackendFuncApp, DomainFuncApp, DomainMember, ErrorTrafo, FuncApp, Info, Node, Position}
 
 import scala.reflect.runtime.{universe => reflection}
 
@@ -45,7 +45,7 @@ trait Rewritable extends Product {
         // Add additional arguments to constructor call, besides children
         val firstArgList = children
         var secondArgList = Seq.empty[Any]
-        import viper.silver.ast.{DomainType, DomainAxiom, FuncApp, DomainFunc, DomainFuncApp}
+        import viper.silver.ast.{DomainAxiom, DomainFunc, DomainFuncApp, DomainType, FuncApp}
         this match {
           // TODO: remove the following cases by implementing `HasExtraValList` on the respective classes
           case dt: DomainType => secondArgList = Seq(dt.typeParameters)
@@ -112,6 +112,7 @@ trait Rewritable extends Product {
       val arguments = this match {
         case fa: FuncApp => this.children ++ Seq(pos, info, fa.typ, trafo)
         case df: DomainFuncApp => this.children ++ Seq(pos, info, df.typ, df.domainName, trafo)
+				case bfa: BackendFuncApp => this.children ++ Seq(pos, info, bfa.typ, bfa.interpretation, trafo)
         case dm: DomainMember => this.children ++ Seq(pos, info, dm.domainName, trafo)
         case _ => this.children ++ Seq(pos, info, trafo)
       }
