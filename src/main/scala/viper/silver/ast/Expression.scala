@@ -126,7 +126,7 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
   override val typ: Wand.type = Wand
 
   //maybe rename this sometime
-  def subexpressionsToEvaluate(p: Program): Seq[Exp] = {
+  def subexpressionsToEvaluate(p: Program, includeHeapDependent: Boolean = false): Seq[Exp] = {
     /* The code collects expressions that can/are to be evaluated in a fixed state, i.e.
      * a state that is known when this method is called.
      * Among other things, such expressions may not be heap-dependent (unless they are nested
@@ -153,7 +153,7 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 
           quant.children.collect { case e: Exp => e } .foreach(go(_, newContext))
 
-        case e: Exp if !Expressions.dependsOnCurrentHeap(e,p,true) && !boundVariables.exists(e.contains) =>
+        case e: Exp if (includeHeapDependent || !Expressions.dependsOnCurrentHeap(e,p,true)) && !boundVariables.exists(e.contains) =>
           collectedExpressions :+= e
       })
     }
