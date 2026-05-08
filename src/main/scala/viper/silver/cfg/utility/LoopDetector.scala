@@ -179,6 +179,7 @@ object LoopDetector {
             // update after info
             val after = edge.target match {
               case LoopHeadBlock(_, _, loopId) => loopId
+              case sb: StatementBlock[_, _] if sb.loopId.isDefined => sb.loopId.get
               case block => getFirst(block).flatMap(getId)
             }
             val map3 = after
@@ -283,13 +284,13 @@ object LoopDetector {
         // turn target into loop head if edge is an in-edge
         val last = if (0 < in && out == 0) edge.target match {
           case head@LoopHeadBlock(_, _, _) => head
-          case block@StatementBlock(stmts) =>
+          case sBlock@StatementBlock(stmts) =>
             val loopId = stmts.head match {
               case stmt: Stmt => stmt.info.getUniqueInfo[IdInfo].map(_.id)
               case _ => None
             }
-            val head: Block[S, E] = LoopHeadBlock(Seq.empty, stmts, loopId)
-            heads.put(block, head)
+            val head: Block[S, E] = LoopHeadBlock(sBlock.invs.getOrElse(Seq.empty), stmts, loopId)
+            heads.put(sBlock, head)
             head
           case _ => ??? // We don't expect this to happen.
         } else heads.getOrElse(edge.target, edge.target)

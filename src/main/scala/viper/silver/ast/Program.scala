@@ -9,6 +9,7 @@ package viper.silver.ast
 import viper.silver.ast.pretty.{Fixity, Infix, LeftAssociative, NonAssociative, Prefix, PrettyPrintPrimitives, RightAssociative}
 import utility.{Consistency, DomainInstances, Nodes, Types, Visitor}
 import viper.silver.ast.MagicWandStructure.MagicWandStructure
+import viper.silver.ast.utility.Expressions.{asAccessFragment, asPureFragment}
 import viper.silver.ast.utility.rewriter.StrategyBuilder
 import viper.silver.cfg.silver.{CfgGenerator, SilverCfg}
 import viper.silver.verifier.ConsistencyError
@@ -380,6 +381,8 @@ case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], body: Option[E
 
   val scopedDecls: Seq[Declaration] = formalArgs
   def isAbstract = body.isEmpty
+  def getPureFragment: Option[Exp] = body.flatMap(asPureFragment)
+  def getAccessFragment: Option[Exp] = body.flatMap(asAccessFragment)
 
   override def isValid : Boolean = body match {
     case Some(e) if e.contains[PermExp] => false
@@ -568,6 +571,7 @@ sealed trait DomainAxiom extends DomainMember {
     (if(!Consistency.noResult(exp)) Seq(ConsistencyError("Axioms can never contain result variables.", exp.pos)) else Seq()) ++
     (if(!Consistency.noOld(exp)) Seq(ConsistencyError("Axioms can never contain old expressions.", exp.pos)) else Seq()) ++
     (if(!Consistency.noLocationAccesses(exp)) Seq(ConsistencyError("Axioms can never contain location accesses.", exp.pos)) else Seq()) ++
+    (if(!Consistency.noAsserting(exp)) Seq(ConsistencyError("Axioms can never contain asserting expressions.", exp.pos)) else Seq()) ++
     (if(!(exp isSubtype Bool)) Seq(ConsistencyError("Axioms must be of Bool type", exp.pos)) else Seq()) ++
     Consistency.checkPure(exp)
 

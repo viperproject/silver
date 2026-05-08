@@ -1,0 +1,57 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+method main1(r: Ref)
+  requires acc(r.f)
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert low(r)
+}
+
+method main2(r: Ref)
+  requires acc(r.f)
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert low(r.f)
+}
+
+method main3() returns (r: Ref)
+{
+  r := new(f)
+  assert low(r)
+}
+
+method main4() returns (r: Ref)
+{
+  r := new(f)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert low(r.f)
+}
+
+method main5(r: Ref)
+  requires acc(r.f)
+  requires low(r)
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert low(r.f)
+}
+
+method main6(r: Ref)
+  requires acc(r.f)
+  requires low(r.f)
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert low(r)
+}
+
+method main7(r: Ref)
+  requires acc(r.f)
+{
+  r.f := 5
+
+  assert low(r.f)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert low(r)
+}

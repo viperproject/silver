@@ -1,0 +1,29 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+method doubleDiv(r: Ref)
+{
+    inhale acc(r.f, 1 / 4000 / 2)
+    var tmp: Int
+    tmp := r.f
+}
+
+method compare(r: Ref)
+{
+    assert 0 / 1 < 1 / 2
+    assert !(0 \ 1 < 1 \ 2)
+
+    assert 1 / 2 > 0 / 1
+    assert !(1 \ 2 > 0 \ 1)
+
+    assert !(0 / 1 >= 1 / 2)
+    assert (0 \ 1 >= 1 \ 2)
+
+    assert 0 / 1 != 1 / 2
+    assert !(0 / 1 == 1 / 2)
+
+    assert 0 \ 1 == 1 \ 2
+    assert !(0 \ 1 != 1 \ 2)
+}

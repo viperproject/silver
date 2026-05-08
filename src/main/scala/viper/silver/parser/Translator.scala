@@ -44,7 +44,7 @@ case class Translator(program: PProgram) {
     /* [2022-03-14 Alessandro] Following signatures can be translated independently of each other but must be translated
       * after signatures of domains and extensions because of the above mentioned reasons.
       */
-    pdomains flatMap (_.members.inner.funcs.toSeq) foreach translateMemberSignature
+    pdomains flatMap (_.funcs) foreach translateMemberSignature
     (pfields ++ pfunctions ++ ppredicates ++ pmethods) foreach translateMemberSignature
 
     /* [2022-03-14 Alessandro] After the signatures are translated, the actual full translations can be done
@@ -90,10 +90,10 @@ case class Translator(program: PProgram) {
   }
 
   private def translate(d: PDomain): Domain = d match {
-    case PDomain(_, _, name, _, interpretation, PGrouped(_, PDomainMembers(functions, axioms), _)) =>
+    case pd@PDomain(_, _, name, _, interpretation, _) =>
       val d = findDomain(name)
-      val dd = d.copy(functions = functions.toSeq map (f => findDomainFunction(f.idndef)),
-        axioms = axioms.toSeq map translate, interpretations = interpretation.map(_.interps))(d.pos, d.info, d.errT)
+      val dd = d.copy(functions = pd.funcs map (f => findDomainFunction(f.idndef)),
+        axioms = pd.axioms map translate, interpretations = interpretation.map(_.interps))(d.pos, d.info, d.errT)
       members(d.name) = dd
       dd
   }
@@ -188,7 +188,7 @@ case class Translator(program: PProgram) {
           case Right(pfields) => pfields.toSeq map findField
         }
         methodCallAssign(s, Seq(targets.head), lv => NewStmt(lv.head, fields)(pos, info))
-      case PAssign(PDelimited(idnuse: PIdnUse), _, rhs) =>
+      case PAssign(PDelimited(idnuse: PIdnUseExp), _, rhs) =>
         LocalVarAssign(LocalVar(idnuse.name, ttyp(idnuse.decl.get.asInstanceOf[PAssignableVarDecl].typ))(pos, SourcePNodeInfo(idnuse)), exp(rhs))(pos, info)
       case PAssign(PDelimited(field: PFieldAccess), _, rhs) =>
         FieldAssign(FieldAccess(exp(field.rcv), findField(field.idnref))(field, SourcePNodeInfo(field)), exp(rhs))(pos, info)
@@ -353,9 +353,9 @@ case class Translator(program: PProgram) {
 
   protected def expInternal(pexp: PExp, pos: PExp, info: Info): Exp = {
     pexp match {
-      case piu @ PIdnUseExp(name) =>
+      case PIdnUseExp(piu) =>
         piu.decl match {
-          case Some(_: PTypedVarDecl) => LocalVar(name, ttyp(pexp.typ))(pos, info)
+          case Some(_: PTypedVarDecl) => LocalVar(piu.name, ttyp(pexp.typ))(pos, info)
           // A malformed AST where a field, function or other declaration is used as a variable.
           // Should have been caught by the type checker.
           case _ => sys.error("should not occur in type-checked program")
@@ -537,9 +537,9 @@ case class Translator(program: PProgram) {
           desugaredForalls.tail.foldLeft(desugaredForalls.head: Exp)((conjuncts, forall) =>
             And(conjuncts, forall)(fa.pos, fa.info, fa.errT))
         }
-      case PForPerm(_, vars, res, _, e) =>
+      case fp@PForPerm(_, vars, _, _, e) =>
         val varList = vars.toSeq map liftLogicalDecl
-        exp(res.inner) match {
+        exp(fp.accessRes) match {
           case PredicateAccessPredicate(inner, _) => ForPerm(varList, inner, exp(e))(pos, info)
           case f : FieldAccess => ForPerm(varList, f, exp(e))(pos, info)
           case p : PredicateAccess => ForPerm(varList, p, exp(e))(pos, info)

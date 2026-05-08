@@ -52,7 +52,8 @@ case class DecreasesTuple(tupleExpressions: Seq[Exp] = Nil, override val conditi
 
   override lazy val prettyPrint: PrettyPrintPrimitives#Cont = {
     text("decreases") <>
-      (if (tupleExpressions.nonEmpty) space <> ssep(tupleExpressions map (toParenDoc(_)), char(',') <> space) else nil)
+      (if (tupleExpressions.nonEmpty) space <> ssep(tupleExpressions map (toParenDoc(_)), char(',') <> space) else nil) <>
+      (if (condition.nonEmpty) space <> "if" <+> toParenDoc(condition.get) else nil)
   }
 
   override val extensionSubnodes: Seq[Node] = tupleExpressions ++ condition
@@ -76,7 +77,10 @@ case class DecreasesWildcard(override val condition: Option[Exp] = None)
 
   override val typ: Type = Bool
 
-  override lazy val prettyPrint: PrettyPrintPrimitives#Cont = text("decreases _")
+  override lazy val prettyPrint: PrettyPrintPrimitives#Cont = {
+    text("decreases _") <>
+      (if (condition.nonEmpty) space <> "if" <+> toParenDoc(condition.get) else nil)
+  }
 
   override val extensionSubnodes: Seq[Node] = condition.toSeq
 

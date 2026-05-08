@@ -1,0 +1,194 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+method direct1(x: Int) returns (res: Int)
+  //:: ExpectedOutput(postcondition.violated:assertion.false)
+  ensures low(res)
+{
+  res := x + 4
+}
+
+method direct2(x: Int) returns (res: Int)
+  requires low(x)
+  ensures low(res)
+{
+  res := x + 4
+}
+
+method direct3(x: Int) returns (res: Int)
+  ensures low(res)
+{
+  res := x + 4
+  res := res - x
+}
+
+method indirect1(x: Bool) returns (res: Int)
+  //:: ExpectedOutput(postcondition.violated:assertion.false)
+  ensures low(res)
+{
+  if (x) {
+    res := 3
+  } else {
+    res := 4
+  }
+}
+
+method indirect2(x: Bool) returns (res: Int)
+  requires low(x)
+  ensures low(res)
+{
+  if (x) {
+    res := 3
+  } else {
+    res := 4
+  }
+}
+
+method indirect3(x: Bool) returns (res: Int)
+  ensures low(res)
+{
+  if (x) {
+    res := 3
+  } else {
+    res := 3
+  }
+}
+
+method seq1(s: Seq[Int], i: Int)
+  requires i >= 0 && i < |s|
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert low(s[i])
+}
+
+method seq2(s: Seq[Int], i: Int)
+  requires i >= 0
+{
+  //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)
+  //:: ExpectedOutput(assert.failed:seq.index.length)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert low(s[i])
+}
+
+method seq3(s: Seq[Int], i: Int)
+  requires i >= 0 && i < |s|
+  requires low(s)
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert low(s[i])
+}
+
+method seq4(s: Seq[Int], i: Int)
+  requires i >= 0 && i < |s|
+  requires low(i)
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert low(s[i])
+}
+
+method seq5(s: Seq[Int], i: Int)
+  requires i >= 0 && i < |s|
+  requires low(s)
+  requires low(i)
+{
+  assert low(s[i])
+}
+
+adt Either[T1, T2] {
+    Left(l: T1)
+    Right(r: T2)
+}
+
+method adtClient1(e: Either[Ref, Bool])
+  requires low(e)
+{
+  if (e.isLeft){
+    assert low(e.l)
+    assert low(e.isRight)
+  }
+}
+
+method adtClient2(e: Either[Ref, Bool])
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert low(e.isRight)
+}
+
+method controlFlow1(x: Int)
+  requires lowEvent
+{
+  if (x > 0) {
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert lowEvent
+  }
+}
+
+method controlFlow2(x: Int)
+  requires lowEvent
+{
+  if (x > 0) {
+    //:: ExpectedOutput(call.precondition:assertion.false)
+    print(1)
+  }
+}
+
+method controlFlow3(x: Int)
+  requires low(x)
+{
+  if (x > 0) {
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert lowEvent
+  }
+}
+
+method controlFlow4(x: Int)
+  requires low(x)
+{
+  if (x > 0) {
+    //:: ExpectedOutput(call.precondition:assertion.false)
+    print(1)
+  }
+}
+
+method controlFlow5(x: Int)
+  requires lowEvent
+  requires low(x > 0)
+{
+  if (x > 0) {
+    assert lowEvent
+  }
+}
+
+method controlFlow6(x: Int)
+  requires lowEvent
+  requires low(x > 0)
+{
+  if (x > 0) {
+    print(1)
+  }
+}
+
+method call1(m: Int)
+  requires lowEvent
+{
+  //:: ExpectedOutput(call.precondition:assertion.false)
+  print(m)
+}
+
+method call2(m: Int)
+  requires lowEvent
+{
+  print(m - m + 1)
+}
+
+method call3(m: Int)
+  requires lowEvent
+  requires low(m)
+{
+  print(m)
+}
+
+method print(msg: Int)
+  requires low(msg)
+  requires lowEvent
+

@@ -4,7 +4,34 @@
 // The errors marked in this file are expected only due to the proverArgs annotation, since the properties actually
 // hold, but Z3 should not be able to prove that due to the non-linear arithmetic setting.
 // We use UnexpectedOutput annotations to mark that they're not actual errors, and that Carbon (which currently does
-// not support the proverArgs annotation) should not report them.
+// not support the proverConfigArgs annotation) should not report them.
+
+function f1(i: Int, i2: Int): Int
+    requires i >= 0
+    requires i2 >= 0
+    ensures result >= 0
+{
+    i * i2
+}
+
+@proverConfigArgs("smt.arith.nl=false")
+function f2(i: Int, i2: Int): Int
+    requires i >= 0
+    requires i2 >= 0
+    //:: UnexpectedOutput(postcondition.violated:assertion.false, /silicon/issue/000/)
+    ensures result >= 0
+{
+    i * i2
+}
+
+@proverConfigArgs("smt.arith.nl=true")
+function f3(i: Int, i2: Int): Int
+    requires i >= 0
+    requires i2 >= 0
+    ensures result >= 0
+{
+    i * i2
+}
 
 method m1(i: Int, i2: Int)
     requires i >= 0
@@ -13,7 +40,7 @@ method m1(i: Int, i2: Int)
     assert i * i2 >= 0
 }
 
-@proverArgs("smt.arith.nl=false")
+@proverConfigArgs("smt.arith.nl=false")
 method m2(i: Int, i2: Int)
     requires i >= 0
     requires i2 >= 0
@@ -22,7 +49,7 @@ method m2(i: Int, i2: Int)
     assert i * i2 >= 0
 }
 
-@proverArgs("smt.arith.nl=true")
+@proverConfigArgs("smt.arith.nl=true")
 method m3(i: Int, i2: Int)
     requires i >= 0
     requires i2 >= 0
