@@ -1,0 +1,37 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field next: Ref
+field value: Int
+
+predicate list(r: Ref) {
+  acc(r.next) && acc(r.value) && low(r.value) &&
+  (r.next != null ==> list(r.next))
+}
+
+method client1(r: Ref)
+  requires list(r)
+{
+  unfold list(r)
+  assert low(r.value)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert low(r.next)
+}
+
+method client2()
+{
+  var root: Ref
+  root := new(next, value)
+  root.next := null
+  //:: ExpectedOutput(fold.failed:sif.fold)
+  fold list(root)
+}
+
+method client3()
+{
+  var root: Ref
+  root := new(next, value)
+  root.next := null
+  root.value := 3
+  fold list(root)
+}

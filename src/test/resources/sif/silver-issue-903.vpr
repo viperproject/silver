@@ -1,0 +1,12 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// this testcase checks that the branch condition is encoded to a non-SIF expression
+
+method condWithLow(t: Int)
+{
+    if (low(t)) {
+        //:: ExpectedOutput(assert.failed:assertion.false)
+        assert false
+    }
+}

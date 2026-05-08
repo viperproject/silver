@@ -52,9 +52,11 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     hidden = true
   )
 
-  val methods = opt[String]("methods",
-    descr = "The Viper methods that should be verified. :all means all methods.",
-    default = Some(":all"),
+  val select = opt[String]("select",
+    descr = "Selects specific Viper methods, functions and predicates to be be verified along with the necessary " +
+      "dependencies. All other parts of the given Viper program will be ignored. " +
+      "The expected format is a list of method/function/predicate names separated by commas, e.g., name1,name2,name3.",
+    default = None,
     noshort = true,
     hidden = true
   )
@@ -148,6 +150,12 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
 
   val submitForEvaluation = opt[Boolean](name = "submitForEvaluation",
     descr = "Whether to allow storing the current program for future evaluation.",
+    default = Some(false),
+    noshort = true
+  )
+
+  val reportPartialResults = opt[Boolean](name = "reportPartialResults",
+    descr = "Whether to report partial verification success and failure for individual members and branches via the StdIOReporter.",
     default = Some(false),
     noshort = true
   )

@@ -30,6 +30,7 @@ object Triggers {
     /* True iff the given node is a possible trigger */
     protected def isPossibleTrigger(e: Exp): Boolean = (customIsPossibleTrigger orElse {
       case _: PossibleTrigger => true
+      case ee: ExtensionExp => ee.extensionIsValidTrigger()
       case Old(_: PossibleTrigger) => true
       case LabelledOld(_: PossibleTrigger, _) => true
       case _ => false
@@ -38,7 +39,7 @@ object Triggers {
     /* Note: If Add and Sub were type arguments of GenericTriggerGenerator, the latter
      *       could implement isForbiddenInTrigger already */
     def isForbiddenInTrigger(e: Exp) = (customIsForbiddenInTrigger orElse {
-      case _: ForbiddenInTrigger => true
+      case e if Expressions.isForbiddenInTrigger(e) => true
       case _ => false
     }: PartialFunction[Exp, Boolean])(e)
 
@@ -74,11 +75,16 @@ object Triggers {
           (ast.LabelledOld(exp, l)(exp.pos, exp.info, exp.errT), t._2, t._3)
         })
       case ast.Let(v, e, body) => results =>
-        results.flatten.map(t => {
+        results.flatten.flatMap(t => {
           val exp = t._1
+          val varIsUsed = body.contains(v.localVar)
           val coveredVars = t._2.filter(cv => cv != v.localVar) ++
-            (if (body.contains(v.localVar)) relevantVars.filter(rv => e.contains(rv)) else Seq())
-          (exp.replace(v.localVar, e), coveredVars, t._3)
+            (if (varIsUsed) relevantVars.filter(rv => e.contains(rv)) else Seq())
+          if (varIsUsed && isForbiddenInTrigger(e)) {
+            None
+          } else {
+            Some((exp.replace(v.localVar, e), coveredVars, t._3))
+          }
         })
     }
 

@@ -121,7 +121,7 @@ class TestPluginAddPredicate extends SilverPlugin {
     PProgram(
       input.imported,
       input.members :+ PPredicate(Seq(), PReserved.implied(PKw.Predicate), PIdnDef("testPredicate")(p), PGrouped.impliedParen(PDelimited.empty), None)(p),
-    )(input.pos, input.localErrors)
+    )(input.pos, input.localErrors, input.offsets, input.rawProgram)
   }
 
   /** Called after methods are filtered but before the verification by the backend happens.

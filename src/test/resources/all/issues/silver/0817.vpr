@@ -1,0 +1,18 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+domain Pointer[]  {
+}
+
+domain F  {
+  function foo(bar: F): Ref
+}
+
+field int: Int
+field f: F
+
+function ptrDeref(p: Pointer[]): Ref
+
+method baz()
+  //:: ExpectedOutput(typechecker.error)
+  ensures [true, (forperm this: Pointer[] [foo(ptrDeref(this).f).int] :: false)]
