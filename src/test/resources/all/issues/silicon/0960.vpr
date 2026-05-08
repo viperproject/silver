@@ -1,0 +1,32 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+function trigger(i1: Int, i2: Int): Bool
+{ true }
+
+domain Test {
+  function trigger2(i1: Int, i2: Int): Bool
+}
+
+function amm(r: Ref, s: Seq[Int]): Bool
+    requires acc(r.f)
+{
+    forall i: Int :: { trigger(r.f, i) } { trigger2(i, i) }  i >= 0 && i < |s| ==> idx2(s, i) > 0
+}
+
+method umm(r: Ref, s: Seq[Int])
+  requires acc(r.f)
+  requires amm(r, s)
+  requires |s| > 0
+{
+  var a: Bool := trigger(r.f, 0)
+  assert idx2(s, 0) > 0
+}
+
+function idx2(s: Seq[Int], i: Int): Int
+  requires i >= 0
+  requires i < |s|
+{
+  i >= 0 && i < |s| ? s[i] : 0
+}
