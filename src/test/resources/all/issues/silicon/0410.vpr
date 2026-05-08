@@ -11,6 +11,7 @@ method foo1(x: Ref)
 {
     package acc(x.data) --* false {
         assert acc(x.data) && acc(x.data)
+        assert acc(x.data, 2/1)
         assert false
     }
 
@@ -27,6 +28,7 @@ method foo2(x: Ref)
     var y: Int
     package acc(x.data) --* false {
         assert acc(x.data) && acc(x.data)
+        assert acc(x.data, 2/1)
         assert x.f > 0
     }
 

@@ -53,7 +53,6 @@ field fy: Int
 
 method unsound(a: Ref)
 requires acc(a.fx) && acc(a.fy)
-ensures false
 {
     package acc(a.fx) --* (acc(a.fx) && acc(a.fy))
 
