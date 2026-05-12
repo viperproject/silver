@@ -8,7 +8,6 @@ package viper.silver.verifier
 
 import viper.silver.ast.Program
 import viper.silver.components.LifetimeComponent
-import viper.silver.dependencyAnalysis.AbstractDependencyAnalysisResult
 import viper.silver.reporter.{NoopReporter, Reporter}
 
 /** An abstract class for verifiers of Viper programs.
@@ -95,8 +94,6 @@ trait Verifier extends LifetimeComponent {
   def stop(): Unit
 
   def reporter: Reporter
-
-  def getDependencyAnalysisResult: Option[AbstractDependencyAnalysisResult] = None
 }
 
 /**
