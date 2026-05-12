@@ -13,7 +13,7 @@ object DependencyTypeInfo {
 			case _: ast.Exhale | _: ast.Assert => ExplicitAssertion
 			case _: ast.Inhale | _: ast.Assume => ExplicitAssumption
 			case _: ast.Fold | _: ast.Unfold | _: ast.Package | _: ast.Apply => Rewrite
-			case _: ast.Quasihavoc | _: ast.Quasihavocall => DependencyType.Implicit
+			case _: ast.Quasihavoc | _: ast.Quasihavocall => DependencyType.SourceCode
 			case _ => DependencyType.make(AssumptionType.Unknown) /* TODO: should not happen */
 		}
 		DependencyTypeInfo(depType)

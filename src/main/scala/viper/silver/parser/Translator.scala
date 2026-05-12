@@ -112,7 +112,7 @@ case class Translator(program: PProgram) {
         val axiom = NamedDomainAxiom(name.name, exp(e.e.inner, Some(DependencyType.Axiom)))(a, Translator.toInfo(anns, pa), domainName = pa.domain.idndef.name)
         attachInfo(axiom)
       case pa@PAxiom(anns, _, None, e) =>
-        val axiom = AnonymousDomainAxiom(exp(e.e.inner, Some(DependencyType.make(AssumptionType.DomainAxiom))))(a, Translator.toInfo(anns, pa), domainName = pa.domain.idndef.name)
+        val axiom = AnonymousDomainAxiom(exp(e.e.inner, Some(DependencyType.Axiom)))(a, Translator.toInfo(anns, pa), domainName = pa.domain.idndef.name)
         attachInfo(axiom)
     }
   }

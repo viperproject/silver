@@ -42,10 +42,6 @@ trait AnalysisSourceInfo extends ast.Info {
 
   def getPosition: Position
 
-
-  def isAnalysisEnabled: Boolean = true
-
-
   override def comment: Seq[String] = Nil
   override def isCached: Boolean = false
 }
@@ -64,8 +60,6 @@ case class ExpAnalysisSourceInfo(source: ast.Exp, pos: Position) extends Analysi
 
   override def getPosition: Position = pos
 
-  override def isAnalysisEnabled: Boolean = true // DependencyAnalyzer.extractEnableAnalysisFromInfo(source.info).getOrElse(true)
-
   override def getDescription: String = source.toString.replaceAll("\n", "\t")
 }
 
@@ -73,8 +67,6 @@ case class StmtAnalysisSourceInfo(source: ast.Stmt, pos: Position) extends Analy
 
   override def toString: String = getDescription + " (" + super.toString + ")"
   override def getPosition: Position = pos
-
-  override def isAnalysisEnabled: Boolean = true // DependencyAnalyzer.extractEnableAnalysisFromInfo(source.info).getOrElse(true)
 
   override def getDescription: String = source.toString().replaceAll("\n", "\t")
 }

@@ -10,8 +10,8 @@ import viper.silver.ast._
 import viper.silver.cfg._
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.cfg.utility.{CfgSimplifier, IdInfo, LoopDetector}
-import java.util.concurrent.atomic.AtomicInteger
 
+import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
 
 /**
@@ -363,11 +363,8 @@ object CfgGenerator {
             current = None
           case ConditionalJumpStmt(cond, thnTarget, elsTarget) =>
             current.foreach { currentIndex =>
-              val negInfo = cond.pos match {
-                case _ => cond.info
-              }
-              val neg = Not(cond)(cond.pos, negInfo, cond.errT)
-              addTmpEdge(TmpConditionalEdge(cond.withMeta(cond.pos, negInfo, cond.errT), currentIndex, resolve(thnTarget)))
+              val neg = Not(cond)(cond.pos, cond.info, cond.errT)
+              addTmpEdge(TmpConditionalEdge(cond, currentIndex, resolve(thnTarget)))
               addTmpEdge(TmpConditionalEdge(neg, currentIndex, resolve(elsTarget)))
             }
             current = None
