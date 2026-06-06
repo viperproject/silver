@@ -1,0 +1,12 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+method foo()
+{
+  package true --* true {
+    refute false
+  }
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
