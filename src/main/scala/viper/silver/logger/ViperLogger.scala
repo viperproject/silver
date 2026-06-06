@@ -34,8 +34,14 @@ class ViperLogger(val name: String, val file: Option[String], val level: String)
 
   /** Borrowed from  */
   private def createLoggerFor(string: String, file: Option[String], str_level: String) = {
-    val lc = LoggerFactory.getILoggerFactory.asInstanceOf[LoggerContext]
-    val logger = LoggerFactory.getLogger(string).asInstanceOf[Logger]
+    var lc: LoggerContext = null
+    var logger: Logger = null
+    // ME: Must synchronize to avoid getting ClassCastExceptions when getting substitute loggers,
+    // see Silicon issue #968
+    ViperLogger.synchronized {
+      lc = LoggerFactory.getILoggerFactory.asInstanceOf[LoggerContext]
+      logger = LoggerFactory.getLogger(string).asInstanceOf[Logger]
+    }
     file match {
       case Some(f_name) =>
         val fileAppender: FileAppender[ILoggingEvent] = new FileAppender[ILoggingEvent]
