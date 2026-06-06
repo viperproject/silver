@@ -36,7 +36,7 @@ class ViperLogger(val name: String, val file: Option[String], val level: String)
   private def createLoggerFor(string: String, file: Option[String], str_level: String) = {
     var lc: LoggerContext = null
     var logger: Logger = null
-    // ME: Must synchronize to avoid getting ClassCastExceptions due when getting substitute loggers,
+    // ME: Must synchronize to avoid getting ClassCastExceptions when getting substitute loggers,
     // see Silicon issue #968
     ViperLogger.synchronized {
       lc = LoggerFactory.getILoggerFactory.asInstanceOf[LoggerContext]
