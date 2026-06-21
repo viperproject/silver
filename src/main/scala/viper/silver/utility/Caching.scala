@@ -39,7 +39,8 @@ trait DependencyAware {
             val func = p.findFunction(func_app.funcname)
             if (!marker.contains(func)) {
               markSubAST(func, marker)
-              Seq(func) ++ getDependenciesRec(p, func.pres ++ func.posts ++ extractOptionalNode(func.body), marker)
+              // `func` do not need to be returned because all functions are always considered as a dependency
+              getDependenciesRec(p, func.pres ++ func.posts ++ extractOptionalNode(func.body), marker)
             } else Nil
           case pred_access: PredicateAccess =>
             val pred = p.findPredicate(pred_access.predicateName)
@@ -56,6 +57,7 @@ trait DependencyAware {
     *
     * This method is imprecise, but practical. Here's a list of known imprecisions:
     * - axioms are considered as global dependencies (even if they don't influence the method);
+    * - functions are considered as global dependencies (even if they don't influence the method);
     * - fields are considered as global dependencies (even if they don't influence the method);
     * - concrete predicates used abstractly (w/o unfolding) bring transitive dependencies via their body.
     *
@@ -72,7 +74,7 @@ trait DependencyAware {
   def getDependencies(p: Program, m: Method): List[Hashable] = {
     val marker: mutable.Set[Hashable] = mutable.Set.empty
     markSubAST(m, marker)
-    Seq(m) ++ p.domains ++ p.fields ++
+    Seq(m) ++ p.domains ++ p.functions ++ p.fields ++
       (m.pres ++ m.posts ++ m.body.toSeq).flatMap {
         n => n.deepCollect {
           case method_call: MethodCall =>
@@ -82,8 +84,7 @@ trait DependencyAware {
                 method.pres ++ method.posts ++
                 getDependenciesRec(p, method.formalArgs ++ method.formalReturns ++ method.pres ++ method.posts, marker)
             } else Nil
-          case func_app: FuncApp =>
-            getDependenciesRec(p, Seq(func_app), marker)
+          // function calls do not need to be considered because all functions are always considered as a dependency
           case pred_access: PredicateAccess =>
             getDependenciesRec(p, Seq(pred_access), marker)
         } flatten

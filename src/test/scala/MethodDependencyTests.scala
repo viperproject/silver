@@ -125,13 +125,13 @@ class MethodDependencyTests extends AnyFunSuite with Matchers {
 
 //  println(p)
 
-  val global_deps: List[Hashable] = List(D0, f0,f1,f2,f3,f4)
-  val via_pre_deps: List[Hashable] = List(fun0, p0)
-  val via_post_deps: List[Hashable] = List(fun1, p1)
-  val via_body_deps: List[Hashable] = List(fun2, p2) ++ m0.formalArgs ++ m0.formalReturns ++ m0.pres ++ m0.posts
-  val transitive_deps: List[Hashable] = List(fun4, p4)
+  val global_deps: List[Hashable] = List(D0, f0,f1,f2,f3,f4, fun0,fun1,fun2,fun3,fun4)
+  val via_pre_deps: List[Hashable] = List(p0)
+  val via_post_deps: List[Hashable] = List(p1)
+  val via_body_deps: List[Hashable] = List(p2) ++ m0.formalArgs ++ m0.formalReturns ++ m0.pres ++ m0.posts
+  val transitive_deps: List[Hashable] = List(p4)
   val must_be_deps: List[Hashable] = List(test) ++ global_deps ++ via_pre_deps ++ via_post_deps ++ via_body_deps ++ transitive_deps
-  val must_not_be_deps: List[Hashable] = List(fun3, p3, m0.body.get, m1)
+  val must_not_be_deps: List[Hashable] = List(p3, m0.body.get, m1)
 
   val computed_deps: List[Hashable] = p.getDependencies(p, test)
 
