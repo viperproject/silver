@@ -8,7 +8,7 @@ package viper.silver.reporter
 
 import viper.silver.reporter.BackendSubProcessStages.BackendSubProcessStage
 import viper.silver.verifier._
-import viper.silver.ast.{QuantifiedExp, Trigger}
+import viper.silver.ast.{QuantifiedExp, SourcePosition, Trigger}
 import viper.silver.parser.PProgram
 
 /**
@@ -178,6 +178,12 @@ case class StatisticsReport(nOfMethods: Int, nOfFunctions: Int, nOfPredicates: I
     s"nod=${nOfDomains.toString}, nofi=${nOfFields.toString})"
 
   override val name = "statistics"
+}
+
+case class TargetSelectionReport(target: SourcePosition) extends Message {
+
+  override lazy val toString: String = s"target_selection_report(target=${target})"
+  override val name: String = "target_selection"
 }
 
 case class ProgramOutlineReport(members: List[Entity]) extends Message {

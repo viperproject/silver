@@ -135,6 +135,11 @@ class MethodDependencyTests extends AnyFunSuite with Matchers {
 
   val computed_deps: List[Hashable] = p.getDependencies(p, test)
 
+  // These are for testing the method that also fetches transitive method depdendencies.
+  val must_be_deps_with_methods: List[Hashable] = List(test) ++ global_deps ++ via_pre_deps ++ via_post_deps ++ via_body_deps ++ transitive_deps ++ List(m0) ++ List(m1)
+  val must_not_be_deps_with_methods: List[Hashable] = List(fun3, p3)
+
+  val computed_deps_with_methods: List[Hashable] = p.getMethodDependenciesWithMethods(p, test)
 
   val test_prefix = s"Test Dependency Analysis"
 
@@ -192,6 +197,14 @@ class MethodDependencyTests extends AnyFunSuite with Matchers {
       n =>
         if ( !must_be_deps.contains(n) || must_not_be_deps.contains(n) )
           fail(s"AST node ```$n``` is not expected to be a dependency of ```$test```, but is present in the result of `getDependencies`.")
+    }
+  }
+
+  test(s"$test_prefix: do we fetch method dependencies for `getMethodDependenciesWithMethods`?") {
+    computed_deps_with_methods.foreach {
+      n =>
+        if ( !must_be_deps_with_methods.contains(n) || must_not_be_deps_with_methods.contains(n) )
+          fail(s"AST node ```$n``` is not expected to be a dependency of ```$test```, but is present in the result of `getDependenciesWithMethods`.")
     }
   }
 
