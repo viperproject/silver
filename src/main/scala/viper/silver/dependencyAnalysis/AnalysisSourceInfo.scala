@@ -16,6 +16,8 @@ object AnalysisSourceInfo {
 
 	def createAnalysisSourceInfo(node: ast.Node): AnalysisSourceInfo = {
 		node match {
+			case n: ast.Infoed if n.info.getUniqueInfo[AnalysisSourceInfo].nonEmpty =>
+				n.info.getUniqueInfo[AnalysisSourceInfo].get
 			case stmt: ast.Stmt => StmtAnalysisSourceInfo(stmt, stmt.pos)
 			case exp: ast.Exp => ExpAnalysisSourceInfo(exp, exp.pos)
 			case _ => createAnalysisSourceInfo("Unknown", NoPosition)
