@@ -47,7 +47,7 @@ method m(xs: Set[Ref], ys: Set[Ref], zs: Set[Ref],
   //:: UnexpectedOutput(assert.failed:wand.not.found, /silicon/issue/000/)
   assert WAND(a, b, c, q) && WAND(a, b, c, q)
 
-  //:: MissingOutput(assert.failed:assertion.false, /siicon/issue/000/)
+  //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/000/)
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert q == write ==> false // MS: Can we expect this to hold?
 }
