@@ -23,7 +23,7 @@ object CfgTest {
 
     val parsed = parse(string, file).get
     val resolver = Resolver(parsed)
-    val resolved = resolver.run.get
+    val resolved = resolver.run(false).get
     val translator = Translator(resolved)
     val program = translator.translate.get
 

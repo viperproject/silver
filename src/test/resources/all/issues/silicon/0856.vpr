@@ -1,0 +1,19 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+field f: Bool
+
+function hfun(rs: Set[Ref]): Bool
+  requires (forall r: Ref :: { (r in rs) } (r in rs) ==> acc(r.f))
+
+
+method test1(rs: Set[Ref])
+  requires (forall r: Ref :: { (r in rs) } (r in rs) ==> acc(r.f))
+{
+  assume (forall rs2: Set[Ref] :: { (rs2 subset rs) }
+      (rs2 subset rs) ==> hfun(rs2))
+
+  assert (forall rs3: Set[Ref] :: { (rs3 subset rs) }
+      (rs3 subset rs) ==> hfun(rs3))
+}

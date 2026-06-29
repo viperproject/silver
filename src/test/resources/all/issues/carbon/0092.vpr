@@ -1,7 +1,7 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-//:: IgnoreFile(/Carbon/issue/92/)
+//:: IgnoreFile(/Carbon/issue/586/)
 // oldC2SCases/scaling.chalice 
 field x: Int
 

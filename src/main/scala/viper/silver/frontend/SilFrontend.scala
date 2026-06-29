@@ -13,8 +13,10 @@ import viper.silver.plugin.SilverPluginManager
 import viper.silver.plugin.SilverPluginManager.PluginException
 import viper.silver.reporter._
 import viper.silver.verifier._
+
 import java.nio.file.{Path, Paths}
 import viper.silver.FastMessaging
+import viper.silver.ast.utility.chopper.PluginAwareChopper
 
 /**
  * Common functionality to implement a command-line verifier for Viper.  This trait
@@ -22,6 +24,12 @@ import viper.silver.FastMessaging
  * error messages in a user-friendly fashion.
  */
 case class MissingDependencyException(msg: String) extends Exception
+
+object FrontendStateCache {
+  var resolver: Resolver = _
+  var pprogram: PProgram = _
+  var translator: Translator = _
+}
 
 trait SilFrontend extends DefaultFrontend {
 
@@ -56,19 +64,32 @@ trait SilFrontend extends DefaultFrontend {
   def resetPlugins(): Unit = {
     val pluginsArg: Option[String] = if (_config != null) {
       // concat defined plugins and default plugins
-      val list = (if (_config.enableSmokeDetection()) Set(smokeDetectionPlugin, refutePlugin) else Set()) ++
-        (if (_config.disableDefaultPlugins()) Set() else defaultPlugins) ++
-        _config.plugin.toOption.toSet
+      // we do not use sets here as the order of plugins matters!
+      // note that the smoke detection plugin requires the refute plugin
+      val smokeDetectionAndDependencies = if (_config.enableSmokeDetection()) Seq(smokeDetectionPlugin, refutePlugin) else Seq.empty
+      val pluginClasses = smokeDetectionAndDependencies ++
+        // filter `defaultPlugins` to avoid duplicates
+        (if (_config.disableDefaultPlugins()) Seq.empty else defaultPlugins.filterNot(p => smokeDetectionAndDependencies.contains(p))) ++
+        _config.plugin.toOption.map(_.split(":").toSeq).getOrElse(Seq.empty)
 
-      if (list.isEmpty) {
+      val duplicatePluginClasses = pluginClasses.groupBy(identity).collect { case (x, instances) if instances.length > 1 => x }
+      if (duplicatePluginClasses.nonEmpty) {
+        reporter report ConfigurationWarning(s"The following plugins will be executed multiple times, which is most likely a configuration mistake: ${duplicatePluginClasses.mkString(", ")}.")
+      }
+
+      if (pluginClasses.isEmpty) {
         None
       } else {
-        Some(list.mkString(":"))
+        Some(pluginClasses.mkString(":"))
       }
     } else {
       None
     }
     _plugins = SilverPluginManager(pluginsArg)(reporter, logger, _config, fp)
+    reporter match {
+      case par: PluginAwareReporter => par.setPluginManager(Some(_plugins))
+      case _ =>
+    }
   }
 
   /**
@@ -214,6 +235,10 @@ trait SilFrontend extends DefaultFrontend {
 
     if (_config != null) {
       resetPlugins()
+      reporter match {
+        case cf: ConfigurableReporter => cf.setConfig(Some(_config))
+        case _ =>
+      }
     }
   }
 
@@ -241,13 +266,21 @@ trait SilFrontend extends DefaultFrontend {
     def filter(input: Program): Result[Program] = {
       plugins.beforeMethodFilter(input) match {
         case Some(inputPlugin) =>
-          // Filter methods according to command-line arguments.
-          val verifyMethods =
-            if (config != null && config.methods() != ":all") Seq("methods", config.methods())
-            else inputPlugin.methods map (_.name)
-
-          val methods = inputPlugin.methods filter (m => verifyMethods.contains(m.name))
-          val program = Program(inputPlugin.domains, inputPlugin.fields, inputPlugin.functions, inputPlugin.predicates, methods, inputPlugin.extensions)(inputPlugin.pos, inputPlugin.info, inputPlugin.errT)
+          val program = config.select.toOption match {
+            case Some(names) =>
+              val namesSet = names.split(",").toSet
+              val chopped = PluginAwareChopper.chop(inputPlugin)(Some {
+                case m if namesSet.contains(m.name) => true
+                case _ => false
+              }, Some(1))
+              if (chopped.isEmpty) {
+                reporter report WarningsDuringTypechecking(Seq(TypecheckerWarning("No members were selected.", inputPlugin.pos)))
+                Program(Seq(), Seq(), Seq(), Seq(), Seq(), Seq())(inputPlugin.pos, inputPlugin.info, inputPlugin.errT)
+              } else {
+                chopped.head
+              }
+            case _ => inputPlugin
+          }
 
           plugins.beforeVerify(program) match {
             case Some(programPlugin) => Succ(programPlugin)
@@ -304,11 +337,11 @@ trait SilFrontend extends DefaultFrontend {
     _config = configureVerifier(args)
   }
 
-  override def doParsing(input: String): Result[PProgram] = {
+  def parsingInner(input: String, expandMacros: Boolean): Result[PProgram] = {
     val file = _inputFile.get
     plugins.beforeParse(input, isImported = false) match {
       case Some(inputPlugin) =>
-        val result = fp.parse(inputPlugin, file, Some(plugins), _loader)
+        val result = fp.parse(inputPlugin, file, Some(plugins), _loader, expandMacros)
         if (result.errors.forall(p => p.isInstanceOf[ParseWarning])) {
           reporter report WarningsDuringParsing(result.errors)
           Succ({
@@ -321,11 +354,15 @@ trait SilFrontend extends DefaultFrontend {
     }
   }
 
+  override def doParsing(input: String): Result[PProgram] = parsingInner(input, true)
+
   override def doSemanticAnalysis(input: PProgram): Result[PProgram] = {
     plugins.beforeResolve(input) match {
       case Some(inputPlugin) =>
         val r = Resolver(inputPlugin)
-        val analysisResult = r.run
+        FrontendStateCache.resolver = r
+        FrontendStateCache.pprogram = inputPlugin
+        val analysisResult = r.run(if (config == null) true else !config.respectFunctionPrePermAmounts())
         val warnings = for (m <- FastMessaging.sortmessages(r.messages) if !m.error) yield {
           TypecheckerWarning(m.label, m.pos)
         }
@@ -349,7 +386,9 @@ trait SilFrontend extends DefaultFrontend {
 
     plugins.beforeTranslate(input) match {
       case Some(modifiedInputPlugin) =>
-        Translator(modifiedInputPlugin).translate match {
+        val translator = Translator(modifiedInputPlugin)
+        FrontendStateCache.translator = translator
+        translator.translate match {
           case Some(program) =>
             Succ(program)
 
@@ -364,12 +403,16 @@ trait SilFrontend extends DefaultFrontend {
   }
 
   def doConsistencyCheck(input: Program): Result[Program] = {
+    if (config != null) {
+      Consistency.setFunctionPreconditionLegacyMode(config.respectFunctionPrePermAmounts())
+    }
     var errors = input.checkTransitively
     if (backendTypeFormat.isDefined)
       errors = errors ++ Consistency.checkBackendTypes(input, backendTypeFormat.get)
     if (errors.isEmpty) {
       Succ(input)
-    } else
+    } else {
       Fail(errors)
+    }
   }
 }

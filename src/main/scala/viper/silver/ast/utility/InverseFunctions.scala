@@ -37,11 +37,11 @@ object InverseFunctions {
             val axiom1 = Forall(qvars, forall.triggers, Implies(cond, equalities)(pos, info, errT))(pos, info, errT)
             var condReplaced = cond
             var rcvReplaced = fap.loc.rcv
-            var permReplaced = fap.perm
+            var permReplaced = fap.permExp
             for (i <- 0 until qvars.length){
               condReplaced = condReplaced.replace(qvars(i).localVar, invsOfR(i))
               rcvReplaced = rcvReplaced.replace(qvars(i).localVar, invsOfR(i))
-              permReplaced = permReplaced.replace(qvars(i).localVar, invsOfR(i))
+              permReplaced = permReplaced.map(_.replace(qvars(i).localVar, invsOfR(i)))
             }
             val axiom2 = Forall(Seq(r), Seq(Trigger(invsOfR)(pos, info, errT)), Implies(condReplaced, EqCmp(rcvReplaced, r.localVar)(pos, info, errT))(pos, info, errT))(pos, info, errT)
             val acc1 = FieldAccessPredicate(FieldAccess(r.localVar, fap.loc.field)(), permReplaced)()
@@ -65,7 +65,7 @@ object InverseFunctions {
             val axiom2 = Forall(formalArgs, Seq(Trigger(invsOfFormalArgs)(pos, info, errT)), Implies(cond.replace((qvars map (_.localVar) zip invsOfFormalArgs).toMap), invArgsConj)(pos, info, errT))(pos, info, errT)
 
             val cond1 = cond.replace((qvars map (_.localVar) zip invsOfFormalArgs).toMap)
-            val acc1 = PredicateAccessPredicate(PredicateAccess(formalArgs map (_.localVar), pred.name)(pos, info, errT), pap.perm.replace((qvars map (_.localVar) zip invsOfFormalArgs).toMap))(pos, info, errT)
+            val acc1 = PredicateAccessPredicate(PredicateAccess(formalArgs map (_.localVar), pred.name)(pos, info, errT), pap.permExp.map(_.replace((qvars map (_.localVar) zip invsOfFormalArgs).toMap)))(pos, info, errT)
             val forall1 = Forall(formalArgs, Seq(Trigger(invsOfFormalArgs)(pos, info, errT)), Implies(cond1, acc1)(pos, info, errT))(pos, info, errT)
 
             val domain = Domain(domName, invs, Seq())(pos, info, errT)

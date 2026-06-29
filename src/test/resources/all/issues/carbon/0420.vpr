@@ -1,0 +1,21 @@
+// Any copyright is dedicated to the Public Domain.^M
+// http://creativecommons.org/publicdomain/zero/1.0/^M
+
+domain MyInt {
+  function succ(n: MyInt): MyInt
+  function pred(n: MyInt): MyInt
+
+  axiom ps{
+    forall n:MyInt ::
+      { pred(succ(n)) }
+        pred(succ(n)) == n
+  }
+}
+
+method test(n: MyInt, m: MyInt)
+requires succ(n) == succ(m)
+ensures n == m {
+  if (pred(succ(n)) != n) {
+
+  }
+}

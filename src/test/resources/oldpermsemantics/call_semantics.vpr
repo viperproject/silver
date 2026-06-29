@@ -1,0 +1,46 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+field f: Int
+field g: Int
+
+predicate P(x: Ref) {
+    acc(x.f)
+}
+
+function foo(x: Ref): Int
+  requires acc(x.f)
+
+function foow(x: Ref): Int
+  requires acc(x.f, wildcard)
+
+function foop(x: Ref): Int
+  requires P(x)
+
+method caller_foo(x: Ref, y: Ref)
+{
+    inhale acc(x.f) && acc(y.f, 1/2)
+    var f1 : Int
+    f1 := foo(x)
+    //:: ExpectedOutput(application.precondition:insufficient.permission)
+    f1 := foo(y)
+}
+
+method caller_foop(x: Ref, y: Ref)
+{
+    inhale P(x) && acc(P(y), 1/2)
+    var f1 : Int
+    f1 := foop(x)
+    //:: ExpectedOutput(application.precondition:insufficient.permission)
+    f1 := foop(y)
+}
+
+method caller_foow(x: Ref, y: Ref)
+{
+    inhale acc(x.f, 1/2)
+    var f1 : Int
+    f1 := foow(x)
+    //:: ExpectedOutput(application.precondition:insufficient.permission)
+    f1 := foow(y)
+}

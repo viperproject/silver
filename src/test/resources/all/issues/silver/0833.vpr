@@ -1,0 +1,9 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+function gggg(a: Int): Int
+  decreases
+
+@opaque()
+function hhhh(a: Int): Int
+  decreases

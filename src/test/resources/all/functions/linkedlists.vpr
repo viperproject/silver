@@ -2,6 +2,7 @@
 // http://creativecommons.org/publicdomain/zero/1.0/
 
 //:: IgnoreFile(/silicon/issue/104/)
+//:: IgnoreFile(/carbon/issue/569/)
 
 // NOTES (important points are also commented in the code below)
 // (1) The definition of list(xs) precludes the case xs==null. But, without unfolding the predicate, this information is not available. This is important for e.g.,

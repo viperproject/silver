@@ -1,0 +1,17 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+field g: Int
+
+method test0(x: Ref)
+{
+    package acc(x.f) && (asserting (acc(x.f)) in (x.f == 0)) --* acc(x.f) {}
+}
+
+method test1(x: Ref)
+{
+    //:: ExpectedOutput(package.failed:insufficient.permission)
+    package acc(x.f) && (asserting (acc(x.g)) in (x.f == 0)) --* acc(x.f) {}
+}
+

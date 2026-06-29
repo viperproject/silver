@@ -82,7 +82,7 @@ object MacroExpander {
     reports ++= globalMacros.flatMap(allParametersUsedInBody)
 
     def linearizeMethod(method: PMethod): PMethod = {
-      def linearizeSeqOfNestedStmt(ss: PGrouped[PSym.Brace, PDelimited[PStmt, Option[PSym.Semi]]]): PGrouped[PSym.Brace, PDelimited[PStmt, Option[PSym.Semi]]] = {
+      def linearizeSeqOfNestedStmt(ss: PDelimited.Block[PStmt]): PDelimited.Block[PStmt] = {
         def linearizeSeqn(s: PSeqn): PSeqn = PSeqn(linearizeSeqOfNestedStmt(s.ss))(s.pos)
         def linearizeIf(i: PIf): PIf = i match {
           case PIf(k, cond, thn, None) => PIf(k, cond, linearizeSeqn(thn), None)(i.pos)
@@ -91,7 +91,7 @@ object MacroExpander {
           case PIf(k, cond, thn, Some(e@PElse(ek, els))) =>
             PIf(k, cond, linearizeSeqn(thn), Some(PElse(ek, linearizeSeqn(els))(e.pos)))(i.pos)
         }
-        var stmts = Seq.empty[(PStmt, Option[PSym.Semi])]
+        var stmts = Seq.empty[(PStmt, PSym.OptionSemi)]
         (ss.inner.toSeq.zip(ss.inner.delimiters)).foreach {
           case (n: PMacroSeqn, _) =>
             val lin = linearizeSeqOfNestedStmt(n.ss)
@@ -156,9 +156,9 @@ object MacroExpander {
                 pos._1
             }
           }
-          return PProgram(newImported, program.members)(program.pos, program.localErrors ++ reports :+ ParseError(msg, location))
+          return PProgram(newImported, program.members)(program.pos, program.localErrors ++ reports :+ ParseError(msg, location), program.offsets, program.rawProgram)
       }
-      PProgram(newImported, newMembers)(program.pos, program.localErrors ++ reports)
+      PProgram(newImported, newMembers)(program.pos, program.localErrors ++ reports, program.offsets, program.rawProgram)
     }
 
     doExpandDefinesAll(p, reports)
@@ -236,8 +236,8 @@ object MacroExpander {
 
     val matchOnMacroCall: PartialFunction[PNode, MacroApp] = {
       // Macro references in statement position (without arguments)
-      case assign@PAssign(_, None, idnuse: PIdnUseExp) if getMacroPlain(idnuse).isDefined =>
-        MacroApp(assign, None, getMacroPlain(idnuse).get)
+      case assign@PAssign(_, None, idnuse: PIdnUseExp) if getMacroPlain(idnuse.idnref).isDefined =>
+        MacroApp(assign, None, getMacroPlain(idnuse.idnref).get)
       // Macro references in statement position (with arguments)
       case assign@PAssign(_, None, app: PCall) if getMacroArgs(app).isDefined =>
         MacroApp(assign, Some(app.args), getMacroArgs(app).get)
@@ -252,6 +252,8 @@ object MacroExpander {
       // Other macro refs (without arguments)
       case idnuse: PIdnUse if getMacroPlain(idnuse).isDefined =>
         MacroApp(idnuse, None, getMacroPlain(idnuse).get)
+      case idnuse: PIdnUseExp if getMacroPlain(idnuse.idnref).isDefined =>
+        MacroApp(idnuse, None, getMacroPlain(idnuse.idnref).get)
       // Other macro refs (with arguments)
       case app: PCall if getMacroArgs(app).isDefined =>
         MacroApp(app, Some(app.args), getMacroArgs(app).get)
@@ -262,7 +264,7 @@ object MacroExpander {
         matchOnMacroCall.andThen { case MacroApp(_, _, macroDefinition) =>
           seen.get(macroDefinition.idndef.name) match {
             case None => {
-              detectCyclicMacros(macroDefinition.body, seen + (macroDefinition.idndef.name -> macroDefinition))
+              detectCyclicMacros(macroDefinition.inner.seqnOrExp, seen + (macroDefinition.idndef.name -> macroDefinition))
             }
             case Some(macroDef) =>
               throw MacroException("Recursive macro declaration found: " + macroDef.idndef.name, macroDef.pos)
@@ -346,7 +348,7 @@ object MacroExpander {
       matchOnMacroCall.andThen {
         case MacroApp(call, arguments, macroDefinition) =>
           val parameters = macroDefinition.parameters.map(_.inner.toSeq)
-          val body = macroDefinition.body
+          val body = macroDefinition.inner.seqnOrExp
 
           if (arguments.isEmpty && parameters.isDefined) {
             // `arguments.isDefined && parameters.isEmpty` cannot happen, we rule this out in `getMacroArgs`
@@ -357,7 +359,7 @@ object MacroExpander {
             throw MacroException("Number of macro arguments does not match", call.pos)
 
           (call, body) match {
-            case (_: PStmt, _: PStmt) | (_: PExp, _: PExp) | (_: PType, _: PType) | (_: PIdnRef[_], _: PIdnUse) =>
+            case (_: PStmt, _: PStmt) | (_: PExp, _: PExp) | (_: PType, _: PType) | (_: PIdnUseExp, _: PIdnUse) =>
             case _ =>
               val expandedType = body match {
                 case _: PExp => "Expression"

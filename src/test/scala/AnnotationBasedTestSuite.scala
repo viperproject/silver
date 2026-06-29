@@ -29,7 +29,7 @@ abstract class AnnotationBasedTestSuite extends ResourceBasedTestSuite {
    */
   def systemsUnderTest: Seq[SystemUnderTest]
 
-  def buildTestInput(file: Path, prefix: String): DefaultAnnotatedTestInput =
+  def buildTestInput(file: Path, prefix: String): AnnotatedTestInput =
     DefaultAnnotatedTestInput(file, prefix)
 
   /** Registers a given test input for a given system under test. */
@@ -221,6 +221,8 @@ trait AnnotatedTestInput extends TestInput {
 
   /** Create a test input that is specific to the given project. */
   def makeForProject(projectInfo: ProjectInfo): AnnotatedTestInput
+
+  def copyWithFiles(files: Seq[Path]): AnnotatedTestInput
 }
 
 /** Test input that also includes test annotations. */
@@ -244,6 +246,8 @@ case class DefaultAnnotatedTestInput(
       tags = projectInfo.projectNames.map(Tag(_)) ++ tags.toList,
       annotations = annotations.filterByProject(projectInfo))
   }
+
+  def copyWithFiles(files: Seq[Path]): DefaultAnnotatedTestInput = copy(files = files)
 }
 
 object DefaultAnnotatedTestInput extends TestAnnotationParser {

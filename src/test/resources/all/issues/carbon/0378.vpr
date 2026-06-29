@@ -1,0 +1,44 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+predicate p(a: Ref, b: Ref)
+
+method m(x: Ref, s: Set[Ref], t: Seq[Ref]) {
+  //:: ExpectedOutput(exhale.failed:qp.not.injective)
+  //:: ExpectedOutput(exhale.failed:insufficient.permission)
+  //:: MissingOutput(exhale.failed:insufficient.permission, /silicon/issue/34/)
+  exhale forall a: Int, b: Ref :: b in s && 0 <= a && a < |t| ==> p(t[a], b) // might not be injective
+}
+
+
+method m2(x: Ref, s: Set[Ref], t: Seq[Ref]) {
+  //:: ExpectedOutput(inhale.failed:qp.not.injective)
+  inhale forall a: Int, b: Ref :: b in s && 0 <= a && a < |t| ==> p(t[a], b) // might not be injective
+}
+
+field f: Int
+
+domain Array {
+  function loc(a: Array, i: Int): Ref
+
+  function loc_inv1(r: Ref): Array
+  function loc_inv2(r: Ref): Int
+
+  axiom {
+    forall a: Array, i: Int :: {loc(a, i)} loc_inv2(loc(a, i)) == i
+  }
+}
+
+method m3(x: Ref, s: Set[Ref], t: Seq[Ref]) {
+  //:: ExpectedOutput(exhale.failed:qp.not.injective)
+  //:: ExpectedOutput(exhale.failed:insufficient.permission)
+  //:: MissingOutput(exhale.failed:insufficient.permission, /silicon/issue/34/)
+  exhale forall a: Array, i: Int :: i >= 0 && i < 10 ==> acc(loc(a, i).f)
+}
+
+method m4(x: Ref, s: Set[Ref], t: Seq[Ref]) {
+  //:: ExpectedOutput(inhale.failed:qp.not.injective)
+  inhale forall a: Array, i: Int :: i >= 0 && i < 10 ==> acc(loc(a, i).f)
+}
+
+

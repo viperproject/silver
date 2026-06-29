@@ -1,0 +1,50 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+domain Tuple2[T0, T1]  {
+
+  function get0of2(p: Tuple2[T0, T1]): T0
+
+  function get1of2(p: Tuple2[T0, T1]): T1
+
+  function tuple2(t0: T0, t1: T1): Tuple2[T0, T1]
+
+  axiom getter_over_tuple2 {
+    (forall t0: T0, t1: T1 ::
+      { (tuple2(t0, t1): Tuple2[T0, T1]) }
+      (get0of2((tuple2(t0, t1): Tuple2[T0, T1])): T0) == t0 &&
+      (get1of2((tuple2(t0, t1): Tuple2[T0, T1])): T1) == t1)
+  }
+
+  axiom tuple2_over_getter {
+    (forall p: Tuple2[T0, T1] ::
+      { (get0of2(p): T0) }
+      { (get1of2(p): T1) }
+      (tuple2((get0of2(p): T0), (get1of2(p): T1)): Tuple2[T0, T1]) == p)
+  }
+}
+
+domain Poly[T]  {
+
+  function box_Poly(x: T): Ref
+
+  function unbox_Poly(y: Ref): T
+
+  axiom {
+    (forall x: T ::
+      { (box_Poly(x): Ref) }
+      (unbox_Poly((box_Poly(x): Ref)): T) == x)
+  }
+}
+
+domain Types {
+      function Errno_8b6e126d_T_Types(): Types
+}
+
+function DefinedErrno_8b6e126d_T$$$$_E_$$$_IsDuplicableMem_8b6e126d_MErrno_IsDuplicableMem_ad177c4e_SY$db8f20c_ad177c4e__proof(e_V0: Int): Bool
+  requires acc(dynamic_pred_0((tuple2((box_Poly(e_V0): Ref), Errno_8b6e126d_T_Types()): Tuple2[Ref, Types])), wildcard)
+  decreases dynamic_pred_0((tuple2((box_Poly(e_V0): Ref), Errno_8b6e126d_T_Types()): Tuple2[Ref, Types]))
+
+
+predicate dynamic_pred_0(i: Tuple2[Ref, Types])

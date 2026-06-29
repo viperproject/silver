@@ -6,13 +6,12 @@
 
 package viper.silver.plugin
 
-import viper.silver.parser.{NameAnalyser, PAnnotationsPosition, PExp, PExtender, PKeyword, PSpecification, PKw, PMember, PReserved, PStmt, PTypeSubstitution, Translator, TypeChecker}
+import viper.silver.parser.{NameAnalyser, PAnnotationsPosition, PExp, PExtender, PKeyword, PKw, PMember, PReserved, PSpecification, PStmt, PTypeSubstitution, RNode, ReformatterContext, Translator, TypeChecker}
 import viper.silver.ast.pretty.PrettyPrintPrimitives
-import viper.silver.ast.{Declaration, ErrorTrafo, Exp, ExtensionExp, ExtensionMember, ExtensionStmt, Info, Member, Node, NoPosition, Position, Stmt, Type}
+import viper.silver.ast.{Declaration, ErrorTrafo, Exp, ExtensionExp, ExtensionMember, ExtensionStmt, Info, Member, NoPosition, Node, Position, Stmt, Type}
 import viper.silver.verifier.VerificationResult
 
 import scala.collection.Set
-
 import fastparse._
 
 trait ParserPluginTemplate {
@@ -94,7 +93,6 @@ trait ParserPluginTemplate {
     // These two founction for translating PAst to Ast nodes are applicable only in the case of this class being a high level declaration
     override def translateMember(t: Translator): Member = ???
     override def translateMemberSignature(t: Translator): Member = super.translateMemberSignature(t)
-    override def pretty = ""
   }
 
   case class PExampleStmt()(val pos: (Position, Position)) extends PExtender with PStmt{

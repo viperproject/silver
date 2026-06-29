@@ -20,7 +20,7 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
                 config: viper.silver.frontend.SilFrontendConfig,
                 fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
 
-  import fp.{annotation, argList, idnTypeBinding, idndef, idnref, typ, typeList, domainTypeVarDecl, ParserExtension, lineCol, _file}
+  import fp.{annotation, argList, idnTypeBinding, idndef, idnref, semiSeparated, typ, typeList, domainTypeVarDecl, ParserExtension, lineCol, _file}
   import FastParserCompanion.{ExtendedParsing, LeadingWhitespace, PositionParsing, reservedKw, reservedSym, whitespace}
 
   /**
@@ -68,7 +68,7 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
     *
     */
   def adtDecl[$: P]: P[PAnnotationsPosition => PAdt] =
-    P(P(PAdtKeyword) ~ idndef ~ typeList(domainTypeVarDecl).? ~ adtConstructorDecl.rep.braces.map(PAdtConstructors1.apply _).pos ~~~ adtDerivesDecl.lw.?).map {
+    P(P(PAdtKeyword) ~ idndef ~ typeList(domainTypeVarDecl).? ~ adtConstructorDecls ~~~ adtDerivesDecl.lw.?).map {
       case (k, name, typparams, c, dec) =>
         ap: PAnnotationsPosition => {
           PAdt(
@@ -76,20 +76,22 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
             k,
             name,
             typparams,
-            PAdtSeq(c.seq.update(c.seq.inner map (c => PAdtConstructor(c.annotations, c.idndef, c.args)(c.pos))))(c.pos),
+            c,
             dec,
           )(ap.pos)
         }
     }
 
-  def adtDerivesDecl[$: P] = P((P(PDerivesKeyword) ~ adtDerivingDeclBody.rep.braces.map(PAdtSeq.apply _).pos) map (PAdtDeriving.apply _).tupled).pos
+  def adtDerivesDecl[$: P] = P((P(PDerivesKeyword) ~ semiSeparated(adtDerivingDeclBody).braces.map(PAdtSeq.apply _).pos) map (PAdtDeriving.apply _).tupled).pos
 
   def adtWithout[$: P]: P[PAdtWithout] = P((P(PWithoutKeyword) ~ idnref[$, PAdtFieldDecl].delimited(PSym.Comma, min = 1)) map (PAdtWithout.apply _).tupled).pos
 
   def adtDerivingDeclBody[$: P]: P[PAdtDerivingInfo] =
     P((idndef ~~~ typ.brackets.lw.? ~~~ adtWithout.lw.?) map ((PAdtDerivingInfo.apply _).tupled)).pos
 
-  def adtConstructorDecl[$: P]: P[PAdtConstructor1] = P((annotation.rep ~ idndef ~ argList(idnTypeBinding.map(PAdtFieldDecl(_))) ~~~ P(PSym.Semi).lw.?) map (PAdtConstructor1.apply _).tupled).pos
+  def adtConstructorDecls[$: P]: P[PAdtSeq[PAdtConstructor]] = P(semiSeparated(adtConstructorDecl).braces.map(PAdtSeq.apply _)).pos
+
+  def adtConstructorDecl[$: P]: P[PAdtConstructor] = P((annotation.rep ~ idndef ~ argList(idnTypeBinding.map(PAdtFieldDecl(_)))) map (PAdtConstructor.apply _).tupled).pos
 
   override def beforeResolve(input: PProgram): PProgram = {
     if (deactivated) {

@@ -1,3 +1,223 @@
+## Release 2026.2
+
+**Date 20/02/26**
+
+### Viper-IDE & ViperServer
+
+- Improved autocomplete by removing unwanted suggestions  (https://github.com/viperproject/viper-ide/pull/543 and https://github.com/viperproject/viperserver/pull/333)
+- Removed duplicate inlays and hover hints (https://github.com/viperproject/viperserver/pull/329)
+- Added beginner mode that disables some advanced IDE features that can be confusing for beginners, particularly inlays; this mode is enabled by default and can be disabled in the settings in VSCode (https://github.com/viperproject/viper-ide/pull/542 and https://github.com/viperproject/viperserver/pull/332)
+
+
+### General Changes
+
+- Added a command line option to select what parts of the input Viper program to verify. The new option ``--select=name1,name2,name3`` allows users to specify a number of identifiers of functions, methods, predicates in the input program to instruct Viper to verify only those members *and their dependencies*. The previous command line option ``--methods`` that had the same purpose but could only select methods and did not compute dependencies was removed. (https://github.com/viperproject/silver/pull/886)
+- Added a command line option ``--reportPartialResults`` to report partial verification results as they come in when using the symbolic execution backend (https://github.com/viperproject/silver/pull/887)
+- Improved internal handling of resources, which enables compatibility with GraalVM (https://github.com/viperproject/silver/pull/891)
+- Improved trigger inference for let-expressions (https://github.com/viperproject/silver/pull/890)
+- Fixed dependency tracking for interpreted domain functions in Chopper (https://github.com/viperproject/silver/pull/892)
+- Fixed incorrect computation of predicate triggers for recursive, heap-dependent functions (https://github.com/viperproject/silver/pull/896)
+- Updated the used Scala version from 2.13.10 to 2.13.18 (https://github.com/viperproject/silver/pull/899)
+
+### Changes in Plugins
+
+- Information Flow Plugin:
+  - The information flow plugin now correctly supports relational expressions such as ``low(e)`` as conditions in ``if``-statements (https://github.com/viperproject/silver/pull/904)
+  - Added a callback hook that allows frontends or other code to inspect the Viper AST after the product transformation (https://github.com/viperproject/silver/pull/900)
+
+### Backend-specific Upgrades/Changes
+
+#### Symbolic Execution Backend (Silicon)
+
+- The symbolic execution backend now uses resource bounds instead of timeouts for quick auxiliary SMT queries, which should make its behavior entirely deterministic between runs unless parallelism is used. The previous behavior can be enabled using the command line option ``--proverEnableTimeBounds``. The previously existing option to enable resource bounds, ``--proverEnableResourceBounds``, no longer exists. (https://github.com/viperproject/silicon/pull/949)
+- Fixed incompleteness related to heap-related functions depending on quantified permissions (https://github.com/viperproject/silicon/pull/955)
+- Fixed crash because of use of undeclared constant on the SMT level (https://github.com/viperproject/silicon/pull/952)
+
+
+## Release 2025.8
+
+**Date 04/09/25**
+
+### Viper-IDE & ViperServer
+
+- Significantly enhanced IDE experience (https://github.com/viperproject/viperserver/pull/204 and https://github.com/viperproject/viper-ide/pull/433 and others):
+  - Enabled semantic code actions such as "Show / Jump to Definitions", "Find References" or "Rename Symbols"
+  - Improved autocomplete
+  - Show inferred triggers
+  - Show parameter names in method calls
+  - Show parser errors without triggering full verification
+- Reworked extension settings. Some custom settings have been renamed and may need to be updated.
+
+### Changes in Viper Language
+
+- The annotation previously called ``@proverArgs``, (i.e. for example ``@proverArgs("smt.arith.solver=6")``) is now called ``@proverConfigArgs`` to match the name of Silicon's corresponding command line option ``--proverConfigArgs``. https://github.com/viperproject/silicon/pull/932 
+- ``asserting``-expressions are now disallowed in domain axioms. https://github.com/viperproject/silver/pull/858
+- We changed the type priority of ambiguously-typed division expressions (e.g. ``1/2`` can be an ``Int`` or a ``Perm``); these now always default to be ``Perm``-typed, and an ``Int`` type can be enforced by using the ``\`` operator instead. https://github.com/viperproject/silver/pull/855
+
+### Changes in Plugins
+
+- Plugins can now specify whether new expression types added by the plugin can be used inside triggers. https://github.com/viperproject/silver/pull/857
+- Created a new ``PluginAwareReporter`` that allows plugins to transform ``EntitySuccessMessage``s and ``EntityFailureMessage``s. https://github.com/viperproject/silver/pull/854 and https://github.com/viperproject/silver/pull/856
+- Optimized encoding for termination checks to omit unnecessary expression evaluation and unfoldings. https://github.com/viperproject/silver/pull/879 
+- Fixed incomplete termination check encoding for functions which incorrectly used explicit permission amounts. https://github.com/viperproject/silver/pull/876
+
+### Other Changes and Bug Fixes
+
+- Fixed a crash in the type checker for some ``forperm`` expressions. https://github.com/viperproject/silver/pull/873
+- Removed unnecessary duplicate work in the type checker that could lead to non-termination in extreme cases. https://github.com/viperproject/silver/pull/865
+- Fixed loop head detection that could in rare cases lead to unsound verification. https://github.com/viperproject/silver/pull/859
+- Improved ``Simplifier`` to simplify more aggressively in the presence of expressions that are statically known to be well-defined. https://github.com/viperproject/silver/pull/863
+- No longer using sets internally so that the plugin execution order is always deterministic. https://github.com/viperproject/silver/pull/853
+
+### Backend-specific Upgrades/Changes
+
+#### Symbolic Execution Backend (Silicon)
+
+- A new command line option ``--enableSimplifiedUnfolds`` can be used to simplify and speed up predicate unfoldings. It is experimental and disabled by default for now, but will likely become the default setting in future releases. https://github.com/viperproject/silicon/pull/929
+- Soundness fixes:
+  - Fixed two unsoundnesses in heap-dependent function encoding resulting from state consolidation. https://github.com/viperproject/silicon/pull/904 and https://github.com/viperproject/silicon/pull/910
+  - Fixed incorrect translation of some heap accesses inside heap-dependent functions that could lead to crashes or the use of incorrect function definitions. https://github.com/viperproject/silicon/pull/928
+- Performance improvements:
+  - Localizing potentially expensive assumption of function preconditions for QP injectivity. https://github.com/viperproject/silicon/pull/916
+  - Simplifying checks about permission amounts inside functions s.t. they can more often be performed without use of the SMT solver. https://github.com/viperproject/silicon/pull/921
+  - Stricter triggers on expensive extensionality axiom for QP snapshots (used for framing functions that depend on QPs). https://github.com/viperproject/silicon/pull/936
+- Completeness fixes:
+  - Fixing incorrect usage of (shorter) check timeout for SMT query that should use the assert timeout, leading to incompleteness. https://github.com/viperproject/silicon/pull/920
+  - Fixed recording of QP-related definitions in heap-dependent functions that was previously missing. https://github.com/viperproject/silicon/pull/924
+  - Fixed an incompleteness where QP-related definitions generated while evaluating quantifiers used an arbitrary value of the quantified variable instead of a universally quantified one https://github.com/viperproject/silicon/pull/93.5
+- Bug fixes:
+  - Fixed ``--counterexample=variables`` option. https://github.com/viperproject/silicon/pull/915
+  - Fixed crash with ``--moreJoins`` option when using ``forperm``. https://github.com/viperproject/silicon/pull/922
+  - Fixed crash with branch parallelization. https://github.com/viperproject/silicon/pull/939
+- Others: 
+  - When using CVC5, Silicon is now using proper timeouts for its SMT queries. https://github.com/viperproject/silicon/pull/933
+  - Quantifiers in axioms related to built-in types like sequences now have quantifier IDs in the generated SMTLIB code, which simplifies debugging the SMT output. https://github.com/viperproject/silicon/pull/927
+  - Significant parts of Silicon have been refactored to simplify future extensions, in particular, to enable the addition of different heap encodings. https://github.com/viperproject/silicon/pull/930
+ 
+
+## Release 2025.2
+
+**Date 28/02/25**
+
+### Changes in Viper Language
+
+- The semantics of permission amounts in functions has changed. When checking function preconditions, concrete permission amounts are ignored; instead, we only distinguish between zero and any positive amounts. Thus, the following assertions all have the same meaning in a function precondition: ``acc(x.f, write)`` or ``acc(x.f, wildcard)`` or ``acc(x.f, 1/2)`` or ``acc(x.f, b ? write : 1/2)`` or  ``acc(x.f) && acc(x.f)`` or ``acc(x.f, 2/1)`` all just require checking that a caller has some positive permission amount to ``x.f``. The same is true for predicate permissions. As a result, inside a function, one can no longer assume non-aliasing based on permission amounts. Additionally, when verifying well-definedness of a function, again all permission amounts are ignored (with the exception of distinguishing between zero and something positive as stated before), so one can for example unfold a whole predicate inside a function whose precondition only asks for half that predicate. Programs may still use concrete permission amounts in functions to preserve backward-compatibility, but such amounts will be meaningless and will result in a warning. The old permission semantics is still available and can be enabled using the new command line flag ``--respectFunctionPrePermAmounts``. https://github.com/viperproject/silicon/pull/877
+- Added a new expression ``asserting (a) in e``, which checks that ``a`` holds and subsequently evaluates to ``e``. https://github.com/viperproject/silver/pull/814
+
+### API Changes
+
+- The permission amount in the AST nodes for field and predicate access predicates is now optional. If no permission amount is given, the amount defaults to ``wildcard`` in functions and ``write`` anywhere else.
+
+### Bug Fixes
+
+- Several bugfixes in trigger inference https://github.com/viperproject/silver/pull/827
+- Pretty printing:
+  - Termination measures are no longer pretty-printed as ``requires decreases``, which was invalid Viper code https://github.com/viperproject/silver/pull/831 
+  - Fixed pretty-printing conditional termination measures https://github.com/viperproject/silver/pull/847
+  - Unambiguous pretty-printing of integer division https://github.com/viperproject/silver/pull/818
+- Fixed crash in termination check for inhale-exhale-expressions https://github.com/viperproject/silver/pull/822
+- Fixed missing position information in predicate termination measures https://github.com/viperproject/silver/pull/836
+- Fixed case where program with annotations was incorrectly rejected by the parser https://github.com/viperproject/silver/pull/842
+
+### Backend-specific Upgrades/Changes
+
+#### Symbolic Execution Backend (Silicon)
+
+- Soundness fixes:
+  - Fixed an unsoundness in package blocks that have no feasible paths https://github.com/viperproject/silicon/pull/899
+  - Fixed unsound definitions of snapshots inside quantifiers with exhaleMode 1 / moreCompleteExhale https://github.com/viperproject/silicon/pull/898
+  - Fixed unsound constraints for wildcard variables in function axioms with exhaleMode 1 / moreCompleteExhale https://github.com/viperproject/silicon/pull/895
+  - Fixed case where wildcard amount could be unsoundly constrained against itself https://github.com/viperproject/silicon/pull/893
+  - Fixed unsound snapshot definitions in function axioms resulting from state consolidation https://github.com/viperproject/silicon/pull/904
+- Performance improvements:
+  - Avoiding generating snapshot definitions that will not be used, reducing potential quantifier instantiations https://github.com/viperproject/silicon/pull/879 
+  - State consolidation now also merged quantified chunks https://github.com/viperproject/silicon/pull/860
+  - Fixed potential matching loop in sequence axiomatization https://github.com/viperproject/silicon/pull/885
+  - Simplified and improved copying of macros and function declarations between solvers for parallel branch verification https://github.com/viperproject/silicon/pull/872
+- Debugger improvements:
+  - More informative names for debug labels, showing value expressions for non-quantified chunks https://github.com/viperproject/silicon/pull/884
+  - Improved pretty-printing of quantified chunks in debugger https://github.com/viperproject/silicon/pull/865
+  - Added option to print internal term representation instead of Viper-level expressions https://github.com/viperproject/silicon/pull/884
+  - Added missing old-labels around heap-dependent function applications https://github.com/viperproject/silicon/pull/900
+  - Fixed race condition in assumption ID generation https://github.com/viperproject/silicon/pull/887
+- Bug fixes:
+  - Fixed a rare crash related to wand packaging https://github.com/viperproject/silicon/pull/876
+ 
+#### Verification Condition Generation Backend (Carbon)
+
+- Soundness fixes:
+  - Fixed incorrect injectivity check for quantified permissions with multiple quantified variables https://github.com/viperproject/carbon/pull/542 
+- Completeness improvements:
+  - Improved framing of heap locations protected by predicates that have not been unfolded https://github.com/viperproject/carbon/pull/543 
+  - Fixed incompleteness where condition of empty if-block could not trigger quantifiers https://github.com/viperproject/carbon/pull/544 
+- Performance improvements:
+  - Fixed potential matching loop in sequence axiomatization https://github.com/viperproject/carbon/pull/536
+  - Improved framing axioms for quantified permissions https://github.com/viperproject/carbon/pull/524
+- Bug fixes:
+  - Fixed Boogie crash when using quantified predicates without parameters https://github.com/viperproject/carbon/pull/541 
+
+
+## Release 2024.8
+
+**Date 31/08/24**
+
+### Changes in Viper Language
+
+- Domain axioms can now refer to functions that have decreases clauses (but no preconditions) https://github.com/viperproject/silver/pull/802
+
+### API Changes and Internal Improvements
+- Improved ``Simplifier`` simplifies many additional expressions; new option determines whether simplification must preserve well-definedness https://github.com/viperproject/silver/pull/810
+- Chopper is now aware of opaque functions https://github.com/viperproject/silver/pull/779
+- Chopper has improved dependency analysis for axioms https://github.com/viperproject/silver/pull/776
+- Removed filtering of duplicate errors inside Viper (this is now left to frontends) https://github.com/viperproject/silver/pull/778
+
+### Bug Fixes
+
+- Fixed various issues with macro expansion:
+  - Fixed incorrect variable renaming during macro expansion https://github.com/viperproject/silver/pull/804
+  - Disallowing nested macro declarations https://github.com/viperproject/silver/pull/795
+  - Fixed incorrect renaming of label statements during macro expansion https://github.com/viperproject/silver/pull/793
+- Fixed incorrect ``Simplifier`` handling of division and modulo expressions https://github.com/viperproject/silver/pull/794
+- Fixed crash in proof obligation computation for expressions https://github.com/viperproject/silver/pull/783
+- Termination plugin: Improved encoding of checks for ``unfolding``-expressions https://github.com/viperproject/silver/pull/773
+- ADT plugin: Fixed crash when plugin is used with other AST extensions https://github.com/viperproject/silver/pull/800
+
+### Backend-specific Upgrades/Changes
+
+#### Symbolic Execution Backend (Silicon)
+
+- Added experimental support for (command line) verification debugging. With the new option ``--enableDebugging``, users can see the state (store, heap, branch conditions and assumptions) in a format that that can be understood on the Viper level (avoiding internal Silicon concepts) at the point where a verification error occurs, locally assert or assume expressions to debug the error, and change SMT solver options. https://github.com/viperproject/silicon/pull/863
+- Soundness fixes:
+  - Fixed unsound rewrite for ``--conditionalizePermissions`` option https://github.com/viperproject/silicon/pull/853
+  - Fixed unsound handling of quantified permissions with unsatisfiable condition https://github.com/viperproject/silicon/pull/843
+  - Fixed unsound handling of quantified permissions with trivial condition https://github.com/viperproject/silicon/pull/834
+  - Improved encoding of magic wand snapshots that prevents unsoundness for ``applying``-expressions https://github.com/viperproject/silicon/pull/836
+  - Fixed incorrect order of function precondition assumptions https://github.com/viperproject/silicon/pull/811
+- Completeness improvements:
+  - Recording missing constraints during function verification https://github.com/viperproject/silicon/pull/852 and https://github.com/viperproject/silicon/pull/825
+  - Fixed treatment of snapshot maps defined while evaluating quantifiers https://github.com/viperproject/silicon/pull/840
+  - Avoiding using a quantifier for wildcard constraints for quantified resources when possible https://github.com/viperproject/silicon/pull/817
+- Performance improvements:
+  - Improved snapshot map caching for quantified permissions (also improves completeness) https://github.com/viperproject/silicon/pull/846
+  - Avoiding creating new snapshot maps for quantified resources when unnecessary https://github.com/viperproject/silicon/pull/839
+  - Eagerly assuming non-aliasing for quantified field chunks https://github.com/viperproject/silicon/pull/835
+  - More efficient function axiomatization for functions with many branches https://github.com/viperproject/silicon/pull/808
+  - Flexible path joining options:
+    - With command line argument ``--moreJoins=1``, Silicon joins only branches stemming from impure implications (immediately after branching). With ``--moreJoins=2`` it joins all branches, including branches stemming from program control flow, at the earliest possible point. https://github.com/viperproject/silicon/pull/823
+    - The new annotation ``@moreJoins(n)``, with ``n`` bein ``1`` or ``2`` as just described, can be used to enable path joining on a per-method level https://github.com/viperproject/silicon/pull/823
+  - More flexible state consolidation:
+    - Added several new options for state consolidation behavior https://github.com/viperproject/silicon/pull/827
+    - The new annotation ``@stateConsolidationMode(n)`` allows configuring state consolidation on a per-method level https://github.com/viperproject/silicon/pull/827
+- Other improvements:
+  - Fixed crash resulting from double-declarations of macros with ``--parallelizeBranches`` https://github.com/viperproject/silicon/pull/813
+  - Fixed error reporting for method call arguments https://github.com/viperproject/silicon/pull/841
+  - Silicon now tries to find the Z3 executable in PATH if no path is explicitly provided https://github.com/viperproject/silicon/pull/818
+ 
+#### Verification Condition Generation Backend (Carbon)
+
+- Bug fixes:
+  - Preventing Boogie crash when using annotations https://github.com/viperproject/carbon/pull/505
+
 ## Release 2024.1
 
 **Date 16/02/24**

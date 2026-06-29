@@ -25,6 +25,7 @@ object Expressions {
     case CondExp(cnd, thn, els) => isPure(cnd) && isPure(thn) && isPure(els)
     case unf: Unfolding => isPure(unf.body)
     case app: Applying => isPure(app.body)
+    case Asserting(a, e) => isPure(e)
     case QuantifiedExp(_, e0) => isPure(e0)
     case Let(_, _, body) => isPure(body)
     case e: ExtensionExp => e.extensionIsPure
@@ -96,10 +97,74 @@ object Expressions {
   def asBooleanExp(e: Exp): Exp = {
     e.transform({
       case _: AccessPredicate | _: MagicWand => TrueLit()()
-      case fa@Forall(vs,ts,body) => Forall(vs,ts,asBooleanExp(body))(fa.pos,fa.info)
+      case fa@Forall(vs,ts,body) => Forall(vs, ts, asBooleanExp(body))(fa.pos, fa.info, fa.errT)
       case Unfolding(_, exp) => asBooleanExp(exp)
       case Applying(_, exp) => asBooleanExp(exp)
+      case ass@Asserting(a, exp) => Asserting(asBooleanExp(a), asBooleanExp(exp))(ass.pos, ass.info, ass.errT)
     })
+  }
+
+  /** Returns only the functional parts of an expression.
+    * Note: Result is likely not self-framing.
+    */
+  def asPureFragment(e: Exp): Option[Exp] = {
+    asFragment(e, pureFragment = true)
+  }
+
+  /** Returns only the access/permission parts of an expression.
+    * Note: Result may not be well-defined on its own if functional properties are dropped,
+    * e.g. index bounds in QPs.
+    */
+  def asAccessFragment(e: Exp): Option[Exp] = {
+    asFragment(e, pureFragment = false)
+  }
+
+  private def asFragment(e: Exp, pureFragment: Boolean): Option[Exp] = {
+    def rec(e2: Exp): Option[Exp] = asFragment(e2, pureFragment)
+
+    e match {
+      case _: AccessPredicate => if (pureFragment) None else Some(e)
+      case ie@InhaleExhaleExp(in, ex) => for {
+        in2 <- rec(in)
+        ex2 <- rec(ex)
+      } yield InhaleExhaleExp(in2, ex2)(ie.pos, ie.info, ie.errT)
+      case imp@Implies(left, right) => rec(right).map(Implies(left, _)(imp.pos, imp.info, imp.errT))
+      case and@And(left, right) =>
+        (rec(left), rec(right)) match {
+          case (Some(left2), Some(right2)) => Some(And(left2, right2)(and.pos, and.info, and.errT))
+          case (Some(left2), None) => Some(left2)
+          case (None, Some(right2)) => Some(right2)
+          case (None, None) => None
+        }
+      case ite@CondExp(cond, thn, els) =>
+        (rec(thn), rec(els)) match {
+          case (Some(thn2), Some(els2)) => Some(CondExp(cond, thn2, els2)(ite.pos, ite.info, ite.errT))
+          case (Some(thn2), None) => Some(Implies(cond, thn2)(ite.pos, ite.info, ite.errT))
+          case (None, Some(els2)) =>
+            Some(Implies(Not(cond)(cond.pos, cond.info, cond.errT), els2)(ite.pos, ite.info, ite.errT))
+          case (None, None) => None
+        }
+      case unf@Unfolding(acc, body) => rec(body).map(Unfolding(acc, _)(unf.pos, unf.info, unf.errT))
+      case app@Applying(wand, body) => rec(body).map(Applying(wand, _)(app.pos, app.info, app.errT))
+      case ass@Asserting(a, body) => rec(body).map(Asserting(a, _)(ass.pos, ass.info, ass.errT))
+      case let@Let(variable, exp, body) => rec(body).map(Let(variable, exp, _)(let.pos, let.info, let.errT))
+      case qa@Forall(_, _, exp) => rec(exp).map(exp2 => qa.copy(exp = exp2)(qa.pos, qa.info, qa.errT))
+      case qe@Exists(_, _, exp) => rec(exp).map(exp2 => qe.copy(exp = exp2)(qe.pos, qe.info, qe.errT))
+      case ext: ExtensionExp => if (ext.extensionIsPure == pureFragment) Some(ext) else None
+      case _: Literal
+           | _: AbstractLocalVar
+           | _: BinExp
+           | _: UnExp
+           | _: LocationAccess
+           | _: PermExp
+           | _: ForPerm
+           | _: FuncLikeApp
+           | _: SeqExp
+           | _: SetExp
+           | _: MultisetExp
+           | _: MapExp
+      => if (pureFragment) Some(e) else None
+    }
   }
 
   def whenInhaling(e: Exp) = e.transform({
@@ -131,6 +196,23 @@ object Expressions {
         q.subExps.flatMap(freeVariablesExcluding(_, ignoring))
       case v@AbstractLocalVar(_) if !toIgnore.contains(v) =>
         Seq(v)
+    }.flatten.toSet
+  }
+
+  /** Collects all variables that are actually contained in the given node, filtering out let-variables
+    * as well as variables used in expressions bound to let-variables which are not used in the let body.  */
+  def getContainedVariablesExcludingLet(e: Node): Set[LocalVar] = {
+    Visitor.deepCollect[Node, Set[LocalVar]](Seq(e), {
+      case _: Let => Seq()
+      case n => Nodes.subnodes(n)
+    }) {
+      case lv: LocalVar => Set(lv)
+      case Let(v, e, body) =>
+        val bodyVars = getContainedVariablesExcludingLet(body)
+        if (bodyVars.contains(v.localVar))
+          bodyVars - v.localVar ++ getContainedVariablesExcludingLet(e)
+        else
+          bodyVars - v.localVar
     }.flatten.toSet
   }
 
@@ -181,6 +263,23 @@ object Expressions {
     case _ => false
   }
 
+  def isKnownWellDefined(e: Exp, program: Option[Program]): Boolean = {
+    e match {
+      case FieldAccessPredicate(FieldAccess(rcv, _), prm) =>
+        // Extra case for field access predicates because the contained field access does NOT require already having the field permission.
+        isKnownWellDefined(rcv, program) && (prm.isEmpty || isKnownWellDefined(prm.get, program))
+      case _: FieldAccess | _: Unfolding | _: Applying | _: Asserting => false
+      case _: SeqIndex | _: MapLookup => false
+      case _: Div | _: Mod => false
+      case f: FuncApp =>
+        program match {
+          case Some(p) => p.findFunction(f.funcname).pres.isEmpty && f.args.forall(isKnownWellDefined(_, program))
+          case None => false // conservative
+        }
+      case other => other.subExps.forall(isKnownWellDefined(_, program))
+    }
+  }
+
   // note: dependency on program for looking up function preconditions
   def proofObligations(e: Exp): (Program => Seq[Exp]) = (prog: Program) => {
     e.reduceTree[Seq[Exp]] {
@@ -191,7 +290,7 @@ object Expressions {
         }
         // Conditions for the current node.
         val conds: Seq[Exp] = n match {
-          case f@FieldAccess(rcv, _) => List(NeCmp(rcv, NullLit()(p))(p), FieldAccessPredicate(f, WildcardPerm()(p))(p))
+          case f@FieldAccess(rcv, _) => List(NeCmp(rcv, NullLit()(p))(p), FieldAccessPredicate(f, Some(WildcardPerm()(p)))(p))
           case f: FuncApp => prog.findFunction(f.funcname).pres
           case Div(_, q) => List(NeCmp(q, IntLit(0)(p))(p))
           case Mod(_, q) => List(NeCmp(q, IntLit(0)(p))(p))
@@ -199,6 +298,7 @@ object Expressions {
           case MapLookup(m, k) => List(MapContains(k, m)(p))
           case Unfolding(pred, _) => List(pred)
           case Applying(wand, _) => List(wand)
+          case Asserting(a, _) => List(a)
           case _ => Nil
         }
         // Only use non-trivial conditions for the subnodes.
@@ -273,6 +373,12 @@ object Expressions {
       List(Implies(evalCond, combinedRightCond)(p))
     } else Nil
     leftConds ++ guardedRightConds
+  }
+
+  def isForbiddenInTrigger(n: Node): Boolean = n match {
+    case _: ForbiddenInTrigger => true
+    case ee: ExtensionExp => ee.extensionIsForbiddenInTrigger()
+    case _ => false
   }
 
   /** See [[viper.silver.ast.utility.Triggers.TriggerGeneration.generateTriggerSetGroups]] */

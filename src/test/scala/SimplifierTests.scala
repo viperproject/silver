@@ -19,7 +19,7 @@ class SimplifierTests extends AnyFunSuite with Matchers {
     val b = LocalVar("a", Bool)()
     val acc = PredicateAccessPredicate(
       PredicateAccess(Nil, "pred")(),
-      FullPerm()()
+      None
     )()
     val tru = TrueLit()()
 

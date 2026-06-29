@@ -1,0 +1,15 @@
+define access5(a) forall j: Int ::
+    0 <= j && j < len(a) ==> acc(loc(a, j).val)
+
+/**
+ * In the book, they use 'type PQueue = BraunTree'. This is not possible in 
+ * Viper. Therefore we will be using a macro to alias PQueue with BraunTree.
+ * This will allow us to follow the book more closely.
+ */
+define PQueue BraunTree
+
+define WHITE 1
+define BLUE 2
+
+define A(p, plvs) acc(p.l) && acc(Tree(p.l)) && vals(p.l) == plvs[1..]
+define B acc(Tree(x)) && vals(x) == old(vals(x))[1..]
