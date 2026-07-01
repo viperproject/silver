@@ -30,7 +30,7 @@ jobs:
 
     steps:
     - name: Checkout backend
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         repository: ${{ env.fork }}/${{ matrix.repo }}
         token: ${{ secrets.PAT }}
