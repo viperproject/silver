@@ -113,12 +113,12 @@ trait Rewritable extends Product {
       val arguments = this match {
         case fa: FuncApp => this.children ++ Seq(pos, info, fa.typ, trafo)
         case df: DomainFuncApp => this.children ++ Seq(pos, info, df.typ, df.domainName, trafo)
-				case bfa: BackendFuncApp => this.children ++ Seq(pos, info, bfa.typ, bfa.interpretation, trafo)
+        case bfa: BackendFuncApp => this.children ++ Seq(pos, info, bfa.typ, bfa.interpretation, trafo)
         case dm: DomainMember => this.children ++ Seq(pos, info, dm.domainName, trafo)
-				case d: AdtDiscriminatorApp => this.children ++ Seq(pos, info, d.adtName, trafo)
-				case d: AdtConstructor => this.children ++ Seq(pos, info, d.typ, d.adtName, trafo)
-				case d: AdtConstructorApp => this.children ++ Seq(pos, info, d.typ, d.adtName, trafo)
-				case d: AdtDestructorApp => this.children ++ Seq(pos, info, d.typ, d.adtName, trafo)
+        case d: AdtDiscriminatorApp => this.children ++ Seq(pos, info, d.adtName, trafo)
+        case d: AdtConstructor => this.children ++ Seq(pos, info, d.typ, d.adtName, trafo)
+        case d: AdtConstructorApp => this.children ++ Seq(pos, info, d.typ, d.adtName, trafo)
+        case d: AdtDestructorApp => this.children ++ Seq(pos, info, d.typ, d.adtName, trafo)
         case _ => this.children ++ Seq(pos, info, trafo)
       }
 

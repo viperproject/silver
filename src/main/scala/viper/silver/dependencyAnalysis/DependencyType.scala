@@ -13,7 +13,7 @@ object AssumptionType extends Enumeration {
   def internalTypes: Set[AssumptionType] = Set(Internal, Trigger) // will always be hidden from user
   def importedTypes: Set[AssumptionType] = Set(ImportedPostcondition)
   def verificationAnnotationTypes: Set[AssumptionType] = Set(FunctionBody /* TODO ake: review */, LoopInvariant, Rewrite, ExplicitPostcondition, ImplicitPostcondition, ImportedPostcondition, Precondition, Explicit, DomainAxiom, Annotation)
-	def sourceCodeTypes: Set[AssumptionType] = values.diff(explicitAssumptionTypes).diff(verificationAnnotationTypes).diff(internalTypes)
+  def sourceCodeTypes: Set[AssumptionType] = values.diff(explicitAssumptionTypes).diff(verificationAnnotationTypes).diff(internalTypes)
 
   def getPostcondType(isAbstractFunction: Boolean, dependencyType: Option[DependencyType]=None, isImported: Boolean=false): AssumptionType = {
     if(isImported) return ImportedPostcondition
