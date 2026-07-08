@@ -102,18 +102,18 @@ case class Translator(program: PProgram) {
   }
 
   private def translate(a: PAxiom): DomainAxiom = {
-    def attachInfo(axiom: DomainAxiom) = {
-      val info = ConsInfo(axiom.info, ConsInfo(ConsInfo(AnalysisSourceInfo.createAnalysisSourceInfo(axiom.exp), DependencyTypeInfo(DependencyType.Axiom)), SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(axiom.exp), JoinType.Source, EdgeType.Down)))
-      axiom.withMeta(axiom.pos, info, axiom.errT)
+
+    def attachMeta(createAxiom: (Position, Info, String, ErrorTrafo) => DomainAxiom, _pos: Position, _info: Info, _domainName: String, _errT: ErrorTrafo = NoTrafos): DomainAxiom = {
+      val tmpAxiom = createAxiom(_pos, _info, _domainName, _errT)
+      val finalInfo = ConsInfo(tmpAxiom.info, ConsInfo(ConsInfo(AnalysisSourceInfo.createAnalysisSourceInfo(tmpAxiom.exp), DependencyTypeInfo(DependencyType.Axiom)), SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(tmpAxiom.exp), JoinType.Source, EdgeType.Down)))
+      createAxiom(_pos, finalInfo, _domainName, _errT)
     }
 
     a match {
       case pa@PAxiom(anns, _, Some(name), e) =>
-        val axiom = NamedDomainAxiom(name.name, exp(e.e.inner, Some(DependencyType.Axiom)))(a, Translator.toInfo(anns, pa), domainName = pa.domain.idndef.name)
-        attachInfo(axiom)
+        attachMeta(NamedDomainAxiom(name.name, exp(e.e.inner, Some(DependencyType.Axiom))), a, Translator.toInfo(anns, pa), _domainName = pa.domain.idndef.name)
       case pa@PAxiom(anns, _, None, e) =>
-        val axiom = AnonymousDomainAxiom(exp(e.e.inner, Some(DependencyType.Axiom)))(a, Translator.toInfo(anns, pa), domainName = pa.domain.idndef.name)
-        attachInfo(axiom)
+        attachMeta(AnonymousDomainAxiom(exp(e.e.inner, Some(DependencyType.Axiom))), a, Translator.toInfo(anns, pa), _domainName = pa.domain.idndef.name)
     }
   }
 
@@ -185,13 +185,21 @@ case class Translator(program: PProgram) {
 
   /** Takes a `PStmt` and turns it into a `Stmt`. */
   def stmt(pStmt: PStmt): Stmt = {
+
     val pos = pStmt
     val (s, annotations) = extractAnnotationFromStmt(pStmt)
     val sourcePNodeInfo = SourcePNodeInfo(pStmt)
     val info = if (annotations.isEmpty) sourcePNodeInfo else ConsInfo(sourcePNodeInfo, AnnotationInfo(annotations))
-    val resS = s match {
+
+    def attachMeta(createStmt: (Position, Info, ErrorTrafo) => Stmt, _pos: Position = pos, _info: Info = info, _errT: ErrorTrafo = NoTrafos): Stmt = {
+      val tmpStmt = createStmt(_pos, _info, _errT)
+      val finalInfo = MakeInfoPair(MakeInfoPair(AnalysisSourceInfo.createAnalysisSourceInfo(tmpStmt), DependencyTypeInfo.getDependencyTypeInfo(tmpStmt)), tmpStmt.info)
+      createStmt(_pos, finalInfo, _errT)
+    }
+
+    s match {
       case PAssign(targets, _, PCall(method, args, _)) if members(method.name).isInstanceOf[Method] =>
-        methodCallAssign(s, targets.toSeq, ts => MethodCall(findMethod(method), args.inner.toSeq map exp, ts)(pos, info))
+        methodCallAssign(s, targets.toSeq, ts => attachMeta(MethodCall(findMethod(method), args.inner.toSeq map exp, ts)))
       case PAssign(targets, _, _) if targets.length != 1 =>
         sys.error(s"Found non-unary target of assignment")
       case PAssign(targets, _, PNewExp(_, fieldsOpt)) =>
@@ -200,11 +208,11 @@ case class Translator(program: PProgram) {
           case Left(_) => program.fields flatMap (_.fields.toSeq map translate)
           case Right(pfields) => pfields.toSeq map findField
         }
-        methodCallAssign(s, Seq(targets.head), lv => NewStmt(lv.head, fields)(pos, info))
+        methodCallAssign(s, Seq(targets.head), lv => attachMeta(NewStmt(lv.head, fields)))
       case PAssign(PDelimited(idnuse: PIdnUseExp), _, rhs) =>
-        LocalVarAssign(LocalVar(idnuse.name, ttyp(idnuse.decl.get.asInstanceOf[PAssignableVarDecl].typ))(pos, SourcePNodeInfo(idnuse)), exp(rhs))(pos, info)
+        attachMeta(LocalVarAssign(LocalVar(idnuse.name, ttyp(idnuse.decl.get.asInstanceOf[PAssignableVarDecl].typ))(pos, SourcePNodeInfo(idnuse)), exp(rhs)))
       case PAssign(PDelimited(field: PFieldAccess), _, rhs) =>
-        FieldAssign(FieldAccess(exp(field.rcv), findField(field.idnref))(field, SourcePNodeInfo(field)), exp(rhs))(pos, info)
+        attachMeta(FieldAssign(FieldAccess(exp(field.rcv), findField(field.idnref))(field, SourcePNodeInfo(field)), exp(rhs)))
       case lv: PVars =>
         // there are no declarations in the Viper AST; rather they are part of the scope signature
         lv.assign map stmt getOrElse Statements.EmptyStmt
@@ -214,51 +222,53 @@ case class Translator(program: PProgram) {
           case l: PVars => Some(l)
           case _ => None
         }
-        val locals = plocals.flatten.map {
+        val locals = plocals.flatten.flatMap {
           case p@PVars(_, vars, _) => vars.toSeq.map(v => LocalVarDecl(v.idndef.name, ttyp(v.typ))(p, SourcePNodeInfo(v)))
-        }.flatten
-        Seqn(seqn filterNot (_.isInstanceOf[PSkip]) map stmt, locals)(pos, info)
+        }
+        attachMeta(Seqn(seqn filterNot (_.isInstanceOf[PSkip]) map stmt, locals))
       case PFold(_, e) =>
-        Fold(exp(e, Some(DependencyType.Rewrite)).asInstanceOf[PredicateAccessPredicate])(pos, info)
+        attachMeta(Fold(exp(e, Some(DependencyType.Rewrite)).asInstanceOf[PredicateAccessPredicate]))
       case PUnfold(_, e) =>
-        Unfold(exp(e, Some(DependencyType.Rewrite)).asInstanceOf[PredicateAccessPredicate])(pos, info)
+        attachMeta(Unfold(exp(e, Some(DependencyType.Rewrite)).asInstanceOf[PredicateAccessPredicate]))
       case PPackageWand(_, e, proofScript) =>
         val wand = exp(e, Some(DependencyType.Rewrite)).asInstanceOf[MagicWand]
-        Package(wand, proofScript map (stmt(_).asInstanceOf[Seqn]) getOrElse Statements.EmptyStmt)(pos, info)
+        attachMeta(Package(wand, proofScript map (stmt(_).asInstanceOf[Seqn]) getOrElse Statements.EmptyStmt))
       case PApplyWand(_, e) =>
-        Apply(exp(e, Some(DependencyType.Rewrite)).asInstanceOf[MagicWand])(pos, info)
+        attachMeta(Apply(exp(e, Some(DependencyType.Rewrite)).asInstanceOf[MagicWand]))
       case PInhale(_, e) =>
-        Inhale(exp(e, Some(DependencyType.ExplicitAssumption)))(pos, info)
+        attachMeta(Inhale(exp(e, Some(DependencyType.ExplicitAssumption))))
       case PAssume(_, e) =>
-        Assume(exp(e, Some(DependencyType.ExplicitAssumption)))(pos, info)
+        attachMeta(Assume(exp(e, Some(DependencyType.ExplicitAssumption))))
       case PExhale(_, e) =>
-        Exhale(exp(e, Some(DependencyType.ExplicitAssertion)))(pos, info)
+        attachMeta(Exhale(exp(e, Some(DependencyType.ExplicitAssertion))))
       case PAssert(_, e) =>
-        Assert(exp(e, Some(DependencyType.ExplicitAssertion)))(pos, info)
+        attachMeta(Assert(exp(e, Some(DependencyType.ExplicitAssertion))))
       case PLabel(_, name, invs) =>
-        Label(name.name, invs.toSeq map (_.e) map exp)(pos, info)
+        attachMeta(Label(name.name, invs.toSeq map (_.e) map exp))
       case PGoto(_, label) =>
-        Goto(label.name)(pos, info)
+        attachMeta(Goto(label.name))
       case PIf(_, cond, thn, els) =>
-        If(exp(cond.inner, Some(DependencyType.PathCondition)), stmt(thn).asInstanceOf[Seqn], els map (stmt(_) match {
+        attachMeta(If(exp(cond.inner, Some(DependencyType.PathCondition)), stmt(thn).asInstanceOf[Seqn], els map (stmt(_) match {
           case s: Seqn => s
           case s => Seqn(Seq(s), Nil)(s.pos, s.info)
-        }) getOrElse Statements.EmptyStmt)(pos, info)
+        }) getOrElse Statements.EmptyStmt))
       case PElse(_, els) => stmt(els)
       case PWhile(_, cond, invs, body) =>
-        While(exp(cond.inner, Some(DependencyType.PathCondition)), invs.toSeq map (inv => exp(inv.e, Some(DependencyType.Invariant))), stmt(body).asInstanceOf[Seqn])(pos, info)
+        attachMeta(While(exp(cond.inner, Some(DependencyType.PathCondition)), invs.toSeq map (inv => exp(inv.e, Some(DependencyType.Invariant))), stmt(body).asInstanceOf[Seqn]))
       case PQuasihavoc(_, lhs, e) =>
         val (newLhs, newE) = havocStmtHelper(lhs, e)
-        Quasihavoc(newLhs, newE)(pos, info)
+        attachMeta(Quasihavoc(newLhs, newE))
       case PQuasihavocall(_, vars, _, lhs, e) =>
         val newVars = vars.toSeq map liftLogicalDecl
         val (newLhs, newE) = havocStmtHelper(lhs, e)
-        Quasihavocall(newVars, newLhs, newE)(pos, info)
-      case t: PExtender =>   t.translateStmt(this)
+        attachMeta(Quasihavocall(newVars, newLhs, newE))
+      case t: PExtender =>
+        val stmt = t.translateStmt(this)
+        stmt.withMeta(stmt.pos, MakeInfoPair(MakeInfoPair(AnalysisSourceInfo.createAnalysisSourceInfo(stmt), DependencyTypeInfo.getDependencyTypeInfo(stmt)), stmt.info), stmt.errT)
       case _: PDefine | _: PSkip =>
         sys.error(s"Found unexpected intermediate statement $s (${s.getClass.getName}})")
     }
-    resS.withMeta(resS.pos, MakeInfoPair(MakeInfoPair(AnalysisSourceInfo.createAnalysisSourceInfo(resS), DependencyTypeInfo.getDependencyTypeInfo(resS)), resS.info), resS.errT)
+
   }
 
   /**
@@ -372,10 +382,15 @@ case class Translator(program: PProgram) {
 
     def goExp(parseExp: PExp) = exp(parseExp, dependencyType)
 
-    val expr = pexp match {
+    def attachMeta(createExp: (Position, Info, ErrorTrafo) => Exp, _pos: PExp = pos, _info: Info = info, _errT: ErrorTrafo = NoTrafos): Exp = {
+      val finalInfo = MakeInfoPair(AnalysisSourceInfo.createAnalysisSourceInfo(createExp(_pos, _info, _errT)), _info)
+      createExp(_pos, finalInfo, _errT)
+    }
+
+    pexp match {
       case PIdnUseExp(piu) =>
         piu.decl match {
-          case Some(_: PTypedVarDecl) => LocalVar(piu.name, ttyp(pexp.typ))(pos, info)
+          case Some(_: PTypedVarDecl) => attachMeta(LocalVar(piu.name, ttyp(pexp.typ)))
           // A malformed AST where a field, function or other declaration is used as a variable.
           // Should have been caught by the type checker.
           case _ => sys.error("should not occur in type-checked program")
@@ -385,28 +400,28 @@ case class Translator(program: PProgram) {
         op.rs match {
           case PSymOp.Plus =>
             r.typ match {
-              case Int => Add(l, r)(pos, info)
-              case Perm => PermAdd(l, r)(pos, info)
+              case Int => attachMeta(Add(l, r))
+              case Perm => attachMeta(PermAdd(l, r))
               case _ => sys.error("should not occur in type-checked program")
             }
           case PSymOp.Minus =>
             r.typ match {
-              case Int => Sub(l, r)(pos, info)
-              case Perm => PermSub(l, r)(pos, info)
+              case Int => attachMeta(Sub(l, r))
+              case Perm => attachMeta(PermSub(l, r))
               case _ => sys.error("should not occur in type-checked program")
             }
           case PSymOp.Mul =>
             r.typ match {
               case Int =>
                 l.typ match {
-                  case Int => Mul(l, r)(pos, info)
-                  case Perm => IntPermMul(r, l)(pos, info)
+                  case Int => attachMeta(Mul(l, r))
+                  case Perm => attachMeta(IntPermMul(r, l))
                   case _ => sys.error("should not occur in type-checked program")
                 }
               case Perm =>
                 l.typ match {
-                  case Int => IntPermMul(l, r)(pos, info)
-                  case Perm => PermMul(l, r)(pos, info)
+                  case Int => attachMeta(IntPermMul(l, r))
+                  case Perm => attachMeta(PermMul(l, r))
                   case _ => sys.error("should not occur in type-checked program")
                 }
               case _ => sys.error("should not occur in type-checked program")
@@ -414,63 +429,63 @@ case class Translator(program: PProgram) {
           case PSymOp.Div =>
             l.typ match {
               case Perm => r.typ match {
-                case Int => PermDiv(l, r)(pos, info)
-                case Perm => PermPermDiv(l, r)(pos, info)
+                case Int => attachMeta(PermDiv(l, r))
+                case Perm => attachMeta(PermPermDiv(l, r))
               }
               case Int  =>
                 assert (r.typ==Int)
                 if (ttyp(pbe.typ) == Int)
-                  Div(l, r)(pos, info)
+                  attachMeta(Div(l, r))
                 else
-                  FractionalPerm(l, r)(pos, info)
+                  attachMeta(FractionalPerm(l, r))
               case _    => sys.error("should not occur in type-checked program")
             }
-          case PSymOp.ArithDiv => Div(l, r)(pos, info)
-          case PSymOp.Mod => Mod(l, r)(pos, info)
+          case PSymOp.ArithDiv => attachMeta(Div(l, r))
+          case PSymOp.Mod => attachMeta(Mod(l, r))
           case PSymOp.Lt =>
             l.typ match {
-              case Int => LtCmp(l, r)(pos, info)
-              case Perm => PermLtCmp(l, r)(pos, info)
+              case Int => attachMeta(LtCmp(l, r))
+              case Perm => attachMeta(PermLtCmp(l, r))
               case _ => sys.error("unexpected type")
             }
           case PSymOp.Le =>
             l.typ match {
-              case Int => LeCmp(l, r)(pos, info)
-              case Perm => PermLeCmp(l, r)(pos, info)
+              case Int => attachMeta(LeCmp(l, r))
+              case Perm => attachMeta(PermLeCmp(l, r))
               case _ => sys.error("unexpected type")
             }
           case PSymOp.Gt =>
             l.typ match {
-              case Int => GtCmp(l, r)(pos, info)
-              case Perm => PermGtCmp(l, r)(pos, info)
+              case Int => attachMeta(GtCmp(l, r))
+              case Perm => attachMeta(PermGtCmp(l, r))
               case _ => sys.error("unexpected type " + l.typ.toString())
             }
           case PSymOp.Ge =>
             l.typ match {
-              case Int => GeCmp(l, r)(pos, info)
-              case Perm => PermGeCmp(l, r)(pos, info)
+              case Int => attachMeta(GeCmp(l, r))
+              case Perm => attachMeta(PermGeCmp(l, r))
               case _ => sys.error("unexpected type")
             }
-          case PSymOp.EqEq => EqCmp(l, r)(pos, info)
-          case PSymOp.Ne => NeCmp(l, r)(pos, info)
-          case PSymOp.Implies => Implies(l, r)(pos, info)
-          case PSymOp.Wand => MagicWand(l, r)(pos, info)
-          case PSymOp.Iff => EqCmp(l, r)(pos, info)
-          case PSymOp.AndAnd => And(l, r)(pos, info)
-          case PSymOp.OrOr => Or(l, r)(pos, info)
+          case PSymOp.EqEq => attachMeta(EqCmp(l, r))
+          case PSymOp.Ne => attachMeta(NeCmp(l, r))
+          case PSymOp.Implies => attachMeta(Implies(l, r))
+          case PSymOp.Wand => attachMeta(MagicWand(l, r))
+          case PSymOp.Iff => attachMeta(EqCmp(l, r))
+          case PSymOp.AndAnd => attachMeta(And(l, r))
+          case PSymOp.OrOr => attachMeta(Or(l, r))
 
           case PKwOp.In => right.typ match {
-            case _: PSeqType => SeqContains(l, r)(pos, info)
-            case _: PMapType => MapContains(l, r)(pos, info)
-            case _: PSetType | _: PMultisetType => AnySetContains(l, r)(pos, info)
+            case _: PSeqType => attachMeta(SeqContains(l, r))
+            case _: PMapType => attachMeta(MapContains(l, r))
+            case _: PSetType | _: PMultisetType => attachMeta(AnySetContains(l, r))
             case t => sys.error(s"unexpected type $t")
           }
 
-          case PSymOp.Append => SeqAppend(l, r)(pos, info)
-          case PKwOp.Subset => AnySetSubset(l, r)(pos, info)
-          case PKwOp.Intersection => AnySetIntersection(l, r)(pos, info)
-          case PKwOp.Union => AnySetUnion(l, r)(pos, info)
-          case PKwOp.Setminus => AnySetMinus(l, r)(pos, info)
+          case PSymOp.Append => attachMeta(SeqAppend(l, r))
+          case PKwOp.Subset => attachMeta(AnySetSubset(l, r))
+          case PKwOp.Intersection => attachMeta(AnySetIntersection(l, r))
+          case PKwOp.Union => attachMeta(AnySetUnion(l, r))
+          case PKwOp.Setminus => attachMeta(AnySetMinus(l, r))
           case _ => sys.error(s"unexpected operator $op")
         }
       case PUnExp(op, pe) =>
@@ -478,30 +493,30 @@ case class Translator(program: PProgram) {
         op.rs match {
           case PSymOp.Neg =>
             e.typ match {
-              case Int => Minus(e)(pos, info)
-              case Perm => PermMinus(e)(pos, info)
+              case Int => attachMeta(Minus(e))
+              case Perm => attachMeta(PermMinus(e))
               case _ => sys.error("unexpected type")
             }
-          case PSymOp.Not => Not(e)(pos, info)
+          case PSymOp.Not => attachMeta(Not(e))
         }
       case PInhaleExhaleExp(_, in, _, ex, _) =>
-        InhaleExhaleExp(goExp(in), goExp(ex))(pos, info)
+        attachMeta(InhaleExhaleExp(goExp(in), goExp(ex)))
       case PIntLit(i) =>
-        IntLit(i)(pos, info)
+        attachMeta(IntLit(i))
       case p@PResultLit(_) =>
         // find function
         val func = p.getAncestor[PFunction].get
-        Result(ttyp(func.typ.resultType))(pos, info)
+        attachMeta(Result(ttyp(func.typ.resultType)))
       case bool: PBoolLit =>
-        if (bool.b) TrueLit()(pos, info) else FalseLit()(pos, info)
+        if (bool.b) attachMeta(TrueLit()) else attachMeta(FalseLit())
       case PNullLit(_) =>
-        NullLit()(pos, info)
+        attachMeta(NullLit())
       case PFieldAccess(rcv, _, idn) =>
-        FieldAccess(goExp(rcv), findField(idn))(pos, info)
-      case PMagicWandExp(left, _, right) => MagicWand(goExp(left), goExp(right))(pos, info)
+        attachMeta(FieldAccess(goExp(rcv), findField(idn)))
+      case PMagicWandExp(left, _, right) => attachMeta(MagicWand(goExp(left), goExp(right)))
       case pfa@PCall(func, args, _) =>
         members(func.name) match {
-          case f: Function => FuncApp(f, args.inner.toSeq map goExp)(pos, info)
+          case f: Function => attachMeta(FuncApp(f, args.inner.toSeq map goExp))
           case f @ DomainFunc(_, _, _, _, _) =>
             val actualArgs = args.inner.toSeq map goExp
             /* TODO: Not used - problem?*/
@@ -517,25 +532,25 @@ case class Translator(program: PProgram) {
                 val sp = s //completeWithDefault(d.typVars,s)
                 assert(sp.keys.toSet == d.typVars.toSet)
                 if (f.interpretation.isDefined)
-                  BackendFuncApp(f, actualArgs)(pos, info)
+                  attachMeta(BackendFuncApp(f, actualArgs))
                 else
-                  DomainFuncApp(f, actualArgs, sp)(pos, info)
+                  attachMeta(DomainFuncApp(f, actualArgs, sp))
               case _ => sys.error("type unification error - should report and not crash")
             }
           case _: Predicate =>
-            val inner = PredicateAccess(args.inner.toSeq map goExp, findPredicate(func).name) (pos, info)
-            PredicateAccessPredicate(inner, None) (pos, info)
+            val inner = PredicateAccess(args.inner.toSeq map goExp, findPredicate(func).name)(pos, info)
+            attachMeta(PredicateAccessPredicate(inner, None))
           case _ => sys.error("unexpected reference to non-function")
         }
       case PNewExp(_, _) => sys.error("unexpected `new` expression")
       case PUnfolding(_, loc, _, e) =>
-        Unfolding(goExp(loc).asInstanceOf[PredicateAccessPredicate], goExp(e))(pos, info)
+        attachMeta(Unfolding(goExp(loc).asInstanceOf[PredicateAccessPredicate], goExp(e)))
       case PApplying(_, wand, _, e) =>
-        Applying(goExp(wand).asInstanceOf[MagicWand], goExp(e))(pos, info)
+        attachMeta(Applying(goExp(wand).asInstanceOf[MagicWand], goExp(e)))
       case PAsserting(_, a, _, e) =>
-        Asserting(goExp(a), goExp(e))(pos, info)
+        attachMeta(Asserting(goExp(a), goExp(e)))
       case pl@PLet(_, _, _, exp1, _, PLetNestedScope(body)) =>
-        Let(liftLogicalDecl(pl.decl), goExp(exp1.inner), goExp(body))(pos, info)
+        attachMeta(Let(liftLogicalDecl(pl.decl), goExp(exp1.inner), goExp(body)))
       case _: PLetNestedScope =>
         sys.error("unexpected node PLetNestedScope, should only occur as a direct child of PLet nodes")
       case PExists(_, vars, _, triggers, e) =>
@@ -543,118 +558,119 @@ case class Translator(program: PProgram) {
           case PredicateAccessPredicate(inner, _) => inner
           case _ => e
         }))(t))
-        Exists(vars.toSeq map liftLogicalDecl, ts, goExp(e))(pos, info)
+        attachMeta(Exists(vars.toSeq map liftLogicalDecl, ts, goExp(e)))
       case PForall(_, vars, _, triggers, e) =>
         val ts = triggers map (t => Trigger((t.exp.inner.toSeq map goExp) map (e => e match {
           case PredicateAccessPredicate(inner, _) => inner
           case _ => e
         }))(t))
-        val fa = Forall(vars.toSeq map liftLogicalDecl, ts, goExp(e))(pos, info)
+        val fa = attachMeta(Forall(vars.toSeq map liftLogicalDecl, ts, goExp(e)))
         if (fa.isPure) {
           fa
         } else {
-          val desugaredForalls = QuantifiedPermissions.desugarSourceQuantifiedPermissionSyntax(fa)
+          val desugaredForalls = QuantifiedPermissions.desugarSourceQuantifiedPermissionSyntax(fa.asInstanceOf[Forall])
           desugaredForalls.tail.foldLeft(desugaredForalls.head: Exp)((conjuncts, forall) =>
             And(conjuncts, forall)(fa.pos, fa.info, fa.errT))
         }
       case fp@PForPerm(_, vars, _, _, e) =>
         val varList = vars.toSeq map liftLogicalDecl
         goExp(fp.accessRes) match {
-          case PredicateAccessPredicate(inner, _) => ForPerm(varList, inner, goExp(e))(pos, info)
-          case f : FieldAccess => ForPerm(varList, f, goExp(e))(pos, info)
-          case p : PredicateAccess => ForPerm(varList, p, goExp(e))(pos, info)
-          case w : MagicWand => ForPerm(varList, w, goExp(e))(pos, info)
+          case PredicateAccessPredicate(inner, _) => attachMeta(ForPerm(varList, inner, goExp(e)))
+          case f : FieldAccess => attachMeta(ForPerm(varList, f, goExp(e)))
+          case p : PredicateAccess => attachMeta(ForPerm(varList, p, goExp(e)))
+          case w : MagicWand => attachMeta(ForPerm(varList, w, goExp(e)))
           case other =>
             sys.error(s"Internal Error: Unexpectedly found $other in forperm")
         }
       case POldExp(_, lbl, e) =>
         val ee = goExp(e.inner)
-        lbl.map(l => LabelledOld(ee, l.inner.fold(_.rs.keyword, _.name))(pos, info)).getOrElse(Old(ee)(pos, info))
+        lbl.map(l => attachMeta(LabelledOld(ee, l.inner.fold(i => i.rs.keyword, i1 => i1.name)))).getOrElse(attachMeta(Old(ee)))
       case PCondExp(cond, _, thn, _, els) =>
-        CondExp(goExp(cond), goExp(thn), goExp(els))(pos, info)
+        attachMeta(CondExp(goExp(cond), goExp(thn), goExp(els)))
       case PCurPerm(_, res) =>
         goExp(res.inner) match {
-          case PredicateAccessPredicate(inner, _) => CurrentPerm(inner)(pos, info)
-          case x: FieldAccess => CurrentPerm(x)(pos, info)
-          case x: PredicateAccess => CurrentPerm(x)(pos, info)
-          case x: MagicWand => CurrentPerm(x)(pos, info)
+          case PredicateAccessPredicate(inner, _) => attachMeta(CurrentPerm(inner))
+          case x: FieldAccess => attachMeta(CurrentPerm(x))
+          case x: PredicateAccess => attachMeta(CurrentPerm(x))
+          case x: MagicWand => attachMeta(CurrentPerm(x))
           case other => sys.error(s"Unexpectedly found $other")
         }
       case PNoPerm(_) =>
-        NoPerm()(pos, info)
+        attachMeta(NoPerm())
       case PFullPerm(_) =>
-        FullPerm()(pos, info)
+        attachMeta(FullPerm())
       case PWildcard(_) =>
-        WildcardPerm()(pos, info)
+        attachMeta(WildcardPerm())
       case PEpsilon(_) =>
-        EpsilonPerm()(pos, info)
+        attachMeta(EpsilonPerm())
       case acc: PAccPred =>
         val p = acc.permExp.map(goExp)
         goExp(acc.loc) match {
           case loc@FieldAccess(_, _) =>
-            FieldAccessPredicate(loc, p)(pos, info)
+            attachMeta(FieldAccessPredicate(loc, p))
           case loc@PredicateAccess(_, _) =>
-            PredicateAccessPredicate(loc, p)(pos, info)
-          case PredicateAccessPredicate(inner, _) => PredicateAccessPredicate(inner, p)(pos, info)
+            attachMeta(PredicateAccessPredicate(loc, p))
+          case PredicateAccessPredicate(inner, _) => attachMeta(PredicateAccessPredicate(inner, p))
           case _ =>
             sys.error("unexpected location")
         }
       case _: PEmptySeq =>
-        EmptySeq(ttyp(pexp.typ.asInstanceOf[PSeqType].elementType.inner))(pos, info)
+        attachMeta(EmptySeq(ttyp(pexp.typ.asInstanceOf[PSeqType].elementType.inner)))
       case PExplicitSeq(_, elems) =>
-        ExplicitSeq(elems.inner.toSeq map goExp)(pos, info)
+        attachMeta(ExplicitSeq(elems.inner.toSeq map goExp))
       case PRangeSeq(_, low, _, high, _) =>
-        RangeSeq(goExp(low), goExp(high))(pos, info)
+        attachMeta(RangeSeq(goExp(low), goExp(high)))
 
       case PLookup(base, _, index, _) => base.typ match {
-        case _: PSeqType => SeqIndex(goExp(base), goExp(index))(pos, info)
-        case _: PMapType => MapLookup(goExp(base), goExp(index))(pos, info)
+        case _: PSeqType => attachMeta(SeqIndex(goExp(base), goExp(index)))
+        case _: PMapType => attachMeta(MapLookup(goExp(base), goExp(index)))
         case t => sys.error(s"unexpected type $t")
       }
 
       case PSeqSlice(seq, _, s, _, e, _) =>
         val es = goExp(seq)
-        val ss = e.map(goExp).map(SeqTake(es, _)(pos, info)).getOrElse(es)
-        s.map(goExp).map(SeqDrop(ss, _)(pos, info)).getOrElse(ss)
+        val ss = e.map(goExp).map(e1 => attachMeta(SeqTake(es, e1))).getOrElse(es)
+        s.map(goExp).map(e1 => attachMeta(SeqDrop(ss, e1))).getOrElse(ss)
 
       case PUpdate(base, _, key, _, value, _) => base.typ match {
-        case _: PSeqType => SeqUpdate(goExp(base), goExp(key), goExp(value))(pos, info)
-        case _: PMapType => MapUpdate(goExp(base), goExp(key), goExp(value))(pos, info)
+        case _: PSeqType => attachMeta(SeqUpdate(goExp(base), goExp(key), goExp(value)))
+        case _: PMapType => attachMeta(MapUpdate(goExp(base), goExp(key), goExp(value)))
         case t => sys.error(s"unexpected type $t")
       }
 
       case PSize(_, base, _) => base.typ match {
-        case _: PSeqType => SeqLength(goExp(base))(pos, info)
-        case _: PMapType => MapCardinality(goExp(base))(pos, info)
-        case _: PSetType | _: PMultisetType => AnySetCardinality(goExp(base))(pos, info)
+        case _: PSeqType => attachMeta(SeqLength(goExp(base)))
+        case _: PMapType => attachMeta(MapCardinality(goExp(base)))
+        case _: PSetType | _: PMultisetType => attachMeta(AnySetCardinality(goExp(base)))
         case t => sys.error(s"unexpected type $t")
       }
 
       case _: PEmptySet =>
-        EmptySet(ttyp(pexp.typ.asInstanceOf[PSetType].elementType.inner))(pos, info)
+        attachMeta(EmptySet(ttyp(pexp.typ.asInstanceOf[PSetType].elementType.inner)))
       case PExplicitSet(_, elems) =>
-        ExplicitSet(elems.inner.toSeq map goExp)(pos, info)
+        attachMeta(ExplicitSet(elems.inner.toSeq map goExp))
       case _: PEmptyMultiset =>
-        EmptyMultiset(ttyp(pexp.typ.asInstanceOf[PMultisetType].elementType.inner))(pos, info)
+        attachMeta(EmptyMultiset(ttyp(pexp.typ.asInstanceOf[PMultisetType].elementType.inner)))
       case PExplicitMultiset(_, elems) =>
-        ExplicitMultiset(elems.inner.toSeq map goExp)(pos, info)
+        attachMeta(ExplicitMultiset(elems.inner.toSeq map goExp))
 
-      case _: PEmptyMap => EmptyMap(
+      case _: PEmptyMap => attachMeta(EmptyMap(
         ttyp(pexp.typ.asInstanceOf[PMapType].keyType),
         ttyp(pexp.typ.asInstanceOf[PMapType].valueType)
-      )(pos, info)
+      ))
       case PExplicitMap(_, elems) =>
-        ExplicitMap(elems.inner.toSeq map goExp)(pos, info)
+        attachMeta(ExplicitMap(elems.inner.toSeq map goExp))
       case PMaplet(key, _, value) =>
-        Maplet(goExp(key), goExp(value))(pos, info)
+        attachMeta(Maplet(goExp(key), goExp(value)))
       case PMapDomain(_, base) =>
-        MapDomain(goExp(base.inner))(pos, info)
+        attachMeta(MapDomain(goExp(base.inner)))
       case PMapRange(_, base) =>
-        MapRange(goExp(base.inner))(pos, info)
+        attachMeta(MapRange(goExp(base.inner)))
 
-      case t: PExtender => t.translateExp(this)
+      case t: PExtender =>
+        val exp = t.translateExp(this)
+        exp.withMeta((exp.pos, MakeInfoPair(AnalysisSourceInfo.createAnalysisSourceInfo(exp), exp.info), exp.errT))
     }
-    expr.withMeta((expr.pos, MakeInfoPair(AnalysisSourceInfo.createAnalysisSourceInfo(expr), expr.info), expr.errT))
   }
 
   implicit def liftPos(node: Where): SourcePosition = Translator.liftWhere(node)
