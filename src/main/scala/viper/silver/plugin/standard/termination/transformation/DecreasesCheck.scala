@@ -65,8 +65,7 @@ trait DecreasesCheck extends ProgramManager with ErrorReporter {
    * @param tupleCondition     for which tuple decreasing should be checked (default: true)
    * @param errTrafo           for termination related assertions
    * @param reasonTrafoFactory for termination related assertion reasons
-   * @return termination check as a
-   *         Stmt (if decreasing and bounded are defined, otherwise EmptyStmt)
+   * @return termination check as a Assert Stmt (if decreasing and bounded are defined, otherwise EmptyStmt)
    */
   protected def createTupleCheck(tupleCondition: Option[Exp], biggerTuple: Seq[Exp], smallerTuple: Seq[Exp],
                                  errTrafo: ErrTrafo, reasonTrafoFactory: ReasonTrafoFactory): Stmt = {
