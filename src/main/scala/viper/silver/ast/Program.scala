@@ -6,14 +6,15 @@
 
 package viper.silver.ast
 
-import viper.silver.ast.pretty.{Fixity, Infix, LeftAssociative, NonAssociative, Prefix, PrettyPrintPrimitives, RightAssociative}
-import utility.{Consistency, DomainInstances, Nodes, Types, Visitor}
 import viper.silver.ast.MagicWandStructure.MagicWandStructure
+import viper.silver.ast.pretty._
 import viper.silver.ast.utility.Expressions.{asAccessFragment, asPureFragment}
+import viper.silver.ast.utility._
 import viper.silver.ast.utility.rewriter.StrategyBuilder
 import viper.silver.cfg.silver.{CfgGenerator, SilverCfg}
-import viper.silver.verifier.ConsistencyError
+import viper.silver.dependencyAnalysis.{DependencyType, DependencyTypeInfo, StringAnalysisSourceInfo}
 import viper.silver.utility.{CacheHelper, DependencyAware}
+import viper.silver.verifier.ConsistencyError
 
 import scala.collection.immutable
 import scala.reflect.ClassTag
@@ -407,8 +408,9 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
     case Some(actualBody) =>
       actualBody
     case None =>
+      val analysisInfo = MakeInfoPair(StringAnalysisSourceInfo("assume false", NoPosition), DependencyTypeInfo(DependencyType.Internal))
       Seqn(
-        Vector(Inhale(FalseLit()())()),
+        Vector(Inhale(FalseLit()(info=analysisInfo))(info=analysisInfo)),
         Vector.empty
       )()
   }

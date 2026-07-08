@@ -10,8 +10,8 @@ import viper.silver.ast._
 import viper.silver.cfg._
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.cfg.utility.{CfgSimplifier, IdInfo, LoopDetector}
-import java.util.concurrent.atomic.AtomicInteger
 
+import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
 
 /**
