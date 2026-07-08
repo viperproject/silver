@@ -378,6 +378,8 @@ case class Translator(program: PProgram) {
     expInternal(pexp, pos, info, dependencyType)
   }
 
+  protected def expInternal(pexp: PExp, pos: PExp, info: Info): Exp = expInternal(pexp, pos, info, None)
+
   protected def expInternal(pexp: PExp, pos: PExp, info: Info, dependencyType: Option[DependencyType]): Exp = {
 
     def goExp(parseExp: PExp) = exp(parseExp, dependencyType)
