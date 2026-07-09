@@ -9,6 +9,8 @@ package viper.silver.dependencyAnalysis
 import viper.silver.ast
 import viper.silver.ast._
 
+import java.util.concurrent.atomic.AtomicInteger
+
 object AnalysisSourceInfo {
   def extractPositionString(p: Position): String = {
     p match {
@@ -79,10 +81,16 @@ case class StmtAnalysisSourceInfo(source: ast.Stmt, pos: Position) extends Analy
   override def getDescription: String = source.toString().replaceAll("\n", "\t")
 }
 
-case class StringAnalysisSourceInfo(description: String, position: Position) extends AnalysisSourceInfo {
+case class StringAnalysisSourceInfo(description: String, position: Position = NoPosition) extends AnalysisSourceInfo {
   override def toString: String = getDescription + " (" + getPositionString + ")"
   override def getPosition: Position = position
 
   override def getDescription: String = description.replaceAll("\n", "\t")
+}
+
+object StringAnalysisSourceInfo {
+  private val id: AtomicInteger = new AtomicInteger(0)
+  def createUnique(description: String, position: Position = NoPosition): StringAnalysisSourceInfo =
+    StringAnalysisSourceInfo(s"$description-${id.getAndIncrement()}", position)
 }
 
