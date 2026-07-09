@@ -309,17 +309,19 @@ case class Translator(program: PProgram) {
       case _ => sys.error(s"Found invalid target of assignment")
     }
     val assn = assign(ts.map(_._2))
+    val dependencyAnalysisInfo = MakeInfoPair(AnalysisSourceInfo.createAnalysisSourceInfo(assn), DependencyTypeInfo.getDependencyTypeInfo(assn))
+
     val tmps = ts.flatMap(_._1)
     if (tmps.isEmpty)
       return assn
     if (!Consistency.noDuplicates(tmps.map(_._4.lhs.field)))
       Consistency.messages ++= FastMessaging.message(errorNode, s"multiple targets which access the same field are not allowed")
     Seqn(
-      tmps.map(_._3) ++
+      tmps.map(t => t._3.withMeta(t._3.pos, MakeInfoPair(t._3.info, dependencyAnalysisInfo),t._3.errT)) ++
       Seq(assn) ++
-      tmps.map(_._4),
+      tmps.map(t => t._4.withMeta(t._4.pos, MakeInfoPair(t._4.info, dependencyAnalysisInfo),t._4.errT)),
       tmps.flatMap(t => Seq(t._1, t._2))
-    )(assn.pos, assn.info)
+    )(assn.pos, MakeInfoPair(assn.info, dependencyAnalysisInfo))
   }
 
   /** Helper function that translates subexpressions common to a Havoc or Havocall statement */
