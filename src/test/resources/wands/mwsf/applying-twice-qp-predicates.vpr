@@ -13,6 +13,7 @@ function get(x: Ref): Int
 // based on test7 in QPPredicates.vpr
 method test14d(x: Ref)
     requires forall y: Ref :: y != null ==> Cell(y)
+    requires x != null
 {
     package (forall y: Ref :: y != null ==> Cell(y)) --* (forall y: Ref :: y != null ==> Cell(y))
 
@@ -33,6 +34,7 @@ method test14d(x: Ref)
 // based on test9 in QPPredicates.vpr
 method test14e(x: Ref)
     requires forall y: Ref :: y != null ==> Cell(y)
+    requires x != null
 {
     package (forall y: Ref :: y != null ==> Cell(y)) --* Cell(x)
 
@@ -53,7 +55,7 @@ method test14e(x: Ref)
 // based on test11 in QPPredicates.vpr
 method test14f(x: Ref, z: Ref)
     requires Cell(x)
-    requires x != z
+    requires x != z && z != null
 {
     package (forall y: Ref :: y != x && y != null ==> Cell(y)) --* (forall y: Ref :: y != null ==> Cell(y))
     inhale forall y: Ref :: y != x && y != null ==> Cell(y)

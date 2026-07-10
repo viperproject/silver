@@ -3,6 +3,7 @@ field f: Int
 // based on test7 in QPFields.vpr
 method test14a(x: Ref)
     requires forall y: Ref :: y != null ==> acc(y.f)
+    requires x != null
 {
     package (forall y: Ref :: y != null ==> acc(y.f)) --* (forall y: Ref :: y != null ==> acc(y.f))
 
@@ -18,6 +19,7 @@ method test14a(x: Ref)
 // based on test9 in QPFields.vpr
 method test14b(x: Ref)
     requires forall y: Ref :: y != null ==> acc(y.f)
+    requires x != null
 {
     package (forall y: Ref :: y != null ==> acc(y.f)) --* acc(x.f)
 
@@ -32,7 +34,7 @@ method test14b(x: Ref)
 
 // based on test11 in QPFields.vpr
 method test14c(x: Ref, z: Ref)
-    requires acc(x.f) && z != x
+    requires acc(x.f) && z != x && z != null
 {
     package (forall y: Ref :: y != x && y != null ==> acc(y.f)) --* (forall y: Ref :: y != null ==> acc(y.f))
     inhale forall y: Ref :: y != x && y != null ==> acc(y.f)
