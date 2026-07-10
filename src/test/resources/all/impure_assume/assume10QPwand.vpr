@@ -44,10 +44,10 @@ method m(xs: Set[Ref], ys: Set[Ref], zs: Set[Ref],
   assume CONTAINED(a, xs2, b, ys2, c, zs2)
 
   //:: UnexpectedOutput(assert.failed:wand.not.found, /carbon/issue/257/)
-  //:: UnexpectedOutput(assert.failed:wand.not.found, /silicon/issue/000/)
+  //:: UnexpectedOutput(assert.failed:wand.not.found, /silicon/issue/204/)
   assert WAND(a, b, c, q) && WAND(a, b, c, q)
 
-  //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/000/)
+  //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/204/)
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert q == write ==> false // MS: Can we expect this to hold?
 }
