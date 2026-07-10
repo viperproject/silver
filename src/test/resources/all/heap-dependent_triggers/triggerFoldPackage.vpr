@@ -12,7 +12,6 @@ method m1(xs: Set[Ref], y: Ref, zs: Seq[Ref]) {
     assume z in zs
     assume !(z in xs)
     package acc(z.f) --* acc(y.f)
-
     //:: ExpectedOutput(assert.failed:assertion.false)
     assert z != y
 }
