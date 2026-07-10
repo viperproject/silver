@@ -1,3 +1,4 @@
+//:: IgnoreFile(/carbon/issue/449/)
 field f: Int
 
 // based on test7 in QPFields.vpr
