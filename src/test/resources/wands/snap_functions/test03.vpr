@@ -1,0 +1,47 @@
+field f: Int
+
+method test03a(x: Ref)
+{
+    inhale acc(x.f) && x.f == 42
+
+    package acc(x.f) --* acc(x.f)
+
+    assert applying (acc(x.f) --* acc(x.f)) in x.f == 42
+}
+
+method test03b(x: Ref)
+{
+    inhale acc(x.f) && x.f == 42
+
+    package acc(x.f) --* acc(x.f)
+
+    apply acc(x.f) --* acc(x.f)
+
+    assert x.f == 42
+}
+
+method test03c(x: Ref)
+{
+    inhale acc(x.f) && x.f == 42
+
+    package acc(x.f) --* acc(x.f)
+
+    assert applying (acc(x.f) --* acc(x.f)) in x.f == 42
+
+    apply acc(x.f) --* acc(x.f)
+
+    assert x.f == 42
+}
+
+method test03d(x: Ref, a: Int)
+{
+    inhale acc(x.f) && x.f == a
+
+    package acc(x.f) --* acc(x.f)
+
+    assert applying (acc(x.f) --* acc(x.f)) in x.f == a
+
+    apply acc(x.f) --* acc(x.f)
+
+    assert x.f == a
+}
