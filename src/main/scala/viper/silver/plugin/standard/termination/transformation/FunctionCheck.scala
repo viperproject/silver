@@ -140,7 +140,7 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
     * introspection etc. It would be unsound in the presence of permission introspection, and possibly incomplete
     * in the presence of method calls etc.
     */
-  def removeConcretePermissionAmounts[N <: Node](n: N): N = n.transform{
+  def removeConcretePermissionAmounts[N <: Node](n: N): N = n.transform({
     case u@Unfold(pap@PredicateAccessPredicate(loc, _)) =>
       // Assume the permission amount is strictly positive; if not, there will be a verification error anyway.
       Unfold(PredicateAccessPredicate(loc, Some(WildcardPerm()()))(pap.pos, pap.info, pap.errT))(u.pos, u.info, u.errT)
@@ -189,7 +189,7 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
           val completeImplies = Implies(lhs, rhsTransformed)(r.pos, r.info, r.errT)
           qp.copy(exp = completeImplies)(qp.pos, qp.info, qp.errT)
       }
-  }
+  }, Traverse.TopDown)
 
 
   /**

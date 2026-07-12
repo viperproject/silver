@@ -1,0 +1,14 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+field n: Int
+function f(num: Int, i: Int): Int
+
+method m(r: Ref)
+  ensures forall i: Int :: {f(r.n, i)} true
+{
+  refute false
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert 1 == 2
+}

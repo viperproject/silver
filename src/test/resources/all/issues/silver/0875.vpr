@@ -1,0 +1,298 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+domain Equality[T]  {
+
+  function eq(l: T, r: T): Bool
+
+  axiom {
+    (forall l: T, r: T ::
+      { (eq(l, r): Bool) }
+      (eq(l, r): Bool) == (l == r))
+  }
+}
+
+
+
+domain ShArray[T]  {
+
+  function ShArrayfirst(r: T): ShArray[T]
+
+  function ShArraylen(a: ShArray[T]): Int
+
+  function ShArrayloc(a: ShArray[T], i: Int): T
+
+  function ShArraysecond(r: T): Int
+
+  axiom {
+    (forall a: ShArray[T] ::
+      { (ShArraylen(a): Int) }
+      (ShArraylen(a): Int) >= 0)
+  }
+
+  axiom {
+    (forall a: ShArray[T], i: Int ::
+      { (ShArrayloc(a, i): T) }
+      0 <= i && i < (ShArraylen(a): Int) ==>
+      (ShArrayfirst((ShArrayloc(a, i): T)): ShArray[T]) == a &&
+      (ShArraysecond((ShArrayloc(a, i): T)): Int) == i)
+  }
+}
+
+domain ShStruct2[T0, T1]  {
+
+  function ShStructget0of2(x: ShStruct2[T0, T1]): T0
+
+  function ShStructget1of2(x: ShStruct2[T0, T1]): T1
+
+  function ShStructrev0of2(v0: T0): ShStruct2[T0, T1]
+
+  function ShStructrev1of2(v1: T1): ShStruct2[T0, T1]
+
+  axiom {
+    (forall x: ShStruct2[T0, T1] ::
+      { (ShStructget0of2(x): T0) }
+      (ShStructrev0of2((ShStructget0of2(x): T0)): ShStruct2[T0, T1]) == x)
+  }
+
+  axiom {
+    (forall x: ShStruct2[T0, T1] ::
+      { (ShStructget1of2(x): T1) }
+      (ShStructrev1of2((ShStructget1of2(x): T1)): ShStruct2[T0, T1]) == x)
+  }
+
+  axiom {
+    (forall x: ShStruct2[T0, T1], y: ShStruct2[T0, T1] ::
+      { (eq(x, y): Bool) }
+      (eq(x, y): Bool) ==
+      ((ShStructget0of2(x): T0) == (ShStructget0of2(y): T0) &&
+      (ShStructget1of2(x): T1) == (ShStructget1of2(y): T1)))
+  }
+}
+
+domain Slice[T]  {
+
+  function sarray(s: Slice[T]): ShArray[T]
+
+  function scap(s: Slice[T]): Int
+
+  function slen(s: Slice[T]): Int
+
+  function smake(a: ShArray[T], o: Int, l: Int, c: Int): Slice[T]
+
+  function soffset(s: Slice[T]): Int
+
+  axiom deconstructor_over_constructor_array {
+    (forall a: ShArray[T], o: Int, l: Int, c: Int ::
+      { (sarray((smake(a, o, l, c): Slice[T])): ShArray[T]) }
+      0 <= o && (0 <= l && (l <= c && o + c <= (ShArraylen(a): Int))) ==>
+      (sarray((smake(a, o, l, c): Slice[T])): ShArray[T]) == a)
+  }
+
+  axiom deconstructor_over_constructor_cap {
+    (forall a: ShArray[T], o: Int, l: Int, c: Int ::
+      { (scap((smake(a, o, l, c): Slice[T])): Int) }
+      0 <= o && (0 <= l && (l <= c && o + c <= (ShArraylen(a): Int))) ==>
+      (scap((smake(a, o, l, c): Slice[T])): Int) == c)
+  }
+
+  axiom deconstructor_over_constructor_len {
+    (forall a: ShArray[T], o: Int, l: Int, c: Int ::
+      { (slen((smake(a, o, l, c): Slice[T])): Int) }
+      0 <= o && (0 <= l && (l <= c && o + c <= (ShArraylen(a): Int))) ==>
+      (slen((smake(a, o, l, c): Slice[T])): Int) == l)
+  }
+
+  axiom deconstructor_over_constructor_offset {
+    (forall a: ShArray[T], o: Int, l: Int, c: Int ::
+      { (soffset((smake(a, o, l, c): Slice[T])): Int) }
+      0 <= o && (0 <= l && (l <= c && o + c <= (ShArraylen(a): Int))) ==>
+      (soffset((smake(a, o, l, c): Slice[T])): Int) == o)
+  }
+
+  axiom {
+    (forall s: Slice[T] ::
+      { (sarray(s): ShArray[T]) }
+      { (soffset(s): Int) }
+      { (slen(s): Int) }
+      { (scap(s): Int) }
+      s ==
+      (smake((sarray(s): ShArray[T]), (soffset(s): Int), (slen(s): Int), (scap(s): Int)): Slice[T]))
+  }
+
+  axiom {
+    (forall s: Slice[T] ::
+      { (slen(s): Int) }
+      { (scap(s): Int) }
+      (slen(s): Int) <= (scap(s): Int))
+  }
+
+  axiom {
+    (forall s: Slice[T] ::
+      { (soffset(s): Int), (scap(s): Int) }
+      { (ShArraylen((sarray(s): ShArray[T])): Int) }
+      (soffset(s): Int) + (scap(s): Int) <=
+      (ShArraylen((sarray(s): ShArray[T])): Int))
+  }
+
+  axiom {
+    (forall s: Slice[T] :: { (slen(s): Int) } 0 <= (slen(s): Int))
+  }
+
+  axiom {
+    (forall s: Slice[T] :: { (soffset(s): Int) } 0 <= (soffset(s): Int))
+  }
+}
+
+domain String  {
+
+  function strConcat(l: Int, r: Int): Int
+
+  function strLen(id: Int): Int
+
+  unique function stringLit(): Int
+
+  axiom {
+    (forall l: Int, r: Int ::
+      { strLen(strConcat(l, r)) }
+      strLen(strConcat(l, r)) == strLen(l) + strLen(r))
+  }
+
+  axiom {
+    (forall str: Int :: { strLen(str) } 0 <= strLen(str))
+  }
+
+  axiom {
+    strLen(stringLit()) == 0
+  }
+}
+
+domain Tuple2[T0, T1]  {
+
+  function get0of2(p: Tuple2[T0, T1]): T0
+
+  function get1of2(p: Tuple2[T0, T1]): T1
+
+  function tuple2(t0: T0, t1: T1): Tuple2[T0, T1]
+
+  axiom getter_over_tuple2 {
+    (forall t0: T0, t1: T1 ::
+      { (tuple2(t0, t1): Tuple2[T0, T1]) }
+      (get0of2((tuple2(t0, t1): Tuple2[T0, T1])): T0) == t0 &&
+      (get1of2((tuple2(t0, t1): Tuple2[T0, T1])): T1) == t1)
+  }
+
+  axiom tuple2_over_getter {
+    (forall p: Tuple2[T0, T1] ::
+      { (get0of2(p): T0) }
+      { (get1of2(p): T1) }
+      (tuple2((get0of2(p): T0), (get1of2(p): T1)): Tuple2[T0, T1]) == p)
+  }
+}
+
+domain WellFoundedOrder[T]  {
+
+  function bounded(arg1: T): Bool
+
+  function decreasing(arg1: T, arg2: T): Bool
+}
+
+field pointerBar: ShStruct2[Ref, Ref]
+
+field sliceString: Slice[Ref]
+
+field string: Int
+
+
+function sadd(left: Int, right: Int): Int
+  ensures result == left + right
+  decreases
+{
+  left + right
+}
+
+
+function ssliceFromSlice_Ref(s: Slice[Ref], i: Int, j: Int): Slice[Ref]
+  requires 0 <= i
+  requires i <= j
+  requires j <= (scap(s): Int)
+  ensures (soffset(result): Int) == (soffset(s): Int) + i
+  ensures (slen(result): Int) == j - i
+  ensures (scap(result): Int) == (scap(s): Int) - i
+  ensures (sarray(result): ShArray[Ref]) == (sarray(s): ShArray[Ref])
+  decreases _
+
+
+function toAbstractChain2(bars_V0: Slice[Ref], perms_V0: Perm): Seq[Tuple2[Seq[Int], Seq[Int]]]
+  requires perms_V0 > 0 / 1
+  requires (forall k_V1: Int ::
+      0 <= k_V1 && k_V1 < (slen(bars_V0): Int) ==>
+      acc((ShArrayloc((sarray(bars_V0): ShArray[Ref]), sadd((soffset(bars_V0): Int),
+      k_V1)): Ref).pointerBar, write))
+  requires (forall k_V2: Int ::
+      0 <= k_V2 && k_V2 < (slen(bars_V0): Int) ==>
+      acc(bar((ShArrayloc((sarray(bars_V0): ShArray[Ref]), sadd((soffset(bars_V0): Int),
+      k_V2)): Ref).pointerBar, (slen(bars_V0): Int) -
+      k_V2 -
+      1), perms_V0))
+  ensures (slen(bars_V0): Int) == |result|
+  ensures (forall k_V3: Int ::
+      0 <= k_V3 && k_V3 < (slen(bars_V0): Int) ==>
+      (unfolding acc(bar((ShArrayloc((sarray(bars_V0): ShArray[Ref]),
+        sadd((soffset(bars_V0): Int), k_V3)): Ref).pointerBar,
+        (slen(bars_V0): Int) - k_V3 - 1), perms_V0) in
+        (unfolding acc(acc_strs((ShStructget0of2((ShArrayloc((sarray(bars_V0): ShArray[Ref]),
+          sadd((soffset(bars_V0): Int), k_V3)): Ref).pointerBar): Ref).sliceString), perms_V0) in
+          toSeq2((ShStructget0of2((ShArrayloc((sarray(bars_V0): ShArray[Ref]),
+          sadd((soffset(bars_V0): Int), k_V3)): Ref).pointerBar): Ref).sliceString)) ==
+        (get0of2(result[k_V3]): Seq[Int])))
+  ensures (forall k_V4: Int ::
+      0 <= k_V4 && k_V4 < (slen(bars_V0): Int) ==>
+      (unfolding acc(bar((ShArrayloc((sarray(bars_V0): ShArray[Ref]),
+        sadd((soffset(bars_V0): Int), k_V4)): Ref).pointerBar,
+        (slen(bars_V0): Int) - k_V4 - 1), perms_V0) in
+        (unfolding acc(acc_strs((ShStructget1of2((ShArrayloc((sarray(bars_V0): ShArray[Ref]),
+          sadd((soffset(bars_V0): Int), k_V4)): Ref).pointerBar): Ref).sliceString), perms_V0) in
+          toSeq2((ShStructget1of2((ShArrayloc((sarray(bars_V0): ShArray[Ref]),
+          sadd((soffset(bars_V0): Int), k_V4)): Ref).pointerBar): Ref).sliceString)) ==
+        (get1of2(result[k_V4]): Seq[Int])))
+  decreases
+
+
+function toSeq2(s_V0: Slice[Ref]): Seq[Int]
+  requires (forall j_V1: Int ::
+      0 <= j_V1 && j_V1 < (slen(s_V0): Int) ==>
+      acc((ShArrayloc((sarray(s_V0): ShArray[Ref]), sadd((soffset(s_V0): Int),
+      j_V1)): Ref).string, write))
+  ensures |result| == (slen(s_V0): Int)
+  ensures (forall j_V2: Int ::
+      0 <= j_V2 && j_V2 < (slen(s_V0): Int) ==>
+      (ShArrayloc((sarray(s_V0): ShArray[Ref]), sadd((soffset(s_V0): Int), j_V2)): Ref).string ==
+      result[j_V2])
+  decreases (slen(s_V0): Int)
+{
+  ((slen(s_V0): Int) == 0 ?
+    Seq[Int]() :
+    toSeq2(ssliceFromSlice_Ref(s_V0, 0, (slen(s_V0): Int) - 1)) ++
+    Seq((ShArrayloc((sarray(s_V0): ShArray[Ref]), sadd((soffset(s_V0): Int),
+    (slen(s_V0): Int) - 1)): Ref).string))
+}
+
+predicate bar(bar_V0: ShStruct2[Ref, Ref], k_V0: Int) {
+  (let fn$$0 ==
+    (bar_V0) in
+    acc((ShStructget0of2(fn$$0): Ref).sliceString, write) &&
+    acc((ShStructget1of2(fn$$0): Ref).sliceString, write)) &&
+  acc(acc_strs((ShStructget0of2(bar_V0): Ref).sliceString), write) &&
+  acc(acc_strs((ShStructget1of2(bar_V0): Ref).sliceString), write)
+}
+
+predicate acc_strs(arr_V0: Slice[Ref]) {
+  (forall k_V1: Int ::
+    { (ShArrayloc((sarray(arr_V0): ShArray[Ref]), sadd((soffset(arr_V0): Int),
+    k_V1)): Ref) }
+    0 <= k_V1 && k_V1 < (slen(arr_V0): Int) ==>
+    acc((ShArrayloc((sarray(arr_V0): ShArray[Ref]), sadd((soffset(arr_V0): Int),
+    k_V1)): Ref).string, write))
+}

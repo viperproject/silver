@@ -9,7 +9,7 @@ package viper.silver.cfg.utility
 import java.util.concurrent.atomic.AtomicInteger
 
 import viper.silver.ast.utility.rewriter.Traverse
-import viper.silver.ast.{Exp, If, Info, Infoed, LocalVar, MakeInfoPair, NoInfo, Seqn, Stmt}
+import viper.silver.ast.{Exp, If, Info, Infoed, Label, LocalVar, MakeInfoPair, NoInfo, Seqn, Stmt}
 import viper.silver.cfg._
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.cfg.silver.{CfgGenerator, SilverCfg}
@@ -84,8 +84,11 @@ object LoopDetector {
     *         is part of a different set of loops than s.
     *         Furthermore, unique identifiers may be added dependent on the provided parameters.
     *         2) A map from loop identifiers to corresponding written variables (depending on the provided parameters).
+    *         3) All labels (from the provided AST) that declare invariants but were not detected to be loop heads.
+    *         The invariants of such labels are not used for verification, i.e., they are silently ignored unless
+    *         callers report them.
     */
-  def detect(body: Seqn, generateUniqueIds: Boolean, computeWrittenVars: Boolean): (Seqn, Option[Map[Int, Seq[LocalVar]]]) = {
+  def detect(body: Seqn, generateUniqueIds: Boolean, computeWrittenVars: Boolean): (Seqn, Option[Map[Int, Seq[LocalVar]]], Seq[Label]) = {
       // extend statements in ast with ids
       val id = new AtomicInteger(0)
       val withIds = body.transformForceCopy({
@@ -103,6 +106,19 @@ object LoopDetector {
       val (loops, dominators) = naturalLoops[SilverCfg, Stmt, Exp](cfg, syntacticLoops)
       loops.foldLeft(syntacticLoops) {
         case (current, (key, value)) => current.updated(key, current.getOrElse(key, Set.empty) ++ value)
+      }
+
+      // Collect the labels that declare invariants but are not loop heads. Blocks starting with such a label are
+      // statement blocks whose invs field is set (see CfgGenerator.finalizeBlock), and the loop heads are exactly
+      // the values of the computed loops map. The invariants of the collected labels do not take part in the
+      // verification, so callers should report them as ignored.
+      val loopHeadBlocks = loops.values.flatten.toSet
+      val ignoredInvariantLabelNames = cfg.blocks.collect {
+        case block@StatementBlock(stmts) if block.invs.isDefined && !loopHeadBlocks.contains(block) =>
+          stmts.collectFirst { case label: Label => label.name }
+      }.flatten.toSet
+      val labelsWithIgnoredInvariants = body.deepCollect {
+        case label: Label if ignoredInvariantLabelNames.contains(label.name) => label
       }
 
       val writtenVars = writtenVariables(cfg, dominators)
@@ -210,7 +226,7 @@ object LoopDetector {
       }, Traverse.TopDown)
 
       // return updated method
-      (withInfo,  loopToWrittenVars)
+      (withInfo, loopToWrittenVars, labelsWithIgnoredInvariants)
   }
 
   private def naturalLoops[C <: Cfg[S, E], S, E](cfg: C, loops: Map[Block[S, E], Set[Block[S, E]]]) : (Map[Block[S, E], Set[Block[S, E]]], Dominators[S,E]) = {

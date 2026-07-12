@@ -1,0 +1,12 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field val: Int
+
+function foo(refs: Set[Ref]): Bool
+  requires forall x: Ref :: x in refs ==> acc(x.val)
+
+method test(refs: Set[Ref]) {
+  inhale forall x: Ref :: x in refs ==> acc(x.val)
+  inhale forall subs: Set[Ref] :: subs subset refs ==> foo(subs)
+}
