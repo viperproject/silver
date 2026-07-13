@@ -70,10 +70,10 @@ case class ExpectedCounterexampleAnnotation(id: OutputAnnotationId, file: Path, 
       val rcvValue = resolveWoPerm(rcv, model)
       rcvValue.flatMap { rcvExp =>
         model.heapMap.get("current").flatMap(_.heapEntries.find({
-          case (f: ast.Field, ffi: FieldFinalEntry) if f.name == idnuse.name && ffi.ref == rcvExp.toString => true
+          case (f: ast.Field, ffi: FieldResolvedEntry) if f.name == idnuse.name && ffi.ref == rcvExp.toString => true
           case _ => false
         }).map(he =>
-          (he._2.asInstanceOf[FieldFinalEntry].entry, he._2.asInstanceOf[FieldFinalEntry].perm)
+          (he._2.asInstanceOf[FieldResolvedEntry].entry, he._2.asInstanceOf[FieldResolvedEntry].perm)
         ))
       }
     case PLookup(base, _, idx, _) => resolveWoPerm(Vector(base, idx), model).flatMap {
@@ -82,13 +82,14 @@ case class ExpectedCounterexampleAnnotation(id: OutputAnnotationId, file: Path, 
       case _ => None
     }
     case PCall(idnuse, args, _) =>
-      val argValues = args.inner.toSeq.map(a => resolveWoPerm(a, model).map(_.toString))
+      val argValues = args.inner.toSeq.map(a => resolveWoPerm(a, model))
       if (argValues.forall(_.isDefined)) {
+        val resolvedArgs = argValues.map(_.get)
         model.heapMap.get("current").flatMap(_.heapEntries.find({
-          case (p: ast.Predicate, pe: PredFinalEntry) if p.name == idnuse.name && pe.args == argValues.map(_.get) => true
+          case (p: ast.Predicate, pe: PredResolvedEntry) if p.name == idnuse.name && pe.args == resolvedArgs => true
           case _ => false
         }).map(he =>
-          (ast.BackendValueLit("", ast.InternalType)(), he._2.asInstanceOf[PredFinalEntry].perm)
+          (ast.BackendValueLit("", ast.InternalType)(), he._2.asInstanceOf[PredResolvedEntry].perm)
         ))
       } else {
         None

@@ -22,7 +22,7 @@ trait RawCounterexample {
   val allSets: Seq[CECollection]
   val allMultisets: Seq[CECollection]
   lazy val allCollections: Seq[CECollection] = allSequences ++ allSets ++ allMultisets
-  def allBasicHeaps: Seq[(String, BasicHeap)]
+  def allRawHeaps: Seq[(String, RawHeap)]
 
   val domainEntries: Seq[BasicDomainEntry]
   val nonDomainFunctions: Seq[BasicFunctionEntry]
@@ -93,7 +93,7 @@ case class StoreEntry(id: AbstractLocalVar, entry: ast.Exp) {
   override lazy val toString = s"Variable Name: ${id.name}, Value: ${entry.toString}, Type: ${id.typ.toString}"
 }
 
-case class HeapCounterexample(heapEntries: Seq[(Resource, FinalHeapEntry)]) {
+case class HeapCounterexample(heapEntries: Seq[(Resource, ResolvedHeapEntry)]) {
   var finalString = ""
   var containsQP = false
   heapEntries.foreach { case (re,he) => if (he.entryType == QPFieldType || he.entryType == QPPredicateType || he.entryType == QPMagicWandType) containsQP = true}
@@ -103,40 +103,40 @@ case class HeapCounterexample(heapEntries: Seq[(Resource, FinalHeapEntry)]) {
   override lazy val toString = finalString
 }
 
-sealed trait FinalHeapEntry {
+sealed trait ResolvedHeapEntry {
   val entryType : HeapEntryType
 }
 
-case class FieldFinalEntry(ref: String, field: String, entry: ast.Exp, perm: Option[Rational], typ: Type, het: HeapEntryType) extends FinalHeapEntry {
+case class FieldResolvedEntry(ref: String, field: String, entry: ast.Exp, perm: Option[Rational], typ: Type, het: HeapEntryType) extends ResolvedHeapEntry {
   val entryType = het
   override lazy val toString = s"Field Entry: $ref.$field --> (Value: ${entry.toString}, Type: ${typ}, Perm: ${perm.getOrElse("#undefined").toString})"
 }
 
-case class PredFinalEntry(name: String, args: Seq[String], perm: Option[Rational], insidePredicate: Option[scala.collection.immutable.Map[Exp, ModelEntry]], het: HeapEntryType) extends FinalHeapEntry {
+case class PredResolvedEntry(name: String, args: Seq[Exp], perm: Option[Rational], insidePredicate: Option[scala.collection.immutable.Map[Exp, ModelEntry]], het: HeapEntryType) extends ResolvedHeapEntry {
   val entryType = het
   override lazy val toString = s"Predicate Entry: $name(${args.mkString("", ", ", ")")} --> (Perm: ${perm.getOrElse("#undefined").toString}) ${if (insidePredicate.isDefined && !insidePredicate.get.isEmpty) insidePredicate.get.toSeq.map(x => s"${x._1} --> ${x._2}")mkString("{\n   ", "\n   ", "\n}") else ""}"
 }
 
-case class WandFinalEntry(name: String, left: Exp, right: Exp, args: Seq[Exp], perm: Option[Rational], het: HeapEntryType) extends FinalHeapEntry {
+case class WandResolvedEntry(name: String, left: Exp, right: Exp, args: Seq[Exp], perm: Option[Rational], het: HeapEntryType) extends ResolvedHeapEntry {
   val entryType = het
   override lazy val toString = s"Magic Wand Entry: $name(${args.map(_.toString).mkString(", ")}) --> (Left: ${left.toString}, Right: ${right.toString}, Perm: ${perm.getOrElse("#undefined").toString})"
 }
 
-object WandFinalEntry {
+object WandResolvedEntry {
   /**
     * Builds a wand entry for the magic-wand structure `mw`, substituting the instance's argument
     * values (`argValues`, given in the order of `subexpressionsToEvaluate`) into the wand's two
     * sides. The substituted values are the same counterexample literals used elsewhere in the model.
     */
   def fromStructure(name: String, mw: ast.MagicWandStructure.MagicWandStructure, argValues: Seq[String],
-                    perm: Option[Rational], het: HeapEntryType, program: ast.Program): WandFinalEntry = {
+                    perm: Option[Rational], het: HeapEntryType, program: ast.Program): WandResolvedEntry = {
     val structure = mw.structure(program, true)
     val holes = structure.subexpressionsToEvaluate(program)
     val argExps: Seq[ast.Exp] = holes.zip(argValues).map { case (hole, v) => CounterexampleValue.literal(v, Some(hole.typ)) }
     val repl: scala.collection.immutable.Map[ast.Node, ast.Node] =
       scala.collection.immutable.Map.from(holes.zip(argExps): Iterable[(ast.Node, ast.Node)])
     val transformed = structure.replace(repl)
-    WandFinalEntry(name, transformed.left, transformed.right, argExps, perm, het)
+    WandResolvedEntry(name, transformed.left, transformed.right, argExps, perm, het)
   }
 }
 
@@ -159,11 +159,11 @@ case class CECollection(id: String, value: ast.Exp) {
   override lazy val toString = s"${id} = ${value.toString}"
 }
 
-case class BasicHeap(basicHeapEntries: Set[BasicHeapEntry]) {
-  override lazy val toString = basicHeapEntries.map(x => x.toString).mkString("", "\n", "")
+case class RawHeap(rawHeapEntries: Set[RawHeapEntry]) {
+  override lazy val toString = rawHeapEntries.map(x => x.toString).mkString("", "\n", "")
 }
 
-case class BasicHeapEntry(reference: Seq[String], field: Seq[String], valueID: String, perm: Option[Rational], het: HeapEntryType, insidePredicate: Option[scala.collection.immutable.Map[Exp, ModelEntry]]) {
+case class RawHeapEntry(reference: Seq[String], field: Seq[String], valueID: String, perm: Option[Rational], het: HeapEntryType, insidePredicate: Option[scala.collection.immutable.Map[Exp, ModelEntry]]) {
   override lazy val toString = {
     het match {
       case PredicateType =>
