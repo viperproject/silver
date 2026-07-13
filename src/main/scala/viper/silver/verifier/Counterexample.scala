@@ -117,9 +117,27 @@ case class PredFinalEntry(name: String, args: Seq[String], perm: Option[Rational
   override lazy val toString = s"Predicate Entry: $name(${args.mkString("", ", ", ")")} --> (Perm: ${perm.getOrElse("#undefined").toString}) ${if (insidePredicate.isDefined && !insidePredicate.get.isEmpty) insidePredicate.get.toSeq.map(x => s"${x._1} --> ${x._2}")mkString("{\n   ", "\n   ", "\n}") else ""}"
 }
 
-case class WandFinalEntry(name: String, left: Exp, right: Exp, args: Map[String, String], perm: Option[Rational], het: HeapEntryType) extends FinalHeapEntry {
+case class WandFinalEntry(name: String, left: Exp, right: Exp, args: Seq[Exp], perm: Option[Rational], het: HeapEntryType) extends FinalHeapEntry {
   val entryType = het
-  override lazy val toString = s"Magic Wand Entry: $name --> (Left: ${left.toString}, Right: ${right.toString}, Perm: ${perm.getOrElse("#undefined").toString})"
+  override lazy val toString = s"Magic Wand Entry: $name(${args.map(_.toString).mkString(", ")}) --> (Left: ${left.toString}, Right: ${right.toString}, Perm: ${perm.getOrElse("#undefined").toString})"
+}
+
+object WandFinalEntry {
+  /**
+    * Builds a wand entry for the magic-wand structure `mw`, substituting the instance's argument
+    * values (`argValues`, given in the order of `subexpressionsToEvaluate`) into the wand's two
+    * sides. The substituted values are the same counterexample literals used elsewhere in the model.
+    */
+  def fromStructure(name: String, mw: ast.MagicWandStructure.MagicWandStructure, argValues: Seq[String],
+                    perm: Option[Rational], het: HeapEntryType, program: ast.Program): WandFinalEntry = {
+    val structure = mw.structure(program, true)
+    val holes = structure.subexpressionsToEvaluate(program)
+    val argExps: Seq[ast.Exp] = holes.zip(argValues).map { case (hole, v) => CounterexampleValue.literal(v, Some(hole.typ)) }
+    val repl: scala.collection.immutable.Map[ast.Node, ast.Node] =
+      scala.collection.immutable.Map.from(holes.zip(argExps): Iterable[(ast.Node, ast.Node)])
+    val transformed = structure.replace(repl)
+    WandFinalEntry(name, transformed.left, transformed.right, argExps, perm, het)
+  }
 }
 
 /**
