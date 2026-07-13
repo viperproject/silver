@@ -8,7 +8,8 @@ predicate P(this: Ref, n: Int) {
   acc(this.x) && acc(this.y) && this.x == n
 }
 
-method foo(refs: Set[Ref], r2: Ref, r3: Ref)
+
+method foo(refs: Set[Ref], r2: Ref, r3: Ref, rp: Ref, ip: Int)
   requires forall r: Ref :: r in refs ==> P(r, 3)
   requires forall i: Int, r: Ref :: r == r2 && i == 4 ==> P(r, i)
 {
@@ -16,7 +17,7 @@ method foo(refs: Set[Ref], r2: Ref, r3: Ref)
     assert P(r3, 3);
     exhale acc(P(r2, 4), 1/2)
 
-    //:: ExpectedCounterexample(assert.failed:assertion.false, (acc(P(r3, 3), 1/1), acc(P(r2, 4), 1/2)))
-    assert false
+    //:: ExpectedCounterexample(assert.failed:insufficient.permission, (acc(P(r3, 3), 1/1), acc(P(r2, 4), 1/2)))
+    assert acc(P(rp, ip))
   }
 }
