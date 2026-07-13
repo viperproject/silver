@@ -273,6 +273,22 @@ case class NullLit()(val pos: Position = NoPosition, val info: Info = NoInfo, va
   lazy val typ = Ref
 }
 
+/**
+  * A reference literal denoting a concrete reference value. `name` is the backend-internal
+  * identifier of the reference (e.g. "$Ref!val!1"). This node exists only for representing
+  * counterexamples; it is not part of parseable Viper and must not appear in a program AST.
+  */
+case class RefLit(name: String)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Literal {
+  lazy val typ = Ref
+}
+
+/**
+  * A literal for a value that has no representable Viper literal (e.g. an uninterpreted domain
+  * element or an otherwise opaque backend value). `value` is the backend-internal string
+  * representation. Like [[RefLit]], this node exists only for representing counterexamples.
+  */
+case class BackendValueLit(value: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Literal
+
 // --- Accessibility predicates
 
 /** A common trait for accessibility predicates. */

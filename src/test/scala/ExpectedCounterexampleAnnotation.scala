@@ -32,99 +32,84 @@ case class ExpectedCounterexampleAnnotation(id: OutputAnnotationId, file: Path, 
 
   def containsExpectedCounterexample(failureContext: FailureContext): Boolean =
     failureContext.counterExample match {
-      case Some(ce: ExtendedCounterexample) => meetsExpectations(expectedCounterexample, ce)
+      case Some(ce: ResolvedCounterexample) => meetsExpectations(expectedCounterexample, ce)
       case _ => false
     }
 
   /** returns true if model2 contains at least the content expressed by model1 */
-  def meetsExpectations(model1: ExpectedCounterexample, model2: ExtendedCounterexample): Boolean = {
+  def meetsExpectations(model1: ExpectedCounterexample, model2: ResolvedCounterexample): Boolean = {
     model1.exprs.forall {
       case accPred: PAccPred => containsAccessPredicate(accPred, model2)
       case PBinExp(lhs, r, rhs) if r.rs == PSymOp.EqEq => containsEquality(lhs, rhs, model2)
     }
   }
 
-  def containsAccessPredicate(accPred: PAccPred, model: ExtendedCounterexample): Boolean = {
+  def containsAccessPredicate(accPred: PAccPred, model: ResolvedCounterexample): Boolean = {
     resolve(Vector(accPred.loc, accPred.perm), model).exists {
       case Vector((_, actualPermOpt), (expectedPermAmount, _)) =>
         actualPermOpt.exists(actualPermAmount =>
           areEqualEntries(expectedPermAmount,
-            CEValueOnly(ApplicationEntry("/", Seq(ConstantEntry(actualPermAmount.numerator.toString()), ConstantEntry(actualPermAmount.denominator.toString()))), Some(ast.Perm)))
+            ast.FractionalPerm(ast.IntLit(actualPermAmount.numerator)(), ast.IntLit(actualPermAmount.denominator)())())
         )
     }
   }
 
-  def containsEquality(lhs: PExp, rhs: PExp, model: ExtendedCounterexample): Boolean =
+  def containsEquality(lhs: PExp, rhs: PExp, model: ResolvedCounterexample): Boolean =
     resolveWoPerm(Vector(lhs, rhs), model).exists { case Vector(resolvedLhs, resolvedRhs) =>
       areEqualEntries(resolvedLhs, resolvedRhs) }
 
-  /** resolves `expr` to a model entry in the given model. In case it's a field access, the corresponding permissions are returned as well */
-  def resolve(expr: PExp, model: ExtendedCounterexample): Option[(CEValue, Option[Rational])] = expr match {
-    case PIntLit(value) => Some(CEValueOnly(ConstantEntry(value.toString()), Some(viper.silver.ast.Int)), None)
-    case PUnExp(r, PIntLit(value)) if r.rs == PSymOp.Neg => Some(CEValueOnly(ApplicationEntry("-", Seq(ConstantEntry(value.toString()))), Some(ast.Int)), None)
+  /** resolves `expr` to an AST value expression in the given model. In case it's a field access, the corresponding permissions are returned as well */
+  def resolve(expr: PExp, model: ResolvedCounterexample): Option[(ast.Exp, Option[Rational])] = expr match {
+    case PIntLit(value) => Some((ast.IntLit(value)(), None))
+    case PUnExp(r, PIntLit(value)) if r.rs == PSymOp.Neg => Some((ast.IntLit(-value)(), None))
     case PBinExp(PIntLit(n), r, PIntLit(d)) if r.rs == PSymOp.Div =>
-      Some(CEValueOnly(ApplicationEntry("/", Seq(ConstantEntry(n.toString()), ConstantEntry(d.toString()))), Some(ast.Perm)), None)
+      Some((ast.FractionalPerm(ast.IntLit(n)(), ast.IntLit(d)())(), None))
     case idnuse: PIdnUseExp =>
       model.ceStore.asMap.get(idnuse.name).map((_, None))
     case PFieldAccess(rcv, _, idnuse) =>
       val rcvValue = resolveWoPerm(rcv, model)
-      rcvValue.flatMap {
-        case CEVariable(name, entry, _) => model.heapMap.get("current").flatMap(_.heapEntries.find({
-          case (f: ast.Field, ffi: FieldFinalEntry) if f.name == idnuse.name && (ffi.ref == name || ffi.ref == entry.toString) => true
+      rcvValue.flatMap { rcvExp =>
+        model.heapMap.get("current").flatMap(_.heapEntries.find({
+          case (f: ast.Field, ffi: FieldFinalEntry) if f.name == idnuse.name && ffi.ref == rcvExp.toString => true
           case _ => false
         }).map(he =>
           (he._2.asInstanceOf[FieldFinalEntry].entry, he._2.asInstanceOf[FieldFinalEntry].perm)
         ))
       }
     case PLookup(base, _, idx, _) => resolveWoPerm(Vector(base, idx), model).flatMap {
-      case Vector(s: CESequence, CEValueOnly(ConstantEntry(i), _)) =>
-        try {
-          val evaluatedIdx = BigInt(i)
-          val elemTyp = s.valueType match {
-            case Some(ast.SeqType(memberType)) => Some(memberType)
-            case _ => None
-          }
-          if (evaluatedIdx >= 0 && evaluatedIdx < s.length)
-            Some((CEValueOnly(ConstantEntry(s.entries(evaluatedIdx)), elemTyp), None))
-          else
-            None
-        } catch {
-          case _: NumberFormatException => None
-        }
+      case Vector(s: ast.ExplicitSeq, ast.IntLit(i)) =>
+        if (i >= 0 && i < BigInt(s.elems.size)) Some((s.elems(i.toInt), None)) else None
+      case _ => None
     }
     case PCall(idnuse, args, _) =>
-      val argValues = args.inner.toSeq.map(a => resolveWoPerm(a, model) match {
-        case Some(CEVariable(_, entry, _)) => Some(entry.toString)
-        case _ => None
-      })
+      val argValues = args.inner.toSeq.map(a => resolveWoPerm(a, model).map(_.toString))
       if (argValues.forall(_.isDefined)) {
         model.heapMap.get("current").flatMap(_.heapEntries.find({
           case (p: ast.Predicate, pe: PredFinalEntry) if p.name == idnuse.name && pe.args == argValues.map(_.get) => true
           case _ => false
         }).map(he =>
-          (CEValueOnly(ConstantEntry(""), None), he._2.asInstanceOf[PredFinalEntry].perm)
+          (ast.BackendValueLit("", ast.InternalType)(), he._2.asInstanceOf[PredFinalEntry].perm)
         ))
       } else {
         None
       }
+    case _ => None
   }
 
-  def resolve(exprs: Vector[PExp], model: ExtendedCounterexample): Option[Vector[(CEValue, Option[Rational])]] = {
+  def resolve(exprs: Vector[PExp], model: ResolvedCounterexample): Option[Vector[(ast.Exp, Option[Rational])]] = {
     val entries = exprs.map(expr => resolve(expr, model)).collect{ case Some(entry) => entry }
     if (exprs.size == entries.size) Some(entries) else None
   }
 
-  def resolveWoPerm(expr: PExp, model: ExtendedCounterexample): Option[CEValue] =
+  def resolveWoPerm(expr: PExp, model: ResolvedCounterexample): Option[ast.Exp] =
     resolve(expr, model).map(_._1)
 
-  def resolveWoPerm(exprs: Vector[PExp], model: ExtendedCounterexample): Option[Vector[CEValue]] = {
+  def resolveWoPerm(exprs: Vector[PExp], model: ResolvedCounterexample): Option[Vector[ast.Exp]] = {
     val entries = exprs.map(expr => resolveWoPerm(expr, model)).collect{ case Some(entry) => entry }
     if (exprs.size == entries.size) Some(entries) else None
   }
 
-  def areEqualEntries(entry1: CEValue, entry2: CEValue): Boolean = (entry1, entry2) match {
-    case (CEValueOnly(value1, _), CEValueOnly(value2, _)) => value1 == value2
-  }
+  def areEqualEntries(entry1: ast.Exp, entry2: ast.Exp): Boolean = entry1 == entry2
 
   override def notFoundError: TestError = TestCustomError(s"Expected the following counterexample on line $forLineNr: $expectedCounterexample")
 

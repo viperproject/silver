@@ -3,23 +3,33 @@ import viper.silver.ast
 import viper.silver.ast.{AbstractLocalVar, Exp, Type, Resource}
 
 /**
-  * Classes used for to build "intermediate" and "extended" counterexamples.
+  * Classes used to build counterexamples. Two layers are distinguished:
+  *
+  *   - a "raw" counterexample ([[RawCounterexample]]) that contains all information in a simple,
+  *     machine-readable form, keyed by the backend-internal (SMT/Boogie) identifiers, and
+  *   - a "resolved" counterexample ([[ResolvedCounterexample]]) that makes the raw one
+  *     human-readable, e.g. by binding heap resources to their AST nodes and translating internal
+  *     value identifiers to the program variables that denote them.
+  *
+  * Values are represented as ordinary Viper AST expressions ([[ast.Exp]]). Literals that have no
+  * ordinary Viper representation use the dedicated counterexample literals [[ast.RefLit]] (a
+  * concrete reference) and [[ast.BackendValueLit]] (an otherwise opaque backend value).
   */
 
-trait IntermediateCounterexample {
+trait RawCounterexample {
   val basicVariables: Seq[CEVariable]
-  val allSequences: Seq[CEValue]
-  val allSets: Seq[CEValue]
-  val allMultisets: Seq[CEValue]
-  lazy val allCollections: Seq[CEValue] = allSequences ++ allSets ++ allMultisets
+  val allSequences: Seq[CECollection]
+  val allSets: Seq[CECollection]
+  val allMultisets: Seq[CECollection]
+  lazy val allCollections: Seq[CECollection] = allSequences ++ allSets ++ allMultisets
   def allBasicHeaps: Seq[(String, BasicHeap)]
 
   val domainEntries: Seq[BasicDomainEntry]
   val nonDomainFunctions: Seq[BasicFunctionEntry]
 }
 
-trait ExtendedCounterexample {
-  val imCE: IntermediateCounterexample
+trait ResolvedCounterexample {
+  val rawCE: RawCounterexample
   val ceStore: StoreCounterexample
   val ceHeaps: Seq[(String, HeapCounterexample)]
   lazy val heapMap = ceHeaps.toMap
@@ -28,20 +38,59 @@ trait ExtendedCounterexample {
   lazy val domainsAndFunctions = domainEntries ++ functionEntries
 }
 
-case class StoreCounterexample(storeEntries: Seq[StoreEntry]) {
-  override lazy val toString = storeEntries.map(x => x.toString).mkString("", "\n", "\n")
-  lazy val asMap: Map[String, CEValue] = storeEntries.map(se => (se.id.name, se.entry)).toMap
-}
+/**
+  * Helper for turning a backend value string (plus an optional Viper type) into the AST expression
+  * that represents it in a counterexample.
+  */
+object CounterexampleValue {
+  /** SMT solvers represent negative integers as an application, e.g. "(- 1)". */
+  private val smtNegative = """^\(\s*-\s*(\d+)\s*\)$""".r
 
-case class StoreEntry(id: AbstractLocalVar, entry: CEValue) {
-  override lazy val toString = {
-    entry match {
-      case CEVariable(_, _, _) => s"Variable Name: ${id.name}, Value: ${entry.value.toString}, Type: ${id.typ.toString}"
-      case CESequence(name, length, entries, sequence, memberTypes) => s"Collection variable \"${id.name}\" of type ${id.typ.toString} with ${length} entries:${entries.map { case (k, v) => s"\n $v at index ${k.toString()}" }.mkString}"
-      case CESet(name, length, entries, sequence, memberTypes) => s"Collection variable \"${id.name}\" of type ${id.typ.toString} with ${length} entries:${entries.map { case (k, true) => s"\n $k" }.mkString}"
-      case CEMultiset(name, length, entries, memberTypes) => s"Collection variable \"${id.name}\" of type ${id.typ.toString} with ${length} entries:${entries.foreach { case (k, v) => s"\n ${v.toString} at index $k" }}"
+  /** Parses an integer from its backend string representation, handling SMT-style negatives. */
+  def parseInt(value: String): Option[BigInt] = {
+    val trimmed = value.trim
+    try Some(BigInt(trimmed)) catch {
+      case _: NumberFormatException => trimmed match {
+        case smtNegative(digits) => Some(-BigInt(digits))
+        case _ => None
+      }
     }
   }
+
+  def parseBool(value: String): Option[Boolean] = value.trim.toLowerCase match {
+    case "true" => Some(true)
+    case "false" => Some(false)
+    case _ => None
+  }
+
+  /**
+    * Infers a literal from a backend value string when no Viper type is available. The element
+    * types of collections are not always known, so this makes value comparison robust: an integer
+    * or boolean value becomes the corresponding literal regardless of whether the type was inferred.
+    */
+  def inferLiteral(value: String): ast.Exp =
+    parseInt(value).map(i => ast.IntLit(i)(): ast.Exp)
+      .orElse(parseBool(value).map(b => ast.BoolLit(b)()))
+      .getOrElse(ast.BackendValueLit(value, ast.InternalType)())
+
+  def literal(value: String, typ: Option[ast.Type]): ast.Exp = typ match {
+    case Some(ast.Int) =>
+      parseInt(value).map(i => ast.IntLit(i)()).getOrElse(ast.BackendValueLit(value, ast.Int)())
+    case Some(ast.Bool) =>
+      parseBool(value).map(b => ast.BoolLit(b)()).getOrElse(ast.BackendValueLit(value, ast.Bool)())
+    case Some(ast.Ref) => ast.RefLit(value)()
+    case Some(t) => ast.BackendValueLit(value, t)()
+    case None => inferLiteral(value)
+  }
+}
+
+case class StoreCounterexample(storeEntries: Seq[StoreEntry]) {
+  override lazy val toString = storeEntries.map(x => x.toString).mkString("", "\n", "\n")
+  lazy val asMap: Map[String, ast.Exp] = storeEntries.map(se => (se.id.name, se.entry)).toMap
+}
+
+case class StoreEntry(id: AbstractLocalVar, entry: ast.Exp) {
+  override lazy val toString = s"Variable Name: ${id.name}, Value: ${entry.toString}, Type: ${id.typ.toString}"
 }
 
 case class HeapCounterexample(heapEntries: Seq[(Resource, FinalHeapEntry)]) {
@@ -58,9 +107,9 @@ sealed trait FinalHeapEntry {
   val entryType : HeapEntryType
 }
 
-case class FieldFinalEntry(ref: String, field: String, entry: CEValue, perm: Option[Rational], typ: Type, het: HeapEntryType) extends FinalHeapEntry {
+case class FieldFinalEntry(ref: String, field: String, entry: ast.Exp, perm: Option[Rational], typ: Type, het: HeapEntryType) extends FinalHeapEntry {
   val entryType = het
-  override lazy val toString = s"Field Entry: $ref.$field --> (Value: ${entry.value.toString}, Type: ${typ}, Perm: ${perm.getOrElse("#undefined").toString})"
+  override lazy val toString = s"Field Entry: $ref.$field --> (Value: ${entry.toString}, Type: ${typ}, Perm: ${perm.getOrElse("#undefined").toString})"
 }
 
 case class PredFinalEntry(name: String, args: Seq[String], perm: Option[Rational], insidePredicate: Option[scala.collection.immutable.Map[Exp, ModelEntry]], het: HeapEntryType) extends FinalHeapEntry {
@@ -73,61 +122,23 @@ case class WandFinalEntry(name: String, left: Exp, right: Exp, args: Map[String,
   override lazy val toString = s"Magic Wand Entry: $name --> (Left: ${left.toString}, Right: ${right.toString}, Perm: ${perm.getOrElse("#undefined").toString})"
 }
 
-sealed trait CEValue {
-  val id : String
-  val value : Any
-  val valueType : Option[ast.Type]
-}
-
-object CEValueOnly {
-  def apply(value: ModelEntry, typ: Option[ast.Type]): CEValue = CEVariable("#undefined", value, typ)
-  def unapply(ce: CEValue): Option[(ModelEntry, Option[ast.Type])] = ce match {
-    case CEVariable(_, entryValue, typ) => Some((entryValue, typ))
-    case _ => None
-  }
-}
-
-case class CEVariable(name: String, entryValue: ModelEntry, typ: Option[Type]) extends CEValue {
-  val id = name
-  val value = entryValue
-  val valueType = typ
+/**
+  * A local (store) variable together with its value.
+  * `value` is an AST expression (a literal such as [[ast.IntLit]]/[[ast.RefLit]], or a collection
+  * expression such as [[ast.ExplicitSeq]]).
+  */
+case class CEVariable(name: String, value: ast.Exp, typ: Option[Type]) {
   override lazy val toString = s"Variable Name: ${name}, Value: ${value.toString}, Type: ${typ.getOrElse("None").toString}"
 }
 
-case class CESequence(name: String, length: BigInt, entries: Map[BigInt, String], sequence: Seq[String], memberTypes: Option[Type]) extends CEValue {
-  val id = name
-  val value = sequence
-  val valueType = memberTypes
-  val size = length
-  val inside = entries
-  override lazy val toString = {
-    var finalString = s"$name with size ${size.toString()} with entries:"
-    for ((k,v) <- inside)
-      finalString ++= s"\n $v at index ${k.toString()}"
-    finalString
-  }
-}
-
-case class CESet(name: String, cardinality: BigInt, containment: Map[String, Boolean], set: Set[String], memberTypes: Option[Type]) extends CEValue {
-  val id = name
-  val value = set
-  val valueType = memberTypes
-  val size = cardinality
-  val inside = containment
-  override lazy val toString = s"Set $name of size ${size.toString()} with entries: ${inside.filter(x => x._2).map(x => x._1).mkString("{", ", ", "}")}"
-}
-
-case class CEMultiset(name: String, cardinality: BigInt, containment: scala.collection.immutable.Map[String, Int], memberTypes: Option[Type]) extends CEValue {
-  val id = name
-  val value = containment
-  val valueType = memberTypes
-  val size = cardinality
-  override lazy val toString = {
-    var finalString = s"Multiset $name of size ${size.toString()} with entries:"
-    for ((k, v) <- containment)
-      finalString ++= s"\n $k occurs ${v.toString} time"
-    finalString
-  }
+/**
+  * A collection value (sequence, set or multiset) reconstructed from the model, together with its
+  * backend-internal identifier `id`. `value` is the corresponding AST collection expression
+  * (e.g. [[ast.ExplicitSeq]]); `id` is used to link store variables and heap values to the
+  * collection they refer to.
+  */
+case class CECollection(id: String, value: ast.Exp) {
+  override lazy val toString = s"${id} = ${value.toString}"
 }
 
 case class BasicHeap(basicHeapEntries: Set[BasicHeapEntry]) {
@@ -138,7 +149,6 @@ case class BasicHeapEntry(reference: Seq[String], field: Seq[String], valueID: S
   override lazy val toString = {
     het match {
       case PredicateType =>
-        println(insidePredicate.get.toString())
         s"Heap entry: ${reference.mkString("(", ", ", ")")} + ${field.mkString("(", ", ", ")")} --> (Permission: ${perm.getOrElse("None")}) ${if (insidePredicate.isDefined && !insidePredicate.get.isEmpty) insidePredicate.get.toSeq.map(x => s"${x._1} --> ${x._2}")mkString("{\n   ", "\n   ", "\n}") else ""}"
       case _ => s"Heap entry: ${reference.mkString("(", ", ", ")")} + ${field.mkString("(", ", ", ")")} --> (Value: $valueID, Permission: ${perm.getOrElse("None")})"
     }
