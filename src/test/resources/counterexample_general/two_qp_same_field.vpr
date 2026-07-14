@@ -7,10 +7,9 @@
 // cover the location `a.f` (since s[0] == t[0] == a). Each contributes 1/2, so
 // the counterexample must report their sum, 1/1, for `a.f`.
 //
-// This currently FAILS: the extraction code reports at most one of the two
-// quantified field chunks for a given location. It is expected to pass once the
-// quantified-permission extraction is fixed (per-receiver permission evaluation
-// plus summation across chunks).
+// The failing assertion references perm(a.f), so that the error is about the
+// permission amount and the backends actually reason about (and record in the
+// model) the permission at `a.f`.
 
 field f: Int
 
@@ -23,5 +22,5 @@ method twoQuantifiedPermissionsSameField(a: Ref, s: Seq[Ref], t: Seq[Ref])
   requires forall j: Int :: 0 <= j < |t| ==> acc(t[j].f, 1/2)
 {
   //:: ExpectedCounterexample(assert.failed:assertion.false, (acc(a.f, 1/1)))
-  assert false
+  assert perm(a.f) == none
 }
