@@ -7,20 +7,23 @@
 package viper.silver.dependencyAnalysis
 
 import viper.silver.ast
+import viper.silver.dependencyAnalysis.AssumptionType._
 import viper.silver.dependencyAnalysis.DependencyType._
 import viper.silver.dependencyAnalysis.EdgeType.EdgeType
 import viper.silver.dependencyAnalysis.JoinType.JoinType
+import viper.silver.plugin.standard.refute.Refute
 
 object DependencyTypeInfo {
   def getDependencyTypeInfo(stmt: ast.Stmt): DependencyTypeInfo = {
     val depType = stmt match {
-      case _: ast.MethodCall => MethodCall
-      case  _: ast.NewStmt | _: ast.AbstractAssign => SourceCode
-      case _: ast.Exhale | _: ast.Assert => ExplicitAssertion
+      case _: ast.MethodCall => MethodCall.asDepType()
+      case  _: ast.NewStmt | _: ast.AbstractAssign => SourceCode.asDepType()
+      case _: ast.Exhale | _: ast.Assert | _: Refute => ExplicitAssertion
       case _: ast.Inhale | _: ast.Assume => ExplicitAssumption
-      case _: ast.Fold | _: ast.Unfold | _: ast.Package | _: ast.Apply => Rewrite
-      case _: ast.Quasihavoc | _: ast.Quasihavocall => DependencyType.SourceCode
-      case _ => DependencyType.make(AssumptionType.Unknown) /* TODO: should not happen */
+      case _: ast.Fold | _: ast.Unfold | _: ast.Package | _: ast.Apply => Rewrite.asDepType()
+      case _: ast.Quasihavoc | _: ast.Quasihavocall => SourceCode.asDepType()
+      case _: ast.Seqn | _: ast.While | _: ast.If => AssumptionType.Unknown.asDepType()
+      case _ => sys.error(s"Dependency type of $stmt is undefined.")
     }
     DependencyTypeInfo(depType)
   }
@@ -50,17 +53,21 @@ trait DependencyAnalysisJoinInfo extends ast.Info {
   override def comment: Seq[String] = Nil
   override def isCached: Boolean = false
 
-  def matches(dependencyAnalysisJoinInfo: DependencyAnalysisJoinInfo) = {
-    (this, dependencyAnalysisJoinInfo) match {
-      case (SimpleDependencyAnalysisJoin(sourceInfo, joinType, edgeType), SimpleDependencyAnalysisJoin(sourceInfo1, joinType1, edgeType1)) =>
-        sourceInfo.equals(sourceInfo1) && edgeType.equals(edgeType1)
-    }
+  def matches(dependencyAnalysisJoinInfo: DependencyAnalysisJoinInfo) : Boolean
+}
+
+case class EvalStackDependencyAnalysisJoin(joinType: JoinType, edgeType: EdgeType) extends DependencyAnalysisJoinInfo {
+  override def matches(dependencyAnalysisJoinInfo: DependencyAnalysisJoinInfo): Boolean = {
+    sys.error("Trying to call matches on an EvalStackDependencyAnalysisJoin.")
   }
 }
 
-case class EvalStackDependencyAnalysisJoin(joinType: JoinType, edgeType: EdgeType) extends DependencyAnalysisJoinInfo
-
-case class SimpleDependencyAnalysisJoin(sourceInfo: AnalysisSourceInfo, joinType: JoinType, edgeType: EdgeType) extends DependencyAnalysisJoinInfo
+case class SimpleDependencyAnalysisJoin(sourceInfo: AnalysisSourceInfo, joinType: JoinType, edgeType: EdgeType) extends DependencyAnalysisJoinInfo {
+  override def matches(other: DependencyAnalysisJoinInfo): Boolean = other match {
+      case SimpleDependencyAnalysisJoin(sourceInfo1, _, edgeType1) => sourceInfo.equals(sourceInfo1) && edgeType.equals(edgeType1)
+      case _ => false
+  }
+}
 
 /**
  * Represent the piece of information to be stored in dependency nodes in order to finalize the intraprocedural

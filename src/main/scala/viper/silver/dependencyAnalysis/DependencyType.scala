@@ -6,11 +6,67 @@
 
 package viper.silver.dependencyAnalysis
 
-object AssumptionType extends Enumeration {
-  type AssumptionType = Value
-  val Explicit, LoopInvariant, PathCondition, Rewrite, SourceCode, DomainAxiom, Implicit, Internal, Trigger, ExplicitPostcondition, ImplicitPostcondition, ImportedPostcondition, MethodCall, FunctionBody, Precondition, Ghost, Annotation, Unknown = Value
+import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
 
-  def fromString(s: String): Option[Value] = values.find(_.toString == s)
+
+object AssumptionType {
+
+  sealed trait AssumptionType {
+    def asDepType(): DependencyType = DependencyType(this)
+  }
+
+  sealed trait ExplicitAssumptionType extends AssumptionType
+  sealed trait PostconditionType extends AssumptionType
+  sealed trait PreconditionType extends AssumptionType
+  sealed trait ExplicitAssertionType extends AssumptionType
+  sealed trait InternalType extends AssumptionType
+  sealed trait ImportedType extends AssumptionType
+  sealed trait VerificationAnnotationType extends AssumptionType
+  sealed trait SourceCodeType extends AssumptionType
+
+  case object Explicit extends AssumptionType with ExplicitAssumptionType with ExplicitAssertionType with VerificationAnnotationType
+
+  case object PathCondition extends AssumptionType with SourceCodeType
+  case object SourceCode extends AssumptionType with SourceCodeType
+  case object MethodCall extends AssumptionType with SourceCodeType
+  case object Ghost extends AssumptionType with SourceCodeType /* TODO ake: maybe should be annotation instead? */
+  case object Unknown extends AssumptionType with SourceCodeType
+
+  case object LoopInvariant extends AssumptionType with VerificationAnnotationType
+  case object DomainAxiom extends AssumptionType with VerificationAnnotationType
+  case object Rewrite extends AssumptionType with VerificationAnnotationType
+  case object FunctionBody extends AssumptionType with VerificationAnnotationType /* TODO ake: maybe should be source code instead? */
+  case object Annotation extends AssumptionType with VerificationAnnotationType
+
+  case object Precondition extends AssumptionType with PreconditionType with VerificationAnnotationType
+  case object ExplicitPostcondition extends AssumptionType with ExplicitAssumptionType with PostconditionType with ExplicitAssertionType with VerificationAnnotationType
+  case object ImplicitPostcondition extends AssumptionType with PostconditionType with ExplicitAssertionType with VerificationAnnotationType
+  case object ImportedPostcondition extends AssumptionType with PostconditionType with ImportedType with VerificationAnnotationType
+
+  case object Internal extends AssumptionType with InternalType
+  case object Trigger extends AssumptionType with InternalType
+
+  val values: Set[AssumptionType] = Set(
+    Explicit,
+    LoopInvariant,
+    PathCondition,
+    Rewrite,
+    SourceCode,
+    DomainAxiom,
+    Internal,
+    Trigger,
+    ExplicitPostcondition,
+    ImplicitPostcondition,
+    ImportedPostcondition,
+    MethodCall,
+    FunctionBody,
+    Precondition,
+    Ghost,
+    Annotation,
+    Unknown
+  )
+
+  def fromString(s: String): Option[AssumptionType] = values.find(_.toString == s)
 
   def explicitAssumptionTypes: Set[AssumptionType] = Set(Explicit, ExplicitPostcondition)
   def postconditionTypes: Set[AssumptionType] = Set(ImplicitPostcondition, ExplicitPostcondition, ImportedPostcondition)
@@ -18,43 +74,43 @@ object AssumptionType extends Enumeration {
   def explicitAssertionTypes: Set[AssumptionType] = Set(Explicit, ImplicitPostcondition, ExplicitPostcondition)
   def internalTypes: Set[AssumptionType] = Set(Internal, Trigger) // will always be hidden from user
   def importedTypes: Set[AssumptionType] = Set(ImportedPostcondition)
-  def verificationAnnotationTypes: Set[AssumptionType] = Set(FunctionBody /* TODO ake: review */, LoopInvariant, Rewrite, ExplicitPostcondition, ImplicitPostcondition, ImportedPostcondition, Precondition, Explicit, DomainAxiom, Annotation)
+  def verificationAnnotationTypes: Set[AssumptionType] = Set(
+    FunctionBody,
+    LoopInvariant,
+    Rewrite,
+    ExplicitPostcondition,
+    ImplicitPostcondition,
+    ImportedPostcondition,
+    Precondition,
+    Explicit,
+    DomainAxiom,
+    Annotation
+  )
   def sourceCodeTypes: Set[AssumptionType] = values.diff(explicitAssumptionTypes).diff(verificationAnnotationTypes).diff(internalTypes)
 
-  def getPostcondType(isAbstractFunction: Boolean, dependencyType: Option[DependencyType]=None, isImported: Boolean=false): AssumptionType = {
-    if(isImported) return ImportedPostcondition
+  def getPostcondType(isAbstractFunction: Boolean, dependencyType: Option[DependencyType] = None, isImported: Boolean = false): AssumptionType = {
+    if (isImported) return ImportedPostcondition
 
     dependencyType.flatMap(_.assertionType match {
-      case AssumptionType.Explicit | AssumptionType.ExplicitPostcondition => Some(AssumptionType.ExplicitPostcondition)
-      case AssumptionType.ImportedPostcondition => Some(AssumptionType.ImportedPostcondition)
-      case AssumptionType.ImplicitPostcondition  => Some(AssumptionType.ImplicitPostcondition)
-      case AssumptionType.Internal => Some(AssumptionType.Internal)
-      case AssumptionType.Annotation | AssumptionType.Ghost => None
+      case Explicit | ExplicitPostcondition => Some(ExplicitPostcondition)
+      case ImportedPostcondition => Some(ImportedPostcondition)
+      case ImplicitPostcondition => Some(ImplicitPostcondition)
+      case Internal => Some(Internal)
+      case Annotation | Ghost => None
       case _ => None
     }).getOrElse(
-      if(isAbstractFunction) AssumptionType.ExplicitPostcondition else AssumptionType.ImplicitPostcondition
+      if (isAbstractFunction) ExplicitPostcondition else ImplicitPostcondition
     )
   }
 }
 
-import viper.silver.dependencyAnalysis.AssumptionType.AssumptionType
-
 object DependencyType {
-  val SourceCode: DependencyType = make(AssumptionType.SourceCode)
-  val Explicit: DependencyType = make(AssumptionType.Explicit)
   val ExplicitAssertion: DependencyType = DependencyType(AssumptionType.Internal, AssumptionType.Explicit)
-  val ExplicitAssumption: DependencyType = DependencyType(AssumptionType.Explicit, AssumptionType.Implicit)
-  val PathCondition: DependencyType = make(AssumptionType.PathCondition)
-  val Invariant: DependencyType = make(AssumptionType.LoopInvariant)
-  val Rewrite: DependencyType = make(AssumptionType.Rewrite)
-  val Internal: DependencyType = make(AssumptionType.Internal)
-  val Trigger: DependencyType = make(AssumptionType.Trigger)
-  val MethodCall: DependencyType = make(AssumptionType.MethodCall)
-  val Ghost: DependencyType = make(AssumptionType.Ghost)
-  val Annotation: DependencyType = make(AssumptionType.Annotation)
-  val Axiom: DependencyType = make(AssumptionType.DomainAxiom)
+  val ExplicitAssumption: DependencyType = DependencyType(AssumptionType.Explicit, AssumptionType.Annotation)
 
-  def make(singleType: AssumptionType): DependencyType = DependencyType(singleType, singleType)
+  def apply(assumptionType: AssumptionType): DependencyType = new DependencyType(assumptionType)
 }
 
-case class DependencyType(assumptionType: AssumptionType, assertionType: AssumptionType)
+case class DependencyType(assumptionType: AssumptionType, assertionType: AssumptionType) {
+  def this(assumptionType: AssumptionType) = this(assumptionType, assumptionType)
+}
