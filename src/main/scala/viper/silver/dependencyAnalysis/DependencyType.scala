@@ -68,26 +68,6 @@ object AssumptionType {
 
   def fromString(s: String): Option[AssumptionType] = values.find(_.toString == s)
 
-  def explicitAssumptionTypes: Set[AssumptionType] = Set(Explicit, ExplicitPostcondition)
-  def postconditionTypes: Set[AssumptionType] = Set(ImplicitPostcondition, ExplicitPostcondition, ImportedPostcondition)
-  def preconditionTypes: Set[AssumptionType] = Set(Precondition)
-  def explicitAssertionTypes: Set[AssumptionType] = Set(Explicit, ImplicitPostcondition, ExplicitPostcondition)
-  def internalTypes: Set[AssumptionType] = Set(Internal, Trigger) // will always be hidden from user
-  def importedTypes: Set[AssumptionType] = Set(ImportedPostcondition)
-  def verificationAnnotationTypes: Set[AssumptionType] = Set(
-    FunctionBody,
-    LoopInvariant,
-    Rewrite,
-    ExplicitPostcondition,
-    ImplicitPostcondition,
-    ImportedPostcondition,
-    Precondition,
-    Explicit,
-    DomainAxiom,
-    Annotation
-  )
-  def sourceCodeTypes: Set[AssumptionType] = values.diff(explicitAssumptionTypes).diff(verificationAnnotationTypes).diff(internalTypes)
-
   def getPostcondType(isAbstractFunction: Boolean, dependencyType: Option[DependencyType] = None, isImported: Boolean = false): AssumptionType = {
     if (isImported) return ImportedPostcondition
 
