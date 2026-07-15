@@ -105,7 +105,7 @@ case class Translator(program: PProgram) {
 
     def attachMeta(createAxiom: (Position, Info, String, ErrorTrafo) => DomainAxiom, _pos: Position, _info: Info, _domainName: String, _errT: ErrorTrafo = NoTrafos): DomainAxiom = {
       val tmpAxiom = createAxiom(_pos, _info, _domainName, _errT)
-      val finalInfo = ConsInfo(tmpAxiom.info, ConsInfo(ConsInfo(AnalysisSourceInfo.createAnalysisSourceInfo(tmpAxiom.exp), DependencyTypeInfo(AssumptionType.DomainAxiom.asDepType())), SimpleDependencyAnalysisJoin(AnalysisSourceInfo.createAnalysisSourceInfo(tmpAxiom.exp), JoinType.Source, EdgeType.Down)))
+      val finalInfo = ConsInfo(tmpAxiom.info, ConsInfo(ConsInfo(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(tmpAxiom.exp), DependencyTypeInfo(AssumptionType.DomainAxiom.asDepType())), SimpleDependencyAnalysisJoin(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(tmpAxiom.exp), JoinType.Source, EdgeType.Down)))
       createAxiom(_pos, finalInfo, _domainName, _errT)
     }
 
@@ -197,7 +197,7 @@ case class Translator(program: PProgram) {
 
     def attachMeta(createStmt: (Position, Info, ErrorTrafo) => Stmt, _pos: Position = pos, _info: Info = info, _errT: ErrorTrafo = NoTrafos): Stmt = {
       val tmpStmt = createStmt(_pos, _info, _errT)
-      val finalInfo = MakeInfoPair(MakeInfoPair(AnalysisSourceInfo.createAnalysisSourceInfo(tmpStmt), DependencyTypeInfo.getDependencyTypeInfo(tmpStmt)), tmpStmt.info)
+      val finalInfo = MakeInfoPair(MakeInfoPair(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(tmpStmt), DependencyTypeInfo.getDependencyTypeInfo(tmpStmt)), tmpStmt.info)
       createStmt(_pos, finalInfo, _errT)
     }
 
@@ -268,7 +268,7 @@ case class Translator(program: PProgram) {
         attachMeta(Quasihavocall(newVars, newLhs, newE))
       case t: PExtender =>
         val stmt = t.translateStmt(this)
-        stmt.withMeta(stmt.pos, MakeInfoPair(MakeInfoPair(AnalysisSourceInfo.createAnalysisSourceInfo(stmt), DependencyTypeInfo.getDependencyTypeInfo(stmt)), stmt.info), stmt.errT)
+        stmt.withMeta(stmt.pos, MakeInfoPair(MakeInfoPair(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(stmt), DependencyTypeInfo.getDependencyTypeInfo(stmt)), stmt.info), stmt.errT)
       case _: PDefine | _: PSkip =>
         sys.error(s"Found unexpected intermediate statement $s (${s.getClass.getName}})")
     }
@@ -313,7 +313,7 @@ case class Translator(program: PProgram) {
       case _ => sys.error(s"Found invalid target of assignment")
     }
     val assn = assign(ts.map(_._2))
-    val dependencyAnalysisInfo = MakeInfoPair(AnalysisSourceInfo.createAnalysisSourceInfo(assn), DependencyTypeInfo.getDependencyTypeInfo(assn))
+    val dependencyAnalysisInfo = MakeInfoPair(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(assn), DependencyTypeInfo.getDependencyTypeInfo(assn))
 
     val tmps = ts.flatMap(_._1)
     if (tmps.isEmpty)
@@ -391,7 +391,7 @@ case class Translator(program: PProgram) {
     def goExp(parseExp: PExp) = exp(parseExp, dependencyType)
 
     def attachMeta(createExp: (Position, Info, ErrorTrafo) => Exp, _pos: PExp = pos, _info: Info = info, _errT: ErrorTrafo = NoTrafos): Exp = {
-      val finalInfo = MakeInfoPair(AnalysisSourceInfo.createAnalysisSourceInfo(createExp(_pos, _info, _errT)), _info)
+      val finalInfo = MakeInfoPair(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(createExp(_pos, _info, _errT)), _info)
       createExp(_pos, finalInfo, _errT)
     }
 
@@ -677,7 +677,7 @@ case class Translator(program: PProgram) {
 
       case t: PExtender =>
         val exp = t.translateExp(this)
-        exp.withMeta((exp.pos, MakeInfoPair(AnalysisSourceInfo.createAnalysisSourceInfo(exp), exp.info), exp.errT))
+        exp.withMeta((exp.pos, MakeInfoPair(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(exp), exp.info), exp.errT))
     }
   }
 

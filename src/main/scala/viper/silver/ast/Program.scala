@@ -13,7 +13,7 @@ import viper.silver.ast.utility._
 import viper.silver.ast.utility.rewriter.StrategyBuilder
 import viper.silver.cfg.silver.{CfgGenerator, SilverCfg}
 import viper.silver.dependencyAnalysis.AssumptionType.Internal
-import viper.silver.dependencyAnalysis.{DependencyType, DependencyTypeInfo, StringAnalysisSourceInfo}
+import viper.silver.dependencyAnalysis.{DependencyType, DependencyTypeInfo, StringDependencyAnalysisSourceInfo}
 import viper.silver.utility.{CacheHelper, DependencyAware}
 import viper.silver.verifier.ConsistencyError
 
@@ -409,7 +409,7 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
     case Some(actualBody) =>
       actualBody
     case None =>
-      val analysisInfo = MakeInfoPair(StringAnalysisSourceInfo("assume false", NoPosition), DependencyTypeInfo(DependencyType(Internal)))
+      val analysisInfo = MakeInfoPair(StringDependencyAnalysisSourceInfo("assume false", NoPosition), DependencyTypeInfo(DependencyType(Internal)))
       Seqn(
         Vector(Inhale(FalseLit()(info=analysisInfo))(info=analysisInfo)),
         Vector.empty

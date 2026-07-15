@@ -7,7 +7,7 @@
 package viper.silver.ast.utility
 
 import viper.silver.ast._
-import viper.silver.dependencyAnalysis.AnalysisSourceInfo
+import viper.silver.dependencyAnalysis.DependencyAnalysisSourceInfo
 
 import scala.collection.mutable
 import scala.language.postfixOps
@@ -166,7 +166,7 @@ object QuantifiedPermissions {
   def desugarSourceQuantifiedPermissionSyntax(source: Forall): Seq[Forall] = {
 
     def attachMeta(createForall: (Position, Info, ErrorTrafo) => Forall, _pos: Position = source.pos, _info: Info = source.info, _errT: ErrorTrafo = NoTrafos): Forall = {
-      val finalInfo = MakeInfoPair(AnalysisSourceInfo.createAnalysisSourceInfo(createForall(_pos, _info, _errT)), _info)
+      val finalInfo = MakeInfoPair(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(createForall(_pos, _info, _errT)), _info)
       createForall(_pos, finalInfo, _errT)
     }
 
