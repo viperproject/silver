@@ -21,7 +21,8 @@ trait RawCounterexample {
   val allSequences: Seq[CECollection]
   val allSets: Seq[CECollection]
   val allMultisets: Seq[CECollection]
-  lazy val allCollections: Seq[CECollection] = allSequences ++ allSets ++ allMultisets
+  val allMaps: Seq[CECollection]
+  lazy val allCollections: Seq[CECollection] = allSequences ++ allSets ++ allMultisets ++ allMaps
   def allRawHeaps: Seq[(String, RawHeap)]
 
   val domainEntries: Seq[BasicDomainEntry]

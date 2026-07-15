@@ -19,3 +19,12 @@ method qp_predicate_permission(s: Seq[Ref], a: Ref)
   //:: ExpectedCounterexample(assert.failed:insufficient.permission, (acc(P(a), 1/2)))
   assert acc(P(a), 1/1)
 }
+
+// Quantifier over set containment rather than a sequence range.
+method qp_predicate_permission_set(s: Set[Ref], a: Ref)
+  requires a in s
+  requires forall r: Ref :: r in s ==> acc(P(r), 1/2)
+{
+  //:: ExpectedCounterexample(assert.failed:insufficient.permission, (acc(P(a), 1/2)))
+  assert acc(P(a), 1/1)
+}
