@@ -6,9 +6,11 @@
 
 package viper.silver.ast.utility
 
+import viper.silver.ast._
+import viper.silver.dependencyAnalysis.DependencyAnalysisSourceInfo
+
 import scala.collection.mutable
 import scala.language.postfixOps
-import viper.silver.ast._
 
 /** Utility methods for quantified predicate permissions. */
 object QuantifiedPermissions {
@@ -163,6 +165,10 @@ object QuantifiedPermissions {
 
   def desugarSourceQuantifiedPermissionSyntax(source: Forall): Seq[Forall] = {
 
+    def attachMeta(createForall: (Position, Info, ErrorTrafo) => Forall, _pos: Position = source.pos, _info: Info = source.info, _errT: ErrorTrafo = NoTrafos): Forall = {
+      val finalInfo = MakeInfoPair(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(createForall(_pos, _info, _errT)), _info)
+      createForall(_pos, finalInfo, _errT)
+    }
 
     source match {
       case SourceQuantifiedPermissionAssertion(_, Implies(cond, rhs)) if (!rhs.isPure) =>
@@ -178,19 +184,19 @@ object QuantifiedPermissions {
 
             val foralls0 =
               desugarSourceQuantifiedPermissionSyntax(
-                Forall(
+                attachMeta(Forall(
                   vars,
                   triggers,
                   Implies(cond, e0)(rhs.pos, rhs.info)
-                )(source.pos, source.info))
+                )))
 
             val foralls1 =
               desugarSourceQuantifiedPermissionSyntax(
-                Forall(
+                attachMeta(Forall(
                   vars,
                   triggers,
                   Implies(cond, e1)(rhs.pos, rhs.info)
-                )(source.pos, source.info))
+                )))
 
             foralls0 ++ foralls1
 
@@ -200,11 +206,11 @@ object QuantifiedPermissions {
             val newCond = And(cond, e0)(cond.pos, MakeInfoPair(cond.info,e0.info))
 
             val newForall =
-              Forall(
+              attachMeta(Forall(
                 vars,
                 triggers,
                 Implies(newCond, e1)(rhs.pos, rhs.info) // TODO: this positional/info choice seems surprising. See also issue #249
-              )(source.pos, source.info)
+              ))
 
             desugarSourceQuantifiedPermissionSyntax(newForall)
 
@@ -215,18 +221,18 @@ object QuantifiedPermissions {
             val newCond1 = And(cond, Not(b)(b.pos,b.info))(cond.pos, MakeInfoPair(cond.info,b.info))
 
             val newForalls0 =
-              desugarSourceQuantifiedPermissionSyntax(Forall(
+              desugarSourceQuantifiedPermissionSyntax(attachMeta(Forall(
                 vars,
                 triggers,
                 Implies(newCond0, e0)(rhs.pos, rhs.info) // TODO: this positional/info choice seems surprising. See also issue #249
-              )(source.pos, source.info))
+              )))
 
             val newForalls1 =
-              desugarSourceQuantifiedPermissionSyntax(Forall(
+              desugarSourceQuantifiedPermissionSyntax(attachMeta(Forall(
                 vars,
                 triggers,
                 Implies(newCond1, e1)(rhs.pos, rhs.info) // TODO: this positional/info choice seems surprising. See also issue #249
-              )(source.pos, source.info))
+              )))
 
                 newForalls0 ++ newForalls1
 
@@ -245,7 +251,7 @@ object QuantifiedPermissions {
 
             val newCond = And(cond, nestedCond)(cond.pos, MakeInfoPair(cond.info,nestedCond.info))
 
-            desugarSourceQuantifiedPermissionSyntax(Forall(vars ++ nestedVars, combinedTriggers, Implies(newCond, nestedRhs)(rhs.pos, rhs.info, rhs.errT))(source.pos,MakeInfoPair(source.info, nested.info),MakeTrafoPair(source.errT,nested.errT)))
+            desugarSourceQuantifiedPermissionSyntax(attachMeta(Forall(vars ++ nestedVars, combinedTriggers, Implies(newCond, nestedRhs)(rhs.pos, rhs.info, rhs.errT)), source.pos, MakeInfoPair(source.info, nested.info), MakeTrafoPair(source.errT,nested.errT)))
 
           case lt@Let(v, e, bod) => {
             val forallWithoutLet = Forall(vars, triggers, bod)(source.pos, source.info)
@@ -255,10 +261,10 @@ object QuantifiedPermissions {
               case SourceQuantifiedPermissionAssertion(iqp, Implies(icond, irhs)) if (!irhs.isPure) =>
                 // Since the rhs cannot be a let-binding, we expand the let-expression in it.
                 // However, we still use a let in the condition; this preserves well-definedness if v isn't used anywhere
-                Forall(iqp.variables, iqp.triggers.map(t => t.replace(v.localVar, e)), Implies(And(cond, Let(v, e, icond)(lt.pos, lt.info, lt.errT))(lt.pos, lt.info, lt.errT), irhs.replace(v.localVar, e))(iqp.pos, iqp.info, iqp.errT))(iqp.pos, iqp.info, iqp.errT)
+                attachMeta(Forall(iqp.variables, iqp.triggers.map(t => t.replace(v.localVar, e)), Implies(And(cond, Let(v, e, icond)(lt.pos, lt.info, lt.errT))(lt.pos, lt.info, lt.errT), irhs.replace(v.localVar, e))(iqp.pos, iqp.info, iqp.errT)), iqp.pos, iqp.info, iqp.errT)
               case iforall@Forall(ivars, itriggers, Implies(icond, ibod)) =>
                 // For all pure parts of the quantifier, we just re-wrap the body into a let.
-                Forall(ivars, itriggers, Implies(cond, Let(v, e, Implies(icond, ibod)(lt.pos, lt.info))(lt.pos, lt.info, lt.errT))(lt.pos, lt.info, lt.errT))(iforall.pos, iforall.info)
+                attachMeta(Forall(ivars, itriggers, Implies(cond, Let(v, e, Implies(icond, ibod)(lt.pos, lt.info))(lt.pos, lt.info, lt.errT))(lt.pos, lt.info, lt.errT)), iforall.pos, iforall.info)
             }
           }
           case _ =>
