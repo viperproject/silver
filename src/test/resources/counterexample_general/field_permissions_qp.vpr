@@ -1,0 +1,20 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Counterexamples for field permission amounts obtained through quantified
+// permissions. A single quantified permission over the sequence `s` (with
+// s[0] == a) contributes 1/2 to the location a.f, and that amount is reported.
+//
+// See also two_qp_same_field.vpr (two quantified permissions summing to 1/1)
+// and qfield.vpr (heap *values* under quantified permissions).
+
+field f: Int
+
+method qp_field_permission(s: Seq[Ref], a: Ref)
+  requires |s| > 0 && s[0] == a
+  requires forall j: Int, k: Int :: 0 <= j < k < |s| ==> s[j] != s[k]
+  requires forall j: Int :: 0 <= j < |s| ==> acc(s[j].f, 1/2)
+{
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (acc(a.f, 1/2)))
+  assert perm(a.f) == none
+}

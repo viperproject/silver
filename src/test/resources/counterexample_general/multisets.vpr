@@ -1,0 +1,12 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Counterexamples for (heap-independent) multiset values. Multiset contents are
+// compared as whole values between two variables constrained to be equal.
+
+method multiset_eq(s: Multiset[Int], t: Multiset[Int])
+  requires s == t
+{
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (s == t))
+  assert s != t
+}

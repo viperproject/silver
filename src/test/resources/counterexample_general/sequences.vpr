@@ -1,0 +1,22 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Counterexamples for sequence values, reported element-wise via lookups s[i].
+
+method seq_two_elements(s: Seq[Int])
+  requires |s| >= 3
+  requires s[0] == 10
+  requires s[2] == 30
+{
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (s[0] == 10, s[2] == 30))
+  assert s[0] == s[2]
+}
+
+method seq_negative_element(s: Seq[Int])
+  requires |s| >= 2
+  requires s[0] == 1
+  requires s[1] == -5
+{
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (s[1] == -5))
+  assert s[1] >= 0
+}
