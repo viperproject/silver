@@ -58,6 +58,7 @@ trait DependencyAnalysisJoinInfo extends ast.Info {
 
 case class EvalStackDependencyAnalysisJoin(joinType: JoinType, edgeType: EdgeType) extends DependencyAnalysisJoinInfo {
   override def matches(dependencyAnalysisJoinInfo: DependencyAnalysisJoinInfo): Boolean = {
+    // These join infos should be transformed to SimpleDependencyAnalysisJoin before joining the graphs. Hence, we throw an error if that is not the case.
     sys.error("Trying to call matches on an EvalStackDependencyAnalysisJoin.")
   }
 }
