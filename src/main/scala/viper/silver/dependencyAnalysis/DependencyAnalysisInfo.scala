@@ -22,8 +22,7 @@ object DependencyTypeInfo {
       case _: ast.Inhale | _: ast.Assume => ExplicitAssumption
       case _: ast.Fold | _: ast.Unfold | _: ast.Package | _: ast.Apply => Rewrite.asDepType()
       case _: ast.Quasihavoc | _: ast.Quasihavocall => SourceCode.asDepType()
-      case _: ast.Seqn | _: ast.While | _: ast.If => AssumptionType.Unknown.asDepType()
-      case _ => sys.error(s"Dependency type of $stmt is undefined.")
+      case _ => AssumptionType.Unknown.asDepType() // other statements do not introduce assumptions or are composed of statements that we already covered. We can ignore these.
     }
     DependencyTypeInfo(depType)
   }
