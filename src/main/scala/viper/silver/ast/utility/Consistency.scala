@@ -348,14 +348,14 @@ object Consistency {
 
   def checkNoFunctionRecursesViaPreconditions(program: Program): Seq[ConsistencyError] = {
     var s = Seq.empty[ConsistencyError]
-    Functions.findFunctionCyclesViaPreconditions(program) foreach { case (func, cycleSet) =>
-      var msg = s"Function ${func.name} recurses via its precondition"
+    Functions.findFunctionCyclesViaPreconditions(program) foreach { case (funcName, cycleSet) =>
+      var msg = s"Function ${funcName} recurses via its precondition"
 
       if (cycleSet.nonEmpty) {
-        msg = s"$msg: the cycle contains the function(s) ${cycleSet.map(_.name).mkString(", ")}"
+        msg = s"$msg: the cycle contains the function(s) ${cycleSet.mkString(", ")}"
       }
 
-      s :+= ConsistencyError(msg, func.pos)
+      s :+= ConsistencyError(msg, program.findFunction(funcName).pos)
     }
     s
   }

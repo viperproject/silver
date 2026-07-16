@@ -104,6 +104,69 @@ object Expressions {
     })
   }
 
+  /** Returns only the functional parts of an expression.
+    * Note: Result is likely not self-framing.
+    */
+  def asPureFragment(e: Exp): Option[Exp] = {
+    asFragment(e, pureFragment = true)
+  }
+
+  /** Returns only the access/permission parts of an expression.
+    * Note: Result may not be well-defined on its own if functional properties are dropped,
+    * e.g. index bounds in QPs.
+    */
+  def asAccessFragment(e: Exp): Option[Exp] = {
+    asFragment(e, pureFragment = false)
+  }
+
+  private def asFragment(e: Exp, pureFragment: Boolean): Option[Exp] = {
+    def rec(e2: Exp): Option[Exp] = asFragment(e2, pureFragment)
+
+    e match {
+      case _: AccessPredicate => if (pureFragment) None else Some(e)
+      case ie@InhaleExhaleExp(in, ex) => for {
+        in2 <- rec(in)
+        ex2 <- rec(ex)
+      } yield InhaleExhaleExp(in2, ex2)(ie.pos, ie.info, ie.errT)
+      case imp@Implies(left, right) => rec(right).map(Implies(left, _)(imp.pos, imp.info, imp.errT))
+      case and@And(left, right) =>
+        (rec(left), rec(right)) match {
+          case (Some(left2), Some(right2)) => Some(And(left2, right2)(and.pos, and.info, and.errT))
+          case (Some(left2), None) => Some(left2)
+          case (None, Some(right2)) => Some(right2)
+          case (None, None) => None
+        }
+      case ite@CondExp(cond, thn, els) =>
+        (rec(thn), rec(els)) match {
+          case (Some(thn2), Some(els2)) => Some(CondExp(cond, thn2, els2)(ite.pos, ite.info, ite.errT))
+          case (Some(thn2), None) => Some(Implies(cond, thn2)(ite.pos, ite.info, ite.errT))
+          case (None, Some(els2)) =>
+            Some(Implies(Not(cond)(cond.pos, cond.info, cond.errT), els2)(ite.pos, ite.info, ite.errT))
+          case (None, None) => None
+        }
+      case unf@Unfolding(acc, body) => rec(body).map(Unfolding(acc, _)(unf.pos, unf.info, unf.errT))
+      case app@Applying(wand, body) => rec(body).map(Applying(wand, _)(app.pos, app.info, app.errT))
+      case ass@Asserting(a, body) => rec(body).map(Asserting(a, _)(ass.pos, ass.info, ass.errT))
+      case let@Let(variable, exp, body) => rec(body).map(Let(variable, exp, _)(let.pos, let.info, let.errT))
+      case qa@Forall(_, _, exp) => rec(exp).map(exp2 => qa.copy(exp = exp2)(qa.pos, qa.info, qa.errT))
+      case qe@Exists(_, _, exp) => rec(exp).map(exp2 => qe.copy(exp = exp2)(qe.pos, qe.info, qe.errT))
+      case ext: ExtensionExp => if (ext.extensionIsPure == pureFragment) Some(ext) else None
+      case _: Literal
+           | _: AbstractLocalVar
+           | _: BinExp
+           | _: UnExp
+           | _: LocationAccess
+           | _: PermExp
+           | _: ForPerm
+           | _: FuncLikeApp
+           | _: SeqExp
+           | _: SetExp
+           | _: MultisetExp
+           | _: MapExp
+      => if (pureFragment) Some(e) else None
+    }
+  }
+
   def whenInhaling(e: Exp) = e.transform({
     case InhaleExhaleExp(in, _) => in
   }, Traverse.BottomUp)
