@@ -59,5 +59,25 @@ class SimplifierTests extends AnyFunSuite with Matchers {
     simplify(EqCmp(seqAcc, seqAcc)()) should be(EqCmp(seqAcc, seqAcc)())
   }
 
+  test("perm") {
+    // Modified QP chunks often look like:
+    // acc(r.val, 1 - (r == r1 ? 1 : 0) - (r == r2 ? min(1 - (r == r1 ? 1 : 0), 1) : 0))
+
+    val r1 = LocalVar("r1", Ref)()
+    val r2 = LocalVar("r2", Ref)()
+
+    // 1 - (r1 == r2 ? 1 : 0)
+    val test1 = PermSub(FullPerm()(), CondExp(EqCmp(r1, r2)(), FullPerm()(), NoPerm()())())()
+
+    // r1 == r2 ? 0 : 1
+    val result = CondExp(EqCmp(r1, r2)(), NoPerm()(), FullPerm()())()
+
+    // min(1 - (r1 == r1 ? 1 : 0), 1)
+    val test2 = DebugPermMin(test1, FullPerm()())()
+
+    simplify[Exp](test1) should be (result)
+    simplify[Exp](test2) should be (result)
+  }
+
   implicit def int2IntLit(i: Int): IntLit = IntLit(i)()
 }
