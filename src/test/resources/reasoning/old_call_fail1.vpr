@@ -1,0 +1,17 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+method foo()
+//:: ExpectedOutput(typechecker.error)
+requires oldCall[l](lemma())
+{
+    var x: Int
+    //:: ExpectedOutput(typechecker.error)
+    x := oldCall[l](lemma()) // label l does not yet exist
+    label l
+    //:: ExpectedOutput(typechecker.error)
+    x := 42 + oldCall[l](lemma())
+}
+
+method lemma() returns (x: Int)
+isLemma

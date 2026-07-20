@@ -234,7 +234,7 @@ method findMinNode(arg: Ref) returns (res: Ref)
 field Nodes: Ref // BinomialHeapNode
 field size: Int // not read in the code, so we can omit it and simplify the predicates
 
-predicate heap(this: Ref){	
+predicate binheap(this: Ref){
 	acc(this.Nodes) && 
 	heapseg(this.Nodes, null) && sorted(this.Nodes, null) && 
 	(this.Nodes != null ==> segParent(this.Nodes, null) == null) && 
@@ -526,10 +526,10 @@ heapseg(this.Nodes, null) && sorted(this.Nodes, null)
 //   in the callee method union or because it affects the fields we did
 //   not model so far, namely size and parent.
 method extractMin(this: Ref) returns (res: Ref) 
-	requires heap(this) 
-	ensures heap(this) 
+	requires binheap(this)
+	ensures binheap(this)
 {	
-	unfold heap(this) 
+	unfold binheap(this)
 	var nodes: Ref := this.Nodes 
 	if(nodes == null){		
 		res := null 
@@ -554,8 +554,8 @@ method extractMin(this: Ref) returns (res: Ref)
 				invariant prevTemp != null && temp != minNode ==> treeDegree(prevTemp) < segDegree(temp, minNode, 0) 
 				invariant prevTemp != null && temp == minNode ==> treeDegree(prevTemp) < segDegree(minNode, null, 0) 
 				invariant temp != minNode ==> segDegree(temp, minNode, segLength(temp, minNode) - 1) < segDegree(minNode, null, 0) 
-				invariant prevTemp != null ==> segSize(nodes, prevTemp) + treeSize(prevTemp) + segSize(temp, minNode) + segSize(minNode, null) == old(unfolding heap(this) in segSize(this.Nodes, null)) 
-				invariant prevTemp == null ==> segSize(temp, minNode) + segSize(minNode, null) == old(unfolding heap(this) in segSize(this.Nodes, null)) 
+				invariant prevTemp != null ==> segSize(nodes, prevTemp) + treeSize(prevTemp) + segSize(temp, minNode) + segSize(minNode, null) == old(unfolding binheap(this) in segSize(this.Nodes, null))
+				invariant prevTemp == null ==> segSize(temp, minNode) + segSize(minNode, null) == old(unfolding binheap(this) in segSize(this.Nodes, null))
 				invariant temp != minNode ==> segParent(temp, minNode) == null 
 				invariant minNode != null ==> segParent(minNode, null) == null 
 				invariant prevTemp != null && nodes != prevTemp ==> segParent(nodes, prevTemp) == null 
@@ -637,5 +637,5 @@ method extractMin(this: Ref) returns (res: Ref)
 		
 		res := minNode 
 	} 
-	fold heap(this) 
+	fold binheap(this)
 } 
