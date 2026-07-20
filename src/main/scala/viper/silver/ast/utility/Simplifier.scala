@@ -183,20 +183,38 @@ object Simplifier {
         TrueLit()(root.pos, root.info)
 
       case DebugPermMin(e0@AnyPermLiteral(a, b), e1@AnyPermLiteral(c, d)) =>
-        if (Rational(a, b) < Rational(c, d)) {
-          e0
-        } else {
-          e1
-        }
+        if (Rational(a, b) < Rational(c, d)) e0 else e1
+      case DebugPermMin(NoPerm(), b) if isKnownWellDefined(b) => NoPerm()()
+      case DebugPermMin(a, NoPerm()) if isKnownWellDefined(a) => NoPerm()()
+      case root@DebugPermMin(left@AnyPermLiteral(a, b),
+                             CondExp(cond, thn@AnyPermLiteral(t0, t1), els@AnyPermLiteral(e0, e1))) =>
+        val thn2 = if (Rational(a, b) < Rational(t0, t1)) left else thn
+        val els2 = if (Rational(a, b) < Rational(e0, e1)) left else els
+        CondExp(cond, thn2, els2)(root.pos, root.info)
+      case root@DebugPermMin(CondExp(cond, thn@AnyPermLiteral(t0, t1), els@AnyPermLiteral(e0, e1)),
+                             right@AnyPermLiteral(a, b)) =>
+        val thn2 = if (Rational(a, b) < Rational(t0, t1)) right else thn
+        val els2 = if (Rational(a, b) < Rational(e0, e1)) right else els
+        CondExp(cond, thn2, els2)(root.pos, root.info)
+
       case root@PermSub(AnyPermLiteral(a, b), AnyPermLiteral(c, d)) =>
         val diff = Rational(a, b) - Rational(c, d)
-        FractionalPerm(IntLit(diff.numerator)(root.pos, root.info), IntLit(diff.denominator)(root.pos, root.info))(root.pos, root.info)
+        ratToPerm(diff, root.pos, root.info, root.errT)
       case root@PermAdd(AnyPermLiteral(a, b), AnyPermLiteral(c, d)) =>
         val sum = Rational(a, b) + Rational(c, d)
-        FractionalPerm(IntLit(sum.numerator)(root.pos, root.info), IntLit(sum.denominator)(root.pos, root.info))(root.pos, root.info)
+        ratToPerm(sum, root.pos, root.info, root.errT)
       case PermAdd(NoPerm(), rhs) => rhs
       case PermAdd(lhs, NoPerm()) => lhs
       case PermSub(lhs, NoPerm()) => lhs
+      case PermSub(lhs, NoPerm()) => lhs
+      case root@PermSub(AnyPermLiteral(a, b), CondExp(cond, AnyPermLiteral(c, d), AnyPermLiteral(e, f))) =>
+        val thn2 = ratToPerm(Rational(a, b) - Rational(c, d), root.pos, root.info)
+        val els2 = ratToPerm(Rational(a, b) - Rational(e, f), root.pos, root.info)
+        CondExp(cond, thn2, els2)(root.pos, root.info)
+      case root@PermSub(CondExp(cond, AnyPermLiteral(a, b), AnyPermLiteral(c, d)), AnyPermLiteral(e, f)) =>
+        val thn2 = ratToPerm(Rational(a, b) - Rational(e, f), root.pos, root.info)
+        val els2 = ratToPerm(Rational(c, d) - Rational(e, f), root.pos, root.info)
+        CondExp(cond, thn2, els2)(root.pos, root.info)
 
       case root@GeCmp(IntLit(left), IntLit(right)) =>
         BoolLit(left >= right)(root.pos, root.info)
@@ -264,5 +282,11 @@ object Simplifier {
       case FractionalPerm(IntLit(n), IntLit(d)) => Some((n, d))
       case _ => None
     }
+  }
+
+  def ratToPerm(q: Rational, pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos): PermExp = {
+    if (q.equals(Rational.zero)) NoPerm()(pos, info, errT)
+    else if (q.equals(Rational.one)) FullPerm()(pos, info, errT)
+    else FractionalPerm(IntLit(q.numerator)(pos, info, errT), IntLit(q.denominator)(pos, info, errT))(pos, info, errT)
   }
 }
