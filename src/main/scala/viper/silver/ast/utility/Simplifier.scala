@@ -186,8 +186,17 @@ object Simplifier {
         if (Rational(a, b) < Rational(c, d)) e0 else e1
       case DebugPermMin(NoPerm(), b) if isKnownWellDefined(b) => NoPerm()()
       case DebugPermMin(a, NoPerm()) if isKnownWellDefined(a) => NoPerm()()
-      case DebugPermMin(FullPerm(), b) if isKnownWellDefined(b) => b
-      case DebugPermMin(a, FullPerm()) if isKnownWellDefined(a) => a
+      case root@DebugPermMin(left@AnyPermLiteral(a, b),
+                             CondExp(cond, thn@AnyPermLiteral(t0, t1), els@AnyPermLiteral(e0, e1))) =>
+        val thn2 = if (Rational(a, b) < Rational(t0, t1)) left else thn
+        val els2 = if (Rational(a, b) < Rational(e0, e1)) left else els
+        CondExp(cond, thn2, els2)(root.pos, root.info)
+      case root@DebugPermMin(CondExp(cond, thn@AnyPermLiteral(t0, t1), els@AnyPermLiteral(e0, e1)),
+                             right@AnyPermLiteral(a, b)) =>
+        val thn2 = if (Rational(a, b) < Rational(t0, t1)) right else thn
+        val els2 = if (Rational(a, b) < Rational(e0, e1)) right else els
+        CondExp(cond, thn2, els2)(root.pos, root.info)
+
       case root@PermSub(AnyPermLiteral(a, b), AnyPermLiteral(c, d)) =>
         val diff = Rational(a, b) - Rational(c, d)
         ratToPerm(diff, root.pos, root.info, root.errT)
