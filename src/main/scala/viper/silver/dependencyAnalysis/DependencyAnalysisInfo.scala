@@ -26,6 +26,8 @@ object DependencyTypeInfo {
     }
     DependencyTypeInfo(depType)
   }
+
+  def getInternalDepTypeInfo: DependencyTypeInfo = DependencyTypeInfo(DependencyType(AssumptionType.Internal))
 }
 
 case class DependencyTypeInfo(dependencyType: DependencyType) extends ast.Info {
