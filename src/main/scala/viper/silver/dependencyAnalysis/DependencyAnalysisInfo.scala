@@ -39,6 +39,10 @@ object JoinType extends Enumeration {
   val Source, Sink = Value
 }
 
+/**
+ * Up = moving up the call graph, e.g. from precondition to all calls to its method
+ * Down = moving down the call graph, e.g. from method call to the method's postcondition
+ */
 object EdgeType extends Enumeration {
   type EdgeType = Value
   val Up, Down = Value
@@ -47,6 +51,8 @@ object EdgeType extends Enumeration {
 /**
  * Represent the piece of information to be stored in dependency nodes in order to join dependency graphs of
  * individual verification components. Nodes with matching join information are connected by an interprocedural edge.
+ *
+ * For example, method calls and the method's pre/postconditions are joined by attaching join info to the AST nodes accordingly.
  */
 trait DependencyAnalysisJoinInfo extends ast.Info {
   override def comment: Seq[String] = Nil
@@ -55,6 +61,10 @@ trait DependencyAnalysisJoinInfo extends ast.Info {
   def matches(dependencyAnalysisJoinInfo: DependencyAnalysisJoinInfo) : Boolean
 }
 
+/**
+ * Temporary placeholder indicating that the source info of this join is determined later on (i.e. by the most specific source info).
+ * It should always be transformed to another type of join info before creating a dependency node.
+ */
 case class EvalStackDependencyAnalysisJoin(joinType: JoinType, edgeType: EdgeType) extends DependencyAnalysisJoinInfo {
   override def matches(dependencyAnalysisJoinInfo: DependencyAnalysisJoinInfo): Boolean = {
     // These join infos should be transformed to SimpleDependencyAnalysisJoin before joining the graphs. Hence, we throw an error if that is not the case.
@@ -62,6 +72,13 @@ case class EvalStackDependencyAnalysisJoin(joinType: JoinType, edgeType: EdgeTyp
   }
 }
 
+/**
+ * @param sourceInfo a piece of information used to determine the join edges
+ * @param joinType indicates whether the node is the source or sink of the joining edge
+ * @param edgeType indicates the type of edge
+ *
+ * Dependency nodes having join infos with identical source info and edge type are to be connected by an edge.
+ */
 case class SimpleDependencyAnalysisJoin(sourceInfo: DependencyAnalysisSourceInfo, joinType: JoinType, edgeType: EdgeType) extends DependencyAnalysisJoinInfo {
   override def matches(other: DependencyAnalysisJoinInfo): Boolean = other match {
       case SimpleDependencyAnalysisJoin(sourceInfo1, _, edgeType1) => sourceInfo.equals(sourceInfo1) && edgeType.equals(edgeType1)
@@ -70,8 +87,18 @@ case class SimpleDependencyAnalysisJoin(sourceInfo: DependencyAnalysisSourceInfo
 }
 
 /**
- * Represent the piece of information to be stored in dependency nodes in order to finalize the intraprocedural
- * dependency graph. Nodes with matching merge information are connected by an intraprocedural edge.
+ *  The merge infos are one of the main measures to make the analysis more precise. It indicates which edges, that are not already discovered through
+ *  UNSAT cores, are added to intra-procedural graphs. All nodes with the same merge info are interconnected, i.e. all its assumption nodes depend on (= have an edge to)
+ *  all its assertion nodes.
+ *
+ *  By default, the merge info is identical to the source info. However, we can control this behavior
+ *  by setting custom merge infos. Nodes can have arbitrarily many merge infos, e.g. some nodes have merge info A, some have B,
+ *  and some have both thus connecting nodes with only A and B in a controlled manner.
+ *
+ *  Dependency nodes with NoDependencyAnalysisMerge() are ignored, e.g. no edges to/from them are added during the finalization phase of the intraprocedural graph.
+ *  We mainly use it for internal nodes, e.g. infeasibility nodes.
+ *
+ *  An example usage of custom merge infos can be found for field assignments (DefaultHeapSupportRules.execFieldAssign).
  */
 trait DependencyAnalysisMergeInfo extends ast.Info {
 
@@ -81,6 +108,9 @@ trait DependencyAnalysisMergeInfo extends ast.Info {
   override def isCached: Boolean = false
 }
 
+/*
+  Indicates that no edge should be added.
+ */
 case class NoDependencyAnalysisMerge() extends DependencyAnalysisMergeInfo {
   override def isMerge: Boolean = false
 }
@@ -116,6 +146,14 @@ object DependencyAnalysisMergeInfo {
   }
 }
 
+/**
+ * Sometimes we need to enforce the creation of assertion or assumption nodes because they might not be created automatically due to encoding details.
+ * By attaching an appropriate AdditionalDependencyNodeInfo to the node's info field, the creation of a corresponding node is enforced.
+ *
+ * For example, upcasts in Gobra require an implementation proof. This proof is encoded as a dedicated method but the connection to the upcast
+ * is not apparent in the resulting Viper program. The upcast might not introduce an assertion node at all. In this case, we attach an
+ * AdditionalAssertionNode to the Viper node's info field. (We also attach join infos to encode the connection to the implementation proof.)
+ */
 trait AdditionalDependencyNodeInfo extends ast.Info {
 
   override def comment: Seq[String] = Nil
