@@ -78,12 +78,13 @@ case class EvalStackDependencyAnalysisJoin(joinType: JoinType, edgeType: EdgeTyp
  * @param sourceInfo a piece of information used to determine the join edges
  * @param joinType indicates whether the node is the source or sink of the joining edge
  * @param edgeType indicates the type of edge
+ * @param assertOnly if set to true, this join info is only added to assertion nodes. If set to false, it is added to all nodes.
  *
  * Dependency nodes having join infos with identical source info and edge type are to be connected by an edge.
  */
-case class SimpleDependencyAnalysisJoin(sourceInfo: DependencyAnalysisSourceInfo, joinType: JoinType, edgeType: EdgeType) extends DependencyAnalysisJoinInfo {
+case class SimpleDependencyAnalysisJoin(sourceInfo: DependencyAnalysisSourceInfo, joinType: JoinType, edgeType: EdgeType, assertOnly: Boolean = false) extends DependencyAnalysisJoinInfo {
   override def matches(other: DependencyAnalysisJoinInfo): Boolean = other match {
-      case SimpleDependencyAnalysisJoin(sourceInfo1, _, edgeType1) => sourceInfo.equals(sourceInfo1) && edgeType.equals(edgeType1)
+      case SimpleDependencyAnalysisJoin(sourceInfo1, _, edgeType1, _) => sourceInfo.equals(sourceInfo1) && edgeType.equals(edgeType1)
       case _ => false
   }
 }
