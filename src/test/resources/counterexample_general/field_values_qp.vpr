@@ -1,0 +1,42 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Counterexamples for heap *values* of fields whose permission is held through a
+// quantified permission. The quantifier ranges over different structures (set,
+// sequence) and the reported value is checked for one particular location.
+//
+// See also qfield.vpr (quantified field values via a plain sequence range).
+
+field f: Int
+
+// permission and value both come from quantifiers over set containment
+method qp_value_set(s: Set[Ref], a: Ref)
+  requires a in s
+  requires forall r: Ref :: r in s ==> acc(r.f)
+  requires forall r: Ref :: r in s ==> r.f == 42
+{
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (a.f == 42))
+  assert a.f != 42
+}
+
+// permission and value both come from quantifiers over a sequence range
+method qp_value_seq(s: Seq[Ref], a: Ref, i: Int)
+  requires 0 <= i < |s| && s[i] == a
+  requires forall j: Int, k: Int :: 0 <= j < k < |s| ==> s[j] != s[k]
+  requires forall j: Int :: 0 <= j < |s| ==> acc(s[j].f)
+  requires forall j: Int :: 0 <= j < |s| ==> s[j].f == 13
+{
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (a.f == 13))
+  assert a.f != 13
+}
+
+// value that depends on the quantified index (s[j].f == j * 10, checked at j == 2)
+method qp_value_indexed(s: Seq[Ref], a: Ref)
+  requires |s| > 2 && s[2] == a
+  requires forall j: Int, k: Int :: 0 <= j < k < |s| ==> s[j] != s[k]
+  requires forall j: Int :: 0 <= j < |s| ==> acc(s[j].f)
+  requires forall j: Int :: 0 <= j < |s| ==> s[j].f == j * 10
+{
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (a.f == 20))
+  assert a.f != 20
+}

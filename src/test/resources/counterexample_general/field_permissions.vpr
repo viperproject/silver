@@ -1,0 +1,30 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Counterexamples for field permission amounts (without quantified permissions).
+// The held fractional permission is reported both when an assertion asks for
+// more permission than is held (insufficient.permission) and when an assertion
+// about the permission amount fails (assertion.false).
+
+field f: Int
+
+method half_permission(x: Ref)
+  requires acc(x.f, 1/2)
+{
+  //:: ExpectedCounterexample(assert.failed:insufficient.permission, (acc(x.f, 1/2)))
+  assert acc(x.f, 1/1)
+}
+
+method quarter_permission(x: Ref)
+  requires acc(x.f, 1/4)
+{
+  //:: ExpectedCounterexample(assert.failed:insufficient.permission, (acc(x.f, 1/4)))
+  assert acc(x.f, 1/2)
+}
+
+method permission_amount(x: Ref)
+  requires acc(x.f, 1/2)
+{
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (acc(x.f, 1/2)))
+  assert perm(x.f) == none
+}

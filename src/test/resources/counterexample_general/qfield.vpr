@@ -1,0 +1,18 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+method foo(s: Seq[Ref], i: Int, m: Int)
+  requires forall j: Int, k: Int :: 0 <= j < k < |s| ==> s[j] != s[k]
+  requires forall j: Int :: 0 <= j < |s| ==> acc(s[j].f)
+  requires forall j: Int :: 0 <= j < |s| ==> s[j].f > 0
+  requires 0 <= i < |s|
+  requires 0 <= m < |s|
+  requires i < m
+{
+   if (s[i].f < 2) {
+     //:: ExpectedCounterexample(assert.failed:assertion.false, (s[m].f == 1, s[i].f == 1))
+     assert s[m].f > 1
+   }
+}

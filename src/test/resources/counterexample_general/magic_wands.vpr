@@ -1,0 +1,19 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Counterexample in the presence of magic wands. A wand acc(x.f, 1/2) --*
+// acc(x.f, 1/1) is applied, combining the held half permission with the wand to
+// obtain full permission to x.f. The counterexample at the subsequent failing
+// assertion reports that full permission, i.e. the effect of applying the wand.
+
+field f: Int
+
+method wand_apply(x: Ref)
+  requires acc(x.f, 1/2)
+  requires x.f == 7
+  requires acc(x.f, 1/2) --* (acc(x.f, 1/1) && x.f == 7)
+{
+  apply acc(x.f, 1/2) --* (acc(x.f, 1/1) && x.f == 7)
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (acc(x.f, 1/1)))
+  assert x.f != 7
+}

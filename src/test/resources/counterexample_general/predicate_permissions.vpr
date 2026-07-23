@@ -1,0 +1,22 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Counterexamples for predicate permission amounts (without quantified
+// permissions). The held fractional predicate permission is reported.
+
+field f: Int
+predicate P(this: Ref) { acc(this.f) }
+
+method half_predicate(x: Ref)
+  requires acc(P(x), 1/2)
+{
+  //:: ExpectedCounterexample(assert.failed:insufficient.permission, (acc(P(x), 1/2)))
+  assert acc(P(x), 1/1)
+}
+
+method predicate_amount(x: Ref)
+  requires acc(P(x), 1/2)
+{
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (acc(P(x), 1/2)))
+  assert perm(P(x)) == none
+}
