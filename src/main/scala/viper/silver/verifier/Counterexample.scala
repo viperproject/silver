@@ -1,3 +1,9 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2026 ETH Zurich.
+
 package viper.silver.verifier
 import viper.silver.ast
 import viper.silver.ast.{AbstractLocalVar, Exp, Type, Resource}
@@ -5,11 +11,12 @@ import viper.silver.ast.{AbstractLocalVar, Exp, Type, Resource}
 /**
   * Classes used to build counterexamples. Two layers are distinguished:
   *
-  *   - a "raw" counterexample ([[RawCounterexample]]) that contains all information in a simple,
-  *     machine-readable form, keyed by the backend-internal (SMT/Boogie) identifiers, and
+  *   - a "raw" counterexample ([[RawCounterexample]]) that collects the information from the backend
+  *     model in a simple form, with heap resources still identified by the backend-internal
+  *     (SMT/Boogie) reference and field identifiers, and
   *   - a "resolved" counterexample ([[ResolvedCounterexample]]) that makes the raw one
-  *     human-readable, e.g. by binding heap resources to their AST nodes and translating internal
-  *     value identifiers to the program variables that denote them.
+  *     human-readable, e.g. by binding heap resources to their AST nodes (fields, predicates and
+  *     magic wands).
   *
   * Values are represented as ordinary Viper AST expressions ([[ast.Exp]]). Literals that have no
   * ordinary Viper representation use the dedicated counterexample literals [[ast.RefLit]] (a

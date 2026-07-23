@@ -25,3 +25,14 @@ method local_ref(x: Ref, y: Ref)
   //:: ExpectedCounterexample(assert.failed:assertion.false, (x == y))
   assert x != y
 }
+
+// A local reassigned in the body: the counterexample must report the value at the
+// failing assertion (13), not the parameter or an earlier version.
+method local_reassigned(a: Int)
+  requires a == 3
+{
+  var z: Int
+  z := a + 10
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (z == 13))
+  assert z == 0
+}
