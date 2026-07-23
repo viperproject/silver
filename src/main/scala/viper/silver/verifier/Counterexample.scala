@@ -71,6 +71,37 @@ object CounterexampleValue {
     case _ => None
   }
 
+  /** SMT solvers represent a rational as a division application, e.g. "(/ 1.0 2.0)". */
+  private val smtRealDiv = """^\(\s*/\s+(\S+)\s+(\S+)\s*\)$""".r
+
+  /** Parses a single rational token — an integer "3", a fraction "1/2" or a decimal "0.5"/"1.0" —
+    * into a (numerator, denominator) pair. */
+  private def parseRationalToken(value: String): Option[(BigInt, BigInt)] = value.trim.split("/") match {
+    case Array(n, d) => for (ni <- parseInt(n); di <- parseInt(d) if di != 0) yield (ni, di)
+    case Array(single) if single.contains(".") =>
+      val dotParts = single.split("\\.", 2)
+      val intPart = dotParts(0)
+      val fracPart = if (dotParts.length > 1) dotParts(1) else ""
+      parseInt(if ((intPart + fracPart).isEmpty) "0" else intPart + fracPart).map(num => (num, BigInt(10).pow(fracPart.length)))
+    case Array(single) => parseInt(single).map(i => (i, BigInt(1)))
+    case _ => None
+  }
+
+  /** Parses a permission amount from its backend representation — a fraction "1/2", an SMT real
+    * division "(/ 1.0 2.0)", a decimal or an integer — into a reduced "numerator/denominator"
+    * permission literal (rendered like the permission amounts elsewhere in the counterexample, e.g.
+    * "1/2", rather than as an AST fraction "1 / 2"). */
+  def parsePerm(value: String): Option[ast.Exp] = {
+    val fraction: Option[(BigInt, BigInt)] = value.trim match {
+      case smtRealDiv(a, b) => for ((an, ad) <- parseRationalToken(a); (bn, bd) <- parseRationalToken(b) if bn != 0) yield (an * bd, ad * bn)
+      case other => parseRationalToken(other)
+    }
+    fraction.map { case (n, d) =>
+      val g = n.gcd(d).max(1)
+      ast.BackendValueLit(s"${n / g}/${d / g}", ast.Perm)()
+    }
+  }
+
   /**
     * Infers a literal from a backend value string when no Viper type is available. The element
     * types of collections are not always known, so this makes value comparison robust: an integer
@@ -87,6 +118,7 @@ object CounterexampleValue {
     case Some(ast.Bool) =>
       parseBool(value).map(b => ast.BoolLit(b)()).getOrElse(ast.BackendValueLit(value, ast.Bool)())
     case Some(ast.Ref) => ast.RefLit(value)()
+    case Some(ast.Perm) => parsePerm(value).getOrElse(ast.BackendValueLit(value, ast.Perm)())
     case Some(t) => ast.BackendValueLit(value, t)()
     case None => inferLiteral(value)
   }
