@@ -157,9 +157,9 @@ case class PredResolvedEntry(name: String, args: Seq[Exp], perm: Option[Rational
   override lazy val toString = s"Predicate Entry: $name(${args.mkString("", ", ", ")")} --> (Perm: ${perm.getOrElse("#undefined").toString}) ${if (insidePredicate.isDefined && !insidePredicate.get.isEmpty) insidePredicate.get.toSeq.map(x => s"${x._1} --> ${x._2}")mkString("{\n   ", "\n   ", "\n}") else ""}"
 }
 
-case class WandResolvedEntry(name: String, left: Exp, right: Exp, args: Seq[Exp], perm: Option[Rational], het: HeapEntryType) extends ResolvedHeapEntry {
+case class WandResolvedEntry(left: Exp, right: Exp, perm: Option[Rational], het: HeapEntryType) extends ResolvedHeapEntry {
   val entryType = het
-  override lazy val toString = s"Magic Wand Entry: $name(${args.map(_.toString).mkString(", ")}) --> (Left: ${left.toString}, Right: ${right.toString}, Perm: ${perm.getOrElse("#undefined").toString})"
+  override lazy val toString = s"Magic Wand Entry: ${ast.MagicWand(left, right)().toString} (Perm: ${perm.getOrElse("#undefined").toString})"
 }
 
 object WandResolvedEntry {
@@ -168,7 +168,7 @@ object WandResolvedEntry {
     * values (`argValues`, given in the order of `subexpressionsToEvaluate`) into the wand's two
     * sides. The substituted values are the same counterexample literals used elsewhere in the model.
     */
-  def fromStructure(name: String, mw: ast.MagicWandStructure.MagicWandStructure, argValues: Seq[String],
+  def fromStructure(mw: ast.MagicWandStructure.MagicWandStructure, argValues: Seq[String],
                     perm: Option[Rational], het: HeapEntryType, program: ast.Program): WandResolvedEntry = {
     val structure = mw.structure(program, true)
     val holes = structure.subexpressionsToEvaluate(program)
@@ -176,7 +176,7 @@ object WandResolvedEntry {
     val repl: scala.collection.immutable.Map[ast.Node, ast.Node] =
       scala.collection.immutable.Map.from(holes.zip(argExps): Iterable[(ast.Node, ast.Node)])
     val transformed = structure.replace(repl)
-    WandResolvedEntry(name, transformed.left, transformed.right, argExps, perm, het)
+    WandResolvedEntry(transformed.left, transformed.right, perm, het)
   }
 }
 
