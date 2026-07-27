@@ -41,7 +41,8 @@ object AssumptionType {
   case object Precondition extends AssumptionType with PreconditionType with VerificationAnnotationType
   case object ExplicitPostcondition extends AssumptionType with ExplicitAssumptionType with PostconditionType with ExplicitAssertionType with VerificationAnnotationType
   case object ImplicitPostcondition extends AssumptionType with PostconditionType with ExplicitAssertionType with VerificationAnnotationType
-  case object ImportedPostcondition extends AssumptionType with PostconditionType with ImportedType with VerificationAnnotationType
+
+  case object Imported extends AssumptionType with ImportedType with VerificationAnnotationType
 
   case object Internal extends AssumptionType with InternalType
   case object Trigger extends AssumptionType with InternalType
@@ -57,7 +58,7 @@ object AssumptionType {
     Trigger,
     ExplicitPostcondition,
     ImplicitPostcondition,
-    ImportedPostcondition,
+    Imported,
     MethodCall,
     FunctionBody,
     Precondition,
@@ -69,18 +70,18 @@ object AssumptionType {
   def fromString(s: String): Option[AssumptionType] = values.find(_.toString == s)
 
   def getPostcondType(isAbstractFunction: Boolean, dependencyType: Option[DependencyType] = None, isImported: Boolean = false): AssumptionType = {
-    if (isImported) return ImportedPostcondition
-
-    dependencyType.flatMap(_.assertionType match {
-      case Explicit | ExplicitPostcondition => Some(ExplicitPostcondition)
-      case ImportedPostcondition => Some(ImportedPostcondition)
-      case ImplicitPostcondition => Some(ImplicitPostcondition)
-      case Internal => Some(Internal)
-      case Annotation | Ghost => None
-      case _ => None
-    }).getOrElse(
-      if (isAbstractFunction) ExplicitPostcondition else ImplicitPostcondition
-    )
+    if (isImported) Imported
+    else
+      dependencyType.flatMap(_.assertionType match {
+        case Explicit | ExplicitPostcondition => Some(ExplicitPostcondition)
+        case Imported => Some(Imported)
+        case ImplicitPostcondition => Some(ImplicitPostcondition)
+        case Internal => Some(Internal)
+        case Annotation | Ghost => None
+        case _ => None
+      }).getOrElse(
+        if (isAbstractFunction) ExplicitPostcondition else ImplicitPostcondition
+      )
   }
 }
 
