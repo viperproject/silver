@@ -581,7 +581,7 @@ sealed trait QuantifiedExp extends Exp with Scope {
 }
 
 object QuantifiedExp {
-  def unapply(q: QuantifiedExp): Option[(Seq[LocalVarDecl], Exp)] = Some(q.variables, q.exp)
+  def unapply(q: QuantifiedExp): Some[(Seq[LocalVarDecl], Exp)] = Some((q.variables, q.exp))
 }
 
 /** Universal quantification. */

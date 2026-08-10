@@ -7,7 +7,8 @@
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 import viper.silver.ast._
-import viper.silver.ast.utility.ImpureAssumeRewriter
+
+import scala.annotation.unused
 
 
 class UtilityTests extends AnyFunSuite with Matchers {
@@ -22,7 +23,7 @@ class UtilityTests extends AnyFunSuite with Matchers {
       ), Seq())(NoPosition, NoInfo, NoTrafos))
       )(NoPosition)
 
-    val testProgram : Program = Program(Seq(), Seq(Field("f",Int)(NoPosition)), Seq(), Seq(), Seq(testMethod), Seq())(NoPosition)
+    @unused val testProgram : Program = Program(Seq(), Seq(Field("f",Int)(NoPosition)), Seq(), Seq(), Seq(testMethod), Seq())(NoPosition)
 
     // val rewritten = AssumeRewriter.rewrite(assumeBody,testProgram)
 

@@ -11,6 +11,8 @@ import viper.silver.ast._
 import viper.silver.ast.utility.rewriter._
 import viper.silver.utility.Common.Rational
 
+import scala.annotation.nowarn
+
 /**
  * An implementation for simplifications on the Viper AST.
  */
@@ -28,6 +30,9 @@ object Simplifier {
       assumeWelldefinedness || Expressions.isKnownWellDefined(e, None)
     }
 
+    /* The match below is deliberately partial (it is a `PartialFunction`), but it is large enough
+     * that the compiler runs out of budget while checking it for unreachable cases. */
+    @nowarn("msg=Cannot check match for unreachability")
     val simplifySingle: PartialFunction[Node, Node] = {
       // expression simplifications
       case root: Exp if root.simplified.isDefined =>

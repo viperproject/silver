@@ -53,7 +53,7 @@ object Triggers {
 
     protected def getArgs(e: Exp): Seq[Exp] = e match {
       case pt: PossibleTrigger => pt.getArgs
-      case fa: FieldAccess => fa.getArgs
+      case fa: FieldAccess => fa.getArgs()
       case Old(pt: PossibleTrigger) => pt.getArgs
       case LabelledOld(pt: PossibleTrigger, _) => pt.getArgs
       case _ => sys.error(s"Unexpected expression $e")

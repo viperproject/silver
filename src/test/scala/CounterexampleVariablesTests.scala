@@ -12,6 +12,7 @@ import viper.silver.parser.{FastParser, PAccPred, PBinExp, PBoolLit, PExp, PIdnU
 import viper.silver.verifier.{ConstantEntry, FailureContext, Model, ModelEntry, VerificationError}
 
 import java.nio.file.Path
+import scala.annotation.unused
 
 trait CounterexampleVariablesTests extends SilSuite {
   override val testDirectories: Seq[String] = Seq("counterexample_variables")
@@ -60,8 +61,8 @@ trait CounterexampleVariablesTests extends SilSuite {
         // now parsing is actually possible:
         fastparse.parse(expectedCounterexampleString, cParser.expectedCounterexample(_)) match {
           case Parsed.Success(expectedCounterexample, _) => Some(createExpectedValuesCounterexampleAnnotation(id, file, lineNr, expectedCounterexample))
-          case Parsed.Failure(_, _, extra) =>
-            println(s"Parsing expected counterexample failed in file $file: ${extra.trace().longAggregateMsg}")
+          case failure: Parsed.Failure =>
+            println(s"Parsing expected counterexample failed in file $file: ${failure.extra.trace().longAggregateMsg}")
             None
         }
       }
@@ -78,7 +79,7 @@ trait CounterexampleVariablesTests extends SilSuite {
   }
 }
 
-abstract class ExpectedValuesCounterexampleAnnotation(id: OutputAnnotationId, file: Path, forLineNr: Int, expectedCounterexample: ExpectedCounterexample) extends CustomAnnotation {
+abstract class ExpectedValuesCounterexampleAnnotation(id: OutputAnnotationId, file: Path, forLineNr: Int, @unused expectedCounterexample: ExpectedCounterexample) extends CustomAnnotation {
   override def matches(actual: AbstractOutput): Boolean =
     id.matches(actual.fullId) && actual.isSameLine(file, forLineNr) && containsModel(actual)
 
@@ -104,8 +105,9 @@ object CounterexampleComparison {
   }
 
   def containsEquality(lhs: PExp, rhs: PExp, model: Model): Boolean =
-    resolve(Vector(lhs, rhs), model).exists { case Vector(resolvedLhs, resolvedRhs) =>
-      areEqualEntries(resolvedLhs, resolvedRhs)
+    resolve(Vector(lhs, rhs), model).exists {
+      case Vector(resolvedLhs, resolvedRhs) => areEqualEntries(resolvedLhs, resolvedRhs)
+      case _ => false
     }
 
   /** resolves `expr` to a model entry in the given model. In case it's a field access, the corresponding permissions are returned as well */
@@ -123,6 +125,7 @@ object CounterexampleComparison {
 
   def areEqualEntries(entry1: ModelEntry, entry2: ModelEntry): Boolean = (entry1, entry2) match {
     case (ConstantEntry(value1), ConstantEntry(value2)) => value1 == value2
+    case _ => false
   }
 }
 
@@ -134,7 +137,7 @@ object CounterexampleComparison {
 class CounterexampleParser(fp: FastParser) {
   import fp.{accessPred, eqExp}
 
-  def expectedCounterexample[_: P]: P[ExpectedCounterexample] =
+  def expectedCounterexample[$: P]: P[ExpectedCounterexample] =
     (Start ~ "(" ~ (accessPred | eqExp).rep(0, ",") ~ ")" ~ End)
       .map(ExpectedCounterexample)
 }

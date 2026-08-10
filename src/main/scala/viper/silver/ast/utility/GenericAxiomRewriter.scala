@@ -214,8 +214,8 @@ abstract class GenericAxiomRewriter[Type <: AnyRef,
     var rewrittenTriggerSets = triggerSets
     var rewrittenBody = Quantification_body(quantification)
 
-    for ((qvar, entries) <- solved;
-         (invalidTerm, substVar, solution) <- entries) {
+    for ((_, entries) <- solved;
+         (invalidTerm, substVar, _) <- entries) {
 
       /* Replace each occurrence of invalidTerm with substVar */
       rewrittenTriggerSets =
