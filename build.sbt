@@ -15,7 +15,7 @@ ThisBuild / scalacOptions ++= Seq(
   "-feature",                         // Warn on features that requires explicit import
   "-Wunused",                         // Warn on unused imports
   "-Ypatmat-exhaust-depth", "40",     // Increase depth of pattern matching analysis
-  // "-Xfatal-warnings",                 // Treat Warnings as errors to guarantee code quality in future changes
+  "-Xfatal-warnings",                 // Treat Warnings as errors to guarantee code quality in future changes
 )
 
 // Enforce UTF-8, instead of relying on properly set locales
@@ -42,6 +42,12 @@ lazy val silver = (project in file("."))
     // Fork test to a different JVM than SBT's, avoiding SBT's classpath interfering with
     // classpath used by Scala's reflection.
     Test / fork := true,
+
+    // Scaladoc still reports a number of pre-existing warnings (mostly links that cannot be
+    // resolved), so `-Xfatal-warnings` is not applied to it; otherwise `doc`, and with it
+    // `publishLocal`, would fail.
+    Compile / doc / scalacOptions -= "-Xfatal-warnings",
+    Test / doc / scalacOptions -= "-Xfatal-warnings",
 
     // Compilation settings
     libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,             // Scala
