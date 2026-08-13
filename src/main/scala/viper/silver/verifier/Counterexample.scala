@@ -154,7 +154,7 @@ case class FieldResolvedEntry(ref: String, field: String, entry: ast.Exp, perm: 
 
 case class PredResolvedEntry(name: String, args: Seq[Exp], perm: Option[Rational], insidePredicate: Option[scala.collection.immutable.Map[Exp, ModelEntry]], het: HeapEntryType) extends ResolvedHeapEntry {
   val entryType = het
-  override lazy val toString = s"Predicate Entry: $name(${args.mkString("", ", ", ")")} --> (Perm: ${perm.getOrElse("#undefined").toString}) ${if (insidePredicate.isDefined && !insidePredicate.get.isEmpty) insidePredicate.get.toSeq.map(x => s"${x._1} --> ${x._2}")mkString("{\n   ", "\n   ", "\n}") else ""}"
+  override lazy val toString = s"Predicate Entry: $name(${args.mkString("", ", ", ")")} --> (Perm: ${perm.getOrElse("#undefined").toString}) ${if (insidePredicate.isDefined && !insidePredicate.get.isEmpty) insidePredicate.get.toSeq.map(x => s"${x._1} --> ${x._2}").mkString("{\n   ", "\n   ", "\n}") else ""}"
 }
 
 case class WandResolvedEntry(left: Exp, right: Exp, perm: Option[Rational], het: HeapEntryType) extends ResolvedHeapEntry {
@@ -207,7 +207,7 @@ case class RawHeapEntry(reference: Seq[String], field: Seq[String], valueID: Str
   override lazy val toString = {
     het match {
       case PredicateType =>
-        s"Heap entry: ${reference.mkString("(", ", ", ")")} + ${field.mkString("(", ", ", ")")} --> (Permission: ${perm.getOrElse("None")}) ${if (insidePredicate.isDefined && !insidePredicate.get.isEmpty) insidePredicate.get.toSeq.map(x => s"${x._1} --> ${x._2}")mkString("{\n   ", "\n   ", "\n}") else ""}"
+        s"Heap entry: ${reference.mkString("(", ", ", ")")} + ${field.mkString("(", ", ", ")")} --> (Permission: ${perm.getOrElse("None")}) ${if (insidePredicate.isDefined && !insidePredicate.get.isEmpty) insidePredicate.get.toSeq.map(x => s"${x._1} --> ${x._2}").mkString("{\n   ", "\n   ", "\n}") else ""}"
       case _ => s"Heap entry: ${reference.mkString("(", ", ", ")")} + ${field.mkString("(", ", ", ")")} --> (Value: $valueID, Permission: ${perm.getOrElse("None")})"
     }
   }

@@ -3,15 +3,14 @@
 
 function foo(z: Int): Int
 {
-  42
+  z + 7
 }
 
 method bar()
-  requires foo(3) == 42
 {
   var x: Int
   assume x == 5
   var y: Int := foo(x)
-  //:: ExpectedCounterexample(assert.failed:assertion.false, (x == 5, y == 42))
-  assert(false)
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (x == 5, y == 12, foo(3) == 10))
+  assert foo(3) != 10
 }

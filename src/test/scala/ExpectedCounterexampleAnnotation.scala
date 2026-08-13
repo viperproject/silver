@@ -77,20 +77,39 @@ case class ExpectedCounterexampleAnnotation(id: OutputAnnotationId, file: Path, 
         ))
       }
     case PLookup(base, _, idx, _) => resolveWoPerm(Vector(base, idx), model).flatMap {
+      // sequence indexing s[i]
       case Vector(s: ast.ExplicitSeq, ast.IntLit(i)) =>
         if (i >= 0 && i < BigInt(s.elems.size)) Some((s.elems(i.toInt), None)) else None
+      // map lookup m[k]
+      case Vector(m: ast.ExplicitMap, key) =>
+        m.pairs.collectFirst { case ast.Maplet(k, v) if k == key => (v, None) }
       case _ => None
     }
     case PCall(idnuse, args, _) =>
       val argValues = args.inner.toSeq.map(a => resolveWoPerm(a, model))
       if (argValues.forall(_.isDefined)) {
         val resolvedArgs = argValues.map(_.get)
-        model.heapMap.get("current").flatMap(_.heapEntries.find({
+        // A call is either a predicate instance (reported in the heap, with a permission) ...
+        val predicate = model.heapMap.get("current").flatMap(_.heapEntries.find({
           case (p: ast.Predicate, pe: PredResolvedEntry) if p.name == idnuse.name && pe.args == resolvedArgs => true
           case _ => false
         }).map(he =>
           (ast.BackendValueLit("", ast.InternalType)(), he._2.asInstanceOf[PredResolvedEntry].perm)
         ))
+        // ... or a (heap-dependent) function application, whose value is looked up in the reported
+        // function table. Function tables carry an implicit leading heap argument, so we match the
+        // call's arguments against the *last* entries of each option's argument tuple.
+        predicate.orElse {
+          val argStrings = resolvedArgs.map(_.toString)
+          model.functionEntries.find(_.fname == idnuse.name).flatMap { fe =>
+            // Prefer an explicit table entry for these arguments; otherwise use the function's
+            // default ("else") value, since the solver may represent a function (e.g. a constant
+            // one) purely by its default rather than by explicit points.
+            val value = fe.options.collectFirst { case (k, v) if k.takeRight(argStrings.size) == argStrings => v }
+              .orElse(Some(fe.default).filter(d => d.nonEmpty && d != "#unspecified" && d != "#undefined"))
+            value.map(v => (CounterexampleValue.literal(v, Some(fe.returnType)), None))
+          }
+        }
       } else {
         None
       }

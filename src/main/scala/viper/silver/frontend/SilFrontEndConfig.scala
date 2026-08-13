@@ -108,8 +108,11 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
 
   val counterexample = opt[CounterexampleModel]("counterexample",
     descr="Return counterexample for errors. Pass 'native' for returning the native model from the backend, " +
-      "'variables' for returning a model of all local Viper variables, or 'mapped' (only available on Silicon) " +
-      "for returning a model with Ref variables resolved to object-like structures.",
+      "'variables' for returning a model of all local Viper variables, 'mapped' (only available on Silicon) " +
+      "for returning a model with Ref variables resolved to object-like structures, 'raw' for the " +
+      "backend-independent counterexample with heap resources keyed by backend-internal identifiers, or " +
+      "'resolved' for the human-readable backend-independent counterexample (heap resources bound to their " +
+      "AST nodes).",
     default = None,
     noshort = true,
   )(singleArgConverter({
