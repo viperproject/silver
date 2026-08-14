@@ -58,7 +58,7 @@ method test21(xs: Set[Ref], p: Perm) {
     //:: ExpectedOutput(invariant.not.established:negative.permission)
     //:: MissingOutput(invariant.not.established:negative.permission, /Silicon/issue/34/)
     //:: ExpectedOutput(not.wellformed:negative.permission)
-    //:: UnexpectedOutput(invariant.not.established:negative.permission, /carbon/issue/585/)
+    //:: UnexpectedOutput(invariant.not.preserved:negative.permission, /carbon/issue/585/)
     invariant forall x: Ref :: x in xs ==> acc(P(x), p)
   {}
 }
