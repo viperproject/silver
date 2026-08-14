@@ -1,0 +1,20 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// A predicate that contains a quantified permission. The inside-predicate
+// extraction must not crash on the quantified permission (no inside values are
+// recoverable); an unrelated, directly-held field a.h is checked instead.
+
+field f: Int
+field h: Int
+
+predicate R(s: Set[Ref]) { forall y: Ref :: y in s ==> acc(y.f) }
+
+method m(s: Set[Ref], a: Ref)
+  requires R(s)
+  requires acc(a.h)
+{
+  a.h := 5
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (a.h == 5))
+  assert false
+}
