@@ -1,0 +1,21 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Counterexample in the presence of a *quantified* magic wand. The annotation
+// language cannot refer to magic wand resources directly (they are not acc(...)
+// predicates), so the failing assertion — and hence the checked part of the
+// counterexample — is about a co-located field. The quantified wand is present
+// in the heap at the failure point, so this exercises the quantified-magic-wand
+// case of the counterexample extraction (and guards against it breaking the CE).
+
+field f: Int
+field g: Int
+
+method qp_wand(s: Set[Ref], a: Ref)
+  requires a in s
+  requires acc(a.g, 1/2)
+  requires forall r: Ref :: r in s ==> (acc(r.f, 1/2) --* acc(r.f, 1/1))
+{
+  //:: ExpectedCounterexample(assert.failed:insufficient.permission, (acc(a.g, 1/2)))
+  assert acc(a.g, 1/1)
+}
