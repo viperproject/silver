@@ -9,7 +9,7 @@ import viper.silver.ast
 import viper.silver.ast.{AbstractLocalVar, Exp, Type, Resource}
 
 /**
-  * Classes used to build counterexamples. Two layers are distinguished:
+  * Classes used to build general counterexamples. Two layers are distinguished:
   *
   *   - a "raw" counterexample ([[RawCounterexample]]) that collects the information from the backend
   *     model in a simple form, with heap resources still identified by the backend-internal
@@ -17,6 +17,10 @@ import viper.silver.ast.{AbstractLocalVar, Exp, Type, Resource}
   *   - a "resolved" counterexample ([[ResolvedCounterexample]]) that makes the raw one
   *     human-readable, e.g. by binding heap resources to their AST nodes (fields, predicates and
   *     magic wands).
+  *
+  * Legacy counterexample formats are defined elsewhere: Silicon-specific mapped counterexample inside Silicon,
+  * and the old variable-only counterexample is defined along with Viper's format for SMT model entries
+  * in viper.silver.verifier.VerificationError.
   *
   * Values are represented as ordinary Viper AST expressions ([[ast.Exp]]). Literals that have no
   * ordinary Viper representation use the dedicated counterexample literals [[ast.RefLit]] (a

@@ -107,12 +107,12 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
   )
 
   val counterexample = opt[CounterexampleModel]("counterexample",
-    descr="Return counterexample for errors. Pass 'native' for returning the native model from the backend, " +
-      "'variables' for returning a model of all local Viper variables, 'mapped' (only available on Silicon) " +
-      "for returning a model with Ref variables resolved to object-like structures, 'raw' for the " +
-      "backend-independent counterexample with heap resources keyed by backend-internal identifiers, or " +
-      "'resolved' for the human-readable backend-independent counterexample (heap resources bound to their " +
-      "AST nodes).",
+    descr="Return counterexample for errors. Pass 'resolved' for the human-readable backend-independent " +
+      "counterexample (heap resources bound to their AST nodes), or 'raw' for the backend-independent " +
+      "counterexample with heap resources keyed by backend-internal identifiers. The following are legacy " +
+      "formats: 'native' for returning the native model from the backend, 'variables' for returning a model " +
+      "of all local Viper variables, and 'mapped' (only available on Silicon) for returning a model with Ref " +
+      "variables resolved to object-like structures.",
     default = None,
     noshort = true,
   )(singleArgConverter({
@@ -121,7 +121,7 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     case "mapped" => MappedModel
     case "resolved" => ResolvedModel
     case "raw" => RawModel
-    case i => throw new IllegalArgumentException(s"Unsupported counterexample model provided. Expected 'native', 'variables', 'mapped', 'raw' or 'resolved' but got $i")
+    case i => throw new IllegalArgumentException(s"Unsupported counterexample model provided. Expected 'resolved', 'raw', 'native', 'variables' or 'mapped' but got $i")
   }))
 
   val disableTerminationPlugin = opt[Boolean]("disableTerminationPlugin",
