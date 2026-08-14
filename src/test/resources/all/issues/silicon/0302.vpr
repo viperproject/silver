@@ -34,6 +34,7 @@ method testspec_skipping_indices1(arr: Array, size: Int, rdAmount: Perm)
     assert forall j:Int :: acc(loc(arr,j).val, (j < 0 || j >= size ? none : (j % 2 == 0 ? rdAmount : write)))
     assert forall j:Int :: (j < 0 || j >= size ? none : (j % 2 == 0 ? rdAmount : write)) <= p(j, size, rdAmount)
     assert forall j:Int :: (j < 0 || j >= size ? none : (j % 2 == 0 ? rdAmount : write)) >= p(j, size, rdAmount)
+    //:: UnexpectedOutput(assert.failed:insufficient.permission, /carbon/issue/585/)
     assert forall j:Int :: acc(loc(arr,j).val, (j < 0 || j >= size ? none : write)) // should fail, and does 
   }
 
