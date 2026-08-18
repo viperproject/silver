@@ -1,0 +1,52 @@
+method expressions(xs: List[Int]) {
+    var a_bool: Bool := true;
+    var a_very_long_boolean_name: Bool := true
+    var ter1: Int := xs.isNil ? 35343 : 34534;
+    var ter2: Int :=
+        xs.isNil ? 35343 + 345345345 + 34534534 + 345345435 : 34534;
+    var ter3: Int :=
+        (a_very_long_boolean_name
+        && a_very_long_boolean_name && a_very_long_boolean_name) ?
+            35343 + 345345345 + 34534534 + 345345435 : 34534;
+    var ter4: Int :=
+        (a_very_long_boolean_name
+        && a_very_long_boolean_name && a_very_long_boolean_name) ?
+            35343 + 345345345 + 34534534 + 345345435 :
+            (34534 + 4353453 + 43534534);
+    
+    var ter5: Int :=
+        xs.isNil ?
+            435453434 + 4546546456 + 34546456 :
+            3434534 + 34534543 + 3453453;
+    var ter6: Int :=
+        xs.isNil ?
+            435453434 + 4546546456 + 34546456 :
+            3434534 + 34534543 + 3453453 * 4534534 + 34534534 + 35645654
+            + 4353453543;
+    var ter7: Int :=
+        23423434324 + 2342342342 + 344334534534 + 453453344534
+        + 3454354353345
+        + 45345345
+        + 435345345;
+    var ter8: Int :=
+        23423434324 - 2342342342 - 344334534534 - 453453344534
+        - 3454354353345
+        - 45345345
+        - 435345345;
+    var ter9: Int :=
+        23423434324 + 2342342342
+        + (344334534534 + 453453344534 + 3454354353345)
+        + 45345345
+        + 435345345;
+    
+    var bool_a: Bool :=
+        a_very_long_boolean_name && a_very_long_boolean_name
+    var bool_b: Bool :=
+        a_very_long_boolean_name && a_very_long_boolean_name
+        || a_very_long_boolean_name && a_very_long_boolean_name;
+    var bool_c: Bool :=
+        a_very_long_boolean_name
+        && a_very_long_boolean_name
+        && (a_very_long_boolean_name || a_very_long_boolean_name)
+        && a_very_long_boolean_name;
+}

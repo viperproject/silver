@@ -1,0 +1,69 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+function getF(x: Ref): Int
+  requires acc(x.f)
+{ x.f }
+
+method main1(r: Ref)
+  requires acc(r.f)
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert low(r)
+}
+
+method main2(r: Ref)
+  requires acc(r.f)
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert low(getF(r))
+}
+
+method main2b(r: Ref)
+  requires acc(r.f)
+  requires low(r.f)
+{
+  assert low(getF(r))
+}
+
+method main2c(r: Ref)
+  requires acc(r.f)
+  requires low(getF(r))
+{
+  assert low(r.f)
+}
+
+method main4() returns (r: Ref)
+{
+  r := new(f)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert low(getF(r))
+}
+
+method main5(r: Ref)
+  requires acc(r.f)
+  requires low(r)
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert low(getF(r))
+}
+
+method main6(r: Ref)
+  requires acc(r.f)
+  requires low(getF(r))
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert low(r)
+}
+
+method main7(r: Ref)
+  requires acc(r.f)
+{
+  r.f := 5
+
+  assert low(getF(r))
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert low(r)
+}

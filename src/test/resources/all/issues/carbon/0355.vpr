@@ -1,0 +1,29 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field balance: Int
+field amount: Int
+
+predicate is_balance(addr: Ref)
+{
+    acc(addr.balance)
+}
+
+method deposit(coin1: Ref)
+    requires acc(coin1.amount)
+    ensures  acc(coin1.amount)
+
+method failing_assertion(x: Ref, coin: Ref)
+    requires is_balance(x)
+          && acc(coin.amount)
+{
+    // inserting this allows Carbon to verify the assertion
+    // var b : Int
+    // b := unfolding is_balance(x) in x.balance
+
+    // this should be completely unrelated, however without this line the assertion succeeds
+    deposit(coin)
+
+    // fails in carbon but succeeds in silicon
+    assert (unfolding is_balance(x) in x.balance) == old(unfolding is_balance(x) in x.balance)
+}

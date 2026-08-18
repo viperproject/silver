@@ -1,0 +1,10 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field int: Int
+
+method zero1(r: Ref)
+  requires (forall i0: Int ::
+      0 <= i0 && i0 < 1 ==>
+      [acc(r.int, write), acc(r.int, write)]
+  )

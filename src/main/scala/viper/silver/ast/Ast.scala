@@ -12,6 +12,7 @@ import pretty.FastPrettyPrinter
 import utility._
 import viper.silver.ast.utility.rewriter.Traverse.Traverse
 import viper.silver.ast.utility.rewriter.{Rewritable, StrategyBuilder, Traverse}
+import viper.silver.parser.PNode
 import viper.silver.verifier.errors.ErrorNode
 import viper.silver.verifier.{AbstractVerificationError, ConsistencyError, ErrorReason}
 
@@ -367,6 +368,11 @@ trait Info {
 
 /** A default `Info` that is empty. */
 case object NoInfo extends Info {
+  override val comment = Nil
+  override val isCached = false
+}
+
+case class SourcePNodeInfo(sourcePNode: PNode) extends Info {
   override val comment = Nil
   override val isCached = false
 }

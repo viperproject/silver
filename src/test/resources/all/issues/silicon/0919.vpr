@@ -1,0 +1,51 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+domain Array  {
+  function array_loc(a: Array, i: Int): Ref
+  function alen(a: Array): Int
+  function loc_inv_1(loc: Ref): Array
+  function loc_inv_2(loc: Ref): Int
+  axiom {
+    (forall a: Array, i: Int ::
+      { array_loc(a, i) }
+      loc_inv_1(array_loc(a, i)) == a && loc_inv_2(array_loc(a, i)) == i)
+  }
+  axiom {
+    (forall a: Array :: { alen(a) } alen(a) >= 0)
+  }
+}
+
+field int: Int
+
+function aloc(a: Array, i: Int): Ref
+  requires 0 <= i
+  requires i < alen(a)
+  ensures loc_inv_1(result) == a
+  ensures loc_inv_2(result) == i
+{
+  array_loc(a, i)
+}
+
+@moreJoins("1")
+method sort(contrib: Array)
+  requires (forall i: Int ::
+      { aloc(contrib, i) }
+      0 <= i && i < alen(contrib) ==>
+      acc(aloc(contrib, i).int, write))
+{
+    if (0 < alen(contrib)) {
+        var i: Int
+        assume 0 <= i && i < alen(contrib)
+        label BEFOREFRAME
+        var once: Bool := true
+        while (once)
+            invariant once ==>
+            acc(aloc(contrib, i).int, write) &&
+            [(forperm obj: Ref [obj.int] :: obj.int == old[BEFOREFRAME](obj.int)), true]
+        {
+            once := false
+        }
+    }
+}

@@ -1,0 +1,18 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+predicate buggy(self: Ref) {
+  //:: ExpectedOutput(consistency.error)
+  exists b: Bool :: { foo(self) } foo(self) == b
+}
+
+domain Buggy {
+  function bar(Int): Int
+  axiom buggy_ax {
+    //:: ExpectedOutput(consistency.error)
+    exists n: Int :: { bar(42) } n == 42
+  }
+}
+
+function foo(x: Ref): Bool

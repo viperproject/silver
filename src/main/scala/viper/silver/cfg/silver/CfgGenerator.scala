@@ -201,7 +201,7 @@ object CfgGenerator {
       case Seqn(ss, scopedDecls) =>
         val locals = scopedDecls.collect { case l: LocalVarDecl => l }
         for (local <- locals) {
-          val decl = LocalVarDeclStmt(local)(pos = local.pos)
+          val decl = LocalVarDeclStmt(local)(pos = local.pos, info = local.info)
           addStatement(WrappedStmt(decl))
         }
         ss.foreach(run)
@@ -429,7 +429,10 @@ object CfgGenerator {
           case (l@Label(_, invs)) :: rest if invs.nonEmpty =>
             val loopId = l.info.getUniqueInfo[IdInfo].map(_.id)
             val label = Label(l.name, Nil)(pos = l.pos, l.info)
-            LoopHeadBlock(invs, label :: rest, loopId)
+            // This block may or may not be a loop head.
+            // We store the invariant and loopId in an ordinary statement block; if it turns out to be a loop head,
+            // the block will be transformed to a LoopHeadBlock in LoopDetector.augment.
+            StatementBlock(label :: rest, invs, loopId)
           case stmts =>
             StatementBlock(stmts)
         }

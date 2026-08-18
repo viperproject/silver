@@ -15,12 +15,24 @@ import viper.silver.{FastMessage, FastMessaging}
 /** An utility object for consistency checking. */
 object Consistency {
   var messages: FastMessaging.Messages = Nil
+
+  // Set to enable legacy mode where permission amounts in function preconditions have their usual meaning instead
+  // of just just being treated as a kind of wildcard.
+  private var respectFunctionPrePermAmounts: Boolean = false
   def recordIfNot(suspect: Positioned, property: Boolean, message: String): Unit = {
     if (!property) {
       val pos = suspect.pos
 
       this.messages ++= FastMessaging.aMessage(FastMessage(message,pos))  // this is the way to construct a message directly with a position (only).
     }
+  }
+
+  /** Use this method to enable consistency checks suitable for the legacy mode where permission amounts in function
+    * preconditions have their standard meaning, instead of always meaning a kind of wildcard.
+    * In other words, this should be set iff the command line flag "--respectFunctionPrePermAmounts" is set.
+    * */
+  def setFunctionPreconditionLegacyMode(enableLegacyMode: Boolean) = {
+    respectFunctionPrePermAmounts = enableLegacyMode
   }
 
   def resetMessages(): Unit = { this.messages = Nil }
@@ -77,6 +89,9 @@ object Consistency {
 
   /** Returns true if the given node contains no location accesses. */
   def noLocationAccesses(n: Node) = !n.existsDefined { case _: LocationAccess => }
+
+  /** Returns true if the given node contains no asserting expressions. */
+  def noAsserting(n: Node) = !n.existsDefined { case _: Asserting => }
 
   /** Returns true if the given node contains no accessibility predicates (unfolding predicates is
     * allowed) and no magic wands (applying wands is allowed).
@@ -196,25 +211,35 @@ object Consistency {
     (if(!noLabelledOld(e)) Seq(ConsistencyError("Labelled-old expressions are not allowed in postconditions.", e.pos)) else Seq())
   }
 
-  def checkWildcardUsage(e: Exp): Seq[ConsistencyError] = {
-    val containedWildcards = e.shallowCollect{
-      case w: WildcardPerm => w
-    }
-    if (containedWildcards.nonEmpty) {
-      e match {
-        case _: WildcardPerm => Seq()
-        case _ => Seq(ConsistencyError("Wildcard occurs inside compound expression (should only occur directly in an accessibility predicate).", e.pos))
+  def checkWildcardUsage(n: Node, inFunction: Boolean): Seq[ConsistencyError] = {
+    if (!respectFunctionPrePermAmounts && inFunction)
+      return Seq()
+
+    def checkValidUse(e: Exp): Seq[ConsistencyError] = {
+      val containedWildcards = e.shallowCollect {
+        case w: WildcardPerm => w
       }
-    } else {
-      Seq()
+      if (containedWildcards.nonEmpty) {
+        e match {
+          case _: WildcardPerm => Seq()
+          case _ => Seq(ConsistencyError("Wildcard occurs inside compound expression (should only occur directly in an accessibility predicate).", e.pos))
+        }
+      } else {
+        Seq()
+      }
     }
+
+    n.collect{
+      case FieldAccessPredicate(_, Some(prm)) => checkValidUse(prm)
+      case PredicateAccessPredicate(_, Some(prm)) => checkValidUse(prm)
+    }.flatten.toSeq
   }
 
   /** checks that all quantified variables appear in all triggers */
   def checkAllVarsMentionedInTriggers(variables: Seq[LocalVarDecl], triggers: Seq[Trigger]) : Seq[ConsistencyError] = {
     var s = Seq.empty[ConsistencyError]
-    val varsInTriggers : Seq[Seq[LocalVar]] = triggers map(t=>{
-      t.deepCollect({case lv: LocalVar => lv})
+    val varsInTriggers : Seq[Set[LocalVar]] = triggers map(t=>{
+      Expressions.getContainedVariablesExcludingLet(t)
     })
     variables.foreach(v=>{
       varsInTriggers.foreach(varList=>{
@@ -244,8 +269,9 @@ object Consistency {
     e match {
       case Old(nested) => validTrigger(nested, program) // case corresponds to OldTrigger node
       case LabelledOld(nested, _) => validTrigger(nested, program)
-      case wand: MagicWand => wand.subexpressionsToEvaluate(program).forall(e => !e.existsDefined {case _: ForbiddenInTrigger => })
-      case _ : PossibleTrigger | _: FieldAccess | _: PredicateAccess => !e.existsDefined { case _: ForbiddenInTrigger => }
+      case ee: ExtensionExp => ee.extensionIsValidTrigger()
+      case wand: MagicWand => wand.subexpressionsToEvaluate(program).forall(e => !e.exists(Expressions.isForbiddenInTrigger))
+      case _ : PossibleTrigger | _: FieldAccess | _: PredicateAccess => !e.exists(Expressions.isForbiddenInTrigger)
       case _ => false
     }
   }
@@ -322,14 +348,14 @@ object Consistency {
 
   def checkNoFunctionRecursesViaPreconditions(program: Program): Seq[ConsistencyError] = {
     var s = Seq.empty[ConsistencyError]
-    Functions.findFunctionCyclesViaPreconditions(program) foreach { case (func, cycleSet) =>
-      var msg = s"Function ${func.name} recurses via its precondition"
+    Functions.findFunctionCyclesViaPreconditions(program) foreach { case (funcName, cycleSet) =>
+      var msg = s"Function ${funcName} recurses via its precondition"
 
       if (cycleSet.nonEmpty) {
-        msg = s"$msg: the cycle contains the function(s) ${cycleSet.map(_.name).mkString(", ")}"
+        msg = s"$msg: the cycle contains the function(s) ${cycleSet.mkString(", ")}"
       }
 
-      s :+= ConsistencyError(msg, func.pos)
+      s :+= ConsistencyError(msg, program.findFunction(funcName).pos)
     }
     s
   }

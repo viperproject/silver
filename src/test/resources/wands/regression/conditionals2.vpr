@@ -19,7 +19,6 @@ method test5a(x: Ref)
     //                       x.g |-> tg' # tf'' ? w : n
 
   //:: ExpectedOutput(assert.failed:insufficient.permission)
-  //:: MissingOutput(assert.failed:insufficient.permission, /silicon/issue/307/)
   assert acc(x.g, 1/1000)
 }
 

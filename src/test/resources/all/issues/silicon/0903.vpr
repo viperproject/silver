@@ -1,0 +1,30 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+predicate Mem(x: Ref)
+{
+    acc(x.f) && 0 <= x.f
+}
+
+function recurse(x: Ref, idx: Int): Int
+requires acc(Mem(x), wildcard)
+requires unfolding acc(Mem(x), wildcard) in 0 <= idx && idx <= x.f
+decreases unfolding acc(Mem(x), wildcard) in x.f - idx
+{
+    unfolding acc(Mem(x), wildcard) in idx == x.f ? 42 : recurse(x, idx + 1)
+}
+
+method fooUnsound(x: Ref)
+requires Mem(x)
+ensures  Mem(x)
+//:: ExpectedOutput(postcondition.violated:assertion.false)
+ensures  false // succeeds unexpectedly
+{
+    var oldResult: Int := recurse(x, 0)
+    unfold Mem(x)
+    x.f := x.f + 1
+    fold Mem(x)
+    var newResult: Int := recurse(x, 0) // this call triggers the unsoundness
+}

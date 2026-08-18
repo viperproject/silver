@@ -1,0 +1,38 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Counterexamples for the values of (heap-independent) local variables and
+// parameters: integers, integer arithmetic, negative integers and references.
+
+method local_int(x: Int, y: Int)
+  requires x == 5
+  requires y == x + 1
+{
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (x == 5, y == 6))
+  assert x == y
+}
+
+method local_negative(x: Int)
+  requires x == -3
+{
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (x == -3))
+  assert x >= 0
+}
+
+method local_ref(x: Ref, y: Ref)
+  requires x == y
+{
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (x == y))
+  assert x != y
+}
+
+// A local reassigned in the body: the counterexample must report the value at the
+// failing assertion (13), not the parameter or an earlier version.
+method local_reassigned(a: Int)
+  requires a == 3
+{
+  var z: Int
+  z := a + 10
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (z == 13))
+  assert z == 0
+}

@@ -1,0 +1,16 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+domain MyDomain {
+  function public(): Int
+
+  axiom {
+    //:: ExpectedOutput(internal:feature.unsupported)
+    low(public())
+  }
+
+  axiom {
+    //:: ExpectedOutput(internal:feature.unsupported)
+    lowEvent
+  }
+}

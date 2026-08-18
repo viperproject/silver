@@ -45,24 +45,32 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
       val fstBlock = Seqn(Seq(fstIf), Seq(nonDetVarDecl))()
       val sndStmt = transformExp(snd, c, inhaleExp)
       Seqn(Seq(fstBlock, sndStmt), Nil)()
+
     case CondExp(cond, thn, els) =>
       val condStmt = transformExp(cond, c, false)
       val thnStmt = transformExp(thn, c, inhaleExp)
       val elsStmt = transformExp(els, c, inhaleExp)
-
-      val ifStmt = If(cond, Seqn(Seq(thnStmt), Nil)(), Seqn(Seq(elsStmt), Nil)())()
-
+      val ifStmt = if (isEmptyStatement(thnStmt) && isEmptyStatement(elsStmt))
+        EmptyStmt
+      else
+        If(cond, Seqn(Seq(thnStmt), Nil)(), Seqn(Seq(elsStmt), Nil)())()
       val stmts = Seq(condStmt, ifStmt)
       Seqn(stmts, Nil)()
+
     case Unfolding(acc, unfBody) =>
       val permCheck = transformExp(acc.perm, c, false)
       val unfoldBody = transformExp(unfBody, c, inhaleExp)
       val unfold = Unfold(acc)()
       val nonDetVarDecl = LocalVarDecl(uniqueName("b"), Bool)(e.pos, e.info, e.errT)
       val assumeFalse = Inhale(FalseLit()())()
-      val thenBranch = Seqn(Seq(permCheck, unfold, unfoldBody, assumeFalse), Nil)()
+      val unfoldPart = if (!isEmptyStatement(unfoldBody)) Seqn(Seq(unfold, unfoldBody), Nil)() else EmptyStmt
+      val thenBranch = Seqn(Seq(permCheck, unfoldPart, assumeFalse), Nil)()
       val elseBranch = if (inhaleExp) Seqn(Seq(Inhale(e)(e.pos, e.info)), Nil)() else EmptyStmt
-      Seqn(Seq(If(nonDetVarDecl.localVar, thenBranch, elseBranch)()), Seq(nonDetVarDecl))()
+      if (isEmptyStatement(permCheck) && isEmptyStatement(unfoldPart))
+        elseBranch
+      else
+        Seqn(Seq(If(nonDetVarDecl.localVar, thenBranch, elseBranch)()), Seq(nonDetVarDecl))()
+
     case Applying(wand, body) =>
       // note that this case is untested -- it's not possible to write a function with an `applying` expression
       val nonDetVarDecl = LocalVarDecl(uniqueName("b"), Bool)(e.pos, e.info, e.errT)
@@ -71,6 +79,7 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
       val thnStmt = Seqn(Seq(Apply(wand)(e.pos, e.info, e.errT), bodyStmt, killBranchStmt), Nil)()
       val ifStmt = If(nonDetVarDecl.localVar, thnStmt, EmptyStmt)(e.pos, e.info, e.errT)
       Seqn(Seq(ifStmt), Seq(nonDetVarDecl))(e.pos, e.info, e.errT)
+
     case inex: InhaleExhaleExp =>
       val inhaleStmt = transformExp(inex.in, c, inhaleExp)
       val exhaleStmt = transformExp(inex.ex, c, inhaleExp)
@@ -79,6 +88,7 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
         case Some(conditionVar) => If(conditionVar.localVar, Seqn(Seq(inhaleStmt), Nil)(), Seqn(Seq(exhaleStmt), Nil)())()
         case None => Seqn(Seq(inhaleStmt, exhaleStmt), Nil)()
       }
+
     case letExp: Let =>
       val expressionStmt = transformExp(letExp.exp, c, false)
       val localVarDecl = letExp.variable
@@ -87,7 +97,12 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
 
       val bodyStmt = transformExp(letExp.body, c, inhaleExp)
 
-      Seqn(Seq(expressionStmt, inhaleEq, bodyStmt), Seq(localVarDecl))()
+      val bodyCheck  = if (isEmptyStatement(bodyStmt))
+        EmptyStmt
+      else
+        Seqn(Seq(inhaleEq, bodyStmt), Seq(localVarDecl))()
+
+      Seqn(Seq(expressionStmt, bodyCheck), Nil)()
 
     case b: BinExp =>
       val left = transformExp(b.left, c, inhaleExp)
@@ -95,7 +110,7 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
 
       // Short circuit evaluation
       val pureLeft: Exp = toPureBooleanExp(c).execute(b.left)
-      val rightSCE = b match {
+      val rightSCE = if (isEmptyStatement(right)) EmptyStmt else b match {
         case _: Or =>
           If(Not(pureLeft)(), Seqn(Seq(right), Nil)(), EmptyStmt)()
         case _: And =>
@@ -119,12 +134,14 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
       val check = transformExp(ap.perm, c, false)
       val inhale = Inhale(ap)(ap.pos)
       Seqn(Seq(check, inhale), Nil)()
+
     case fa: Forall =>
       // we turn the quantified variables into local variables with arbitrary value and show that the expression holds
       // for arbitrary values, which is similar to a forall introduction
       val (localDeclMapping, transformedExp) = substituteWithFreshVars(fa.variables, fa.exp)
       val expressionStmt = transformExp(transformedExp, c, inhaleExp)
       Seqn(Seq(expressionStmt), localDeclMapping.map(_._2))(fa.pos, fa.info, fa.errT)
+
     case fp: ForPerm =>
       // let's pick arbitrary values for the quantified variables and check the body given that the current heap has
       // sufficient permissions
@@ -136,6 +153,7 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
       val ifCond = GtCmp(CurrentPerm(transformedRes)(e.pos, e.info, e.errT), NoPerm()(e.pos, e.info, e.errT))(e.pos, e.info, e.errT)
       val ifStmt = If(ifCond, thnStmt, EmptyStmt)(e.pos, e.info, e.errT)
       Seqn(Seq(ifStmt), localDeclMapping.map(_._2))(e.pos, e.info, e.errT)
+
     case ex: Exists =>
       // we perform existential elimination by retrieving witnesses for the quantified variables
       val (localDeclMapping, transformedExp) = substituteWithFreshVars(ex.variables, ex.exp)
@@ -144,14 +162,21 @@ trait ExpTransformer extends ProgramManager with ErrorReporter {
       val inhaleWitnesses = Inhale(transformedExp)(ex.pos, ex.info, ex.errT)
       val expressionStmt = transformExp(transformedExp, c, inhaleExp)
       Seqn(Seq(inhaleWitnesses, expressionStmt), localDeclMapping.map(_._2))(ex.pos, ex.info, ex.errT)
+
     case fa: FuncLikeApp =>
       val argStmts = fa.args.map(transformExp(_, c, false))
       Seqn(argStmts, Nil)()
+
     case e: ExtensionExp => reportUnsupportedExp(e)
 
     case _ =>
       val sub = e.subExps.map(transformExp(_, c, false))
       Seqn(sub, Nil)()
+  }
+
+  def isEmptyStatement(stmt: Stmt): Boolean = stmt match {
+    case Seqn(stmts, _) => stmts.forall(isEmptyStatement)
+    case _ => false
   }
 
   /**

@@ -1,0 +1,30 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+define m1(res) {
+  res := var_m2
+}
+
+define m2(res) {
+  var var_m2: Int
+
+  var v0_1: Int
+  {
+    m1(v0_1)
+  }
+
+  res := var_m2
+}
+
+method caller() returns (value: Int)
+{
+  var res: Int
+  {
+    m2(res)
+  }
+  var value2: Int
+  {
+    m2(res)
+  }
+  value := res
+}

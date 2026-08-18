@@ -1,0 +1,9 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+field f: Int
+
+function foo2w(x: Ref, b: Bool): Int
+  //:: ExpectedOutput(consistency.error)
+  requires acc(x.f, b ? wildcard : none)

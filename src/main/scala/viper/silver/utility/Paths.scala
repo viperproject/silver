@@ -101,6 +101,28 @@ object Paths {
 
         fs.getPath(entryName)
 
+      case "resource" =>
+        val uriStr = uri.toString
+        assert(uriStr.startsWith("resource:/"), "Resource URL should start with \"resource:/\"")
+        val entryName = uriStr.substring(9)
+        val fileURI = URI.create("resource:/")
+
+        var fs: FileSystem = null
+
+        try {
+          fs = FileSystems.newFileSystem(fileURI, Map[String, Object]().asJava)
+          openFileSystems = fs +: openFileSystems
+        } catch {
+          case _: java.nio.file.FileSystemAlreadyExistsException =>
+            fs = FileSystems.getFileSystem(fileURI)
+            assert(fs.isOpen, "The reused file system is expected to still be open")
+        } finally {
+          assert(fs != null, s"Could not get hold of a file system for $fileURI (from $uriStr)")
+        }
+
+        fs.getPath(entryName)
+
+
       case other => sys.error(s"Resource $uri of scheme $other is not supported.")
     }
   }

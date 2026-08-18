@@ -1,12 +1,6 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-function C__g(diz: Ref): Int
-   requires diz != null
-   requires acc(C__P(diz), wildcard)
-   requires acc(C__P(diz), 1 / 2)
-
-
 predicate C__P(diz: Ref)
 
 /** In Viper, exhale should proceed from left to write (earlier Carbon
@@ -16,10 +10,9 @@ Thus, exhale acc(x.f, wildcard) && acc(x.f, 1/2) is expected to fail.  */
 method C__main(diz: Ref)
    requires diz != null
    requires acc(C__P(diz), write)
-   //:: ExpectedOutput(application.precondition:insufficient.permission)
-   requires C__g(diz) > 0
 {
-
+   //:: ExpectedOutput(exhale.failed:insufficient.permission)
+   exhale acc(C__P(diz), wildcard) && acc(C__P(diz), 1 / 2)
 }
 
 method test(diz:Ref)

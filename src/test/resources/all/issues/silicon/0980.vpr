@@ -1,0 +1,20 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+field f: Int
+
+function foo(r: Ref): Int
+  requires acc(r.f)
+{ r.f }
+
+function trigger(r: Ref): Bool
+
+method umm(s: Set[Ref], r0: Ref)
+    requires forall r: Ref :: r in s ==> acc(r.f)
+    requires r0 in s
+{
+   assume forall r: Ref :: { old(foo(r)) } {trigger(r)} r in s ==>  foo(r) > 7 && old(foo(r)) <  17
+   var tmp: Int := old(foo(r0))
+   assert r0.f < 17 && r0.f > 7
+}

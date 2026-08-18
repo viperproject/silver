@@ -52,9 +52,11 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     hidden = true
   )
 
-  val methods = opt[String]("methods",
-    descr = "The Viper methods that should be verified. :all means all methods.",
-    default = Some(":all"),
+  val select = opt[String]("select",
+    descr = "Selects specific Viper methods, functions and predicates to be be verified along with the necessary " +
+      "dependencies. All other parts of the given Viper program will be ignored. " +
+      "The expected format is a list of method/function/predicate names separated by commas, e.g., name1,name2,name3.",
+    default = None,
     noshort = true,
     hidden = true
   )
@@ -105,16 +107,21 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
   )
 
   val counterexample = opt[CounterexampleModel]("counterexample",
-    descr="Return counterexample for errors. Pass 'native' for returning the native model from the backend, " +
-      "'variables' for returning a model of all local Viper variables, or 'mapped' (only available on Silicon) " +
-      "for returning a model with Ref variables resolved to object-like structures.",
+    descr="Return counterexample for errors. Pass 'resolved' for the human-readable backend-independent " +
+      "counterexample (heap resources bound to their AST nodes), or 'raw' for the backend-independent " +
+      "counterexample with heap resources keyed by backend-internal identifiers. The following are legacy " +
+      "formats: 'native' for returning the native model from the backend, 'variables' for returning a model " +
+      "of all local Viper variables, and 'mapped' (only available on Silicon) for returning a model with Ref " +
+      "variables resolved to object-like structures.",
     default = None,
     noshort = true,
   )(singleArgConverter({
     case "native" => NativeModel
     case "variables" => VariablesModel
     case "mapped" => MappedModel
-    case i => throw new IllegalArgumentException(s"Unsupported counterexample model provided. Expected 'native', 'variables' or 'mapped' but got $i")
+    case "resolved" => ResolvedModel
+    case "raw" => RawModel
+    case i => throw new IllegalArgumentException(s"Unsupported counterexample model provided. Expected 'resolved', 'raw', 'native', 'variables' or 'mapped' but got $i")
   }))
 
   val disableTerminationPlugin = opt[Boolean]("disableTerminationPlugin",
@@ -139,8 +146,21 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     hidden = false
   )
 
+  val respectFunctionPrePermAmounts = opt[Boolean]("respectFunctionPrePermAmounts",
+    descr = "Respects precise permission amounts in function preconditions instead of only checking read access.",
+    default = Some(false),
+    noshort = true,
+    hidden = false
+  )
+
   val submitForEvaluation = opt[Boolean](name = "submitForEvaluation",
     descr = "Whether to allow storing the current program for future evaluation.",
+    default = Some(false),
+    noshort = true
+  )
+
+  val reportPartialResults = opt[Boolean](name = "reportPartialResults",
+    descr = "Whether to report partial verification success and failure for individual members and branches via the StdIOReporter.",
     default = Some(false),
     noshort = true
   )
@@ -196,3 +216,5 @@ trait CounterexampleModel
 case object NativeModel extends CounterexampleModel
 case object VariablesModel extends CounterexampleModel
 case object MappedModel extends CounterexampleModel
+case object RawModel extends CounterexampleModel
+case object ResolvedModel extends CounterexampleModel

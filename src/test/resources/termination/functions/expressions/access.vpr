@@ -18,6 +18,7 @@ function test2(x: Ref): Bool
     decreases
     requires acc(x.f) && acc(x.f) && acc(x.g)
 {
+    //:: ExpectedOutput(termination.failed:termination.condition.false)
     nonTerminating(x)
 }
 

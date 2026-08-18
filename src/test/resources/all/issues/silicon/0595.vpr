@@ -7,7 +7,6 @@ predicate P()
 
 method test()
   requires P()
-   //:: IgnoreFile(/carbon/issue/391/)
   ensures forall i: Int :: i == 0 ==> P()
 {}
 

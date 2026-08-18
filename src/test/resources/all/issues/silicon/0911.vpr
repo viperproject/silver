@@ -1,0 +1,15 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+domain foo  {
+  function bar(): Bool
+
+  axiom {
+    //:: ExpectedOutput(consistency.error)
+    asserting (true) in true
+  }
+}
+
+function baz(): Int
+  requires bar()

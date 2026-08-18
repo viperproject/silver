@@ -283,6 +283,10 @@ case class ConfigurationConfirmation(override val text: String) extends SimpleMe
   override val name: String = "configuration_confirmation"
 }
 
+case class ConfigurationWarning(override val text: String) extends SimpleMessage(text) {
+  override val name: String = "configuration_warning"
+}
+
 case class AnnotationWarning(override val text: String) extends SimpleMessage(text) {
   override val name: String = "annotation_warning"
 }
@@ -325,4 +329,27 @@ case class QuantifierChosenTriggersMessage(quantifier: QuantifiedExp, triggers: 
 case class VerificationTerminationMessage() extends Message {
   override val toString: String = "verification_termination_message"
   override val name: String = "verification_termination_message"
+}
+
+case class BenchmarkingMessage(category: String, payload: String) extends Message {
+  override val name: String = "benchmarking_message"
+  override val toString: String = s"Benchmarking message of type $category with payload $payload"
+}
+
+/** Reported when the block of a method CFG is reached. */
+case class BlockReachedMessage(methodName: String, label: String, pathId: Int) extends  Message {
+  override val toString: String = s"block_reached_message(methodName=$methodName, label=$label, pathId=$pathId)"
+  override val name: String = "block_reached_message"
+}
+
+/** Reported when the block of a method CFG failed to verify. */
+case class BlockFailureMessage(methodName: String, label: String, pathId: Int) extends  Message {
+  override val toString: String = s"block_failure_message(methodName=$methodName, label=$label, pathId=$pathId)"
+  override val name: String = "block_failure_message"
+}
+
+/** Reported when an execution path through the method has completed. */
+case class PathProcessedMessage(methodName: String, pathId: Int, result: String) extends  Message {
+  override val toString: String = s"path_processed_message(methodName=$methodName, pathId=$pathId, result=$result)"
+  override val name: String = "path_processed_message"
 }

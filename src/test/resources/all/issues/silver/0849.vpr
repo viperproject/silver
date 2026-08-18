@@ -1,0 +1,54 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+adt Term {
+  Const(n: Int)
+}
+
+domain theory {
+  function foo(t: Term): Bool
+
+  axiom ax1 { forall n: Int ::
+    {Const(n)}      // Type checker error
+    {foo(Const(n))} // OK
+    foo(Const(n))
+  }
+}
+
+method testConstr(s: Set[Int], j: Int) {
+  assume j in s
+  assume forall i: Int :: {Const(i)} i in s ==> i > 0
+  var t: Term := Const(j)
+  assert j > 0
+}
+
+method testConstrF(s: Set[Int], j: Int) {
+  assume j in s
+  assume forall i: Int :: {Const(i)} i in s ==> i > 0
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert j > 0
+}
+
+method testDestr(s: Set[Term], c: Term) {
+  assume c in s
+  assume forall i: Term :: {i.n} i in s ==> foo(i)
+  var t: Int := c.n
+  assert foo(c)
+}
+
+method testDestr2(s: Set[Term], c: Term) {
+  assume c in s
+  assume forall i: Term :: {i.n} i in s ==> foo(i)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert foo(c)
+}
+
+method testDiscr(s: Set[Term], c: Term) {
+  assume c in s
+  // i.isConst must not be picked as a trigger, otherwise the backends may crash
+  assume forall i: Term :: i.isConst ==> foo(i)
+  var t: Bool := c.isConst
+  assert foo(c)
+}
+

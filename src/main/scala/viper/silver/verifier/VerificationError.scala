@@ -728,4 +728,11 @@ object reasons {
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) =
       MapKeyNotContained(map, offendingNode.asInstanceOf[Exp])
   }
+
+  case class QueryTimedOut(innerReason: ErrorReason, queryTime: Int) extends AbstractErrorReason {
+    val id = innerReason.id
+    def readableMessage = s"${innerReason.readableMessage} An SMT query timed out after ${queryTime}ms."
+    override def offendingNode: ErrorNode = innerReason.offendingNode
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = QueryTimedOut(innerReason.withNode(offendingNode).asInstanceOf[ErrorReason], queryTime)
+  }
 }

@@ -1,0 +1,46 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+predicate f(r: Ref)
+function getF(r: Ref): Int
+    requires f(r)
+
+method setF(r: Ref, v: Int)
+    requires f(r)
+    ensures f(r) && getF(r) == v
+
+
+predicate Mem(x: Ref, y: Ref)
+{
+    f(x) && 0 <= getF(x)
+}
+
+predicate nothing() {
+  forall r: Ref :: false ==> acc(f(r), 1/2)
+}
+
+function recurse(x: Ref): Int
+requires nothing()
+requires acc(f(x), 1/2)
+requires acc(Mem(x, x), wildcard)
+{
+    (unfolding nothing() in 0) + (unfolding acc(Mem(x, x), wildcard) in getF(x))
+}
+
+method fooUnsound(x: Ref)
+requires acc(Mem(x, x), 1/2)
+requires acc(f(x), 1/2)
+requires getF(x) == 0
+requires nothing()
+ensures  acc(Mem(x, x), 1/2)
+//:: ExpectedOutput(postcondition.violated:assertion.false)
+ensures  false // succeeds unexpectedly
+{
+    var oldResult: Int := recurse(x)
+    assert oldResult == 0
+    unfold acc(Mem(x, x), 1/2)
+    setF(x, getF(x) + 1)
+    fold acc(Mem(x, x), 1/2)
+    var newResult: Int := recurse(x) // this call triggers the unsoundness
+    assert newResult == 1
+}

@@ -23,6 +23,7 @@ field f: Int
 
 function foo(x: Ref): Int
   requires acc(x.f) && acc(x.f)
+  //:: ExpectedOutput(postcondition.violated:assertion.false)
   ensures false
 { x.f }
 

@@ -1,0 +1,20 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+field f: Int
+
+@moreJoins("2")
+method foo(x: Ref, xs: Set[Ref])
+    requires forall r: Ref :: { r in xs } r in xs ==> acc(r.f)
+{
+    var b: Bool
+    inhale acc(x.f, 1/2)
+    if (b) {
+        inhale acc(x.f, 1/2)
+    } else {
+        inhale acc(x.f, 1/2)
+    }
+
+    assert acc(x.f)
+}

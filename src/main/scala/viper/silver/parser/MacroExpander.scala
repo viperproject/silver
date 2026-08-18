@@ -10,6 +10,7 @@ import viper.silver.ast.{FilePosition, Position, SourcePosition}
 import viper.silver.ast.utility.rewriter.{ContextA, ParseTreeDuplicationError, PartialContextC, StrategyBuilder}
 import viper.silver.verifier.{ParseError, ParseReport, ParseWarning}
 
+import java.util
 import scala.collection.mutable
 
 case class MacroException(msg: String, pos: (Position, Position)) extends Exception
@@ -81,7 +82,7 @@ object MacroExpander {
     reports ++= globalMacros.flatMap(allParametersUsedInBody)
 
     def linearizeMethod(method: PMethod): PMethod = {
-      def linearizeSeqOfNestedStmt(ss: PGrouped[PSym.Brace, PDelimited[PStmt, Option[PSym.Semi]]]): PGrouped[PSym.Brace, PDelimited[PStmt, Option[PSym.Semi]]] = {
+      def linearizeSeqOfNestedStmt(ss: PDelimited.Block[PStmt]): PDelimited.Block[PStmt] = {
         def linearizeSeqn(s: PSeqn): PSeqn = PSeqn(linearizeSeqOfNestedStmt(s.ss))(s.pos)
         def linearizeIf(i: PIf): PIf = i match {
           case PIf(k, cond, thn, None) => PIf(k, cond, linearizeSeqn(thn), None)(i.pos)
@@ -90,7 +91,7 @@ object MacroExpander {
           case PIf(k, cond, thn, Some(e@PElse(ek, els))) =>
             PIf(k, cond, linearizeSeqn(thn), Some(PElse(ek, linearizeSeqn(els))(e.pos)))(i.pos)
         }
-        var stmts = Seq.empty[(PStmt, Option[PSym.Semi])]
+        var stmts = Seq.empty[(PStmt, PSym.OptionSemi)]
         (ss.inner.toSeq.zip(ss.inner.delimiters)).foreach {
           case (n: PMacroSeqn, _) =>
             val lin = linearizeSeqOfNestedStmt(n.ss)
@@ -155,9 +156,9 @@ object MacroExpander {
                 pos._1
             }
           }
-          return PProgram(newImported, program.members)(program.pos, program.localErrors ++ reports :+ ParseError(msg, location))
+          return PProgram(newImported, program.members)(program.pos, program.localErrors ++ reports :+ ParseError(msg, location), program.offsets, program.rawProgram)
       }
-      PProgram(newImported, newMembers)(program.pos, program.localErrors ++ reports)
+      PProgram(newImported, newMembers)(program.pos, program.localErrors ++ reports, program.offsets, program.rawProgram)
     }
 
     doExpandDefinesAll(p, reports)
@@ -178,9 +179,16 @@ object MacroExpander {
     // Store the replacements from normal variable to freshly generated variable
     val renamesMap = mutable.Map.empty[String, String]
     var scopeAtMacroCall = Set.empty[String]
-    val scopeOfExpandedMacros = mutable.Set.empty[String]
+    val scopeOfExpandedMacros = new util.IdentityHashMap[PScope, mutable.Set[String]]()
+    var currentMacroScope: PScope = null
 
-    def scope: Set[String] = scopeAtMacroCall ++ scopeOfExpandedMacros
+    def scope: Set[String] = {
+      if (scopeOfExpandedMacros.containsKey(currentMacroScope)) {
+        scopeAtMacroCall ++ scopeOfExpandedMacros.get(currentMacroScope)
+      } else {
+        scopeAtMacroCall
+      }
+    }
 
     // Handy method to get a macro from its name string
     def getMacroByName(name: PIdnUse): PDefine = getMacro(name) match {
@@ -228,8 +236,8 @@ object MacroExpander {
 
     val matchOnMacroCall: PartialFunction[PNode, MacroApp] = {
       // Macro references in statement position (without arguments)
-      case assign@PAssign(_, None, idnuse: PIdnUseExp) if getMacroPlain(idnuse).isDefined =>
-        MacroApp(assign, None, getMacroPlain(idnuse).get)
+      case assign@PAssign(_, None, idnuse: PIdnUseExp) if getMacroPlain(idnuse.idnref).isDefined =>
+        MacroApp(assign, None, getMacroPlain(idnuse.idnref).get)
       // Macro references in statement position (with arguments)
       case assign@PAssign(_, None, app: PCall) if getMacroArgs(app).isDefined =>
         MacroApp(assign, Some(app.args), getMacroArgs(app).get)
@@ -244,6 +252,8 @@ object MacroExpander {
       // Other macro refs (without arguments)
       case idnuse: PIdnUse if getMacroPlain(idnuse).isDefined =>
         MacroApp(idnuse, None, getMacroPlain(idnuse).get)
+      case idnuse: PIdnUseExp if getMacroPlain(idnuse.idnref).isDefined =>
+        MacroApp(idnuse, None, getMacroPlain(idnuse.idnref).get)
       // Other macro refs (with arguments)
       case app: PCall if getMacroArgs(app).isDefined =>
         MacroApp(app, Some(app.args), getMacroArgs(app).get)
@@ -254,7 +264,7 @@ object MacroExpander {
         matchOnMacroCall.andThen { case MacroApp(_, _, macroDefinition) =>
           seen.get(macroDefinition.idndef.name) match {
             case None => {
-              detectCyclicMacros(macroDefinition.body, seen + (macroDefinition.idndef.name -> macroDefinition))
+              detectCyclicMacros(macroDefinition.inner.seqnOrExp, seen + (macroDefinition.idndef.name -> macroDefinition))
             }
             case Some(macroDef) =>
               throw MacroException("Recursive macro declaration found: " + macroDef.idndef.name, macroDef.pos)
@@ -279,7 +289,7 @@ object MacroExpander {
           val freshVarName = getFreshVarName(varDecl.name)
 
           // Update scope
-          scopeOfExpandedMacros += freshVarName
+          scopeOfExpandedMacros.get(currentMacroScope) += freshVarName
           renamesMap += varDecl.name -> freshVarName
 
           // Create a variable with new name to substitute the previous one
@@ -289,7 +299,7 @@ object MacroExpander {
         } else {
 
           // Update scope
-          scopeOfExpandedMacros += varDecl.name
+          scopeOfExpandedMacros.get(currentMacroScope) += varDecl.name
 
           // Return the same variable
           varDecl
@@ -338,7 +348,7 @@ object MacroExpander {
       matchOnMacroCall.andThen {
         case MacroApp(call, arguments, macroDefinition) =>
           val parameters = macroDefinition.parameters.map(_.inner.toSeq)
-          val body = macroDefinition.body
+          val body = macroDefinition.inner.seqnOrExp
 
           if (arguments.isEmpty && parameters.isDefined) {
             // `arguments.isDefined && parameters.isEmpty` cannot happen, we rule this out in `getMacroArgs`
@@ -349,7 +359,7 @@ object MacroExpander {
             throw MacroException("Number of macro arguments does not match", call.pos)
 
           (call, body) match {
-            case (_: PStmt, _: PStmt) | (_: PExp, _: PExp) | (_: PType, _: PType) | (_: PIdnRef[_], _: PIdnUse) =>
+            case (_: PStmt, _: PStmt) | (_: PExp, _: PExp) | (_: PType, _: PType) | (_: PIdnUseExp, _: PIdnUse) =>
             case _ =>
               val expandedType = body match {
                 case _: PExp => "Expression"
@@ -380,6 +390,49 @@ object MacroExpander {
 
           val newNode = try {
             scopeAtMacroCall = NameAnalyser().namesInScope(program, Some(macroCall))
+            ctx.parent match {
+              case s: PScope => currentMacroScope = s
+              case n => currentMacroScope = customGetEnclosingScope(n).get
+            }
+            if (!scopeOfExpandedMacros.containsKey(currentMacroScope)) {
+              scopeOfExpandedMacros.put(currentMacroScope, mutable.Set.empty)
+            }
+
+            // Since we're working on a parse AST that is in the process of being rewritten, some nodes don't have
+            // their parent node set (or they have it set incorrectly). As a result, n.getEnclosingScope may not
+            // work properly. Since we need this functionality, we re-implement it here using information from the
+            // context, in particular, the ancestors of the current node.
+            def customGetEnclosingScope(target: PNode): Option[PScope] = {
+              var foundTarget = false
+              for (current <- ctx.ancestorList.reverseIterator) {
+                if (foundTarget) {
+                  current match {
+                    case s: PScope => return Some(s)
+                    case _ =>
+                  }
+                } else {
+                  if (current eq target) {
+                    foundTarget = true
+                  }
+                }
+              }
+              return None
+            }
+
+            def allExpandedNamesOfAllSuperScopes(s: PScope): Unit = {
+              if (scopeOfExpandedMacros.containsKey(s)) {
+                scopeOfExpandedMacros.get(currentMacroScope) ++= scopeOfExpandedMacros.get(s)
+              }
+              customGetEnclosingScope(s) match {
+                case Some(s) => allExpandedNamesOfAllSuperScopes(s)
+                case _ =>
+              }
+            }
+
+            // If scopeOfExpandedMacros contains superscopes of s, these names are also visible in the current scope,
+            // and we have to add them to scopeOfExpandedMacros for the current scope.
+            allExpandedNamesOfAllSuperScopes(currentMacroScope)
+
             arguments.foreach(_.foreach(
               StrategyBuilder.SlimVisitor[PNode] {
                 case id: PIdnDef => scopeAtMacroCall += id.name

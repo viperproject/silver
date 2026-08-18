@@ -1,0 +1,25 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+adt Term {
+  Const(n: Int)
+}
+
+domain theory {
+  function foo(t: Term): Bool
+
+  axiom ax1 { forall n: Int ::
+    {Const(n)}      // Type checker error
+    {foo(Const(n))} // OK
+    foo(Const(n))
+  }
+}
+
+
+method testDiscr(s: Set[Term], c: Term) {
+  assume c in s
+  //:: ExpectedOutput(typechecker.error)
+  assume forall i: Term :: {i.isConst} i in s ==> foo(i)
+  assert foo(c)
+}

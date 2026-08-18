@@ -388,6 +388,7 @@ class AdtEncoder(val program: Program) extends AdtNameManager {
     */
   private def containsFunctionIsDerived: Boolean = program.extensions.exists {
     case a: Adt => a.derivingInfo.contains(getContainsFunctionName)
+    case _ => false
   }
 
   /**

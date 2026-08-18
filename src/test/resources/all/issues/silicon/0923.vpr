@@ -1,0 +1,33 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+predicate Mem(x: Ref)
+{
+    acc(x.f) && 0 <= x.f
+}
+
+predicate nothing() {
+  forall r: Ref :: false ==> acc(r.f, 1/2)
+}
+
+function recurse(x: Ref): Int
+requires nothing()
+requires acc(x.f, 1/2)
+requires acc(Mem(x), wildcard)
+{
+    (unfolding nothing() in 0) + (unfolding acc(Mem(x), wildcard) in (x.f))
+}
+
+method fooUnsound(x: Ref)
+requires nothing()
+requires acc(Mem(x), 1/2)
+requires acc(x.f, 1/2)
+requires x.f == 0
+ensures  acc(Mem(x), 1/2)
+{
+
+    var oldResult: Int := recurse(x)
+    assert oldResult == 0
+}

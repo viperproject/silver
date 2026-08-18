@@ -18,7 +18,8 @@ import viper.silver.verifier.AbstractError
  * @param reportError Interface to report errors occurring during transformation.
  */
 final class Trafo(override val program: Program,
-                  override val reportError: AbstractError => Unit)
+                  override val reportError: AbstractError => Unit,
+                  val respectFuncPermAmounts: Boolean)
   extends ProgramManager with FunctionCheck with MethodCheck {
 
   private var transformedProgram: Option[Program] = None
@@ -29,7 +30,7 @@ final class Trafo(override val program: Program,
   def getTransformedProgram: Program = {
     transformedProgram.getOrElse({
 
-      val proofMethods: Seq[Method] = program.functions.flatMap(generateProofMethods)
+      val proofMethods: Seq[Method] = program.functions.flatMap(generateProofMethods(_, respectFuncPermAmounts))
       val newMethods: Seq[Method] = program.methods.map(transformMethod)
 
       val newProgram: Program = program.copy(methods = newMethods ++ proofMethods)(program.pos, program.info, program.errT)

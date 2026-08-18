@@ -1,0 +1,23 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+field m: Seq[Int]
+
+function msorted(r: Ref): Bool
+    requires acc(r.m)
+{
+     forall i: Int :: { r.m[i] } (
+        forall j: Int ::  { r.m[j] } (
+            0 <= i < j < |r.m| ==> r.m[i] <= r.m[j]
+        )
+     )
+}
+
+method mclient(r: Ref)
+    requires acc(r.m)
+    requires msorted(r)
+    requires |r.m| > 3
+{
+    assert r.m[0] <= r.m[1];  // fails
+}

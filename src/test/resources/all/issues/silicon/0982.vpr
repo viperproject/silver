@@ -1,0 +1,17 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+function foo(i: Int): Bool
+    requires i > 0
+
+function trigger(i: Int): Bool
+
+function P(i: Int): Bool
+{ true }
+
+method marco()
+{
+    assume forall i: Int :: { foo(i)} { trigger(i) } i > 4 ==> foo(i) == (forall j: Int :: P(j))
+    assert foo(6)
+}

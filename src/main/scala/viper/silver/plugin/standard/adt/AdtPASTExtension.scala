@@ -19,10 +19,10 @@ import viper.silver.ast.utility.rewriter.HasExtraVars
   */
 case object PAdtKeyword extends PKw("adt") with PKeywordLang
 case object PDerivesKeyword extends PKw("derives") with PKeywordLang
-case object PWithoutKeyword extends PKw("without") with PKeywordLang
+case object PWithoutKeyword extends PKw("without") with PKeywordLang with RLeftSpace
 
 case class PAdt(annotations: Seq[PAnnotation], adt: PReserved[PAdtKeyword.type], idndef: PIdnDef, typVars: Option[PDelimited.Comma[PSym.Bracket, PTypeVarDecl]], c: PAdtSeq[PAdtConstructor], derive: Option[PAdtDeriving])
-               (val pos: (Position, Position)) extends PExtender with PSingleMember with PGlobalDeclaration with PPrettySubnodes {
+               (val pos: (Position, Position)) extends PExtender with PSingleMember with PGlobalDeclaration {
   def typVarsSeq: Seq[PTypeVarDecl] = typVars.map(_.inner.toSeq).getOrElse(Nil)
   def constructors: Seq[PAdtConstructor] = c.inner
 
@@ -94,9 +94,9 @@ trait PAdtChild extends PNode {
   def adt: PAdt = getAncestor[PAdt].get
 }
 
-case class PAdtSeq[T <: PNode](seq: PGrouped[PSym.Brace, Seq[T]])(val pos: (Position, Position)) extends PExtender {
-  def inner: Seq[T] = seq.inner
-  override def pretty = s"${seq.l.pretty}\n  ${seq.inner.map(_.pretty).mkString("\n  ")}\n${seq.r.pretty}"
+case class PAdtSeq[T <: PNode](seq: PDelimited.Block[T])(val pos: (Position, Position)) extends PExtender with RLeftSpace {
+  def inner: Seq[T] = seq.inner.toSeq
+  def map[U <: PNode](f: T => U): PAdtSeq[U] = PAdtSeq(seq.update(inner.map(f)))(pos)
 }
 
 /** Any argument to a method, function or predicate. */
@@ -108,7 +108,7 @@ object PAdtFieldDecl {
   def apply(d: PIdnTypeBinding): PAdtFieldDecl = PAdtFieldDecl(d.idndef, d.c, d.typ)(d.pos)
 }
 
-case class PAdtConstructor(annotations: Seq[PAnnotation], idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PAdtFieldDecl])(val pos: (Position, Position)) extends PExtender with PNoSpecsFunction with PGlobalUniqueDeclaration with PPrettySubnodes with PAdtChild {
+case class PAdtConstructor(annotations: Seq[PAnnotation], idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PAdtFieldDecl])(val pos: (Position, Position)) extends PExtender with PNoSpecsFunction with PGlobalUniqueDeclaration with PAdtChild {
   override def resultType: PType = adt.getAdtType
   def fieldDecls: Seq[PAdtFieldDecl] = this.args.inner.toSeq
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
@@ -150,10 +150,7 @@ object PAdtConstructor {
   def findAdtConstructor(id: PIdentifier, t: Translator): AdtConstructor = t.getMembers()(id.name).asInstanceOf[AdtConstructor]
 }
 
-case class PAdtConstructors1(seq: PGrouped[PSym.Brace, Seq[PAdtConstructor1]])(val pos: (Position, Position))
-case class PAdtConstructor1(annotations: Seq[PAnnotation], idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PAdtFieldDecl], s: Option[PSym.Semi])(val pos: (Position, Position))
-
-case class PAdtDeriving(k: PReserved[PDerivesKeyword.type], derivingInfos: PAdtSeq[PAdtDerivingInfo])(val pos: (Position, Position)) extends PExtender with PPrettySubnodes with PAdtChild {
+case class PAdtDeriving(k: PReserved[PDerivesKeyword.type], derivingInfos: PAdtSeq[PAdtDerivingInfo])(val pos: (Position, Position)) extends PExtender with PAdtChild {
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
     derivingInfos.inner foreach (_.typecheck(t, n))
 
@@ -167,7 +164,7 @@ case class PAdtDeriving(k: PReserved[PDerivesKeyword.type], derivingInfos: PAdtS
   }
 }
 
-case class PAdtWithout(k: PReserved[PWithoutKeyword.type], blockList: PDelimited[PIdnRef[PAdtFieldDecl], PSym.Comma])(val pos: (Position, Position)) extends PExtender with PPrettySubnodes with PAdtChild {
+case class PAdtWithout(k: PReserved[PWithoutKeyword.type], blockList: PDelimited[PIdnRef[PAdtFieldDecl], PSym.Comma])(val pos: (Position, Position)) extends PExtender with PAdtChild {
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
     blockList.toSeq.foreach(idnref => {
       if (idnref.filterDecls(_.constructor.adt.scopeId == adt.scopeId))
@@ -179,7 +176,7 @@ case class PAdtWithout(k: PReserved[PWithoutKeyword.type], blockList: PDelimited
   }
 }
 
-case class PAdtDerivingInfo(idndef: PIdnDef, param: Option[PGrouped[PSym.Bracket, PType]], without: Option[PAdtWithout])(val pos: (Position, Position)) extends PExtender with PPrettySubnodes {
+case class PAdtDerivingInfo(idndef: PIdnDef, param: Option[PGrouped[PSym.Bracket, PType]], without: Option[PAdtWithout])(val pos: (Position, Position)) extends PExtender {
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
     param.map(_.inner) foreach (t.check)
@@ -491,7 +488,7 @@ case class PDestructorCall(rcv: PExp, dot: PReserved[PDiscDot.type], idnref: PId
 }
 
 case object PIsKeyword extends PKwOp("is") {
-  override def rightPad = ""
+  override def rightPad = None
 }
 case object PDiscDot extends PSym(".") with PSymbolOp
 
