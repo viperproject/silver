@@ -1,0 +1,24 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+field f: Int
+predicate P(x: Ref) { acc(x.f) }
+predicate Q(x: Ref) { acc(x.f) }
+
+function snap(x: Ref): Int
+  requires acc(P(x))
+{ unfolding acc(P(x)) in x.f }
+
+method cast(x: Ref)
+  requires acc(P(x))
+  ensures acc(Q(x))
+  ensures unfolding acc(Q(x)) in x.f == old(snap(x))
+
+method test(x: Ref, y: Ref)
+  requires acc(P(x)) && acc(P(y))
+{
+  package acc(P(y)) --* acc(Q(x)) && acc(P(y)) {
+    cast(x)
+  }
+}
