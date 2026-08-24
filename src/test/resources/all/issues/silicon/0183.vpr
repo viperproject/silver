@@ -16,14 +16,12 @@ method foo_ok(self: Ref)
 method foo_fail(self: Ref, rd: Perm)
   requires none < rd && rd < write
   requires acc(valid__Cell(self, rd), rd)
-  //:: UnexpectedOutput(not.wellformed:insufficient.permission, /Silicon/issue/183/)
   requires (unfolding acc(valid__Cell(self, rd), rd) in self.v) == 1
 {}
 
 method foo_fail_gist(self: Ref, rd: Perm)
   requires none < rd && rd < write
 {
-  //:: UnexpectedOutput(assert.failed:assertion.false, /Silicon/issue/183/)
   assert none < rd * rd
 }
 
@@ -32,14 +30,12 @@ method bar(self: Ref, rd: Perm)
   requires acc(valid__Cell(self, rd), rd)
 {
   unfold acc(valid__Cell(self, rd), rd)
-  //:: UnexpectedOutput(assert.failed:insufficient.permission, /Silicon/issue/183/)
   assert self.v >= self.v
 }
 
 method bar_gist(self: Ref, rd: Perm)
   requires none < rd && rd < write
 {
-  //:: UnexpectedOutput(assert.failed:assertion.false, /Silicon/issue/183/)
   assert none < rd * rd
 }
 
