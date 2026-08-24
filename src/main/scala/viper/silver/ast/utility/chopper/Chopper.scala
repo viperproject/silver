@@ -156,7 +156,10 @@ trait Cut { this: SCC =>
     var forallSmallNode: (Int => Boolean) => Boolean = null // for the safety check
 
     val result = {
-      if (graph.importantNodes.size <= 2) {
+      // The with-cycles cut below is only sound for a single start node on cyclic graphs:
+      // with several starts in a common cycle, its dominator search marks all of them as
+      // non-roots, leaving the cycle without a root. Larger selections take the SCC path.
+      if (graph.importantNodes.size <= 1) {
         val t1 = System.nanoTime()
         val smallestPrograms = smallestCutWithCycles(
           graph.numberOfNodes, graph.importantNodes, graph.edges, identity[Int]
