@@ -2,6 +2,7 @@
 // http://creativecommons.org/publicdomain/zero/1.0/
 
 //:: IgnoreFile(/carbon/issue/280/)
+//:: IgnoreFile(/silicon/issue/1004/)
 
 /*****************************************************************
  * List Nodes
@@ -22,7 +23,7 @@ function contentNodes(this: Ref, end: Ref): Seq[Int]
   ensures  this == end ==> result == Seq[Int]()
   ensures  this != end ==>
               0 < |result| && result[0] == unfolding acc(lseg(this, end)) in this.data
-  ensures  forall i: Int, j: Int :: 0 <= i && i < j && j < |result| ==> result[i] <= result[j]
+  ensures  forall i: Int, j: Int ::  { result[i], result[j] } 0 <= i && i < j && j < |result| ==> result[i] <= result[j]
 {
   this == end ? Seq[Int]() :
                 unfolding acc(lseg(this, end)) in (
@@ -54,7 +55,7 @@ predicate List(this: Ref)
 
 function content(this: Ref): Seq[Int]
   requires acc(List(this))
-  ensures  forall i: Int, j: Int :: 0 <= i && i < j && j < |result| ==> result[i] <= result[j]
+  ensures  forall i: Int, j: Int :: { result[i], result[j] } 0 <= i && i < j && j < |result| ==> result[i] <= result[j]
 {
   unfolding acc(List(this)) in contentNodes(this.head, null)
 }
@@ -134,9 +135,9 @@ method insert(this: Ref, elem: Int) returns (index: Int)
       invariant acc(ptr.next) && acc(ptr.data) && ptr.data <= elem
       invariant acc(lseg(ptr.next, null))
       invariant acc(lseg(this.head, ptr))
-      invariant forall i: Int :: 0 <= i && i < |contentNodes(this.head, ptr)| ==>
+      invariant forall i: Int :: { contentNodes(this.head, ptr)[i] } 0 <= i && i < |contentNodes(this.head, ptr)| ==>
                   contentNodes(this.head, ptr)[i] <= ptr.data
-      invariant forall i: Int :: 0 <= i && i < |contentNodes(ptr.next, null)| ==>
+      invariant forall i: Int :: { contentNodes(ptr.next, null)[i] } 0 <= i && i < |contentNodes(ptr.next, null)| ==>
                   ptr.data <= contentNodes(ptr.next, null)[i]
       invariant index-1 == |contentNodes(this.head, ptr)|
       invariant

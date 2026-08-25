@@ -17,6 +17,8 @@ method foo(refs: Set[Ref], r2: Ref, r3: Ref, rp: Ref, ip: Int)
     assert P(r3, 3);
     exhale acc(P(r2, 4), 1/2)
 
+    assert acc(P(r3, 3), 1/1)
+
     //:: ExpectedCounterexample(assert.failed:insufficient.permission, (acc(P(r3, 3), 1/1), acc(P(r2, 4), 1/2)))
     assert acc(P(rp, ip))
   }
