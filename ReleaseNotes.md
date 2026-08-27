@@ -1,3 +1,62 @@
+## Release 2026.8
+
+**Date 31/08/26**
+
+### General Changes
+
+- The used Z3 version was updated from 4.8.7 to 4.16.0 ([viperproject/silicon#1003](https://github.com/viperproject/silicon/pull/1003) and [viperproject/viperserver#360](https://github.com/viperproject/viperserver/pull/360)) and [viperproject/carbon#585](https://github.com/viperproject/carbon/pull/585).
+- Viper now has a shared, backend-independent counterexample format that is produced by both backends ([#883](https://github.com/viperproject/silver/pull/883), [viperproject/silicon#940](https://github.com/viperproject/silicon/pull/940) and [viperproject/carbon#574](https://github.com/viperproject/carbon/pull/574)). Counterexamples come in two layers:
+  * A raw layer (`RawCounterexample`), which contains the information collected from the backend's model in a simple form, with heap resources still identified by backend-internal (SMT-level) identifiers.
+  * A resolved layer (`ResolvedCounterexample`), the human-readable form, in which heap resources are bound to their AST nodes (fields, predicates, magic wands) and values are ordinary Viper AST expressions.
+
+  The layer is selected on the command line via `--counterexample=resolved` or `--counterexample=raw`; Silicon additionally requires `--exhaleMode=1`. A counterexample shows the store, the current heap and the old heap (including the permission amounts held for each resource) as well as the values of (domain) functions. Collection values are reconstructed as literals (e.g. `Seq(10, 20)`, `Map(1 := 100)`), and entries that the model does not pin down are marked as `#undefined`. Both backends emit the same format, modulo backend-internal names for references.
+- Several smaller general improvements:
+  * Viper now emits a warning when a program contains labels that declare invariants but are not loop heads. Such invariants are ignored, which was previously not reported at all and could be surprising for users. ([#920](https://github.com/viperproject/silver/pull/920), [viperproject/silicon#988](https://github.com/viperproject/silicon/pull/988) and [viperproject/carbon#587](https://github.com/viperproject/carbon/pull/587))
+  * Added consistency checks for triggers on existential quantifiers ([#912](https://github.com/viperproject/silver/pull/912))
+  * Improved `Simplifier` with additional rules for common permission patterns ([#924](https://github.com/viperproject/silver/pull/924))
+  * Added functions that split an expression into its pure (functional) fragment and its access (permission) component, including a convenience function that performs this split for predicate bodies ([#908](https://github.com/viperproject/silver/pull/908))
+  * Fixed a crash caused by inhale-exhale assertions inside quantified permissions, which are now desugared by transforming the inhaling and the exhaling view separately ([#923](https://github.com/viperproject/silver/pull/923))
+  * Fixed a `ClassCastException` that could occur when several instances of `ViperFrontendAPI` are used in parallel and one thread requested a logger while logger initialization triggered by another thread was still ongoing ([#915](https://github.com/viperproject/silver/pull/915))
+ 
+### Viper-IDE & ViperServer
+
+- Several fixes that improve the stability of ViperServer:
+  * AST job slots are now freed more aggressively when jobs are cancelled (e.g. when switching between files while a verification is still running), which previously could make the server stop responding ([viperproject/viperserver#334](https://github.com/viperproject/viperserver/pull/334))
+  * Verification again re-uses AST jobs produced by LSP parsing; always creating a new AST job could lead to a deadlock between verification and LSP parsing ([viperproject/viperserver#341](https://github.com/viperproject/viperserver/pull/341))
+  * Fixed race conditions ([viperproject/viperserver#342](https://github.com/viperproject/viperserver/pull/342))
+  * Made the teardown of Silicon's worker pool more robust, so that an exception in one worker no longer prevents the remaining teardown operations; this avoids partially torn-down Silicon instances in server settings ([viperproject/silicon#1000](https://github.com/viperproject/silicon/pull/1000))
+- Added new message types for more fine-grained progress reporting on the level of individual basic blocks, which are emitted by Silicon when the new option `--generateBlockMessages` is used ([#812](https://github.com/viperproject/silver/pull/812) and [viperproject/silicon#867](https://github.com/viperproject/silicon/pull/867))
+- Added command line options that Silicon needs for the pruning and progress features of the VSCode extension: `--pruneLines` and `--pruneExportFileName` for pruning, `--computeVerificationProgress` and `--computeVerificationProgressFileName` for verification progress ([viperproject/silicon#963](https://github.com/viperproject/silicon/pull/963))
+
+### Backend-specific Upgrades/Changes
+
+#### Symbolic Execution Backend (Silicon)
+
+- Added a new, experimental heap encoding that can be enabled with the command line option `--maskHeapMode` ([viperproject/silicon#1005](https://github.com/viperproject/silicon/pull/1005)). Instead of one chunk per heap location, the state contains an entire SMT-level heap map together with a permission mask per resource (field, predicate, wand), i.e., an encoding much closer to the one used by Carbon (namely the SE-TR algorithm from our CAV 2024 paper). The additional option `--simplifyOnConsume` enables active simplification of mask terms during consume operations. 
+- Added an alternative, opt-in exhale algorithm for quantified permissions in Silicon's standard heap model, which can be selected using the new option `--exhaleModeQP` (`0` = greedy, `1` = the standard complete algorithm, which remains the default, `2` = greedy with a fallback to the complete algorithm if it fails) or per member using the new annotation `@exhaleModeQP` ([viperproject/silicon#995](https://github.com/viperproject/silicon/pull/995)). The greedy algorithm underapproximates the set of relevant heap chunks for each exhale operation and relies on merging quantified chunks during state consolidation, which makes exhales largely independent of chunk order. On the motivating examples of [the underlying master's thesis](https://ethz.ch/content/dam/ethz/special-interest/infk/chair-program-method/pm/documents/Education/Theses/Markus_Limbeck_MS_Report.pdf), this turns exponential behavior into roughly linear behavior.
+- Quantified magic wands now use the same magic wand snapshot function (MWSF) encoding that non-quantified wands already use, instead of encoding wand snapshots as a pair of snapshots ([viperproject/silicon#985](https://github.com/viperproject/silicon/pull/985) and [#805](https://github.com/viperproject/silver/pull/805)). This fixes an unsoundness that occurred when the same quantified wand was applied multiple times with different snapshots.
+- Soundness fixes:
+  * Fixed an unsoundness caused by using `refute` inside a `package` statement ([viperproject/silicon#979](https://github.com/viperproject/silicon/pull/979))
+  * Fixed a case where verification was incorrectly not continued after a failing `refute` ([viperproject/silicon#993](https://github.com/viperproject/silicon/pull/993))
+  * Added a missing state reset after evaluating quantified assertions ([viperproject/silicon#965](https://github.com/viperproject/silicon/pull/965))
+- Completeness fixes:
+  * Fixed two issues with translating quantifier triggers inside heap-dependent functions ([viperproject/silicon#970](https://github.com/viperproject/silicon/pull/970))
+  * Possible trigger terms that were recorded before a quantifier was evaluated are no longer erroneously discarded afterwards ([viperproject/silicon#982](https://github.com/viperproject/silicon/pull/982))
+  * Terms evaluated for `old`-expressions inside quantifier bodies are now recorded as possible triggers in all cases ([viperproject/silicon#980](https://github.com/viperproject/silicon/pull/980))
+  * Fixed the old heap used for calls to methods whose postconditions contain `old`-expressions inside `package` statements ([viperproject/silicon#1001](https://github.com/viperproject/silicon/pull/1001))
+- Debugger improvements:
+  * Old (debug) heaps recorded in the state are no longer discarded during expression evaluation ([viperproject/silicon#969](https://github.com/viperproject/silicon/pull/969))
+  * Debug expressions for function applications, unfoldings and `applying`-expressions now show the actual evaluated expression instead of a generic variable ([viperproject/silicon#969](https://github.com/viperproject/silicon/pull/969) and [viperproject/silicon#981](https://github.com/viperproject/silicon/pull/981))
+  * Fixed several smaller issues, e.g. debug labels being computed for the wrong heap, and added an option to show old heaps in the debugger ([viperproject/silicon#962](https://github.com/viperproject/silicon/pull/962))
+- Others:
+  * The branch conditions reported with `--enableBranchconditionReporting` are no longer sorted by source position, so that the order in which the conditions were actually branched on is preserved ([viperproject/silicon#972](https://github.com/viperproject/silicon/pull/972))
+  * Exceptions thrown during verification are now logged together with the name of the member that was being verified ([viperproject/silicon#961](https://github.com/viperproject/silicon/pull/961))
+
+#### Verification Condition Generation Backend (Carbon)
+
+- Carbon now supports exhaling quantified permissions inside ``package`` statements, and therefore also supports quantified permissions on the right hand sides of magic wands ([viperproject/carbon#589](https://github.com/viperproject/carbon/pull/589). Previously, Carbon crashed in these situations due to a missing implementation of the ``exhaleExt`` part of the algorithm for quantified permissions. As for the existing implementation for non-quantified permissions, wildcards are not supported.
+- Several small encoding changes that improve performance and remove problematic quantifiers ([viperproject/carbon#585](https://github.com/viperproject/carbon/pull/585))
+
 ## Release 2026.2
 
 **Date 20/02/26**
