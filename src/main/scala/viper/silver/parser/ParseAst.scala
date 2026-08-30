@@ -1503,7 +1503,7 @@ case class PNewExp(keyword: PKw.New, fields: PGrouped.Paren[Either[PSym.Star, PD
   def forceSubstitution(ts: PTypeSubstitution) = {}
 }
 
-sealed trait PScope extends PNode {
+trait PScope extends PNode {
   val scopeId = PScope.uniqueId()
 }
 

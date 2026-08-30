@@ -12,10 +12,10 @@ domain parallelHeaps {
   function temp(x: Ref) : Ref
   function temp_inv(x: Ref) : Ref
 
-  function heap(x: Ref) : Int
+  function heap_lookup(x: Ref) : Int
   function is_ghost(x:Ref) : Bool
 
-  axiom inv_temp { forall r:Ref :: {temp(r)} temp_inv(temp(r)) == r  && (is_ghost(r) ? temp(r) == r : heap(temp(r)) == -3) }
+  axiom inv_temp { forall r:Ref :: {temp(r)} temp_inv(temp(r)) == r  && (is_ghost(r) ? temp(r) == r : heap_lookup(temp(r)) == -3) }
 }
 
 domain reads {
@@ -31,9 +31,9 @@ domain reads {
 
 
 method clone(data: Ref, count: Ref, ghost: Ref)
-  requires    heap(data) == 0
-           && heap(count) == 0
-           && heap(ghost) == 0
+  requires    heap_lookup(data) == 0
+           && heap_lookup(count) == 0
+           && heap_lookup(ghost) == 0
            && is_ghost(ghost)
            && acc(data.val, rd())
            && acc(ghost.val, rd())
