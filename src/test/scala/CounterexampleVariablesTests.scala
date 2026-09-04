@@ -7,8 +7,7 @@
 package viper.silver.testing
 
 import fastparse._
-import viper.silver.parser.FastParserCompanion.whitespace
-import viper.silver.parser.{FastParser, PAccPred, PBinExp, PBoolLit, PExp, PIdnUseExp, PIntLit, PSymOp, PUnExp}
+import viper.silver.parser.{FastParser, PBinExp, PBoolLit, PExp, PIdnUseExp, PIntLit, PSymOp, PUnExp}
 import viper.silver.verifier.{ConstantEntry, FailureContext, Model, ModelEntry, VerificationError}
 
 import java.nio.file.Path
@@ -127,25 +126,4 @@ object CounterexampleComparison {
     case (ConstantEntry(value1), ConstantEntry(value2)) => value1 == value2
     case _ => false
   }
-}
-
-/**
-  * Simple input language to describe an expected counterexample with corresponding parser.
-  * Currently, a counterexample is expressed by a comma separated list of access predicates and equalities (using the
-  * same syntax as in Viper)
-  */
-class CounterexampleParser(fp: FastParser) {
-  import fp.{accessPred, eqExp}
-
-  def expectedCounterexample[$: P]: P[ExpectedCounterexample] =
-    (Start ~ "(" ~ (accessPred | eqExp).rep(0, ",") ~ ")" ~ End)
-      .map(ExpectedCounterexample)
-}
-
-case class ExpectedCounterexample(exprs: Seq[PExp]) {
-  assert(exprs.forall {
-    case _: PAccPred => true
-    case PBinExp(_, r, _) if r.rs == PSymOp.EqEq => true
-    case _ => false
-  })
 }

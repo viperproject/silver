@@ -1,0 +1,282 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2026 ETH Zurich.
+
+package viper.silver.testing
+
+import fastparse._
+import viper.silver.parser.FastParserCompanion.whitespace
+import viper.silver.ast
+import viper.silver.parser._
+import viper.silver.testing.{AbstractOutput, CustomAnnotation, DefaultAnnotatedTestInput, DefaultTestInput, OutputAnnotationId, SilOutput, TestAnnotation, TestAnnotationParser, TestCustomError, TestError, TestInput}
+import viper.silver.verifier._
+
+import java.nio.file.Path
+
+
+/** represents an expected output (identified by `id`) with an associated (possibly partial) counterexample model */
+case class ExpectedCounterexampleAnnotation(id: OutputAnnotationId, file: Path, forLineNr: Int, expectedCounterexample: ExpectedCounterexample) extends CustomAnnotation {
+  override def matches(actual: AbstractOutput): Boolean =
+    id.matches(actual.fullId) && actual.isSameLine(file, forLineNr) && containsModel(actual)
+
+  /** returns true if the expected model (i.e. class parameter) is a subset of a model given in a failure context */
+  def containsModel(is: AbstractOutput): Boolean = is match {
+    case SilOutput(err) => err match {
+      case vErr: VerificationError => vErr.failureContexts.toVector.exists(containsExpectedCounterexample)
+      case _ => false
+    }
+    case _ => false
+  }
+
+  def containsExpectedCounterexample(failureContext: FailureContext): Boolean =
+    failureContext.counterExample match {
+      case Some(ce: ResolvedCounterexample) => meetsExpectations(expectedCounterexample, ce)
+      case _ => false
+    }
+
+  /** returns true if model2 contains at least the content expressed by model1 */
+  def meetsExpectations(model1: ExpectedCounterexample, model2: ResolvedCounterexample): Boolean = {
+    model1.exprs.forall {
+      case wand: PMagicWandExp => containsMagicWand(wand, model2)
+      case accPred: PAccPred => containsAccessPredicate(accPred, model2)
+      case PBinExp(lhs, r, rhs) if r.rs == PSymOp.EqEq => containsEquality(lhs, rhs, model2)
+    }
+  }
+
+  /**
+    * Checks that a magic wand matching `wand` is present in the (current) heap. The wand's sides are
+    * resolved to AST expressions (with the store's values substituted for variables), yielding the
+    * same shape the extractor produces for a [[WandResolvedEntry]], and compared against each wand
+    * entry via the pretty-printed `left --* right`.
+    */
+  def containsMagicWand(wand: PMagicWandExp, model: ResolvedCounterexample): Boolean = {
+    // A wand entry refers to its receiver either by the store variable's name or by the raw
+    // backend value (the two backends differ), so build both forms of the expected wand and accept
+    // either.
+    val expected = Seq(true, false).flatMap { resolveVars =>
+      for (l <- resolveToAst(wand.left, model, resolveVars); r <- resolveToAst(wand.right, model, resolveVars))
+        yield ast.MagicWand(l, r)().toString
+    }
+    expected.nonEmpty && model.heapMap.get("current").exists(_.heapEntries.exists {
+      case (_, w: WandResolvedEntry) => expected.contains(ast.MagicWand(w.left, w.right)().toString)
+      case _ => false
+    })
+  }
+
+  /**
+    * Translates a (counterexample-assertion) parser expression into an AST expression so that its
+    * pretty-printed form matches that of the corresponding resolved counterexample entry. Variables
+    * are either resolved to their counterexample value (`resolveVars = true`) or kept as their name
+    * (`resolveVars = false`), to match whichever representation a backend uses. Only the constructs
+    * that can occur in a magic-wand assertion are handled; anything else yields None.
+    */
+  def resolveToAst(expr: PExp, model: ResolvedCounterexample, resolveVars: Boolean): Option[ast.Exp] = expr match {
+    case PIntLit(value) => Some(ast.IntLit(value)())
+    case PUnExp(r, PIntLit(value)) if r.rs == PSymOp.Neg => Some(ast.IntLit(-value)())
+    case PBinExp(PIntLit(n), r, PIntLit(d)) if r.rs == PSymOp.Div => CounterexampleValue.parsePerm(s"$n/$d")
+    case idnuse: PIdnUseExp =>
+      if (resolveVars) model.ceStore.asMap.get(idnuse.name) else Some(ast.LocalVar(idnuse.name, ast.Ref)())
+    case PFieldAccess(rcv, _, idnuse) =>
+      resolveToAst(rcv, model, resolveVars).map(r => ast.FieldAccess(r, ast.Field(idnuse.name, ast.Int)())())
+    case accPred: PAccPred =>
+      for (loc <- resolveToAst(accPred.loc, model, resolveVars) if loc.isInstanceOf[ast.FieldAccess]; perm <- resolveToAst(accPred.perm, model, resolveVars))
+        yield ast.FieldAccessPredicate(loc.asInstanceOf[ast.FieldAccess], Some(perm))()
+    case w: PMagicWandExp =>
+      for (l <- resolveToAst(w.left, model, resolveVars); r <- resolveToAst(w.right, model, resolveVars)) yield ast.MagicWand(l, r)()
+    case PBinExp(lhs, r, rhs) =>
+      for (l <- resolveToAst(lhs, model, resolveVars); rr <- resolveToAst(rhs, model, resolveVars); res <- (r.rs match {
+        case PSymOp.EqEq => Some(ast.EqCmp(l, rr)())
+        case PSymOp.AndAnd => Some(ast.And(l, rr)())
+        case _ => None
+      })) yield res
+    case _ => None
+  }
+
+  def containsAccessPredicate(accPred: PAccPred, model: ResolvedCounterexample): Boolean = {
+    resolve(Vector(accPred.loc, accPred.perm), model).exists {
+      case Vector((_, actualPermOpt), (expectedPermAmount, _)) =>
+        actualPermOpt.exists(actualPermAmount =>
+          areEqualEntries(expectedPermAmount,
+            ast.FractionalPerm(ast.IntLit(actualPermAmount.numerator)(), ast.IntLit(actualPermAmount.denominator)())())
+        )
+      case _ => false
+    }
+  }
+
+  def containsEquality(lhs: PExp, rhs: PExp, model: ResolvedCounterexample): Boolean =
+    resolveWoPerm(Vector(lhs, rhs), model).exists {
+      case Vector(resolvedLhs, resolvedRhs) => areEqualEntries(resolvedLhs, resolvedRhs)
+      case _ => false
+    }
+
+  /** resolves `expr` to an AST value expression in the given model. In case it's a field access, the corresponding permissions are returned as well */
+  def resolve(expr: PExp, model: ResolvedCounterexample): Option[(ast.Exp, Option[Rational])] = expr match {
+    case PIntLit(value) => Some((ast.IntLit(value)(), None))
+    case PUnExp(r, PIntLit(value)) if r.rs == PSymOp.Neg => Some((ast.IntLit(-value)(), None))
+    case PBinExp(PIntLit(n), r, PIntLit(d)) if r.rs == PSymOp.Div =>
+      Some((ast.FractionalPerm(ast.IntLit(n)(), ast.IntLit(d)())(), None))
+    case idnuse: PIdnUseExp =>
+      model.ceStore.asMap.get(idnuse.name).map((_, None))
+    case PFieldAccess(rcv, _, idnuse) =>
+      resolveWoPerm(rcv, model).flatMap { rcvExp =>
+        val heapEntries = model.heapMap.get("current").toSeq.flatMap(_.heapEntries)
+        // A field access resolves either against a top-level field entry ...
+        heapEntries.collectFirst {
+          case (f: ast.Field, ffi: FieldResolvedEntry) if f.name == idnuse.name && ffi.ref == rcvExp.toString =>
+            (ffi.entry, ffi.perm)
+        }.orElse {
+          // ... or against a field held *inside* a folded predicate whose argument is the receiver.
+          heapEntries.collectFirst {
+            case (_, pe: PredResolvedEntry)
+              if pe.args.exists(_.toString == rcvExp.toString) &&
+                 pe.insidePredicate.exists(_.exists { case (fa: ast.FieldAccess, _) => fa.field.name == idnuse.name; case _ => false }) =>
+              pe.insidePredicate.get.collectFirst {
+                case (fa: ast.FieldAccess, v) if fa.field.name == idnuse.name =>
+                  (CounterexampleValue.literal(v.toString, Some(fa.field.typ)), None)
+              }.get
+          }
+        }
+      }
+    case PLookup(base, _, idx, _) => resolveWoPerm(Vector(base, idx), model).flatMap {
+      // sequence indexing s[i]
+      case Vector(s: ast.ExplicitSeq, ast.IntLit(i)) =>
+        if (i >= 0 && i < BigInt(s.elems.size)) Some((s.elems(i.toInt), None)) else None
+      // map lookup m[k]
+      case Vector(m: ast.ExplicitMap, key) =>
+        m.pairs.collectFirst { case ast.Maplet(k, v) if k == key => (v, None) }
+      case _ => None
+    }
+    case PCall(idnuse, args, _) =>
+      val argValues = args.inner.toSeq.map(a => resolveWoPerm(a, model))
+      if (argValues.forall(_.isDefined)) {
+        val resolvedArgs = argValues.map(_.get)
+        // A call is either a predicate instance (reported in the heap, with a permission) ...
+        val predicate = model.heapMap.get("current").flatMap(_.heapEntries.find({
+          case (p: ast.Predicate, pe: PredResolvedEntry) if p.name == idnuse.name && pe.args == resolvedArgs => true
+          case _ => false
+        }).map(he =>
+          (ast.BackendValueLit("", ast.InternalType)(), he._2.asInstanceOf[PredResolvedEntry].perm)
+        ))
+        // ... or a (heap-dependent) function application, whose value is looked up in the reported
+        // function table. Function tables carry an implicit leading heap argument, so we match the
+        // call's arguments against the *last* entries of each option's argument tuple.
+        predicate.orElse {
+          val argStrings = resolvedArgs.map(_.toString)
+          model.functionEntries.find(_.fname == idnuse.name).flatMap { fe =>
+            // Prefer an explicit table entry for these arguments; otherwise use the function's
+            // default ("else") value, since the solver may represent a function (e.g. a constant
+            // one) purely by its default rather than by explicit points.
+            val value = fe.options.collectFirst { case (k, v) if k.takeRight(argStrings.size) == argStrings => v }
+              .orElse(Some(fe.default).filter(d => d.nonEmpty && d != "#unspecified" && d != "#undefined"))
+            value.map(v => (CounterexampleValue.literal(v, Some(fe.returnType)), None))
+          }
+        }
+      } else {
+        None
+      }
+    case _ => None
+  }
+
+  def resolve(exprs: Vector[PExp], model: ResolvedCounterexample): Option[Vector[(ast.Exp, Option[Rational])]] = {
+    val entries = exprs.map(expr => resolve(expr, model)).collect{ case Some(entry) => entry }
+    if (exprs.size == entries.size) Some(entries) else None
+  }
+
+  def resolveWoPerm(expr: PExp, model: ResolvedCounterexample): Option[ast.Exp] =
+    resolve(expr, model).map(_._1)
+
+  def resolveWoPerm(exprs: Vector[PExp], model: ResolvedCounterexample): Option[Vector[ast.Exp]] = {
+    val entries = exprs.map(expr => resolveWoPerm(expr, model)).collect{ case Some(entry) => entry }
+    if (exprs.size == entries.size) Some(entries) else None
+  }
+
+  def areEqualEntries(entry1: ast.Exp, entry2: ast.Exp): Boolean = entry1 == entry2
+
+  override def notFoundError: TestError = TestCustomError(s"Expected the following counterexample on line $forLineNr: $expectedCounterexample")
+
+  override def withForLineNr(line: Int = forLineNr): ExpectedCounterexampleAnnotation = ExpectedCounterexampleAnnotation(id, file, line, expectedCounterexample)
+}
+
+/** we use special annotations to express expected counterexamples */
+object CounterexampleTestInput extends TestAnnotationParser {
+  /**
+    * Creates an annotated test input by parsing all annotations in the files
+    * that belong to the given test input.
+    */
+  def apply(i: TestInput): DefaultAnnotatedTestInput =
+    DefaultAnnotatedTestInput(i.name, i.prefix, i.files, i.tags,
+      parseAnnotations(i.files))
+
+  def apply(file: Path, prefix: String): DefaultAnnotatedTestInput =
+    apply(DefaultTestInput(file, prefix))
+
+  override def getAnnotationFinders: Seq[(String, Path, Int) => Option[TestAnnotation]] = {
+    super.getAnnotationFinders :+ isExpectedCounterexample
+  }
+
+  // the use of comma is excluded from value ID (i.e. after the colon) to avoid ambiguities with the model
+  // note that the second capturing group could be turned into a non-capturing group but this would break compatibility
+  // with the parent trait
+  override val outputIdPattern: String = "([^:]*)(:([^,]*))?"
+
+  private def isExpectedCounterexample(annotation: String, file: Path, lineNr: Int): Option[TestAnnotation] = {
+    def parseExpectedCounterexample(id: OutputAnnotationId, expectedCounterexampleString: String): Option[ExpectedCounterexampleAnnotation] = {
+      // in order to reuse as much of the existing Viper parser as possible, we have to initialize the `_file` and `_line_offset` fields:
+      val fp = new FastParser()
+      fp._file = file.toAbsolutePath
+      val lines = expectedCounterexampleString.linesWithSeparators
+      fp._line_offset = (lines.map(_.length) ++ Seq(0)).toArray
+      var offset = 0
+      for (i <- fp._line_offset.indices) {
+        val line_length = fp._line_offset(i)
+        fp._line_offset(i) = offset
+        offset += line_length
+      }
+      val cParser = new CounterexampleParser(fp)
+      // now parsing is actually possible:
+      fastparse.parse(expectedCounterexampleString, cParser.expectedCounterexample(_)) match {
+        case Parsed.Success(expectedCounterexample, _) => Some(ExpectedCounterexampleAnnotation(id, file, lineNr, expectedCounterexample))
+        case failure: Parsed.Failure =>
+          println(s"Parsing expected counterexample failed in file $file: ${failure.extra.trace().longAggregateMsg}")
+          None
+      }
+    }
+
+    val regex = ("""^ExpectedCounterexample\(""" + outputIdPattern + """, (.*)\)$""").r
+    annotation match {
+      case regex(keyId, _, null, counterexample) =>
+        parseExpectedCounterexample(OutputAnnotationId(keyId, None), counterexample)
+      case regex(keyId, _, valueId, counterexample) =>
+        parseExpectedCounterexample(OutputAnnotationId(keyId, Some(valueId)), counterexample)
+      case _ => None
+    }
+  }
+}
+
+/**
+  * Simple input language to describe an expected counterexample with corresponding parser.
+  * Currently, a counterexample is expressed by a comma separated list of access predicates and equalities (using the
+  * same syntax as in Viper)
+  */
+class CounterexampleParser(fp: FastParser) {
+  import fp.{accessPred, eqExp, realMagicWandExp}
+
+  // A counterexample assertion is an access predicate, an equality, or a magic wand. The wand
+  // alternative is tried first because its left-hand side is itself an expression that accessPred/
+  // eqExp would otherwise consume (leaving the "--*" unparsed).
+  def expectedCounterexample[$: P]: P[ExpectedCounterexample] =
+    (Start ~ "(" ~ (NoCut(realMagicWandExp) | accessPred | eqExp).rep(0, ",") ~ ")" ~ End)
+      .map(ExpectedCounterexample)
+}
+
+case class ExpectedCounterexample(exprs: Seq[PExp]) {
+  assert(exprs.forall {
+    case _: PMagicWandExp => true
+    case _: PAccPred => true
+    case PBinExp(_, r, _) if r.rs == PSymOp.EqEq => true
+    case _ => false
+  })
+}
+

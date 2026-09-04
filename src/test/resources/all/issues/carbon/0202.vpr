@@ -32,8 +32,7 @@ method qpTest(a: Array, j:Int)
 {
   assume dummy(j-2)
   loc(a,j).val := 5
-  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/202/)
-  assert exists k:Int :: dummy(k-2) && 0 <= k 
+  assert exists k:Int :: dummy(k-2) && 0 <= k
 }
 
 domain test{

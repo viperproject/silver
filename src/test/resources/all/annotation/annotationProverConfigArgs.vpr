@@ -42,11 +42,11 @@ method m1(i: Int, i2: Int)
 
 @proverConfigArgs("smt.arith.nl=false")
 method m2(i: Int, i2: Int)
-    requires i >= 0
-    requires i2 >= 0
+    requires i >= 2
+    requires i2 >= 2
 {
     //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/000/)
-    assert i * i2 >= 0
+    assert i * i2 >= 4
 }
 
 @proverConfigArgs("smt.arith.nl=true")

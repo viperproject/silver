@@ -776,6 +776,8 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       case IntLit(i) => value(i)
       case BoolLit(b) => value(b)
       case NullLit() => value(null)
+      case RefLit(name) => text(name)
+      case BackendValueLit(v, _) => text(v)
       case AbstractLocalVar(n) => n
       case FieldAccess(rcv, field) =>
         show(rcv) <> "." <> field.name
