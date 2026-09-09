@@ -11,8 +11,6 @@ import viper.silver.ast._
 import viper.silver.ast.utility.rewriter._
 import viper.silver.utility.Common.Rational
 
-import scala.annotation.nowarn
-
 /**
  * An implementation for simplifications on the Viper AST.
  */
@@ -30,9 +28,6 @@ object Simplifier {
       assumeWelldefinedness || Expressions.isKnownWellDefined(e, None)
     }
 
-    /* The match below is deliberately partial (it is a `PartialFunction`), but it is large enough
-     * that the compiler runs out of budget while checking it for unreachable cases. */
-    @nowarn("msg=Cannot check match for unreachability")
     val simplifySingle: PartialFunction[Node, Node] = {
       // expression simplifications
       case root: Exp if root.simplified.isDefined =>
@@ -63,7 +58,6 @@ object Simplifier {
       case root@Implies(FalseLit(), _) => TrueLit()(root.pos, root.info)
       case Implies(l1, tl@TrueLit()) if isKnownWellDefined(l1) => tl
       case Implies(TrueLit(), consequent) => consequent
-      case root@Implies(FalseLit(), _) => TrueLit()(root.pos, root.info)
       case root@Implies(l1, i2@Implies(l2, r)) =>
         if (l1 == l2)
           i2
@@ -210,7 +204,6 @@ object Simplifier {
         ratToPerm(sum, root.pos, root.info, root.errT)
       case PermAdd(NoPerm(), rhs) => rhs
       case PermAdd(lhs, NoPerm()) => lhs
-      case PermSub(lhs, NoPerm()) => lhs
       case PermSub(lhs, NoPerm()) => lhs
       case root@PermSub(AnyPermLiteral(a, b), CondExp(cond, AnyPermLiteral(c, d), AnyPermLiteral(e, f))) =>
         val thn2 = ratToPerm(Rational(a, b) - Rational(c, d), root.pos, root.info)

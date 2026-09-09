@@ -263,7 +263,7 @@ object QuantifiedPermissions {
             val forallWithoutLet = Forall(vars, triggers, bod)(source.pos, source.info)
             // desugar the let-body
             val desugaredWithoutLet = doDesugarSourceQuantifiedPermissionSyntax(forallWithoutLet)
-            desugaredWithoutLet.map{ (desugared: Forall) => (desugared: @unchecked) match {
+            desugaredWithoutLet.map{
               case SourceQuantifiedPermissionAssertion(iqp, Implies(icond, irhs)) if (!irhs.isPure) =>
                 // Since the rhs cannot be a let-binding, we expand the let-expression in it.
                 // However, we still use a let in the condition; this preserves well-definedness if v isn't used anywhere
@@ -271,7 +271,9 @@ object QuantifiedPermissions {
               case iforall@Forall(ivars, itriggers, Implies(icond, ibod)) =>
                 // For all pure parts of the quantifier, we just re-wrap the body into a let.
                 Forall(ivars, itriggers, Implies(cond, Let(v, e, Implies(icond, ibod)(lt.pos, lt.info))(lt.pos, lt.info, lt.errT))(lt.pos, lt.info, lt.errT))(iforall.pos, iforall.info)
-            }}
+              case other =>
+                sys.error(s"Unexpected result of desugaring a quantified permission assertion: $other")
+            }
           }
           case _ =>
             /* RHS does not need to be desugared (any further) */

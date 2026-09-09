@@ -49,6 +49,12 @@ lazy val silver = (project in file("."))
     // sources as well, breaking its build on warnings that are unrelated to Silver.
     scalacOptions += "-Xfatal-warnings",
 
+    // The pattern match in `Simplifier` is large enough that checking it for unreachable cases
+    // exceeds the default budget, in which case the check is skipped instead of performed. Lifting
+    // the limit lets it run to completion; it does catch genuinely unreachable cases. This is scoped
+    // to Silver for the same reason as the option above.
+    scalacOptions ++= Seq("-Ypatmat-exhaust-depth", "off"),
+
     // Scaladoc still reports a number of pre-existing warnings (mostly links that cannot be
     // resolved), so `-Xfatal-warnings` is not applied to it; otherwise `doc`, and with it
     // `publishLocal`, would fail.
