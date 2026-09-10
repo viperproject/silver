@@ -18,6 +18,8 @@ import viper.silver.verifier.errors.AssertFailed
  */
 trait MethodCheck extends ProgramManager with DecreasesCheck with NestedPredicates with ErrorReporter {
 
+  import MethodCheck.Transformed
+
   private def getMethodDecreasesSpecification(method: String): DecreasesSpecification = {
     program.findMethodOptionally(method) match {
       case Some(f) => DecreasesSpecification.fromNode(f)
@@ -238,16 +240,6 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with NestedPredicat
       }
   }
 
-  /**
-   * Mark already traversed and transformed nodes.
-   * Used for while loops because a while node is potentially traversed twice.
-   */
-  private final case class Transformed() extends Info {
-    override val comment: Seq[String] = Nil
-
-    override val isCached: Boolean = false
-  }
-
   private var whileCounter: Int = 1
 
   private case class MContext(override val method: Method) extends MethodContext {
@@ -284,5 +276,18 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with NestedPredicat
     })
 
     graph
+  }
+}
+
+object MethodCheck {
+
+  /**
+   * Mark already traversed and transformed nodes.
+   * Used for while loops because a while node is potentially traversed twice.
+   */
+  private final case class Transformed() extends Info {
+    override val comment: Seq[String] = Nil
+
+    override val isCached: Boolean = false
   }
 }

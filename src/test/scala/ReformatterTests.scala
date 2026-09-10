@@ -17,6 +17,7 @@ class ReformatterTests extends AnyFunSuite {
     def parse(content: String): PProgram = {
       doParsing(content) match {
         case Succ(r) => r
+        case Fail(errors) => fail(s"parsing failed with the following errors: ${errors.mkString(", ")}")
       }
     }
 
