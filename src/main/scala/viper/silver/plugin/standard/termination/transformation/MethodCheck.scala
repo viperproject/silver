@@ -284,9 +284,6 @@ object MethodCheck {
   /**
    * Mark already traversed and transformed nodes.
    * Used for while loops because a while node is potentially traversed twice.
-   *
-   * Declared in the companion object (instead of in the trait itself) such that the class does not
-   * have an outer reference, which cannot be checked when pattern matching on it.
    */
   private final case class Transformed() extends Info {
     override val comment: Seq[String] = Nil
