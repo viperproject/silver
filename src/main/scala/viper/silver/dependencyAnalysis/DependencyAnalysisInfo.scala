@@ -59,6 +59,7 @@ object EdgeType extends Enumeration {
 trait DependencyAnalysisJoinInfo extends ast.Info {
   override def comment: Seq[String] = Nil
   override def isCached: Boolean = false
+  val joinType: JoinType
 
   def matches(dependencyAnalysisJoinInfo: DependencyAnalysisJoinInfo) : Boolean
 }
