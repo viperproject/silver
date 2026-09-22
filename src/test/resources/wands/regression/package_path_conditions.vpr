@@ -1,0 +1,66 @@
+field b: Bool
+field f: Int
+field g: Int
+
+method incompleteness_executing_continuation_each_branch(x: Ref)
+    requires acc(x.b) && acc(x.f) && acc(x.g)
+{
+    x.f := 4
+    x.g := 5
+    x.b := true
+    package acc(x.b) && 
+            acc(x.f) && 
+            acc(x.g) --* 
+            acc(x.b) && ((old[lhs](x.b)) ? acc(x.f) && acc(x.g) : acc(x.g) && acc(x.f)) {
+    }
+
+    apply acc(x.b) && acc(x.f) && acc(x.g) --* acc(x.b) && ((old[lhs](x.b)) ? acc(x.f) && acc(x.g) : acc(x.g) && acc(x.f))
+
+    assert x.g  == 5
+}
+
+method unsound_bc_propagation(x: Ref, y: Ref, b1: Bool)
+    requires acc(x.f) && acc(y.f)
+{
+    package (b1 ? x == y : true) --* true {
+        assert b1 ==> acc(x.f, 2/1)
+    }
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert !b1
+}
+
+method propagate(x: Ref) 
+    requires acc(x.b) && acc(x.f)
+{
+    package acc(x.b) && acc(x.f) --* acc(x.b) && acc(x.f) {
+        if (x.b) {
+            assume x.f == 2
+        } else {
+            assume x.f == 3
+        }
+    }
+
+    apply acc(x.b) && acc(x.f) --* acc(x.b) && acc(x.f)
+    assert x.f == 2 || x.f == 3
+    assert x.b ==> x.f == 2
+    assert !x.b ==> x.f == 3
+}
+
+method snapshot_eq_setup(x: Ref, y: Ref)
+    requires acc(x.f, 1/2) && x.f == 1
+    ensures acc(y.f, 1/4) && y.f == 2 --* false
+{
+    //:: ExpectedOutput(package.failed:assertion.false)
+    package acc(y.f, 1/4) && y.f == 2 --* false {
+        package x == y --* acc(x.f, 1/2)
+    }
+}
+
+method snapshot_eq_unsound(x: Ref, y: Ref)
+    requires acc(x.f, 1/2) && x.f == 1
+    requires acc(y.f, 1/4) && y.f == 2
+{
+    snapshot_eq_setup(x, y)
+    apply acc(y.f, 1/4) && y.f == 2 --* false
+}
