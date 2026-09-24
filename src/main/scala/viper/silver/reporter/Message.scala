@@ -348,6 +348,24 @@ case class BlockFailureMessage(methodName: String, label: String, pathId: Int) e
   override val name: String = "block_failure_message"
 }
 
+/** Reports what a verifier is currently working on while verifying a member.
+  *
+  * Backends may emit this message when they have not made any observable progress for a while, e.g., because they
+  * are waiting for the underlying prover to answer a single hard query (see Silicon's `--reportStateAfter` option).
+  *
+  * @param verifier The name of the backend.
+  * @param concerning The member currently being verified.
+  * @param millisSinceProgress Time (in milliseconds) since the backend last made observable progress on this member.
+  * @param state Human-readable, possibly multi-line description of the backend's current state, e.g., the statements,
+  *              expressions, and prover queries it is currently processing and the branch conditions of the current
+  *              execution path. Individual lines are separated by `\n`.
+  */
+case class VerifierStateMessage(verifier: String, concerning: Entity, millisSinceProgress: Time, state: String) extends Message {
+  override lazy val toString: String =
+    s"verifier_state_message(verifier=$verifier, concerning=${concerning.name}, millisSinceProgress=$millisSinceProgress, state=$state)"
+  override val name: String = "verifier_state_message"
+}
+
 /** Reported when an execution path through the method has completed. */
 case class PathProcessedMessage(methodName: String, pathId: Int, result: String) extends  Message {
   override val toString: String = s"path_processed_message(methodName=$methodName, pathId=$pathId, result=$result)"
