@@ -1,0 +1,130 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+field g: Int
+
+method foo(x: Ref)
+  requires acc(x.f, write) && acc(x.g, rd)
+  ensures acc(x.f, write) && acc(x.g, rd)
+  ensures x.f == x.g + 1
+{
+  if (x.f > x.g) {
+    x.f := x.g
+  }
+  var tmp: Int := x.g
+  while (x.f <= x.g)
+    invariant acc(x.f, write) && acc(x.g, rd)
+    invariant x.f <= x.g + 1
+  {
+    x.f := x.f + 1
+  }
+  assert tmp == x.g
+}
+
+method nested(x: Ref)
+  requires acc(x.f, write) && acc(x.g, rd)
+  ensures acc(x.f, write) && acc(x.g, rd)
+  ensures x.f == x.g + 1
+{
+  if (x.f > x.g) {
+    x.f := x.g
+  }
+  var tmp: Int := x.g
+  while (x.f <= x.g)
+    invariant acc(x.f, write) && acc(x.g, rd)
+    invariant x.f <= x.g + 1
+  {
+    assert acc(x.g, rd)
+    while (x.f <= x.g)
+      invariant acc(x.f, write) && acc(x.g, rd)
+      invariant x.f <= x.g + 1
+    {
+      assert acc(x.g, rd)
+      x.f := x.f + 1
+    }
+    assert acc(x.g, rd)
+  }
+  assert acc(x.g, rd)
+  assert tmp == x.g
+}
+
+method notEnough(x: Ref)
+  requires acc(x.f, write) && acc(x.g, rd)
+  ensures acc(x.f, write) && acc(x.g, rd)
+{
+  while (x.f <= x.g)
+    //:: ExpectedOutput(invariant.not.established:insufficient.permission)
+    invariant acc(x.f, write) && acc(x.g, 1/4)
+  {
+    x.f := x.f + 1
+  }
+}
+
+method noPerm(x: Ref)
+  requires acc(x.f, write)
+{
+  while (x.f <= 0)
+    //:: ExpectedOutput(invariant.not.established:insufficient.permission)
+    invariant acc(x.f, write) && acc(x.g, rd)
+  {
+    x.f := x.f + 1
+  }
+}
+
+method unsound(x: Ref)
+  requires acc(x.f, write) && acc(x.g, 1/2)
+{
+  while (x.f <= x.g)
+    invariant acc(x.f, write) && acc(x.g, rd)
+  {
+    x.f := x.f + 1
+  }
+  // the loop keeps only part of the permission, the rest is framed around it
+  assert perm(x.g) == 1/2
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method loopWrite(x: Ref)
+  requires acc(x.f, write) && acc(x.g, write)
+{
+  while (x.f <= 0)
+    invariant acc(x.f, write) && acc(x.g, rd)
+  {
+    //:: ExpectedOutput(assignment.failed:insufficient.permission)
+    x.g := 3
+  }
+}
+
+method bar(x: Ref)
+  requires acc(x.g, rd)
+  ensures acc(x.g, rd)
+
+method callInLoop(x: Ref, n: Int)
+  requires acc(x.g, 1/2)
+  ensures acc(x.g, 1/2)
+{
+  var i: Int := 0
+  while (i < n)
+    invariant acc(x.g, rd)
+  {
+    bar(x)
+    i := i + 1
+  }
+}
+
+// heap-dependent receiver in the invariant
+field r: Ref
+
+method heapDependent(x: Ref)
+  requires acc(x.r, 1/2) && acc(x.r.g, 1/2)
+  ensures acc(x.r, 1/2) && acc(x.r.g, 1/2)
+{
+  var i: Int := 0
+  while (i < 10)
+    invariant acc(x.r, rd) && acc(x.r.g, rd)
+  {
+    i := i + 1
+  }
+}

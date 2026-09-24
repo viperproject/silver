@@ -1,0 +1,37 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+function fun(x: Ref): Int
+  //:: ExpectedOutput(consistency.error)
+  requires acc(x.f, rd)
+{
+  x.f
+}
+
+predicate P(x: Ref) {
+  //:: ExpectedOutput(consistency.error)
+  acc(x.f, rd)
+}
+
+method arithmetic(x: Ref)
+  //:: ExpectedOutput(consistency.error)
+  requires acc(x.f, 1/2 - rd)
+  //:: ExpectedOutput(consistency.error)
+  ensures acc(x.f, rd * 2)
+
+method conditionalPerm(x: Ref, b: Bool)
+  //:: ExpectedOutput(consistency.error)
+  requires acc(x.f, b ? rd : write)
+
+method introspection(x: Ref)
+  requires acc(x.f, rd)
+{
+  //:: ExpectedOutput(consistency.error)
+  assert perm(x.f) == rd
+}
+
+method wand(x: Ref)
+  //:: ExpectedOutput(consistency.error)
+  requires acc(x.f) --* acc(x.f, rd)
