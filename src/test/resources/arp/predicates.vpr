@@ -39,3 +39,20 @@ method unfoldTooMuch(x: Ref)
   //:: ExpectedOutput(assignment.failed:insufficient.permission)
   x.f := 4
 }
+
+// rd in unfolding-expressions in postconditions and statements (see unfolding.vpr for preconditions and loop invariants)
+method unfoldingRd(x: Ref)
+  requires acc(P(x), rd)
+  ensures acc(P(x), rd) && (unfolding acc(P(x), rd) in x.f) == old(unfolding acc(P(x), rd) in x.f)
+{
+  assert (unfolding acc(P(x), rd) in x.f) == (unfolding acc(P(x), rd) in x.f)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method unfoldingRdClient(x: Ref)
+  requires acc(P(x), 1/2)
+  ensures acc(P(x), 1/2)
+{
+  unfoldingRd(x)
+}

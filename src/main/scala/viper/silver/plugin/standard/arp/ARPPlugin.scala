@@ -29,12 +29,14 @@ import scala.annotation.unused
   *    body, and the precondition `none < rd && rd < write`.
   *  - At a call to such a method, a fresh variable `call_rd` is introduced, and for every `acc(e, rd)` in the callee's
   *    precondition, we assume `none < perm(e) ==> call_rd < perm(e)` (under the conditions under which the access
-  *    predicate is required). `call_rd` is then passed as the additional argument.
+  *    predicate is required). `call_rd` is then passed as the additional argument. Unfolding- and asserting-expressions
+  *    with `rd`, e.g., in `requires acc(P(x), rd) && unfolding acc(P(x), rd) in x.f > 0`, do not transfer permissions
+  *    and need no such assumption (see [[rdConstraint]]).
   *  - Loops are handled like calls, where `rd` in the loop invariant and body refers to the loop's own amount.
   *
   * The plugin reports an error if `rd` is used in a way this encoding does not support, namely anywhere except
-  * directly as the permission amount of a field or predicate access predicate inside a method (e.g., in
-  * functions, predicates, magic wands, or arithmetic permission expressions such as `1/2 - rd`).
+  * directly as the permission amount of a field or predicate access predicate (or unfolding-expression) inside a
+  * method (e.g., in functions, predicates, magic wands, or arithmetic permission expressions such as `1/2 - rd`).
   *
   * The plugin is not enabled by default; use `--plugin viper.silver.plugin.standard.arp.ARPPlugin`.
   */
@@ -132,27 +134,38 @@ class ARPPlugin(@unused reporter: viper.silver.reporter.Reporter,
     * The assumption that `rd` is smaller than every positive permission amount currently held for the locations
     * that are accessed with `rd` in `e` (under the same conditions), or None if `e` does not contain such accesses.
     * `e` is assumed to be exhaled, and contains only supported uses of `rd` (see [[checkSupported]]).
+    *
+    * Only access predicates that transfer permissions need such an assumption. Since the bodies of unfolding- and
+    * asserting-expressions are pure, these are exactly the access predicates in the positions handled below. Access
+    * predicates with `rd` in unfolding- and asserting-expressions need no assumption: since the callee's precondition
+    * (or the loop invariant) is well-formed for every value of `rd`, the access predicates before them provide the
+    * required permissions, and exhaling those access predicates succeeds only if the caller holds them.
     */
-  private def rdConstraint(e: Exp, rd: LocalVar): Option[Exp] = e match {
-    case And(l, r) => (rdConstraint(l, rd), rdConstraint(r, rd)) match {
-      case (Some(lc), Some(rc)) => Some(And(lc, rc)(e.pos, e.info))
-      case (lc, rc) => lc.orElse(rc)
+  private def rdConstraint(e: Exp, rd: LocalVar): Option[Exp] = {
+    def rec(e: Exp): Option[Exp] = e match {
+      case And(l, r) => (rec(l), rec(r)) match {
+        case (Some(lc), Some(rc)) => Some(And(lc, rc)(e.pos, e.info))
+        case (lc, rc) => lc.orElse(rc)
+      }
+      case Implies(cond, r) => rec(r).map(Implies(cond, _)(e.pos, e.info))
+      case CondExp(cond, thn, els) => (rec(thn), rec(els)) match {
+        case (None, None) => None
+        case (tc, ec) => Some(CondExp(cond, tc.getOrElse(TrueLit()(thn.pos)), ec.getOrElse(TrueLit()(els.pos)))(e.pos, e.info))
+      }
+      case l@Let(v, exp, body) => rec(body).map(Let(v, exp, _)(l.pos, l.info))
+      case f@Forall(vars, triggers, body) => rec(body).map(bc => {
+        val q = Forall(vars, triggers, bc)(f.pos, f.info)
+        if (triggers.isEmpty) q.autoTrigger else q
+      })
+      case InhaleExhaleExp(_, ex) => rec(ex)
+      case AccessPredicate(loc, p) if isRd(p) =>
+        val perm = CurrentPerm(loc)(loc.pos)
+        Some(Implies(PermLtCmp(NoPerm()(loc.pos), perm)(loc.pos), PermLtCmp(rd, perm)(loc.pos))(e.pos, e.info))
+      case _ => None
     }
-    case Implies(cond, r) => rdConstraint(r, rd).map(Implies(cond, _)(e.pos, e.info))
-    case CondExp(cond, thn, els) => (rdConstraint(thn, rd), rdConstraint(els, rd)) match {
-      case (None, None) => None
-      case (tc, ec) => Some(CondExp(cond, tc.getOrElse(TrueLit()(thn.pos)), ec.getOrElse(TrueLit()(els.pos)))(e.pos, e.info))
-    }
-    case l@Let(v, exp, body) => rdConstraint(body, rd).map(Let(v, exp, _)(l.pos, l.info))
-    case f@Forall(vars, triggers, body) => rdConstraint(body, rd).map(bc => {
-      val q = Forall(vars, triggers, bc)(f.pos, f.info)
-      if (triggers.isEmpty) q.autoTrigger else q
-    })
-    case InhaleExhaleExp(_, ex) => rdConstraint(ex, rd)
-    case AccessPredicate(loc, p) if isRd(p) =>
-      val perm = CurrentPerm(loc)(loc.pos)
-      Some(Implies(PermLtCmp(NoPerm()(loc.pos), perm)(loc.pos), PermLtCmp(rd, perm)(loc.pos))(e.pos, e.info))
-    case _ => None
+
+    // conditions, let-bound expressions and locations in the constraint may contain unfolding-expressions with rd
+    rec(e).map(replaceRd(_, rd))
   }
 
   /**
