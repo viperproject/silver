@@ -1,0 +1,58 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+predicate P(x: Ref) {
+  acc(x.f)
+}
+
+method foo(x: Ref)
+  requires acc(P(x), rd)
+  ensures acc(P(x), rd)
+  ensures unfolding acc(P(x), rd) in x.f == old(unfolding acc(P(x), rd) in x.f)
+{
+  unfold acc(P(x), rd)
+  var y: Int := x.f
+  fold acc(P(x), rd)
+}
+
+method client(x: Ref)
+  requires acc(P(x), 1/2)
+  ensures acc(P(x), 1/2)
+{
+  foo(x)
+  assert perm(P(x)) == 1/2
+}
+
+method clientNotEnough(x: Ref)
+  requires acc(x.f)
+{
+  //:: ExpectedOutput(call.precondition:insufficient.permission)
+  foo(x)
+}
+
+method unfoldTooMuch(x: Ref)
+  requires acc(P(x), rd)
+{
+  unfold acc(P(x), rd)
+  //:: ExpectedOutput(assignment.failed:insufficient.permission)
+  x.f := 4
+}
+
+// rd in unfolding-expressions in postconditions and statements (see unfolding.vpr for preconditions and loop invariants)
+method unfoldingRd(x: Ref)
+  requires acc(P(x), rd)
+  ensures acc(P(x), rd) && (unfolding acc(P(x), rd) in x.f) == old(unfolding acc(P(x), rd) in x.f)
+{
+  assert (unfolding acc(P(x), rd) in x.f) == (unfolding acc(P(x), rd) in x.f)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method unfoldingRdClient(x: Ref)
+  requires acc(P(x), 1/2)
+  ensures acc(P(x), 1/2)
+{
+  unfoldingRd(x)
+}
