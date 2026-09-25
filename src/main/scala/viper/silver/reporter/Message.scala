@@ -8,7 +8,7 @@ package viper.silver.reporter
 
 import viper.silver.reporter.BackendSubProcessStages.BackendSubProcessStage
 import viper.silver.verifier._
-import viper.silver.ast.{QuantifiedExp, Trigger}
+import viper.silver.ast.{Exp, HasLineColumn, Node, Positioned, QuantifiedExp, Trigger}
 import viper.silver.parser.PProgram
 
 /**
@@ -356,14 +356,83 @@ case class BlockFailureMessage(methodName: String, label: String, pathId: Int) e
   * @param verifier The name of the backend.
   * @param concerning The member currently being verified.
   * @param millisSinceProgress Time (in milliseconds) since the backend last made observable progress on this member.
-  * @param state Human-readable, possibly multi-line description of the backend's current state, e.g., the statements,
-  *              expressions, and prover queries it is currently processing and the branch conditions of the current
-  *              execution path. Individual lines are separated by `\n`.
+  * @param state The backend's current state; use [[VerifierState.render]] to obtain a human-readable description.
   */
-case class VerifierStateMessage(verifier: String, concerning: Entity, millisSinceProgress: Time, state: String) extends Message {
+case class VerifierStateMessage(verifier: String, concerning: Entity, millisSinceProgress: Time, state: VerifierState) extends Message {
   override lazy val toString: String =
-    s"verifier_state_message(verifier=$verifier, concerning=${concerning.name}, millisSinceProgress=$millisSinceProgress, state=$state)"
+    s"verifier_state_message(verifier=$verifier, concerning=${concerning.name}, millisSinceProgress=$millisSinceProgress, state=${state.render})"
   override val name: String = "verifier_state_message"
+}
+
+/** The current state of a verifier, as a stack of frames: the first frame is the member's root frame, each further
+  * frame was entered by taking a branch (and hence carries a branch condition). Each frame lists the steps the
+  * verifier is currently in the middle of, e.g., the statement being executed and the assertion being consumed.
+  */
+case class VerifierState(frames: Seq[VerifierStateFrame]) {
+  /** Human-readable, multi-line rendering of the state, outermost frame first. Lines are separated by `\n`. */
+  lazy val render: String = {
+    val lines = frames.zipWithIndex.flatMap { case (frame, depth) =>
+      val branchLine = frame.branchCondition.map(c => s"${"  " * (depth - 1).max(0)}branch ${c.render}:")
+      branchLine.toSeq ++ frame.steps.map(step => ("  " * depth) + step.render)
+    }
+    lines.mkString("\n")
+  }
+}
+
+/** @param branchCondition The condition under which this frame was entered; `None` for the root frame.
+  * @param steps The steps currently in progress within this frame, outermost first.
+  */
+case class VerifierStateFrame(branchCondition: Option[BranchCondition], steps: Seq[VerifierStep])
+
+/** A step a verifier is currently in the middle of.
+  *
+  * @param kind The kind of step, e.g., `execute`, `consume`, `produce`, `evaluate`, or `prover assert`.
+  * @param node The AST node the step concerns (the executed statement, the consumed assertion, ...), if any.
+  *             Frontends can use the node's info, position, etc. to relate the step to their own input.
+  * @param description Textual description of the step's subject, e.g., the statement or the prover query.
+  */
+case class VerifierStep(kind: String, node: Option[Node], description: String) {
+  lazy val render: String = VerifierState.withPosition(s"$kind $description", node)
+}
+
+/** The condition under which a branch was taken. */
+sealed trait BranchCondition {
+  def render: String
+}
+
+object BranchCondition {
+  /** The verifier branched on `exp` (already negated for else-branches). */
+  case class Condition(exp: Exp) extends BranchCondition {
+    lazy val render: String = VerifierState.withPosition(exp.toString, Some(exp))
+  }
+
+  /** A backend-internal condition that cannot be expressed as a Viper expression, e.g., a prover term. */
+  case class OpaqueCondition(description: String) extends BranchCondition {
+    def render: String = description
+  }
+
+  /** The `index`-th (0-based) of `count` alternatives without an explicit condition, e.g., the successor edges of a
+    * CFG block. */
+  case class Alternative(index: Int, count: Int) extends BranchCondition {
+    def render: String = s"alternative ${index + 1} of $count"
+  }
+}
+
+object VerifierState {
+  def position(node: Node): Option[String] = node match {
+    case positioned: Positioned =>
+      positioned.pos match {
+        case lc: HasLineColumn => Some(s"${lc.line}:${lc.column}")
+        case _ => None
+      }
+    case _ => None
+  }
+
+  def withPosition(text: String, node: Option[Node]): String =
+    node.flatMap(position) match {
+      case Some(pos) => s"$text ($pos)"
+      case None => text
+    }
 }
 
 /** Reported when an execution path through the method has completed. */

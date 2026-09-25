@@ -244,7 +244,7 @@ case class StdIOReporter(name: String = "stdout_reporter",
       case _: PathProcessedMessage =>  // too verbose, do not print
       case VerifierStateMessage(v, concerning, millis, state) =>
         println( s"$v has been working on ${concerning.name} without visible progress for ${timeStr(millis)}. Current state:" )
-        state.linesIterator.foreach(line => println(s"  $line"))
+        state.render.linesIterator.foreach(line => println(s"  $line"))
       case _: VerificationTerminationMessage =>
       case _: BenchmarkingMessage =>
       case _ =>
