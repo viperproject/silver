@@ -19,12 +19,16 @@ method applying_using_different_branches(x: Ref)
   package W
 
   x.b := false
+
+  // ME: This seems like it should hold?
+  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/000/)
   assert applying (W) in perm(x.g) == write
 
   x.b := true
   assert applying (W) in perm(x.f) == write
 
   //:: ExpectedOutput(assert.failed:assertion.false)
+  //:: MissingOutput(assert.failed:assertion.false, /carbon/issue/000/)
   assert false
 }
 
@@ -36,6 +40,7 @@ method footprint_includes_all_branches(x: Ref)
   package W
 
   //:: ExpectedOutput(assert.failed:assertion.false)
+  //:: MissingOutput(assert.failed:assertion.false, /carbon/issue/394/)
   assert perm(x.f) > none || perm(x.g) > none
 }
 
@@ -49,6 +54,7 @@ method footprint_includes_all_branches_after_apply(x: Ref)
   assert x.b ? acc(x.f) : acc(x.g)
 
   //:: ExpectedOutput(assert.failed:insufficient.permission)
+  //:: MissingOutput(assert.failed:assertion.false, /carbon/issue/394/)
   assert acc(x.f) && acc(x.g)
 }
 

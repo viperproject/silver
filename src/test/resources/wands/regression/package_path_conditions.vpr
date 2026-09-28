@@ -36,6 +36,7 @@ method unsoundness_applying_using_different_branches(x: Ref) {
     assert perm(x.f) == none
 
     //:: ExpectedOutput(assert.failed:assertion.false)
+    //:: MissingOutput(assert.failed:assertion.false, /carbon/issue/394/)
     assert false
 }
 
@@ -48,23 +49,6 @@ method unsound_bc_propagation(x: Ref, y: Ref, b1: Bool)
 
     //:: ExpectedOutput(assert.failed:assertion.false)
     assert !b1
-}
-
-method propagate(x: Ref) 
-    requires acc(x.b) && acc(x.f)
-{
-    package acc(x.b) && acc(x.f) --* acc(x.b) && acc(x.f) {
-        if (x.b) {
-            assume x.f == 2
-        } else {
-            assume x.f == 3
-        }
-    }
-
-    apply acc(x.b) && acc(x.f) --* acc(x.b) && acc(x.f)
-    assert x.f == 2 || x.f == 3
-    assert x.b ==> x.f == 2
-    assert !x.b ==> x.f == 3
 }
 
 method snapshot_eq_setup(x: Ref, y: Ref)

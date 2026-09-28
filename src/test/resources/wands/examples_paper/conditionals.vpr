@@ -88,5 +88,6 @@ method conditionals02(x: Ref)
     // That was unsound, see wands/regression/package_path_conditions.vpr.)
 
   //:: ExpectedOutput(assert.failed:insufficient.permission)
+  //:: MissingOutput(assert.failed:insufficient.permission, /carbon/issue/394/)
   assert acc(x.f) && acc(x.g) && acc(x.h)
 }
