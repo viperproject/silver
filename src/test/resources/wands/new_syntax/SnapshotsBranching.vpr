@@ -8,6 +8,9 @@ field c: Int
 
 method test0(x: Ref)
 requires acc(x.a) && acc(x.b) && acc(x.c)
+// The footprint of the wand must contain both acc(x.b) and acc(x.c), since the value of x.a
+// provided by the LHS is not known when packaging it; applying the wand only gives back one of them.
+//:: ExpectedOutput(postcondition.violated:insufficient.permission)
 ensures acc(x.a) && acc(x.b) && acc(x.c) && x.a == old(x.a) && x.b == old(x.b) && x.c == old(x.c) {
     package acc(x.a) --* acc(x.a) && (x.a == 0 ? acc(x.b) : acc(x.c))
     apply acc(x.a) --* acc(x.a) && (x.a == 0 ? acc(x.b) : acc(x.c))
@@ -15,6 +18,7 @@ ensures acc(x.a) && acc(x.b) && acc(x.c) && x.a == old(x.a) && x.b == old(x.b) &
 
 method test1(x: Ref)
 requires acc(x.a) && acc(x.b) && acc(x.c)
+//:: ExpectedOutput(postcondition.violated:insufficient.permission)
 ensures acc(x.a) && acc(x.b) && acc(x.c) && x.a == old(x.a) && x.b == old(x.b) && x.c == old(x.c) {
     package acc(x.a) --* acc(x.a) && (x.a == 0 ? (true --* acc(x.b)) : (true --* acc(x.c))) {
         if (x.a == 0) {

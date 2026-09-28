@@ -67,44 +67,26 @@ method conditionals02(x: Ref)
 
   package A --* B
     // The LHS provides a hypothetical state in which x.f has some value b'.
-    // Since the value of b' is unknown, both acc(x.g) and acc(x.h) must be 
-    // part of the footprint of the wand. The current state thus satisfies:
-    //
-    //   acc(x.f) * x.f == b * (!b' ? acc(x.g) : acc(x.h)) * (A --* B)
-    
-  apply A --* B
-    // After applying the wand, x.f has an unknown value b'' (resulting from an
-    // incompleteness in our implementation, as explained above).
-    // Depending on b'', we either got (back) permissions to x.g or to x.h.
+    // Since the value of b' is unknown, both acc(x.g) and acc(x.h) must be
+    // part of the footprint of the wand: the wand can be applied with either
+    // value of x.f, possibly several times (e.g. using applying-expressions).
     // The current state thus satisfies:
     //
-    //   acc(x.f) * x.f == b'' * (!b' ? acc(x.g) : acc(x.h)) *
-    //     (b'' ? acc(x.g) : acc(x.h))
-    //
-    // In contrast to the situation above, however, this time we are (and the
-    // verifier is, too) able to deduce that we are now back in a state that
-    // satisfies the following assertion:
-    //
-    //   acc(x.f) * acc(x.g) * acc(x.h)
-    //
-    // The reason for this is the separating conjunction, in particular, the
-    // fact that acc(x.f) * acc(x.f) is equivalent to false. Let us consider
-    // the truth table for b' and b'' (where t/f stand for true/false), and 
-    // the implications of the their values on the assertion from above (the 
-    // one after the apply statement; ignoring x.f):
-    //    
-    //     b' | b'' | assertion
-    //   -----------------------------------
-    //     t  |  t  | acc(x.h) * acc(x.g)
-    //     t  |  f  | acc(x.h) * acc(x.h)
-    //     f  |  t  | acc(x.g) * acc(x.g)
-    //     f  |  f  | acc(x.g) * acc(x.h)
-    //   -----------------------------------
-    //
-    // Hence, we now know that the footprint of the wand we packaged and
-    // applied either comprised acc(x.g) or acc(x.h), but not both, and that
-    // we are now again in a state where we hold permissions to all three
-    // fields.
+    //   acc(x.f) * x.f == b * (A --* B)
     
+  apply A --* B
+    // After applying the wand, x.f has an unknown value b''. Depending on b'',
+    // we either got (back) permissions to x.g or to x.h, but not both: the
+    // other one remains in the footprint of the consumed wand and is lost.
+    // The current state thus satisfies:
+    //
+    //   acc(x.f) * x.f == b'' * (b'' ? acc(x.g) : acc(x.h))
+    //
+    // In particular, it does not satisfy acc(x.f) * acc(x.g) * acc(x.h).
+    // (Earlier versions of Silicon verified the assertion below, by reasoning
+    // as if the footprint of the wand depended on a single fixed value b'.
+    // That was unsound, see wands/regression/package_path_conditions.vpr.)
+
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
   assert acc(x.f) && acc(x.g) && acc(x.h)
 }

@@ -19,6 +19,26 @@ method incompleteness_executing_continuation_each_branch(x: Ref)
     assert x.g  == 5
 }
 
+method unsoundness_applying_using_different_branches(x: Ref) {
+    inhale acc(x.b) && acc(x.f) && acc(x.g)
+
+    define W acc(x.b) --* acc(x.b) && (x.b ? acc(x.f) : acc(x.g))
+    package W
+
+    x.b := false
+    assert applying (W) in true
+    // Side-effect: through permission constraints, we now know that x.g was packed inside the footprint of the wand.
+    assert perm(x.g) == none
+
+    x.b := true
+    assert applying (W) in true
+    // Same for x.f
+    assert perm(x.f) == none
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
 method unsound_bc_propagation(x: Ref, y: Ref, b1: Bool)
     requires acc(x.f) && acc(y.f)
 {
