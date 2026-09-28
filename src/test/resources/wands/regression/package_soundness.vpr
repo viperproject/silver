@@ -54,7 +54,7 @@ method footprint_includes_all_branches_after_apply(x: Ref)
   assert x.b ? acc(x.f) : acc(x.g)
 
   //:: ExpectedOutput(assert.failed:insufficient.permission)
-  //:: MissingOutput(assert.failed:assertion.false, /carbon/issue/394/)
+  //:: MissingOutput(assert.failed:insufficient.permission, /carbon/issue/394/)
   assert acc(x.f) && acc(x.g)
 }
 
