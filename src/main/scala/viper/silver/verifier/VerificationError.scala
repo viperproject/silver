@@ -735,4 +735,11 @@ object reasons {
     override def offendingNode: ErrorNode = innerReason.offendingNode
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = QueryTimedOut(innerReason.withNode(offendingNode).asInstanceOf[ErrorReason], queryTime)
   }
+
+  case class AssertionInIsabelle(offendingNode: Assert) extends AbstractErrorReason {
+    val id = "assertion.isabelle"
+
+    def readableMessage: String = s"Assertion $offendingNode must be completed in the generated Isabelle script."
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = AssertionInIsabelle(offendingNode.asInstanceOf[Assert])
+  }
 }

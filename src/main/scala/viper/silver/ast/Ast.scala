@@ -364,6 +364,13 @@ trait Info {
     case _: T => NoInfo
     case info => info
   }
+
+  def hasAnnotation(ann: String): Boolean = {
+    this.getUniqueInfo[AnnotationInfo] match {
+      case Some(anns) => anns.values.contains(ann)
+      case None => false
+    }
+  }
 }
 
 /** A default `Info` that is empty. */
