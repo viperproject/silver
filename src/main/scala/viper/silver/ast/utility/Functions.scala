@@ -203,14 +203,40 @@ object Functions {
     */
   def findFunctionCyclesVia(program: Program, via: Function => Seq[Exp], subs: Function => Seq[Exp] = allSubexpressions)
       :Map[FuncName, Set[FuncName]] = {
-    def viaSubs(entryFunc: Function)(otherFunc: Function): Seq[Exp] =
-      if (otherFunc == entryFunc)
-        via(otherFunc)
-      else
-        subs(otherFunc)
+    /* Callees are kept in the order in which `getFunctionCallgraph` would add their edges: the
+     * cycles reported by `findCycles` depend on the order in which the edges are traversed.
+     */
+    def callees(exps: Seq[Exp]): Seq[FuncName] = {
+      val names = ListBuffer[FuncName]()
+      exps foreach (_ visit { case FuncApp(f2name, _) => names += f2name })
+      names.toSeq.distinct
+    }
+    val viaCallees = program.functions.map(f => f.name -> callees(via(f))).toMap
+    val subsCallees = program.functions.map(f => f.name -> callees(subs(f))).toMap
+
+    /* The graph searched for `func` has the `via` edges of `func` and the `subs` edges of all
+     * other functions, so it is a subgraph of the graph with both kinds of edges for every
+     * function. A cycle through `func` thus only involves functions in the strongly connected
+     * component of `func` in that graph, and it suffices to search the component.
+     */
+    val unionGraph = new DefaultDirectedGraph[FuncName, DefaultEdge](classOf[DefaultEdge])
+    program.functions foreach (f => unionGraph.addVertex(f.name))
+    program.functions foreach (f =>
+      (viaCallees(f.name) ++ subsCallees(f.name)) foreach (unionGraph.addEdge(f.name, _)))
+    val componentOf = new GabowStrongConnectivityInspector(unionGraph).stronglyConnectedSets().asScala
+      .flatMap(component => {
+        val names = component.asScala.toSet
+        names.map(_ -> names)
+      }).toMap
 
     val res = program.functions.flatMap(func => {
-      val graph = getFunctionCallgraph(program, viaSubs(func))
+      val component = componentOf(func.name)
+      val graph = new DefaultDirectedGraph[FuncName, DefaultEdge](classOf[DefaultEdge])
+      component foreach (graph.addVertex(_))
+      component foreach (name => {
+        val targets = if (name == func.name) viaCallees(name) else subsCallees(name)
+        targets filter component.contains foreach (graph.addEdge(name, _))
+      })
       findCycles(graph, func)
     })
     ListMap.from(res)
