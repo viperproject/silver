@@ -1,0 +1,50 @@
+field f: Int
+
+method test02a(x: Ref)
+{
+    inhale acc(x.f) && x.f == 42
+
+    package true --* acc(x.f)
+
+    //:: UnexpectedOutput(exhale.failed:insufficient.permission, /Carbon/issue/488/)
+    assert applying (true --* acc(x.f)) in x.f == 42
+}
+
+method test02b(x: Ref)
+{
+    inhale acc(x.f) && x.f == 42
+
+    package true --* acc(x.f)
+
+    apply true --* acc(x.f)
+
+    assert x.f == 42
+}
+
+method test02c(x: Ref)
+{
+    inhale acc(x.f) && x.f == 42
+
+    package true --* acc(x.f)
+
+    //:: UnexpectedOutput(exhale.failed:insufficient.permission, /Carbon/issue/488/)
+    assert applying (true --* acc(x.f)) in x.f == 42
+
+    apply true --* acc(x.f)
+
+    assert x.f == 42
+}
+
+method test02d(x: Ref, a: Int)
+{
+    inhale acc(x.f) && x.f == a
+
+    package true --* acc(x.f)
+
+    //:: UnexpectedOutput(exhale.failed:insufficient.permission, /Carbon/issue/488/)
+    assert applying (true --* acc(x.f)) in x.f == a
+
+    apply true --* acc(x.f)
+
+    assert x.f == a
+}
