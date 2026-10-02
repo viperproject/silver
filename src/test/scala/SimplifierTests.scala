@@ -33,6 +33,20 @@ class SimplifierTests extends AnyFunSuite with Matchers {
 
   }
 
+  test("nodes built by a rule are simplified") {
+    val a = LocalVar("a", Bool)()
+    val b = LocalVar("b", Bool)()
+    val x = LocalVar("x", Int)()
+    val y = LocalVar("y", Int)()
+    val fls = FalseLit()()
+
+    // `c ? false : e` becomes `!c && e`, whose `!c` must not stay a double negation
+    simplify(CondExp(Not(a)(), fls, b)()) should be(And(a, b)())
+    simplify(CondExp(EqCmp(x, y)(), fls, b)()) should be(And(NeCmp(x, y)(), b)())
+    // `false == e` becomes `!e`
+    simplify(EqCmp(fls, Not(a)())()) should be(a)
+  }
+
   test("div") {
     simplify(Div(0, 0)()) should be(Div(0, 0)())
     simplify(Div(8, 2)()) should be(4: IntLit)
