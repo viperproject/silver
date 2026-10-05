@@ -1,0 +1,53 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+function greaterthanzero(x:Int) :Bool
+{
+    x > 0
+}
+
+method ex1()
+{
+    var y: Int
+    prove forall x:Int {greaterthanzero(x)} assuming x>0 implies x>0 {
+        var z: Int := x+1
+    }
+}
+
+
+
+function g_zero(x:Int) : Bool {
+    x>0
+}
+function greater(x:Int, y:Int) :Bool {
+    x>y
+}
+method ex2()
+{
+    var i:Int := 10
+    var j:Int := 5
+    prove forall x:Int, y:Int {g_zero(y),greater(x,y)} assuming (g_zero(y) && greater(x,y)) implies g_zero(x) {
+        var z: Bool := x>y
+    }
+    assert greater(i,j)
+}
+
+
+function P(k: Int) : Bool
+{
+    false
+}
+
+function Q(k: Int) : Bool
+{
+    k==2
+}
+
+//assuming false
+method m1()
+{
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) {
+            var y:Int := x+1
+        }
+}
+
