@@ -801,11 +801,11 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       case CondExp(cond, thn, els) =>
         group(parens(show(cond) <+> "?" <> nest(defaultIndent, line <> show(thn) <+> ":" <@> show(els))))
       case Exists(v, triggers, exp) =>
-        parens(text("exists") <+> showVars(v) <+> "::" <>
+        parens(text("exists") <+> showVars(v) <+> "::" <+>
           nest(defaultIndent, (if (triggers.isEmpty) nil else space <> ssep(triggers map show, space)) <+>
             show(exp)))
       case Forall(v, triggers, exp) =>
-        group(parens(text("forall") <+> showVars(v) <+> "::" <>
+        group(parens(text("forall") <+> showVars(v) <+> "::" <+>
           nest(defaultIndent, (if (triggers.isEmpty) nil else line <> ssep(triggers map show, line)) <@>
             show(exp))))
       case ForPerm(vars, resource, exp) =>
