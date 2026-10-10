@@ -101,12 +101,15 @@ case class ExpectedCounterexampleAnnotation(id: OutputAnnotationId, file: Path, 
           areEqualEntries(expectedPermAmount,
             ast.FractionalPerm(ast.IntLit(actualPermAmount.numerator)(), ast.IntLit(actualPermAmount.denominator)())())
         )
+      case _ => false
     }
   }
 
   def containsEquality(lhs: PExp, rhs: PExp, model: ResolvedCounterexample): Boolean =
-    resolveWoPerm(Vector(lhs, rhs), model).exists { case Vector(resolvedLhs, resolvedRhs) =>
-      areEqualEntries(resolvedLhs, resolvedRhs) }
+    resolveWoPerm(Vector(lhs, rhs), model).exists {
+      case Vector(resolvedLhs, resolvedRhs) => areEqualEntries(resolvedLhs, resolvedRhs)
+      case _ => false
+    }
 
   /** resolves `expr` to an AST value expression in the given model. In case it's a field access, the corresponding permissions are returned as well */
   def resolve(expr: PExp, model: ResolvedCounterexample): Option[(ast.Exp, Option[Rational])] = expr match {
@@ -235,8 +238,8 @@ object CounterexampleTestInput extends TestAnnotationParser {
       // now parsing is actually possible:
       fastparse.parse(expectedCounterexampleString, cParser.expectedCounterexample(_)) match {
         case Parsed.Success(expectedCounterexample, _) => Some(ExpectedCounterexampleAnnotation(id, file, lineNr, expectedCounterexample))
-        case Parsed.Failure(_, _, extra) =>
-          println(s"Parsing expected counterexample failed in file $file: ${extra.trace().longAggregateMsg}")
+        case failure: Parsed.Failure =>
+          println(s"Parsing expected counterexample failed in file $file: ${failure.extra.trace().longAggregateMsg}")
           None
       }
     }
@@ -263,7 +266,7 @@ class CounterexampleParser(fp: FastParser) {
   // A counterexample assertion is an access predicate, an equality, or a magic wand. The wand
   // alternative is tried first because its left-hand side is itself an expression that accessPred/
   // eqExp would otherwise consume (leaving the "--*" unparsed).
-  def expectedCounterexample[_: P]: P[ExpectedCounterexample] =
+  def expectedCounterexample[$: P]: P[ExpectedCounterexample] =
     (Start ~ "(" ~ (NoCut(realMagicWandExp) | accessPred | eqExp).rep(0, ",") ~ ")" ~ End)
       .map(ExpectedCounterexample)
 }

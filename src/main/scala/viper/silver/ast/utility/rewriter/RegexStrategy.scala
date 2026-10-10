@@ -6,6 +6,7 @@
 
 package viper.silver.ast.utility.rewriter
 
+import scala.annotation.unused
 import scala.reflect.runtime.{universe => reflection}
 
 /**
@@ -128,7 +129,7 @@ class RegexStrategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTa
 
     }
     // Get the tuple that matches parameter node
-    def get(node: N, ancList: Seq[N]): Option[CTXT] = {
+    def get(node: N, @unused ancList: Seq[N]): Option[CTXT] = {
       // Get all matching nodes together with their index (only way to delete them later)
       val candidates = map.zipWithIndex.filter( _._1._1 eq node )
 

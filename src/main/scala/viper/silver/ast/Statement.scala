@@ -57,6 +57,7 @@ object AbstractAssign {
   def apply(lhs: Lhs, rhs: Exp)(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos) = lhs match {
     case l: LocalVar => LocalVarAssign(l, rhs)(pos, info, errT)
     case l: FieldAccess => FieldAssign(l, rhs)(pos, info, errT)
+    case l => sys.error(s"Cannot assign to left-hand side $l.")
   }
 
   def unapply(a: AbstractAssign) = Some((a.lhs, a.rhs))
