@@ -56,9 +56,9 @@ object Simplifier {
       case root@Or(_, TrueLit()) => TrueLit()(root.pos, root.info)
 
       case root@Implies(FalseLit(), _) => TrueLit()(root.pos, root.info)
+      case root@Implies(l1, FalseLit()) => Not(l1)(root.pos, root.info)
       case Implies(l1, tl@TrueLit()) if isKnownWellDefined(l1) => tl
       case Implies(TrueLit(), consequent) => consequent
-      case root@Implies(FalseLit(), _) => TrueLit()(root.pos, root.info)
       case root@Implies(l1, i2@Implies(l2, r)) =>
         if (l1 == l2)
           i2
