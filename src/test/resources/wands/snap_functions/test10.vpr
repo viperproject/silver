@@ -1,0 +1,31 @@
+field f: Int
+field g: Int
+
+predicate foo(x: Ref) {
+    acc(x.f)
+}
+
+method test10a(x: Ref)
+{
+    inhale foo(x) && unfolding foo(x) in x.f == 42
+
+    package foo(x) --* foo(x)
+
+    apply foo(x) --* foo(x)
+
+    assert foo(x) && unfolding foo(x) in x.f == 42
+}
+
+method test10b(x: Ref)
+{
+    inhale acc(x.f) && x.f == 42
+
+    package acc(x.f) --* foo(x) {
+        fold foo(x)
+    }
+
+    apply acc(x.f) --* foo(x)
+
+    //:: UnexpectedOutput(assert.failed:assertion.false, /Carbon/issue/216/)
+    assert foo(x) && unfolding foo(x) in x.f == 42
+}
