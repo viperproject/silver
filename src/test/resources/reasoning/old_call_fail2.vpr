@@ -1,0 +1,12 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+method foo()
+{
+    var x: Int
+    label l
+    //:: ExpectedOutput(typechecker.error)
+    x := oldCall[l](nonlemma()) // only lemmas can be called
+}
+
+method nonlemma() returns (x: Int)

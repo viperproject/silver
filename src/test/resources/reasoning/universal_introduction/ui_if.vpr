@@ -1,0 +1,77 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+function P(x: Int) : Bool {
+    x == 0
+}
+
+function Q(x: Int) : Bool {
+    x == 0
+}
+
+method mIndirect()
+{
+    var z:Int := 0
+    //:: ExpectedOutput(consistency.error)
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) && z == x {
+        var y:Int := x+1
+        z := y // Consistency error
+    }
+    // problem if here var y:Int := 0 -> this will also be in tainted set
+    if (true) { var y:Int }
+}
+
+method mIfCnd()
+{
+    var z: Int := 0
+    var y: Int := 0
+    //:: ExpectedOutput(consistency.error)
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) && y == 5 {
+            if(x>5) {
+                z := 3
+            } else {
+                y := 5
+            }
+        }
+}
+
+method mIfNOK()
+{
+    var w :Int := 0
+    //:: ExpectedOutput(consistency.error)
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) && w == x {
+        var l :Int := 0
+        if (l >= -1) {
+            l := x
+        } else {
+            w := x
+        }
+    }
+}
+
+method mIfOK1()
+{
+    var w :Int := 0
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) && w == 4 {
+        var l :Int := 0
+        var g: Int := 0
+        if (l >= -1) {
+            g := x
+        } else {
+            w := 4
+        }
+    }
+}
+
+method mIfOK2()
+{
+    var w :Int := 0
+    prove forall x:Int {P(x)} assuming P(x) implies Q(x) && w == 4 {
+        var l :Int := 0
+        if (l >= -1) {
+            l := x
+        } else {
+            w := 4 // should be SAFE
+        }
+    }
+}

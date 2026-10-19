@@ -128,6 +128,7 @@ trait SilFrontend extends DefaultFrontend {
     "viper.silver.plugin.standard.adt.AdtPlugin",
     "viper.silver.plugin.standard.termination.TerminationPlugin",
     "viper.silver.plugin.standard.predicateinstance.PredicateInstancePlugin",
+    "viper.silver.plugin.standard.reasoning.ReasoningPlugin",
     refutePlugin
   )
 

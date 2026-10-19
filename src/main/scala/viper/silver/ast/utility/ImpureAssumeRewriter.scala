@@ -133,7 +133,7 @@ object ImpureAssumeRewriter {
       assert(conds.isEmpty)
       assert(cond.isEmpty)
 
-      PermGeCmp(permLoc, perm)()
+      PermGeCmp(permLoc, perm)(permLoc.pos, permLoc.info, permLoc.errT)
     } else {
       val perms: Seq[Exp] = (contextWithoutRcv map (_._2)) :+ perm
 
@@ -146,7 +146,7 @@ object ImpureAssumeRewriter {
       val func = funcs(contextWithoutRcv.length-1)
       val funcApp = DomainFuncApp(func, conds ++ perms, Map[TypeVar, Type]())()
 
-      PermGeCmp(permLoc, funcApp)()
+      PermGeCmp(permLoc, funcApp)(permLoc.pos, permLoc.info, permLoc.errT)
     }
   }
 
