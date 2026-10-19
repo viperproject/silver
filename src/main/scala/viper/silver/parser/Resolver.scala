@@ -699,7 +699,7 @@ case class TypeChecker(names: NameAnalyser) {
                           check(fd.typ)
                           fd.formalArgs foreach (a => check(a.typ))
                         }
-                        if (pfa.isDescendant[PAxiom] && pfn.pres.toSeq.exists(pre => pre.k.rs == Requires)) {
+                        if (pfa.isDescendant[PAlwaysWellDefined] && pfn.pres.toSeq.exists(pre => pre.k.rs == Requires)) {
                           // A domain axiom, which must always be well-defined, is calling a function that has at least
                           // one real precondition (i.e., not just a requires clause or something similar that's
                           // temporarily represented as a precondition), which means that the call may not always be
@@ -941,6 +941,13 @@ case class DeclarationMap(
   def keys = decls.keys
 }
 
+// Used by `PNameAnalyserCustom`
+trait NameAnalyserCtxt {
+  def getMap(): DeclarationMap
+  def pushScope(s: PScope): Unit
+  def popScope(): Unit
+}
+
 /**
   * Resolves identifiers to their declaration. The important traits that relate to this are:
   * - `PDeclaration` marks a declaration of an identifier.
@@ -960,6 +967,7 @@ case class DeclarationMap(
   * - `PGlobalUniqueDeclaration`: marks a declaration as unique within the program.
   * 
   * - `PNameAnalyserOpaque` marks a scope as opaque (should not be traversed by the name analyser).
+  * - `PNameAnalyserCustom` marks a node which implements custom logic for name analysis.
   */
 case class NameAnalyser() {
 
@@ -992,41 +1000,79 @@ case class NameAnalyser() {
 
   private val namesInScope = mutable.Set.empty[String]
 
-  def check(g: PNode, target: Option[PNode], initialCurScope: PScope = null): Unit = {
-    var curScope: PScope = initialCurScope
-    def getMap(): DeclarationMap = Option(curScope).map(_.scopeId).map(localDeclarationMaps.get(_).get).getOrElse(globalDeclarationMap)
-
+  case class NameAnalyserCtxt(names: NameAnalyser) extends viper.silver.parser.NameAnalyserCtxt {
+    var curScope: PScope = null
     val scopeStack = mutable.Stack[PScope]()
     var opaque = 0
+
+    def getMap(): DeclarationMap = Option(curScope).map(_.scopeId).map(names.localDeclarationMaps.get(_).get).getOrElse(names.globalDeclarationMap)
+
+    def pushScope(s: PScope): Unit = {
+      names.localDeclarationMaps.put(s.scopeId, DeclarationMap(isMember = s.isInstanceOf[PMember]))
+      scopeStack.push(curScope)
+      curScope = s
+    }
+
+    def popScope(): Unit = {
+      val popMap = localDeclarationMaps.get(curScope.scopeId).get
+      val newScope = scopeStack.pop()
+      curScope = newScope
+
+      val clashing = getMap().merge(popMap)
+      clashing.foreach { case (clashing, unique) =>
+        messages ++= FastMessaging.message(clashing.idndef, s"duplicate identifier `${clashing.idndef.name}` at ${clashing.idndef.pos._1} and at ${unique.idndef.pos._1}")
+      }
+    }
+
+    def finish(): Unit = {
+      // If we started from some inner scope, walk all the way back out to the whole program
+      // with a variation of nodeUpNameCollectorVisitor
+      while (curScope != null) {
+        val popMap = localDeclarationMaps.get(curScope.scopeId).get
+        curScope.getAncestor[PScope] match {
+          case Some(newScope) =>
+            curScope = newScope
+          case None =>
+            curScope = null
+        }
+        getMap().merge(popMap)
+      }
+    }
+  }
+
+  def check(g: PNode, target: Option[PNode], initialCurScope: PScope = null): Unit = {
+    val ctx: NameAnalyserCtxt = NameAnalyserCtxt(this)
+    ctx.curScope = initialCurScope
 
     val nodeDownNameCollectorVisitor = new PartialFunction[PNode, Unit] {
       def apply(n: PNode) = {
         if (n == target.orNull)
-          namesInScope ++= getMap().keys
+          namesInScope ++= ctx.getMap().keys
         n match {
           // Opaque
           case _: PNameAnalyserOpaque =>
-            opaque += 1
-          case _ if opaque > 0 =>
+            ctx.opaque += 1
+          case _ if ctx.opaque > 0 =>
+          // Custom
+          case c: PNameAnalyserCustom =>
+            c.nameDown(ctx)
           // Regular
           case d: PDeclaration =>
             // Add to declaration map
-            val localDecls = getMap()
+            val localDecls = ctx.getMap()
             localDecls.newDecl(d)
             val clashing = localDecls.checkUnique(d, true)
             if (clashing.isDefined)
               messages ++= FastMessaging.message(d.idndef, s"duplicate identifier `${d.idndef.name}` at ${d.idndef.pos._1} and at ${clashing.get.idndef.pos._1}")
           case i: PIdnUseName[_] if target.isEmpty =>
-            getMap().newRef(i)
+            ctx.getMap().newRef(i)
           case _ =>
         }
 
         n match {
-          case _ if opaque > 0 =>
-          case s: PScope =>
-            localDeclarationMaps.put(s.scopeId, DeclarationMap(isMember = s.isInstanceOf[PMember]))
-            scopeStack.push(curScope)
-            curScope = s
+          case _ if ctx.opaque > 0 =>
+          case _: PNameAnalyserCustom =>
+          case s: PScope => ctx.pushScope(s)
           case _ =>
         }
       }
@@ -1037,6 +1083,7 @@ case class NameAnalyser() {
           case _: PScope => true
           case _: PIdnUseName[_] => true
           case _: PNameAnalyserOpaque => true
+          case _: PNameAnalyserCustom => true
           case _ => target.isDefined
         }
       }
@@ -1047,18 +1094,13 @@ case class NameAnalyser() {
         n match {
           // Opaque
           case _: PNameAnalyserOpaque =>
-            opaque -= 1
-          case _ if opaque > 0 =>
+            ctx.opaque -= 1
+          case _ if ctx.opaque > 0 =>
+          // Custom
+          case c: PNameAnalyserCustom =>
+            c.nameUp(ctx)
           // Regular
-          case _: PScope =>
-            val popMap = localDeclarationMaps.get(curScope.scopeId).get
-            val newScope = scopeStack.pop()
-            curScope = newScope
-
-            val clashing = getMap().merge(popMap)
-            clashing.foreach { case (clashing, unique) =>
-              messages ++= FastMessaging.message(clashing.idndef, s"duplicate identifier `${clashing.idndef.name}` at ${clashing.idndef.pos._1} and at ${unique.idndef.pos._1}")
-            }
+          case _: PScope => ctx.popScope()
           case _ =>
         }
       }
@@ -1078,18 +1120,8 @@ case class NameAnalyser() {
     // If we started from some inner scope, walk all the way back out to the whole program
     // with a variation of nodeUpNameCollectorVisitor
     if (initialCurScope != null) {
-      assert(initialCurScope == curScope)
-
-      while (curScope != null) {
-        val popMap = localDeclarationMaps.get(curScope.scopeId).get
-        curScope.getAncestor[PScope] match {
-          case Some(newScope) =>
-            curScope = newScope
-          case None =>
-            curScope = null
-        }
-        getMap().merge(popMap)
-      }
+      assert(initialCurScope == ctx.curScope)
+      ctx.finish()
     }
   }
 
