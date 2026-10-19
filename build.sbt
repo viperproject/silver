@@ -15,7 +15,6 @@ ThisBuild / scalacOptions ++= Seq(
   "-feature",                         // Warn on features that requires explicit import
   "-Wunused",                         // Warn on unused imports
   "-Ypatmat-exhaust-depth", "40",     // Increase depth of pattern matching analysis
-  // "-Xfatal-warnings",                 // Treat Warnings as errors to guarantee code quality in future changes
 )
 
 // Enforce UTF-8, instead of relying on properly set locales
@@ -42,6 +41,25 @@ lazy val silver = (project in file("."))
     // Fork test to a different JVM than SBT's, avoiding SBT's classpath interfering with
     // classpath used by Scala's reflection.
     Test / fork := true,
+
+    // Treat warnings as errors to guarantee code quality in future changes. Note that this is
+    // deliberately scoped to the Silver project rather than added to the `ThisBuild / scalacOptions`
+    // above: this file is also loaded when a backend (e.g. Silicon or Carbon) includes Silver as a
+    // subproject, and settings in the `ThisBuild` scope would then apply to the backend's own
+    // sources as well, breaking its build on warnings that are unrelated to Silver.
+    scalacOptions += "-Xfatal-warnings",
+
+    // The pattern match in `Simplifier` is large enough that checking it for unreachable cases
+    // exceeds the default budget, in which case the check is skipped instead of performed. Lifting
+    // the limit lets it run to completion; it does catch genuinely unreachable cases. This is scoped
+    // to Silver for the same reason as the option above.
+    scalacOptions ++= Seq("-Ypatmat-exhaust-depth", "off"),
+
+    // Scaladoc still reports a number of pre-existing warnings (mostly links that cannot be
+    // resolved), so `-Xfatal-warnings` is not applied to it; otherwise `doc`, and with it
+    // `publishLocal`, would fail.
+    Compile / doc / scalacOptions -= "-Xfatal-warnings",
+    Test / doc / scalacOptions -= "-Xfatal-warnings",
 
     // Compilation settings
     libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,             // Scala

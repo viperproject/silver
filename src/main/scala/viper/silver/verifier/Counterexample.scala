@@ -140,7 +140,7 @@ case class StoreEntry(id: AbstractLocalVar, entry: ast.Exp) {
 case class HeapCounterexample(heapEntries: Seq[(Resource, ResolvedHeapEntry)]) {
   var finalString = ""
   var containsQP = false
-  heapEntries.foreach { case (re,he) => if (he.entryType == QPFieldType || he.entryType == QPPredicateType || he.entryType == QPMagicWandType) containsQP = true}
+  heapEntries.foreach { case (_,he) => if (he.entryType == QPFieldType || he.entryType == QPPredicateType || he.entryType == QPMagicWandType) containsQP = true}
   if (containsQP)
     finalString ++= "The heap contains quantified permissions. Thus, we might own some permissions which are not shown in the counterexample.\n"
   heapEntries.foreach { se => finalString ++= se._2.toString ++ "\n" }

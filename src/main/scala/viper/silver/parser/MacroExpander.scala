@@ -539,7 +539,7 @@ object MacroExpander {
           val replacement = ctx.c.paramToArgMap(lName.name).deepCopyAll
           val replaced = replacement match {
             case r: PIdnUseExp => PIdnDef(r.name)(r.pos)
-            case r =>
+            case _ =>
               throw MacroException(s"macro expansion cannot substitute expression `${replacement.pretty}` at ${replacement.pos._1} in non-expression position at ${lName.pos._1}.", replacement.pos)
           }
           (PLabel(lbl, replaced, invs)(label.pos), ctx.updateContext(ctx.c.copy(paramToArgMap = ctx.c.paramToArgMap.empty)))

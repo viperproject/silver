@@ -86,7 +86,7 @@ object PreconditionBlock {
   def apply[S, E](pres: Seq[E]): PreconditionBlock[S, E] =
     new PreconditionBlock(Block.nextId(), pres)
 
-  def unapply[S, E](block: PreconditionBlock[S, E]): Option[Seq[E]] =
+  def unapply[S, E](block: PreconditionBlock[S, E]): Some[Seq[E]] =
     Some(block.pres)
 }
 
@@ -109,7 +109,7 @@ object PostconditionBlock {
   def apply[S, E](posts: Seq[E]): PostconditionBlock[S, E] =
     new PostconditionBlock(Block.nextId(), posts)
 
-  def unapply[S, E](block: PostconditionBlock[S, E]): Option[Seq[E]] =
+  def unapply[S, E](block: PostconditionBlock[S, E]): Some[Seq[E]] =
     Some(block.posts)
 }
 

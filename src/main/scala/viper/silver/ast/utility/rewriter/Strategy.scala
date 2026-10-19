@@ -237,7 +237,10 @@ class AddArtificialContext[N <: Rewritable](p: PartialFunction[N, N]) extends Pa
 class SlimStrategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag](p: PartialFunction[N, N]) extends Strategy[N, SimpleContext[N]](new AddArtificialContext(p))
 
 // Generic Strategy class. Includes all the required functionality
-class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C <: Context[N]](p: PartialFunction[(N, C), (N, C)]) extends StrategyInterface[N] {
+// The `TypeTag` and `ClassTag` evidence is not used here, but is kept because subclasses and the
+// `StrategyBuilder` factory methods rely on it being available.
+class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), (N, C)])
+              (implicit @unused typeTag: reflection.TypeTag[N], @unused classTag: scala.reflect.ClassTag[N]) extends StrategyInterface[N] {
 
   // Defines the traversion mode
   protected var traversionMode: Traverse = Traverse.TopDown
@@ -796,7 +799,7 @@ class ContextC[N <: Rewritable, CUSTOM](aList: Seq[N], val c: CUSTOM, transforme
   }
 
   // Perform the custom update part of the update
-  def updateCustom(n: N): ContextC[N, CUSTOM] = {
+  def updateCustom(@unused n: N): ContextC[N, CUSTOM] = {
     new ContextC[N, CUSTOM](ancestorList, c, transformer)
   }
 
@@ -820,7 +823,7 @@ class ContextC[N <: Rewritable, CUSTOM](aList: Seq[N], val c: CUSTOM, transforme
 class ContextCustom[N <: Rewritable, CUSTOM](val c: CUSTOM, override protected val transformer: StrategyInterface[N]) extends SimpleContext[N](transformer) {
 
   // Perform the custom update part of the update
-  def updateCustom(n: N): ContextCustom[N, CUSTOM] = {
+  def updateCustom(@unused n: N): ContextCustom[N, CUSTOM] = {
     new ContextCustom[N, CUSTOM](c, transformer)
   }
 

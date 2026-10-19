@@ -104,9 +104,9 @@ class SilverCfg(val blocks: Seq[SilverBlock], val edges: Seq[SilverEdge], val en
   : (Option[SilverBlock], mutable.Map[SilverBlock, SilverBlock]) = {
 
     var queue = mutable.Queue.from(queueInit)
-    var visited: mutable.Set[SilverBlock] = mutable.Set.from(visitedInit)
+    val visited: mutable.Set[SilverBlock] = mutable.Set.from(visitedInit)
     val map = mutable.Map[SilverBlock, SilverBlock]()
-    var loopHeads: mutable.Set[SilverBlock] = mutable.Set.from(loopHeadsSeen)
+    val loopHeads: mutable.Set[SilverBlock] = mutable.Set.from(loopHeadsSeen)
 
     // BFS traversal of CFG.
     while (queue.nonEmpty) {
