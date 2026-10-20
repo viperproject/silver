@@ -1,0 +1,14 @@
+field next: Ref
+predicate list(l: Ref) { l != null ==> acc(l.next) && list(l.next) }
+
+// reverse the first two nodes of a list, straight-line, no loop
+method two_steps(a: Ref)
+  requires a != null && list(a) && (unfolding list(a) in a.next != null)
+{
+  var r: Ref := null
+  fold list(r)
+  unfold list(a); var b: Ref := a.next; a.next := r; fold list(a)
+  unfold list(b); var c: Ref := b.next; b.next := a; fold list(b)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false // verifies!
+}
