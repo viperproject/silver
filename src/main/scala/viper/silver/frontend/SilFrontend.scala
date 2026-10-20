@@ -265,7 +265,15 @@ trait SilFrontend extends DefaultFrontend {
   override def verification(): Unit = {
     def filter(input: Program): Result[Program] = {
       plugins.beforeMethodFilter(input) match {
-        case Some(inputPlugin) =>
+        case Some(inputPlugin0) =>
+          /* The chopper does not support extension members (e.g. ADTs): for such programs, run the plugins'
+           * beforeVerify first and chop the result (beforeVerify is then not run again below). */
+          val chopAfterPlugins = config.select.isDefined && inputPlugin0.extensions.nonEmpty
+          val inputPlugin =
+            if (chopAfterPlugins) plugins.beforeVerify(inputPlugin0) match {
+              case Some(p) => p
+              case None => return Fail(plugins.errors)
+            } else inputPlugin0
           val program = config.select.toOption match {
             case Some(names) =>
               val namesSet = names.split(",").toSet
@@ -282,7 +290,8 @@ trait SilFrontend extends DefaultFrontend {
             case _ => inputPlugin
           }
 
-          plugins.beforeVerify(program) match {
+          if (chopAfterPlugins) Succ(program)
+          else plugins.beforeVerify(program) match {
             case Some(programPlugin) => Succ(programPlugin)
             case None => Fail(plugins.errors)
           }
