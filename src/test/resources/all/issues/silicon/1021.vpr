@@ -1,0 +1,55 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+method callee(x: Ref, y: Ref)
+  requires acc(x.f) && (x.f == 1 ==> acc(y.f))
+  ensures  old(x.f) == 1 ==> old(y.f) == 0
+
+method client(x: Ref, y: Ref)
+{
+  package acc(x.f) && acc(y.f) --* true {
+    callee(x, y)
+  }
+}
+
+method callee2(y: Ref, z: Ref, b: Bool)
+  requires [b ? acc(y.f) : acc(z.f), acc((b ? y : z).f)]
+  ensures  old((b ? y : z).f) == old((b ? y : z).f)
+
+method client2(y: Ref, z: Ref, b: Bool)
+{
+  package acc((b ? y : z).f) --* true {
+    callee2(y, z, b)
+  }
+}
+
+method callee3(x: Ref, y: Ref)
+  requires acc(x.f) && (x.f == 1 ==> acc(y.f))
+  ensures  old(x.f) == 1 ==> old(y.f) == 0
+
+method client3(x: Ref, y: Ref)
+{
+  package acc(x.f) && acc(y.f) --* true {
+    callee3(x, y)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+  }
+}
+
+// Previously, the old heap of the last explored branch (!b, containing acc(z.f)) was used
+// regardless of the actual branch, so the postcondition below made Silicon assume false.
+method callee4(y: Ref, z: Ref, b: Bool)
+  requires [b ? acc(y.f) : acc(z.f), acc(y.f)]
+  ensures  [old(perm(z.f)) == none, true]
+
+method client4(y: Ref, z: Ref, b: Bool)
+  requires y != z
+{
+  package acc(y.f) --* true {
+    callee4(y, z, b)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+  }
+}
