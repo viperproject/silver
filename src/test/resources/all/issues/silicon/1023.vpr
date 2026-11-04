@@ -9,5 +9,6 @@ method leakQP2(r: Ref, n: Int)
   requires forall i: Int, j: Int :: {h2(r.val, n, i), h2(r.val, n, j)} n >= 1 && i != j ==> h2(r.val, n, i) != h2(r.val, n, j)
 {
   inhale forall i: Int :: n > 0 && 0 <= i && i < 3 ==> acc(h2(r.val, n, i).fld)
+  //:: ExpectedOutput(assert.failed:assertion.false)
   assert n >= 1   // n is arbitrary
 }
