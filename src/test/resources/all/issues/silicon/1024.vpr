@@ -1,0 +1,34 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+
+method t(a: Array, N: Int, x: Int, y: Int, res: Int, b: Bool)
+  requires forall k: Int :: 0 <= k && k < N ==> acc(loc(a, k).val, 1/2)
+  requires 0 <= x && 0 <= y && 0 <= res && x + res <= N && y + res <= N
+  requires forall i: Int :: 0 <= i && i < res ==> loc(a, x + i).val == loc(a, y + i).val
+{
+  if (b) {
+    assert forall i: Int :: 0 <= i && i < res ==> loc(a, x + i).val == loc(a, y + i).val
+  } else {
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert b
+  }
+}
+
+
+field val: Int // array slot value
+domain Array {
+  function loc(a: Array, i: Int): Ref
+  function length(a: Array): Int
+  function inverse_first(r: Ref): Array // array this slot belongs to
+  function inverse_second(r: Ref): Int // index of this array slot
+
+  axiom all_diff {
+    forall a: Array, i: Int :: {loc(a, i)}
+      inverse_first(loc(a, i)) == a && inverse_second(loc(a, i)) == i
+  }
+
+  axiom length_nonneg {
+    forall a: Array :: length(a) >= 0
+  }
+}
