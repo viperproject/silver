@@ -73,6 +73,7 @@ method foo(x: Ref, lft: Map[Int, Map[Ref, Perm]]) returns (res: Ref, new_lft: Ma
     //:: ExpectedOutput(fold.failed:insufficient.permission)
     fold LifetimeP(new_lft)
 
+    //:: UnexpectedOutput(fold.failed:insufficient.permission, /carbon/issue/585/)
     fold acc(lft_List(x_nxt), new_lft[tpListT][x.ref])
 
     new_lft := new_lft

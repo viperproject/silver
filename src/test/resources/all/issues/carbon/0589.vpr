@@ -1,0 +1,9 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+field next: Ref
+
+method test(x: Ref, z: Ref)
+    requires acc(z.f)
+{ package acc(x.next) && x.next == z --* forall y: Ref :: y == x.next ==> acc(y.f) }

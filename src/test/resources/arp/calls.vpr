@@ -1,0 +1,160 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+field g: Int
+
+method foo(x: Ref)
+  requires acc(x.f, write) && acc(x.g, rd)
+  ensures acc(x.f, write) && acc(x.g, rd)
+  ensures x.f == x.g + 1
+{
+  x.f := x.g + 1
+}
+
+method client(x: Ref)
+  requires acc(x.f, write) && acc(x.g, 1/2)
+  ensures acc(x.f, write) && acc(x.g, 1/2)
+{
+  x.f := 4
+  inhale x.g == 5
+  foo(x)
+  assert x.g == 5
+  assert x.f == 6
+  // the permission lent to foo is returned completely
+  assert perm(x.g) == 1/2
+  x.f := 4
+  foo(x)
+  assert x.g == 5
+  assert x.f == 6
+}
+
+method clientSmallPerm(x: Ref)
+  requires acc(x.f, write) && acc(x.g, 1/1000)
+  ensures acc(x.f, write) && acc(x.g, 1/1000)
+{
+  foo(x)
+}
+
+method clientNotEnough(x: Ref)
+  requires acc(x.f, write)
+{
+  //:: ExpectedOutput(call.precondition:insufficient.permission)
+  foo(x)
+}
+
+method clientUnsound(x: Ref)
+  requires acc(x.f, write) && acc(x.g, 1/2)
+{
+  foo(x)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method fooUnsound(x: Ref)
+  requires acc(x.f, write) && acc(x.g, rd)
+  ensures acc(x.f, write) && acc(x.g, rd)
+{
+  // rd is positive but otherwise unknown
+  assert perm(x.g) > none
+  assert perm(x.g) < write
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert perm(x.g) >= 1/1000
+}
+
+method fooWrite(x: Ref)
+  requires acc(x.g, rd)
+{
+  //:: ExpectedOutput(assignment.failed:insufficient.permission)
+  x.g := 3
+}
+
+method fooExhale(x: Ref)
+  requires acc(x.g, rd)
+{
+  exhale acc(x.g, rd)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method fooExhaleTwice(x: Ref)
+  requires acc(x.g, rd)
+{
+  exhale acc(x.g, rd)
+  //:: ExpectedOutput(exhale.failed:insufficient.permission)
+  exhale acc(x.g, rd)
+}
+
+// argument and return value names that differ from the caller's
+method bar(y: Ref) returns (z: Int)
+  requires acc(y.f, write) && acc(y.g, rd)
+  ensures acc(y.f, write) && acc(y.g, rd)
+  ensures y.f == y.g + 1 && z == y.f
+{
+  y.f := y.g + 1
+  z := y.f
+}
+
+method barClient(x: Ref)
+  requires acc(x.f, write) && acc(x.g, 1/2)
+  ensures acc(x.f, write) && acc(x.g, 1/2)
+{
+  var z: Int
+  inhale x.g == 5
+  z := bar(x)
+  assert z == 6 && x.f == 6
+  assert perm(x.g) == 1/2
+}
+
+method rdCaller(x: Ref)
+  requires acc(x.f, write) && acc(x.g, rd)
+  ensures acc(x.f, write) && acc(x.g, rd)
+{
+  // passes on part of its own (abstract) permission
+  foo(x)
+  foo(x)
+}
+
+// heap-dependent receivers
+field n: Ref
+
+method chain(x: Ref)
+  requires acc(x.n, rd) && acc(x.n.n, rd) && acc(x.n.n.g, rd)
+  ensures acc(x.n, rd) && acc(x.n.n, rd) && acc(x.n.n.g, rd)
+
+method chainClient(x: Ref)
+  requires acc(x.n, 1/2) && acc(x.n.n, 1/2) && acc(x.n.n.g, 1/2)
+  ensures acc(x.n, 1/2) && acc(x.n.n, 1/2) && acc(x.n.n.g, 1/2)
+{
+  chain(x)
+}
+
+method chainClientNotEnough(x: Ref)
+  requires acc(x.n, 1/2)
+{
+  //:: ExpectedOutput(call.precondition:insufficient.permission)
+  chain(x)
+}
+
+// methods without rd are not affected
+method noRd(x: Ref) returns (y: Int)
+  requires acc(x.g)
+  ensures acc(x.g) && y == x.g
+
+method noRdClient(x: Ref)
+  requires acc(x.g)
+{
+  var y: Int
+  y := noRd(x)
+  assert y == x.g
+}
+
+// recursion
+method rec(x: Ref, i: Int)
+  requires acc(x.g, rd)
+  ensures acc(x.g, rd)
+{
+  if (i > 0) {
+    rec(x, i - 1)
+  }
+}

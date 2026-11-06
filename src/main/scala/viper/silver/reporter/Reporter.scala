@@ -120,6 +120,9 @@ case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv
       case r: BlockReachedMessage => csv_file.write(s"${r.toString}\n")
       case f: BlockFailureMessage => csv_file.write(s"${f.toString}\n")
       case p: PathProcessedMessage => csv_file.write(s"${p.toString}\n")
+      case v: VerifierStateMessage =>
+        // The rendered state spans multiple lines; escape line breaks to keep one record per line
+        csv_file.write(s"${v.toString.replace("\n", "\\n")}\n")
       case _ =>
         println( s"Cannot properly print message of unsupported type: $msg" )
     }
@@ -241,6 +244,12 @@ case class StdIOReporter(name: String = "stdout_reporter",
       case _: BlockReachedMessage => // too verbose, do not print
       case _: BlockFailureMessage =>  // too verbose, do not print
       case _: PathProcessedMessage =>  // too verbose, do not print
+      case VerifierStateMessage(v, concerning, millis, state) =>
+        if (!timeInfo)
+          println( s"$v has been working on ${concerning.name} without visible progress. Current state:" )
+        else
+          println( s"$v has been working on ${concerning.name} without visible progress for ${timeStr(millis)}. Current state:" )
+        state.render.linesIterator.foreach(line => println(s"  $line"))
       case _: VerificationTerminationMessage =>
       case _: BenchmarkingMessage =>
       case _ =>

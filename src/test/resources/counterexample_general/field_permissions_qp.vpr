@@ -1,0 +1,106 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Counterexamples for field permission amounts obtained through quantified
+// permissions. A single quantified permission over the sequence `s` (with
+// s[0] == a) contributes 1/2 to the location a.f, and that amount is reported.
+//
+// See also two_qp_same_field.vpr (two quantified permissions summing to 1/1)
+// and qfield.vpr (heap *values* under quantified permissions).
+
+field f: Int
+
+method qp_field_permission(s: Seq[Ref], a: Ref)
+  requires |s| > 0 && s[0] == a
+  requires forall j: Int, k: Int :: 0 <= j < k < |s| ==> s[j] != s[k]
+  requires forall j: Int :: 0 <= j < |s| ==> acc(s[j].f, 1/2)
+{
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (acc(a.f, 1/2)))
+  assert perm(a.f) == none
+}
+
+// Quantifier over set containment rather than a sequence range.
+method qp_field_permission_set(s: Set[Ref], a: Ref)
+  requires a in s
+  requires forall r: Ref :: r in s ==> acc(r.f, 1/2)
+{
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (acc(a.f, 1/2)))
+  assert perm(a.f) == none
+}
+
+// Quantifier over an explicit disjunction of receivers.
+method qp_field_permission_disjunction(a: Ref, b: Ref)
+  requires a != b
+  requires forall r: Ref :: (r == a || r == b) ==> acc(r.f, 1/2)
+{
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (acc(a.f, 1/2)))
+  assert perm(a.f) == none
+}
+
+// Conditional (ternary) permission amount in the quantifier body: index 0 gets
+// 1/2, all others 1/4.
+method qp_field_permission_ternary(s: Seq[Ref], a: Ref)
+  requires |s| > 1 && s[0] == a
+  requires forall j: Int, k: Int :: 0 <= j < k < |s| ==> s[j] != s[k]
+  requires forall j: Int :: 0 <= j < |s| ==> acc(s[j].f, (j == 0 ? 1/2 : 1/4))
+{
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (acc(a.f, 1/2)))
+  assert perm(a.f) == none
+}
+
+// A quantified permission combined with an *individual* inhale of the same
+// location: 1/2 (from the quantifier) + 1/4 (individual) == 3/4.
+method qp_plus_individual_inhale(s: Set[Ref], a: Ref)
+  requires a in s
+  requires forall r: Ref :: r in s ==> acc(r.f, 1/2)
+  requires acc(a.f, 1/4)
+{
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (acc(a.f, 3/4)))
+  assert perm(a.f) == none
+}
+
+// A quantified permission combined with an individual inhale and a subsequent
+// individual exhale: 1/2 (quantifier) + 1/2 (individual) - 1/4 (exhale) == 3/4.
+method qp_plus_individual_exhale(s: Set[Ref], a: Ref)
+  requires a in s
+  requires forall r: Ref :: r in s ==> acc(r.f, 1/2)
+  requires acc(a.f, 1/2)
+{
+  exhale acc(a.f, 1/4)
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (acc(a.f, 3/4)))
+  assert perm(a.f) == none
+}
+
+// Two quantified permissions over *different* structures (a sequence and a set)
+// covering the same location, summing to 1/1.
+method qp_two_structures(s: Seq[Ref], t: Set[Ref], a: Ref)
+  requires |s| > 0 && s[0] == a && a in t
+  requires forall j: Int, k: Int :: 0 <= j < k < |s| ==> s[j] != s[k]
+  requires forall j: Int :: 0 <= j < |s| ==> acc(s[j].f, 1/2)
+  requires forall r: Ref :: r in t ==> acc(r.f, 1/2)
+{
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (acc(a.f, 1/1)))
+  assert perm(a.f) == none
+}
+
+// Filter with a modulo condition: only even indices carry permission. a == s[0]
+// (index 0, even) holds 1/2. This exercises integer modulo in the permission-term
+// evaluation.
+method qp_field_permission_modulo(s: Seq[Ref], a: Ref)
+  requires |s| > 0 && s[0] == a
+  requires forall j: Int, k: Int :: 0 <= j < k < |s| ==> s[j] != s[k]
+  requires forall j: Int :: 0 <= j < |s| && j % 2 == 0 ==> acc(s[j].f, 1/2)
+{
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (acc(a.f, 1/2)))
+  assert perm(a.f) == none
+}
+
+// Filter over multiset containment ((r in ms) is the count of r). Exercises
+// multiset count and the `>` comparison in the permission-term evaluation.
+method qp_field_permission_multiset(ms: Multiset[Ref], a: Ref)
+  requires (a in ms) > 0
+  requires forall r: Ref :: (r in ms) > 0 ==> acc(r.f, 1/2)
+{
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (acc(a.f, 1/2)))
+  assert perm(a.f) == none
+}

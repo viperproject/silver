@@ -1,0 +1,17 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Counterexample reporting the value of a function application at concrete
+// arguments (foo(3)), independent of any local variable. Only the resolved
+// counterexample (this folder) supports function-application resolution.
+
+function foo(z: Int): Int
+{
+  z + 7
+}
+
+method bar()
+{
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (foo(3) == 10))
+  assert foo(3) != 10
+}

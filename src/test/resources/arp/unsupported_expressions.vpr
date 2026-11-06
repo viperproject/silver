@@ -1,0 +1,67 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Inside methods, rd can only be used directly as the permission amount of an access predicate, and not inside
+// magic wands.
+
+field f: Int
+
+predicate Q(p: Perm)
+
+method arithmetic(x: Ref)
+  //:: ExpectedOutput(consistency.error)
+  requires acc(x.f, 1/2 - rd)
+  //:: ExpectedOutput(consistency.error)
+  ensures acc(x.f, rd * 2)
+
+method conditionalPerm(x: Ref, b: Bool)
+  //:: ExpectedOutput(consistency.error)
+  requires acc(x.f, b ? rd : write)
+
+method predicateArgument(x: Ref)
+  //:: ExpectedOutput(consistency.error)
+  requires acc(Q(rd), 1/2)
+
+method takesPerm(p: Perm)
+
+method statements(x: Ref, b: Bool)
+  requires acc(x.f, rd)
+{
+  //:: ExpectedOutput(consistency.error)
+  assert perm(x.f) == rd
+  //:: ExpectedOutput(consistency.error)
+  inhale perm(x.f) > rd
+  //:: ExpectedOutput(consistency.error)
+  var p: Perm := rd
+  //:: ExpectedOutput(consistency.error)
+  p := rd
+  //:: ExpectedOutput(consistency.error)
+  takesPerm(rd)
+  //:: ExpectedOutput(consistency.error)
+  assert forperm r: Ref [r.f] :: rd > none
+  //:: ExpectedOutput(consistency.error)
+  if (perm(x.f) >= rd) {}
+  //:: ExpectedOutput(consistency.error)
+  while (perm(x.f) >= rd) {}
+}
+
+method loopInvariant(x: Ref)
+  requires acc(x.f, 1/2)
+{
+  while (true)
+    //:: ExpectedOutput(consistency.error)
+    invariant acc(x.f, rd) && rd > none
+  {}
+}
+
+method wandInContract(x: Ref)
+  //:: ExpectedOutput(consistency.error)
+  requires acc(x.f) --* acc(x.f, rd)
+
+method wandInPackage(x: Ref)
+  requires acc(x.f)
+{
+  package acc(x.f, 1/2) --*
+    //:: ExpectedOutput(consistency.error)
+    acc(x.f, rd)
+}

@@ -1,7 +1,6 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-//:: IgnoreFile(/carbon/issue/223/)
 field val : Int 
 
 predicate bar(x:Ref) {
@@ -28,6 +27,5 @@ method test(x:Ref, z:Ref)
   assert get(x) == 4
   set(x,3)
   //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(assert.failed:assertion.false, /carbon/issue/223/)
   assert get(x) == 4
 }

@@ -7,9 +7,9 @@ field f: Int
 
 method bfind_orig(S: Seq[Ref], x: Int, p: Perm) returns (index: Int)
   requires p > none && p < write
-  requires forall i: Int, j: Int :: i in [0..|S|) && j in [0..|S|) && i != j ==> S[i] != S[j]
+  requires forall i: Int, j: Int :: { S[i], S[j] } i in [0..|S|) && j in [0..|S|) && i != j ==> S[i] != S[j]
   requires forall i: Int :: {S[i].f} i in [0..|S|)  ==> acc(S[i].f, p)
-  requires forall i: Int :: {S[i].f} i in [0..|S|-1)  ==> S[i].f < S[i + 1].f
+  requires forall i: Int, j: Int :: {S[i].f, S[j].f} i < j && i in [0..|S|) && j in [0..|S|) ==> S[i].f < S[j].f
   ensures forall i: Int :: {S[i].f} i in [0..|S|) ==> acc(S[i].f, p)
   ensures index in [-1..|S|)
   //:: ExpectedOutput(postcondition.violated:assertion.false)

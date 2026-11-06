@@ -107,16 +107,21 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
   )
 
   val counterexample = opt[CounterexampleModel]("counterexample",
-    descr="Return counterexample for errors. Pass 'native' for returning the native model from the backend, " +
-      "'variables' for returning a model of all local Viper variables, or 'mapped' (only available on Silicon) " +
-      "for returning a model with Ref variables resolved to object-like structures.",
+    descr="Return counterexample for errors. Pass 'resolved' for the human-readable backend-independent " +
+      "counterexample (heap resources bound to their AST nodes), or 'raw' for the backend-independent " +
+      "counterexample with heap resources keyed by backend-internal identifiers. The following are legacy " +
+      "formats: 'native' for returning the native model from the backend, 'variables' for returning a model " +
+      "of all local Viper variables, and 'mapped' (only available on Silicon) for returning a model with Ref " +
+      "variables resolved to object-like structures.",
     default = None,
     noshort = true,
   )(singleArgConverter({
     case "native" => NativeModel
     case "variables" => VariablesModel
     case "mapped" => MappedModel
-    case i => throw new IllegalArgumentException(s"Unsupported counterexample model provided. Expected 'native', 'variables' or 'mapped' but got $i")
+    case "resolved" => ResolvedModel
+    case "raw" => RawModel
+    case i => throw new IllegalArgumentException(s"Unsupported counterexample model provided. Expected 'resolved', 'raw', 'native', 'variables' or 'mapped' but got $i")
   }))
 
   val disableTerminationPlugin = opt[Boolean]("disableTerminationPlugin",
@@ -211,3 +216,5 @@ trait CounterexampleModel
 case object NativeModel extends CounterexampleModel
 case object VariablesModel extends CounterexampleModel
 case object MappedModel extends CounterexampleModel
+case object RawModel extends CounterexampleModel
+case object ResolvedModel extends CounterexampleModel

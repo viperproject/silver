@@ -20,11 +20,11 @@ method fooUnsound(x: Ref)
 requires Mem(x)
 ensures  Mem(x)
 //:: ExpectedOutput(postcondition.violated:assertion.false)
-ensures  false // succeeds unexpectedly
+ensures  false // previously: succeeded unexpectedly
 {
     var oldResult: Int := recurse(x, 0)
     unfold Mem(x)
     x.f := x.f + 1
     fold Mem(x)
-    var newResult: Int := recurse(x, 0) // this call triggers the unsoundness
+    var newResult: Int := recurse(x, 0) // this call triggered the unsoundness
 }

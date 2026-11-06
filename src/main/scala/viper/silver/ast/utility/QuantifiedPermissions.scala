@@ -163,7 +163,19 @@ object QuantifiedPermissions {
     }
   }
 
-  def desugarSourceQuantifiedPermissionSyntax(source: Forall): Seq[Forall] = {
+  def desugarSourceQuantifiedPermissionSyntax(source: Forall): Seq[Exp] = {
+    val sourceIn = source.whenInhaling.asInstanceOf[Forall]
+    if (sourceIn == source) {
+      doDesugarSourceQuantifiedPermissionSyntax(source)
+    } else {
+      val sourceEx = source.whenExhaling.asInstanceOf[Forall]
+      val resIn = doDesugarSourceQuantifiedPermissionSyntax(sourceIn)
+      val resEx = doDesugarSourceQuantifiedPermissionSyntax(sourceEx)
+      resIn.map(InhaleExhaleExp(_, TrueLit()(source.pos, source.info))(source.pos, source.info)) ++
+        resEx.map(InhaleExhaleExp(TrueLit()(source.pos, source.info), _)(source.pos, source.info))
+    }
+  }
+  def doDesugarSourceQuantifiedPermissionSyntax(source: Forall): Seq[Forall] = {
 
     def attachMeta(createForall: (Position, Info, ErrorTrafo) => Forall, _pos: Position = source.pos, _info: Info = source.info, _errT: ErrorTrafo = NoTrafos): Forall = {
       val finalInfo = MakeInfoPair(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(createForall(_pos, _info, _errT)), _info)
@@ -183,7 +195,7 @@ object QuantifiedPermissions {
             /* RHS is a conjunction; split into two foralls and recursively rewrite these */
 
             val foralls0 =
-              desugarSourceQuantifiedPermissionSyntax(
+              doDesugarSourceQuantifiedPermissionSyntax(
                 attachMeta(Forall(
                   vars,
                   triggers,
@@ -191,7 +203,7 @@ object QuantifiedPermissions {
                 )))
 
             val foralls1 =
-              desugarSourceQuantifiedPermissionSyntax(
+              doDesugarSourceQuantifiedPermissionSyntax(
                 attachMeta(Forall(
                   vars,
                   triggers,
@@ -212,7 +224,7 @@ object QuantifiedPermissions {
                 Implies(newCond, e1)(rhs.pos, rhs.info) // TODO: this positional/info choice seems surprising. See also issue #249
               ))
 
-            desugarSourceQuantifiedPermissionSyntax(newForall)
+            doDesugarSourceQuantifiedPermissionSyntax(newForall)
 
           case CondExp(b, e0, e1) =>
             /* RHS is a conditional assertion; pull its condition out and rewrite the resulting foralls */
@@ -221,14 +233,14 @@ object QuantifiedPermissions {
             val newCond1 = And(cond, Not(b)(b.pos,b.info))(cond.pos, MakeInfoPair(cond.info,b.info))
 
             val newForalls0 =
-              desugarSourceQuantifiedPermissionSyntax(attachMeta(Forall(
+              doDesugarSourceQuantifiedPermissionSyntax(attachMeta(Forall(
                 vars,
                 triggers,
                 Implies(newCond0, e0)(rhs.pos, rhs.info) // TODO: this positional/info choice seems surprising. See also issue #249
               )))
 
             val newForalls1 =
-              desugarSourceQuantifiedPermissionSyntax(attachMeta(Forall(
+              doDesugarSourceQuantifiedPermissionSyntax(attachMeta(Forall(
                 vars,
                 triggers,
                 Implies(newCond1, e1)(rhs.pos, rhs.info) // TODO: this positional/info choice seems surprising. See also issue #249
@@ -251,12 +263,12 @@ object QuantifiedPermissions {
 
             val newCond = And(cond, nestedCond)(cond.pos, MakeInfoPair(cond.info,nestedCond.info))
 
-            desugarSourceQuantifiedPermissionSyntax(attachMeta(Forall(vars ++ nestedVars, combinedTriggers, Implies(newCond, nestedRhs)(rhs.pos, rhs.info, rhs.errT)), source.pos, MakeInfoPair(source.info, nested.info), MakeTrafoPair(source.errT,nested.errT)))
+            doDesugarSourceQuantifiedPermissionSyntax(attachMeta(Forall(vars ++ nestedVars, combinedTriggers, Implies(newCond, nestedRhs)(rhs.pos, rhs.info, rhs.errT)), source.pos, MakeInfoPair(source.info, nested.info), MakeTrafoPair(source.errT,nested.errT)))
 
           case lt@Let(v, e, bod) => {
             val forallWithoutLet = Forall(vars, triggers, bod)(source.pos, source.info)
             // desugar the let-body
-            val desugaredWithoutLet = desugarSourceQuantifiedPermissionSyntax(forallWithoutLet)
+            val desugaredWithoutLet = doDesugarSourceQuantifiedPermissionSyntax(forallWithoutLet)
             desugaredWithoutLet.map{
               case SourceQuantifiedPermissionAssertion(iqp, Implies(icond, irhs)) if (!irhs.isPure) =>
                 // Since the rhs cannot be a let-binding, we expand the let-expression in it.

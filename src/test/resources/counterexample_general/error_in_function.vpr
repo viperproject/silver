@@ -1,0 +1,14 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Regression test: a counterexample must be produced (not crash) when the
+// verification error is in a function rather than a method. Here f's
+// postcondition is violated for x == 1 (result == 0).
+
+function f(x: Int): Int
+  requires x > 0
+  //:: ExpectedCounterexample(postcondition.violated:assertion.false, (x == 1))
+  ensures result > 0
+{
+  x - 1
+}

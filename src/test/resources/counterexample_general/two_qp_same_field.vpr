@@ -1,0 +1,26 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Regression test for quantified-permission counterexample extraction.
+//
+// Two *separate* quantified permissions (over the sequences `s` and `t`) both
+// cover the location `a.f` (since s[0] == t[0] == a). Each contributes 1/2, so
+// the counterexample must report their sum, 1/1, for `a.f`.
+//
+// The failing assertion references perm(a.f), so that the error is about the
+// permission amount and the backends actually reason about (and record in the
+// model) the permission at `a.f`.
+
+field f: Int
+
+method twoQuantifiedPermissionsSameField(a: Ref, s: Seq[Ref], t: Seq[Ref])
+  requires |s| > 0 && |t| > 0
+  requires s[0] == a && t[0] == a
+  requires forall j: Int, k: Int :: 0 <= j < k < |s| ==> s[j] != s[k]
+  requires forall j: Int, k: Int :: 0 <= j < k < |t| ==> t[j] != t[k]
+  requires forall j: Int :: 0 <= j < |s| ==> acc(s[j].f, 1/2)
+  requires forall j: Int :: 0 <= j < |t| ==> acc(t[j].f, 1/2)
+{
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (acc(a.f, 1/1)))
+  assert perm(a.f) == none
+}

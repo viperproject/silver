@@ -1,0 +1,20 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Regression test: a counterexample must be produced (not crash) when the
+// verification error occurs while folding a predicate. The predicate body
+// requires x.f > 0, but x.f == -5.
+
+field f: Int
+
+predicate P(x: Ref) {
+  acc(x.f) && x.f > 0
+}
+
+method m(x: Ref)
+  requires acc(x.f)
+  requires x.f == -5
+{
+  //:: ExpectedCounterexample(fold.failed:assertion.false, (x.f == -5))
+  fold P(x)
+}

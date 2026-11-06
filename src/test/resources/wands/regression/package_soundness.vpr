@@ -1,0 +1,126 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Soundness regression tests for packaging magic wands, based on the examples in
+// Rémi Germe's internship report "Idiomatic specification of magic wands in implicit dynamic frames".
+// See also package_path_conditions.vpr and consolidation_outer_heaps.vpr.
+
+field b: Bool
+field f: Int
+field g: Int
+
+// Example 3 of the report: the package operation branches (on the RHS's x.b, i.e. the LHS's x.b),
+// but the verification must not continue under the assumption that the wand was packaged using one
+// particular branch, since the wand can be applied (here, temporarily) with different LHSs.
+method applying_using_different_branches(x: Ref)
+  requires acc(x.b) && acc(x.f) && acc(x.g)
+{
+  define W acc(x.b) --* acc(x.b) && (x.b ? acc(x.f) : acc(x.g))
+  package W
+
+  x.b := false
+
+  // ME: This seems like it should hold?
+  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/000/)
+  assert applying (W) in perm(x.g) == write
+
+  x.b := true
+  assert applying (W) in perm(x.f) == write
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  //:: MissingOutput(assert.failed:assertion.false, /carbon/issue/000/)
+  assert false
+}
+
+// Both x.f and x.g are in the footprint of the wand; applying it gives back only one of them.
+method footprint_includes_all_branches(x: Ref)
+  requires acc(x.b) && acc(x.f) && acc(x.g)
+{
+  define W acc(x.b) --* acc(x.b) && (x.b ? acc(x.f) : acc(x.g))
+  package W
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  //:: MissingOutput(assert.failed:assertion.false, /carbon/issue/394/)
+  assert perm(x.f) > none || perm(x.g) > none
+}
+
+method footprint_includes_all_branches_after_apply(x: Ref)
+  requires acc(x.b) && acc(x.f) && acc(x.g)
+{
+  define W acc(x.b) --* acc(x.b) && (x.b ? acc(x.f) : acc(x.g))
+  package W
+  apply W
+
+  assert x.b ? acc(x.f) : acc(x.g)
+
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
+  //:: MissingOutput(assert.failed:insufficient.permission, /carbon/issue/394/)
+  assert acc(x.f) && acc(x.g)
+}
+
+// Branch conditions that do not depend on the LHS are kept.
+method branch_condition_independent_of_lhs(x: Ref, c: Bool)
+  requires acc(x.b) && acc(x.f) && acc(x.g)
+{
+  package acc(x.b) --* acc(x.b) && (c ? acc(x.f) : acc(x.g))
+
+  assert c ==> acc(x.g)
+  assert !c ==> acc(x.f)
+
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
+  assert acc(x.f)
+}
+
+// Example 4 of the report: merging the chunks for x.f and y.f while packaging (under the assumption
+// x == y provided by the LHS) must not affect the state after the package operation.
+method unsound_consolidation(x: Ref, y: Ref)
+  requires acc(x.f)
+  requires acc(y.f)
+{
+  package x == y --* false
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+// Path conditions of vacuous wands (whose LHS can never be satisfied) must not leak.
+method vacuous_wand(x: Ref)
+{
+  package false --* false
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method vacuous_wand_value(x: Ref)
+  requires acc(x.f)
+{
+  x.f := 0
+  package acc(x.f, 1/2) && x.f == 42 --* acc(x.f) && x.f == 42
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method vacuous_wand_apply(x: Ref)
+  requires acc(x.f)
+{
+  x.f := 0
+  package acc(x.f, 1/2) && x.f == 42 --* acc(x.f) && x.f == 42
+
+  // The wand cannot be applied: its LHS is not satisfied.
+  //:: ExpectedOutput(apply.failed:assertion.false)
+  apply acc(x.f, 1/2) && x.f == 42 --* acc(x.f) && x.f == 42
+}
+
+// The path conditions recorded while packaging are available when applying the wand.
+method path_conditions_available_after_apply(x: Ref)
+  requires acc(x.b) && acc(x.f)
+{
+  package acc(x.b) --* acc(x.b) && (x.b ? acc(x.f) && x.f == old(x.f) : true)
+
+  x.b := true
+  apply acc(x.b) --* acc(x.b) && (x.b ? acc(x.f) && x.f == old(x.f) : true)
+
+  assert acc(x.f) && x.f == old(x.f)
+}

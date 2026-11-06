@@ -87,10 +87,12 @@ method insert(xs: Ref, x:Int) returns (i: Int)
     nxt := nxt.next
     i := i + 1
 
-   package (A) --* B {
+    package (A) --* B {
        fold List(prev)
        apply acc(List(prev)) --* acc(List(xs)) && elems(xs) == old(elems(xs))[0..oi] ++ old[lhs](elems(prev))
-   }
+    }
+
+    assert nxt != null ==> (acc(List(nxt)) && elems(nxt) == old(elems(xs))[i+1..])
   }
 
 	/* Create a new node with value x and append the list tail starting at nxt to it. */

@@ -1,0 +1,56 @@
+field f: Int
+
+method unsound_consolidation_outer_heaps(x: Ref, y: Ref)
+    requires acc(x.f, 1/1)
+    requires acc(y.f, 1/1)
+{
+    package x == y --* true {
+        assert acc(x.f, 2/1)
+    }
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+method unsound_consolidation_outer_heaps_bis(x: Ref, y: Ref)
+    requires acc(x.f, 1/1)
+    requires acc(y.f, 1/1)
+{
+    package x == y --* true {
+        assert false
+    }
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+
+method unsound_consolidation_outer_heaps_nested(x: Ref, y: Ref)
+    requires acc(x.f, 1/1)
+    requires acc(y.f, 1/1)
+{
+    package x == y --* false {
+        package true --* true {
+            assert false
+        }
+    }
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+method side_effect(x: Ref, y: Ref)
+    requires acc(x.f, 1/2) && acc(y.f, 1/2)
+{
+    if (x == y) {}
+    else {}
+
+    package x == y --* true {
+        assert acc(x.f, 3/4)
+    }
+
+    assert acc(x.f, 1/4)
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}

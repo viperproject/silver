@@ -1,0 +1,205 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// unfolding-expressions with rd in preconditions and loop invariants
+
+field f: Int
+field n: Ref
+
+predicate P(x: Ref) {
+  acc(x.f)
+}
+
+predicate Q(x: Ref) {
+  acc(x.f)
+}
+
+predicate R(x: Ref) {
+  acc(x.n)
+}
+
+predicate S(x: Ref) {
+  acc(x.n) && acc(P(x.n))
+}
+
+method foo(x: Ref)
+  requires acc(P(x), rd) && unfolding acc(P(x), rd) in x.f > 0
+  ensures acc(P(x), rd) && unfolding acc(P(x), rd) in x.f > 0
+{
+  assert unfolding acc(P(x), rd) in x.f > 0
+}
+
+method client(x: Ref)
+  requires acc(P(x), 1/2) && unfolding acc(P(x), 1/2) in x.f == 3
+  ensures acc(P(x), 1/2)
+{
+  foo(x)
+  assert perm(P(x)) == 1/2
+  assert unfolding acc(P(x), 1/2) in x.f == 3
+  foo(x)
+}
+
+method rdClient(x: Ref)
+  requires acc(P(x), rd) && unfolding acc(P(x), rd) in x.f > 0
+  ensures acc(P(x), rd)
+{
+  foo(x)
+  foo(x)
+}
+
+method clientUnsound(x: Ref)
+  requires acc(P(x), 1/2) && unfolding acc(P(x), 1/2) in x.f == 3
+{
+  foo(x)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method clientNotEnough(x: Ref)
+  requires acc(Q(x))
+{
+  //:: ExpectedOutput(call.precondition:insufficient.permission)
+  foo(x)
+}
+
+method clientFalse(x: Ref)
+  requires acc(P(x), 1/2) && unfolding acc(P(x), 1/2) in x.f == 0
+{
+  //:: ExpectedOutput(call.precondition:assertion.false)
+  foo(x)
+}
+
+// inside a comparison
+method comparison(x: Ref)
+  requires acc(P(x), rd) && (unfolding acc(P(x), rd) in x.f) + 1 > 1
+
+method comparisonClient(x: Ref)
+  requires acc(P(x), 1/2) && unfolding acc(P(x), 1/2) in x.f > 0
+{
+  comparison(x)
+}
+
+// in the condition of an implication and a conditional expression
+method condition(x: Ref, b: Bool)
+  requires acc(P(x), rd)
+  requires (unfolding acc(P(x), rd) in x.f > 0) ==> acc(Q(x), rd)
+  requires (unfolding acc(P(x), rd) in x.f > 5) ? acc(x.n, rd) : true
+
+method conditionClient(x: Ref)
+  requires acc(P(x), 1/2) && acc(Q(x), 1/2) && acc(x.n, 1/2)
+{
+  condition(x, true)
+}
+
+method conditionClientNotEnough(x: Ref)
+  requires acc(P(x), 1/2) && unfolding acc(P(x), 1/2) in x.f > 0
+{
+  //:: ExpectedOutput(call.precondition:insufficient.permission)
+  condition(x, true)
+}
+
+// in the argument of another predicate instance
+method nested(x: Ref)
+  requires acc(R(x), rd) && acc(P(unfolding acc(R(x), rd) in x.n), rd)
+
+method nestedClient(x: Ref, y: Ref)
+  requires acc(R(x), 1/2) && (unfolding acc(R(x), 1/2) in x.n == y) && acc(P(y), 1/2)
+{
+  nested(x)
+}
+
+// in quantifiers
+method quantified(s: Set[Ref])
+  requires forall y: Ref :: y in s ==> acc(P(y), rd)
+  requires forall y: Ref :: y in s ==> unfolding acc(P(y), rd) in y.f > 0
+
+method quantifiedClient(s: Set[Ref])
+  requires forall y: Ref :: y in s ==> acc(P(y), 1/2)
+  requires forall y: Ref :: y in s ==> unfolding acc(P(y), 1/2) in y.f > 0
+{
+  quantified(s)
+}
+
+// in loop invariants
+method loop(x: Ref)
+  requires acc(P(x), 1/2) && unfolding acc(P(x), 1/2) in x.f > 0
+  ensures acc(P(x), 1/2)
+{
+  var i: Int := 0
+  while (i < 10)
+    invariant acc(P(x), rd) && unfolding acc(P(x), rd) in x.f > 0
+  {
+    foo(x)
+    i := i + 1
+  }
+}
+
+method loopNotEstablished(x: Ref)
+  requires acc(P(x), 1/2) && unfolding acc(P(x), 1/2) in x.f == 0
+{
+  var i: Int := 0
+  while (i < 10)
+    //:: ExpectedOutput(invariant.not.established:assertion.false)
+    invariant acc(P(x), rd) && unfolding acc(P(x), rd) in x.f > 0
+  {
+    i := i + 1
+  }
+}
+
+// nested unfolding-expressions
+method nestedUnfolding(x: Ref)
+  requires acc(S(x), rd) && unfolding acc(S(x), rd) in unfolding acc(P(x.n), rd) in x.n.f > 0
+
+method nestedUnfoldingClient(x: Ref)
+  requires acc(S(x), 1/2) && unfolding acc(S(x), 1/2) in unfolding acc(P(x.n), 1/2) in x.n.f > 0
+{
+  nestedUnfolding(x)
+}
+
+method nestedUnfoldingClientFalse(x: Ref)
+  requires acc(S(x), 1/2) && unfolding acc(S(x), 1/2) in unfolding acc(P(x.n), 1/2) in x.n.f == 0
+{
+  //:: ExpectedOutput(call.precondition:assertion.false)
+  nestedUnfolding(x)
+}
+
+// unfolding-expressions that are only evaluated conditionally
+method disjunction(x: Ref, b: Bool)
+  requires acc(P(x), rd) && (b || unfolding acc(P(x), rd) in x.f > 0)
+
+method conditionalBranch(x: Ref, b: Bool)
+  requires acc(P(x), rd) && (b ? 1 : unfolding acc(P(x), rd) in x.f) > 0
+
+method conditionalClient(x: Ref)
+  requires acc(P(x), 1/2) && unfolding acc(P(x), 1/2) in x.f > 0
+{
+  disjunction(x, false)
+  conditionalBranch(x, false)
+}
+
+method existential(s: Set[Ref])
+  requires forall y: Ref :: y in s ==> acc(P(y), rd)
+  requires exists y: Ref :: y in s && unfolding acc(P(y), rd) in y.f > 0
+
+method existentialClient(s: Set[Ref], z: Ref)
+  requires forall y: Ref :: y in s ==> acc(P(y), 1/2)
+  requires z in s && unfolding acc(P(z), 1/2) in z.f > 0
+{
+  existential(s)
+}
+
+// asserting-expressions
+method assertingRd(x: Ref)
+  requires acc(x.f, rd) && asserting (acc(x.f, rd)) in true
+
+method assertingClient(x: Ref)
+  requires acc(x.f, 1/2)
+{
+  assertingRd(x)
+}
+
+// well-formedness of the callee's precondition ensures that the unfolding-expression is justified by the
+// preceding access predicates (rd might be larger than 1/2)
+method illFormed(x: Ref)
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  requires acc(P(x), 1/2) && unfolding acc(P(x), rd) in x.f > 0

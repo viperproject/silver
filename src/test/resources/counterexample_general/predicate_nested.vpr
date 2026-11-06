@@ -1,0 +1,22 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// A predicate that contains another predicate. The inside-predicate extraction
+// must not crash on the nested predicate; the directly-held field x.g is still
+// recovered (the fields hidden inside the nested predicate are not).
+
+field f: Int
+field g: Int
+
+predicate Inner(x: Ref) { acc(x.f) }
+predicate Outer(x: Ref) { acc(x.g) && Inner(x) }
+
+method m(x: Ref)
+{
+  inhale acc(x.f) && acc(x.g)
+  x.g := 8
+  fold Inner(x)
+  fold Outer(x)
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (x.g == 8))
+  assert false
+}

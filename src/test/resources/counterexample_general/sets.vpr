@@ -1,0 +1,12 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Counterexamples for (heap-independent) set values. Set contents are compared
+// as whole values between two variables that the model constrains to be equal.
+
+method set_eq(s: Set[Int], t: Set[Int])
+  requires s == t
+{
+  //:: ExpectedCounterexample(assert.failed:assertion.false, (s == t))
+  assert s != t
+}
