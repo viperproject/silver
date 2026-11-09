@@ -6,16 +6,16 @@
 
 package viper.silver.ast
 
+import viper.silver.ast.pretty.{Fixity, Infix, LeftAssociative, NonAssociative, Prefix, PrettyPrintPrimitives, RightAssociative}
+import utility.{Consistency, DomainInstances, Nodes, Types, Visitor}
 import viper.silver.ast.MagicWandStructure.MagicWandStructure
-import viper.silver.ast.pretty._
 import viper.silver.ast.utility.Expressions.{asAccessFragment, asPureFragment}
-import viper.silver.ast.utility._
 import viper.silver.ast.utility.rewriter.StrategyBuilder
 import viper.silver.cfg.silver.{CfgGenerator, SilverCfg}
 import viper.silver.dependencyAnalysis.AssumptionType.Internal
 import viper.silver.dependencyAnalysis.{DependencyType, DependencyTypeInfo, StringDependencyAnalysisSourceInfo}
-import viper.silver.utility.{CacheHelper, DependencyAware}
 import viper.silver.verifier.ConsistencyError
+import viper.silver.utility.{CacheHelper, DependencyAware}
 
 import scala.collection.immutable
 import scala.reflect.ClassTag

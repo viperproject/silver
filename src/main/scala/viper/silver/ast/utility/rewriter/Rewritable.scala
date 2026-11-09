@@ -6,8 +6,8 @@
 
 package viper.silver.ast.utility.rewriter
 
-import viper.silver.ast._
 import viper.silver.parser.PNode
+import viper.silver.ast._
 import viper.silver.plugin.standard.adt.{AdtConstructor, AdtConstructorApp, AdtDestructorApp, AdtDiscriminatorApp}
 
 import scala.reflect.runtime.{universe => reflection}

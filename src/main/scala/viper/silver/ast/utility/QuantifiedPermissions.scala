@@ -6,11 +6,10 @@
 
 package viper.silver.ast.utility
 
-import viper.silver.ast._
-import viper.silver.dependencyAnalysis.DependencyAnalysisSourceInfo
-
 import scala.collection.mutable
 import scala.language.postfixOps
+import viper.silver.ast._
+import viper.silver.dependencyAnalysis.DependencyAnalysisSourceInfo
 
 /** Utility methods for quantified predicate permissions. */
 object QuantifiedPermissions {
