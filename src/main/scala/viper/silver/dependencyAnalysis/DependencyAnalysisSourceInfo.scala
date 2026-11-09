@@ -63,12 +63,10 @@ trait DependencyAnalysisSourceInfo extends ast.Info {
 /**
  * Denotes the absence of a source info. Should only be used for internal nodes that are hidden from users anyways.
  */
-case class NoDependencyAnalysisSourceInfo() extends DependencyAnalysisSourceInfo {
+class NoDependencyAnalysisSourceInfo() extends DependencyAnalysisSourceInfo {
   override def getPosition: ast.Position = ast.NoPosition
 
   override def getDescription: String = ""
-
-  override def equals(obj: Any): Boolean = false
 }
 
 /**
