@@ -60,20 +60,13 @@ trait DependencyAnalysisJoinInfo extends ast.Info {
   override def comment: Seq[String] = Nil
   override def isCached: Boolean = false
   val joinType: JoinType
-
-  def matches(dependencyAnalysisJoinInfo: DependencyAnalysisJoinInfo) : Boolean
 }
 
 /**
  * Temporary placeholder indicating that the source info of this join is determined later on (i.e. by the most specific source info).
  * It should always be transformed to another type of join info before creating a dependency node.
  */
-case class EvalStackDependencyAnalysisJoin(joinType: JoinType, edgeType: EdgeType) extends DependencyAnalysisJoinInfo {
-  override def matches(dependencyAnalysisJoinInfo: DependencyAnalysisJoinInfo): Boolean = {
-    // These join infos should be transformed to SimpleDependencyAnalysisJoin before joining the graphs. Hence, we throw an error if that is not the case.
-    sys.error("Trying to call matches on an EvalStackDependencyAnalysisJoin.")
-  }
-}
+case class EvalStackDependencyAnalysisJoin(joinType: JoinType, edgeType: EdgeType) extends DependencyAnalysisJoinInfo
 
 /**
  * @param sourceInfo a piece of information used to determine the join edges
@@ -83,12 +76,7 @@ case class EvalStackDependencyAnalysisJoin(joinType: JoinType, edgeType: EdgeTyp
  *
  * Dependency nodes having join infos with identical source info and edge type are to be connected by an edge.
  */
-case class SimpleDependencyAnalysisJoin(sourceInfo: DependencyAnalysisSourceInfo, joinType: JoinType, edgeType: EdgeType, assertOnly: Boolean = false) extends DependencyAnalysisJoinInfo {
-  override def matches(other: DependencyAnalysisJoinInfo): Boolean = other match {
-      case SimpleDependencyAnalysisJoin(sourceInfo1, _, edgeType1, _) => sourceInfo.equals(sourceInfo1) && edgeType.equals(edgeType1)
-      case _ => false
-  }
-}
+case class SimpleDependencyAnalysisJoin(sourceInfo: DependencyAnalysisSourceInfo, joinType: JoinType, edgeType: EdgeType, assertOnly: Boolean = false) extends DependencyAnalysisJoinInfo
 
 /**
  *  The merge infos are one of the main measures to make the analysis more precise. It indicates which edges, that are not already discovered through
