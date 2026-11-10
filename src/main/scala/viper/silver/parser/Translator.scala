@@ -83,9 +83,9 @@ case class Translator(program: PProgram) {
 
       val newBody = body.map(actualBody => stmt(actualBody).asInstanceOf[Seqn])
 
-      val postconditionType = if(body.isDefined) AssumptionType.ImplicitPostcondition.asDepType() else AssumptionType.ExplicitPostcondition.asDepType()
+      val postconditionType = if(body.isDefined) OriginType.ImplicitPostcondition.asDepType() else OriginType.ExplicitPostcondition.asDepType()
 
-      val finalMethod = m.copy(pres = pres.toSeq map (p => exp(p.e, Some(AssumptionType.Precondition.asDepType()))), posts = posts.toSeq map (p => exp(p.e, Some(postconditionType))), body = newBody)(m.pos, m.info, m.errT)
+      val finalMethod = m.copy(pres = pres.toSeq map (p => exp(p.e, Some(OriginType.Precondition.asDepType()))), posts = posts.toSeq map (p => exp(p.e, Some(postconditionType))), body = newBody)(m.pos, m.info, m.errT)
 
       members(m.name) = finalMethod
 
@@ -105,26 +105,26 @@ case class Translator(program: PProgram) {
 
     def attachMeta(createAxiom: (Position, Info, String, ErrorTrafo) => DomainAxiom, _pos: Position, _info: Info, _domainName: String, _errT: ErrorTrafo = NoTrafos): DomainAxiom = {
       val tmpAxiom = createAxiom(_pos, _info, _domainName, _errT)
-      val finalInfo = ConsInfo(tmpAxiom.info, ConsInfo(ConsInfo(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(tmpAxiom.exp), DependencyTypeInfo(AssumptionType.DomainAxiom.asDepType())), SimpleDependencyAnalysisJoin(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(tmpAxiom.exp), JoinType.Source, EdgeType.Down)))
+      val finalInfo = ConsInfo(tmpAxiom.info, ConsInfo(ConsInfo(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(tmpAxiom.exp), DependencyTypeInfo(OriginType.DomainAxiom.asDepType())), SimpleDependencyAnalysisJoin(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(tmpAxiom.exp), JoinType.Source, EdgeType.Down)))
       createAxiom(_pos, finalInfo, _domainName, _errT)
     }
 
     a match {
       case pa@PAxiom(anns, _, Some(name), e) =>
-        attachMeta(NamedDomainAxiom(name.name, exp(e.e.inner, Some(AssumptionType.DomainAxiom.asDepType()))), a, Translator.toInfo(anns, pa), _domainName = pa.domain.idndef.name)
+        attachMeta(NamedDomainAxiom(name.name, exp(e.e.inner, Some(OriginType.DomainAxiom.asDepType()))), a, Translator.toInfo(anns, pa), _domainName = pa.domain.idndef.name)
       case pa@PAxiom(anns, _, None, e) =>
-        attachMeta(AnonymousDomainAxiom(exp(e.e.inner, Some(AssumptionType.DomainAxiom.asDepType()))), a, Translator.toInfo(anns, pa), _domainName = pa.domain.idndef.name)
+        attachMeta(AnonymousDomainAxiom(exp(e.e.inner, Some(OriginType.DomainAxiom.asDepType()))), a, Translator.toInfo(anns, pa), _domainName = pa.domain.idndef.name)
     }
   }
 
   private def translate(f: PFunction): Function = f match {
     case PFunction(_, _, idndef, _, _, _, pres, posts, body) =>
       val f = findFunction(idndef)
-      val postconditionType = if(body.isDefined) AssumptionType.ImplicitPostcondition.asDepType() else AssumptionType.ExplicitPostcondition.asDepType()
+      val postconditionType = if(body.isDefined) OriginType.ImplicitPostcondition.asDepType() else OriginType.ExplicitPostcondition.asDepType()
       val ff = f.copy(
-        pres = pres.toSeq map (p => exp(p.e, Some(AssumptionType.Precondition.asDepType()))),
+        pres = pres.toSeq map (p => exp(p.e, Some(OriginType.Precondition.asDepType()))),
         posts = posts.toSeq map (p => exp(p.e, Some(postconditionType))),
-        body = body map (_.e.inner) map (exp(_, Some(AssumptionType.FunctionBody.asDepType())))
+        body = body map (_.e.inner) map (exp(_, Some(OriginType.FunctionBody.asDepType())))
       )(f.pos, f.info, f.errT)
       members(f.name) = ff
       ff
@@ -133,7 +133,7 @@ case class Translator(program: PProgram) {
   private def translate(p: PPredicate): Predicate = p match {
     case PPredicate(_, _, idndef, _, body) =>
       val p = findPredicate(idndef)
-      val pp = p.copy(body = body map (_.e.inner) map (exp(_, Some(AssumptionType.Rewrite.asDepType()))))(p.pos, p.info, p.errT)
+      val pp = p.copy(body = body map (_.e.inner) map (exp(_, Some(OriginType.Rewrite.asDepType()))))(p.pos, p.info, p.errT)
       members(p.name) = pp
       pp
   }
@@ -231,14 +231,14 @@ case class Translator(program: PProgram) {
         }
         attachMeta(Seqn(seqn filterNot (_.isInstanceOf[PSkip]) map stmt, locals))
       case PFold(_, e) =>
-        attachMeta(Fold(exp(e, Some(AssumptionType.Rewrite.asDepType())).asInstanceOf[PredicateAccessPredicate]))
+        attachMeta(Fold(exp(e, Some(OriginType.Rewrite.asDepType())).asInstanceOf[PredicateAccessPredicate]))
       case PUnfold(_, e) =>
-        attachMeta(Unfold(exp(e, Some(AssumptionType.Rewrite.asDepType())).asInstanceOf[PredicateAccessPredicate]))
+        attachMeta(Unfold(exp(e, Some(OriginType.Rewrite.asDepType())).asInstanceOf[PredicateAccessPredicate]))
       case PPackageWand(_, e, proofScript) =>
-        val wand = exp(e, Some(AssumptionType.Rewrite.asDepType())).asInstanceOf[MagicWand]
+        val wand = exp(e, Some(OriginType.Rewrite.asDepType())).asInstanceOf[MagicWand]
         attachMeta(Package(wand, proofScript map (stmt(_).asInstanceOf[Seqn]) getOrElse Statements.EmptyStmt))
       case PApplyWand(_, e) =>
-        attachMeta(Apply(exp(e, Some(AssumptionType.Rewrite.asDepType())).asInstanceOf[MagicWand]))
+        attachMeta(Apply(exp(e, Some(OriginType.Rewrite.asDepType())).asInstanceOf[MagicWand]))
       case PInhale(_, e) =>
         attachMeta(Inhale(exp(e, Some(DependencyType.ExplicitAssumption))))
       case PAssume(_, e) =>
@@ -252,13 +252,13 @@ case class Translator(program: PProgram) {
       case PGoto(_, label) =>
         attachMeta(Goto(label.name))
       case PIf(_, cond, thn, els) =>
-        attachMeta(If(exp(cond.inner, Some(AssumptionType.PathCondition.asDepType())), stmt(thn).asInstanceOf[Seqn], els map (stmt(_) match {
+        attachMeta(If(exp(cond.inner, Some(OriginType.PathCondition.asDepType())), stmt(thn).asInstanceOf[Seqn], els map (stmt(_) match {
           case s: Seqn => s
           case s => Seqn(Seq(s), Nil)(s.pos, s.info)
         }) getOrElse Statements.EmptyStmt))
       case PElse(_, els) => stmt(els)
       case PWhile(_, cond, invs, body) =>
-        attachMeta(While(exp(cond.inner, Some(AssumptionType.PathCondition.asDepType())), invs.toSeq map (inv => exp(inv.e, Some(AssumptionType.LoopInvariant.asDepType()))), stmt(body).asInstanceOf[Seqn]))
+        attachMeta(While(exp(cond.inner, Some(OriginType.PathCondition.asDepType())), invs.toSeq map (inv => exp(inv.e, Some(OriginType.LoopInvariant.asDepType()))), stmt(body).asInstanceOf[Seqn]))
       case PQuasihavoc(_, lhs, e) =>
         val (newLhs, newE) = havocStmtHelper(lhs, e)
         attachMeta(Quasihavoc(newLhs, newE))

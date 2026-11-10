@@ -7,7 +7,7 @@
 package viper.silver.dependencyAnalysis
 
 import viper.silver.ast
-import viper.silver.dependencyAnalysis.AssumptionType._
+import viper.silver.dependencyAnalysis.OriginType._
 import viper.silver.dependencyAnalysis.DependencyType._
 import viper.silver.dependencyAnalysis.EdgeType.EdgeType
 import viper.silver.dependencyAnalysis.JoinType.JoinType
@@ -22,12 +22,12 @@ object DependencyTypeInfo {
       case _: ast.Inhale | _: ast.Assume => ExplicitAssumption
       case _: ast.Fold | _: ast.Unfold | _: ast.Package | _: ast.Apply => Rewrite.asDepType()
       case _: ast.Quasihavoc | _: ast.Quasihavocall => SourceCode.asDepType()
-      case _ => AssumptionType.Unknown.asDepType() // other statements do not introduce assumptions or are composed of statements that we already covered. We can ignore these.
+      case _ => OriginType.Unknown.asDepType() // other statements do not introduce assumptions or are composed of statements that we already covered. We can ignore these.
     }
     DependencyTypeInfo(depType)
   }
 
-  def getInternalDepTypeInfo: DependencyTypeInfo = DependencyTypeInfo(DependencyType(AssumptionType.Internal))
+  def getInternalDepTypeInfo: DependencyTypeInfo = DependencyTypeInfo(DependencyType(OriginType.Internal))
 }
 
 case class DependencyTypeInfo(dependencyType: DependencyType) extends ast.Info {

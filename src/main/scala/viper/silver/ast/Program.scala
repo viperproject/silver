@@ -12,7 +12,7 @@ import viper.silver.ast.MagicWandStructure.MagicWandStructure
 import viper.silver.ast.utility.Expressions.{asAccessFragment, asPureFragment}
 import viper.silver.ast.utility.rewriter.StrategyBuilder
 import viper.silver.cfg.silver.{CfgGenerator, SilverCfg}
-import viper.silver.dependencyAnalysis.AssumptionType.Internal
+import viper.silver.dependencyAnalysis.OriginType.Internal
 import viper.silver.dependencyAnalysis.{DependencyType, DependencyTypeInfo, StringDependencyAnalysisSourceInfo}
 import viper.silver.verifier.ConsistencyError
 import viper.silver.utility.{CacheHelper, DependencyAware}
