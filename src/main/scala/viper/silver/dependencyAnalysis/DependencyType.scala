@@ -89,9 +89,9 @@ object DependencyType {
   val ExplicitAssertion: DependencyType = DependencyType(OriginType.Internal, OriginType.Explicit)
   val ExplicitAssumption: DependencyType = DependencyType(OriginType.Explicit, OriginType.Annotation)
 
-  def apply(assumptionType: OriginType): DependencyType = new DependencyType(assumptionType)
+  def apply(originType: OriginType): DependencyType = new DependencyType(originType)
 }
 
 case class DependencyType(assumptionType: OriginType, assertionType: OriginType) {
-  def this(assumptionType: OriginType) = this(assumptionType, assumptionType)
+  def this(originType: OriginType) = this(originType, originType)
 }
