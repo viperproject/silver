@@ -13,6 +13,11 @@ import viper.silver.dependencyAnalysis.EdgeType.EdgeType
 import viper.silver.dependencyAnalysis.JoinType.JoinType
 import viper.silver.plugin.standard.refute.Refute
 
+object DependencyAnalysisAnnotations {
+  /** Key of the `AnnotationInfo` that enables (`"true"`) or disables (`"false"`) the dependency analysis for a member. */
+  val enableDependencyAnalysisKey: String = "enableDependencyAnalysis"
+}
+
 object DependencyTypeInfo {
   def getDependencyTypeInfo(stmt: ast.Stmt): DependencyTypeInfo = {
     val depType = stmt match {
