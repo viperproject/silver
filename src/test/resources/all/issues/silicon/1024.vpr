@@ -8,6 +8,7 @@ method t(a: Array, N: Int, x: Int, y: Int, res: Int, b: Bool)
   requires forall i: Int :: 0 <= i && i < res ==> loc(a, x + i).val == loc(a, y + i).val
 {
   if (b) {
+    //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/1024/)
     assert forall i: Int :: 0 <= i && i < res ==> loc(a, x + i).val == loc(a, y + i).val
   } else {
     //:: ExpectedOutput(assert.failed:assertion.false)
