@@ -227,7 +227,7 @@ object ImpureAssumeRewriter {
     }).execute(p)
 
     val pAssume: Program = ViperStrategy.Slim({
-      case a: Assume => rewriteInhale(Inhale(rewrite(a.exp, pInvs))(a.pos))
+      case a: Assume => rewriteInhale(Inhale(rewrite(a.exp, pInvs))(a.pos, a.info, a.errT))
     }).execute(pInvs)
 
     if (funcs.isEmpty && domains.isEmpty) {
