@@ -77,6 +77,14 @@ object Common {
     new JPrintWriter(new JBufferedWriter(new JFileWriter(file, append)), autoFlush)
   }
 
+  implicit class OptionOps[A](private val op: Option[A]) extends AnyVal {
+    @inline
+    def mapOrElse[B](f: A => B, default: => B): B = op match {
+      case Some(a) => f(a)
+      case None    => default
+    }
+  }
+
   final class Rational(n: BigInt, d: BigInt) extends Ordered[Rational] {
     require(d != 0, "Denominator of Rational must not be 0.")
 
