@@ -271,6 +271,8 @@ object QuantifiedPermissions {
               case iforall@Forall(ivars, itriggers, Implies(icond, ibod)) =>
                 // For all pure parts of the quantifier, we just re-wrap the body into a let.
                 Forall(ivars, itriggers, Implies(cond, Let(v, e, Implies(icond, ibod)(lt.pos, lt.info))(lt.pos, lt.info, lt.errT))(lt.pos, lt.info, lt.errT))(iforall.pos, iforall.info)
+              case other =>
+                sys.error(s"Unexpected result of desugaring a quantified permission assertion: $other")
             }
           }
           case _ =>

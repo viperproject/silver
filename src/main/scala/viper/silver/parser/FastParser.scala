@@ -6,7 +6,6 @@
 
 package viper.silver.parser
 
-import java.net.URL
 import java.nio.file.{Path, Paths}
 import viper.silver.ast.{FilePosition, LineCol, NoPosition, SourcePosition}
 import viper.silver.ast.utility.{DiskLoader, FileLoader}
@@ -43,7 +42,7 @@ object FastParserCompanion {
   def space[$: P] = " " | "\t"
   def newline[$: P] = StringIn("\r\n") | "\n" | "\r"
 
-  implicit val whitespace = {
+  implicit val whitespace: ParsingRun[_] => P[Unit] = {
     import NoWhitespace._
     implicit ctx: ParsingRun[_] =>
       NoTrace((blockComment | lineComment | space | newline).rep)
@@ -55,9 +54,9 @@ object FastParserCompanion {
   type Pos = (FilePosition, FilePosition)
   import scala.language.implicitConversions
   implicit def LeadingWhitespaceStr[$: P](p: String): LeadingWhitespace[Unit] = new LeadingWhitespace(() => P(p))
-  implicit def LeadingWhitespace[T](p: => P[T]) = new LeadingWhitespace(() => p)
-  implicit def PositionParsing[T](p: => P[Pos => T]) = new PositionParsing(() => p)
-  implicit def ExtendedParsing[T](p: => P[T]) = new ExtendedParsing(() => p)
+  implicit def LeadingWhitespace[T](p: => P[T]): LeadingWhitespace[T] = new LeadingWhitespace(() => p)
+  implicit def PositionParsing[T](p: => P[Pos => T]): PositionParsing[T] = new PositionParsing(() => p)
+  implicit def ExtendedParsing[T](p: => P[T]): ExtendedParsing[T] = new ExtendedParsing(() => p)
   implicit def reservedKw[$: P, T <: PKeyword](r: T)(implicit lineCol: LineCol, _file: Path): P[PReserved[T]] = P(P(r.token).map { _ => PReserved(r)(_) } ~~ !identContinues)./.pos
   implicit def reservedSym[$: P, T <: PSymbol](r: T)(implicit lineCol: LineCol, _file: Path): P[PReserved[T]] = P(r.token./ map { _ => PReserved(r)(_) }).pos
 
@@ -294,11 +293,8 @@ class FastParser {
      */
     val relativeImportPath = Paths.get(standard_import_directory, path.toString)
 
-    /* Creates a corresponding relative URL, e.g. "file://import/my/stdlib.vpr" */
-    val relativeImportUrl = new URL(new URL("file:"), relativeImportPath.toString)
-
-    /* Extract the path component only, e.g. "import/my/stdlib.vpr" */
-    val relativeImportStr = relativeImportUrl.getPath
+    /* Use the path as the resource name, e.g. "import/my/stdlib.vpr" */
+    val relativeImportStr = relativeImportPath.toString
 
     // nested try-catch block because source.close() in finally could also cause a NullPointerException
     val buffer =
@@ -354,7 +350,7 @@ class FastParser {
   import FastParserCompanion.{ExtendedParsing, identContinues, identStarts, LeadingWhitespace, Pos, PositionParsing, reservedKw, reservedSym, blockComment, lineComment, newline, space}
 
 
-  implicit val whitespace = {
+  implicit val whitespace: ParsingRun[_] => P[Unit] = {
     import NoWhitespace._
     implicit ctx: ParsingRun[_] =>
       NoTrace((blockComment | lineComment | space | newline).rep)
@@ -1003,7 +999,7 @@ class FastParser {
     // Assume entire file is correct and try parsing it quickly
     fastparse.parse(s, entireProgram(_)) match {
       case Parsed.Success(value, _) => {
-        value.offsets = _line_offset;
+        value.offsets = _line_offset.toIndexedSeq;
         value.rawProgram = s;
         return value;
       }

@@ -94,7 +94,7 @@ trait Match {
 class NMatch[N <: Rewritable : TypeTag](val pred: N => Boolean, val rewrite: Boolean) extends Match {
 
   // Checks if node n (of type T) is a valid subtype of generic parameter N
-  protected def matches[T: TypeTag](n: T): Boolean = {
+  protected def matches[T](n: T)(implicit @unused typeTag: TypeTag[T]): Boolean = {
     // TODO: This code works but im not really familiar with reflection. Is there a better solution?
     val mirror = runtimeMirror(n.getClass.getClassLoader) // obtain runtime mirror
     val sym = mirror.staticClass(n.getClass.getName) // obtain class symbol for `n`
