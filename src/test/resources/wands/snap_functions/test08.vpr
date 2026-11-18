@@ -1,0 +1,29 @@
+field f: Int
+
+method test08a(x: Ref)
+    requires acc(x.f)
+{
+    package acc(x.f) --* acc(x.f)
+
+    x.f := applying (acc(x.f) --* acc(x.f)) in x.f + 1
+
+    apply acc(x.f) --* acc(x.f)
+
+    assert acc(x.f) && x.f == old(x.f) + 1
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+method test08b(x: Ref)
+    requires acc(x.f) && x.f == 42
+{
+    package acc(x.f) --* acc(x.f)
+
+    x.f := applying (acc(x.f) --* acc(x.f)) in x.f + 1
+
+    apply acc(x.f) --* acc(x.f)
+
+    assert acc(x.f) && x.f == 43
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
