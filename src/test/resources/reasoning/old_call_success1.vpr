@@ -1,0 +1,23 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+method foo()
+{
+    label l
+
+    oldCall[l](lemma(42))
+
+    var y: Int
+    y := lemma(42)
+    y := oldCall[l](lemma(42))
+
+    y := oldCall[l](lemma(42))
+}
+
+method foo(x: Int) returns (y: Int)
+isLemma
+// decreases // is necessary for lemma
+ensures x == y
+{
+    y := x
+}

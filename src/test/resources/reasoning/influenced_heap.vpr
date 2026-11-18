@@ -1,0 +1,23 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f:Int
+
+
+method exampleHeapArg(b:Ref) returns (c:Int)
+requires acc(b.f)
+influenced heap by {heap,b}
+//:: ExpectedOutput(consistency.error)
+influenced c by { b }
+{
+    
+    c := b.f
+}
+
+
+method exampleHeap(b:Int) returns (c:Int)
+influenced heap by {heap}
+influenced c by {}
+{
+    c := 3
+}
