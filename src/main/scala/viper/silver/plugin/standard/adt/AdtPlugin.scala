@@ -20,7 +20,7 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
                 config: viper.silver.frontend.SilFrontendConfig,
                 fp: FastParser) extends SilverPlugin with ParserPluginTemplate {
 
-  import fp.{annotation, argList, idnTypeBinding, idndef, idnref, semiSeparated, typ, typeList, domainTypeVarDecl, ParserExtension, lineCol, _file}
+  import fp.{annotation, argList, idnTypeBinding, idndef, idnref, parenthesizedExp, semiSeparated, typ, typeList, domainTypeVarDecl, ParserExtension, lineCol, _file}
   import FastParserCompanion.{ExtendedParsing, LeadingWhitespace, PositionParsing, reservedKw, reservedSym, whitespace}
 
   /**
@@ -91,7 +91,9 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
 
   def adtConstructorDecls[$: P]: P[PAdtSeq[PAdtConstructor]] = P(semiSeparated(adtConstructorDecl).braces.map(PAdtSeq.apply _)).pos
 
-  def adtConstructorDecl[$: P]: P[PAdtConstructor] = P((annotation.rep ~ idndef ~ argList(idnTypeBinding.map(PAdtFieldDecl(_)))) map (PAdtConstructor.apply _).tupled).pos
+  def adtConstructorDecl[$: P]: P[PAdtConstructor] = P((annotation.rep ~ idndef ~ argList(idnTypeBinding.map(PAdtFieldDecl(_))) ~ adtConstructorAxiom.?) map (PAdtConstructor.apply _).tupled).pos
+
+  def adtConstructorAxiom[$: P]: P[PAdtConstructorAxiom] = P((P(PKw.Axiom) ~ parenthesizedExp) map (PAdtConstructorAxiom.apply _).tupled).pos
 
   override def beforeResolve(input: PProgram): PProgram = {
     if (deactivated) {
