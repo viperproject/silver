@@ -26,8 +26,12 @@ import scala.language.implicitConversions
  * wellformed, and in cases where a malformed tree is detected, it does not
  * return a tree, but instead, records error messages using the
  * Messaging feature.
+ *
+ * @param attachDependencyAnalysisInfo whether the translator attaches the infos required by the dependency analysis
+ *                                     (source infos, dependency types, joins) to the generated nodes. Should only be
+ *                                     enabled if the dependency analysis is enabled, since it adds overhead.
  */
-case class Translator(program: PProgram) {
+case class Translator(program: PProgram, attachDependencyAnalysisInfo: Boolean = false) {
   def translate: Option[Program] /*(Program, Seq[Messaging.Record])*/ = {
     // assert(TypeChecker.messagecount == 0, "Expected previous phases to succeed, but found error messages.") // AS: no longer sharing state with these phases
 
@@ -105,8 +109,12 @@ case class Translator(program: PProgram) {
 
     def attachMeta(createAxiom: (Position, Info, String, ErrorTrafo) => DomainAxiom, _pos: Position, _info: Info, _domainName: String, _errT: ErrorTrafo = NoTrafos): DomainAxiom = {
       val tmpAxiom = createAxiom(_pos, _info, _domainName, _errT)
-      val finalInfo = ConsInfo(tmpAxiom.info, ConsInfo(ConsInfo(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(tmpAxiom.exp), DependencyTypeInfo(OriginType.DomainAxiom.asDepType())), SimpleDependencyAnalysisJoin(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(tmpAxiom.exp), JoinType.Source, EdgeType.Down)))
-      createAxiom(_pos, finalInfo, _domainName, _errT)
+      if (attachDependencyAnalysisInfo) {
+        val finalInfo = ConsInfo(tmpAxiom.info, ConsInfo(ConsInfo(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(tmpAxiom.exp), DependencyTypeInfo(OriginType.DomainAxiom.asDepType())), SimpleDependencyAnalysisJoin(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(tmpAxiom.exp), JoinType.Source, EdgeType.Down)))
+        createAxiom(_pos, finalInfo, _domainName, _errT)
+      } else {
+        tmpAxiom
+      }
     }
 
     a match {
@@ -197,8 +205,12 @@ case class Translator(program: PProgram) {
 
     def attachMeta(createStmt: (Position, Info, ErrorTrafo) => Stmt, _pos: Position = pos, _info: Info = info, _errT: ErrorTrafo = NoTrafos): Stmt = {
       val tmpStmt = createStmt(_pos, _info, _errT)
-      val finalInfo = MakeInfoPair(MakeInfoPair(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(tmpStmt), DependencyTypeInfo.getDependencyTypeInfo(tmpStmt)), tmpStmt.info)
-      createStmt(_pos, finalInfo, _errT)
+      if (attachDependencyAnalysisInfo) {
+        val finalInfo = MakeInfoPair(MakeInfoPair(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(tmpStmt), DependencyTypeInfo.getDependencyTypeInfo(tmpStmt)), tmpStmt.info)
+        createStmt(_pos, finalInfo, _errT)
+      } else {
+        tmpStmt
+      }
     }
 
     s match {
@@ -268,7 +280,8 @@ case class Translator(program: PProgram) {
         attachMeta(Quasihavocall(newVars, newLhs, newE))
       case t: PExtender =>
         val stmt = t.translateStmt(this)
-        stmt.withMeta(stmt.pos, MakeInfoPair(MakeInfoPair(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(stmt), DependencyTypeInfo.getDependencyTypeInfo(stmt)), stmt.info), stmt.errT)
+        if (attachDependencyAnalysisInfo) stmt.withMeta(stmt.pos, MakeInfoPair(MakeInfoPair(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(stmt), DependencyTypeInfo.getDependencyTypeInfo(stmt)), stmt.info), stmt.errT)
+        else stmt
       case _: PDefine | _: PSkip =>
         sys.error(s"Found unexpected intermediate statement $s (${s.getClass.getName}})")
     }
@@ -313,17 +326,23 @@ case class Translator(program: PProgram) {
       case _ => sys.error(s"Found invalid target of assignment")
     }
     val assn = assign(ts.map(_._2))
-    val dependencyAnalysisInfo = MakeInfoPair(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(assn), DependencyTypeInfo.getDependencyTypeInfo(assn))
 
     val tmps = ts.flatMap(_._1)
     if (tmps.isEmpty)
       return assn
     if (!Consistency.noDuplicates(tmps.map(_._4.lhs.field)))
       Consistency.messages ++= FastMessaging.message(errorNode, s"multiple targets which access the same field are not allowed")
+
+    val dependencyAnalysisInfo: Info =
+      if (attachDependencyAnalysisInfo) MakeInfoPair(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(assn), DependencyTypeInfo.getDependencyTypeInfo(assn))
+      else NoInfo
+    def withDependencyAnalysisInfo(s: Stmt): Stmt =
+      if (attachDependencyAnalysisInfo) s.withMeta(s.pos, MakeInfoPair(s.info, dependencyAnalysisInfo), s.errT) else s
+
     Seqn(
-      tmps.map(t => t._3.withMeta(t._3.pos, MakeInfoPair(t._3.info, dependencyAnalysisInfo),t._3.errT)) ++
+      tmps.map(t => withDependencyAnalysisInfo(t._3)) ++
       Seq(assn) ++
-      tmps.map(t => t._4.withMeta(t._4.pos, MakeInfoPair(t._4.info, dependencyAnalysisInfo),t._4.errT)),
+      tmps.map(t => withDependencyAnalysisInfo(t._4)),
       tmps.flatMap(t => Seq(t._1, t._2))
     )(assn.pos, MakeInfoPair(assn.info, dependencyAnalysisInfo))
   }
@@ -380,7 +399,7 @@ case class Translator(program: PProgram) {
     val (pexp, annotationMap) = extractAnnotation(parseExp)
     val sourcePNodeInfo = SourcePNodeInfo(parseExp)
     val info0 = if (annotationMap.isEmpty) sourcePNodeInfo else ConsInfo(sourcePNodeInfo, AnnotationInfo(annotationMap))
-    val info = if(dependencyType.isDefined) MakeInfoPair(info0, DependencyTypeInfo(dependencyType.get)) else info0
+    val info = if(attachDependencyAnalysisInfo && dependencyType.isDefined) MakeInfoPair(info0, DependencyTypeInfo(dependencyType.get)) else info0
     expInternal(pexp, pos, info, dependencyType)
   }
 
@@ -391,8 +410,12 @@ case class Translator(program: PProgram) {
     def goExp(parseExp: PExp) = exp(parseExp, dependencyType)
 
     def attachMeta(createExp: (Position, Info, ErrorTrafo) => Exp, _pos: PExp = pos, _info: Info = info, _errT: ErrorTrafo = NoTrafos): Exp = {
-      val finalInfo = MakeInfoPair(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(createExp(_pos, _info, _errT)), _info)
-      createExp(_pos, finalInfo, _errT)
+      if (attachDependencyAnalysisInfo) {
+        val finalInfo = MakeInfoPair(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(createExp(_pos, _info, _errT)), _info)
+        createExp(_pos, finalInfo, _errT)
+      } else {
+        createExp(_pos, _info, _errT)
+      }
     }
 
     pexp match {
@@ -677,7 +700,8 @@ case class Translator(program: PProgram) {
 
       case t: PExtender =>
         val exp = t.translateExp(this)
-        exp.withMeta((exp.pos, MakeInfoPair(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(exp), exp.info), exp.errT))
+        if (attachDependencyAnalysisInfo) exp.withMeta((exp.pos, MakeInfoPair(DependencyAnalysisSourceInfo.createAnalysisSourceInfo(exp), exp.info), exp.errT))
+        else exp
     }
   }
 

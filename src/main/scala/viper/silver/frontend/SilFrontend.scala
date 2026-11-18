@@ -382,11 +382,17 @@ trait SilFrontend extends DefaultFrontend {
     }
   }
 
+  /**
+    * Whether the translator should attach the infos required by the dependency analysis to the translated program.
+    * Disabled by default since the analysis is backend-specific; backends supporting the analysis override this.
+    */
+  protected def attachDependencyAnalysisInfo: Boolean = false
+
   override def doTranslation(input: PProgram): Result[Program] = {
 
     plugins.beforeTranslate(input) match {
       case Some(modifiedInputPlugin) =>
-        val translator = Translator(modifiedInputPlugin)
+        val translator = Translator(modifiedInputPlugin, attachDependencyAnalysisInfo)
         FrontendStateCache.translator = translator
         translator.translate match {
           case Some(program) =>
