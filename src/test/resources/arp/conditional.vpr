@@ -1,0 +1,66 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+field g: Int
+field h: Int
+
+method foo(x: Ref)
+  requires acc(x.f, write) && (x.f != 0 ==> acc(x.g, rd))
+  ensures acc(x.f, write) && (old(x.f) != 0 ==> acc(x.g, rd))
+  ensures old(x.f != 0) ==> x.f == x.g + 1
+{
+  if (x.f != 0) {
+    x.f := x.g + 1
+  }
+}
+
+method client(x: Ref)
+  requires acc(x.f, write) && acc(x.g, 1/2)
+  ensures acc(x.f, write) && acc(x.g, 1/2)
+{
+  x.f := 4
+  inhale x.g == 5
+  foo(x)
+  assert x.g == 5
+  assert x.f == 6
+}
+
+method clientNoPermNeeded(x: Ref)
+  requires acc(x.f, write)
+  ensures acc(x.f, write)
+{
+  x.f := 0
+  foo(x)
+}
+
+method ternary(x: Ref, b: Bool)
+  requires b ? acc(x.g, rd) : acc(x.h, rd)
+  ensures b ? acc(x.g, rd) : acc(x.h, rd)
+
+method ternaryClient(x: Ref)
+  requires acc(x.g, 1/2) && acc(x.h, 1/3)
+  ensures acc(x.g, 1/2) && acc(x.h, 1/3)
+{
+  ternary(x, true)
+  ternary(x, false)
+}
+
+method ternaryClientNotEnough(x: Ref)
+  requires acc(x.g, 1/2)
+{
+  ternary(x, true)
+  //:: ExpectedOutput(call.precondition:insufficient.permission)
+  ternary(x, false)
+}
+
+method letRd(x: Ref)
+  requires let y == (x) in acc(y.g, rd)
+  ensures let y == (x) in acc(y.g, rd)
+
+method letClient(x: Ref)
+  requires acc(x.g, 1/2)
+  ensures acc(x.g, 1/2)
+{
+  letRd(x)
+}

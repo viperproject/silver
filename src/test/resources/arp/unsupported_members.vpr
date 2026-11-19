@@ -1,0 +1,33 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// rd can only be used in methods.
+
+field f: Int
+
+function funPre(x: Ref): Int
+  //:: ExpectedOutput(consistency.error)
+  requires acc(x.f, rd)
+{
+  x.f
+}
+
+function funBody(): Perm
+{
+  //:: ExpectedOutput(consistency.error)
+  rd
+}
+
+predicate P(x: Ref) {
+  //:: ExpectedOutput(consistency.error)
+  acc(x.f, rd)
+}
+
+domain D {
+  function d(): Perm
+
+  axiom {
+    //:: ExpectedOutput(consistency.error)
+    d() == rd
+  }
+}

@@ -1,0 +1,49 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+field g: Int
+
+method foo(s: Seq[Ref], a: Ref, b: Ref)
+  requires b != null && a in s && b in s
+  requires !(null in s)
+  requires acc(a.g) && (forall x: Ref :: x in s ==> acc(x.f, rd))
+  ensures (forall x: Ref :: x in s ==> acc(x.f, rd)) && acc(a.g)
+  ensures a.g == a.f + b.f
+{
+  a.g := a.f + b.f
+}
+
+method bar(s: Seq[Ref], a: Ref, b: Ref)
+  requires b != null && a in s && b in s
+  requires !(null in s)
+  requires acc(a.g) && (forall x: Ref :: x in s ==> acc(x.f, 1/2))
+  ensures acc(a.g) && (forall x: Ref :: x in s ==> acc(x.f, 1/2))
+{
+  a.g := 6
+  inhale a.f == 5
+  inhale b.f == 6
+  foo(s, a, b)
+  assert a.g == 11
+}
+
+method barNotEnough(s: Seq[Ref], a: Ref, b: Ref)
+  requires b != null && a in s && b in s
+  requires !(null in s)
+  requires acc(a.g) && (forall x: Ref :: x in s && x != b ==> acc(x.f, 1/2))
+{
+  //:: ExpectedOutput(call.precondition:insufficient.permission)
+  foo(s, a, b)
+}
+
+method loop(s: Seq[Ref])
+  requires forall x: Ref :: x in s ==> acc(x.f, 1/2)
+  ensures forall x: Ref :: x in s ==> acc(x.f, 1/2)
+{
+  var i: Int := 0
+  while (i < |s|)
+    invariant forall x: Ref :: x in s ==> acc(x.f, rd)
+  {
+    i := i + 1
+  }
+}

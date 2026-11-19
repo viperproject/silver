@@ -253,7 +253,11 @@ object Simplifier {
 
     val simplifyAndCache = new PartialFunction[Node, Node] {
       def apply(n: Node): Node = {
-        val simplified = simplifySingle.applyOrElse(n, (nn: Node) => nn)
+        val rewritten = simplifySingle.applyOrElse(n, (nn: Node) => nn)
+        /* A rule may build new nodes around the already simplified children (e.g. `!c` for
+         * `c ? false : e`), which the bottom-up traversal does not visit; simplify them too.
+         * The children are cached, so this only visits the new nodes. */
+        val simplified = if (rewritten eq n) rewritten else simplify(rewritten, assumeWelldefinedness)
         n match {
           case e: Exp =>
             e.simplified = Some(simplified.asInstanceOf[Exp])
