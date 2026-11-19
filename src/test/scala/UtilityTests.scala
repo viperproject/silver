@@ -7,7 +7,7 @@
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 import viper.silver.ast._
-import viper.silver.ast.utility.ImpureAssumeRewriter
+import viper.silver.ast.utility.{Expressions, ImpureAssumeRewriter}
 
 
 class UtilityTests extends AnyFunSuite with Matchers {
@@ -31,6 +31,29 @@ class UtilityTests extends AnyFunSuite with Matchers {
     //assert(rewritten == rewritten)
     // assert(rewritten == TrueLit()())
   }
+
+  test("Lets are inlined starting with the innermost lets") {
+    val q = Function("q", Seq(LocalVarDecl("n", Int)()), Int, Seq(), Seq(), None)()
+    val r = Function("r", Seq(LocalVarDecl("n", Int)()), Int, Seq(), Seq(), None)()
+    val i = LocalVar("i", Int)()
+    val x = LocalVar("x", Int)()
+
+    // let x == q(i) in (let x == r(x) in r(x)), where the inner let shadows the outer one
+    val shadowing = Let(LocalVarDecl("x", Int)(), FuncApp(q, Seq(i))(),
+      Let(LocalVarDecl("x", Int)(), FuncApp(r, Seq(x))(), FuncApp(r, Seq(x))())())()
+    Expressions.inlineLets(shadowing) shouldBe FuncApp(r, Seq(FuncApp(r, Seq(FuncApp(q, Seq(i))()))()))()
+
+    // let x == q(i) in (forall i: Int :: x == i), where the quantified variable must be renamed
+    val capturing = Let(LocalVarDecl("x", Int)(), FuncApp(q, Seq(i))(),
+      Forall(Seq(LocalVarDecl("i", Int)()), Seq(), EqCmp(x, i)())())()
+    Expressions.inlineLets(capturing) match {
+      case Forall(Seq(v), Seq(), EqCmp(FuncApp("q", Seq(`i`)), LocalVar(name, Int))) =>
+        v.name should not be "i"
+        name shouldBe v.name
+      case other => fail(s"Unexpected result $other")
+    }
+  }
+
   /*
   test("Substitution (simple)"){ // forall x. f(x) >= f(y) && exists y. f(y) >
     val xPlusy : Exp = Add(LocalVar("x"),LocalVar("y"))(NoPosition, NoInfo, NoTrafos)
