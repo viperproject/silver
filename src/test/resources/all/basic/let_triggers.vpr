@@ -1,9 +1,10 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-// A let is a valid trigger if its body, with the let-bound variable replaced
-// by its value, is a valid trigger. See let_triggers_invalid.vpr for lets that
-// are not valid triggers.
+// A let is a valid trigger if it contains nothing that is forbidden in
+// triggers and is, with its lets inlined, a possible trigger such as a
+// function application. See let_triggers_invalid.vpr for lets that are not
+// valid triggers.
 
 function q(n: Int): Int
 function s(a: Int, b: Int): Bool
@@ -12,9 +13,10 @@ function t(i: Int): Bool
 domain D {
   function d(i: Int): Int
   function e(i: Int): Bool
+  function p(i: Int): Bool
 
   axiom {
-    forall i: Int :: { let x == (d(i)) in e(x) } e(d(i)) == (i > 0)
+    forall i: Int :: { let x == (d(i)) in e(x) } e(d(i)) == (i > 0) && p(i)
   }
 }
 
@@ -73,4 +75,25 @@ method letTriggerInDomainAxiom()
 {
   assert e(d(5))
   assert !e(d(-5))
+  assert p(5)
+
+  // The trigger is restrictive: there is no term e(d(3)).
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert p(3)
+}
+
+field f: Int
+
+function g(r: Ref, i: Int): Int
+  requires acc(r.f)
+
+function h(r: Ref): Bool
+  requires acc(r.f)
+  ensures forall i: Int :: { let x == (i) in g(r, x) } g(r, i) > r.f
+
+method letTriggerInFunctionPostcondition(r: Ref)
+  requires acc(r.f)
+{
+  var b: Bool := h(r)
+  assert g(r, 3) > r.f
 }

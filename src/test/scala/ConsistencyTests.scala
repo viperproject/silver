@@ -294,6 +294,16 @@ class ConsistencyTests extends AnyFunSuite with Matchers {
     val shadowing = Let(LocalVarDecl("x", Int)(), FuncApp(q, Seq(i))(),
       Let(LocalVarDecl("x", Int)(), FuncApp(r, Seq(x))(), FuncApp(r, Seq(x))())())()
     Expressions.inlineLets(shadowing) shouldBe FuncApp(r, Seq(FuncApp(r, Seq(FuncApp(q, Seq(i))()))()))()
+
+    // let x == q(i) in (forall i: Int :: x == i), where the quantified variable must be renamed
+    val capturing = Let(LocalVarDecl("x", Int)(), FuncApp(q, Seq(i))(),
+      Forall(Seq(LocalVarDecl("i", Int)()), Seq(), EqCmp(x, i)())())()
+    Expressions.inlineLets(capturing) match {
+      case Forall(Seq(v), Seq(), EqCmp(FuncApp("q", Seq(`i`)), LocalVar(name, Int))) =>
+        v.name should not be "i"
+        name shouldBe v.name
+      case other => fail(s"Unexpected result $other")
+    }
   }
 
   test("A let is a valid trigger if it is a possible trigger with its lets inlined") {
