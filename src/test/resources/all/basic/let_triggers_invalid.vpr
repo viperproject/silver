@@ -24,6 +24,11 @@ method letBodyIsVariableNotATrigger()
   requires forall i: Int :: { let x == (i) in x } s(i, i)
 {}
 
+method letBodyIsOld()
+  //:: ExpectedOutput(typechecker.error)
+  requires forall i: Int :: { let x == (q(i)) in old(s(x, x)) } s(q(i), q(i))
+{}
+
 method letUnusedValueForbiddenInTrigger()
   //:: ExpectedOutput(typechecker.error)
   requires forall i: Int :: { let x == (i + 1) in s(i, i) } s(i, i)
