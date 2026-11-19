@@ -1,0 +1,24 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// A let is not a valid trigger if its body, with the let-bound variable
+// replaced by its value, is not a valid trigger. See let_triggers.vpr for lets
+// that are valid triggers.
+
+function q(n: Int): Int
+function s(a: Int, b: Int): Bool
+
+method letValueForbiddenInTrigger()
+  //:: ExpectedOutput(typechecker.error)
+  requires forall i: Int :: { let x == (i + 1) in s(x, x) } s(i + 1, i + 1)
+{}
+
+method letBodyNotATrigger()
+  //:: ExpectedOutput(typechecker.error)
+  requires forall i: Int :: { let x == (q(i)) in x + 1 } q(i) + 1 > 0
+{}
+
+method letBodyIsVariableNotATrigger()
+  //:: ExpectedOutput(typechecker.error)
+  requires forall i: Int :: { let x == (i) in x } s(i, i)
+{}

@@ -269,6 +269,9 @@ object Consistency {
     e match {
       case Old(nested) => validTrigger(nested, program) // case corresponds to OldTrigger node
       case LabelledOld(nested, _) => validTrigger(nested, program)
+      // A let is a valid trigger if its body, with the let-bound variable replaced by its value, is one
+      case Let(variable, exp, body) =>
+        validTrigger(Expressions.instantiateVariables(body, Seq(variable.localVar), Seq(exp)), program)
       case ee: ExtensionExp => ee.extensionIsValidTrigger()
       case wand: MagicWand => wand.subexpressionsToEvaluate(program).forall(e => !e.exists(Expressions.isForbiddenInTrigger))
       case _ : PossibleTrigger | _: FieldAccess | _: PredicateAccess => !e.exists(Expressions.isForbiddenInTrigger)
