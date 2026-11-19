@@ -6,6 +6,7 @@
 
 import viper.silver.verifier.ConsistencyError
 import viper.silver.ast._
+import viper.silver.ast.utility.{Consistency, Expressions}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.funsuite.AnyFunSuite
 
@@ -281,6 +282,31 @@ class ConsistencyTests extends AnyFunSuite with Matchers {
     forallNoVarTrigger.checkTransitively shouldBe Seq(
       ConsistencyError("Trigger expression f(0) does not contain any quantified variable.", NoPosition)
     )
+  }
+
+  test("Lets are inlined starting with the innermost lets") {
+    val q = Function("q", Seq(LocalVarDecl("n", Int)()), Int, Seq(), Seq(), None)()
+    val r = Function("r", Seq(LocalVarDecl("n", Int)()), Int, Seq(), Seq(), None)()
+    val i = LocalVar("i", Int)()
+    val x = LocalVar("x", Int)()
+
+    // let x == q(i) in (let x == r(x) in r(x)), where the inner let shadows the outer one
+    val shadowing = Let(LocalVarDecl("x", Int)(), FuncApp(q, Seq(i))(),
+      Let(LocalVarDecl("x", Int)(), FuncApp(r, Seq(x))(), FuncApp(r, Seq(x))())())()
+    Expressions.inlineLets(shadowing) shouldBe FuncApp(r, Seq(FuncApp(r, Seq(FuncApp(q, Seq(i))()))()))()
+  }
+
+  test("A let is a valid trigger if it is a possible trigger with its lets inlined") {
+    val q = Function("q", Seq(LocalVarDecl("n", Int)()), Int, Seq(), Seq(), None)()
+    val program = Program(Seq(), Seq(), Seq(q), Seq(), Seq(), Seq())()
+    val i = LocalVar("i", Int)()
+    val x = LocalVar("x", Int)()
+
+    // let x == q(i) in x
+    Consistency.validTrigger(Let(LocalVarDecl("x", Int)(), FuncApp(q, Seq(i))(), x)(), program) shouldBe true
+    // let x == q(i) in (let x == i in x), which is i with its lets inlined
+    val shadowing = Let(LocalVarDecl("x", Int)(), FuncApp(q, Seq(i))(), Let(LocalVarDecl("x", Int)(), i, x)())()
+    Consistency.validTrigger(shadowing, program) shouldBe false
   }
 
   test("Domain types and backend types refer only to existing domains and are used correctly.") {

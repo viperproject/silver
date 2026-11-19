@@ -253,6 +253,13 @@ object Expressions {
     Sanitizer.replaceFreeVariablesInExpression(exp, variables.map(_.localVar.name).zip(values).toMap, scope)
   }
 
+  /** Replaces each let expression `let x == e0 in e1` in `e` by `e1` with `x` replaced by `e0`,
+    * starting with the innermost lets.
+    */
+  def inlineLets(e: Exp): Exp = e.transform({
+    case Let(variable, exp, body) => instantiateVariables(body, Seq(variable.localVar), Seq(exp))
+  }, Traverse.BottomUp)
+
   def subExps(e: Exp) = e.subnodes collect {
     case e: Exp => e
   }

@@ -59,6 +59,16 @@ method letInTriggerSet()
   assert t(3)
 }
 
+method oldOfLetTrigger()
+{
+  inhale forall i: Int :: { old(let x == (q(i)) in s(x, x)) } old(s(q(i), q(i))) && t(i)
+  assert old(s(q(5), q(5)))
+  assert t(5)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(3)
+}
+
 method letTriggerInDomainAxiom()
 {
   assert e(d(5))

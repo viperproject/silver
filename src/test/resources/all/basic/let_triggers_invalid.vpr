@@ -22,3 +22,21 @@ method letBodyIsVariableNotATrigger()
   //:: ExpectedOutput(typechecker.error)
   requires forall i: Int :: { let x == (i) in x } s(i, i)
 {}
+
+method letUnusedValueForbiddenInTrigger()
+  //:: ExpectedOutput(typechecker.error)
+  requires forall i: Int :: { let x == (i + 1) in s(i, i) } s(i, i)
+{}
+
+field f: Int
+field g: Int
+
+method letBodyIsFieldAccess(xs: Set[Ref])
+  //:: ExpectedOutput(typechecker.error)
+  requires forall r: Ref :: { let y == (r) in y.f } r in xs ==> acc(r.f)
+{}
+
+method letBodyIsWand(xs: Set[Ref])
+  //:: ExpectedOutput(typechecker.error)
+  requires forall r: Ref :: { let y == (r) in (acc(y.f) --* acc(y.g)) } r in xs ==> (acc(r.f) --* acc(r.g))
+{}
