@@ -255,12 +255,12 @@ object Expressions {
 
   /** Replaces each let expression `let x == e0 in e1` in `e` by `e1` with `x` replaced by `e0`,
     * starting with the innermost lets. Quantified variables in `e1` are renamed if they clash with
-    * free variables of `e0`. Note that `e0` is also substituted into `old` expressions in `e1`,
-    * where it is then evaluated in the old state.
+    * free variables of `e0`. Quantifiers in `e1` must not bind `x`. Note that `e0` is also substituted
+    * into `old` expressions in `e1`, where it is then evaluated in the old state.
     */
   def inlineLets(e: Exp): Exp = e.transform({
     case Let(variable, exp, body) =>
-      val scope = freeVariables(exp).map(_.name) - variable.name
+      val scope = (freeVariables(exp) ++ freeVariables(body)).map(_.name) - variable.name
       instantiateVariables(body, Seq(variable), Seq(exp), scope)
   }, Traverse.BottomUp)
 
