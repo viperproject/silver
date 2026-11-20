@@ -275,8 +275,9 @@ object Expressions {
     */
   def topLevelModuloLets(e: Exp): Exp = new ModuloLets().top(e, Map.empty)
 
-  /** See [[equalModuloLets]] and [[topLevelModuloLets]]. Environments map the names of bound variables to their bindings: a let-bound
-    * variable to a [[LetBinding]] and a quantified variable to an object that represents its binding. A state is
+  /** See [[equalModuloLets]] and [[topLevelModuloLets]]. Environments map the names of bound variables to their
+    * bindings: a let-bound variable to a [[LetBinding]] and a quantified variable to an object that represents its
+    * binding (the same object on both sides for the variables of two compared quantifiers). A state is
     * `None` for the current state, `Some(None)` for the state of `old` and `Some(Some(label))` for the state of
     * `old[label]`.
     */

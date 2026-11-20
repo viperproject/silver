@@ -268,9 +268,10 @@ object QuantifiedPermissions {
             val forallWithoutLet = Forall(vars, triggers, bod)(source.pos, source.info)
             // desugar the let-body
             val desugaredWithoutLet = doDesugarSourceQuantifiedPermissionSyntax(forallWithoutLet)
-            // Replaces v by e, except in lets that bind a variable with the same name (e.g. in a trigger that is a let)
+            // Replaces v by e, except in the bodies of lets that bind a variable with the same name. Such a let can
+            // occur in a trigger, which is in a different scope than the body of the quantifier.
             def replaceFree[N <: Node](n: N): N = n.transform({
-              case l: Let if l.variable.name == v.name => Let(l.variable, replaceFree(l.exp), l.body)(l.pos, l.info, l.errT)
+              case l: Let if l.variable.name == v.name => l.copy(exp = replaceFree(l.exp))(l.pos, l.info, l.errT)
               case lv: LocalVar if lv == v.localVar => e
             })
             desugaredWithoutLet.map{

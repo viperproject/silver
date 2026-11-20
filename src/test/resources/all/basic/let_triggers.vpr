@@ -2,8 +2,8 @@
 // http://creativecommons.org/publicdomain/zero/1.0/
 
 // A let is a valid trigger if it contains nothing that is forbidden in
-// triggers and is, with its lets inlined, a possible trigger such as a
-// function application. See let_triggers_invalid.vpr for lets that are not
+// triggers and its top-level expression modulo lets is a possible trigger such
+// as a function application. See let_triggers_invalid.vpr for lets that are not
 // valid triggers.
 
 function q(n: Int): Int

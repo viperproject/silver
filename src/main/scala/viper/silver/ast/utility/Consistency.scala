@@ -274,7 +274,9 @@ object Consistency {
       // and the collectors of quantified resources treat such triggers specially and only look at their top-level node.
       case l: Let =>
         val top = Expressions.topLevelModuloLets(l)
-        // As for a trigger without a let, the top-level expression itself is checked by its case below
+        // The top-level expression is checked by validTrigger as for a trigger without a let (an extension
+        // expression is only checked with extensionIsValidTrigger), and everything else in the let must not be
+        // forbidden in triggers.
         !l.exists(sub => !(sub eq top) && Expressions.isForbiddenInTrigger(sub)) && (top match {
           case _: PossibleTrigger | _: ExtensionExp => validTrigger(top, program)
           case _ => false

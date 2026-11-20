@@ -32,7 +32,7 @@ class UtilityTests extends AnyFunSuite with Matchers {
     // assert(rewritten == TrueLit()())
   }
 
-  test("Expressions are compared modulo lets") {
+  test("Expressions are compared and resolved modulo lets") {
     val q = Function("q", Seq(LocalVarDecl("n", Int)()), Int, Seq(), Seq(), None)()
     val f = Function("f", Seq(LocalVarDecl("a", Int)(), LocalVarDecl("b", Int)()), Int, Seq(), Seq(), None)()
     val i = LocalVar("i", Int)()
@@ -71,6 +71,7 @@ class UtilityTests extends AnyFunSuite with Matchers {
     val xs = (0 to n).map(k => LocalVar(s"x$k", Int)())
     def chain(x0: Exp) = let(xs(0), x0, (1 to n).foldRight(xs(n): Exp)((k, body) =>
       let(xs(k), fapp(xs(k - 1), xs(k - 1)), body)))
+    // q(i) is created again, so that the two chains share no subexpressions
     Expressions.equalModuloLets(chain(qi), chain(FuncApp(q, Seq(i))())) shouldBe true
     Expressions.equalModuloLets(chain(qi), chain(FuncApp(q, Seq(j))())) shouldBe false
 
@@ -78,7 +79,7 @@ class UtilityTests extends AnyFunSuite with Matchers {
     // ... in x40 and let y1 == f(q(i), q(i)) in let y3 == f(f(y1, y1), f(y1, y1)) in ... in f(y39, y39)
     def twice(e: Exp) = fapp(fapp(e, e), fapp(e, e))
     val evens = (2 to n by 2).foldRight(xs(n): Exp)((k, body) => let(xs(k), twice(xs(k - 2)), body))
-    val ys = (0 to n).map(k => LocalVar(s"y$k", Int)())
+    val ys = (0 to n).map(k => LocalVar(s"y$k", Int)()) // only the odd ones are used
     val odds = (3 to n - 1 by 2).foldRight(fapp(ys(n - 1), ys(n - 1)): Exp)((k, body) => let(ys(k), twice(ys(k - 2)), body))
     Expressions.equalModuloLets(let(xs(0), qi, evens), let(ys(1), fapp(qi, qi), odds)) shouldBe true
   }
