@@ -625,12 +625,18 @@ trait PExp extends PNode with PDefineBody {
   def typeSubstitutions: scala.collection.Seq[PTypeSubstitution]
   /** Rule out e.g. `Impure && Impure` if `Bool && Bool` is an option (since `Bool <: Impure`). */
   def typeSubsDistinct: scala.collection.Seq[PTypeSubstitution] = {
-    val all = typeSubstitutions.distinct.zipWithIndex
-    all.filter { case (sub, i) => all.forall {
-      case (sup, j) => i == j || !sub.m.forall {
-        case (name, t) => sup.m.contains(name) && isSubtype(sup.m(name), t)
-      }
-    }} map (_._1)
+    val substitutions = typeSubstitutions
+    // Fewer than two substitutions have no duplicates to remove. `toList` copies them, because
+    // `typeSubstitutions` may be a mutable buffer.
+    if (substitutions.sizeIs <= 1) substitutions.toList
+    else {
+      val all = substitutions.distinct.zipWithIndex
+      all.filter { case (sub, i) => all.forall {
+        case (sup, j) => i == j || !sub.m.forall {
+          case (name, t) => sup.m.contains(name) && isSubtype(sup.m(name), t)
+        }
+      }} map (_._1)
+    }
   }
 
   def forceSubstitution(ts: PTypeSubstitution): Unit
@@ -670,6 +676,9 @@ case class PTypeSubstitutionInternal(m: PTypeSubstitution, added: PTypeSubstitut
   def get(key: String): Option[PType] = added.get(key).orElse(m.get(key))
 
   def compose(other: PTypeSubstitution): Either[(PType, PType), PTypeSubstitutionInternal] = {
+    // Composing with an empty substitution changes nothing
+    if (other.m.isEmpty) return Right(this)
+
     val sharedKeys = this.m.keySet.intersect(other.keySet)
     if (sharedKeys.exists(p => this.m.get(p).get != other.get(p).get)) {
       /* no composed substitution if input substitutions do not match */
