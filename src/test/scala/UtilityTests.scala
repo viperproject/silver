@@ -57,6 +57,9 @@ class UtilityTests extends AnyFunSuite with Matchers {
     Expressions.equalModuloLets(let(x, rf, Old(fapp(x, x))()), Old(fapp(rf, rf))()) shouldBe false
     Expressions.equalModuloLets(let(x, rf, Old(fapp(x, x))()), let(y, rf, Old(fapp(y, y))())) shouldBe true
     Expressions.equalModuloLets(Old(let(x, rf, fapp(x, x)))(), Old(fapp(rf, rf))()) shouldBe true
+    // A let-bound variable is compared to a quantified variable by its value
+    Expressions.equalModuloLets(forall(j, let(y, j, fapp(y, y))), forall(j, fapp(j, j))) shouldBe true
+    Expressions.equalModuloLets(forall(j, fapp(j, j)), forall(j, let(y, j, fapp(y, y)))) shouldBe true
     // let x == q(i) in (let x == x in x), where the inner let shadows the outer one
     Expressions.equalModuloLets(let(x, qi, let(x, x, x)), qi) shouldBe true
 

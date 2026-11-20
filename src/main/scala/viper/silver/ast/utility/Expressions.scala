@@ -258,7 +258,8 @@ object Expressions {
     * constructing the expressions with inlined lets. Quantified variables are compared by their binding, i.e.
     * up to renaming. A let-bound variable that is used in an `old` expression but bound outside of it is only
     * equal to a let-bound variable that is bound in the same state to an equal value, since its value is not
-    * evaluated in the old state.
+    * evaluated in the old state. Other expressions that change the state, such as `applying`, are not taken
+    * into account.
     *
     * Two let-bound variables are compared by comparing their values once. Hence, the comparison takes time
     * polynomial in the sizes of `e1` and `e2`, even if inlining their lets makes them exponentially larger,
@@ -303,6 +304,8 @@ object Expressions {
       case (v1: LocalVar, v2: LocalVar) if env1.contains(v1.name) && env2.contains(v2.name) =>
         (env1(v1.name), env2(v2.name)) match {
           case (b1: LetBinding, b2: LetBinding) => b1.state == b2.state && equalValues(b1, b2)
+          case (b1: LetBinding, _) => b1.state == state && equal(b1.exp, b1.env, e2, env2, state)
+          case (_, b2: LetBinding) => b2.state == state && equal(e1, env1, b2.exp, b2.env, state)
           case (binding1, binding2) => binding1 eq binding2
         }
       case (v1: LocalVar, _) if env1.contains(v1.name) => env1(v1.name) match {
@@ -317,12 +320,12 @@ object Expressions {
           if q1.getClass == q2.getClass && q1.variables.map(_.typ) == q2.variables.map(_.typ) =>
         val bindings = q1.variables.map(_ => new AnyRef)
         // The first element of a quantifier is the sequence of its variables
-        equalElements(q1.productIterator.drop(1).toSeq, env1 ++ q1.variables.map(_.name).zip(bindings),
-                      q2.productIterator.drop(1).toSeq, env2 ++ q2.variables.map(_.name).zip(bindings), state)
+        equalElements(q1, env1 ++ q1.variables.map(_.name).zip(bindings),
+                      q2, env2 ++ q2.variables.map(_.name).zip(bindings), state, from = 1)
       case (Old(o1), Old(o2)) => equal(o1, env1, o2, env2, Some(None))
       case (LabelledOld(o1, l1), LabelledOld(o2, l2)) => l1 == l2 && equal(o1, env1, o2, env2, Some(Some(l1)))
-      case _ =>
-        e1.getClass == e2.getClass && equalElements(e1.productIterator.toSeq, env1, e2.productIterator.toSeq, env2, state)
+      case (DebugLabelledOld(o1, l1), DebugLabelledOld(o2, l2)) => l1 == l2 && equal(o1, env1, o2, env2, Some(Some(l1)))
+      case _ => e1.getClass == e2.getClass && equalElements(e1, env1, e2, env2, state)
     }
 
     private def equalValues(b1: LetBinding, b2: LetBinding): Boolean = equalBindings.get((b1, b2)) match {
@@ -333,15 +336,18 @@ object Expressions {
         result
     }
 
-    private def equalElements(as: Seq[Any], env1: Env, bs: Seq[Any], env2: Env, state: State): Boolean =
-      as.size == bs.size && as.zip(bs).forall {
-        case (a: Exp, b: Exp) => equal(a, env1, b, env2, state)
-        case (a: Seq[_], b: Seq[_]) => equalElements(a, env1, b, env2, state)
-        case (a: Option[_], b: Option[_]) => equalElements(a.toSeq, env1, b.toSeq, env2, state)
-        case (a: Node with Product, b: Node with Product) =>
-          a.getClass == b.getClass && equalElements(a.productIterator.toSeq, env1, b.productIterator.toSeq, env2, state)
-        case (a, b) => a == b
-      }
+    /** Compares the elements of `p1` and `p2`, starting with the element at index `from`. */
+    private def equalElements(p1: Product, env1: Env, p2: Product, env2: Env, state: State, from: Int = 0): Boolean =
+      p1.productArity == p2.productArity &&
+        (from until p1.productArity).forall(k => equalElement(p1.productElement(k), env1, p2.productElement(k), env2, state))
+
+    private def equalElement(a: Any, env1: Env, b: Any, env2: Env, state: State): Boolean = (a, b) match {
+      case (a: Exp, b: Exp) => equal(a, env1, b, env2, state)
+      case (as: Seq[_], bs: Seq[_]) => as.size == bs.size && as.lazyZip(bs).forall(equalElement(_, env1, _, env2, state))
+      case (Some(a), Some(b)) => equalElement(a, env1, b, env2, state)
+      case (a: Node with Product, b: Node with Product) => a.getClass == b.getClass && equalElements(a, env1, b, env2, state)
+      case (a, b) => a == b
+    }
   }
 
   def subExps(e: Exp) = e.subnodes collect {
