@@ -363,6 +363,9 @@ case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val in
 
 /** A predicate declaration. */
 case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], body: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Location {
+  // Cached, because the hash covers the whole body
+  override lazy val hashCode: Int = scala.runtime.ScalaRunTime._hashCode(this)
+
   override lazy val check : Seq[ConsistencyError] =
     (if (body.isDefined) Consistency.checkNonPostContract(body.get) ++ Consistency.checkWildcardUsage(body.get, false) else Seq()) ++
     (if (body.isDefined && !Consistency.noOld(body.get))
@@ -401,6 +404,9 @@ case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], body: Option[E
 case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], body: Option[Seqn])
                  (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
     extends Member with Callable with Contracted {
+
+  // Cached, because the hash covers the whole body
+  override lazy val hashCode: Int = scala.runtime.ScalaRunTime._hashCode(this)
 
   /* TODO: Should not have to be a lazy val, see also the comment for method
    *       translateMemberSignature in file parser/Translator.scala
@@ -457,6 +463,9 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
 
 /** A function declaration */
 case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres: Seq[Exp], posts: Seq[Exp], body: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Member with FuncLike with Contracted {
+  // Cached, because the hash covers the whole body
+  override lazy val hashCode: Int = scala.runtime.ScalaRunTime._hashCode(this)
+
   override lazy val check : Seq[ConsistencyError] =
     posts.flatMap(p=>{ if(!Consistency.noOld(p))
       Seq(ConsistencyError("Function post-conditions must not have old expressions.", p.pos)) else Seq()}) ++
