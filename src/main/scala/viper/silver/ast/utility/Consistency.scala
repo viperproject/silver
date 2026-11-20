@@ -269,11 +269,11 @@ object Consistency {
     e match {
       case Old(nested) => validTrigger(nested, program) // case corresponds to OldTrigger node
       case LabelledOld(nested, _) => validTrigger(nested, program)
-      // A let whose inlined form is a field or predicate access, a wand or an old expression is not a valid trigger,
-      // since backends (e.g. Silicon's quantified permission triggers) and the collectors of quantified resources
-      // treat such triggers specially and only look at the top-level node of a trigger.
+      // A let is a valid trigger if it is a possible trigger modulo lets. A let that is a field or predicate access,
+      // a wand or an old expression modulo lets is not, since backends (e.g. Silicon's quantified permission triggers)
+      // and the collectors of quantified resources treat such triggers specially and only look at their top-level node.
       case l: Let =>
-        !l.exists(Expressions.isForbiddenInTrigger) && (Expressions.inlineLets(l) match {
+        !l.exists(Expressions.isForbiddenInTrigger) && (Expressions.topLevelModuloLets(l) match {
           case _: PossibleTrigger => true
           case ee: ExtensionExp => ee.extensionIsValidTrigger()
           case _ => false

@@ -284,7 +284,7 @@ class ConsistencyTests extends AnyFunSuite with Matchers {
     )
   }
 
-  test("A let is a valid trigger if it is a possible trigger with its lets inlined") {
+  test("A let is a valid trigger if it is a possible trigger modulo lets") {
     val q = Function("q", Seq(LocalVarDecl("n", Int)()), Int, Seq(), Seq(), None)()
     val program = Program(Seq(), Seq(), Seq(q), Seq(), Seq(), Seq())()
     val i = LocalVar("i", Int)()
@@ -292,7 +292,7 @@ class ConsistencyTests extends AnyFunSuite with Matchers {
 
     // let x == q(i) in x
     Consistency.validTrigger(Let(LocalVarDecl("x", Int)(), FuncApp(q, Seq(i))(), x)(), program) shouldBe true
-    // let x == q(i) in (let x == i in x), which is i with its lets inlined
+    // let x == q(i) in (let x == i in x), which is i modulo lets
     val shadowing = Let(LocalVarDecl("x", Int)(), FuncApp(q, Seq(i))(), Let(LocalVarDecl("x", Int)(), i, x)())()
     Consistency.validTrigger(shadowing, program) shouldBe false
   }

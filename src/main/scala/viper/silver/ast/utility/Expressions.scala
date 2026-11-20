@@ -6,6 +6,7 @@
 
 package viper.silver.ast.utility
 
+import scala.collection.mutable
 import scala.reflect.ClassTag
 import viper.silver.ast._
 import viper.silver.ast.utility.rewriter.Traverse
@@ -253,18 +254,95 @@ object Expressions {
     Sanitizer.replaceFreeVariablesInExpression(exp, variables.map(_.localVar.name).zip(values).toMap, scope)
   }
 
-  /** Replaces each let expression `let x == e0 in e1` in `e` by `e1` with `x` replaced by `e0`,
-    * starting with the innermost lets. Quantified variables in `e1` are renamed to fresh names if they
-    * clash with free variables of `e0`, so that these are not captured. Quantifiers in `e1` must not
-    * bind `x`; otherwise, their bound occurrences of `x` are replaced as well (which the parser
-    * prevents by rejecting such duplicate names). Note that `e0` is also substituted into `old`
-    * expressions in `e1`, where it is then evaluated in the old state.
+  /** Returns true iff `e1` and `e2` are equal after replacing each let-bound variable by its value, without
+    * constructing the expressions with inlined lets. Quantified variables are compared by their binding, i.e.
+    * up to renaming. A let-bound variable that is used in an `old` expression but bound outside of it is only
+    * equal to a let-bound variable that is bound in the same state to an equal value, since its value is not
+    * evaluated in the old state.
+    *
+    * Two let-bound variables are compared by comparing their values once. Hence, the comparison takes time
+    * polynomial in the sizes of `e1` and `e2`, even if inlining their lets makes them exponentially larger,
+    * as, e.g., for `let x1 == (f(x0, x0)) in let x2 == (f(x1, x1)) in ...`.
     */
-  def inlineLets(e: Exp): Exp = e.transform({
-    case Let(variable, exp, body) =>
-      val scope = (freeVariables(exp) ++ freeVariables(body)).map(_.name) - variable.name
-      instantiateVariables(body, Seq(variable), Seq(exp), scope)
-  }, Traverse.BottomUp)
+  def equalModuloLets(e1: Exp, e2: Exp): Boolean =
+    new ModuloLets().equal(e1, Map.empty, e2, Map.empty, None)
+
+  /** Returns the expression at the top of `e` after resolving the lets around it and a let-bound variable at its
+    * top, e.g. `f(x)` for `let x == (q(i)) in f(x)` and `q(i)` for `let x == (q(i)) in x`. The subexpressions of the
+    * result may contain variables bound by the lets of `e`.
+    */
+  def topLevelModuloLets(e: Exp): Exp = new ModuloLets().top(e, Map.empty)
+
+  /** See [[equalModuloLets]] and [[topLevelModuloLets]]. Environments map the names of bound variables to their bindings: a let-bound
+    * variable to a [[LetBinding]] and a quantified variable to an object that represents its binding. A state is
+    * `None` for the current state, `Some(None)` for the state of `old` and `Some(Some(label))` for the state of
+    * `old[label]`.
+    */
+  private class ModuloLets {
+    private type Env = Map[String, AnyRef]
+    private type State = Option[Option[String]]
+
+    /** A variable bound to `exp`, which is evaluated with `env` in `state`. Compared by reference. */
+    private class LetBinding(val exp: Exp, val env: Env, val state: State)
+
+    private val equalBindings = mutable.HashMap.empty[(LetBinding, LetBinding), Boolean]
+
+    def top(e: Exp, env: Env): Exp = e match {
+      case Let(v, e0, body) => top(body, env + (v.name -> new LetBinding(e0, env, None)))
+      case v: LocalVar => env.get(v.name) match {
+        case Some(b: LetBinding) => top(b.exp, b.env)
+        case _ => v
+      }
+      case _ => e
+    }
+
+    def equal(e1: Exp, env1: Env, e2: Exp, env2: Env, state: State): Boolean = (e1, e2) match {
+      case _ if (e1 eq e2) && (env1 eq env2) => true
+      case (Let(v, e0, body), _) => equal(body, env1 + (v.name -> new LetBinding(e0, env1, state)), e2, env2, state)
+      case (_, Let(v, e0, body)) => equal(e1, env1, body, env2 + (v.name -> new LetBinding(e0, env2, state)), state)
+      case (v1: LocalVar, v2: LocalVar) if env1.contains(v1.name) && env2.contains(v2.name) =>
+        (env1(v1.name), env2(v2.name)) match {
+          case (b1: LetBinding, b2: LetBinding) => b1.state == b2.state && equalValues(b1, b2)
+          case (binding1, binding2) => binding1 eq binding2
+        }
+      case (v1: LocalVar, _) if env1.contains(v1.name) => env1(v1.name) match {
+        case b1: LetBinding if b1.state == state => equal(b1.exp, b1.env, e2, env2, state)
+        case _ => false
+      }
+      case (_, v2: LocalVar) if env2.contains(v2.name) => env2(v2.name) match {
+        case b2: LetBinding if b2.state == state => equal(e1, env1, b2.exp, b2.env, state)
+        case _ => false
+      }
+      case (q1: QuantifiedExp, q2: QuantifiedExp)
+          if q1.getClass == q2.getClass && q1.variables.map(_.typ) == q2.variables.map(_.typ) =>
+        val bindings = q1.variables.map(_ => new AnyRef)
+        // The first element of a quantifier is the sequence of its variables
+        equalElements(q1.productIterator.drop(1).toSeq, env1 ++ q1.variables.map(_.name).zip(bindings),
+                      q2.productIterator.drop(1).toSeq, env2 ++ q2.variables.map(_.name).zip(bindings), state)
+      case (Old(o1), Old(o2)) => equal(o1, env1, o2, env2, Some(None))
+      case (LabelledOld(o1, l1), LabelledOld(o2, l2)) => l1 == l2 && equal(o1, env1, o2, env2, Some(Some(l1)))
+      case _ =>
+        e1.getClass == e2.getClass && equalElements(e1.productIterator.toSeq, env1, e2.productIterator.toSeq, env2, state)
+    }
+
+    private def equalValues(b1: LetBinding, b2: LetBinding): Boolean = equalBindings.get((b1, b2)) match {
+      case Some(result) => result
+      case None =>
+        val result = equal(b1.exp, b1.env, b2.exp, b2.env, b1.state)
+        equalBindings.put((b1, b2), result)
+        result
+    }
+
+    private def equalElements(as: Seq[Any], env1: Env, bs: Seq[Any], env2: Env, state: State): Boolean =
+      as.size == bs.size && as.zip(bs).forall {
+        case (a: Exp, b: Exp) => equal(a, env1, b, env2, state)
+        case (a: Seq[_], b: Seq[_]) => equalElements(a, env1, b, env2, state)
+        case (a: Option[_], b: Option[_]) => equalElements(a.toSeq, env1, b.toSeq, env2, state)
+        case (a: Node with Product, b: Node with Product) =>
+          a.getClass == b.getClass && equalElements(a.productIterator.toSeq, env1, b.productIterator.toSeq, env2, state)
+        case (a, b) => a == b
+      }
+  }
 
   def subExps(e: Exp) = e.subnodes collect {
     case e: Exp => e
