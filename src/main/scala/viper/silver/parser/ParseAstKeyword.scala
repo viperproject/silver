@@ -59,7 +59,7 @@ class PDelimited[+T, +D](
   def headOption: Option[T] = first
   def head: T = first.get
   def tail: Seq[T] = inner.map(_._2)
-  def toSeq: Seq[T] = first.map(_ +: inner.map(_._2)).getOrElse(Nil)
+  lazy val toSeq: Seq[T] = first.map(_ +: inner.map(_._2)).getOrElse(Nil)
   def delimiters: Seq[D] = inner.map(_._1) ++ end.toSeq
   def length: Int = first.map(_ => 1 + inner.length).getOrElse(0)
   def isEmpty: Boolean = length == 0
