@@ -273,9 +273,10 @@ object Consistency {
       // a wand or an old expression modulo lets is not, since backends (e.g. Silicon's quantified permission triggers)
       // and the collectors of quantified resources treat such triggers specially and only look at their top-level node.
       case l: Let =>
-        !l.exists(Expressions.isForbiddenInTrigger) && (Expressions.topLevelModuloLets(l) match {
-          case _: PossibleTrigger => true
-          case ee: ExtensionExp => ee.extensionIsValidTrigger()
+        val top = Expressions.topLevelModuloLets(l)
+        // As for a trigger without a let, the top-level expression itself is checked by its case below
+        !l.exists(sub => !(sub eq top) && Expressions.isForbiddenInTrigger(sub)) && (top match {
+          case _: PossibleTrigger | _: ExtensionExp => validTrigger(top, program)
           case _ => false
         })
       case ee: ExtensionExp => ee.extensionIsValidTrigger()

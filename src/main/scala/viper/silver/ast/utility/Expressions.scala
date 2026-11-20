@@ -261,9 +261,10 @@ object Expressions {
     * evaluated in the old state. Other expressions that change the state, such as `applying`, are not taken
     * into account.
     *
-    * Two let-bound variables are compared by comparing their values once. Hence, the comparison takes time
-    * polynomial in the sizes of `e1` and `e2`, even if inlining their lets makes them exponentially larger,
-    * as, e.g., for `let x1 == (f(x0, x0)) in let x2 == (f(x1, x1)) in ...`.
+    * Each pair of subexpressions of `e1` and `e2` is compared at most once per pair of the environments of
+    * let-bound variables they are compared in. Hence, the comparison takes time polynomial in the sizes of `e1`
+    * and `e2`, even if inlining their lets makes them exponentially larger, as, e.g., for
+    * `let x1 == (f(x0, x0)) in let x2 == (f(x1, x1)) in ...`.
     */
   def equalModuloLets(e1: Exp, e2: Exp): Boolean =
     new ModuloLets().equal(e1, Map.empty, e2, Map.empty, None)
@@ -283,10 +284,20 @@ object Expressions {
     private type Env = Map[String, AnyRef]
     private type State = Option[Option[String]]
 
-    /** A variable bound to `exp`, which is evaluated with `env` in `state`. Compared by reference. */
+    /** A variable bound to `exp`, which is evaluated with `env` in `state`. */
     private class LetBinding(val exp: Exp, val env: Env, val state: State)
 
-    private val equalBindings = mutable.HashMap.empty[(LetBinding, LetBinding), Boolean]
+    /** The arguments of a call of `equal`, compared by reference, except for the state. */
+    private class Comparison(val e1: Exp, val env1: Env, val e2: Exp, val env2: Env, val state: State) {
+      override def equals(other: Any): Boolean = other match {
+        case c: Comparison => (e1 eq c.e1) && (env1 eq c.env1) && (e2 eq c.e2) && (env2 eq c.env2) && state == c.state
+        case _ => false
+      }
+      override def hashCode(): Int = (System.identityHashCode(e1), System.identityHashCode(env1),
+        System.identityHashCode(e2), System.identityHashCode(env2), state).hashCode()
+    }
+
+    private val results = mutable.HashMap.empty[Comparison, Boolean]
 
     def top(e: Exp, env: Env): Exp = e match {
       case Let(v, e0, body) => top(body, env + (v.name -> new LetBinding(e0, env, None)))
@@ -297,13 +308,24 @@ object Expressions {
       case _ => e
     }
 
-    def equal(e1: Exp, env1: Env, e2: Exp, env2: Env, state: State): Boolean = (e1, e2) match {
+    def equal(e1: Exp, env1: Env, e2: Exp, env2: Env, state: State): Boolean = {
+      val comparison = new Comparison(e1, env1, e2, env2, state)
+      results.get(comparison) match {
+        case Some(result) => result
+        case None =>
+          val result = compare(e1, env1, e2, env2, state)
+          results.put(comparison, result)
+          result
+      }
+    }
+
+    private def compare(e1: Exp, env1: Env, e2: Exp, env2: Env, state: State): Boolean = (e1, e2) match {
       case _ if (e1 eq e2) && (env1 eq env2) => true
       case (Let(v, e0, body), _) => equal(body, env1 + (v.name -> new LetBinding(e0, env1, state)), e2, env2, state)
       case (_, Let(v, e0, body)) => equal(e1, env1, body, env2 + (v.name -> new LetBinding(e0, env2, state)), state)
       case (v1: LocalVar, v2: LocalVar) if env1.contains(v1.name) && env2.contains(v2.name) =>
         (env1(v1.name), env2(v2.name)) match {
-          case (b1: LetBinding, b2: LetBinding) => b1.state == b2.state && equalValues(b1, b2)
+          case (b1: LetBinding, b2: LetBinding) => b1.state == b2.state && equal(b1.exp, b1.env, b2.exp, b2.env, b1.state)
           case (b1: LetBinding, _) => b1.state == state && equal(b1.exp, b1.env, e2, env2, state)
           case (_, b2: LetBinding) => b2.state == state && equal(e1, env1, b2.exp, b2.env, state)
           case (binding1, binding2) => binding1 eq binding2
@@ -326,14 +348,6 @@ object Expressions {
       case (LabelledOld(o1, l1), LabelledOld(o2, l2)) => l1 == l2 && equal(o1, env1, o2, env2, Some(Some(l1)))
       case (DebugLabelledOld(o1, l1), DebugLabelledOld(o2, l2)) => l1 == l2 && equal(o1, env1, o2, env2, Some(Some(l1)))
       case _ => e1.getClass == e2.getClass && equalElements(e1, env1, e2, env2, state)
-    }
-
-    private def equalValues(b1: LetBinding, b2: LetBinding): Boolean = equalBindings.get((b1, b2)) match {
-      case Some(result) => result
-      case None =>
-        val result = equal(b1.exp, b1.env, b2.exp, b2.env, b1.state)
-        equalBindings.put((b1, b2), result)
-        result
     }
 
     /** Compares the elements of `p1` and `p2`, starting with the element at index `from`. */
