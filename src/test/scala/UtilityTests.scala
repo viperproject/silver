@@ -53,7 +53,7 @@ class UtilityTests extends AnyFunSuite with Matchers {
     // Quantified variables are compared by their binding
     Expressions.equalModuloLets(forall(i, GtCmp(fapp(i, j), IntLit(0)())()), forall(y, GtCmp(fapp(y, j), IntLit(0)())())) shouldBe true
     Expressions.equalModuloLets(let(x, i, forall(i, GtCmp(fapp(x, i), IntLit(0)())())), forall(i, GtCmp(fapp(i, i), IntLit(0)())())) shouldBe false
-    // A let-bound variable used in an old expression is not replaced by its value there
+    // A let-bound variable used in an old expression but bound outside of it is not replaced by its value there
     Expressions.equalModuloLets(let(x, rf, Old(fapp(x, x))()), Old(fapp(rf, rf))()) shouldBe false
     Expressions.equalModuloLets(let(x, rf, Old(fapp(x, x))()), let(y, rf, Old(fapp(y, y))())) shouldBe true
     Expressions.equalModuloLets(Old(let(x, rf, fapp(x, x)))(), Old(fapp(rf, rf))()) shouldBe true
