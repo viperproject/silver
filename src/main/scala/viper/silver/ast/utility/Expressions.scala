@@ -308,7 +308,7 @@ object Expressions {
       case _ => e
     }
 
-    def equal(e1: Exp, env1: Env, e2: Exp, env2: Env, state: State): Boolean = {
+    def equal(e1: Exp, env1: Env, e2: Exp, env2: Env, state: State): Boolean = ((e1 eq e2) && (env1 eq env2)) || {
       val comparison = new Comparison(e1, env1, e2, env2, state)
       results.get(comparison) match {
         case Some(result) => result
@@ -320,7 +320,6 @@ object Expressions {
     }
 
     private def compare(e1: Exp, env1: Env, e2: Exp, env2: Env, state: State): Boolean = (e1, e2) match {
-      case _ if (e1 eq e2) && (env1 eq env2) => true
       case (Let(v, e0, body), _) => equal(body, env1 + (v.name -> new LetBinding(e0, env1, state)), e2, env2, state)
       case (_, Let(v, e0, body)) => equal(e1, env1, body, env2 + (v.name -> new LetBinding(e0, env2, state)), state)
       case (v1: LocalVar, v2: LocalVar) if env1.contains(v1.name) && env2.contains(v2.name) =>

@@ -122,3 +122,12 @@ method letTriggerInFunctionPostcondition(r: Ref)
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert t(4)
 }
+
+// The let in the trigger binds a variable with the same name as the let in the
+// body. Desugaring the let in the body of the quantified permission must not
+// replace the variable of the trigger's let.
+method letTriggerAndLetInQuantifiedPermission(refs: Seq[Ref])
+  requires forall a: Int, b: Int :: 0 <= a && a < b && b < |refs| ==> refs[a] != refs[b]
+  requires forall i: Int :: { let x == (q(i)) in s(x, x) }
+    0 <= i && i + 1 < |refs| ==> let x == (i + 1) in acc(refs[x].f)
+{}
