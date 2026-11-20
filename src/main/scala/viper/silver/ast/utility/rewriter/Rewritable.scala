@@ -19,6 +19,18 @@ trait HasExtraVars {
   def copyExtraVars(from: Any): Unit
 }
 
+object Rewritable {
+  private val mirror = reflection.runtimeMirror(reflection.getClass.getClassLoader)
+
+  /** The primary constructor of each class, cached because reflection is slow */
+  private val primaryConstructors = new ClassValue[reflection.MethodMirror] {
+    override def computeValue(cls: Class[_]): reflection.MethodMirror = {
+      val classSymbol = mirror.classSymbol(cls)
+      mirror.reflectClass(classSymbol).reflectConstructor(classSymbol.primaryConstructor.asMethod)
+    }
+  }
+}
+
 /**
   * Trait Rewritable provides an interface that specifies which methods are required for the rewriter to work with.
   * For classes that implement product (especially case classes) everything is already implemented here and one only has to extend this base class
@@ -36,12 +48,7 @@ trait Rewritable extends Product {
         this
       else {
         // Infer constructor from type
-        val mirror = reflection.runtimeMirror(reflection.getClass.getClassLoader)
-        val instanceMirror = mirror.reflect(this)
-        val classSymbol = instanceMirror.symbol
-        val classMirror = mirror.reflectClass(classSymbol)
-        val constructorSymbol = instanceMirror.symbol.primaryConstructor.asMethod
-        val constructorMirror = classMirror.reflectConstructor(constructorSymbol)
+        val constructorMirror = Rewritable.primaryConstructors.get(getClass)
 
         // Add additional arguments to constructor call, besides children
         val firstArgList = children
@@ -103,12 +110,7 @@ trait Rewritable extends Product {
       this
     else {
       // Infer constructor from type
-      val mirror = reflection.runtimeMirror(reflection.getClass.getClassLoader)
-      val instanceMirror = mirror.reflect(this)
-      val classSymbol = instanceMirror.symbol
-      val classMirror = mirror.reflectClass(classSymbol)
-      val constructorSymbol = instanceMirror.symbol.primaryConstructor.asMethod
-      val constructorMirror = classMirror.reflectConstructor(constructorSymbol)
+      val constructorMirror = Rewritable.primaryConstructors.get(getClass)
 
       val arguments = this match {
         case fa: FuncApp => this.children ++ Seq(pos, info, fa.typ, trafo)
