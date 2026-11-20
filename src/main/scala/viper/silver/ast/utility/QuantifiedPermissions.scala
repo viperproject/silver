@@ -268,11 +268,17 @@ object QuantifiedPermissions {
             val forallWithoutLet = Forall(vars, triggers, bod)(source.pos, source.info)
             // desugar the let-body
             val desugaredWithoutLet = doDesugarSourceQuantifiedPermissionSyntax(forallWithoutLet)
+            // Replaces v by e, except in the bodies of lets that bind a variable with the same name. Such a let can
+            // occur in a trigger, which is in a different scope than the body of the quantifier.
+            def replaceFree[N <: Node](n: N): N = n.transform({
+              case l: Let if l.variable.name == v.name => l.copy(exp = replaceFree(l.exp))(l.pos, l.info, l.errT)
+              case lv: LocalVar if lv == v.localVar => e
+            })
             desugaredWithoutLet.map{
               case SourceQuantifiedPermissionAssertion(iqp, Implies(icond, irhs)) if (!irhs.isPure) =>
                 // Since the rhs cannot be a let-binding, we expand the let-expression in it.
                 // However, we still use a let in the condition; this preserves well-definedness if v isn't used anywhere
-                attachMeta(Forall(iqp.variables, iqp.triggers.map(t => t.replace(v.localVar, e)), Implies(And(cond, Let(v, e, icond)(lt.pos, lt.info, lt.errT))(lt.pos, lt.info, lt.errT), irhs.replace(v.localVar, e))(iqp.pos, iqp.info, iqp.errT)), iqp.pos, iqp.info, iqp.errT)
+                attachMeta(Forall(iqp.variables, iqp.triggers.map(replaceFree), Implies(And(cond, Let(v, e, icond)(lt.pos, lt.info, lt.errT))(lt.pos, lt.info, lt.errT), irhs.replace(v.localVar, e))(iqp.pos, iqp.info, iqp.errT)), iqp.pos, iqp.info, iqp.errT)
               case iforall@Forall(ivars, itriggers, Implies(icond, ibod)) =>
                 // For all pure parts of the quantifier, we just re-wrap the body into a let.
                 attachMeta(Forall(ivars, itriggers, Implies(cond, Let(v, e, Implies(icond, ibod)(lt.pos, lt.info))(lt.pos, lt.info, lt.errT))(lt.pos, lt.info, lt.errT)), iforall.pos, iforall.info)

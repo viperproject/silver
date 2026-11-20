@@ -1,0 +1,58 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// A let is not a valid trigger if it contains something that is forbidden in
+// triggers, such as arithmetic, or if its top-level expression modulo lets is
+// not a possible trigger such as a function application. In particular, a let
+// whose top-level expression modulo lets is a field or predicate access, a
+// wand or an old expression is not a valid trigger (although these are valid
+// triggers without a let), since backends treat such triggers specially. See
+// let_triggers.vpr for lets that are valid triggers.
+
+function q(n: Int): Int
+function s(a: Int, b: Int): Bool
+
+method letValueForbiddenInTrigger()
+  //:: ExpectedOutput(typechecker.error)
+  requires forall i: Int :: { let x == (i + 1) in s(x, x) } s(i + 1, i + 1)
+{}
+
+method letBodyNotATrigger()
+  //:: ExpectedOutput(typechecker.error)
+  requires forall i: Int :: { let x == (q(i)) in x + 1 } q(i) + 1 > 0
+{}
+
+method letBodyIsVariableNotATrigger()
+  //:: ExpectedOutput(typechecker.error)
+  requires forall i: Int :: { let x == (i) in x } s(i, i)
+{}
+
+method letBodyIsOld()
+  //:: ExpectedOutput(typechecker.error)
+  requires forall i: Int :: { let x == (q(i)) in old(s(x, x)) } s(q(i), q(i))
+{}
+
+method letUnusedValueForbiddenInTrigger()
+  //:: ExpectedOutput(typechecker.error)
+  requires forall i: Int :: { let x == (i + 1) in s(i, i) } s(i, i)
+{}
+
+field f: Int
+field g: Int
+
+method letBodyIsFieldAccess(xs: Set[Ref])
+  //:: ExpectedOutput(typechecker.error)
+  requires forall r: Ref :: { let y == (r) in y.f } r in xs ==> acc(r.f)
+{}
+
+method letBodyIsWand(xs: Set[Ref])
+  //:: ExpectedOutput(typechecker.error)
+  requires forall r: Ref :: { let y == (r) in (acc(y.f) --* acc(y.g)) } r in xs ==> (acc(r.f) --* acc(r.g))
+{}
+
+predicate P(r: Ref)
+
+method letBodyIsPredicateAccess(xs: Set[Ref])
+  //:: ExpectedOutput(typechecker.error)
+  requires forall r: Ref :: { let y == (r) in P(y) } r in xs ==> acc(P(r))
+{}
