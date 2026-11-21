@@ -437,7 +437,7 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
             n.asInstanceOf[A]
           else {
             // Rewrite children
-            val allowedToRecurse = recursionFunc.applyOrElse(n, (_: N) => n.children).toSet
+            val allowedToRecurse = recursionFunc.lift(n).fold[Any => Boolean](_ => true)(_.toSet)
             val children = n.children.map(child => if (allowedToRecurse(child)) rewriteTopDown(child, c) else child)
 
             // Adopt rewritten children
@@ -488,7 +488,7 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
           val c = context.addAncestor(node).asInstanceOf[C]
 
           // Rewrite children
-          val allowedToRecurse = recursionFunc.applyOrElse(node, (_: N) => node.children).toSet
+          val allowedToRecurse = recursionFunc.lift(node).fold[Any => Boolean](_ => true)(_.toSet)
           val children = node.children.map(child => if (allowedToRecurse(child)) rewriteBottomUp(child, c) else child)
 
           // Adopt rewritten children
@@ -545,7 +545,7 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
             n.asInstanceOf[A]
           else {
             // Rewrite children
-            val allowedToRecurse = recursionFunc.applyOrElse(n, (_: N) => n.children).toSet
+            val allowedToRecurse = recursionFunc.lift(n).fold[Any => Boolean](_ => true)(_.toSet)
             val children = n.children.map(child => if (allowedToRecurse(child)) rewriteInnermost(child, c) else child)
 
             // Adopt rewritten children
@@ -1003,7 +1003,7 @@ class StrategyVisitor[N <: Rewritable, C <: Context[N]](val visitNode: PartialFu
           if (visitNode.isDefinedAt(node, c))
             visitNode(node, c)
 
-          val allowedToRecurse = recursionFunc.applyOrElse(node, (_: N) => node.children).toSet
+          val allowedToRecurse = recursionFunc.lift(node).fold[Any => Boolean](_ => true)(_.toSet)
           node.children.filter(allowedToRecurse).foreach(visitTopDown(_, c))
 
         case collection: Iterable[_] => collection.map(visitTopDown(_, context))
@@ -1093,7 +1093,7 @@ class Query[N <: Rewritable, B](val getInfo: PartialFunction[N, B]) {
           nElement.get
         })
 
-        val allowedToRecurse = recursionFunc.applyOrElse(n, (_: N) => n.children).toSet
+        val allowedToRecurse = recursionFunc.lift(n).fold[Any => Boolean](_ => true)(_.toSet)
         val childrenQueryRes = accumulator(n.children.filter(allowedToRecurse).map(execute))
 
         accumulator(Seq(nodeQueryRes, childrenQueryRes))
