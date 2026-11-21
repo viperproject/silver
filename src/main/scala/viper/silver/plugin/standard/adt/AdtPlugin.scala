@@ -97,6 +97,8 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
     if (deactivated) {
       return input
     }
+    // If the program does not declare any ADTs, there is nothing to rewrite
+    if (!input.extensions.exists(_.isInstanceOf[PAdt])) return input
     // Syntax of adt types, adt constructor calls and destructor calls can not be distinguished from ordinary
     // viper syntax, hence we need the following transforming step before resolving.
     val declaredAdtNames = input.extensions.collect { case a: PAdt => a.idndef.name }.toSet
@@ -133,6 +135,10 @@ class AdtPlugin(@unused reporter: viper.silver.reporter.Reporter,
 
   override def beforeVerify(input: Program): Program = {
     if (deactivated) {
+      return input
+    }
+    // If the program does not declare any ADTs, there is nothing to encode
+    if (!input.extensions.exists(_.isInstanceOf[Adt])) {
       return input
     }
     new AdtEncoder(input).encode(isTerminationPluginActive)
