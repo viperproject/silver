@@ -48,7 +48,10 @@ trait PNode extends Where with Product with Rewritable with HasExtraValList {
     ReformatPrettyPrinter.showNode(this)(f.andThen(RNode.rt(_)))
 
   /** Returns a list of all direct sub-nodes of this node. */
-  def subnodes: Iterator[PNode] = PNode.children(this, this).flatMap(PNode.nodes(this, _))
+  final def subnodes: Iterator[PNode] = subnodesSeq.iterator
+
+  /** The direct subnodes, computed once */
+  private[parser] lazy val subnodesSeq: Seq[PNode] = PNode.children(this, this).flatMap(PNode.nodes(this, _)).toVector
 
   /** @see [[Visitor.reduceTree()]] */
   def reduceTree[T](f: (PNode, Seq[T]) => T) = Visitor.reduceTree(this, PNode.callSubnodes)(f)
@@ -162,7 +165,7 @@ object PNode {
       case _ => children(parent, n).flatMap(nodes(parent, _))
     }
   }
-  def callSubnodes(n: PNode): Seq[PNode] = n.subnodes.toSeq
+  def callSubnodes(n: PNode): Seq[PNode] = n.subnodesSeq
 }
 
 object TypeHelper {
