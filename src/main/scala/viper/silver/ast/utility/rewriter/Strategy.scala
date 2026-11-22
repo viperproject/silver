@@ -356,7 +356,8 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
       case Traverse.Innermost => rewriteInnermost(node, contextUsed)
     }
     changed = !(result eq node)
-    result.initProperties()
+    // An unchanged tree keeps its parse-node properties, so only a changed tree needs them set
+    if (changed) result.initProperties()
     result
   }
 

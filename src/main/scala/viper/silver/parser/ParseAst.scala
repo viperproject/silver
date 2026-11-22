@@ -101,8 +101,6 @@ trait PNode extends Where with Product with Rewritable with HasExtraValList {
   def deepCopyAll[A <: PNode]: PNode =
     StrategyBuilder.Slim[PNode]({ case n => n }).forceCopy().execute[PNode](this)
 
-  private val _children = scala.collection.mutable.ListBuffer[PNode]()
-
   def getParent: Option[PNode] = parent
   def getAncestor[T](implicit ctag: scala.reflect.ClassTag[T]): Option[T] = {
     var p = getParent
@@ -123,10 +121,8 @@ trait PNode extends Where with Product with Rewritable with HasExtraValList {
     var ind: Int = 0
     var prev: Option[PNode] = None
 
-    _children.clear()
     for (c <- this.subnodes) {
       c.parent = Some(this)
-      _children += c
       c.index = ind
       ind += 1
       c.prev = prev

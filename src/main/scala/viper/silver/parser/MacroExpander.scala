@@ -23,6 +23,8 @@ object MacroExpander {
     * @return PProgram with expanded macros
     */
   def expandDefines(p: PProgram): PProgram = {
+    // Expansion reads the parents of the nodes in `p`
+    p.initProperties()
     val reports = mutable.Buffer.empty[ParseReport]
     val globalMacros = p.macros
 
