@@ -7,7 +7,7 @@
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 import viper.silver.ast._
-import viper.silver.ast.utility.ImpureAssumeRewriter
+import viper.silver.ast.utility.{Expressions, ImpureAssumeRewriter}
 
 
 class UtilityTests extends AnyFunSuite with Matchers {
@@ -31,6 +31,31 @@ class UtilityTests extends AnyFunSuite with Matchers {
     //assert(rewritten == rewritten)
     // assert(rewritten == TrueLit()())
   }
+
+  test("Lets are inlined") {
+    val q = Function("q", Seq(LocalVarDecl("n", Int)()), Int, Seq(), Seq(), None)()
+    val i = LocalVar("i", Int)()
+    val x = LocalVar("x", Int)()
+    val y = LocalVar("y", Int)()
+    def let(v: LocalVar, e: Exp, body: Exp) = Let(LocalVarDecl(v.name, v.typ)(), e, body)()
+    val qi = FuncApp(q, Seq(i))()
+
+    // let x == q(i) in (let x == q(x) in q(x)), where the inner let shadows the outer one
+    Expressions.inlineLets(let(x, qi, let(x, FuncApp(q, Seq(x))(), FuncApp(q, Seq(x))()))) shouldBe
+      FuncApp(q, Seq(FuncApp(q, Seq(qi))()))()
+    // let x == i in (forall i: Int :: q(x) == i), where the quantified variable is renamed
+    Expressions.inlineLets(let(x, i, Forall(Seq(LocalVarDecl("i", Int)()), Seq(), EqCmp(FuncApp(q, Seq(x))(), i)())())) match {
+      case Forall(Seq(v), Seq(), EqCmp(FuncApp("q", Seq(`i`)), LocalVar(name, Int))) =>
+        v.name should not be "i"
+        name shouldBe v.name
+      case other => fail(s"Unexpected result $other")
+    }
+    // A let whose variable is used in an old expression is kept
+    val rf = FieldAccess(LocalVar("r", Ref)(), Field("g", Int)())()
+    val letInOld = let(y, rf, Old(FuncApp(q, Seq(y))())())
+    Expressions.inlineLets(letInOld) shouldBe letInOld
+  }
+
   /*
   test("Substitution (simple)"){ // forall x. f(x) >= f(y) && exists y. f(y) >
     val xPlusy : Exp = Add(LocalVar("x"),LocalVar("y"))(NoPosition, NoInfo, NoTrafos)

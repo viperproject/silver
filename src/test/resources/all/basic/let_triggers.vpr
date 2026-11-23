@@ -1,0 +1,132 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// A let is a valid trigger if, with its lets inlined, it is a valid possible
+// trigger such as a function application. See let_triggers_invalid.vpr for lets
+// that are not valid triggers.
+
+function q(n: Int): Int
+function s(a: Int, b: Int): Bool
+function t(i: Int): Bool
+
+domain D {
+  function d(i: Int): Int
+  function e(i: Int): Bool
+  function p(i: Int): Bool
+
+  axiom {
+    forall i: Int :: { let x == (d(i)) in e(x) } e(d(i)) == (i > 0) && p(i)
+  }
+}
+
+method letTrigger()
+  requires forall i: Int :: { let x == (q(i)) in s(x, x) }
+    let x == (q(i)) in (s(x, x) && t(i))
+{
+  assert s(q(5), q(5))
+  assert t(5)
+
+  // The trigger is restrictive: there is no term s(q(3), q(3)).
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(3)
+}
+
+method letOfLetTrigger()
+  requires forall i: Int :: { let x == (let y == (q(i)) in y) in s(x, x) }
+    s(q(i), q(i)) && t(i)
+{
+  assert s(q(5), q(5))
+  assert t(5)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(3)
+}
+
+method letBodyIsVariable()
+  requires forall i: Int :: { let x == (q(i)) in x } q(i) > i && t(i)
+{
+  assert q(5) > 5
+  assert t(5)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(3)
+}
+
+method letInTriggerSet()
+  requires forall i: Int, j: Int :: { let x == (q(i)) in s(x, j), t(j) }
+    s(q(i), j) && t(j) ==> t(i)
+  requires t(7)
+  requires s(q(5), 7)
+{
+  assert t(5)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(3)
+}
+
+method oldOfLetTrigger()
+{
+  inhale forall i: Int :: { old(let x == (q(i)) in s(x, x)) } old(s(q(i), q(i))) && t(i)
+  assert old(s(q(5), q(5)))
+  assert t(5)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(3)
+}
+
+adt List {
+  Nil()
+  Cons(hd: Int, tl: List)
+}
+
+function len(l: List): Int
+
+method letTriggerIsAdtConstructor()
+  requires forall i: Int :: { let x == (q(i)) in Cons(x, Nil()) } len(Cons(q(i), Nil())) == 1 && t(i)
+{
+  assert len(Cons(q(5), Nil())) == 1
+  assert t(5)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(3)
+}
+
+method letTriggerInDomainAxiom()
+{
+  assert e(d(5))
+  assert !e(d(-5))
+  assert p(5)
+
+  // The trigger is restrictive: there is no term e(d(3)).
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert p(3)
+}
+
+field f: Int
+
+function g(r: Ref, i: Int): Int
+  requires acc(r.f)
+
+function h(r: Ref): Bool
+  requires acc(r.f)
+  ensures forall i: Int :: { let x == (i) in g(r, x) } g(r, i) > r.f && t(i)
+
+method letTriggerInFunctionPostcondition(r: Ref)
+  requires acc(r.f)
+{
+  var b: Bool := h(r)
+  assert g(r, 3) > r.f
+  assert t(3)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(4)
+}
+
+// The let in the trigger binds a variable with the same name as the let in the
+// body. Desugaring the let in the body of the quantified permission must not
+// replace the variable of the trigger's let.
+method letTriggerAndLetInQuantifiedPermission(refs: Seq[Ref])
+  requires forall a: Int, b: Int :: 0 <= a && a < b && b < |refs| ==> refs[a] != refs[b]
+  requires forall i: Int :: { let x == (q(i)) in s(x, x) }
+    0 <= i && i + 1 < |refs| ==> let x == (i + 1) in acc(refs[x].f)
+{}
