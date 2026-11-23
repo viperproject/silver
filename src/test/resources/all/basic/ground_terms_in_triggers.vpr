@@ -1,0 +1,47 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Expressions that are forbidden in triggers, such as arithmetic, may occur in
+// a trigger if they do not mention the variables of its quantifier, also as
+// values of lets around the quantifier. See ground_terms_in_triggers_invalid.vpr
+// for expressions that remain forbidden.
+
+function s(a: Int, b: Int): Bool
+function t(i: Int): Bool
+
+adt List {
+  Nil()
+  Cons(hd: Int, tl: List)
+}
+
+function len(l: List): Int
+
+method groundArithmeticInTrigger(n: Int)
+  requires forall i: Int :: { s(n + 1, i) } t(i)
+{
+  inhale s(n + 1, 5)
+  assert t(5)
+
+  // The trigger is restrictive: there is no term s(n + 1, 3).
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(3)
+}
+
+method groundArithmeticInLetAroundQuantifier(n: Int)
+  requires let z == (n + 1) in (forall i: Int :: { s(z, i) } t(i))
+{
+  inhale s(n + 1, 5)
+  assert t(5)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert t(3)
+}
+
+method groundArithmeticInLetAroundAdtTrigger(n: Int)
+  requires let z == (n + 1) in (forall l: List :: { Cons(z, l) } len(Cons(z, l)) > 0)
+{}
+
+// For the triggers of an inner quantifier, the variables of an outer one are ground.
+method outerQuantifiedVariableInTrigger()
+  requires forall j: Int :: forall i: Int :: { s(j + 1, i) } t(i)
+{}

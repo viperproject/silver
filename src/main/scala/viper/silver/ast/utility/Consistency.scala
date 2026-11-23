@@ -7,7 +7,7 @@
 package viper.silver.ast.utility
 
 import viper.silver.ast._
-import viper.silver.ast.utility.rewriter.Traverse
+import viper.silver.ast.utility.rewriter.{StrategyBuilder, Traverse}
 import viper.silver.parser.FastParserCompanion
 import viper.silver.verifier.ConsistencyError
 import viper.silver.{FastMessage, FastMessaging}
@@ -264,14 +264,30 @@ object Consistency {
     case a: Applying if !a.isPure =>
   }
 
-  /** Returns true iff the given expression is a valid trigger. */
-  def validTrigger(e: Exp, program: Program): Boolean = {
+  /** Returns true iff `n` may not occur in a trigger even if it does not mention any quantified variable:
+    * conditionals, logical connectives and `!=`, which SMT solvers do not accept in triggers at all, and extension
+    * expressions that are forbidden in triggers, whose encoding is not known here.
+    */
+  private def alwaysForbiddenInTrigger(n: Node): Boolean = Expressions.isForbiddenInTrigger(n) && (n match {
+    case _: CondExp | _: And | _: Or | _: Implies | _: Not | _: NeCmp | _: DebugPermMin | _: ExtensionExp => true
+    case _ => false
+  })
+
+  /** Returns true iff the given expression is a valid trigger of a quantifier over `quantifiedVars`. If they are
+    * given, expressions that are forbidden in triggers, e.g. arithmetic, may occur if they do not mention any of
+    * them, unless they are always forbidden (see [[alwaysForbiddenInTrigger]]).
+    */
+  def validTrigger(e: Exp, program: Program, quantifiedVars: Option[Seq[LocalVar]] = None): Boolean = {
+    def forbidden(n: Node): Boolean = Expressions.isForbiddenInTrigger(n) && (n match {
+      case sub: Exp if !alwaysForbiddenInTrigger(sub) => quantifiedVars.forall(_.exists(v => sub.contains(v)))
+      case _ => true
+    })
     e match {
-      case Old(nested) => validTrigger(nested, program) // case corresponds to OldTrigger node
-      case LabelledOld(nested, _) => validTrigger(nested, program)
+      case Old(nested) => validTrigger(nested, program, quantifiedVars) // case corresponds to OldTrigger node
+      case LabelledOld(nested, _) => validTrigger(nested, program, quantifiedVars)
       case ee: ExtensionExp => ee.extensionIsValidTrigger()
-      case wand: MagicWand => wand.subexpressionsToEvaluate(program).forall(e => !e.exists(Expressions.isForbiddenInTrigger))
-      case _ : PossibleTrigger | _: FieldAccess | _: PredicateAccess => !e.exists(Expressions.isForbiddenInTrigger)
+      case wand: MagicWand => wand.subexpressionsToEvaluate(program).forall(e => !e.exists(forbidden))
+      case _ : PossibleTrigger | _: FieldAccess | _: PredicateAccess => !e.exists(forbidden)
       case _ => false
     }
   }
@@ -315,6 +331,28 @@ object Consistency {
 
   def checkTriggers(t: Trigger, program: Program): Unit = {
     t.exps foreach (e => recordIfNot(t, validTrigger(e, program), s"$t is not a valid Trigger"))
+  }
+
+  /** Checks the triggers in `n`. The values of the variables of the lets around a quantifier, which backends use in
+    * its triggers, must not contain anything that is always forbidden in triggers (see [[alwaysForbiddenInTrigger]]).
+    * E.g., in `let z == (b ? 2 : 1) in forall i: Int :: { q(z, i) } ...`, the trigger would be `q(b ? 2 : 1, i)`.
+    */
+  def checkTriggersWithLetValues(n: Node, program: Program): Unit = {
+    // The values of the let-bound variables around a node, and the variables of the quantifier around it
+    case class Context(letValues: Map[LocalVar, Exp], quantifiedVars: Seq[LocalVar])
+    StrategyBuilder.ContextVisitor[Node, Context]({
+      case (l: Let, c) =>
+        c.updateContext(c.c.copy(letValues = c.c.letValues + (l.variable.localVar -> l.exp.replace(c.c.letValues))))
+      case (q: QuantifiedExp, c) =>
+        c.updateContext(c.c.copy(quantifiedVars = q.variables.map(_.localVar)))
+      case (t: Trigger, c) =>
+        t.exps foreach (e => recordIfNot(t, validTrigger(e, program, Some(c.c.quantifiedVars)), s"$t is not a valid Trigger"))
+        for ((v, value) <- c.c.letValues if t.exps.exists(_.contains(v)) && value.exists(alwaysForbiddenInTrigger))
+          recordIfNot(t, false, s"$t is not a valid Trigger, since ${v.name} is $value, which may not occur in triggers")
+        c
+      case (_, c) =>
+        c
+    }, Context(Map.empty, Seq.empty)).execute(n)
   }
 
 //  def checkNoImpureConditionals(wand: MagicWand, program: Program) = {
