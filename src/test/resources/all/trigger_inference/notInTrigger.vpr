@@ -1,0 +1,58 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Trigger inference treats calls of members annotated with @notInTrigger() (functions, domain functions, and ADT
+// constructors together with their destructors) like Viper's built-in operators: they never occur in an inferred
+// trigger term. The comments name the triggers Silver infers.
+
+@notInTrigger()
+function add(i: Int, j: Int): Int
+  ensures result == i + j
+
+@notInTrigger()
+function le(i: Int, j: Int): Bool
+  ensures result == (i <= j)
+
+domain Ops {
+  @notInTrigger()
+  function minus(i: Int, j: Int): Int
+
+  axiom {
+    forall i: Int, j: Int :: { minus(i, j) } minus(i, j) == i - j
+  }
+}
+
+function f(i: Int): Bool
+function g(i: Int): Int
+
+method arithmetic(n: Int)
+  // { f(i) }: neither add(i, 1) nor f(add(i, 1)) is a trigger term
+  requires forall i: Int :: f(i) ==> f(add(i, 1))
+  requires f(n)
+{
+  assert f(add(n, 1))
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert f(n - 1)
+}
+
+method comparison(n: Int)
+  // { f(i) }, not { le(0, i) }
+  requires forall i: Int :: le(0, i) ==> f(i)
+{
+  assert le(0, n) ==> f(n)
+}
+
+method comparisonOfTerms(n: Int)
+  // { g(i) } and { f(i) }
+  requires forall i: Int :: le(g(i), 0) ==> f(i)
+  requires g(n) <= 0
+{
+  assert f(n)
+}
+
+method domainFunction(n: Int)
+  // { g(i) }, not { minus(g(i), 1) }
+  requires forall i: Int :: minus(g(i), 1) > 0
+{
+  assert g(n) > 1
+}

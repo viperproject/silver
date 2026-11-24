@@ -14,7 +14,31 @@ import java.util.concurrent.atomic.AtomicInteger
 /** Utility methods for triggers */
 object Triggers {
 
-  class TriggerGeneration extends GenericTriggerGenerator[Node, Type, Exp, LocalVar, QuantifiedExp] {
+  /** Annotation on a function, domain function or ADT constructor (where it also applies to the constructor's
+    * destructors): trigger inference treats applications of it like Viper's built-in operators, i.e. they never occur
+    * in an inferred trigger term. Meant for encodings of operators, such as arithmetic, comparisons and casts.
+    */
+  val NotInTriggerAnnotation = "notInTrigger"
+
+  /** The `info` of a member with [[NotInTriggerAnnotation]], for clients that build the AST directly. */
+  val NotInTriggerInfo: AnnotationInfo = AnnotationInfo(Map(NotInTriggerAnnotation -> Nil))
+
+  /** Infers triggers for quantifiers. If `program` is given, applications of members of `program` with
+    * [[NotInTriggerAnnotation]] are treated like built-in operators.
+    */
+  class TriggerGeneration(program: Option[Program] = None)
+      extends GenericTriggerGenerator[Node, Type, Exp, LocalVar, QuantifiedExp] {
+
+    /** True iff `e` applies a member of `program` with [[NotInTriggerAnnotation]]. */
+    private def isAnnotatedOperator(e: Exp): Boolean = program.exists { p =>
+      val callee: Option[Infoed] = e match {
+        case fa: FuncApp => p.findFunctionOptionally(fa.funcname)
+        case dfa: DomainFuncApp => p.findDomainFunctionOptionally(dfa.funcname)
+        case _ => None
+      }
+      callee.exists(_.info.getUniqueInfo[AnnotationInfo].exists(_.values.contains(NotInTriggerAnnotation)))
+    }
+
     protected def hasSubnode(root: Node, child: Node) = root.hasSubnode(child)
     protected def visit[A](root: Node)(f: PartialFunction[Node, A]) = root.visit(f)
     protected def deepCollect[A](root: Node)(f: PartialFunction[Node, A]) = root.deepCollect(f)
@@ -29,10 +53,11 @@ object Triggers {
 
     /* True iff the given node is a possible trigger */
     protected def isPossibleTrigger(e: Exp): Boolean = (customIsPossibleTrigger orElse {
+      case e if isAnnotatedOperator(e) => false
       case _: PossibleTrigger => true
       case ee: ExtensionExp => ee.extensionIsValidTrigger()
-      case Old(_: PossibleTrigger) => true
-      case LabelledOld(_: PossibleTrigger, _) => true
+      case Old(pt: PossibleTrigger) => !isAnnotatedOperator(pt)
+      case LabelledOld(pt: PossibleTrigger, _) => !isAnnotatedOperator(pt)
       case _ => false
     }: PartialFunction[Exp, Boolean])(e)
 
@@ -40,6 +65,7 @@ object Triggers {
      *       could implement isForbiddenInTrigger already */
     def isForbiddenInTrigger(e: Exp) = (customIsForbiddenInTrigger orElse {
       case e if Expressions.isForbiddenInTrigger(e) => true
+      case e if isAnnotatedOperator(e) => true
       case _ => false
     }: PartialFunction[Exp, Boolean])(e)
 
@@ -77,10 +103,13 @@ object Triggers {
       case ast.Let(v, e, body) => results =>
         results.flatten.flatMap(t => {
           val exp = t._1
-          val varIsUsed = body.contains(v.localVar)
+          /* Whether this trigger term uses the let-bound variable (not whether the let body does: a term that does
+           * not use the variable stays a candidate whatever the variable is bound to). If it does, the variable is
+           * replaced by its definition, which therefore must not contain anything forbidden in triggers. */
+          val varIsUsed = exp.contains(v.localVar)
           val coveredVars = t._2.filter(cv => cv != v.localVar) ++
             (if (varIsUsed) relevantVars.filter(rv => e.contains(rv)) else Seq())
-          if (varIsUsed && isForbiddenInTrigger(e)) {
+          if (varIsUsed && e.exists { case n: Exp => isForbiddenInTrigger(n); case _ => false }) {
             None
           } else {
             Some((exp.replace(v.localVar, e), coveredVars, t._3))
@@ -99,13 +128,16 @@ object Triggers {
     * If several Viper instances are to be used concurrently, code *must not* call the setCustomIsForbiddenTrigger and
     * setCustomIsPossibleTrigger methods on these objects.
     */
-  object DefaultTriggerGeneration extends TriggerGeneration
+  object DefaultTriggerGeneration extends TriggerGeneration()
 
-  object TriggerGenerationWithAddAndSubtract extends TriggerGeneration {
+  /** A trigger generator that admits `+` and `-` in triggers, which [[AxiomRewriter]] can rewrite afterwards. */
+  class TriggerGenerationWithAddAndSubtract(program: Option[Program] = None) extends TriggerGeneration(program) {
     customIsForbiddenInTrigger = {
       case _: ast.Add | _: ast.Sub => false
     }
   }
+
+  object TriggerGenerationWithAddAndSubtract extends TriggerGenerationWithAddAndSubtract(None)
 
   object AxiomRewriter extends GenericAxiomRewriter[Type, Exp, LocalVar, QuantifiedExp, EqCmp, And, Implies, Add, Sub,
                                                     Trigger] {
