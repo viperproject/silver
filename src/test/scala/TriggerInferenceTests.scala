@@ -20,7 +20,7 @@ class TriggerInferenceTests extends AnyFunSuite {
   private def inferredTriggers(program: Program, annotations: Boolean): Seq[Seq[String]] = {
     val generator = new TriggerGeneration(if (annotations) Some(program) else None)
     program.methods.flatMap(_.deepCollect { case Inhale(q: Forall) => q })
-      .map(_.autoTriggerWith(generator).triggers.map(_.exps.mkString(", ")))
+      .map(_.autoTriggerWith(generator).triggers.map(_.exps.mkString(", ").replaceAll("fresh__\\d+", "fresh")))
   }
 
   /** Translates `source` and encodes its ADTs */
@@ -103,14 +103,18 @@ class TriggerInferenceTests extends AnyFunSuite {
       Seq(Seq("f(plus(i, 1))", "h(i)"), Seq("f(get_Wrapper_value(wrap(i)))", "h(i)")))
   }
 
-  test("Terms under a let-binding are found, unless they use a variable bound to a forbidden expression") {
+  test("Terms under a let-binding are found, as if the let-bound variables were replaced by their definitions") {
     val source = functions +
-      """method test() {
+      """function f2(i: Int, j: Int): Bool
+        |
+        |method test() {
         |  inhale forall i: Int :: (let j == (i + 1) in f(i) && h(j))
         |  inhale forall i: Int :: (let j == (g(i)) in h(j))
+        |  inhale forall i: Int :: (let j == (g(i + 1)) in f2(j, i))
+        |  inhale forall i: Int :: f2(g(i + 1), i)
         |}
         |""".stripMargin
-    assert(inferredTriggers(source) == Seq(Seq("f(i)"), Seq("h(g(i))")))
+    assert(inferredTriggers(source) == Seq(Seq("f(i)"), Seq("h(g(i))"), Seq("f2(g(fresh), i)"), Seq("f2(g(fresh), i)")))
   }
 
   test("Different generators do not reuse each other's fresh variables") {
@@ -145,9 +149,9 @@ object AstBuiltTriggerProgram {
   private val j = LocalVarDecl("j", Int)()
   private def int(n: Int) = IntLit(n)()
 
-  /* The annotation next to other information, including another AnnotationInfo */
+  /* The annotation next to another annotation and other information */
   private val add = Function("add", Seq(i, j), Int, Nil, Nil, None)(
-    info = ConsInfo(AnnotationInfo(Map("other" -> Nil)), NotInTriggerInfo))
+    info = ConsInfo(SimpleInfo(Seq("comment")), AnnotationInfo(NotInTriggerInfo.values + ("other" -> Nil))))
   private val f = Function("f", Seq(i), Bool, Nil, Nil, None)()
   private val h = Function("h", Seq(i), Bool, Nil, Nil, None)()
   private def call(function: Function, args: Exp*) = FuncApp(function, args)()

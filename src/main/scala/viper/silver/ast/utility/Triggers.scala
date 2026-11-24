@@ -25,7 +25,10 @@ object Triggers {
 
   private val freshVariableIds = new AtomicInteger(0)
 
-  /** The `info` of a member with [[NotInTriggerAnnotation]], for clients that build the AST directly. */
+  /** The `info` of a member with [[NotInTriggerAnnotation]], for clients that build the AST directly. A member with
+    * other annotations needs the key in its one [[AnnotationInfo]], since that is what other code reads (e.g.
+    * `AnnotationInfo(otherAnnotations + (NotInTriggerAnnotation -> Nil))`).
+    */
   val NotInTriggerInfo: AnnotationInfo = AnnotationInfo(Map(NotInTriggerAnnotation -> Nil))
 
   /** Infers triggers for quantifiers. If `program` is given, applications of members of `program` with
@@ -109,19 +112,23 @@ object Triggers {
           (ast.LabelledOld(exp, l)(exp.pos, exp.info, exp.errT), t._2, t._3)
         })
       case ast.Let(v, e, _) => results =>
-        /* A trigger term that uses the let-bound variable gets it replaced by its definition, which therefore must
-         * not contain anything forbidden in triggers. A term that does not use the variable stays a candidate
-         * whatever the variable is bound to. */
-        lazy val definitionIsForbidden = e.exists { case n: Exp => isForbiddenInTrigger(n); case _ => false }
+        /* A trigger term that uses the let-bound variable gets it replaced by its definition, in which, as in any
+         * trigger term, the sub-expressions forbidden in triggers are replaced by fresh variables. A term that does
+         * not use the variable stays a candidate whatever the variable is bound to. */
         results.flatten.flatMap(t => {
-          val exp = t._1
-          val varIsUsed = exp.contains(v.localVar)
-          val coveredVars = t._2.filter(cv => cv != v.localVar) ++
-            (if (varIsUsed) relevantVars.filter(rv => e.contains(rv)) else Seq())
-          if (varIsUsed && definitionIsForbidden) {
-            None
-          } else {
-            Some((exp.replace(v.localVar, e), coveredVars, t._3))
+          val (exp, vars, extraVars) = t
+          if (!exp.contains(v.localVar)) Some(t)
+          else {
+            var newExtraVars = extraVars
+            val definition = e.transform {
+              case n: Exp if isForbiddenInTrigger(n) =>
+                val fresh = Var("fresh__" + nextUniqueId.getAndIncrement(), n.typ)
+                newExtraVars :+= fresh
+                fresh
+            }
+            val coveredVars = vars.filter(_ != v.localVar) ++ relevantVars.filter(rv => definition.contains(rv))
+            if (coveredVars.isEmpty) None
+            else Some((exp.replace(v.localVar, definition), coveredVars, newExtraVars))
           }
         })
     }
