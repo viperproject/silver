@@ -54,5 +54,5 @@ method domainFunction(n: Int)
   // { g(i) }, not { minus(g(i), 1) }
   requires forall i: Int :: minus(g(i), 1) > 0
 {
-  assert g(n) > 1
+  assert minus(g(n), 1) > 0
 }

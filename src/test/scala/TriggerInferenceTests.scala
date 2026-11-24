@@ -171,9 +171,12 @@ object AstBuiltTriggerProgram {
     /* forall i: Int :: lt(i, 5) ==> f(i) */
     forall(Implies(less(i.localVar, int(5)), call(f, i.localVar))()),
     /* forall i: Int :: wrap(i) == wrap(0) || h(i) */
-    forall(Or(EqCmp(wrap(i.localVar), wrap(int(0)))(), call(h, i.localVar))()))
+    forall(Or(EqCmp(wrap(i.localVar), wrap(int(0)))(), call(h, i.localVar))()),
+    /* forall i: Int :: f(add(i, 1)) && h(i + 1): has triggers only if `+` is admitted (see
+     * Triggers.TriggerGenerationWithAddAndSubtract) */
+    forall(And(call(f, call(add, i.localVar, int(1))), call(h, Add(i.localVar, int(1))()))()))
 
-  val expectedTriggers: Seq[Seq[String]] = Seq(Seq("h(i)"), Seq("f(i)"), Seq("h(i)"))
+  val expectedTriggers: Seq[Seq[String]] = Seq(Seq("h(i)"), Seq("f(i)"), Seq("h(i)"), Seq())
 
   val program: Program =
     Program(Seq(ops), Nil, Seq(add, f, h), Nil,

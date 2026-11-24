@@ -18,9 +18,12 @@ object Triggers {
     * destructors, once the ADT plugin has encoded them as domain functions): trigger inference treats applications of
     * it like Viper's built-in operators, i.e. they never occur in an inferred trigger term. Meant for encodings of
     * operators, such as arithmetic, comparisons and casts. Hence quantifiers that are only about such a member, e.g.
-    * the axioms that define it, need explicit triggers.
+    * the axioms that define it, need explicit triggers. This concerns the triggers that Silver infers for the
+    * quantifiers of a program, not the ones a backend chooses for its own quantifiers.
     */
   val NotInTriggerAnnotation = "notInTrigger"
+
+  private val freshVariableIds = new AtomicInteger(0)
 
   /** The `info` of a member with [[NotInTriggerAnnotation]], for clients that build the AST directly. */
   val NotInTriggerInfo: AnnotationInfo = AnnotationInfo(Map(NotInTriggerAnnotation -> Nil))
@@ -30,6 +33,9 @@ object Triggers {
     */
   class TriggerGeneration(program: Option[Program] = None)
       extends GenericTriggerGenerator[Node, Type, Exp, LocalVar, QuantifiedExp] {
+
+    /* Shared by all generators of Viper triggers, since backends combine their results */
+    override protected val nextUniqueId: AtomicInteger = freshVariableIds
 
     /** True iff `e` applies a member of `program` with [[NotInTriggerAnnotation]]. */
     private def isAnnotatedOperator(e: Exp): Boolean = program.exists { p =>
