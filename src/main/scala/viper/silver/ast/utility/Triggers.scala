@@ -15,8 +15,10 @@ import java.util.concurrent.atomic.AtomicInteger
 object Triggers {
 
   /** Annotation on a function, domain function or ADT constructor (where it also applies to the constructor's
-    * destructors): trigger inference treats applications of it like Viper's built-in operators, i.e. they never occur
-    * in an inferred trigger term. Meant for encodings of operators, such as arithmetic, comparisons and casts.
+    * destructors, once the ADT plugin has encoded them as domain functions): trigger inference treats applications of
+    * it like Viper's built-in operators, i.e. they never occur in an inferred trigger term. Meant for encodings of
+    * operators, such as arithmetic, comparisons and casts. Hence quantifiers that are only about such a member, e.g.
+    * the axioms that define it, need explicit triggers.
     */
   val NotInTriggerAnnotation = "notInTrigger"
 
@@ -36,7 +38,7 @@ object Triggers {
         case dfa: DomainFuncApp => p.findDomainFunctionOptionally(dfa.funcname)
         case _ => None
       }
-      callee.exists(_.info.getUniqueInfo[AnnotationInfo].exists(_.values.contains(NotInTriggerAnnotation)))
+      callee.exists(_.info.getAllInfos[AnnotationInfo].exists(_.values.contains(NotInTriggerAnnotation)))
     }
 
     protected def hasSubnode(root: Node, child: Node) = root.hasSubnode(child)
@@ -100,16 +102,17 @@ object Triggers {
           val exp = t._1
           (ast.LabelledOld(exp, l)(exp.pos, exp.info, exp.errT), t._2, t._3)
         })
-      case ast.Let(v, e, body) => results =>
+      case ast.Let(v, e, _) => results =>
+        /* A trigger term that uses the let-bound variable gets it replaced by its definition, which therefore must
+         * not contain anything forbidden in triggers. A term that does not use the variable stays a candidate
+         * whatever the variable is bound to. */
+        lazy val definitionIsForbidden = e.exists { case n: Exp => isForbiddenInTrigger(n); case _ => false }
         results.flatten.flatMap(t => {
           val exp = t._1
-          /* Whether this trigger term uses the let-bound variable (not whether the let body does: a term that does
-           * not use the variable stays a candidate whatever the variable is bound to). If it does, the variable is
-           * replaced by its definition, which therefore must not contain anything forbidden in triggers. */
           val varIsUsed = exp.contains(v.localVar)
           val coveredVars = t._2.filter(cv => cv != v.localVar) ++
             (if (varIsUsed) relevantVars.filter(rv => e.contains(rv)) else Seq())
-          if (varIsUsed && e.exists { case n: Exp => isForbiddenInTrigger(n); case _ => false }) {
+          if (varIsUsed && definitionIsForbidden) {
             None
           } else {
             Some((exp.replace(v.localVar, e), coveredVars, t._3))

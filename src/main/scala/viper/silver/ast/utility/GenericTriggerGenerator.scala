@@ -12,6 +12,10 @@ import scala.annotation.unused
 
 object GenericTriggerGenerator {
   case class TriggerSet[E](exps: Seq[E])
+
+  /* Shared by all generators, so that the fresh variables of different generators (e.g. of an inner quantifier and
+   * of the quantifier around it) never clash */
+  private val nextUniqueId = new AtomicInteger(0)
 }
 
 /** Attention: The trigger generator is *not* thread-safe, among other things because its
@@ -64,8 +68,6 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
 
   protected var customIsForbiddenInTrigger: PartialFunction[Exp, Boolean] = PartialFunction.empty
   def setCustomIsForbiddenInTrigger(f: PartialFunction[Exp, Boolean]): Unit = { customIsForbiddenInTrigger = f }
-
-  private val nextUniqueId = new AtomicInteger(0)
 
   def generateTriggerSetGroup(vs: Seq[Var], toSearch: Exp): Option[(Seq[TriggerSet], Seq[Var])] =
     generateTriggerSetGroups(vs: Seq[Var], toSearch: Exp).headOption
@@ -192,7 +194,7 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
          */
         val processedArgs = getArgs(possibleTrigger) map (pt => transform(pt) {
           case e: Exp if isForbiddenInTrigger(e) =>
-            val newV = Var("fresh__" + nextUniqueId.getAndIncrement(), Exp_typ(e))
+            val newV = Var("fresh__" + GenericTriggerGenerator.nextUniqueId.getAndIncrement(), Exp_typ(e))
             extraVars +:= newV
 
             newV

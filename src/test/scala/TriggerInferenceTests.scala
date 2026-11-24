@@ -9,7 +9,7 @@ import java.nio.file.Files
 import TestHelpers.MockSilFrontend
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast._
-import viper.silver.ast.utility.Triggers.{NotInTriggerInfo, TriggerGeneration}
+import viper.silver.ast.utility.Triggers.{NotInTriggerInfo, TriggerGeneration, TriggerGenerationWithAddAndSubtract}
 import viper.silver.plugin.standard.adt.{Adt, AdtConstructor, AdtConstructorApp, AdtType}
 import viper.silver.plugin.standard.adt.encoding.AdtEncoder
 
@@ -23,23 +23,26 @@ class TriggerInferenceTests extends AnyFunSuite {
       .map(_.autoTriggerWith(generator).triggers.map(_.exps.mkString(", ")))
   }
 
-  /** Translates `source` (and encodes its ADTs) and returns the inferred trigger sets of the quantifiers that its
-    * methods inhale. If `annotations` is false, the generator does not see the program and ignores annotations.
-    */
-  private def inferredTriggers(source: String, annotations: Boolean = true): Seq[Seq[String]] = {
+  /** Translates `source` and encodes its ADTs */
+  private def translate(source: String): Program = {
     val file = Files.createTempFile("trigger-inference", ".vpr")
     try {
       Files.writeString(file, source)
       val frontend = new MockSilFrontend
-      val program = frontend.translate(file) match {
+      frontend.translate(file) match {
         case (Some(p), Seq()) => frontend.plugins.beforeVerify(p).get
         case (_, errors) => fail(s"Could not translate the test program: ${errors.mkString(", ")}")
       }
-      inferredTriggers(program, annotations)
     } finally {
       Files.delete(file)
     }
   }
+
+  /** The inferred trigger sets of the quantifiers that the methods of the program `source` inhale. If `annotations`
+    * is false, the generator does not see the program and ignores annotations.
+    */
+  private def inferredTriggers(source: String, annotations: Boolean = true): Seq[Seq[String]] =
+    inferredTriggers(translate(source), annotations)
 
   private val functions =
     """function f(i: Int): Bool
@@ -110,6 +113,22 @@ class TriggerInferenceTests extends AnyFunSuite {
     assert(inferredTriggers(source) == Seq(Seq("f(i)"), Seq("h(g(i))")))
   }
 
+  test("Different generators do not reuse each other's fresh variables") {
+    val program = translate(
+      """function f(i: Int, b: Bool): Bool
+        |function h(j: Int, b: Bool): Bool
+        |
+        |method test() {
+        |  inhale forall i: Int :: f(i + 1, i > 0) && (forall j: Int :: h(j, j > 0))
+        |}
+        |""".stripMargin)
+    val quantifier = program.methods.flatMap(_.deepCollect { case Inhale(q: Forall) => q }).head
+    /* As Silicon does: the inner quantifier first, with one generator, and then the outer one, with another */
+    val body = quantifier.exp.transform { case inner: Forall => inner.autoTriggerWith(new TriggerGeneration()) }
+    val outer = Forall(quantifier.variables, Nil, body)().autoTriggerWith(new TriggerGenerationWithAddAndSubtract())
+    assert(outer.triggers.nonEmpty)
+  }
+
   test("The annotation is read from the info of members of a program that is built as an AST, without parsing") {
     assert(inferredTriggers(AstBuiltTriggerProgram.encoded, annotations = true) ==
       AstBuiltTriggerProgram.expectedTriggers)
@@ -117,7 +136,7 @@ class TriggerInferenceTests extends AnyFunSuite {
 }
 
 /** A program with `@notInTrigger()` annotations that is built as an AST (as e.g. Prusti does), not parsed: the
-  * annotations are only the `AnnotationInfo` in the `info` of a function, a domain function and an ADT constructor
+  * annotations are only the `AnnotationInfo`s in the `info` of a function, a domain function and an ADT constructor
   * (whose destructors it also covers). Its method inhales `quantifiers`, for which `expectedTriggers` should be
   * inferred.
   */
@@ -126,7 +145,9 @@ object AstBuiltTriggerProgram {
   private val j = LocalVarDecl("j", Int)()
   private def int(n: Int) = IntLit(n)()
 
-  private val add = Function("add", Seq(i, j), Int, Nil, Nil, None)(info = NotInTriggerInfo)
+  /* The annotation next to other information, including another AnnotationInfo */
+  private val add = Function("add", Seq(i, j), Int, Nil, Nil, None)(
+    info = ConsInfo(AnnotationInfo(Map("other" -> Nil)), NotInTriggerInfo))
   private val f = Function("f", Seq(i), Bool, Nil, Nil, None)()
   private val h = Function("h", Seq(i), Bool, Nil, Nil, None)()
   private def call(function: Function, args: Exp*) = FuncApp(function, args)()
