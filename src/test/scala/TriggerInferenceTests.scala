@@ -93,14 +93,18 @@ class TriggerInferenceTests extends AnyFunSuite {
         |  @notInTrigger() wrap(value: Int)
         |}
         |
+        |function p(x: Wrapper): Bool
+        |
         |method test() {
         |  inhale forall i: Int :: f(plus(i, 1)) && h(i)
         |  inhale forall i: Int :: f(wrap(i).value) && h(i)
+        |  inhale forall x: Wrapper :: f(x.value) && p(x)
         |}
         |""".stripMargin
-    assert(inferredTriggers(source) == Seq(Seq("h(i)"), Seq("h(i)")))
+    assert(inferredTriggers(source) == Seq(Seq("h(i)"), Seq("h(i)"), Seq("p(x)")))
     assert(inferredTriggers(source, annotations = false) ==
-      Seq(Seq("f(plus(i, 1))", "h(i)"), Seq("f(get_Wrapper_value(wrap(i)))", "h(i)")))
+      Seq(Seq("f(plus(i, 1))", "h(i)"), Seq("f(get_Wrapper_value(wrap(i)))", "h(i)"),
+          Seq("f(get_Wrapper_value(x))", "p(x)")))
   }
 
   test("Terms under a let-binding are found, as if the let-bound variables were replaced by their definitions") {
