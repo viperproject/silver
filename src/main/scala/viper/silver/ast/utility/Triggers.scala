@@ -16,40 +16,36 @@ object Triggers {
 
   /** Annotation on a function, domain function or ADT constructor (where it also applies to the constructor's
     * destructors, once the ADT plugin has encoded them as domain functions): trigger inference treats applications of
-    * it like Viper's built-in operators, i.e. they never occur in an inferred trigger term. Meant for encodings of
-    * operators, such as arithmetic, comparisons and casts. Hence quantifiers that are only about such a member, e.g.
+    * it like Viper's built-in operators, i.e. they never occur in an inferred trigger term (the annotation concerns
+    * calls of the member, not the quantifiers in its own specification). Meant for encodings of operators, such as
+    * arithmetic, comparisons and casts. Hence quantifiers that are only about such a member, e.g.
     * the axioms that define it, need explicit triggers. The annotation is respected only by a [[TriggerGeneration]]
     * that is given the program. It does not affect the quantifiers that a backend generates itself, whose triggers
     * the backend chooses.
     */
-  val NotInTriggerAnnotation = "notInTrigger"
+  val NoAutoTriggerAnnotation = "noAutoTrigger"
 
-  /** The `info` of a member with [[NotInTriggerAnnotation]], for clients that build the AST directly. If the member
+  /** The `info` of a member with [[NoAutoTriggerAnnotation]], for clients that build the AST directly. If the member
     * already has an [[AnnotationInfo]], add the key to it rather than adding a second one, since other readers (e.g.
-    * the pretty printer and Silicon's `@opaque()`) only use the first: `AnnotationInfo(others + (NotInTriggerAnnotation
-    * -> Nil))`.
+    * the pretty printer and Silicon's `@opaque()`) only use the first:
+    * `AnnotationInfo(others + (NoAutoTriggerAnnotation -> Nil))`.
     */
-  val NotInTriggerInfo: AnnotationInfo = AnnotationInfo(Map(NotInTriggerAnnotation -> Nil))
-
-  private val freshVariableIds = new AtomicInteger(0)
+  val NoAutoTriggerInfo: AnnotationInfo = AnnotationInfo(Map(NoAutoTriggerAnnotation -> Nil))
 
   /** Infers triggers for quantifiers. If `program` is given, applications of members of `program` with
-    * [[NotInTriggerAnnotation]] are treated like built-in operators.
+    * [[NoAutoTriggerAnnotation]] are treated like built-in operators.
     */
   class TriggerGeneration(program: Option[Program] = None)
       extends GenericTriggerGenerator[Node, Type, Exp, LocalVar, QuantifiedExp] {
 
-    /* Shared by all instances: a backend may infer the triggers of nested quantifiers with different instances */
-    override protected val nextUniqueId: AtomicInteger = freshVariableIds
-
-    /** True iff `e` applies a member of `program` with [[NotInTriggerAnnotation]]. */
-    private def callsNotInTriggerMember(e: Exp): Boolean = program.exists { p =>
+    /** True iff `e` applies a member of `program` with [[NoAutoTriggerAnnotation]]. */
+    private def callsNoAutoTriggerMember(e: Exp): Boolean = program.exists { p =>
       val callee: Option[Infoed] = e match {
         case fa: FuncApp => p.findFunctionOptionally(fa.funcname)
         case dfa: DomainFuncApp => p.findDomainFunctionOptionally(dfa.funcname)
         case _ => None
       }
-      callee.exists(_.info.getAllInfos[AnnotationInfo].exists(_.values.contains(NotInTriggerAnnotation)))
+      callee.exists(_.info.getAllInfos[AnnotationInfo].exists(_.values.contains(NoAutoTriggerAnnotation)))
     }
 
     protected def hasSubnode(root: Node, child: Node) = root.hasSubnode(child)
@@ -66,11 +62,11 @@ object Triggers {
 
     /* True iff the given node is a possible trigger */
     protected def isPossibleTrigger(e: Exp): Boolean = (customIsPossibleTrigger orElse {
-      case app if callsNotInTriggerMember(app) => false
+      case app if callsNoAutoTriggerMember(app) => false
       case _: PossibleTrigger => true
       case ee: ExtensionExp => ee.extensionIsValidTrigger()
-      case Old(pt: PossibleTrigger) => !callsNotInTriggerMember(pt)
-      case LabelledOld(pt: PossibleTrigger, _) => !callsNotInTriggerMember(pt)
+      case Old(pt: PossibleTrigger) => !callsNoAutoTriggerMember(pt)
+      case LabelledOld(pt: PossibleTrigger, _) => !callsNoAutoTriggerMember(pt)
       case _ => false
     }: PartialFunction[Exp, Boolean])(e)
 
@@ -78,7 +74,7 @@ object Triggers {
      *       could implement isForbiddenInTrigger already */
     def isForbiddenInTrigger(e: Exp) = (customIsForbiddenInTrigger orElse {
       case e if Expressions.isForbiddenInTrigger(e) => true
-      case app if callsNotInTriggerMember(app) => true
+      case app if callsNoAutoTriggerMember(app) => true
       case _ => false
     }: PartialFunction[Exp, Boolean])(e)
 

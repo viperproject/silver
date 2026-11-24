@@ -9,11 +9,11 @@ import java.nio.file.Files
 import TestHelpers.MockSilFrontend
 import org.scalatest.funsuite.AnyFunSuite
 import viper.silver.ast._
-import viper.silver.ast.utility.Triggers.{NotInTriggerInfo, TriggerGeneration, TriggerGenerationWithAddAndSubtract}
+import viper.silver.ast.utility.Triggers.{NoAutoTriggerInfo, TriggerGeneration, TriggerGenerationWithAddAndSubtract}
 import viper.silver.plugin.standard.adt.{Adt, AdtConstructor, AdtConstructorApp, AdtType}
 import viper.silver.plugin.standard.adt.encoding.AdtEncoder
 
-/** Tests the triggers that Silver infers for programs with `@notInTrigger()` annotations. */
+/** Tests the triggers that Silver infers for programs with `@noAutoTrigger()` annotations. */
 class TriggerInferenceTests extends AnyFunSuite {
 
   private def inhaledQuantifiers(program: Program): Seq[Forall] =
@@ -53,9 +53,9 @@ class TriggerInferenceTests extends AnyFunSuite {
       |function h(i: Int): Bool
       |""".stripMargin
 
-  test("A @notInTrigger() function is treated like a built-in operator") {
+  test("A @noAutoTrigger() function is treated like a built-in operator") {
     val source = functions +
-      """@notInTrigger()
+      """@noAutoTrigger()
         |function add(i: Int, j: Int): Int
         |
         |method test() {
@@ -69,9 +69,9 @@ class TriggerInferenceTests extends AnyFunSuite {
       Seq(Seq("f(add(i, 1))", "h(i)"), Seq("f(add(g(i), 1))"), Seq("add(i, 1)")))
   }
 
-  test("A Bool-valued @notInTrigger() function (e.g. a comparison) is not a trigger term either") {
+  test("A Bool-valued @noAutoTrigger() function (e.g. a comparison) is not a trigger term either") {
     val source = functions +
-      """@notInTrigger()
+      """@noAutoTrigger()
         |function lt(i: Int, j: Int): Bool
         |
         |method test(n: Int) {
@@ -88,12 +88,12 @@ class TriggerInferenceTests extends AnyFunSuite {
   test("The annotation applies to domain functions and to ADT constructors and their destructors") {
     val source = functions +
       """domain Ops {
-        |  @notInTrigger()
+        |  @noAutoTrigger()
         |  function plus(i: Int, j: Int): Int
         |}
         |
         |adt Wrapper {
-        |  @notInTrigger() wrap(value: Int)
+        |  @noAutoTrigger() wrap(value: Int)
         |}
         |
         |function p(x: Wrapper): Bool
@@ -145,7 +145,7 @@ class TriggerInferenceTests extends AnyFunSuite {
   }
 }
 
-/** A program with `@notInTrigger()` annotations that is built as an AST (as e.g. Prusti does), not parsed: the
+/** A program with `@noAutoTrigger()` annotations that is built as an AST (as e.g. Prusti does), not parsed: the
   * annotations are only the `AnnotationInfo`s in the `info` of a function, a domain function and an ADT constructor
   * (whose destructors it also covers). Its method inhales `quantifiers`, for which `expectedTriggers` should be
   * inferred. Also used by Silicon's `TriggerAnnotationTests`.
@@ -157,18 +157,18 @@ object AstBuiltTriggerProgram {
 
   /* The annotation next to another annotation and other information */
   private val add = Function("add", Seq(i, j), Int, Nil, Nil, None)(
-    info = ConsInfo(SimpleInfo(Seq("comment")), AnnotationInfo(NotInTriggerInfo.values + ("other" -> Nil))))
+    info = ConsInfo(SimpleInfo(Seq("comment")), AnnotationInfo(NoAutoTriggerInfo.values + ("other" -> Nil))))
   private val f = Function("f", Seq(i), Bool, Nil, Nil, None)()
   private val h = Function("h", Seq(i), Bool, Nil, Nil, None)()
   private def call(function: Function, args: Exp*) = FuncApp(function, args)()
 
-  private val lt = DomainFunc("lt", Seq(i, j), Bool)(info = NotInTriggerInfo, domainName = "Ops")
+  private val lt = DomainFunc("lt", Seq(i, j), Bool)(info = NoAutoTriggerInfo, domainName = "Ops")
   private val ops = Domain("Ops", Seq(lt), Nil)()
   private def less(a: Exp, b: Exp) = DomainFuncApp(lt, Seq(a, b), Map.empty[TypeVar, Type])()
 
   private val wrapperType = AdtType("Wrapper", Map.empty[TypeVar, Type])(Nil)
   private val wrapConstructor = AdtConstructor("wrap", Seq(LocalVarDecl("value", Int)()))(
-    NoPosition, NotInTriggerInfo, wrapperType, "Wrapper", NoTrafos)
+    NoPosition, NoAutoTriggerInfo, wrapperType, "Wrapper", NoTrafos)
   private val wrapper = Adt("Wrapper", Seq(wrapConstructor))()
   private def wrap(e: Exp) = AdtConstructorApp(wrapConstructor, Seq(e), Map.empty[TypeVar, Type])()
 

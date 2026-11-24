@@ -1,20 +1,20 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-// Trigger inference treats calls of functions and domain functions annotated with @notInTrigger() like Viper's
+// Trigger inference treats calls of functions and domain functions annotated with @noAutoTrigger() like Viper's
 // built-in operators: they never occur in an inferred trigger term. The comment above each quantifier names the
 // triggers inferred when the backend respects the annotation; the expected results hold either way.
 
-@notInTrigger()
+@noAutoTrigger()
 function add(i: Int, j: Int): Int
   ensures result == i + j
 
-@notInTrigger()
+@noAutoTrigger()
 function le(i: Int, j: Int): Bool
   ensures result == (i <= j)
 
 domain Ops {
-  @notInTrigger()
+  @noAutoTrigger()
   function minus(i: Int, j: Int): Int
 
   axiom {
