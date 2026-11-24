@@ -16,14 +16,20 @@ import viper.silver.plugin.standard.adt.encoding.AdtEncoder
 /** Tests the triggers that Silver infers for programs with `@notInTrigger()` annotations. */
 class TriggerInferenceTests extends AnyFunSuite {
 
-  /** The inferred trigger sets of the quantifiers that the methods of `program` inhale */
+  private def inhaledQuantifiers(program: Program): Seq[Forall] =
+    program.methods.flatMap(_.deepCollect { case Inhale(q: Forall) => q })
+
+  /** The inferred trigger sets of the quantifiers that the methods of `program` inhale, with fresh variables named
+    * `fresh` (their numbers depend on earlier inference). If `annotations` is false, the generator does not see the
+    * program and ignores annotations.
+    */
   private def inferredTriggers(program: Program, annotations: Boolean): Seq[Seq[String]] = {
     val generator = new TriggerGeneration(if (annotations) Some(program) else None)
-    program.methods.flatMap(_.deepCollect { case Inhale(q: Forall) => q })
+    inhaledQuantifiers(program)
       .map(_.autoTriggerWith(generator).triggers.map(_.exps.mkString(", ").replaceAll("fresh__\\d+", "fresh")))
   }
 
-  /** Translates `source` and encodes its ADTs */
+  /** Parses and translates `source` and runs the plugins' `beforeVerify` (which encodes ADTs) */
   private def translate(source: String): Program = {
     val file = Files.createTempFile("trigger-inference", ".vpr")
     try {
@@ -38,9 +44,6 @@ class TriggerInferenceTests extends AnyFunSuite {
     }
   }
 
-  /** The inferred trigger sets of the quantifiers that the methods of the program `source` inhale. If `annotations`
-    * is false, the generator does not see the program and ignores annotations.
-    */
   private def inferredTriggers(source: String, annotations: Boolean = true): Seq[Seq[String]] =
     inferredTriggers(translate(source), annotations)
 
@@ -130,7 +133,7 @@ class TriggerInferenceTests extends AnyFunSuite {
         |  inhale forall i: Int :: f(i + 1, i > 0) && (forall j: Int :: h(j, j > 0))
         |}
         |""".stripMargin)
-    val quantifier = program.methods.flatMap(_.deepCollect { case Inhale(q: Forall) => q }).head
+    val quantifier = inhaledQuantifiers(program).head
     /* As Silicon does: the inner quantifier first, with one generator, and then the outer one, with another */
     val body = quantifier.exp.transform { case inner: Forall => inner.autoTriggerWith(new TriggerGeneration()) }
     val outer = Forall(quantifier.variables, Nil, body)().autoTriggerWith(new TriggerGenerationWithAddAndSubtract())
@@ -138,15 +141,14 @@ class TriggerInferenceTests extends AnyFunSuite {
   }
 
   test("The annotation is read from the info of members of a program that is built as an AST, without parsing") {
-    assert(inferredTriggers(AstBuiltTriggerProgram.encoded, annotations = true) ==
-      AstBuiltTriggerProgram.expectedTriggers)
+    assert(inferredTriggers(AstBuiltTriggerProgram.encoded, annotations = true) == AstBuiltTriggerProgram.expectedTriggers)
   }
 }
 
 /** A program with `@notInTrigger()` annotations that is built as an AST (as e.g. Prusti does), not parsed: the
   * annotations are only the `AnnotationInfo`s in the `info` of a function, a domain function and an ADT constructor
   * (whose destructors it also covers). Its method inhales `quantifiers`, for which `expectedTriggers` should be
-  * inferred.
+  * inferred. Also used by Silicon's `TriggerAnnotationTests`.
   */
 object AstBuiltTriggerProgram {
   private val i = LocalVarDecl("i", Int)()
@@ -165,9 +167,8 @@ object AstBuiltTriggerProgram {
   private def less(a: Exp, b: Exp) = DomainFuncApp(lt, Seq(a, b), Map.empty[TypeVar, Type])()
 
   private val wrapperType = AdtType("Wrapper", Map.empty[TypeVar, Type])(Nil)
-  private val wrapConstructor =
-    AdtConstructor("wrap", Seq(LocalVarDecl("value", Int)()))(NoPosition, NotInTriggerInfo, wrapperType, "Wrapper",
-                                                              NoTrafos)
+  private val wrapConstructor = AdtConstructor("wrap", Seq(LocalVarDecl("value", Int)()))(
+    NoPosition, NotInTriggerInfo, wrapperType, "Wrapper", NoTrafos)
   private val wrapper = Adt("Wrapper", Seq(wrapConstructor))()
   private def wrap(e: Exp) = AdtConstructorApp(wrapConstructor, Seq(e), Map.empty[TypeVar, Type])()
 

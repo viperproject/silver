@@ -1,9 +1,9 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-// Trigger inference treats calls of members annotated with @notInTrigger() (functions, domain functions, and ADT
-// constructors together with their destructors) like Viper's built-in operators: they never occur in an inferred
-// trigger term. The comments name the triggers Silver infers.
+// Trigger inference treats calls of functions and domain functions annotated with @notInTrigger() like Viper's
+// built-in operators: they never occur in an inferred trigger term. The comment above each quantifier names the
+// triggers inferred when the backend respects the annotation; the expected results hold either way.
 
 @notInTrigger()
 function add(i: Int, j: Int): Int

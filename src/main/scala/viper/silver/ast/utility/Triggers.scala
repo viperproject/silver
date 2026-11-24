@@ -18,18 +18,20 @@ object Triggers {
     * destructors, once the ADT plugin has encoded them as domain functions): trigger inference treats applications of
     * it like Viper's built-in operators, i.e. they never occur in an inferred trigger term. Meant for encodings of
     * operators, such as arithmetic, comparisons and casts. Hence quantifiers that are only about such a member, e.g.
-    * the axioms that define it, need explicit triggers. This concerns the triggers that Silver infers for the
-    * quantifiers of a program, not the ones a backend chooses for its own quantifiers.
+    * the axioms that define it, need explicit triggers. The annotation is respected only by a [[TriggerGeneration]]
+    * that is given the program. It does not affect the quantifiers that a backend generates itself, whose triggers
+    * the backend chooses.
     */
   val NotInTriggerAnnotation = "notInTrigger"
 
-  private val freshVariableIds = new AtomicInteger(0)
-
-  /** The `info` of a member with [[NotInTriggerAnnotation]], for clients that build the AST directly. A member with
-    * other annotations needs the key in its one [[AnnotationInfo]], since that is what other code reads (e.g.
-    * `AnnotationInfo(otherAnnotations + (NotInTriggerAnnotation -> Nil))`).
+  /** The `info` of a member with [[NotInTriggerAnnotation]], for clients that build the AST directly. If the member
+    * already has an [[AnnotationInfo]], add the key to it rather than adding a second one, since other readers (e.g.
+    * the pretty printer and Silicon's `@opaque()`) only use the first: `AnnotationInfo(others + (NotInTriggerAnnotation
+    * -> Nil))`.
     */
   val NotInTriggerInfo: AnnotationInfo = AnnotationInfo(Map(NotInTriggerAnnotation -> Nil))
+
+  private val freshVariableIds = new AtomicInteger(0)
 
   /** Infers triggers for quantifiers. If `program` is given, applications of members of `program` with
     * [[NotInTriggerAnnotation]] are treated like built-in operators.
@@ -37,11 +39,11 @@ object Triggers {
   class TriggerGeneration(program: Option[Program] = None)
       extends GenericTriggerGenerator[Node, Type, Exp, LocalVar, QuantifiedExp] {
 
-    /* Shared by all generators of Viper triggers, since backends combine their results */
+    /* Shared by all instances: a backend may infer the triggers of nested quantifiers with different instances */
     override protected val nextUniqueId: AtomicInteger = freshVariableIds
 
     /** True iff `e` applies a member of `program` with [[NotInTriggerAnnotation]]. */
-    private def isAnnotatedOperator(e: Exp): Boolean = program.exists { p =>
+    private def callsNotInTriggerMember(e: Exp): Boolean = program.exists { p =>
       val callee: Option[Infoed] = e match {
         case fa: FuncApp => p.findFunctionOptionally(fa.funcname)
         case dfa: DomainFuncApp => p.findDomainFunctionOptionally(dfa.funcname)
@@ -64,11 +66,11 @@ object Triggers {
 
     /* True iff the given node is a possible trigger */
     protected def isPossibleTrigger(e: Exp): Boolean = (customIsPossibleTrigger orElse {
-      case e if isAnnotatedOperator(e) => false
+      case app if callsNotInTriggerMember(app) => false
       case _: PossibleTrigger => true
       case ee: ExtensionExp => ee.extensionIsValidTrigger()
-      case Old(pt: PossibleTrigger) => !isAnnotatedOperator(pt)
-      case LabelledOld(pt: PossibleTrigger, _) => !isAnnotatedOperator(pt)
+      case Old(pt: PossibleTrigger) => !callsNotInTriggerMember(pt)
+      case LabelledOld(pt: PossibleTrigger, _) => !callsNotInTriggerMember(pt)
       case _ => false
     }: PartialFunction[Exp, Boolean])(e)
 
@@ -76,7 +78,7 @@ object Triggers {
      *       could implement isForbiddenInTrigger already */
     def isForbiddenInTrigger(e: Exp) = (customIsForbiddenInTrigger orElse {
       case e if Expressions.isForbiddenInTrigger(e) => true
-      case e if isAnnotatedOperator(e) => true
+      case app if callsNotInTriggerMember(app) => true
       case _ => false
     }: PartialFunction[Exp, Boolean])(e)
 
@@ -113,22 +115,17 @@ object Triggers {
         })
       case ast.Let(v, e, _) => results =>
         /* A trigger term that uses the let-bound variable gets it replaced by its definition, in which, as in any
-         * trigger term, the sub-expressions forbidden in triggers are replaced by fresh variables. A term that does
-         * not use the variable stays a candidate whatever the variable is bound to. */
+         * trigger term, the sub-expressions forbidden in triggers are replaced by fresh variables. The term is dropped
+         * if it then no longer mentions a quantified variable. A term that does not use the variable stays a
+         * candidate whatever the variable is bound to. */
         results.flatten.flatMap(t => {
           val (exp, vars, extraVars) = t
           if (!exp.contains(v.localVar)) Some(t)
           else {
-            var newExtraVars = extraVars
-            val definition = e.transform {
-              case n: Exp if isForbiddenInTrigger(n) =>
-                val fresh = Var("fresh__" + nextUniqueId.getAndIncrement(), n.typ)
-                newExtraVars :+= fresh
-                fresh
-            }
+            val (definition, freshVars) = replaceForbiddenByFreshVars(e)
             val coveredVars = vars.filter(_ != v.localVar) ++ relevantVars.filter(rv => definition.contains(rv))
             if (coveredVars.isEmpty) None
-            else Some((exp.replace(v.localVar, definition), coveredVars, newExtraVars))
+            else Some((exp.replace(v.localVar, definition), coveredVars, extraVars ++ freshVars))
           }
         })
     }
@@ -144,7 +141,7 @@ object Triggers {
     * If several Viper instances are to be used concurrently, code *must not* call the setCustomIsForbiddenTrigger and
     * setCustomIsPossibleTrigger methods on these objects.
     */
-  object DefaultTriggerGeneration extends TriggerGeneration()
+  object DefaultTriggerGeneration extends TriggerGeneration
 
   /** A trigger generator that admits `+` and `-` in triggers, which [[AxiomRewriter]] can rewrite afterwards. */
   class TriggerGenerationWithAddAndSubtract(program: Option[Program] = None) extends TriggerGeneration(program) {
