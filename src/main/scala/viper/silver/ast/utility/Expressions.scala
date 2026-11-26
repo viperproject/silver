@@ -253,6 +253,16 @@ object Expressions {
     Sanitizer.replaceFreeVariablesInExpression(exp, variables.map(_.localVar.name).zip(values).toMap, scope)
   }
 
+  /** Replaces each let `let x == e0 in e1` in `e` by `e1` with `x` replaced by `e0`, starting with the innermost
+    * lets. Quantified variables in `e1` are renamed if they clash with free variables of `e0`. A let whose variable
+    * occurs in an old expression in `e1` is kept, since `e0` would be evaluated in the old state there. The result
+    * can be exponentially larger than `e`.
+    */
+  def inlineLets(e: Exp): Exp = e.transform({
+    case Let(v, e0, e1) if !e1.existsDefined { case old: OldExp if old.exp.contains(v.localVar) => } =>
+      instantiateVariables(e1, Seq(v), Seq(e0), (freeVariables(e0) ++ freeVariables(e1)).map(_.name) - v.name)
+  }, Traverse.BottomUp)
+
   def subExps(e: Exp) = e.subnodes collect {
     case e: Exp => e
   }
