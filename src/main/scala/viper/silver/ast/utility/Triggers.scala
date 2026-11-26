@@ -14,7 +14,40 @@ import java.util.concurrent.atomic.AtomicInteger
 /** Utility methods for triggers */
 object Triggers {
 
-  class TriggerGeneration extends GenericTriggerGenerator[Node, Type, Exp, LocalVar, QuantifiedExp] {
+  /** Annotation on a function, domain function or ADT constructor (where it also applies to the constructor's
+    * destructors, once the ADT plugin has encoded them as domain functions): trigger inference treats applications of
+    * it like Viper's built-in operators, i.e. they never occur in an inferred trigger term (the annotation concerns
+    * calls of the member, not the quantifiers in its own specification). Meant for encodings of operators, such as
+    * arithmetic, comparisons and casts. Hence quantifiers that are only about such a member, e.g.
+    * the axioms that define it, need explicit triggers. The annotation is respected only by a [[TriggerGeneration]]
+    * that is given the program. It does not affect the quantifiers that a backend generates itself, whose triggers
+    * the backend chooses.
+    */
+  val NoAutoTriggerAnnotation = "noAutoTrigger"
+
+  /** The `info` of a member with [[NoAutoTriggerAnnotation]], for clients that build the AST directly. If the member
+    * already has an [[AnnotationInfo]], add the key to it rather than adding a second one, since other readers (e.g.
+    * the pretty printer and Silicon's `@opaque()`) only use the first:
+    * `AnnotationInfo(others + (NoAutoTriggerAnnotation -> Nil))`.
+    */
+  val NoAutoTriggerInfo: AnnotationInfo = AnnotationInfo(Map(NoAutoTriggerAnnotation -> Nil))
+
+  /** Infers triggers for quantifiers. If `program` is given, applications of members of `program` with
+    * [[NoAutoTriggerAnnotation]] are treated like built-in operators.
+    */
+  class TriggerGeneration(program: Option[Program] = None)
+      extends GenericTriggerGenerator[Node, Type, Exp, LocalVar, QuantifiedExp] {
+
+    /** True iff `e` applies a member of `program` with [[NoAutoTriggerAnnotation]]. */
+    private def callsNoAutoTriggerMember(e: Exp): Boolean = program.exists { p =>
+      val callee: Option[Infoed] = e match {
+        case fa: FuncApp => p.findFunctionOptionally(fa.funcname)
+        case dfa: DomainFuncApp => p.findDomainFunctionOptionally(dfa.funcname)
+        case _ => None
+      }
+      callee.exists(_.info.getAllInfos[AnnotationInfo].exists(_.values.contains(NoAutoTriggerAnnotation)))
+    }
+
     protected def hasSubnode(root: Node, child: Node) = root.hasSubnode(child)
     protected def visit[A](root: Node)(f: PartialFunction[Node, A]) = root.visit(f)
     protected def deepCollect[A](root: Node)(f: PartialFunction[Node, A]) = root.deepCollect(f)
@@ -29,10 +62,11 @@ object Triggers {
 
     /* True iff the given node is a possible trigger */
     protected def isPossibleTrigger(e: Exp): Boolean = (customIsPossibleTrigger orElse {
+      case app if callsNoAutoTriggerMember(app) => false
       case _: PossibleTrigger => true
       case ee: ExtensionExp => ee.extensionIsValidTrigger()
-      case Old(_: PossibleTrigger) => true
-      case LabelledOld(_: PossibleTrigger, _) => true
+      case Old(pt: PossibleTrigger) => !callsNoAutoTriggerMember(pt)
+      case LabelledOld(pt: PossibleTrigger, _) => !callsNoAutoTriggerMember(pt)
       case _ => false
     }: PartialFunction[Exp, Boolean])(e)
 
@@ -40,6 +74,7 @@ object Triggers {
      *       could implement isForbiddenInTrigger already */
     def isForbiddenInTrigger(e: Exp) = (customIsForbiddenInTrigger orElse {
       case e if Expressions.isForbiddenInTrigger(e) => true
+      case app if callsNoAutoTriggerMember(app) => true
       case _ => false
     }: PartialFunction[Exp, Boolean])(e)
 
@@ -74,16 +109,19 @@ object Triggers {
           val exp = t._1
           (ast.LabelledOld(exp, l)(exp.pos, exp.info, exp.errT), t._2, t._3)
         })
-      case ast.Let(v, e, body) => results =>
+      case ast.Let(v, e, _) => results =>
+        /* A trigger term that uses the let-bound variable gets it replaced by its definition, in which, as in any
+         * trigger term, the sub-expressions forbidden in triggers are replaced by fresh variables. The term is dropped
+         * if it then no longer mentions a quantified variable. A term that does not use the variable stays a
+         * candidate whatever the variable is bound to. */
         results.flatten.flatMap(t => {
-          val exp = t._1
-          val varIsUsed = body.contains(v.localVar)
-          val coveredVars = t._2.filter(cv => cv != v.localVar) ++
-            (if (varIsUsed) relevantVars.filter(rv => e.contains(rv)) else Seq())
-          if (varIsUsed && isForbiddenInTrigger(e)) {
-            None
-          } else {
-            Some((exp.replace(v.localVar, e), coveredVars, t._3))
+          val (exp, vars, extraVars) = t
+          if (!exp.contains(v.localVar)) Some(t)
+          else {
+            val (definition, freshVars) = replaceForbiddenByFreshVars(e)
+            val coveredVars = vars.filter(_ != v.localVar) ++ relevantVars.filter(rv => definition.contains(rv))
+            if (coveredVars.isEmpty) None
+            else Some((exp.replace(v.localVar, definition), coveredVars, extraVars ++ freshVars))
           }
         })
     }
@@ -101,11 +139,14 @@ object Triggers {
     */
   object DefaultTriggerGeneration extends TriggerGeneration
 
-  object TriggerGenerationWithAddAndSubtract extends TriggerGeneration {
+  /** A trigger generator that admits `+` and `-` in triggers, which [[AxiomRewriter]] can rewrite afterwards. */
+  class TriggerGenerationWithAddAndSubtract(program: Option[Program] = None) extends TriggerGeneration(program) {
     customIsForbiddenInTrigger = {
       case _: ast.Add | _: ast.Sub => false
     }
   }
+
+  object TriggerGenerationWithAddAndSubtract extends TriggerGenerationWithAddAndSubtract(None)
 
   object AxiomRewriter extends GenericAxiomRewriter[Type, Exp, LocalVar, QuantifiedExp, EqCmp, And, Implies, Add, Sub,
                                                     Trigger] {

@@ -12,6 +12,10 @@ import scala.annotation.unused
 
 object GenericTriggerGenerator {
   case class TriggerSet[E](exps: Seq[E])
+
+  /* Shared by all generators, since a backend may infer the triggers of nested quantifiers with different
+   * generators, whose fresh variables must not clash */
+  private val nextUniqueId = new AtomicInteger(0)
 }
 
 /** Attention: The trigger generator is *not* thread-safe, among other things because its
@@ -65,7 +69,17 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
   protected var customIsForbiddenInTrigger: PartialFunction[Exp, Boolean] = PartialFunction.empty
   def setCustomIsForbiddenInTrigger(f: PartialFunction[Exp, Boolean]): Unit = { customIsForbiddenInTrigger = f }
 
-  private val nextUniqueId = new AtomicInteger(0)
+  /** Replaces the sub-expressions of `e` that are forbidden in triggers by fresh variables, and returns these. */
+  protected def replaceForbiddenByFreshVars(e: Exp): (Exp, Seq[Var]) = {
+    var freshVars: Seq[Var] = Seq()
+    val replaced = transform(e) {
+      case forbidden: Exp if isForbiddenInTrigger(forbidden) =>
+        val newV = Var("fresh__" + GenericTriggerGenerator.nextUniqueId.getAndIncrement(), Exp_typ(forbidden))
+        freshVars :+= newV
+        newV
+    }
+    (replaced, freshVars)
+  }
 
   def generateTriggerSetGroup(vs: Seq[Var], toSearch: Exp): Option[(Seq[TriggerSet], Seq[Var])] =
     generateTriggerSetGroups(vs: Seq[Var], toSearch: Exp).headOption
@@ -183,20 +197,14 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
     /* Get all function applications */
     reduceTree(toSearch)((node: Node, results: Seq[Seq[(PossibleTrigger, Seq[Var], Seq[Var])]]) => node match {
       case possibleTrigger: PossibleTrigger if isPossibleTrigger(possibleTrigger) =>
-        var extraVars: Seq[Var] = Seq() /* Collect extra variables generated for this term */
         var containsNestedBoundVars = false /* Flag to rule out this term */
         var containedVars: Seq[Var] = Seq()
 
         /* Eliminate all boolean expressions forbidden from triggers, and
          * replace with "extraVars"
          */
-        val processedArgs = getArgs(possibleTrigger) map (pt => transform(pt) {
-          case e: Exp if isForbiddenInTrigger(e) =>
-            val newV = Var("fresh__" + nextUniqueId.getAndIncrement(), Exp_typ(e))
-            extraVars +:= newV
-
-            newV
-        })
+        val (processedArgs, extraVarsPerArg) = getArgs(possibleTrigger).map(replaceForbiddenByFreshVars).unzip
+        val extraVars = extraVarsPerArg.flatten
 
         /* Collect all the sought (vs) variables in the function application */
         processedArgs foreach (arg => getVarsInExp(arg) foreach {

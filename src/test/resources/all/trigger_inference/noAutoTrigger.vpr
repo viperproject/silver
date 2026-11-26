@@ -1,0 +1,58 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Trigger inference treats calls of functions and domain functions annotated with @noAutoTrigger() like Viper's
+// built-in operators: they never occur in an inferred trigger term. The comment above each quantifier names the
+// triggers inferred when the backend respects the annotation; the expected results hold either way.
+
+@noAutoTrigger()
+function add(i: Int, j: Int): Int
+  ensures result == i + j
+
+@noAutoTrigger()
+function le(i: Int, j: Int): Bool
+  ensures result == (i <= j)
+
+domain Ops {
+  @noAutoTrigger()
+  function minus(i: Int, j: Int): Int
+
+  axiom {
+    forall i: Int, j: Int :: { minus(i, j) } minus(i, j) == i - j
+  }
+}
+
+function f(i: Int): Bool
+function g(i: Int): Int
+
+method arithmetic(n: Int)
+  // { f(i) }: neither add(i, 1) nor f(add(i, 1)) is a trigger term
+  requires forall i: Int :: f(i) ==> f(add(i, 1))
+  requires f(n)
+{
+  assert f(add(n, 1))
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert f(n - 1)
+}
+
+method comparison(n: Int)
+  // { f(i) }, not { le(0, i) }
+  requires forall i: Int :: le(0, i) ==> f(i)
+{
+  assert le(0, n) ==> f(n)
+}
+
+method comparisonOfTerms(n: Int)
+  // { g(i) } and { f(i) }
+  requires forall i: Int :: le(g(i), 0) ==> f(i)
+  requires g(n) <= 0
+{
+  assert f(n)
+}
+
+method domainFunction(n: Int)
+  // { g(i) }, not { minus(g(i), 1) }
+  requires forall i: Int :: minus(g(i), 1) > 0
+{
+  assert minus(g(n), 1) > 0
+}

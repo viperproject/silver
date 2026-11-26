@@ -652,9 +652,14 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
   /** Returns an identical forall quantification that has some automatically generated triggers
     * if necessary and possible.
     */
-  lazy val autoTrigger: Forall = {
+  lazy val autoTrigger: Forall = autoTriggerWith(Triggers.DefaultTriggerGeneration)
+
+  /** Like [[autoTrigger]], but infers the triggers with the given trigger generator, e.g. one that knows the program
+    * and thus respects the trigger annotations of the called members (see [[Triggers.TriggerGeneration]]).
+    */
+  def autoTriggerWith(tg: Triggers.TriggerGeneration): Forall = {
     if (triggers.isEmpty) {
-      Expressions.generateTriggerSet(this) match {
+      Expressions.generateTriggerSet(this, tg) match {
         case Some((vars, triggerSets)) =>
           Forall(vars, triggerSets.map(set => Trigger(set.exps)()), exp)(pos, MakeInfoPair(AutoTriggered,info))
         case None =>
@@ -681,9 +686,14 @@ case class Exists(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
   /** Returns an identical forall quantification that has some automatically generated triggers
     * if necessary and possible.
     */
-  lazy val autoTrigger: Exists = {
+  lazy val autoTrigger: Exists = autoTriggerWith(Triggers.DefaultTriggerGeneration)
+
+  /** Like [[autoTrigger]], but infers the triggers with the given trigger generator, e.g. one that knows the program
+    * and thus respects the trigger annotations of the called members (see [[Triggers.TriggerGeneration]]).
+    */
+  def autoTriggerWith(tg: Triggers.TriggerGeneration): Exists = {
     if (triggers.isEmpty) {
-      Expressions.generateTriggerSet(this) match {
+      Expressions.generateTriggerSet(this, tg) match {
         case Some((vars, triggerSets)) =>
           Exists(vars, triggerSets.map(set => Trigger(set.exps)()), exp)(pos, MakeInfoPair(AutoTriggered,info))
         case None =>
