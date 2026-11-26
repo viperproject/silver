@@ -48,7 +48,10 @@ trait PNode extends Where with Product with Rewritable with HasExtraValList {
     ReformatPrettyPrinter.showNode(this)(f.andThen(RNode.rt(_)))
 
   /** Returns a list of all direct sub-nodes of this node. */
-  def subnodes: Iterator[PNode] = PNode.children(this, this).flatMap(PNode.nodes(this, _))
+  final def subnodes: Iterator[PNode] = subnodesSeq.iterator
+
+  /** The direct subnodes, computed once */
+  private[parser] lazy val subnodesSeq: Seq[PNode] = PNode.children(this, this).flatMap(PNode.nodes(this, _)).toVector
 
   /** @see [[Visitor.reduceTree()]] */
   def reduceTree[T](f: (PNode, Seq[T]) => T) = Visitor.reduceTree(this, PNode.callSubnodes)(f)
@@ -101,8 +104,6 @@ trait PNode extends Where with Product with Rewritable with HasExtraValList {
   def deepCopyAll[A <: PNode]: PNode =
     StrategyBuilder.Slim[PNode]({ case n => n }).forceCopy().execute[PNode](this)
 
-  private val _children = scala.collection.mutable.ListBuffer[PNode]()
-
   def getParent: Option[PNode] = parent
   def getAncestor[T](implicit ctag: scala.reflect.ClassTag[T]): Option[T] = {
     var p = getParent
@@ -123,10 +124,8 @@ trait PNode extends Where with Product with Rewritable with HasExtraValList {
     var ind: Int = 0
     var prev: Option[PNode] = None
 
-    _children.clear()
     for (c <- this.subnodes) {
       c.parent = Some(this)
-      _children += c
       c.index = ind
       ind += 1
       c.prev = prev
@@ -166,7 +165,7 @@ object PNode {
       case _ => children(parent, n).flatMap(nodes(parent, _))
     }
   }
-  def callSubnodes(n: PNode): Seq[PNode] = n.subnodes.toSeq
+  def callSubnodes(n: PNode): Seq[PNode] = n.subnodesSeq
 }
 
 object TypeHelper {
@@ -370,11 +369,16 @@ trait PType extends PNode {
 
   //If we add type quantification or any type binders we need to modify this
   def freeTypeVariables: Set[String] =
-    subNodes.flatMap(_.freeTypeVariables).toSet union
-      (this match {
-        case pdt: PDomainType if pdt.isTypeVar && PTypeVar.isFreePTVName(pdt.domain.name) => Set(pdt.genericName)
-        case _ => Set()
-      })
+    subNodes.flatMap(_.freeTypeVariables).toSet union freeTypeVariableName.toSet
+
+  /** Whether some free type variable of this type satisfies `p`. Unlike [[freeTypeVariables]], this does not build a set. */
+  def existsFreeTypeVariable(p: String => Boolean): Boolean =
+    freeTypeVariableName.exists(p) || subNodes.exists(_.existsFreeTypeVariable(p))
+
+  private def freeTypeVariableName: Option[String] = this match {
+    case pdt: PDomainType if pdt.isTypeVar && PTypeVar.isFreePTVName(pdt.domain.name) => Some(pdt.genericName)
+    case _ => None
+  }
 
   override def toString(): String = this.pretty()
 }
@@ -621,12 +625,18 @@ trait PExp extends PNode with PDefineBody {
   def typeSubstitutions: scala.collection.Seq[PTypeSubstitution]
   /** Rule out e.g. `Impure && Impure` if `Bool && Bool` is an option (since `Bool <: Impure`). */
   def typeSubsDistinct: scala.collection.Seq[PTypeSubstitution] = {
-    val all = typeSubstitutions.distinct.zipWithIndex
-    all.filter { case (sub, i) => all.forall {
-      case (sup, j) => i == j || !sub.m.forall {
-        case (name, t) => sup.m.contains(name) && isSubtype(sup.m(name), t)
-      }
-    }} map (_._1)
+    val substitutions = typeSubstitutions
+    // Fewer than two substitutions have no duplicates to remove. `toList` copies them, because
+    // `typeSubstitutions` may be a mutable buffer.
+    if (substitutions.sizeIs <= 1) substitutions.toList
+    else {
+      val all = substitutions.distinct.zipWithIndex
+      all.filter { case (sub, i) => all.forall {
+        case (sup, j) => i == j || !sub.m.forall {
+          case (name, t) => sup.m.contains(name) && isSubtype(sup.m(name), t)
+        }
+      }} map (_._1)
+    }
   }
 
   def forceSubstitution(ts: PTypeSubstitution): Unit
@@ -666,6 +676,9 @@ case class PTypeSubstitutionInternal(m: PTypeSubstitution, added: PTypeSubstitut
   def get(key: String): Option[PType] = added.get(key).orElse(m.get(key))
 
   def compose(other: PTypeSubstitution): Either[(PType, PType), PTypeSubstitutionInternal] = {
+    // Composing with an empty substitution changes nothing
+    if (other.m.isEmpty) return Right(this)
+
     val sharedKeys = this.m.keySet.intersect(other.keySet)
     if (sharedKeys.exists(p => this.m.get(p).get != other.get(p).get)) {
       /* no composed substitution if input substitutions do not match */
@@ -818,7 +831,7 @@ case class PTypeSubstitution(m: Map[String, PType], canGeneralise: Boolean = fal
   def this(s: Seq[(String, PType)]) = this(s.toMap)
 
   def isFullyReduced =
-    m.values.forall(pt => (pt.freeTypeVariables intersect m.keySet).isEmpty)
+    m.values.forall(pt => !pt.existsFreeTypeVariable(m.contains))
 
   assert(isFullyReduced)
   //  assert(keySet.forall(PTypeVar.isFreePTVName))

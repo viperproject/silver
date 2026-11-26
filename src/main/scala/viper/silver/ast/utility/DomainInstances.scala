@@ -116,8 +116,22 @@ object DomainInstances {
       case dfa: DomainFuncApp => dfa -> a
     })).groupBy(pair => pair._1.funcname)
 
-    val allGroundDFAs = p.deepCollect{
-      case dfa: DomainFuncApp if dfa.typVarMap.values.forall(_.isConcrete) => dfa
+    // Skip ground types and ground function applications that were already seen
+    val seenGroundTypes = mutable.HashSet.empty[Type]
+    val seenGroundDFAs = mutable.HashSet.empty[(String, String, TypeSubstitution)]
+    val allGroundDFAs = mutable.ArrayBuffer.empty[DomainFuncApp]
+    val directGroundTypes = Set.newBuilder[Type]
+
+    p.visit {
+      case t: Type if t.isConcrete =>
+        if (seenGroundTypes.add(t))
+          directGroundTypes ++= downClosureGround(t)
+      case dfa: DomainFuncApp if dfa.typVarMap.values.forall(_.isConcrete) =>
+        if (seenGroundDFAs.add((dfa.funcname, dfa.domainName, dfa.typVarMap))) {
+          allGroundDFAs += dfa
+          val d = p.findDomain(dfa.func(p).domainName)
+          directGroundTypes ++= downClosureGround(DomainType(d, dfa.typVarMap))
+        }
     }
 
 
@@ -183,18 +197,16 @@ object DomainInstances {
       }).flatMap(downClosureGround).toSet
 
 
-    var allDirectGroundTypes: Set[Type] = p.deepCollect({
-      case t: Type if t.isConcrete => downClosureGround(t)
-      case dfa: DomainFuncApp if dfa.typVarMap.values.forall(_.isConcrete) =>
-        val d = p.findDomain(dfa.func(p).domainName)
-        downClosureGround(DomainType(d, dfa.typVarMap))
-    }).flatten.toSet
+    var allDirectGroundTypes: Set[Type] = directGroundTypes.result()
 
 /*    for (t <- gtis)
       if (!allDirectGroundTypes.contains(t))
         println(t.toString())
 */
     allDirectGroundTypes = allDirectGroundTypes.union(gtis)
+
+    // The result of collectTypes for each domain
+    val domainTypes = mutable.HashMap.empty[String, Set[Type]]
 
     val todo = new mutable.Queue[TypeCoordinate]()
     val done = new mutable.HashSet[TypeCoordinate]()
@@ -242,7 +254,10 @@ object DomainInstances {
         case _: AtomicTypeCoordinate =>
         case gitc@GenericInstanceTypeCoordinate(_, typeArgs) =>
           assert(typeArgs.forall { tc => done contains tc })
-          val types = gitc.collectTypes(p)
+          val types = gitc match {
+            case ditc: DomainInstanceTypeCoordinate => domainTypes.getOrElseUpdate(ditc.dt.domainName, ditc.collectTypes(p))
+            case _ => gitc.collectTypes(p)
+          }
           types.foreach(t => {
             val tc2 = makeTypeCoordinate(t.substitute(gitc.typeSubstitution))
             if (!(done contains tc2)) {
