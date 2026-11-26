@@ -1,0 +1,48 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Expressions that remain forbidden in triggers: arithmetic that mentions a
+// variable of the quantifier, and conditionals, logical connectives, != and
+// forbidden extension expressions even if they are ground, also as values of
+// lets around the quantifier. See ground_terms_in_triggers.vpr for expressions
+// that are allowed.
+
+function p(x: Int): Bool
+function q(x: Int, y: Int): Int
+function r(b: Bool, y: Int): Int
+
+adt List {
+  Nil()
+  Cons(hd: Int, tl: List)
+}
+
+method quantifiedArithmetic()
+  //:: ExpectedOutput(typechecker.error)
+  requires forall i: Int :: { q(i + 1, i) } p(i)
+{}
+
+method groundConditional(b: Bool)
+  //:: ExpectedOutput(typechecker.error)
+  requires forall i: Int :: { q(b ? 2 : 1, i) } p(i)
+{}
+
+method groundNotEqual(n: Int)
+  //:: ExpectedOutput(typechecker.error)
+  requires forall i: Int :: { r(n != 1, i) } p(i)
+{}
+
+method groundAdtDiscriminator(l: List)
+  //:: ExpectedOutput(typechecker.error)
+  requires forall i: Int :: { r(l.isCons, i) } p(i)
+{}
+
+// Backends use the value of z in the trigger, i.e. q(b ? 2 : 1, i).
+method conditionalInLetAroundQuantifier(b: Bool)
+  //:: ExpectedOutput(typechecker.error)
+  requires let z == ((b ? 2 : 1)) in (forall i: Int :: { q(z, i) } p(i))
+{}
+
+method connectiveInLetChainAroundQuantifier(b: Bool, c: Bool)
+  //:: ExpectedOutput(typechecker.error)
+  requires let y == ((b && c)) in (let z == ((y ? 2 : 1)) in (let w == (z) in (forall i: Int :: { q(w, i) } p(i))))
+{}
