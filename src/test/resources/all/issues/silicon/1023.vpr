@@ -1,0 +1,14 @@
+field fld: Int
+field val: Int
+
+function h2(v: Int, x: Int, i: Int): Ref
+  requires x >= 0 && x >= 1
+
+method leakQP2(r: Ref, n: Int)
+  requires acc(r.val)
+  requires forall i: Int, j: Int :: {h2(r.val, n, i), h2(r.val, n, j)} n >= 1 && i != j ==> h2(r.val, n, i) != h2(r.val, n, j)
+{
+  inhale forall i: Int :: n > 0 && 0 <= i && i < 3 ==> acc(h2(r.val, n, i).fld)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert n >= 1   // n is arbitrary
+}
