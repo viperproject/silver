@@ -1,0 +1,173 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+function P(x: Int) : Bool {
+    x == 0
+}
+
+function Q(x: Int) : Bool {
+    x == 0
+}
+
+method simple(x: Int) returns (z:Int)
+{
+    z := x
+}
+
+
+method mIfOK1(x:Int) returns (w:Int)
+{
+    w := 0
+    var l :Int := 0
+    var g: Int := 0
+    if (l >= -1) {
+        g := x
+    } else {
+        w := 4
+    }
+}
+
+
+
+method mWhileOK(x:Int) returns (z:Int)
+{
+    var y: Int := 0
+    while(y<100) { // will only be tainted after the 5th? iteration
+        var x4: Int := 0
+        var x3: Int := 0
+        var x2: Int := 0
+        var x1: Int := 0
+        z := x4
+        x4 := x3
+        x3 := x2
+        x2 := x1
+        x1 := x
+        y := y+1
+    }
+}
+
+
+method mWhileNOK(x:Int) returns (z:Int)
+{
+    var y: Int := 0
+    var x2: Int := 0
+    var x1: Int := 0
+
+    while(y<100) { 
+        z := x2
+        x2 := x1
+        x1 := x
+        y := y+1
+    }
+}
+
+
+//graph at the end  such that z is influenced by .init_z and .init_x
+//correct because if loop not executed then z is influenced by .init_z?
+method mWhileNOK2(x:Int) returns (z:Int)  
+{
+    var y: Int := x
+    var x2: Int := 0
+    var x1: Int := 0
+
+    while(y<100) {
+        z := x2
+        x2 := x1
+        y := y+1
+    }
+}
+
+method m0(x: Int) returns (z:Int)
+{
+    var y: Int := x+1
+    if (true) { var w:Int } // this should work -> two separate blocks
+    // var y:Int := 0 //here duplicate identifier
+}
+method mIndirect(x:Int) returns (z:Int)
+{
+    var y:Int := x+1
+    z := y 
+    // problem if here var y:Int := 0 -> this will also be in tainted set
+    if (true) { var w:Int }
+}
+
+method mIfCnd(x: Int) returns (z:Int, y:Int)
+{
+    if(x>5) {
+        z := 3
+    } else {
+        y := 5
+    }
+}
+
+
+method mIfOK2(x:Int) returns (w:Int)
+{
+    var l :Int := 0
+    if (l >= -1) {
+        l := x
+    } else {
+        w := 4 // should be SAFE
+    }
+}
+
+method mAssignOK2(x:Int) returns (r:Int)
+{
+    r:=x
+    r:=1
+
+}
+
+method mAssignOK3(x:Int) returns (r:Int)
+{
+    r:=x
+    var y: Int
+    r:= y
+}
+
+method m(a:Int,c:Bool) returns (d:Int,e:Int)
+{
+    while(c) {
+        d:=e
+        e:=a
+    }
+}
+
+method mMany(a:Int,b:Int,c:Int,d:Int,e:Int,f:Int,g:Int,h:Int,i:Int,j:Int,k:Int,l:Int,m1:Int,n:Int,o:Int,p:Int,q:Int,r:Int,s:Int) returns (r1:Int,r2:Int,r3:Int,r4:Int,r5:Int,r6:Int)
+requires p!=0
+{
+    if(a<b) {
+        r1 := c
+    } else {
+        r3 := d+e
+    }
+    r2 := h-k*o
+    r4 := q/p + r-s
+    r5 := n+m1 -f
+    r6 := i*j
+}
+
+method mMany2(a:Int,a2:Int,b:Int,b2:Int,c:Int,c2:Int,d:Int,d2:Int,e:Int,e2:Int,f:Int,f2:Int,g:Int,g2:Int,h:Int,h2:Int,i:Int,i2:Int,j:Int,k:Int,l:Int,m1:Int,n:Int,o:Int,p:Int,q:Int,r:Int,s:Int,t:Int,u:Int,v:Int,w:Int,x:Int,y:Int,z:Int) returns (r1:Int,r2:Int,r3:Int,r4:Int,r5:Int,r6:Int)
+requires p!=0
+{
+    if(a<b) {
+        r1 := c
+    } else {
+        r3 := d+e
+    }
+    r2 := h-k*o
+    r4 := q/p + r-s
+    r5 := n+m1 -f
+    r6 := i*j
+}
+/*
+field f:Int
+method m1(a:Int)
+returns (d:Ref)
+{
+    inhale acc(d.f)
+    d.f:=a
+}
+*/
+
+

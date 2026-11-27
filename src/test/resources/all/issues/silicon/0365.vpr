@@ -16,15 +16,15 @@ function tokCountRef(r:Ref): Ref
 domain parallelHeaps { 
     function temp(x: Ref): Ref 
     function temp_inv(x: Ref): Ref 
-    function heap(x: Ref): Int 
+    function heap_lookup(x: Ref): Int
     function is_ghost(x: Ref): Bool 
 
     // WARNING: The two axioms can cause a matching loop
     axiom inv_temp {
-        (forall r: Ref :: { temp(r) } temp_inv(temp(r)) == r && (is_ghost(r) ? temp(r) == r : heap(temp(r)) == heap(r) - 3))
+        (forall r: Ref :: { temp(r) } temp_inv(temp(r)) == r && (is_ghost(r) ? temp(r) == r : heap_lookup(temp(r)) == heap_lookup(r) - 3))
     } 
     axiom inv_temp_inv {
-        (forall r: Ref :: { temp_inv(r) } temp(temp_inv(r)) == r && (is_ghost(r) ? temp_inv(r) == r : heap(temp_inv(r)) == heap(r) + 3))
+        (forall r: Ref :: { temp_inv(r) } temp(temp_inv(r)) == r && (is_ghost(r) ? temp_inv(r) == r : heap_lookup(temp_inv(r)) == heap_lookup(r) + 3))
     }
 }
 
