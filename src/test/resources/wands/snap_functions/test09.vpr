@@ -1,0 +1,27 @@
+field f: Int
+
+method test09a(x: Ref, y: Ref)
+    requires acc(x.f) && x.f == 42
+    requires acc(x.f) --* acc(x.f) && acc(y.f) && y.f == 37
+{
+    //:: UnexpectedOutput(exhale.failed:insufficient.permission, /Carbon/issue/488/)
+    assert applying (acc(x.f) --* acc(x.f) && acc(y.f) && y.f == 37) in y.f == 37
+}
+
+method test09b(x: Ref, y: Ref)
+    requires acc(x.f) && x.f == 42
+    requires acc(x.f) --* acc(x.f) && acc(y.f) && y.f == 37
+{
+    apply acc(x.f) --* acc(x.f) && acc(y.f) && y.f == 37
+
+    assert y.f == 37
+}
+
+method test09c(x: Ref, y: Ref, z: Ref)
+    requires acc(x.f) && x.f == 42
+    requires acc(x.f) --* acc(x.f) && acc(y.f) && acc(z.f) && y.f == 37
+{
+    apply acc(x.f) --* acc(x.f) && acc(y.f) && acc(z.f) && y.f == 37
+
+    assert y.f == 37
+}
