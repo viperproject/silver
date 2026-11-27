@@ -108,7 +108,7 @@ object PAdtFieldDecl {
   def apply(d: PIdnTypeBinding): PAdtFieldDecl = PAdtFieldDecl(d.idndef, d.c, d.typ)(d.pos)
 }
 
-case class PAdtConstructor(annotations: Seq[PAnnotation], idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PAdtFieldDecl])(val pos: (Position, Position)) extends PExtender with PNoSpecsFunction with PGlobalUniqueDeclaration with PAdtChild {
+case class PAdtConstructor(annotations: Seq[PAnnotation], idndef: PIdnDef, args: PDelimited.Comma[PSym.Paren, PAdtFieldDecl], axiom: Option[PAdtConstructorAxiom])(val pos: (Position, Position)) extends PExtender with PNoSpecsFunction with PGlobalUniqueDeclaration with PAdtChild {
   override def resultType: PType = adt.getAdtType
   def fieldDecls: Seq[PAdtFieldDecl] = this.args.inner.toSeq
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
@@ -119,6 +119,7 @@ case class PAdtConstructor(annotations: Seq[PAnnotation], idndef: PIdnDef, args:
       val decl = discClashes.head
       t.messages ++= FastMessaging.message(idndef, "corresponding adt discriminator identifier `" + decl.idndef.name + "` at " + idndef.pos._1 + " is shadowed at " + decl.idndef.pos._1)
     }
+    axiom foreach (_.typecheck(t, n))
     None
   }
 
@@ -126,7 +127,8 @@ case class PAdtConstructor(annotations: Seq[PAnnotation], idndef: PIdnDef, args:
     AdtConstructor(
       PAdt.findAdt(adt.idndef, t),
       idndef.name,
-      formalArgs map (_.asInstanceOf[PAdtFieldDecl]) map { arg => LocalVarDecl(arg.idndef.name, t.ttyp(arg.typ))(t.liftPos(arg.idndef)) }
+      formalArgs map (_.asInstanceOf[PAdtFieldDecl]) map { arg => LocalVarDecl(arg.idndef.name, t.ttyp(arg.typ))(t.liftPos(arg.idndef)) },
+      axiom map (axiom => t.exp(axiom.e.inner))
     )(t.liftPos(this), Translator.toInfo(annotations, this))
   }
 
@@ -148,6 +150,24 @@ object PAdtConstructor {
     * @return the corresponding ADTConstructor object
     */
   def findAdtConstructor(id: PIdentifier, t: Translator): AdtConstructor = t.getMembers()(id.name).asInstanceOf[AdtConstructor]
+}
+
+case class PAdtConstructorAxiom(axiom: PKw.Axiom, e: PGrouped.Paren[PExp])(val pos: (Position, Position)) extends PExtender with PDomainMember with PNameAnalyserCustom with PAlwaysWellDefined {
+  override def nameDown(ctx: NameAnalyserCtxt): Unit = {
+    ctx.pushScope(this)
+    val map = ctx.getMap()
+    val args = getAncestor[PAdtConstructor].get.args.inner.toSeq
+    args.map(a => PLogicalVarDecl(a.idndef, a.c, a.typ)(a.pos)).foreach(map.newDecl)
+  }
+  override def nameUp(ctx: NameAnalyserCtxt): Unit = ctx.popScope()
+
+  // We extend `PDomainMember` to make this a `PScope`
+  override def domain: PDomain = null
+
+  override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
+    t.check(e.inner, TypeHelper.Bool)
+    None
+  }
 }
 
 case class PAdtDeriving(k: PReserved[PDerivesKeyword.type], derivingInfos: PAdtSeq[PAdtDerivingInfo])(val pos: (Position, Position)) extends PExtender with PAdtChild {
