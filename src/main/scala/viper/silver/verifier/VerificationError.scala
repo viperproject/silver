@@ -231,7 +231,23 @@ sealed abstract class AbstractVerificationError extends VerificationError {
 
   def pos = offendingNode.pos
 
-  def readableMessage(withId: Boolean, withPosition: Boolean) = {
+  val customMessageAnnotation = "msg"
+
+  def customErrorMessage = offendingNode match {
+    case i: Infoed => i.info.getUniqueInfo[AnnotationInfo] match {
+      case Some(ai) if ai.values.contains(customMessageAnnotation) && ai.values(customMessageAnnotation).nonEmpty =>
+        Some(ai.values("msg").head)
+      case _ => None
+    }
+    case _ => None
+  }
+
+  def readableMessage(withId: Boolean, withPosition: Boolean) = customErrorMessage match {
+    case Some(msg) => msg
+    case _ => defaultReadableMessage(withId, withPosition)
+  }
+
+  def defaultReadableMessage(withId: Boolean, withPosition: Boolean) = {
     val idStr = if (withId) s"[$fullId] " else ""
     val posStr = if (withPosition) s" ($pos)" else ""
 
@@ -398,6 +414,22 @@ object errors {
   case class AssertFailed(offendingNode: Assert, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "assert.failed"
     val text = "Assert might fail."
+
+    def customAssertErrorMessage = offendingNode.info.getUniqueInfo[AnnotationInfo] match {
+      case Some(ai) if ai.values.contains(customMessageAnnotation) && ai.values(customMessageAnnotation).nonEmpty =>
+        Some(ai.values("msg").head)
+      case _ => None
+    }
+
+    override def readableMessage: String = customAssertErrorMessage match {
+      case Some(msg) => msg
+      case None => super.readableMessage
+    }
+
+    override def readableMessage(withId: Boolean, withPosition: Boolean): String = customAssertErrorMessage match {
+      case Some(msg) => msg
+      case None => super.readableMessage(withId, withPosition)
+    }
 
     override def pos = offendingNode.exp.pos
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = AssertFailed(offendingNode.asInstanceOf[Assert], this.reason, this.cached)
